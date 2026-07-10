@@ -244,6 +244,8 @@ async def get_visible_connector(
     db: AsyncSession,
     connector_id: uuid.UUID,
     auth: AuthContext,
+    *,
+    for_update: bool = False,
 ) -> DataConnector:
     # Offline (device-token) mode: the connector lives in the LOCAL registry, not Postgres — read it
     # there and synthesize an in-memory DataConnector, so the fix hot path issues ZERO data_connectors
@@ -267,7 +269,7 @@ async def get_visible_connector(
 
     ck = (str(connector_id), str(auth.get("workspace_id") or ""))
     now = time.monotonic()
-    hit = _CONNECTOR_CACHE.get(ck)
+    hit = None if for_update else _CONNECTOR_CACHE.get(ck)
     if hit is not None and hit[1] > now:
         connector = hit[0]
     else:
@@ -278,7 +280,11 @@ async def get_visible_connector(
             )
         )
         connector = result.scalar_one_or_none()
-        if connector is not None:
+        if (
+            connector is not None
+            and not for_update
+            and str(connector.connector_type) in _REPO_CONNECTOR_TYPES
+        ):
             db.expunge(connector)  # detach so the row is reusable across requests/sessions
             _CONNECTOR_CACHE[ck] = (connector, now + _CONNECTOR_CACHE_TTL)
     if connector is None or not connector_visible(connector, auth):
@@ -287,3 +293,16 @@ async def get_visible_connector(
             detail={"error": {"code": "not_found", "message": "Connection not found."}},
         )
     return connector
+
+
+def invalidate_visible_connector_cache(
+    connector_id: uuid.UUID | str,
+    auth: AuthContext | None = None,
+) -> None:
+    """Evict detached connector rows after connector mutations."""
+    target_id = str(connector_id)
+    if auth is not None:
+        _CONNECTOR_CACHE.pop((target_id, str(auth.get("workspace_id") or "")), None)
+        return
+    for cache_key in [key for key in _CONNECTOR_CACHE if key[0] == target_id]:
+        _CONNECTOR_CACHE.pop(cache_key, None)

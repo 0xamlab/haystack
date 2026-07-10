@@ -72,6 +72,9 @@ from tests.integration.live_data_source_server import (  # noqa: E402
 from tests.integration.live_integration_artifacts import (
     write_live_integration_summary,  # noqa: E402
 )
+from tests.integration.live_local_surface_env import (  # noqa: E402
+    configure_local_live_server_env,
+)
 from tests.integration.live_repository_fixture import (  # noqa: E402
     assert_repository_intelligence_capabilities_payload,
     live_repository_fixture,
@@ -463,6 +466,7 @@ def _resolve_base_url() -> str:
     env.setdefault("ALGENTA_SOURCE_REGISTRY_ROOT", str(log_dir / "sources"))
     env.setdefault("ALGENTA_RUNTIME_DIR", str(log_dir / "runtime"))
     env.setdefault("ALGENTA_REPOSITORY_INTELLIGENCE_MODEL", "repository.deterministic_local_v1")
+    env = configure_local_live_server_env(env, root_dir=log_dir)
     with log_path.open("w", encoding="utf-8") as log_handle:
         _runtime_proc = subprocess.Popen(
             [

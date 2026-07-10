@@ -2,7 +2,7 @@ import csv
 import json
 from pathlib import Path
 
-from benchmarks.scorecard_sync import _format_us, format_speedup
+from benchmarks.scorecard_sync import _format_counts, _format_us, format_speedup
 
 
 def test_llm_rollout_scorecard_references_dedicated_artifacts_and_channels() -> None:
@@ -173,10 +173,8 @@ def test_scorecard_matches_current_go_live_verify_artifact() -> None:
         f"{gap_source_summary['live_skip_counts_by_tier'].get('customer_credentials_required', 0)}, "
         "public_no_auth "
         f"{gap_source_summary['live_skip_counts_by_tier'].get('public_no_auth', 0)}; "
-        "merged sources live_connectivity "
-        f"{gap_source_summary['merged_gap_counts_by_source'].get('live_connectivity', 0)}, "
-        "static_matrix+live_connectivity "
-        f"{gap_source_summary['merged_gap_counts_by_source'].get('static_matrix+live_connectivity', 0)}"
+        "merged sources "
+        f"{_format_counts(gap_source_summary['merged_gap_counts_by_source'])}"
     )
     env_templates_fragment = (
         "root_env_example "

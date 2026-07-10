@@ -87,9 +87,9 @@ It reports the runtime source and mode, whether the native runtime is `loaded` a
 
 ```text
 algenta runtime doctor
-  runtime source:  bundled wheel
-  mode:            in-process
-  path:            /opt/algenta/runtime/libalgenta_runtime.so
+  runtime source:  bundled sidecar
+  mode:            resident-worker
+  path:            /opt/algenta/runtime/algenta_runtime_worker
   platform tag:    manylinux_2_28_x86_64
   package version: 1.0.0
   abi (expected):  1

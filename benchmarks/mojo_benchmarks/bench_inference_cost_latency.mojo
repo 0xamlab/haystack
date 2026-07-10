@@ -52,6 +52,13 @@ fn _summary_list_float64(value: List[Float64]) -> String:
         joined += _summary_float64(value[i])
     return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
 
+fn _summary_list_float64_rounded6(value: List[Float64]) -> String:
+    var joined = String("")
+    for i in range(len(value)):
+        if i > 0: joined += "|"
+        joined += _summary_float64_rounded6(value[i])
+    return "list:" + String(len(value)) + ":" + String(_summary_hash_string(joined))
+
 fn _summary_list_float32(value: List[Float32]) -> String:
     var joined = String("")
     for i in range(len(value)):
@@ -117,9 +124,144 @@ def main() raises:
     var _lf5 = List[Float64]()
     _lf5.append(0.5); _lf5.append(0.6); _lf5.append(0.7)
     _lf5.append(0.4); _lf5.append(0.3)
+    var _lf12_colorcheck2x2 = List[Float64]()
+    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)
+    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)
+    _lf12_colorcheck2x2.append(200.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0)
+    _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(20.0); _lf12_colorcheck2x2.append(200.0)
+    var _lf48_video3x4x4 = List[Float64]()
+    for _ in range(16):
+        _lf48_video3x4x4.append(10.0)
+    for pixel in range(16):
+        if pixel < 4:
+            _lf48_video3x4x4.append(200.0)
+        else:
+            _lf48_video3x4x4.append(10.0)
+    for _ in range(16):
+        _lf48_video3x4x4.append(200.0)
+    var _lf48_video3x4x4_alt = List[Float64]()
+    for _ in range(16):
+        _lf48_video3x4x4_alt.append(12.0)
+    for pixel in range(16):
+        if pixel < 4:
+            _lf48_video3x4x4_alt.append(188.0)
+        else:
+            _lf48_video3x4x4_alt.append(12.0)
+    for _ in range(16):
+        _lf48_video3x4x4_alt.append(192.0)
+    var _lf36_video_rgb3x2x2 = List[Float64]()
+    for _ in range(4):
+        _lf36_video_rgb3x2x2.append(200.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0)
+    for pixel in range(4):
+        if pixel < 3:
+            _lf36_video_rgb3x2x2.append(200.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0)
+        else:
+            _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(200.0)
+    for _ in range(4):
+        _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(20.0); _lf36_video_rgb3x2x2.append(200.0)
+    var _lf25_block5x5 = List[Float64]()
+    for y in range(5):
+        for x in range(5):
+            if y >= 1 and y <= 3 and x >= 1 and x <= 3:
+                _lf25_block5x5.append(255.0)
+            else:
+                _lf25_block5x5.append(0.0)
+    var _lf25_ring5x5 = List[Float64]()
+    for y in range(5):
+        for x in range(5):
+            if y >= 1 and y <= 3 and x >= 1 and x <= 3 and not (y == 2 and x == 2):
+                _lf25_ring5x5.append(255.0)
+            else:
+                _lf25_ring5x5.append(0.0)
+    var _lf36_components6x6 = List[Float64]()
+    for y in range(6):
+        for x in range(6):
+            if (x == 0 and (y == 1 or y == 2)) or ((x == 3 and (y == 1 or y == 2 or y == 3)) or (x == 4 and y == 1)):
+                _lf36_components6x6.append(255.0)
+            else:
+                _lf36_components6x6.append(0.0)
+    var _lf64_doc8x8 = List[Float64]()
+    var _lf64_doc8x8_alt = List[Float64]()
+    var _lf64_docmask8x8 = List[Float64]()
+    for y in range(8):
+        for x in range(8):
+            if (y == 2 and x >= 1 and x <= 6) or (y == 5 and x >= 2 and x <= 5):
+                _lf64_doc8x8.append(20.0)
+                _lf64_doc8x8_alt.append(60.0)
+                _lf64_docmask8x8.append(255.0)
+            else:
+                _lf64_doc8x8.append(240.0)
+                _lf64_doc8x8_alt.append(235.0)
+                _lf64_docmask8x8.append(0.0)
+    var _lf36_adaptive_doc6x6 = List[Float64]()
+    for y in range(6):
+        for x in range(6):
+            if y == 2 and x >= 2 and x <= 3:
+                _lf36_adaptive_doc6x6.append(40.0)
+            elif x < 3:
+                _lf36_adaptive_doc6x6.append(220.0)
+            else:
+                _lf36_adaptive_doc6x6.append(245.0)
+    var _lf36_skewmask6x6 = List[Float64]()
+    for y in range(6):
+        for x in range(6):
+            if y >= 1 and y <= 4 and x == y:
+                _lf36_skewmask6x6.append(255.0)
+            else:
+                _lf36_skewmask6x6.append(0.0)
+    var _lf64_blobdoc8x8 = List[Float64]()
+    for y in range(8):
+        for x in range(8):
+            if (y >= 2 and y <= 4 and x >= 1 and x <= 3) or (x == 6 and (y == 1 or y == 2)):
+                _lf64_blobdoc8x8.append(20.0)
+            else:
+                _lf64_blobdoc8x8.append(235.0)
+    var _lf64_doccolumns8x8 = List[Float64]()
+    for y in range(8):
+        for x in range(8):
+            if y >= 1 and y <= 6 and ((x >= 1 and x <= 2) or (x >= 5 and x <= 6)):
+                _lf64_doccolumns8x8.append(255.0)
+            else:
+                _lf64_doccolumns8x8.append(0.0)
+    var _lf81_doctable9x9 = List[Float64]()
+    for y in range(9):
+        for x in range(9):
+            if ((y >= 1 and y <= 2) or (y >= 4 and y <= 5) or (y >= 7 and y <= 8)) and ((x >= 1 and x <= 2) or (x >= 4 and x <= 5) or (x >= 7 and x <= 8)):
+                _lf81_doctable9x9.append(255.0)
+            else:
+                _lf81_doctable9x9.append(0.0)
+    var _lf256_texture16x16 = List[Float64]()
+    for y in range(16):
+        for x in range(16):
+            if y >= 8 and x >= 8:
+                _lf256_texture16x16.append(255.0 if (x + y) % 2 == 0 else 0.0)
+            else:
+                _lf256_texture16x16.append(64.0)
+    var _lf75_video_motion3x5x5 = List[Float64]()
+    for _ in range(25):
+        _lf75_video_motion3x5x5.append(10.0)
+    for y in range(5):
+        for x in range(5):
+            if y >= 1 and y <= 2 and x >= 1 and x <= 2:
+                _lf75_video_motion3x5x5.append(200.0)
+            else:
+                _lf75_video_motion3x5x5.append(10.0)
+    for y in range(5):
+        for x in range(5):
+            if (y >= 1 and y <= 2 and x >= 1 and x <= 2) or (x == 4 and y == 4):
+                _lf75_video_motion3x5x5.append(200.0)
+            else:
+                _lf75_video_motion3x5x5.append(10.0)
+    var _lf16_grid4x4 = List[Float64]()
+    for i in range(16):
+        _lf16_grid4x4.append(Float64(i))
     var _li5 = List[Int]()
     _li5.append(0); _li5.append(1); _li5.append(2)
     _li5.append(3); _li5.append(4)
+    var _li4_box_a = List[Int]()
+    _li4_box_a.append(0); _li4_box_a.append(0); _li4_box_a.append(2); _li4_box_a.append(2)
+    var _li4_box_b = List[Int]()
+    _li4_box_b.append(1); _li4_box_b.append(1); _li4_box_b.append(3); _li4_box_b.append(3)
     var _lb5 = List[Bool]()
     _lb5.append(True); _lb5.append(False); _lb5.append(True)
     _lb5.append(True); _lb5.append(False)
@@ -131,6 +273,11 @@ def main() raises:
     _llf3[0].append(4.0); _llf3[0].append(0.0); _llf3[0].append(5.0)
     _llf3[1].append(0.0); _llf3[1].append(3.0); _llf3[1].append(4.0)
     _llf3[2].append(3.0); _llf3[2].append(4.0); _llf3[2].append(0.0)
+    var _llf3_imageops = List[List[Float64]]()
+    _llf3_imageops.append(List[Float64]()); _llf3_imageops.append(List[Float64]()); _llf3_imageops.append(List[Float64]())
+    _llf3_imageops[0].append(0.5); _llf3_imageops[0].append(0.6); _llf3_imageops[0].append(0.7)
+    _llf3_imageops[1].append(0.4); _llf3_imageops[1].append(0.3); _llf3_imageops[1].append(0.2)
+    _llf3_imageops[2].append(0.1); _llf3_imageops[2].append(0.2); _llf3_imageops[2].append(0.3)
     var N: Int = 10000
 
     var _acc_prompt_token_estimate: Float64 = 0.0

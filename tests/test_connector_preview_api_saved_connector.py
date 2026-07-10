@@ -30,7 +30,7 @@ async def test_saved_connector_test_route_coalesces_concurrent_identical_request
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield fake_db
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_test(connector_type: str, config: dict[str, object]) -> ConnectorTestOutcome:
@@ -95,7 +95,7 @@ async def test_saved_connector_test_route_reuses_short_distributed_handoff(
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield fake_db
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_test(_connector_type: str, _config: dict[str, object]) -> ConnectorTestOutcome:
@@ -152,7 +152,7 @@ async def test_saved_connector_test_route_does_not_cache_failures(
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield fake_db
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_test(_connector_type: str, _config: dict[str, object]) -> ConnectorTestOutcome:
@@ -208,7 +208,7 @@ async def test_saved_connector_browse_route_coalesces_concurrent_identical_reque
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield _FakeDbSession()
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_browse(
@@ -273,7 +273,7 @@ async def test_saved_connector_browse_route_reuses_short_distributed_handoff(
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield _FakeDbSession()
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_browse(
@@ -330,7 +330,7 @@ async def test_saved_connector_browse_route_does_not_cache_failures(
     async def _fake_db_override():  # type: ignore[no-untyped-def]
         yield _FakeDbSession()
 
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return connector
 
     async def _fake_browse(_connector_type: str, _config: dict[str, object]):
@@ -356,5 +356,4 @@ async def test_saved_connector_browse_route_does_not_cache_failures(
     assert first.status_code == 502
     assert second.status_code == 502
     assert calls == 2
-
 

@@ -63,6 +63,7 @@ from apps.api_server.services.data_connection_discovery import (
 from apps.api_server.services.data_visibility import (
     connector_manageable,
     get_visible_connector,
+    invalidate_visible_connector_cache,
     list_visible_connectors,
     normalize_visibility,
 )
@@ -304,7 +305,7 @@ async def update_connector(
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> ConnectorResponse:
-    connector = await get_visible_connector(db, connector_id, auth)
+    connector = await get_visible_connector(db, connector_id, auth, for_update=True)
     if not connector_manageable(connector, auth):
         raise HTTPException(
             status_code=403,
@@ -329,6 +330,7 @@ async def update_connector(
 
     await db.commit()
     await db.refresh(connector)
+    invalidate_visible_connector_cache(connector_id, auth)
     return _to_response(connector)
 
 
@@ -343,7 +345,7 @@ async def test_connector(
     auth: Annotated[AuthContext, Depends(get_current_org)],
     redis_client: object = Depends(get_redis),
 ) -> ConnectorTestResult:
-    connector = await get_visible_connector(db, connector_id, auth)
+    connector = await get_visible_connector(db, connector_id, auth, for_update=True)
     config = _parse_connector_config(connector.config_json, connector.org_id)
     org_id = _org_scope_id(auth)
     distributed_redis = _distributed_preview_redis(redis_client)
@@ -357,6 +359,7 @@ async def test_connector(
         connector.last_tested_at = datetime.now(tz=UTC)
         connector.error_message = None if outcome.success else outcome.message
         await db.commit()
+        invalidate_visible_connector_cache(connector_id, auth)
         return outcome
 
     outcome = await run_inline_preview_once(
@@ -456,7 +459,7 @@ async def delete_connector(
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> None:
-    connector = await get_visible_connector(db, connector_id, auth)
+    connector = await get_visible_connector(db, connector_id, auth, for_update=True)
     if not connector_manageable(connector, auth):
         raise HTTPException(
             status_code=403,
@@ -466,6 +469,7 @@ async def delete_connector(
         )
     await db.delete(connector)
     await db.commit()
+    invalidate_visible_connector_cache(connector_id, auth)
 
 
 # ─── Browse ───────────────────────────────────────────────────────────────────

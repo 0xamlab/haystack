@@ -1,8 +1,8 @@
 {
   "matrix_summary": {
     "total_cases": 19,
-    "configured_cases": 8,
-    "behavior_ready_cases": 8,
+    "configured_cases": 7,
+    "behavior_ready_cases": 7,
     "tiers": {
       "public_no_auth": {
         "total": 8,
@@ -16,8 +16,8 @@
       },
       "customer_credentials_required": {
         "total": 9,
-        "configured": 1,
-        "behavior_ready": 1
+        "configured": 0,
+        "behavior_ready": 0
       }
     }
   },
@@ -32,9 +32,9 @@
     {
       "name": "connectivity",
       "command": [
-        "python3",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
         "-u",
-        "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_connectivity_real.py",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/tests/integration/test_go_live_connectivity_real.py",
         "--parallel-tasks",
         "4"
       ]
@@ -42,9 +42,9 @@
     {
       "name": "full_real",
       "command": [
-        "python3",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
         "-u",
-        "/Users/angel/Developer/decision-engine/tests/integration/test_go_live_full_real.py",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/tests/integration/test_go_live_full_real.py",
         "--parallel-tasks",
         "4",
         "--mojo-workers",
@@ -56,7 +56,7 @@
     {
       "name": "pytest",
       "command": [
-        "python3",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
         "-m",
         "pytest",
         "tests",
@@ -68,17 +68,17 @@
     {
       "name": "connectivity",
       "returncode": 0,
-      "duration_s": 27.63
+      "duration_s": 19.697
     },
     {
       "name": "full_real",
       "returncode": 1,
-      "duration_s": 797.101
+      "duration_s": 496.798
     }
   ],
-  "generated_at": "2026-05-30T00:22:07Z",
-  "python_executable": "python3",
-  "output_path": "build/go_live_verify_summary.json",
+  "generated_at": "2026-07-10T01:29:01Z",
+  "python_executable": "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
+  "output_path": "/private/tmp/algenta-gitbook-live-install-fix-20260710/build/go_live_verify_summary.json",
   "filters": {
     "tiers": [],
     "connectors": []
@@ -170,6 +170,14 @@
       "connector_type": "redis",
       "gap_type": "not_configured",
       "reason": "required env not provided: DE_TEST_REDIS_URL"
+    },
+    {
+      "case_id": "snowflake_customer_connector_test",
+      "label": "Snowflake connector /test",
+      "tier": "customer_credentials_required",
+      "connector_type": "snowflake",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE"
     },
     {
       "case_id": "dlt_github_issues",
@@ -266,8 +274,8 @@
       "label": "Snowflake connector /test",
       "tier": "customer_credentials_required",
       "connector_type": "snowflake",
-      "gap_type": "not_behavior_ready",
-      "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case."
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE"
     },
     {
       "case_id": "dlt_github_issues",
@@ -464,16 +472,17 @@
       "label": "Snowflake connector /test",
       "tier": "customer_credentials_required",
       "connector_type": "snowflake",
-      "gap_type": "not_behavior_ready",
-      "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case.",
-      "source": "live_connectivity",
+      "gap_type": "not_configured",
+      "reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE",
+      "source": "static_matrix+live_connectivity",
       "sources": [
+        "static_matrix",
         "live_connectivity"
       ],
-      "static_reason": null,
-      "live_reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case.",
+      "static_reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE",
+      "live_reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE",
       "action_codes": [
-        "resolve_network_policy_blockers"
+        "set_customer_connector_envs"
       ]
     },
     {
@@ -496,12 +505,10 @@
     }
   ],
   "gap_source_summary": {
-    "static_gap_count": 11,
+    "static_gap_count": 12,
     "live_skip_count": 12,
     "merged_gap_count": 12,
-    "live_only_case_ids": [
-      "snowflake_customer_connector_test"
-    ],
+    "live_only_case_ids": [],
     "static_only_case_ids": [],
     "merged_case_ids": [
       "bigquery_customer_connector_test",
@@ -519,7 +526,7 @@
     ],
     "static_gap_counts_by_tier": {
       "credentialed_example": 2,
-      "customer_credentials_required": 8,
+      "customer_credentials_required": 9,
       "public_no_auth": 1
     },
     "static_gap_counts_by_connector_type": {
@@ -531,7 +538,8 @@
       "neo4j": 1,
       "redis": 1,
       "rest_api": 3,
-      "s3": 1
+      "s3": 1,
+      "snowflake": 1
     },
     "live_skip_counts_by_tier": {
       "credentialed_example": 2,
@@ -568,8 +576,7 @@
       "snowflake": 1
     },
     "merged_gap_counts_by_source": {
-      "live_connectivity": 1,
-      "static_matrix+live_connectivity": 11
+      "static_matrix+live_connectivity": 12
     }
   },
   "next_actions": [
@@ -614,7 +621,8 @@
           "customer_s3_source_registration",
           "elasticsearch_customer_connector_test",
           "neo4j_customer_connector_test",
-          "redis_customer_connector_test"
+          "redis_customer_connector_test",
+          "snowflake_customer_connector_test"
         ],
         "env_names": [
           "DE_TEST_AZURE_ACCOUNT_URL",
@@ -636,17 +644,11 @@
           "DE_TEST_NEO4J_USERNAME",
           "DE_TEST_REDIS_URL",
           "DE_TEST_S3_BUCKET",
-          "DE_TEST_S3_KEY"
-        ]
-      }
-    },
-    {
-      "code": "resolve_network_policy_blockers",
-      "message": "Resolve the remaining network-policy-gated customer connector probes before rerunning the Tier 3 slice.",
-      "command": "make go-live-probe-snowflake",
-      "details": {
-        "case_ids": [
-          "snowflake_customer_connector_test"
+          "DE_TEST_S3_KEY",
+          "DE_TEST_SNOWFLAKE_ACCOUNT",
+          "DE_TEST_SNOWFLAKE_PASSWORD",
+          "DE_TEST_SNOWFLAKE_USER",
+          "DE_TEST_SNOWFLAKE_WAREHOUSE"
         ]
       }
     },
@@ -661,16 +663,12 @@
     "unmapped_case_ids": [],
     "action_case_counts": {
       "enable_opt_in_public_cases": 1,
-      "resolve_network_policy_blockers": 1,
       "set_credentialed_example_envs": 2,
-      "set_customer_connector_envs": 8
+      "set_customer_connector_envs": 9
     },
     "action_case_ids": {
       "enable_opt_in_public_cases": [
         "dlt_github_issues"
-      ],
-      "resolve_network_policy_blockers": [
-        "snowflake_customer_connector_test"
       ],
       "set_credentialed_example_envs": [
         "dlt_github_issues_token",
@@ -684,7 +682,8 @@
         "customer_s3_source_registration",
         "elasticsearch_customer_connector_test",
         "neo4j_customer_connector_test",
-        "redis_customer_connector_test"
+        "redis_customer_connector_test",
+        "snowflake_customer_connector_test"
       ]
     },
     "action_env_names": {
@@ -715,20 +714,21 @@
         "DE_TEST_NEO4J_USERNAME",
         "DE_TEST_REDIS_URL",
         "DE_TEST_S3_BUCKET",
-        "DE_TEST_S3_KEY"
+        "DE_TEST_S3_KEY",
+        "DE_TEST_SNOWFLAKE_ACCOUNT",
+        "DE_TEST_SNOWFLAKE_PASSWORD",
+        "DE_TEST_SNOWFLAKE_USER",
+        "DE_TEST_SNOWFLAKE_WAREHOUSE"
       ]
     },
     "action_env_counts": {
       "enable_opt_in_public_cases": 1,
       "set_credentialed_example_envs": 2,
-      "set_customer_connector_envs": 20
+      "set_customer_connector_envs": 24
     },
     "action_connector_types": {
       "enable_opt_in_public_cases": [
         "rest_api"
-      ],
-      "resolve_network_policy_blockers": [
-        "snowflake"
       ],
       "set_credentialed_example_envs": [
         "rest_api"
@@ -741,14 +741,14 @@
         "gcs",
         "neo4j",
         "redis",
-        "s3"
+        "s3",
+        "snowflake"
       ]
     },
     "action_connector_counts": {
       "enable_opt_in_public_cases": 1,
-      "resolve_network_policy_blockers": 1,
       "set_credentialed_example_envs": 1,
-      "set_customer_connector_envs": 8
+      "set_customer_connector_envs": 9
     },
     "terminal_action_codes": [
       "rerun_strict_go_live_gate"
@@ -831,7 +831,7 @@
         "set_customer_connector_envs"
       ],
       "snowflake": [
-        "resolve_network_policy_blockers"
+        "set_customer_connector_envs"
       ]
     },
     "connector_env_counts": {
@@ -843,7 +843,8 @@
       "neo4j": 3,
       "redis": 1,
       "rest_api": 3,
-      "s3": 2
+      "s3": 2,
+      "snowflake": 4
     },
     "connector_env_names": {
       "azure_blob": [
@@ -886,15 +887,21 @@
       "s3": [
         "DE_TEST_S3_BUCKET",
         "DE_TEST_S3_KEY"
+      ],
+      "snowflake": [
+        "DE_TEST_SNOWFLAKE_ACCOUNT",
+        "DE_TEST_SNOWFLAKE_PASSWORD",
+        "DE_TEST_SNOWFLAKE_USER",
+        "DE_TEST_SNOWFLAKE_WAREHOUSE"
       ]
     }
   },
   "gap_env_summary": {
-    "env_total_count": 23,
+    "env_total_count": 27,
     "shared_env_names": [],
     "tier_env_counts": {
       "credentialed_example": 2,
-      "customer_credentials_required": 20,
+      "customer_credentials_required": 24,
       "public_no_auth": 1
     },
     "env_case_counts": {
@@ -920,7 +927,11 @@
       "DE_TEST_NEO4J_USERNAME": 1,
       "DE_TEST_REDIS_URL": 1,
       "DE_TEST_S3_BUCKET": 1,
-      "DE_TEST_S3_KEY": 1
+      "DE_TEST_S3_KEY": 1,
+      "DE_TEST_SNOWFLAKE_ACCOUNT": 1,
+      "DE_TEST_SNOWFLAKE_PASSWORD": 1,
+      "DE_TEST_SNOWFLAKE_USER": 1,
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": 1
     },
     "env_case_ids": {
       "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
@@ -991,6 +1002,18 @@
       ],
       "DE_TEST_S3_KEY": [
         "customer_s3_source_registration"
+      ],
+      "DE_TEST_SNOWFLAKE_ACCOUNT": [
+        "snowflake_customer_connector_test"
+      ],
+      "DE_TEST_SNOWFLAKE_PASSWORD": [
+        "snowflake_customer_connector_test"
+      ],
+      "DE_TEST_SNOWFLAKE_USER": [
+        "snowflake_customer_connector_test"
+      ],
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": [
+        "snowflake_customer_connector_test"
       ]
     },
     "env_connector_types": {
@@ -1062,6 +1085,18 @@
       ],
       "DE_TEST_S3_KEY": [
         "s3"
+      ],
+      "DE_TEST_SNOWFLAKE_ACCOUNT": [
+        "snowflake"
+      ],
+      "DE_TEST_SNOWFLAKE_PASSWORD": [
+        "snowflake"
+      ],
+      "DE_TEST_SNOWFLAKE_USER": [
+        "snowflake"
+      ],
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": [
+        "snowflake"
       ]
     },
     "env_connector_counts": {
@@ -1087,7 +1122,11 @@
       "DE_TEST_NEO4J_USERNAME": 1,
       "DE_TEST_REDIS_URL": 1,
       "DE_TEST_S3_BUCKET": 1,
-      "DE_TEST_S3_KEY": 1
+      "DE_TEST_S3_KEY": 1,
+      "DE_TEST_SNOWFLAKE_ACCOUNT": 1,
+      "DE_TEST_SNOWFLAKE_PASSWORD": 1,
+      "DE_TEST_SNOWFLAKE_USER": 1,
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": 1
     },
     "env_action_codes": {
       "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
@@ -1158,6 +1197,18 @@
       ],
       "DE_TEST_S3_KEY": [
         "set_customer_connector_envs"
+      ],
+      "DE_TEST_SNOWFLAKE_ACCOUNT": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_SNOWFLAKE_PASSWORD": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_SNOWFLAKE_USER": [
+        "set_customer_connector_envs"
+      ],
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": [
+        "set_customer_connector_envs"
       ]
     },
     "env_action_counts": {
@@ -1183,7 +1234,11 @@
       "DE_TEST_NEO4J_USERNAME": 1,
       "DE_TEST_REDIS_URL": 1,
       "DE_TEST_S3_BUCKET": 1,
-      "DE_TEST_S3_KEY": 1
+      "DE_TEST_S3_KEY": 1,
+      "DE_TEST_SNOWFLAKE_ACCOUNT": 1,
+      "DE_TEST_SNOWFLAKE_PASSWORD": 1,
+      "DE_TEST_SNOWFLAKE_USER": 1,
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": 1
     },
     "env_tiers": {
       "DE_ENABLE_SLOW_PUBLIC_REST_CASES": [
@@ -1254,11 +1309,23 @@
       ],
       "DE_TEST_S3_KEY": [
         "customer_credentials_required"
+      ],
+      "DE_TEST_SNOWFLAKE_ACCOUNT": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_SNOWFLAKE_PASSWORD": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_SNOWFLAKE_USER": [
+        "customer_credentials_required"
+      ],
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": [
+        "customer_credentials_required"
       ]
     }
   },
   "gap_env_resolution_summary": {
-    "resolver_supported_count": 22,
+    "resolver_supported_count": 26,
     "manual_only_count": 1,
     "resolver_supported_env_names": [
       "DE_TEST_AZURE_ACCOUNT_URL",
@@ -1282,7 +1349,11 @@
       "DE_TEST_NEO4J_USERNAME",
       "DE_TEST_REDIS_URL",
       "DE_TEST_S3_BUCKET",
-      "DE_TEST_S3_KEY"
+      "DE_TEST_S3_KEY",
+      "DE_TEST_SNOWFLAKE_ACCOUNT",
+      "DE_TEST_SNOWFLAKE_PASSWORD",
+      "DE_TEST_SNOWFLAKE_USER",
+      "DE_TEST_SNOWFLAKE_WAREHOUSE"
     ],
     "manual_only_env_names": [
       "DE_ENABLE_SLOW_PUBLIC_REST_CASES"
@@ -1388,6 +1459,25 @@
       "DE_TEST_S3_KEY": [
         "DE_TEST_S3_KEY",
         "S3_KEY"
+      ],
+      "DE_TEST_SNOWFLAKE_ACCOUNT": [
+        "DE_TEST_SNOWFLAKE_ACCOUNT",
+        "SNOWFLAKE_ACCOUNT"
+      ],
+      "DE_TEST_SNOWFLAKE_PASSWORD": [
+        "DE_TEST_SNOWFLAKE_PASSWORD",
+        "SNOWFLAKE_PASSWORD",
+        "SNOWFLAKE_PAT",
+        "SNOWFLAKE_ACCESS_TOKEN",
+        "SNOWFLAKE_PROGRAMMATIC_ACCESS_TOKEN"
+      ],
+      "DE_TEST_SNOWFLAKE_USER": [
+        "DE_TEST_SNOWFLAKE_USER",
+        "SNOWFLAKE_USER"
+      ],
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": [
+        "DE_TEST_SNOWFLAKE_WAREHOUSE",
+        "SNOWFLAKE_WAREHOUSE"
       ]
     },
     "env_group_names": {
@@ -1410,7 +1500,11 @@
       "DE_TEST_NEO4J_USERNAME": "neo4j",
       "DE_TEST_REDIS_URL": "redis",
       "DE_TEST_S3_BUCKET": "s3",
-      "DE_TEST_S3_KEY": "s3"
+      "DE_TEST_S3_KEY": "s3",
+      "DE_TEST_SNOWFLAKE_ACCOUNT": "snowflake",
+      "DE_TEST_SNOWFLAKE_PASSWORD": "snowflake",
+      "DE_TEST_SNOWFLAKE_USER": "snowflake",
+      "DE_TEST_SNOWFLAKE_WAREHOUSE": "snowflake"
     },
     "group_env_counts": {
       "azure_blob": 5,
@@ -1420,19 +1514,20 @@
       "gcs": 2,
       "neo4j": 3,
       "redis": 1,
-      "s3": 2
+      "s3": 2,
+      "snowflake": 4
     }
   },
   "gap_env_template_summary": {
-    "gap_env_total_count": 23,
+    "gap_env_total_count": 27,
     "all_templates_cover_all_gap_envs": true,
     "template_paths": {
       "go_live_validation_env_example": "tests/integration/go_live_validation.env.example",
       "root_env_example": ".env.example"
     },
     "template_documented_counts": {
-      "go_live_validation_env_example": 23,
-      "root_env_example": 23
+      "go_live_validation_env_example": 27,
+      "root_env_example": 27
     },
     "template_missing_counts": {
       "go_live_validation_env_example": 0,

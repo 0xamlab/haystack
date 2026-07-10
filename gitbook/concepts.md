@@ -35,7 +35,7 @@ const rt = new Runtime(); // mode "local" by default
 {% endtab %}
 {% endtabs %}
 
-The Python package is `algenta-core` (import `algenta`); the TypeScript package is `algenta-sdk`. Both expose the same `Runtime` surface and the same three modes.
+The source-built Python runtime imports as `algenta`; the TypeScript source package is named `algenta-sdk`. Both expose the same `Runtime` surface and the same three modes, but the public registry installs for those runtime surfaces are not live yet. The live public Python HTTP client is `algenta-sdk` imported as `decision_engine`.
 
 ## Runtime modes
 

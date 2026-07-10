@@ -1,44 +1,51 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_version": "1.0.0",
-    "openapi_version": "3.1.0",
-    "path_count": 164,
-    "schema_count": 404,
-    "security_schemes": [
-      "BearerAuth",
-      "LegacyApiKey"
-    ],
-    "slowest_tests": [
-      {
-        "elapsed_seconds": 0.821,
-        "name": "POST /v1/data/connect (compliance)"
-      },
-      {
-        "elapsed_seconds": 0.761,
-        "name": "GET /v1/admin/runtime/benchmarks (compliance)"
-      },
-      {
-        "elapsed_seconds": 0.707,
-        "name": "GET /openapi.json"
-      },
-      {
-        "elapsed_seconds": 0.672,
-        "name": "POST /v1/repositories/a15cc8fa-18e6-46b5-bcb8-80151c8350cd/apply"
-      },
-      {
-        "elapsed_seconds": 0.672,
-        "name": "POST /v1/repositories/a15cc8fa-18e6-46b5-bcb8-80151c8350cd/decision-plans"
-      }
-    ],
-    "title": "Codna API"
+    "api_key_configured": false,
+    "base_url": "http://127.0.0.1:59487",
+    "failed_checks": [],
+    "skipped_checks": [
+      "POST /v1/simulate response matches DecisionEnvelope schema",
+      "GET /v1/runs response matches declared schema",
+      "GET /v1/templates response matches declared schema",
+      "GET /v1/connectors response matches declared schema",
+      "Saved connector create/get/update/test/browse/delete responses are valid JSON",
+      "Inline connector preview test/browse responses are valid JSON",
+      "High-level /v1/data connect/list/refresh/summary/detail/delete responses are valid JSON",
+      "Repository intelligence snapshot/triage/decision-plan/simulate/apply responses are valid JSON",
+      "GET /v1/analytics returns valid JSON response",
+      "GET /v1/distributions response is valid JSON",
+      "GET /v1/jobs/list response is valid JSON",
+      "GET /v1/admin/runtime/benchmarks response matches declared schema",
+      "GET /v1/jobs/{job_id} missing job returns structured JSON",
+      "GET /v1/jobs/{job_id}/result missing job returns structured JSON",
+      "POST /v1/jobs/{job_id}/cancel missing job returns structured JSON",
+      "POST /v1/metering response is valid JSON",
+      "POST /v1/credits/refresh response is valid JSON",
+      "POST /v1/webhooks/test response is valid JSON",
+      "GET /v1/models response exposes routed provider catalog metadata",
+      "POST /v1/chat/completions response exposes explicit provider trace",
+      "POST /v1/responses response exposes explicit provider trace",
+      "POST /v1/embeddings response exposes explicit provider trace",
+      "GET /v1/triggers response is valid JSON",
+      "GET /v1/execution/policy/snapshots response is valid JSON",
+      "422 validation error returns structured error object",
+      "404 error returns structured JSON error object",
+      "All error responses use consistent structured format",
+      "Simulation numeric fields are actually numbers",
+      "Simulation string fields are actually strings",
+      "Simulation percentiles are numeric values",
+      "simulation_model field contains valid enum value",
+      "Confidence field within declared [0.0, 1.0] range",
+      "Deep validation: all simulation fields match spec types"
+    ]
   },
-  "elapsed_seconds": 36.705,
+  "elapsed_seconds": 6.547,
   "failed": 0,
-  "generated_at": "2026-05-30T00:10:55.819606Z",
+  "generated_at": "2026-07-10T02:57:13.795550Z",
   "name": "openapi_integration",
-  "passed": 90,
+  "passed": 57,
   "script": "tests/integration/test_openapi.py",
-  "skipped": 0,
+  "skipped": 33,
   "total": 90
 }

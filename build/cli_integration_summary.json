@@ -1,22 +1,14 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": true,
-    "base_url": "http://127.0.0.1:62263",
+    "api_key_configured": false,
+    "base_url": "http://127.0.0.1:57470",
     "failed_checks": [],
     "skipped_checks": [
-      "CLI no args \u2192 help/usage text",
-      "CLI health \u2192 OK",
-      "CLI version \u2192 version info",
       "CLI simulate auto \u2192 JSON with recommended_action",
       "CLI simulate expert \u2192 JSON with metrics",
       "CLI simulate table format \u2192 readable output",
       "CLI simulate \u2192 full envelope with metrics and percentiles",
-      "CLI bad API key \u2192 error + non-zero exit",
-      "CLI bad payload \u2192 error + non-zero exit",
-      "CLI missing file \u2192 non-zero exit",
-      "CLI unknown command \u2192 non-zero exit",
-      "CLI invalid JSON file \u2192 non-zero exit",
       "CLI runtime proof surface \u2192 benchmark classes + evidence",
       "CLI runtime proof surface \u2192 signed manifest benchmark classes",
       "CLI llm models \u2192 truthful catalog",
@@ -40,6 +32,7 @@
       "CLI devices surface \u2192 registered device list",
       "CLI data surface \u2192 connect/list/refresh/summary/inspect/disconnect",
       "CLI connectors surface \u2192 create/list/get/update/test/browse/delete",
+      "CLI repository intelligence surface \u2192 snapshot/triage/graph/plan/simulate/apply",
       "CLI metering surface \u2192 accepted event batch",
       "CLI credits surface \u2192 refresh execution credits",
       "CLI webhook surface \u2192 test delivery",
@@ -47,15 +40,14 @@
       "CLI execution policy surface \u2192 current thresholds + snapshots",
       "CLI deployment surface \u2192 regions/current/cost",
       "CLI keys create/revoke \u2192 API-key lifecycle"
-    ],
-    "skipped_count": 42
+    ]
   },
-  "elapsed_seconds": 15.883,
+  "elapsed_seconds": 10.848,
   "failed": 0,
-  "generated_at": "2026-06-08T02:08:05.536253Z",
+  "generated_at": "2026-07-10T02:56:19.939681Z",
   "name": "cli_integration",
-  "passed": 1,
+  "passed": 8,
   "script": "tests/integration/test_cli.py",
-  "skipped": 42,
+  "skipped": 35,
   "total": 43
 }

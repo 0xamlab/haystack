@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-05-30T00:13:32+00:00",
+  "generated_at": "2026-07-10T02:55:31+00:00",
   "import_planner_regression_suite": {
     "failed": 0,
-    "passed": 128,
+    "passed": 168,
     "skipped": 0,
-    "total": 128
+    "total": 168
   },
   "join_path_correctness": {
     "failed": 0,

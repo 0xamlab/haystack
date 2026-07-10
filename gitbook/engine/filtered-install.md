@@ -11,13 +11,14 @@ Algenta is a large system, but you almost never want all of it. Install **only w
 
 | Profile | Install | What you get | Use when |
 | --- | --- | --- | --- |
-| **SDK only** | `pip install algenta-sdk` (or `npm install algenta-sdk`) | A typed HTTP client for a running API. No engine, no local compute. | You call a hosted or self-hosted Algenta from your app. |
-| **Local runtime** | `pip install algenta-core` | The in-process `Runtime` for local resolve/query flows. Add `[cloud]` for the API transport, `[benchmark]` for numpy, `[all]` for both. | You run deterministic flows locally or drive a remote engine from one object. |
+| **SDK only** | `pip install algenta-sdk` | A typed Python HTTP client for a running API. No engine, no local compute. | You call a hosted or self-hosted Algenta from your app. |
+| **TypeScript SDK** | Source checkout until npm publication | A typed TypeScript HTTP client for a running API. No engine, no local compute. | You call a hosted or self-hosted Algenta from Node or browser code. |
+| **Local runtime** | Source checkout until PyPI runtime publication | The local `Runtime` for resolve/query flows. | You run deterministic flows locally or drive a remote engine from one object. |
 | **MCP server** | `pipx install algenta-mcp` | The MCP bridge for Cursor / Claude Desktop. Ships independently. | You give an AI client engine tools. |
 | **Full self-hosted** | `curl -sSL https://algenta.ai/install.sh \| bash` | API + worker + **Mojo engine** + Postgres + Redis + object storage (Docker Compose). | You run the complete decision engine on your own infra. |
 
 {% hint style="info" %}
-The extras are additive: `pip install "algenta-core[cloud]"` is the local runtime **plus** the HTTP transport. Only the full self-hosted profile pulls the Mojo engine and the data services.
+Only the full self-hosted profile pulls the Mojo engine and the data services. The source-built local runtime can delegate to the published `algenta-sdk` client for API-backed modes, but it is not a public registry install yet.
 {% endhint %}
 
 ## 2. Compile only the engine modules you need

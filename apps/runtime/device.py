@@ -30,9 +30,36 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-_RUNTIME_DIR = Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
-_INSTALL_ID_FILE = _RUNTIME_DIR / "install_id"
 _SALT = "algenta-device-v1"  # version-namespaced, non-secret
+_DEVICE_ID_MIN_LENGTH = 16
+_DEVICE_ID_MAX_LENGTH = 64
+_DEVICE_ID_ENV_VARS = ("ALGENTA_DEVICE_ID", "DE_DEVICE_ID")
+
+
+def _runtime_dir() -> Path:
+    return Path(os.environ.get("ALGENTA_RUNTIME_DIR", Path.home() / ".algenta" / "runtime"))
+
+
+def _install_id_file() -> Path:
+    return _runtime_dir() / "install_id"
+
+
+def _validate_explicit_device_id(device_id: str, source_name: str) -> str:
+    normalized = device_id.strip()
+    if not (_DEVICE_ID_MIN_LENGTH <= len(normalized) <= _DEVICE_ID_MAX_LENGTH):
+        raise ValueError(
+            f"{source_name} must be between {_DEVICE_ID_MIN_LENGTH} and "
+            f"{_DEVICE_ID_MAX_LENGTH} characters."
+        )
+    return normalized
+
+
+def _explicit_device_id() -> str | None:
+    for env_name in _DEVICE_ID_ENV_VARS:
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            return _validate_explicit_device_id(value, env_name)
+    return None
 
 
 # ── OS-native machine ID readers ──────────────────────────────────────────────
@@ -90,16 +117,17 @@ def _read_windows_machine_id() -> str | None:
 
 def _get_or_create_install_id() -> str:
     """Persistent fallback: generate a UUID on first run and store it."""
-    _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-    if _INSTALL_ID_FILE.exists():
+    install_id_file = _install_id_file()
+    install_id_file.parent.mkdir(parents=True, exist_ok=True)
+    if install_id_file.exists():
         try:
-            content = _INSTALL_ID_FILE.read_text().strip()
+            content = install_id_file.read_text().strip()
             if content:
                 return content
         except Exception as exc:
             logger.debug("install_id_read_failed", error=str(exc))
     new_id = str(uuid.uuid4())
-    _INSTALL_ID_FILE.write_text(new_id)
+    install_id_file.write_text(new_id)
     return new_id
 
 
@@ -128,6 +156,9 @@ def get_device_id() -> str:
     The same machine always produces the same ID; different machines produce different IDs.
     The raw machine ID never leaves the machine.
     """
+    explicit_device_id = _explicit_device_id()
+    if explicit_device_id is not None:
+        return explicit_device_id
     raw = _raw_machine_id()
     hashed = hashlib.sha256(f"{raw}:{_SALT}".encode()).hexdigest()[:32]
     return hashed

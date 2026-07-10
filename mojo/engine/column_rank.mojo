@@ -264,7 +264,11 @@ struct ResidentColumnRankState(Copyable, Movable):
 def run_column_rank(raw: String) raises -> String:
     var json_m = Python.import_module("json")
     var builtins = Python.import_module("builtins")
-    var payload = json_m.loads(raw)
+    var payload = Python.evaluate("{}")
+    try:
+        payload = json_m.loads(raw)
+    except:
+        return '{"ranked":[],"ambiguous":false,"gap":0.0}'
     var hint = py_str(payload.get("hint", ""))
     if len(hint) == 0:
         var hint_words = payload.get("hint_words", Python.evaluate("[]"))

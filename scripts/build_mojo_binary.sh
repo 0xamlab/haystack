@@ -246,4 +246,72 @@ chmod +x "${TEMP_BINARY_PATH}"
 mv "${TEMP_BINARY_PATH}" "${BINARY_PATH}"
 rm -f "${TEMP_OBJECT_PATH}" "${OBJECT_PATH}"
 
+MANIFEST_PATH="${BINARY_PATH}.manifest.json"
+TEMP_MANIFEST_PATH="${MANIFEST_PATH}.tmp"
+REPO_ROOT_FOR_MANIFEST="${REPO_ROOT}" \
+BINARY_PATH_FOR_MANIFEST="${BINARY_PATH}" \
+MANIFEST_PATH_FOR_MANIFEST="${MANIFEST_PATH}" \
+TEMP_MANIFEST_PATH_FOR_MANIFEST="${TEMP_MANIFEST_PATH}" \
+MOJO_RUNTIME_MODULE_FILTER_FOR_MANIFEST="${MOJO_RUNTIME_MODULE_FILTER_RAW}" \
+python3 - <<'PYMANIFEST'
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _relative(path: Path, root: Path) -> str:
+    return str(path.resolve().relative_to(root)).replace(os.sep, "/")
+
+
+repo_root = Path(os.environ["REPO_ROOT_FOR_MANIFEST"]).resolve()
+binary_path = Path(os.environ["BINARY_PATH_FOR_MANIFEST"]).resolve()
+manifest_path = Path(os.environ["MANIFEST_PATH_FOR_MANIFEST"]).resolve()
+temp_manifest_path = Path(os.environ["TEMP_MANIFEST_PATH_FOR_MANIFEST"]).resolve()
+raw_filter = os.environ.get("MOJO_RUNTIME_MODULE_FILTER_FOR_MANIFEST", "")
+module_filter = tuple(item.strip() for item in raw_filter.split(",") if item.strip())
+
+source_paths: set[Path] = {
+    repo_root / "apps" / "runtime" / "mojo_inventory.py",
+    repo_root / "mojo" / "engine" / "main.mojo",
+    repo_root / "mojo_env" / "pixi.lock",
+    repo_root / "mojo_env" / "pixi.toml",
+    repo_root / "scripts" / "build_mojo_binary.sh",
+    repo_root / "scripts" / "generate_runtime_library_dispatch.py",
+}
+for mojo_source in (repo_root / "mojo" / "engine").rglob("*.mojo"):
+    if mojo_source.name == "runtime_library_dispatch_generated.mojo":
+        if not module_filter:
+            source_paths.add(mojo_source)
+        continue
+    source_paths.add(mojo_source)
+
+ordered_sources = tuple(sorted(path for path in source_paths if path.exists()))
+source_hashes = {_relative(path, repo_root): _sha256_file(path) for path in ordered_sources}
+payload = {
+    "schema_version": 1,
+    "build_mode": "filtered" if module_filter else "full",
+    "module_filter": list(module_filter),
+    "binary_path": _relative(binary_path, repo_root),
+    "binary_sha256": _sha256_file(binary_path),
+    "source_paths": list(source_hashes),
+    "source_sha256": source_hashes,
+}
+temp_manifest_path.write_text(
+    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+)
+temp_manifest_path.replace(manifest_path)
+PYMANIFEST
+
 echo "${BINARY_PATH}"

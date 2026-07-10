@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 
 def _reload(module_name: str):
     if module_name in sys.modules:
@@ -35,6 +37,30 @@ def test_load_license_uses_dev_stub_only_when_explicit(monkeypatch) -> None:
 
     assert lic.valid is True
     assert lic.source == "dev-stub"
+
+
+def test_runtime_device_id_honors_documented_env_override(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setenv("ALGENTA_DEVICE_ID", "runtime-device-override-0001")
+    monkeypatch.delenv("DE_DEVICE_ID", raising=False)
+
+    device_mod = _reload("apps.runtime.device")
+
+    assert device_mod.get_device_id() == "runtime-device-override-0001"
+    assert device_mod.get_device_info()["device_id"] == "runtime-device-override-0001"
+
+
+def test_runtime_device_id_legacy_override_and_validation(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.delenv("ALGENTA_DEVICE_ID", raising=False)
+    monkeypatch.setenv("DE_DEVICE_ID", "legacy-runtime-device-0001")
+
+    device_mod = _reload("apps.runtime.device")
+    assert device_mod.get_device_id() == "legacy-runtime-device-0001"
+
+    monkeypatch.setenv("ALGENTA_DEVICE_ID", "short")
+    with pytest.raises(ValueError, match="ALGENTA_DEVICE_ID"):
+        device_mod.get_device_id()
 
 
 def test_executor_appends_runtime_ledger(monkeypatch, tmp_path) -> None:

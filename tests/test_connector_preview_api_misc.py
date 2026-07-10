@@ -12,7 +12,7 @@ async def test_get_connector_route_returns_visible_connector(
     monkeypatch: pytest.MonkeyPatch,
     connector_preview_client,
 ) -> None:
-    async def _fake_get_visible_connector(_db, _connector_id, _auth):
+    async def _fake_get_visible_connector(_db, _connector_id, _auth, **_kwargs):
         return SimpleNamespace(
             id="conn_123",
             org_id="org_a",
@@ -160,5 +160,4 @@ async def test_run_inline_preview_once_shares_failures_and_clears_inflight() -> 
 
     assert retry_calls == 1
     assert recovered == {"ok": True}
-
 

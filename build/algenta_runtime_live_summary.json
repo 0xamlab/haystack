@@ -1,14 +1,13 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": true,
-    "base_url": "http://127.0.0.1:62409",
+    "api_key_configured": false,
+    "base_url": "http://127.0.0.1:59043",
     "failed_checks": [],
     "skipped_checks": [
-      "Local Runtime real CSV import/query path",
-      "Local Runtime real Parquet/Excel import/query path",
       "API Runtime connector matrix",
       "API Runtime connectors + dataset lifecycle surface",
+      "API Runtime repository intelligence surface",
       "API Runtime account + API-key surface",
       "API Runtime team/credits/metering/audit/execution-policy surface",
       "API Runtime async jobs surface",
@@ -23,12 +22,12 @@
       "API Runtime agent-run plan surface"
     ]
   },
-  "elapsed_seconds": 3.136,
+  "elapsed_seconds": 1.727,
   "failed": 0,
-  "generated_at": "2026-06-08T02:08:55.900033Z",
+  "generated_at": "2026-07-10T02:57:01.625668Z",
   "name": "algenta_runtime_live",
-  "passed": 1,
+  "passed": 2,
   "script": "tests/integration/test_algenta_runtime_live.py",
-  "skipped": 16,
+  "skipped": 15,
   "total": 17
 }

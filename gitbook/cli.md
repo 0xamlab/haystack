@@ -19,13 +19,12 @@ Install the SDK and the `de` command is on your PATH.
 # Python (ships the de CLI)
 pip install algenta-sdk
 
-# Or TypeScript / Node
-npm i -g algenta-sdk
-
 de version
 de health
 de contract
 ```
+
+The TypeScript SDK is source-build until the npm package is published; it is not a clean-machine `de` CLI install path today.
 
 Running `de` with no arguments prints the full usage banner.
 

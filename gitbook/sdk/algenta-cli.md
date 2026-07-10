@@ -8,14 +8,14 @@ description: Reference for the algenta CLI — the local-first command that runs
 `algenta` is the **local-first** command. It runs entirely on your machine — a deterministic runtime demo, CSV import previews, instant schema mapping, and local queries — with no server and no API key. It is the zero-friction way to feel Algenta before you stand up the engine. For the full control-plane surface (keys, connectors, agent runs, repositories, deployments), use the [`de` CLI](../cli.md), which talks to the `/v1` HTTP API.
 
 {% hint style="info" %}
-The `algenta` command ships today with `algenta-core`. Install it with `pip install algenta-core` — **not** `pip install algenta`, which is not published yet. The account and agent commands (`login`, `whoami`, `runtime doctor`, `mcp`) are rolling out; the local commands below work now.
+The `algenta` command exists in the source runtime package, but the public PyPI runtime distribution is not live yet. Do not treat the `algenta` or legacy `algenta-core` package names as clean-machine PyPI install paths until the runtime release is published. The account and agent commands (`login`, `whoami`, `runtime doctor`, `mcp`) are rolling out; the local commands below are source-build commands today.
 {% endhint %}
 
 ## algenta vs de
 
 | | `algenta` | `de` |
 | --- | --- | --- |
-| Install | `pip install algenta-core` | `pip install algenta-sdk` |
+| Install | Source checkout / future runtime release | `pip install algenta-sdk` |
 | Where it runs | locally, in-process | against the `/v1` API (self-hosted or hosted) |
 | Needs an API key | no (local commands); `algenta login` for account work | yes |
 | Best for | offline previews, the runtime demo, quick local queries | the full platform: keys, data, agents, repositories, control plane |
@@ -23,7 +23,9 @@ The `algenta` command ships today with `algenta-core`. Install it with `pip inst
 ## Install and check
 
 ```bash title="install-algenta.sh"
-pip install algenta-core
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+python3 -m pip install -e packages/algenta
 algenta version
 ```
 
@@ -121,7 +123,7 @@ These connect the local CLI to your account and to agent tooling. They are shipp
 | `algenta login` | Browser device login — approve a code at `accounts.thyn.ai`, then the CLI stores a machine-scoped key. |
 | `algenta login --no-browser` | Print the verification URL and code instead of opening a browser (headless / SSH). |
 | `algenta whoami` | Confirm you are signed in (prints the stored key's prefix). |
-| `algenta runtime doctor` | Diagnose the bundled in-process native runtime. |
+| `algenta runtime doctor` | Diagnose the bundled verified native runtime. |
 | `algenta mcp` | Start the Algenta MCP server for local AI clients. |
 
 {% code title="algenta-login.sh" %}

@@ -271,7 +271,10 @@ async def disconnect_data(
     from apps.api_server.services.data_connection_service import (
         get_visible_connector,
     )
-    from apps.api_server.services.data_visibility import connector_manageable
+    from apps.api_server.services.data_visibility import (
+        connector_manageable,
+        invalidate_visible_connector_cache,
+    )
 
     org_id = str(auth["org_id"])
     entry = get_visible_dataset_entry(org_id, dataset_id, auth)
@@ -322,12 +325,18 @@ async def disconnect_data(
         ]
         if not remaining:
             try:
-                connector = await get_visible_connector(db, uuid.UUID(str(connector_id)), auth)
+                connector = await get_visible_connector(
+                    db,
+                    uuid.UUID(str(connector_id)),
+                    auth,
+                    for_update=True,
+                )
             except Exception:
                 connector = None
             if connector is not None and connector_manageable(connector, auth):
                 await db.delete(connector)
                 await db.commit()
+                invalidate_visible_connector_cache(connector_id, auth)
                 connector_deleted = True
 
     return {"dataset_id": dataset_id, "status": "deleted", "connection_deleted": connector_deleted}

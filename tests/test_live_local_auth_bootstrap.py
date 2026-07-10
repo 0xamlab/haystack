@@ -122,3 +122,33 @@ def test_ensure_bootstrapped_local_live_api_key_rejects_remote_base(
     assert configured is False
     assert reason == "DE_API_KEY is not set and the active live base URL is not local."
     assert called == {"migrations": 0, "seed": 0}
+
+
+def test_ensure_bootstrapped_local_live_api_key_respects_ignore_hosted_flag(
+    monkeypatch,
+) -> None:
+    called: dict[str, int] = {"migrations": 0, "seed": 0}
+
+    def _fake_migrations() -> None:
+        called["migrations"] += 1
+
+    async def _fake_seed(_database_url: str) -> str:
+        called["seed"] += 1
+        return DEFAULT_LOCAL_LIVE_API_KEY
+
+    monkeypatch.setenv("ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS", "1")
+    monkeypatch.setenv("DE_API_KEY", DEFAULT_LOCAL_LIVE_API_KEY)
+    monkeypatch.setenv("ALGENTA_API_KEY", DEFAULT_LOCAL_LIVE_API_KEY)
+    monkeypatch.setattr(bootstrap, "run_local_live_migrations", _fake_migrations)
+    monkeypatch.setattr(bootstrap, "_seed_placeholder_live_api_key_async", _fake_seed)
+
+    key, configured, reason = bootstrap.ensure_bootstrapped_local_live_api_key(
+        api_key=DEFAULT_LOCAL_LIVE_API_KEY,
+        api_key_configured=True,
+        active_base_url="http://127.0.0.1:8000",
+    )
+
+    assert key == DEFAULT_LOCAL_LIVE_API_KEY
+    assert configured is False
+    assert reason is None
+    assert called == {"migrations": 0, "seed": 0}

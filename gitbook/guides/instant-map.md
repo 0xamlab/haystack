@@ -194,10 +194,12 @@ Once a source is connected, these routes list, inspect, refresh, and disconnect 
 
 ## Map locally with the CLI
 
-The `algenta` CLI (ships with `algenta-core`) runs the same mapping on your machine — no server, no key, no network. Use it to preview data before you send anything to the engine.
+The source-built `algenta` CLI runs the same mapping on your machine — no server, no key, no network. Use it to preview data before you send anything to the engine. The local runtime package is not a public PyPI install yet.
 
 ```bash title="local-map.sh"
-pip install algenta-core
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+python3 -m pip install -e packages/algenta
 
 # Map one or more files and see cross-table field matches + join keys
 algenta map sales.csv orders.csv

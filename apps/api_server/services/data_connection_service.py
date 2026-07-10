@@ -9,6 +9,7 @@ from typing import Any
 
 import structlog
 from fastapi import HTTPException
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -143,8 +144,9 @@ async def _test_and_persist_connector(
     connector.status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR
     connector.last_tested_at = datetime.now(tz=UTC)
     connector.error_message = None if success else message
-    await db.commit()
-    await db.refresh(connector)
+    if sa_inspect(connector).persistent:
+        await db.commit()
+        await db.refresh(connector)
     return success, message, latency_ms
 
 
@@ -259,7 +261,12 @@ async def connect_data(
     )
     connector_id = payload.get("connection_id")
     if connector_id:
-        connector = await get_visible_connector(db, uuid.UUID(str(connector_id)), auth)
+        connector = await get_visible_connector(
+            db,
+            uuid.UUID(str(connector_id)),
+            auth,
+            for_update=True,
+        )
         connector_config = json.loads(
             decrypt_config_json(connector.config_json, org_id=getattr(connector, "org_id", "")) or "{}"
         )

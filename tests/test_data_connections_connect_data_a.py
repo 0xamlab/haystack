@@ -567,7 +567,7 @@ async def test_connect_data_resumes_database_selection_from_saved_connector(monk
     )
     captured: dict[str, object] = {}
 
-    async def _fake_get_visible_connector(_db, connector_id, _auth):
+    async def _fake_get_visible_connector(_db, connector_id, _auth, **_kwargs):
         assert connector_id == connector.id
         return connector
 
@@ -723,5 +723,4 @@ async def test_connect_data_accepts_canonical_database_connector(monkeypatch) ->
     assert result["connection_id"] == str(connector.id)
     assert captured["kwargs"]["selection"] == {"table": "public.orders"}
     assert captured["payload"].source.connection["query"] == 'SELECT * FROM "public"."orders"'
-
 

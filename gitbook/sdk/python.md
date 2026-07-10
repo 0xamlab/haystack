@@ -5,28 +5,22 @@ description: Use Algenta from Python — install algenta-sdk, authenticate, and 
 
 # Python SDK
 
-This page is the reference for the two Python packages Algenta ships: `algenta-sdk` (imported as `decision_engine`), a thin typed HTTP client for the Algenta API, and `algenta-core` (imported as `algenta`), a runtime-first package whose `Runtime` object runs locally, against the hosted API, or against a self-hosted engine. Use the client when you want direct, typed access to a single endpoint. Use the `Runtime` when you want one object that resolves and queries structured data the same way regardless of where execution happens.
+This page is the reference for the live Python package Algenta ships today: `algenta-sdk` (imported as `decision_engine`), a thin typed HTTP client for the Algenta API. The source tree also contains the local `algenta` runtime package, but that runtime distribution is not public on PyPI yet. Use the client when you want direct, typed access to a running hosted or self-hosted API.
 
 {% hint style="info" %}
-Two packages, one mental model. `algenta-sdk` is the endpoint-level client; `algenta-core` is the runtime that wraps it. You can adopt either independently, or use both — the runtime delegates to the client in `api` and `self_hosted` modes.
+Public registry status: `algenta-sdk` is the live PyPI package. The local `algenta` runtime is source-build / rollout-only until the runtime package and native sidecar are published.
 {% endhint %}
 
 ## Install
 
-The client and the runtime are separate distributions on PyPI.
+Install the published HTTP client from PyPI.
 
 ```bash title="install.sh"
 # Typed HTTP client. Imported as `decision_engine`.
 pip install algenta-sdk
-
-# Runtime-first package. Imported as `algenta`. Adds the `algenta` CLI.
-pip install algenta-core
-
-# The runtime with the cloud client bundled (enables Runtime(mode="api")).
-pip install "algenta-core[cloud]"
 ```
 
-Both packages require Python 3.10 or newer. `algenta-sdk` depends only on `httpx>=0.28` and `pydantic>=2.7`.
+The package requires Python 3.10 or newer and depends on `httpx>=0.28` and `pydantic>=2.7`.
 
 {% hint style="warning" %}
 The import name is `decision_engine`, not `algenta_sdk`. This is the historical module name and is stable. The runtime package imports as `algenta`.
@@ -408,9 +402,9 @@ asyncio.run(main())
 `AsyncDecisionEngineClient` and `AsyncCodnaClient` are aliases of `AsyncAlgentaClient`.
 {% endhint %}
 
-## The Runtime (`algenta-core`)
+## The source-built Runtime (`algenta`)
 
-`Runtime` is the runtime-first object. It connects to sources, resolves a request into an executable plan, and runs the query. The same three calls work in every mode; only the constructor changes.
+`Runtime` is the runtime-first object in the source package. It connects to sources, resolves a request into an executable plan, and runs the query. This section documents the implemented surface for source builds and future runtime releases; it is not a public PyPI install path today.
 
 ```python title="runtime_local.py"
 from algenta import Runtime
@@ -469,7 +463,7 @@ Private profiles fail closed. `Runtime(mode="self_hosted")` raises `RuntimeConfi
 {% endhint %}
 
 {% hint style="info" %}
-Passing an invalid `mode` raises `ValueError`. `Runtime(mode="api")` requires the `algenta-sdk` client, which is installed by the `[cloud]` extra.
+Passing an invalid `mode` raises `ValueError`. `Runtime(mode="api")` requires the `algenta-sdk` client.
 {% endhint %}
 
 ### connect, resolve, query
@@ -558,7 +552,7 @@ A descriptor is recognized as canonical when it carries any of `location`, `auth
 
 ## CLI
 
-`algenta-core` installs the `algenta` console command for quick checks without writing code.
+The source runtime package installs the `algenta` console command for quick checks without writing code.
 
 ```bash title="cli.sh"
 algenta version

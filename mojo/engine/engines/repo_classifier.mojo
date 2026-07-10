@@ -48,7 +48,7 @@ fn _parse_string_array(obj: String, key: String) -> List[String]:
         var value = _unquote(json_array_get(arr, index))
         if len(value) > 0:
             values.append(value)
-    return values
+    return values^
 
 
 fn _contains(values: List[String], target: String) -> Bool:

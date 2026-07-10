@@ -5,7 +5,7 @@ description: Install algenta-sdk, construct an AlgentaClient, and learn the prom
 
 # TypeScript SDK client
 
-The `algenta-sdk` package is the official TypeScript and JavaScript client for Algenta. It wraps the [HTTP API](../../api/overview.md) in one typed `AlgentaClient`, works on Node.js 18+ and modern browsers, and uses `fetch` with no required dependencies. This page covers the essentials you need before any call: installing the package, constructing the client, how methods resolve, and how errors surface. The method surface itself is split across four reference pages linked at the end.
+The TypeScript and JavaScript client is implemented in the repository package named `algenta-sdk`. The public npm package is not live yet, so this page documents the source-build contract and future npm package shape. It wraps the [HTTP API](../../api/overview.md) in one typed `AlgentaClient`, works on Node.js 18+ and modern browsers, and uses `fetch` with no required dependencies. The method surface itself is split across four reference pages linked at the end.
 
 {% hint style="info" %}
 Methods are `camelCase`, but request bodies and query parameters stay `snake_case`. You call `getDatasetSummary(...)` and `queryWithMetadata(...)`, and the payloads you pass and receive use fields like `dataset_id`, `source_name`, and `metric_column`. This mirrors the HTTP contract exactly.
@@ -13,25 +13,14 @@ Methods are `camelCase`, but request bodies and query parameters stay `snake_cas
 
 ## Install
 
-{% tabs %}
-{% tab title="npm" %}
-```bash title="npm"
-npm install algenta-sdk
-```
-{% endtab %}
+Use the source checkout until the npm package is published:
 
-{% tab title="pnpm" %}
-```bash title="pnpm"
-pnpm add algenta-sdk
+```bash title="source-build.sh"
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+pnpm install
+pnpm --filter algenta-sdk build
 ```
-{% endtab %}
-
-{% tab title="yarn" %}
-```bash title="yarn"
-yarn add algenta-sdk
-```
-{% endtab %}
-{% endtabs %}
 
 ## Construct the client
 

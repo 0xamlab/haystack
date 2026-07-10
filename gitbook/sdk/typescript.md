@@ -5,7 +5,7 @@ description: Use Algenta from TypeScript or JavaScript — install the SDK, auth
 
 # TypeScript SDK
 
-The `algenta-sdk` package is the official TypeScript and JavaScript client for Algenta. It gives you a single `AlgentaClient` for the hosted control plane and self-hosted engines, a `Runtime` class for local and self-hosted execution, and exported contract constants so your code can stay in lockstep with the API. It runs on Node.js 18+ and modern browsers, uses `fetch` with no required dependencies, and ships full type definitions. This page is the reference: imports, configuration, every method group, and copy-pasteable examples.
+The TypeScript and JavaScript client is implemented in the repository package named `algenta-sdk`. The public npm package is not live yet, so this page documents the source-build contract and future npm package shape. It gives you a single `AlgentaClient` for the hosted control plane and self-hosted engines, a `Runtime` class for local and self-hosted execution, and exported contract constants so your code can stay in lockstep with the API. It runs on Node.js 18+ and modern browsers, uses `fetch` with no required dependencies, and ships full type definitions.
 
 {% hint style="info" %}
 The package is ESM-first and ships its own types. `main`, `module`, and `types` all resolve from `dist/`, so it works the same whether you import or require it.
@@ -13,25 +13,14 @@ The package is ESM-first and ships its own types. `main`, `module`, and `types` 
 
 ## Install
 
-{% tabs %}
-{% tab title="npm" %}
-```bash
-npm install algenta-sdk
-```
-{% endtab %}
+Use the source checkout until the npm package is published:
 
-{% tab title="pnpm" %}
-```bash
-pnpm add algenta-sdk
+```bash title="source-build.sh"
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+pnpm install
+pnpm --filter algenta-sdk build
 ```
-{% endtab %}
-
-{% tab title="yarn" %}
-```bash
-yarn add algenta-sdk
-```
-{% endtab %}
-{% endtabs %}
 
 ## Quick start
 

@@ -1,11 +1,11 @@
 ---
 icon: download
-description: Install the Algenta SDK or run the self-hosted engine. Pick your platform, install in one command, and verify the version.
+description: Install the published Algenta clients or run the self-hosted engine. Pick your path, install in one command where a public package exists, and verify it.
 ---
 
 # Install
 
-This page gets Algenta onto your machine. It covers every install path: the self-hosted service (one command, Docker), the local runtime package, the HTTP SDKs for Python and TypeScript, and the MCP server for agent tools. Each section ends with a verification step so you know the install worked. Pick the path that matches what you are building; you do not need all of them.
+This page gets Algenta onto your machine. It covers the public install paths that are live today: the self-hosted service, the Python HTTP SDK, and the MCP server for agent tools. The local `algenta` runtime package and TypeScript SDK are implemented in this repository but are not public registry installs yet; their sections are labeled source-build until the release is published. Pick the path that matches what you are building; you do not need all of them.
 
 {% hint style="info" %}
 To make a first call against the self-hosted service, you do not need to install any SDK or Python package. The installer prints a ready-to-run `curl` command. Reach for an SDK only when you want typed responses and retries inside your application code.
@@ -16,9 +16,9 @@ To make a first call against the self-hosted service, you do not need to install
 | You want to... | Install | Section |
 | --- | --- | --- |
 | Run the full Algenta service (API, worker, database, storage) locally or on a server | `curl ... install.sh \| bash` | [Self-hosted service](#self-hosted-service) |
-| Embed the deterministic runtime in a Python process | `pip install algenta-core` | [Local runtime package](#local-runtime-package) |
+| Embed the deterministic runtime in a Python process | Source checkout only; public PyPI package is not live yet | [Local runtime package](#local-runtime-package) |
 | Call a running Algenta API from Python | `pip install algenta-sdk` | [Python SDK](#python-sdk) |
-| Call a running Algenta API from TypeScript or JavaScript | `npm install algenta-sdk` | [TypeScript SDK](#typescript-sdk) |
+| Call a running Algenta API from TypeScript or JavaScript | Source checkout only; public npm package is not live yet | [TypeScript SDK](#typescript-sdk) |
 | Expose Algenta as MCP tools to Cursor or Claude Desktop | `pipx install algenta-mcp` | [MCP server](#mcp-server) |
 
 ## Self-hosted service
@@ -144,25 +144,21 @@ If you are on the standalone binary, substitute `docker-compose` for `docker com
 
 ## Local runtime package
 
-`algenta-core` is the Algenta runtime as a Python package. Use it to run deterministic resolve and query flows in-process, or to drive a remote API through one `Runtime` object.
+The local `algenta` runtime is implemented in the source tree, but the public PyPI runtime distribution is not live yet. Use the self-hosted service plus `algenta-sdk` for production installs today. Use the source-build path only when you are developing from the repository.
 
 {% tabs %}
-{% tab title="Local only" %}
+{% tab title="Source checkout" %}
 ```bash
-pip install algenta-core
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+python3 -m pip install -e packages/algenta
 ```
 
-This installs `algenta-core` with no external dependencies. It is enough for `Runtime(mode="local")` and the local Mojo libraries.
+This installs the local runtime package from the checkout you are editing. It is not the same as a public PyPI install, and it does not prove the bundled native sidecar is available on a clean machine.
 {% endtab %}
 
 {% tab title="API-backed" %}
-`Runtime(mode="api")` and `Runtime(mode="self_hosted")` fail closed unless `algenta-sdk` is installed. Add it with the `cloud` extra:
-
-```bash
-pip install "algenta-core[cloud]"
-```
-
-Or install the SDK directly:
+For API-backed code, install the published HTTP SDK directly:
 
 ```bash
 pip install algenta-sdk
@@ -172,7 +168,7 @@ pip install algenta-sdk
 
 ### Verify the runtime package
 
-`algenta-core` ships an `algenta` CLI. Confirm the install and inspect capabilities:
+The source checkout exposes the `algenta` CLI. Confirm the editable install and inspect capabilities:
 
 ```bash
 algenta version
@@ -242,15 +238,18 @@ If you call `AlgentaClient()` with no `api_key` and no `ALGENTA_API_KEY` set, co
 
 ## TypeScript SDK
 
-The TypeScript SDK is published under the same name on npm.
+The TypeScript SDK source is in this repository, but the public npm package is not live yet. Do not use this as a clean-machine install step until the npm package is published.
 
-```bash
-npm install algenta-sdk
+```bash title="source-build.sh"
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+pnpm install
+pnpm --filter algenta-sdk build
 ```
 
 ### Verify the TypeScript SDK
 
-The client reads `ALGENTA_API_KEY` in Node, and takes `apiKey` and `baseUrl` in its config. `AlgentaClient` and `DecisionEngineClient` are both exported.
+In a workspace build, the client reads `ALGENTA_API_KEY` in Node, and takes `apiKey` and `baseUrl` in its config. `AlgentaClient` and `DecisionEngineClient` are both exported.
 
 ```typescript title="verify-ts-sdk.ts"
 import { AlgentaClient } from 'algenta-sdk';

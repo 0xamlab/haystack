@@ -5,12 +5,12 @@ description: Run Algenta end to end in minutes — start the engine, mint an API
 
 # Quickstart
 
-This page takes you from nothing to a working Algenta engine in about two minutes. You will run the one-line installer, confirm the engine is healthy, mint a bounded API key to replace the bootstrap key, and make your first decision call. If you would rather not run a server at all, the last section shows the zero-friction local demo: `pip install algenta-core` and `algenta demo`.
+This page takes you from nothing to a working Algenta engine in about two minutes. You will run the one-line installer, confirm the engine is healthy, mint a bounded API key to replace the bootstrap key, and make your first decision call. The public clean-machine path today is the self-hosted engine plus `algenta-sdk`; the local `algenta` runtime package is source-build only until its PyPI release is published.
 
 There are two ways to start, and they are complementary:
 
 - **Self-hosted engine** — a real HTTP service on `localhost:8000` with Postgres, Redis, and object storage, driven over `/v1`. Use this when you want the full decision engine, API keys, and the agentic flows.
-- **Local runtime (`algenta-core`)** — a pip-installable, in-process library and CLI for register, resolve, and query against your own files. No server, no key, no network.
+- **Local runtime (`algenta`)** — a source-build, in-process library and CLI for register, resolve, and query against your own files. No server, no key, no network, but not a public PyPI install yet.
 
 {% hint style="info" %}
 The engine reads your key from `ALGENTA_API_KEY` (or the legacy `DE_API_KEY`). Export one of them once and every example below works unchanged.
@@ -152,61 +152,66 @@ You can store the `id` to revoke the key later with `DELETE /v1/api-keys/{id}`. 
 {% step %}
 ### Your first call in code
 
-For programmatic use, install `algenta-core` and drive the `Runtime`. The default `Runtime()` runs locally and in-process — register a source, resolve a plan, and run the query. No server or key required.
+For programmatic use today, install the published Python HTTP SDK and call the engine you just started.
 
 {% tabs %}
 {% tab title="Python" %}
 ```bash
-pip install algenta-core
+pip install algenta-sdk
 ```
 
 ```python title="first_call.py"
-from algenta import Runtime
+import os
+from decision_engine import AlgentaClient
 
-rt = Runtime()
-rt.connect("orders.csv", name="orders")
+client = AlgentaClient(
+    api_key=os.environ["ALGENTA_API_KEY"],
+    base_url="http://localhost:8000",
+)
 
-plan = rt.resolve({"source_name": "orders", "metric": "revenue"})
-result = rt.query(plan)
+result = client.simulate(
+    scenario={
+        "variables": {
+            "revenue": {"low": 80000, "high": 200000},
+            "cost": {"low": 30000, "high": 90000},
+        },
+        "objective": "maximize_net_value",
+    },
+    runs=10000,
+    seed=42,
+)
 
 print(result)
 ```
 {% endtab %}
 {% endtabs %}
 
-The flow is always the same three calls: `connect` registers a source under a name, `resolve` turns an intent into a typed plan, and `query` executes it. Adding `group_by` is one more key:
+For governed data queries, connect a dataset through the API and then call the query methods from the same client:
 
-```python title="group_by.py"
-plan = rt.resolve({
-    "source_name": "orders",
-    "metric": "revenue",
-    "group_by": "product_line",
+```python title="query.py"
+datasets = client.list_datasets(search="orders", compact=True)
+summary = client.get_dataset_summary(datasets.datasets[0].dataset_id)
+query_result = client.query_with_metadata({
+    "dataset_id": summary.dataset_id,
+    "metric": {"hint": "revenue"},
+    "aggregation": "sum",
 })
-result = rt.query(plan)
 ```
 
 {% hint style="info" %}
-When you are ready to point the same code at your self-hosted engine instead of the in-process runtime, construct it in API mode and pass your key:
-
-```python title="api_mode.py"
-import os
-from algenta import Runtime
-
-api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
-rt = Runtime(mode="api", api_key=api_key)
-plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-result = rt.query(plan)
-```
+The source-built local `Runtime` uses the same concepts (`connect`, `resolve`, `query`), but it is not the public clean-machine install path yet. Use [Python SDK](sdk/python.md) for the live package and [algenta CLI reference](sdk/algenta-cli.md) for the rollout status.
 {% endhint %}
 {% endstep %}
 {% endstepper %}
 
-## Zero-friction demo (no server, no key)
+## Source-checkout demo (no server, no key)
 
-If you want to see Algenta work before installing the engine, the `algenta` CLI ships with `algenta-core` and runs a fully local, deterministic demo against a bundled dataset.
+If you are developing from a source checkout, the `algenta` CLI runs a fully local, deterministic demo against a bundled dataset. This is not a public PyPI install path yet.
 
-```bash
-pip install algenta-core
+```bash title="source-demo.sh"
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+python3 -m pip install -e packages/algenta
 algenta demo
 ```
 

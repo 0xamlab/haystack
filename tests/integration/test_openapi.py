@@ -102,6 +102,7 @@ try:
         has_configured_local_live_api_key,
         resolve_local_live_api_key,
     )
+    from tests.integration.live_local_surface_env import configure_local_live_server_env
     from tests.integration.live_repository_fixture import (
         live_repository_fixture,
         local_repository_live_support_reason,
@@ -114,6 +115,7 @@ except ModuleNotFoundError:
         has_configured_local_live_api_key,
         resolve_local_live_api_key,
     )
+    from live_local_surface_env import configure_local_live_server_env
     from live_repository_fixture import (
         live_repository_fixture,
         local_repository_live_support_reason,
@@ -377,6 +379,7 @@ def _resolve_base_url() -> str:
     env.setdefault("ALGENTA_SOURCE_REGISTRY_ROOT", str(log_dir / "sources"))
     env.setdefault("ALGENTA_RUNTIME_DIR", str(log_dir / "runtime"))
     env.setdefault("ALGENTA_REPOSITORY_INTELLIGENCE_MODEL", "repository.deterministic_local_v1")
+    env = configure_local_live_server_env(env, root_dir=log_dir)
     with log_path.open("w", encoding="utf-8") as log_handle:
         _runtime_proc = subprocess.Popen(
             [
@@ -2074,7 +2077,7 @@ def test_models_response_compliance():
             assert value is None or (isinstance(value, int) and value > 0), (item.get("id"), field_name, value)
         for field_name in ("timeout_seconds", "chat_timeout_seconds", "embedding_timeout_seconds"):
             value = item.get(field_name)
-            assert value is None or (isinstance(value, (int, float)) and value > 0), (
+            assert value is None or (isinstance(value, int | float) and value > 0), (
                 item.get("id"),
                 field_name,
                 value,
@@ -3307,24 +3310,23 @@ check("Servers section (if present) has valid entries", test_spec_servers_or_bas
 
 
 if __name__ == "__main__":
-    import pytest
-
-    exit_code = pytest.main([__file__, "-v"])
-    # Write summary artifact for CI consumers (preserves the
-    # tests/test_runtime_surface_compatibility surface contract).
-    try:
-        from tests.integration.live_integration_artifacts import write_live_integration_summary
-
-        artifact_path = write_live_integration_summary(
-            SUITE_NAME,
-            script="tests/integration/test_openapi.py",
-            passed=0,  # TODO: parse from pytest result
-            failed=0,
-            skipped=0,
-            total=0,
-            elapsed_seconds=0.0,
-        )
-        print(f"Summary artifact: {artifact_path}")
-    except Exception:
-        pass
-    sys.exit(exit_code)
+    passed = sum(1 for status, *_ in results if status == PASS)
+    failed = sum(1 for status, *_ in results if status == FAIL)
+    skipped = sum(1 for status, *_ in results if status == SKIP)
+    artifact_path = write_live_integration_summary(
+        SUITE_NAME,
+        script="tests/integration/test_openapi.py",
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        total=len(results),
+        elapsed_seconds=time.perf_counter() - STARTED_AT,
+        details={
+            "api_key_configured": API_KEY_CONFIGURED,
+            "base_url": BASE_URL,
+            "failed_checks": [name for status, name, *_ in results if status == FAIL],
+            "skipped_checks": [name for status, name, *_ in results if status == SKIP],
+        },
+    )
+    print(f"Summary artifact: {artifact_path}")
+    sys.exit(1 if failed else 0)

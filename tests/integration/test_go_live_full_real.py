@@ -41,11 +41,11 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tests.integration.live_integration_artifacts import (
+from tests.integration.live_integration_artifacts import (  # noqa: E402
     LIVE_INTEGRATION_SUMMARY_ARTIFACTS,
     write_live_integration_summary,
 )
-from tests.integration.live_local_surface_env import (
+from tests.integration.live_local_surface_env import (  # noqa: E402
     LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT,
 )
 
@@ -535,6 +535,17 @@ def main() -> int:
             suite_env = dict(env_live_base)
             if name == "Root JavaScript workspace check":
                 suite_env["DE_SKIP_GO_LIVE_VERIFY"] = "1"
+                suite_env.update(
+                    {
+                        "ALGENTA_TEST_START_API_SERVER": "1",
+                        "ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS": "1",
+                        "DE_API_KEY": "",
+                        "ALGENTA_API_KEY": "",
+                        "DE_BASE_URL": "",
+                        "ALGENTA_BASE_URL": "",
+                        "ALGENTA_CONTROL_PLANE_URL": "",
+                    }
+                )
             ok, elapsed, _ = run_suite(name, cmd, env=suite_env, timeout=timeout)
             results.append((name, ok, elapsed))
 

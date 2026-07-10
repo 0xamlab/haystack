@@ -12,7 +12,7 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | Term | Meaning |
 | --- | --- |
 | **Engine** | The Algenta core — a deterministic computational-intelligence runtime (math/operational libraries, simulation, decision planning, governed query, agent runtime). You deploy it; you don't adopt it as a finished app. |
-| **Runtime** | The `algenta-core` object (`Runtime`) that reaches the engine in one of three modes — `local`, `api`, or `self_hosted`. |
+| **Runtime** | The source-built `algenta` object (`Runtime`) that reaches the engine in one of three modes — `local`, `api`, or `self_hosted`. |
 | **Mojo engine** | The compiled, high-performance simulation binary (`mojo_build/simulate`) the API server calls to run simulations. |
 | **Worker pool / sidecar** | A set of long-lived Mojo worker processes the API talks to over local sockets, instead of forking a process per request. The "sidecar engine." |
 | **Decision envelope** | The structured result of a simulation or decision — expected value, confidence, percentiles, and a recommended action. |
@@ -23,8 +23,8 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | Term | Meaning |
 | --- | --- |
 | **HTTP API** | The versioned REST surface under `/v1`. The default integration path; no SDK required. See [API overview](../api/overview.md). |
-| **SDK** (`algenta-sdk`) | The thin, typed HTTP client for the API — `AlgentaClient` in Python and TypeScript. See [Python SDK](../sdk/python.md). |
-| **`algenta-core`** | The local-first Python runtime package — run flows in-process (`mode="local"`) or drive a remote engine through one `Runtime` object. |
+| **SDK** (`algenta-sdk`) | The live Python HTTP client for the API (`decision_engine.AlgentaClient`) and the source-built TypeScript client package name. See [Python SDK](../sdk/python.md). |
+| **`algenta` runtime package** | The local-first Python runtime source package — run flows in-process (`mode="local"`) or drive a remote engine through one `Runtime` object. Its public PyPI runtime release is not live yet. |
 | **MCP server** (`algenta-mcp`) | A Model Context Protocol bridge that exposes the engine as tools for Cursor, Claude Desktop, and other AI clients. See [MCP server](../sdk/mcp.md). |
 | **CLI** | The terminal clients: `de` (full API surface) and `algenta` (local-runtime demo + inspection). See [CLI reference](../cli.md). |
 

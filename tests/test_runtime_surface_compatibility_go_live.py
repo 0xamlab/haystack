@@ -5,6 +5,7 @@ Extracted from /Users/angel/Developer/decision-engine/.claude/worktrees/wf_7fba9
 from __future__ import annotations
 
 from tests._test_runtime_surface_compatibility_helpers import *  # noqa: F401,F403
+from tests._test_runtime_surface_compatibility_helpers import ROOT
 
 
 def test_go_live_suite_keeps_live_typescript_runtime_gate() -> None:
@@ -78,5 +79,6 @@ def test_go_live_full_real_skips_nested_verifier_inside_root_js_check() -> None:
 
     assert 'if name == "Root JavaScript workspace check":' in full_real
     assert 'suite_env["DE_SKIP_GO_LIVE_VERIFY"] = "1"' in full_real
+    assert '"ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS": "1"' in full_real
 
 

@@ -11,11 +11,20 @@ from __future__ import annotations
 import hashlib
 import uuid
 
+import pytest
+
+from apps.api_server.models.data_connector import (
+    ConnectorStatus,
+    ConnectorType,
+    ConnectorVisibility,
+    DataConnector,
+)
 from apps.api_server.services import data_visibility as dv
 from apps.api_server.services.source_registration_scope import resolve_registration_scopes
 
 WS_A = uuid.uuid4()
 WS_B = uuid.uuid4()
+ORG_UUID = uuid.uuid4()
 
 
 def _auth(*, workspace_id=None, key_id="platform-key", user_id=None, role="member") -> dict:
@@ -34,6 +43,46 @@ def _entry(*, workspace_id=None, owner_key_id="platform-key", visibility="privat
     if workspace_id is not None:
         e["workspace_id"] = str(workspace_id)
     return e
+
+
+class _ScalarResult:
+    def __init__(self, connector: DataConnector | None) -> None:
+        self.connector = connector
+
+    def scalar_one_or_none(self) -> DataConnector | None:
+        return self.connector
+
+
+class _FakeConnectorDb:
+    def __init__(self, connector: DataConnector | None) -> None:
+        self.connector = connector
+        self.execute_count = 0
+        self.expunged: list[DataConnector] = []
+
+    async def execute(self, _statement: object) -> _ScalarResult:
+        self.execute_count += 1
+        return _ScalarResult(self.connector)
+
+    def expunge(self, connector: DataConnector) -> None:
+        self.expunged.append(connector)
+
+
+def _connector(
+    *,
+    connector_id: uuid.UUID | None = None,
+    connector_type: ConnectorType = ConnectorType.POSTGRES,
+    owner_key_id: uuid.UUID | None = None,
+) -> DataConnector:
+    return DataConnector(
+        id=connector_id or uuid.uuid4(),
+        org_id=ORG_UUID,
+        name="Connector",
+        connector_type=connector_type,
+        config_json="{}",
+        status=ConnectorStatus.UNTESTED,
+        visibility=ConnectorVisibility.PRIVATE.value,
+        owner_key_id=owner_key_id,
+    )
 
 
 # ── dataset_in_workspace_scope truth table ────────────────────────────────────
@@ -77,6 +126,81 @@ def test_private_dataset_owner_match_within_workspace() -> None:
     entry = _entry(workspace_id=WS_A, owner_key_id="k1", visibility="private")
     assert dv.dataset_visible(entry, _auth(workspace_id=WS_A, key_id="k1"))
     assert not dv.dataset_visible(entry, _auth(workspace_id=WS_B, key_id="k1"))  # wrong ws
+
+
+# ── get_visible_connector cache contract ─────────────────────────────────────
+@pytest.mark.anyio
+async def test_get_visible_connector_does_not_cache_data_source_connectors() -> None:
+    dv._CONNECTOR_CACHE.clear()
+    key_id = uuid.uuid4()
+    connector = _connector(owner_key_id=key_id)
+    db = _FakeConnectorDb(connector)
+
+    result = await dv.get_visible_connector(
+        db,  # type: ignore[arg-type]
+        connector.id,
+        _auth(key_id=str(key_id)),
+    )
+
+    assert result is connector
+    assert db.execute_count == 1
+    assert db.expunged == []
+    assert dv._CONNECTOR_CACHE == {}
+
+
+@pytest.mark.anyio
+async def test_get_visible_connector_caches_repository_read_connectors() -> None:
+    dv._CONNECTOR_CACHE.clear()
+    key_id = uuid.uuid4()
+    connector = _connector(
+        connector_type=ConnectorType.GITHUB_REPO,
+        owner_key_id=key_id,
+    )
+    db = _FakeConnectorDb(connector)
+    auth = _auth(key_id=str(key_id))
+
+    first = await dv.get_visible_connector(db, connector.id, auth)  # type: ignore[arg-type]
+    second = await dv.get_visible_connector(db, connector.id, auth)  # type: ignore[arg-type]
+
+    assert first is connector
+    assert second is connector
+    assert db.execute_count == 1
+    assert db.expunged == [connector]
+
+
+@pytest.mark.anyio
+async def test_get_visible_connector_for_update_bypasses_repository_cache() -> None:
+    dv._CONNECTOR_CACHE.clear()
+    connector_id = uuid.uuid4()
+    key_id = uuid.uuid4()
+    cached_connector = _connector(
+        connector_id=connector_id,
+        connector_type=ConnectorType.GITHUB_REPO,
+        owner_key_id=key_id,
+    )
+    fresh_connector = _connector(
+        connector_id=connector_id,
+        connector_type=ConnectorType.GITHUB_REPO,
+        owner_key_id=key_id,
+    )
+    auth = _auth(key_id=str(key_id))
+    await dv.get_visible_connector(
+        _FakeConnectorDb(cached_connector),  # type: ignore[arg-type]
+        connector_id,
+        auth,
+    )
+    db = _FakeConnectorDb(fresh_connector)
+
+    result = await dv.get_visible_connector(
+        db,  # type: ignore[arg-type]
+        connector_id,
+        auth,
+        for_update=True,
+    )
+
+    assert result is fresh_connector
+    assert db.execute_count == 1
+    assert db.expunged == []
 
 
 # ── get_visible_source_entry_by_name wrapper gates by workspace ────────────────

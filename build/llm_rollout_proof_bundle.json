@@ -1,6 +1,6 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-06-08T01:45:12Z",
+  "generated_at": "2026-07-10T02:55:38Z",
   "expected_modules": 22,
   "expected_functions": 209,
   "public_supported_channels": [
@@ -20,10 +20,10 @@
     "path": "build/llm_rollout_parity_benchmark.json",
     "library_count": 22,
     "function_count": 209,
-    "median_speedup_x": 171.24,
-    "mean_speedup_x": 224.72,
-    "max_speedup_x": 1188.32,
-    "timestamp": "2026-05-29T20:18:56"
+    "median_speedup_x": 114.76,
+    "mean_speedup_x": 102.88,
+    "max_speedup_x": 293.11,
+    "timestamp": "2026-07-09T22:44:04"
   },
   "compiled_runtime_artifact": {
     "path": "build/llm_compiled_runtime_benchmark.json",
@@ -32,24 +32,24 @@
     "failed_function_count": 0,
     "transport": "compiled_worker",
     "max_cold_ms": {
-      "value": 142.70083303563297,
+      "value": 192.7703749970533,
       "module": "bpe_tokenizer",
       "function": "bpe_merge_score"
     },
     "max_warm_ms": {
-      "value": 1.4065420255064964,
-      "module": "flash_attention",
-      "function": "paged_attention_block_score"
+      "value": 1.1014589690603316,
+      "module": "paged_kv_cache",
+      "function": "cache_eviction_lru_score"
     },
     "max_hot_ms": {
-      "value": 1.0533545282669365,
+      "value": 1.0116455086972564,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     }
   },
   "benchmark_discovery_lane": {
-    "discovered_source_modules": 481,
-    "discovered_public_functions": 4900,
+    "discovered_source_modules": 522,
+    "discovered_public_functions": 5155,
     "discovered_source_inventory": [
       {
         "import_path": "ab_testing",
@@ -272,12 +272,16 @@
         "public_function_count": 11
       },
       {
+        "import_path": "color_check",
+        "public_function_count": 16
+      },
+      {
         "import_path": "color_science",
         "public_function_count": 12
       },
       {
         "import_path": "column_rank",
-        "public_function_count": 6
+        "public_function_count": 7
       },
       {
         "import_path": "combinatorial",
@@ -286,6 +290,10 @@
       {
         "import_path": "combustion",
         "public_function_count": 12
+      },
+      {
+        "import_path": "compare",
+        "public_function_count": 1
       },
       {
         "import_path": "compiler_theory",
@@ -350,6 +358,10 @@
       {
         "import_path": "copula",
         "public_function_count": 5
+      },
+      {
+        "import_path": "correlation",
+        "public_function_count": 4
       },
       {
         "import_path": "corrosion",
@@ -445,7 +457,7 @@
       },
       {
         "import_path": "datetime",
-        "public_function_count": 15
+        "public_function_count": 16
       },
       {
         "import_path": "decision_analysis",
@@ -454,6 +466,10 @@
       {
         "import_path": "decision_ml_fusion",
         "public_function_count": 10
+      },
+      {
+        "import_path": "decision_tree",
+        "public_function_count": 1
       },
       {
         "import_path": "decision_tree_parser",
@@ -509,7 +525,15 @@
       },
       {
         "import_path": "distributions",
-        "public_function_count": 11
+        "public_function_count": 36
+      },
+      {
+        "import_path": "document_layout",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "document_vision",
+        "public_function_count": 9
       },
       {
         "import_path": "dosimetry",
@@ -576,6 +600,10 @@
         "public_function_count": 10
       },
       {
+        "import_path": "engines.bootstrap",
+        "public_function_count": 1
+      },
+      {
         "import_path": "engines.column_matcher",
         "public_function_count": 1
       },
@@ -596,11 +624,35 @@
         "public_function_count": 1
       },
       {
+        "import_path": "engines.lhs",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.mcmc",
+        "public_function_count": 1
+      },
+      {
         "import_path": "engines.monte_carlo",
-        "public_function_count": 8
+        "public_function_count": 9
+      },
+      {
+        "import_path": "engines.qmc_sobol",
+        "public_function_count": 1
       },
       {
         "import_path": "engines.relation_detector",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.repo_classifier",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.scenario",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "engines.sensitivity",
         "public_function_count": 1
       },
       {
@@ -638,6 +690,10 @@
       {
         "import_path": "execution_planner",
         "public_function_count": 10
+      },
+      {
+        "import_path": "expr",
+        "public_function_count": 2
       },
       {
         "import_path": "fault_tolerance",
@@ -832,12 +888,44 @@
         "public_function_count": 6
       },
       {
+        "import_path": "image_features",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "image_morphology",
+        "public_function_count": 9
+      },
+      {
         "import_path": "image_ops",
         "public_function_count": 11
       },
       {
+        "import_path": "image_palette",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "image_quality",
+        "public_function_count": 15
+      },
+      {
+        "import_path": "image_regions",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "image_resize",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "image_similarity",
+        "public_function_count": 8
+      },
+      {
         "import_path": "immunology",
         "public_function_count": 10
+      },
+      {
+        "import_path": "importance_sampling",
+        "public_function_count": 1
       },
       {
         "import_path": "inference_cost_latency",
@@ -877,7 +965,7 @@
       },
       {
         "import_path": "json.parser",
-        "public_function_count": 12
+        "public_function_count": 15
       },
       {
         "import_path": "json.tokenizer",
@@ -970,6 +1058,10 @@
       {
         "import_path": "magnetism",
         "public_function_count": 10
+      },
+      {
+        "import_path": "main",
+        "public_function_count": 1
       },
       {
         "import_path": "marine",
@@ -1125,7 +1217,7 @@
       },
       {
         "import_path": "net.unix_socket",
-        "public_function_count": 4
+        "public_function_count": 16
       },
       {
         "import_path": "net.url",
@@ -1184,6 +1276,10 @@
         "public_function_count": 12
       },
       {
+        "import_path": "objective_sampling",
+        "public_function_count": 1
+      },
+      {
         "import_path": "observability",
         "public_function_count": 10
       },
@@ -1236,6 +1332,10 @@
         "public_function_count": 10
       },
       {
+        "import_path": "output",
+        "public_function_count": 6
+      },
+      {
         "import_path": "packaging",
         "public_function_count": 12
       },
@@ -1278,6 +1378,10 @@
       {
         "import_path": "pension",
         "public_function_count": 12
+      },
+      {
+        "import_path": "perceptual_hash",
+        "public_function_count": 8
       },
       {
         "import_path": "perfumery",
@@ -1404,6 +1508,10 @@
         "public_function_count": 10
       },
       {
+        "import_path": "python_bridge",
+        "public_function_count": 3
+      },
+      {
         "import_path": "quantization",
         "public_function_count": 10
       },
@@ -1474,6 +1582,10 @@
       {
         "import_path": "reliability",
         "public_function_count": 11
+      },
+      {
+        "import_path": "request_parser",
+        "public_function_count": 1
       },
       {
         "import_path": "rerank_eval",
@@ -1676,6 +1788,10 @@
         "public_function_count": 10
       },
       {
+        "import_path": "stats",
+        "public_function_count": 8
+      },
+      {
         "import_path": "stats_bootstrap",
         "public_function_count": 10
       },
@@ -1780,6 +1896,10 @@
         "public_function_count": 12
       },
       {
+        "import_path": "time_series",
+        "public_function_count": 1
+      },
+      {
         "import_path": "time_series_decompose",
         "public_function_count": 9
       },
@@ -1876,6 +1996,10 @@
         "public_function_count": 1
       },
       {
+        "import_path": "vector_kernels.repo_ranker",
+        "public_function_count": 1
+      },
+      {
         "import_path": "vector_kernels.semantic_micro.semantic_api",
         "public_function_count": 2
       },
@@ -1924,8 +2048,48 @@
         "public_function_count": 12
       },
       {
+        "import_path": "video_accessibility",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "video_color",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "video_features",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "video_gate",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "video_ops",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "video_quality",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "video_regions",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "video_similarity",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "video_storyboard",
+        "public_function_count": 6
+      },
+      {
         "import_path": "virology",
         "public_function_count": 10
+      },
+      {
+        "import_path": "vision_gate",
+        "public_function_count": 5
       },
       {
         "import_path": "viticulture",
@@ -1984,7 +2148,7 @@
     {
       "name": "python_sdk_package_contract",
       "command": [
-        "python3",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
         "-m",
         "pytest",
         "-q",
@@ -2000,7 +2164,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 3.384,
+      "elapsed_seconds": 0.954,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -2026,7 +2190,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 3.636,
+      "elapsed_seconds": 0.586,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -2036,7 +2200,7 @@
     {
       "name": "public_http_library_routes_feature_flag",
       "command": [
-        "python3",
+        "/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python",
         "-m",
         "pytest",
         "-q",
@@ -2049,7 +2213,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 22.354,
+      "elapsed_seconds": 4.575,
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -2070,7 +2234,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 5.142,
+      "elapsed_seconds": 2.757,
       "passed": 4,
       "failed": 0,
       "skipped": 0
@@ -2082,142 +2246,142 @@
     "functions_compared": 60,
     "all_modules_fully_compared": true,
     "all_compiled_engine_used_mojo": true,
-    "min_speedup_x": 114.95,
-    "max_speedup_x": 288.65,
+    "min_speedup_x": 102.07,
+    "max_speedup_x": 129.29,
     "max_cold_ms": {
-      "value": 1.672249985858798,
-      "module": "continuous_batching",
-      "function": "streaming_first_token_latency"
+      "value": 0.48500002594664693,
+      "module": "speculative_decoding",
+      "function": "speculative_accept_prob"
     },
     "max_warm_ms": {
-      "value": 1.3700000708922744,
+      "value": 1.1014589690603316,
       "module": "paged_kv_cache",
-      "function": "context_extension_factor"
+      "function": "cache_eviction_lru_score"
     },
     "max_hot_ms": {
-      "value": 0.5508119356818497,
-      "module": "kv_cache",
-      "function": "kv_cache_memory_per_layer"
+      "value": 0.4135624913033098,
+      "module": "inference_engine",
+      "function": "decode_time_per_token"
     },
     "modules": [
       {
         "name": "kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 288.65,
+        "parity_speedup_x": 118.92,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.8702499326318502,
-          "function": "radix_cache_shared_prefix_len"
+          "value": 0.3616670146584511,
+          "function": "incremental_decode_kv_append"
         },
         "max_warm_ms": {
-          "value": 0.6918750004842877,
-          "function": "kv_cache_total_memory"
+          "value": 0.3048749640583992,
+          "function": "kv_eviction_score_h2o"
         },
         "max_hot_ms": {
-          "value": 0.5508119356818497,
-          "function": "kv_cache_memory_per_layer"
+          "value": 0.30308301211334765,
+          "function": "prefix_cache_hit_bytes"
         }
       },
       {
         "name": "paged_kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 235.32,
+        "parity_speedup_x": 114.76,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 1.4131249627098441,
-          "function": "block_copy_cost"
+          "value": 0.39300002390518785,
+          "function": "speculative_branch_memory"
         },
         "max_warm_ms": {
-          "value": 1.3700000708922744,
-          "function": "context_extension_factor"
+          "value": 1.1014589690603316,
+          "function": "cache_eviction_lru_score"
         },
         "max_hot_ms": {
-          "value": 0.37077045999467373,
-          "function": "block_copy_cost"
+          "value": 0.34091700217686594,
+          "function": "cache_eviction_lru_score"
         }
       },
       {
         "name": "continuous_batching",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 114.95,
+        "parity_speedup_x": 129.29,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 1.672249985858798,
-          "function": "streaming_first_token_latency"
+          "value": 0.3510420210659504,
+          "function": "sequence_completion_fraction"
         },
         "max_warm_ms": {
-          "value": 0.6327920127660036,
-          "function": "streaming_first_token_latency"
+          "value": 0.3751660115085542,
+          "function": "beam_memory_per_request"
         },
         "max_hot_ms": {
-          "value": 0.36341696977615356,
-          "function": "chunked_prefill_chunks"
+          "value": 0.34399950527586043,
+          "function": "iteration_level_batch_size"
         }
       },
       {
         "name": "inference_engine",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 241.86,
+        "parity_speedup_x": 118.08,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 1.0074590099975467,
-          "function": "kv_cache_hit_ratio"
+          "value": 0.37237495416775346,
+          "function": "decode_time_per_token"
         },
         "max_warm_ms": {
-          "value": 0.3547080559656024,
-          "function": "continuous_batching_capacity"
+          "value": 0.4331250092945993,
+          "function": "decode_time_per_token"
         },
         "max_hot_ms": {
-          "value": 0.34254149068146944,
-          "function": "batch_padding_mask"
+          "value": 0.4135624913033098,
+          "function": "decode_time_per_token"
         }
       },
       {
         "name": "speculative_decoding",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 161.25,
+        "parity_speedup_x": 124.0,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 1.221165992319584,
-          "function": "constrained_beam_score"
+          "value": 0.48500002594664693,
+          "function": "speculative_accept_prob"
         },
         "max_warm_ms": {
-          "value": 0.4324170295149088,
-          "function": "draft_model_speedup"
+          "value": 0.4308749921619892,
+          "function": "speculative_accept_prob"
         },
         "max_hot_ms": {
-          "value": 0.38420851342380047,
-          "function": "json_grammar_logit_mask"
+          "value": 0.33418749808333814,
+          "function": "speculative_accept_prob"
         }
       },
       {
         "name": "generation_loop",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 115.01,
+        "parity_speedup_x": 102.07,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 1.1817499762400985,
-          "function": "top_p_cumulative_accept"
+          "value": 0.36954099778085947,
+          "function": "min_p_accept"
         },
         "max_warm_ms": {
-          "value": 0.4890839336439967,
-          "function": "top_p_cumulative_accept"
+          "value": 0.3595830057747662,
+          "function": "presence_penalty_logit"
         },
         "max_hot_ms": {
-          "value": 0.3202289226464927,
-          "function": "eta_sampling_accept"
+          "value": 0.3625834942795336,
+          "function": "presence_penalty_logit"
         }
       }
     ]
@@ -2250,9 +2414,9 @@
         "suite_name": "typescript_sdk_local_runtime",
         "script": "tests/integration/test_typescript_runtime_live.py",
         "status": "passed",
-        "passed": 1,
+        "passed": 15,
         "failed": 0,
-        "skipped": 14,
+        "skipped": 0,
         "feature_flag": false,
         "module_count": 6,
         "function_count": 60,
@@ -2340,7 +2504,7 @@
       ],
       "minimum_passed": 7,
       "status": "passed",
-      "elapsed_seconds": 3.435,
+      "elapsed_seconds": 2.095,
       "passed": 7,
       "failed": 0,
       "skipped": 0
@@ -2351,12 +2515,12 @@
       "channels": [
         "typescript_sdk"
       ],
-      "minimum_passed": 1,
+      "minimum_passed": 2,
       "status": "passed",
-      "elapsed_seconds": 15.426,
-      "passed": 1,
+      "elapsed_seconds": 15.627,
+      "passed": 15,
       "failed": 0,
-      "skipped": 14
+      "skipped": 0
     },
     {
       "name": "local_runtime_cli_mcp_matrix",
@@ -2369,7 +2533,7 @@
       ],
       "minimum_passed": 11,
       "status": "passed",
-      "elapsed_seconds": 6.677,
+      "elapsed_seconds": 4.348,
       "passed": 11,
       "failed": 0,
       "skipped": 0

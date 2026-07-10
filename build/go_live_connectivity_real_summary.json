@@ -51,7 +51,7 @@
       },
       {
         "name": "Snowflake connector /test",
-        "reason": "Snowflake live validation blocked by account network policy; skipping external customer-credential case."
+        "reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE"
       },
       {
         "name": "BigQuery connector /test",
@@ -59,9 +59,9 @@
       }
     ]
   },
-  "elapsed_seconds": 25.9,
+  "elapsed_seconds": 17.158,
   "failed": 0,
-  "generated_at": "2026-05-30T00:08:49.646807Z",
+  "generated_at": "2026-07-10T02:51:13.861005Z",
   "name": "go_live_connectivity_real",
   "passed": 65,
   "script": "tests/integration/test_go_live_connectivity_real.py",

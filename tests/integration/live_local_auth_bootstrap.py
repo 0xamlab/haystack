@@ -10,7 +10,10 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
-from tests.integration.live_local_defaults import DEFAULT_LOCAL_LIVE_API_KEY
+from tests.integration.live_local_defaults import (
+    DEFAULT_LOCAL_LIVE_API_KEY,
+    should_ignore_hosted_live_credentials,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
@@ -147,6 +150,8 @@ def ensure_bootstrapped_local_live_api_key(
     active_base_url: str,
 ) -> tuple[str, bool, str | None]:
     """Return a usable local live API key, bootstrapping the placeholder when safe."""
+    if should_ignore_hosted_live_credentials():
+        return DEFAULT_LOCAL_LIVE_API_KEY, False, None
     if api_key_configured and api_key != DEFAULT_LOCAL_LIVE_API_KEY:
         return api_key, True, None
     if not is_local_live_base_url(active_base_url):

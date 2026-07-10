@@ -10,16 +10,18 @@ description: Sign in to Algenta from the terminal with the browser-based device 
 This is the interactive, no-copy-paste path. If you already have an API key (for example one your self-hosted operator provisioned), you do not need to log in at all — set `ALGENTA_API_KEY` and go. See [Authentication & API keys](authentication.md).
 
 {% hint style="info" %}
-The bundled `algenta` CLI is rolling out. **API-key authentication works today** on every surface — the SDKs, the `de` CLI, and raw HTTP all accept `Authorization: Bearer $ALGENTA_API_KEY` right now. See [Authentication & API keys](authentication.md) to mint and use a key while `algenta login` ships.
+The bundled `algenta` CLI is rolling out and is not a public PyPI install yet. **API-key authentication works today** on every live surface — the SDKs, the `de` CLI, and raw HTTP all accept `Authorization: Bearer $ALGENTA_API_KEY` right now. See [Authentication & API keys](authentication.md) to mint and use a key while `algenta login` ships.
 {% endhint %}
 
 ## Before you start
 
 - An Algenta account on the hosted control plane (the browser step signs you in at `accounts.thyn.ai`).
-- The `algenta` command on your PATH. It ships with `algenta-core`:
+- The `algenta` command on your PATH from a source checkout or a future published runtime release:
 
 ```bash title="install-algenta.sh"
-pip install algenta-core
+git clone https://github.com/thyn-ai/algenta.git
+cd algenta
+python3 -m pip install -e packages/algenta
 algenta version
 ```
 

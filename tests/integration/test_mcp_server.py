@@ -1917,10 +1917,16 @@ def test_control_plane_tools():
     assert members, team
     assert members[0]["email"]
 
-    invited = json.loads(
-        run_async(call_tool("invite_team_member", {"email": "new@example.com", "role": "admin"}))
-    )
-    assert invited["invite_id"], invited
+    invite_email = f"mcp-live+{time.time_ns()}@example.com"
+    try:
+        invited = json.loads(
+            run_async(call_tool("invite_team_member", {"email": invite_email, "role": "admin"}))
+        )
+        assert invited["invite_id"], invited
+    except RuntimeError as exc:
+        text = str(exc).lower()
+        if "api error 403" not in text or "seats_not_available" not in text:
+            raise
 
     billing = json.loads(run_async(call_tool("get_billing_info", {})))
     assert billing["plan"], billing
