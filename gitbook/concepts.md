@@ -95,7 +95,7 @@ rt = Runtime(mode="api")  # api_key read from ALGENTA_API_KEY / DE_API_KEY
 
 {% tab title="cURL" %}
 ```bash
-export ALGENTA_API_KEY="sk_live_..."   # or DE_API_KEY
+export ALGENTA_API_KEY="de_live_..."   # or DE_API_KEY
 ```
 {% endtab %}
 {% endtabs %}

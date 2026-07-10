@@ -39,7 +39,7 @@ curl -sS -X POST "$ALGENTA_API_URL/v1/connectors" \
     "connector_type": "github_repo",
     "config": {
       "repository_url": "https://github.com/acme/my-service",
-      "access_token": "ghp_example_token"
+      "access_token": "$GITHUB_TOKEN"
     }
   }'
 ```
