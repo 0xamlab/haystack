@@ -7,10 +7,26 @@ name: docs-audit
 on:
   pull_request:
     branches: [main]
-    paths: ["gitbook/**", "scripts/gitbook/**", ".gitbook.yaml"]
+    paths:
+      - "gitbook/**"
+      - "scripts/gitbook/**"
+      - "scripts/docs/**"
+      - "apps/mcp_server/**"
+      - "apps/api_server/config.py"
+      - "apps/api-server/config.py"
+      - ".gitbook.yaml"
+      - ".github/workflows/docs-audit.yml"
   push:
     branches: [main]
-    paths: ["gitbook/**", "scripts/gitbook/**", ".gitbook.yaml"]
+    paths:
+      - "gitbook/**"
+      - "scripts/gitbook/**"
+      - "scripts/docs/**"
+      - "apps/mcp_server/**"
+      - "apps/api_server/config.py"
+      - "apps/api-server/config.py"
+      - ".gitbook.yaml"
+      - ".github/workflows/docs-audit.yml"
 
 permissions:
   contents: read
@@ -28,5 +44,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run docs audit (fails on ERROR)
+      - name: Run docs interaction-contract audit
         run: python3 scripts/gitbook/audit.py gitbook/
+
+      - name: Run GitBook A-Z source audit
+        run: >-
+          python3 scripts/docs/audit_gitbook_claims.py
+          --source gitbook
+          --skip-live
+          --strict
+          --json-report build/docs-audit/gitbook-a-z-source.json
