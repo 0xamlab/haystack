@@ -183,11 +183,14 @@ class DecisionService:
             return case, current  # no-op: identical framing
 
         # Material change → new immutable revision + invalidate prior approvals/plans.
+        # Children inherit the CASE's workspace (not the caller's): an org-wide platform
+        # caller re-framing a workspace-owned case must not strand its children in a
+        # different workspace scope.
         new_number = case.current_revision_number + 1
         rev = RevisionRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=case.workspace_id,
             case_id=case.id,
             revision_number=new_number,
             change_class="material",
@@ -240,7 +243,7 @@ class DecisionService:
         run = RunRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=case.workspace_id,  # children inherit the case's workspace
             case_id=case.id,
             revision_id=rev.id,
             model_version_ref=pack.model_version,
@@ -269,7 +272,7 @@ class DecisionService:
         evidence = EvidenceRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=case.workspace_id,
             case_id=case.id,
             revision_id=rev.id,
             retention_mode=retention_mode,
@@ -323,7 +326,7 @@ class DecisionService:
         rec = RecommendationRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=case.workspace_id,
             case_id=case.id,
             run_id=run.id,
             recommended_scenario_id=rec_id,
@@ -395,7 +398,7 @@ class DecisionService:
         plan = ExecutionPlanRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=run.workspace_id,  # inherit the case's workspace via the run
             case_id=run.case_id,
             run_id=run.id,
             revision_id=run.revision_id,
@@ -460,6 +463,18 @@ class DecisionService:
                 idempotency_key, scope.org_id, scope.workspace_id
             )
             if existing is not None:
+                # An idempotency key is only a safe replay if the request fingerprint matches
+                # the stored approval EXACTLY — otherwise a reused key would silently return a
+                # different plan's approval (misrouting + approval-material disclosure).
+                if (
+                    existing.plan_id != plan_id
+                    or existing.plan_hash != plan_hash
+                    or existing.nonce != nonce
+                ):
+                    raise DecisionServiceError(
+                        "idempotency_key_conflict",
+                        "idempotency_key was already used for a different approval request",
+                    )
                 return existing
 
         plan = await self._repo.get_plan(plan_id, scope.org_id, scope.workspace_id)
@@ -493,7 +508,7 @@ class DecisionService:
         approval = ApprovalRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=plan.workspace_id,  # inherit the case's workspace via the plan
             case_id=plan.case_id,
             revision_id=plan.revision_id,
             run_id=plan.run_id,
@@ -583,7 +598,7 @@ class DecisionService:
         outcome = OutcomeRecord(
             **self._stamp(),
             org_id=scope.org_id,
-            workspace_id=scope.workspace_id,
+            workspace_id=case.workspace_id,
             case_id=case.id,
             run_id=run_id,
             actual_metrics=actual_metrics,

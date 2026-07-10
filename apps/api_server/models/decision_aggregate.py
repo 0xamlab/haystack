@@ -25,7 +25,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -119,6 +119,10 @@ class DecisionRevision(UUIDMixin, TimestampMixin, OrgWorkspaceScopedMixin, Base)
 
     case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    pack_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    pack_input: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True, doc="Full validated pack request payload (the reproducible framing)"
+    )
     objective: Mapped[str | None] = mapped_column(Text, nullable=True)
     horizon_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     levers: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -203,11 +207,24 @@ class Approval(UUIDMixin, TimestampMixin, OrgWorkspaceScopedMixin, Base):
     """
 
     __tablename__ = "decision_approvals"
+    __table_args__ = (
+        # Idempotency keys are unique per org (when present) — see migration 0052.
+        Index(
+            "uq_decision_approvals_org_idempotency",
+            "org_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
 
     case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     revision_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     recommendation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True, doc="The ExecutionPlan this approval covers"
+    )
     plan_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     nonce: Mapped[str] = mapped_column(
         String(64), nullable=False, doc="Single-use approval challenge"
@@ -234,6 +251,9 @@ class ExecutionPlan(UUIDMixin, TimestampMixin, OrgWorkspaceScopedMixin, Base):
         UUID(as_uuid=True), nullable=True, index=True
     )
     run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True, doc="Revision the plan was proposed against"
+    )
     actions: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB, nullable=True, doc="Safe MVP actions: task list, export, worksheet, memo, Teams"
     )
@@ -241,6 +261,10 @@ class ExecutionPlan(UUIDMixin, TimestampMixin, OrgWorkspaceScopedMixin, Base):
         String(24), nullable=False, default=ExecutionLifecycleState.draft.value, index=True
     )
     plan_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    nonce: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, doc="Single-use approval challenge issued at propose time"
+    )
+    nonce_consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     receipt: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 

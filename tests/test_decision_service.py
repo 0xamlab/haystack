@@ -270,6 +270,66 @@ def test_unknown_pack_is_rejected() -> None:
     asyncio.run(run())
 
 
+def test_idempotency_key_reuse_for_a_different_plan_is_rejected() -> None:
+    # Review finding (#319): a reused idempotency_key must NOT return a different plan's
+    # approval — the request fingerprint (plan_id/plan_hash/nonce) must match exactly.
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        r1 = await svc.run_decision_analysis(scope, case_id=case.id)
+        p1 = await svc.propose_action_plan(scope, r1.id)
+        await svc.approve(scope, plan_id=p1.id, plan_hash=p1.plan_hash, nonce=p1.nonce, idempotency_key="K")
+
+        r2 = await svc.refresh_decision(scope, case_id=case.id)
+        p2 = await svc.propose_action_plan(scope, r2.id)
+        with pytest.raises(DecisionServiceError) as e:
+            await svc.approve(
+                scope, plan_id=p2.id, plan_hash=p2.plan_hash, nonce=p2.nonce, idempotency_key="K"
+            )
+        assert e.value.code == "idempotency_key_conflict"
+        # p2 remains unapproved (the key replay did not silently mask it)
+        with pytest.raises(DecisionServiceError) as e2:
+            await svc.execute_approved_plan(scope, plan_id=p2.id)
+        assert e2.value.code == "plan_not_approved"
+
+    asyncio.run(run())
+
+
+def test_children_inherit_case_workspace_from_org_wide_caller() -> None:
+    # Review finding (#319): an org-wide platform caller (workspace_id=None) acting on a
+    # workspace-owned case must not strand children in a different workspace scope.
+    async def run() -> None:
+        svc = _svc()
+        org = uuid.uuid4()
+        ws = uuid.uuid4()
+        ws_scope = RequestScope(org_id=org, workspace_id=ws, principal="ws-user")
+        org_scope = RequestScope(org_id=org, workspace_id=None, principal="platform")
+
+        case, _ = await svc.create_or_update_decision(
+            ws_scope, pack_id="renewal_capacity_allocation", title="ws case",
+            pack_input=_renewal_input(),
+        )
+        # org-wide caller re-frames the workspace-owned case
+        case2, rev2 = await svc.create_or_update_decision(
+            org_scope, pack_id="renewal_capacity_allocation", title="ws case v2",
+            pack_input=_renewal_input(total_hours=80), case_id=case.id,
+        )
+        assert rev2.workspace_id == ws  # inherited from the case, not the caller
+
+        # the owning workspace can still run its own current revision
+        run_rec = await svc.run_decision_analysis(ws_scope, case_id=case.id)
+        assert run_rec.status == "completed"
+        assert run_rec.workspace_id == ws
+        plan = await svc.propose_action_plan(ws_scope, run_rec.id)
+        assert plan.workspace_id == ws
+        approval = await svc.approve(
+            ws_scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce
+        )
+        assert approval.workspace_id == ws
+
+    asyncio.run(run())
+
+
 def test_tenancy_isolation_across_orgs() -> None:
     async def run() -> None:
         svc = _svc()

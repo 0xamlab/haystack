@@ -323,6 +323,11 @@ from apps.api_server.routers import decisions as _decisions_router  # noqa: E402
 
 app.include_router(_decisions_router.router)
 
+# Decision Workflow — /v1/decision-cases (frame → analyze → approve → execute → outcome)
+from apps.api_server.routers import decision_cases as _decision_cases_router  # noqa: E402
+
+app.include_router(_decision_cases_router.router)
+
 # Real-time triggers — POST /v1/triggers, GET /v1/triggers, POST /v1/triggers/{id}/fire
 from apps.api_server.routers import triggers as _triggers_router  # noqa: E402
 
