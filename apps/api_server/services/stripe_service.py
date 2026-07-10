@@ -123,7 +123,7 @@ PLAN_PRICE_IDS: Mapping[str, str | None] = _PlanPriceIdMapping()
 def _is_placeholder(value: str | None) -> bool:
     """A Stripe config value is a placeholder (= unconfigured) if it is empty or contains the words
     used in the shipped config defaults and CI fixtures ('replace', 'placeholder') — e.g.
-    sk_test_replace_me, whsec_replace_me, sk_test_placeholder, whsec_placeholder. A real test- or
+    stripe_secret_key_replace_me, stripe_webhook_secret_replace_me, sk_test_placeholder, whsec_placeholder. A real test- or
     live-mode key/secret (sk_test_<id> / sk_live_<id> / whsec_<id>) contains neither."""
     if not value:
         return True

@@ -111,9 +111,9 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `STRIPE_PRICE_TELYS_PRO` | `price_telys_pro_replace_me` | — | — |
 | `STRIPE_PRICE_TELYS_TEAM` | `price_telys_team_replace_me` | — | — |
 | `STRIPE_PRICE_ULTRA` | `price_ultra_replace_me` | — | — |
-| `STRIPE_PUBLISHABLE_KEY` | `pk_test_replace_me` | — | — |
-| `STRIPE_SECRET_KEY` | `sk_test_replace_me` | — | Stripe API secret key (billing). |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_replace_me` | — | Stripe webhook signing secret. |
+| `STRIPE_PUBLISHABLE_KEY` | `stripe_publishable_key_replace_me` | — | — |
+| `STRIPE_SECRET_KEY` | `stripe_secret_key_replace_me` | — | Stripe API secret key (billing). |
+| `STRIPE_WEBHOOK_SECRET` | `stripe_webhook_secret_replace_me` | — | Stripe webhook signing secret. |
 | `SUPABASE_JWT_AUD` | `authenticated` | — | — |
 | `SUPABASE_JWT_SECRET` | — | — | — |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | — | — |

@@ -65,9 +65,9 @@ class Settings(BaseSettings):
     max_batch_items_pro: int = Field(default=100)
 
     # ─── Billing ──────────────────────────────────────────────────────────────
-    stripe_secret_key: str = Field(default="sk_test_replace_me")
-    stripe_publishable_key: str = Field(default="pk_test_replace_me")
-    stripe_webhook_secret: str = Field(default="whsec_replace_me")
+    stripe_secret_key: str = Field(default="stripe_secret_key_replace_me")
+    stripe_publishable_key: str = Field(default="stripe_publishable_key_replace_me")
+    stripe_webhook_secret: str = Field(default="stripe_webhook_secret_replace_me")
 
     # ─── Observability ────────────────────────────────────────────────────────
     otel_exporter_otlp_endpoint: str | None = Field(default=None)

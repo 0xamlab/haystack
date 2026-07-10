@@ -279,9 +279,9 @@ class Settings(BaseSettings):
     max_batch_items_pro: int = Field(default=100)
 
     # ─── Billing ──────────────────────────────────────────────────────────────
-    stripe_secret_key: str = Field(default="sk_test_replace_me")
-    stripe_publishable_key: str = Field(default="pk_test_replace_me")
-    stripe_webhook_secret: str = Field(default="whsec_replace_me")
+    stripe_secret_key: str = Field(default="stripe_secret_key_replace_me")
+    stripe_publishable_key: str = Field(default="stripe_publishable_key_replace_me")
+    stripe_webhook_secret: str = Field(default="stripe_webhook_secret_replace_me")
     stripe_price_developer: str = Field(default="price_developer_replace_me")
     stripe_price_pro: str = Field(default="price_pro_replace_me")
     stripe_price_proplus: str = Field(default="price_proplus_replace_me")

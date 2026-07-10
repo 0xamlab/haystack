@@ -72,8 +72,19 @@ SECRET_PATTERNS = (
     re.compile(r"\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b"),
 )
 
+DISALLOWED_PLACEHOLDER_SECRET_PREFIX_PATTERNS = (
+    re.compile(r"\b(?:ghp|gho|ghs|ghu|ghr)_[A-Za-z0-9_./=-]*\b"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_./=-]*\b"),
+    re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9_./=-]*\b"),
+    re.compile(r"\bpk_(?:live|test)_[A-Za-z0-9_./=-]*\b"),
+    re.compile(r"\bwhsec_[A-Za-z0-9_./=-]*\b"),
+    re.compile(r"\bflyv1[A-Za-z0-9_./=-]*\b"),
+)
+
 PRIVATE_LEAK_PATTERNS = (
-    re.compile(r"/Users/angel\b"),
+    re.compile(r"/Users/[A-Za-z0-9._-]+"),
+    re.compile(r"/private/tmp\b"),
+    re.compile(r"\bdecision-engine/\.env\b"),
     re.compile(r"\bangel@[A-Za-z0-9_.-]+\b", re.IGNORECASE),
     re.compile(r"\bglobet\.io\b", re.IGNORECASE),
     re.compile(r"\b(private repo|internal-only|do not publish)\b", re.IGNORECASE),
@@ -292,6 +303,19 @@ def _find_secret_issues(path: Path, rel_path: str, text: str) -> list[Issue]:
                     path=rel_path,
                     line=_line_for_offset(text, match.start()),
                     details={"prefix": token[:12]},
+                )
+            )
+    for regex in DISALLOWED_PLACEHOLDER_SECRET_PREFIX_PATTERNS:
+        for match in regex.finditer(text):
+            token = match.group(0)
+            issues.append(
+                Issue(
+                    severity="ERROR",
+                    code="secret_like_placeholder_prefix",
+                    message="Docs contain a provider-specific secret prefix placeholder; use a neutral environment-variable placeholder instead.",
+                    path=rel_path,
+                    line=_line_for_offset(text, match.start()),
+                    details={"prefix": token[:16]},
                 )
             )
     for regex in PRIVATE_LEAK_PATTERNS:
@@ -603,12 +627,14 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
     llms_text = llms_body.decode("utf-8", "replace")
     if llms_status != 200 or "Algenta" not in llms_text or "https://docs.algenta.ai" not in llms_text:
         issues.append(Issue("ERROR", "llms_txt_invalid", "llms.txt is missing or does not identify Algenta docs."))
+    issues.extend(_find_secret_issues(Path("llms.txt"), "live:llms.txt", llms_text))
 
     llms_full_status, llms_full_body, _ = _fetch(f"{base}/llms-full.txt", max_bytes=3_000_000)
     result["llms_full_status"] = llms_full_status
     llms_full_text = llms_full_body.decode("utf-8", "replace")
     if llms_full_status != 200 or "Using these docs with AI" not in llms_full_text:
         issues.append(Issue("ERROR", "llms_full_invalid", "llms-full.txt is missing the AI access page content."))
+    issues.extend(_find_secret_issues(Path("llms-full.txt"), "live:llms-full.txt", llms_full_text))
 
     for route in LIVE_MARKDOWN_SAMPLES:
         status, body, content_type = _fetch(f"{base}{route}", max_bytes=500_000)
@@ -623,6 +649,7 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
                     details={"route": route, "status": status, "content_type": content_type},
                 )
             )
+        issues.extend(_find_secret_issues(Path(route.lstrip("/")), f"live:{route}", text))
 
     mcp_status, mcp_body, _ = _fetch(f"{base}/~gitbook/mcp", max_bytes=100_000)
     result["docs_mcp_status"] = mcp_status

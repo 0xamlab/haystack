@@ -44,6 +44,37 @@ def test_secret_scanner_rejects_concrete_bearer_tokens(tmp_path: Path) -> None:
     assert issues[0].line == 1
 
 
+def test_secret_scanner_rejects_provider_specific_placeholder_prefixes(tmp_path: Path) -> None:
+    audit = _load_module()
+    path = tmp_path / "page.md"
+    text = '\n'.join([
+        '"access_token": "ghp_example_token"',
+        'export ALGENTA_API_KEY="sk_live_..."',
+        'STRIPE_PUBLISHABLE_KEY=pk_test_replace_me',
+        'STRIPE_WEBHOOK_SECRET=whsec_replace_me',
+        '',
+    ])
+
+    issues = audit._find_secret_issues(path, "page.md", text)
+
+    assert [issue.code for issue in issues] == [
+        "secret_like_placeholder_prefix",
+        "secret_like_placeholder_prefix",
+        "secret_like_placeholder_prefix",
+        "secret_like_placeholder_prefix",
+    ]
+    assert [issue.line for issue in issues] == [1, 2, 3, 4]
+
+
+def test_secret_scanner_allows_redacted_algenta_placeholders(tmp_path: Path) -> None:
+    audit = _load_module()
+    path = tmp_path / "page.md"
+
+    issues = audit._find_secret_issues(path, "page.md", 'export ALGENTA_API_KEY="de_live_..."\n')
+
+    assert issues == []
+
+
 def test_machine_snippet_validator_rejects_malformed_json(tmp_path: Path) -> None:
     audit = _load_module()
     fence = audit.CodeFence(
