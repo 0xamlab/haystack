@@ -27,6 +27,10 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_ENFORCE_LICENSE_VALIDATION` | — | — | Enable fail-closed license validation on self-hosted deployments. |
 | `ALGENTA_ENFORCE_STORAGE_CAP` | `False` | — | Enforce the per-org free-tier storage_gb quota (opt-in). |
 | `ALGENTA_ENGINE_IMAGE` | — | — | Docker image to deploy on all cloud providers. MUST be a pinned tag or @sha256 digest (e.g. .../api:git-<sha>); never a floating :latest. Empty = unconfigured (provisioning supplies a pinned ref). |
+| `ALGENTA_ENTRA_ALLOWED_CLIENT_APPS` | — | — | — |
+| `ALGENTA_ENTRA_ALLOWED_TENANTS` | — | — | — |
+| `ALGENTA_ENTRA_AUDIENCE` | — | — | — |
+| `ALGENTA_ENTRA_TENANT_ID` | — | — | — |
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
 | `ALGENTA_METERING_MODE` | — | — | Metering destination: disabled \| local_audit \| control_plane_sync. |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | — | — | Require a valid local signed license; disable hosted/dev fallback. |

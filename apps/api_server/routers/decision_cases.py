@@ -90,12 +90,18 @@ def get_decision_service(db: AsyncSession = Depends(get_db)) -> DecisionService:
     return DecisionService(SqlDecisionRepository(db))
 
 
+# Approving or executing a decision plan is a privileged act: admin-or-owner only. Service
+# keys are pinned to 'viewer' by the auth layer precisely so they can never reach this.
+_APPROVAL_MIN_ROLE = "admin"
+
+
 def _scope_from_auth(auth: AuthContext) -> RequestScope:
     user_id = auth.get("user_id")
     return RequestScope(
         org_id=auth["org_id"],
         workspace_id=auth.get("workspace_id"),
         principal=str(user_id) if user_id else f"key:{auth.get('key_id')}",
+        role=auth.get("role"),
     )
 
 
@@ -370,6 +376,7 @@ async def approve_plan(
             plan_hash=payload.plan_hash,
             nonce=payload.nonce,
             idempotency_key=payload.idempotency_key,
+            required_role=_APPROVAL_MIN_ROLE,
         )
     except DecisionServiceError as exc:
         raise _http(exc) from exc
@@ -403,7 +410,9 @@ async def execute_plan(
 ) -> ExecutionPlanResponse:
     scope = _scope_from_auth(auth)
     try:
-        plan = await svc.execute_approved_plan(scope, plan_id=plan_id)
+        plan = await svc.execute_approved_plan(
+            scope, plan_id=plan_id, required_role=_APPROVAL_MIN_ROLE
+        )
     except DecisionServiceError as exc:
         raise _http(exc) from exc
     await db.commit()

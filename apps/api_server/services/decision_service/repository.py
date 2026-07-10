@@ -36,6 +36,11 @@ class DecisionRepository(Protocol):
         self, case_id: uuid.UUID, org_id: uuid.UUID, workspace_id: uuid.UUID | None
     ) -> DecisionCaseRecord | None: ...
     async def update_case(self, case: DecisionCaseRecord) -> DecisionCaseRecord: ...
+    async def set_case_status(
+        self, case_id: uuid.UUID, org_id: uuid.UUID, workspace_id: uuid.UUID | None, status: str
+    ) -> None:
+        """Narrow, status-only update — never blind-applies a stale case snapshot."""
+        ...
 
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord: ...
     async def get_revision(
@@ -63,6 +68,15 @@ class DecisionRepository(Protocol):
         self, plan_id: uuid.UUID, org_id: uuid.UUID, workspace_id: uuid.UUID | None
     ) -> ExecutionPlanRecord | None: ...
     async def update_plan(self, plan: ExecutionPlanRecord) -> ExecutionPlanRecord: ...
+    async def transition_plan_state(
+        self, plan: ExecutionPlanRecord, from_state: str
+    ) -> bool:
+        """Compare-and-set: apply ``plan`` only if the stored row is still in ``from_state``.
+
+        Returns True when the transition won; False when another request already moved the
+        plan out of ``from_state`` (the caller must treat that as a lost race, not retry).
+        """
+        ...
 
     async def add_approval(self, ap: ApprovalRecord) -> ApprovalRecord: ...
     async def update_approval(self, ap: ApprovalRecord) -> ApprovalRecord: ...
@@ -70,8 +84,12 @@ class DecisionRepository(Protocol):
         self, case_id: uuid.UUID, org_id: uuid.UUID, workspace_id: uuid.UUID | None
     ) -> list[ApprovalRecord]: ...
     async def find_approval_by_idempotency(
-        self, idempotency_key: str, org_id: uuid.UUID, workspace_id: uuid.UUID | None
-    ) -> ApprovalRecord | None: ...
+        self, idempotency_key: str, org_id: uuid.UUID
+    ) -> ApprovalRecord | None:
+        """ORG-wide lookup — must match the scope of the DB unique index
+        ``uq_decision_approvals_org_idempotency`` exactly, or a same-key insert from another
+        workspace bypasses the pre-check and dies as an IntegrityError."""
+        ...
 
     async def add_outcome(self, outcome: OutcomeRecord) -> OutcomeRecord: ...
 
@@ -109,6 +127,11 @@ class InMemoryDecisionRepository:
     async def update_case(self, case: DecisionCaseRecord) -> DecisionCaseRecord:
         self._cases[case.id] = case.model_copy(deep=True)
         return case
+
+    async def set_case_status(self, case_id, org_id, workspace_id, status):  # type: ignore[no-untyped-def]
+        c = self._cases.get(case_id)
+        if c is not None and _visible(c, org_id, workspace_id):
+            c.status = status  # narrow: mutate only status on the STORED copy
 
     # ── revisions ──
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord:
@@ -165,6 +188,16 @@ class InMemoryDecisionRepository:
         self._plans[plan.id] = plan.model_copy(deep=True)
         return plan
 
+    async def transition_plan_state(self, plan: ExecutionPlanRecord, from_state: str) -> bool:
+        stored = self._plans.get(plan.id)
+        if stored is None or not _visible(stored, plan.org_id, plan.workspace_id):
+            return False
+        # No awaits between check and set — atomic under the single-threaded event loop.
+        if stored.lifecycle_state != from_state:
+            return False
+        self._plans[plan.id] = plan.model_copy(deep=True)
+        return True
+
     # ── approvals ──
     async def add_approval(self, ap: ApprovalRecord) -> ApprovalRecord:
         self._approvals[ap.id] = ap.model_copy(deep=True)
@@ -181,9 +214,10 @@ class InMemoryDecisionRepository:
             if a.case_id == case_id and _visible(a, org_id, workspace_id)
         ]
 
-    async def find_approval_by_idempotency(self, idempotency_key, org_id, workspace_id):  # type: ignore[no-untyped-def]
+    async def find_approval_by_idempotency(self, idempotency_key, org_id):  # type: ignore[no-untyped-def]
+        # Org-wide by design — mirrors uq_decision_approvals_org_idempotency.
         for a in self._approvals.values():
-            if a.idempotency_key == idempotency_key and _visible(a, org_id, workspace_id):
+            if a.idempotency_key == idempotency_key and a.org_id == org_id:
                 return a.model_copy(deep=True)
         return None
 

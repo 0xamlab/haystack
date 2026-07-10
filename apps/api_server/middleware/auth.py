@@ -8,9 +8,9 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.db.session import get_db
-from apps.api_server.services.offline_token import verify_offline_token
 from apps.api_server.models.organization import OrgStatus
 from apps.api_server.models.user import UserStatus
+from apps.api_server.services import entra_auth
 from apps.api_server.services.auth_service import (
     AuthContext,
     consume_auth_session_dirty,
@@ -21,6 +21,7 @@ from apps.api_server.services.device_service import (
     DeviceBindingError,
     bind_hosted_api_device,
 )
+from apps.api_server.services.offline_token import verify_offline_token
 
 logger = structlog.get_logger(__name__)
 
@@ -33,6 +34,41 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 async def get_redis(request: Request) -> object:
     """Extract Redis client from app state."""
     return request.app.state.redis
+
+
+# Entra failures that mean "you are who you say, but not allowed here" (403) vs bad token (401).
+_ENTRA_FORBIDDEN_CODES = frozenset(
+    {"principal_not_mapped", "tenant_not_allowed", "client_app_not_allowed", "wrong_resource_token"}
+)
+
+
+async def _verify_entra_bearer(raw_key: str, db: AsyncSession, request: Request) -> AuthContext:
+    """Verify an Entra bearer and resolve it to an AuthContext, or raise the right HTTP error."""
+
+    from apps.api_server.services.entra_org_resolver import resolve_entra_principal
+
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        principal = await entra_auth.verify_entra_token(raw_key)
+        return await resolve_entra_principal(principal, db)
+    except entra_auth.EntraAuthError as exc:
+        if exc.code in entra_auth.SERVICE_ERROR_CODES:
+            status = 503
+        elif exc.code in _ENTRA_FORBIDDEN_CODES:
+            status = 403
+        else:
+            status = 401
+        logger.info("entra_auth_rejected", code=exc.code, status=status)
+        raise HTTPException(
+            status_code=status,
+            detail={
+                "error": {
+                    "code": f"entra_{exc.code}",
+                    "message": exc.message,
+                    "request_id": request_id,
+                }
+            },
+        ) from exc
 
 
 async def get_current_org(
@@ -69,6 +105,34 @@ async def get_current_org(
                 }
             },
         )
+
+    # MICROSOFT ENTRA ID: when the gateway is Entra-configured AND the bearer's (unverified)
+    # issuer is an Entra issuer, this is the ONLY verifier tried — an Entra-looking token that
+    # fails verification is rejected outright, never fed to the api-key/license paths
+    # (fail-closed; no downgrade). The workspace comes from the provisioned principal mapping,
+    # never from headers (is_platform=False also blocks X-Workspace-Id).
+    if entra_auth.entra_configured() and entra_auth.looks_like_entra_token(raw_key):
+        ctx = await _verify_entra_bearer(raw_key, db, request)
+        _enforce_account_status(ctx, request)
+        _hdrs = getattr(request, "headers", None)
+        if _hdrs is not None and (_hdrs.get("X-Workspace-Id") or "").strip():
+            # The workspace is DERIVED from the principal mapping; an Entra caller may never
+            # select one. Reject explicitly (same posture as tenant keys) — never ignore.
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "workspace_scope_not_permitted",
+                        "message": (
+                            "An Entra identity's workspace is derived from its provisioned "
+                            "mapping; X-Workspace-Id is not permitted."
+                        ),
+                        "request_id": getattr(request.state, "request_id", None),
+                    }
+                },
+            )
+        request.state.org_id = ctx["org_id"]
+        return ctx
 
     # OFFLINE-FIRST AUTH: verify a signed license JWT LOCALLY (signature + expiry) and map its
     # claims to an AuthContext — ZERO Postgres/Redis/network on the hot path (the per-request

@@ -13,7 +13,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.decision_aggregate import (
@@ -144,6 +145,15 @@ class SqlDecisionRepository:
     async def update_case(self, case: DecisionCaseRecord) -> DecisionCaseRecord:
         return await self._update(DecisionCase, case, _CASE_FIELDS)
 
+    async def set_case_status(self, case_id, org_id, workspace_id, status):  # type: ignore[no-untyped-def]
+        stmt = (
+            update(DecisionCase)
+            .where(DecisionCase.id == case_id, *_scope(DecisionCase, org_id, workspace_id))
+            .values(status=status)
+        )
+        await self._db.execute(stmt)
+        await self._db.flush()
+
     # ── revisions ──
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord:
         return await self._add(DecisionRevision, rev, _REVISION_FIELDS)
@@ -195,9 +205,37 @@ class SqlDecisionRepository:
     async def update_plan(self, plan: ExecutionPlanRecord) -> ExecutionPlanRecord:
         return await self._update(ExecutionPlan, plan, _PLAN_FIELDS)
 
+    async def transition_plan_state(self, plan: ExecutionPlanRecord, from_state: str) -> bool:
+        # Conditional UPDATE — the WHERE on lifecycle_state makes the transition win-once
+        # under READ COMMITTED (the loser's UPDATE matches 0 rows after the winner commits).
+        values = {f: getattr(plan, f) for f in _PLAN_FIELDS}
+        stmt = (
+            update(ExecutionPlan)
+            .where(
+                ExecutionPlan.id == plan.id,
+                ExecutionPlan.lifecycle_state == from_state,
+                *_scope(ExecutionPlan, plan.org_id, plan.workspace_id),
+            )
+            .values(**values)
+        )
+        result = await self._db.execute(stmt)
+        await self._db.flush()
+        return bool(getattr(result, "rowcount", 0))
+
     # ── approvals ──
     async def add_approval(self, ap: ApprovalRecord) -> ApprovalRecord:
-        return await self._add(Approval, ap, _APPROVAL_FIELDS)
+        try:
+            return await self._add(Approval, ap, _APPROVAL_FIELDS)
+        except IntegrityError as exc:
+            # uq_decision_approvals_org_idempotency — a concurrent first-use of the same key
+            # beat us to the insert. Map the designed backstop to the workflow error instead
+            # of surfacing a 500. (Lazy import: service imports this module's sibling, not us.)
+            from .service import DecisionServiceError
+
+            raise DecisionServiceError(
+                "idempotency_key_conflict",
+                "idempotency_key was concurrently used by another approval request",
+            ) from exc
 
     async def update_approval(self, ap: ApprovalRecord) -> ApprovalRecord:
         return await self._update(Approval, ap, _APPROVAL_FIELDS)
@@ -209,10 +247,12 @@ class SqlDecisionRepository:
         rows = (await self._db.execute(stmt)).scalars().all()
         return [_to_record(r, ApprovalRecord, _APPROVAL_FIELDS) for r in rows]
 
-    async def find_approval_by_idempotency(self, idempotency_key, org_id, workspace_id):  # type: ignore[no-untyped-def]
+    async def find_approval_by_idempotency(self, idempotency_key, org_id):  # type: ignore[no-untyped-def]
+        # Org-wide — matches uq_decision_approvals_org_idempotency exactly, so the pre-check
+        # and the unique constraint can never disagree about what counts as a duplicate.
         stmt = select(Approval).where(
             Approval.idempotency_key == idempotency_key,
-            *_scope(Approval, org_id, workspace_id),
+            Approval.org_id == org_id,
         )
         row = (await self._db.execute(stmt)).scalars().first()
         return _to_record(row, ApprovalRecord, _APPROVAL_FIELDS) if row is not None else None

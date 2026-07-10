@@ -357,6 +357,31 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SUPABASE_JWT_AUD"),
     )
 
+    # ─── Microsoft Entra ID (Decision API identity) ──────────────────────────────
+    # Inert unless BOTH tenant + audience are set. The audience is the gateway's own app
+    # registration (app-id URI or client id) — tokens minted for any other resource
+    # (Graph, ARM, …) are rejected by services/entra_auth.py.
+    entra_tenant_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ENTRA_TENANT_ID"),
+    )
+    entra_audience: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ENTRA_AUDIENCE"),
+    )
+    # Comma-separated extra tenant ids allowed to call this gateway (the configured tenant is
+    # always allowed). Empty = single-tenant.
+    entra_allowed_tenants: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ENTRA_ALLOWED_TENANTS"),
+    )
+    # Comma-separated client application ids (azp/appid) allowed to present tokens.
+    # Empty = any client app in an allowed tenant.
+    entra_allowed_client_apps: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_ENTRA_ALLOWED_CLIENT_APPS"),
+    )
+
     # ─── Cloud Provider Credentials (for per-org deployment provisioning) ──────
     # AWS
     aws_access_key_id: str | None = Field(

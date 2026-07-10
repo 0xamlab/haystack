@@ -25,7 +25,7 @@ _ORG_A = uuid.uuid4()
 _ORG_B = uuid.uuid4()
 
 
-def _auth_ctx(org_id: uuid.UUID) -> dict[str, Any]:
+def _auth_ctx(org_id: uuid.UUID, role: str = "admin") -> dict[str, Any]:
     return {
         "org_id": org_id,
         "user_id": uuid.uuid4(),
@@ -33,6 +33,7 @@ def _auth_ctx(org_id: uuid.UUID) -> dict[str, Any]:
         "plan": "pro",
         "is_platform": False,
         "workspace_id": None,
+        "role": role,
     }
 
 
@@ -41,11 +42,15 @@ class _StubSession:
         return None
 
 
-def _app(org_id: uuid.UUID = _ORG_A, shared_service: DecisionService | None = None) -> FastAPI:
+def _app(
+    org_id: uuid.UUID = _ORG_A,
+    shared_service: DecisionService | None = None,
+    role: str = "admin",
+) -> FastAPI:
     app = FastAPI()
     app.include_router(decision_cases.router)
     service = shared_service or DecisionService(InMemoryDecisionRepository())
-    ctx = _auth_ctx(org_id)
+    ctx = _auth_ctx(org_id, role=role)
     app.dependency_overrides[get_current_org] = lambda: ctx
     app.dependency_overrides[require_verified_email] = lambda: ctx
     app.dependency_overrides[decision_cases.get_db] = lambda: _StubSession()
@@ -190,6 +195,30 @@ def test_invalid_framing_is_422_and_unknown_pack_400() -> None:
         assert r.status_code == 422 and r.json()["detail"]["code"] == "invalid_framing"
         r = client.post("/v1/decision-cases", json={"pack_id": "nope", "title": "x", "pack_input": {}})
         assert r.status_code == 400 and r.json()["detail"]["code"] == "unknown_pack"
+
+
+def test_viewer_role_cannot_approve_or_execute() -> None:
+    # #320 review (HIGH): a viewer/service-role credential must not be able to self-approve.
+    shared = DecisionService(InMemoryDecisionRepository())
+    with SyncASGIClient(_app(_ORG_A, shared)) as admin:
+        case = admin.post("/v1/decision-cases", json=_create_body()).json()
+        run = admin.post(f"/v1/decision-cases/{case['case_id']}/analysis-runs", json={}).json()
+        plan = admin.post(f"/v1/analysis-runs/{run['run_id']}/action-plans").json()
+    with SyncASGIClient(_app(_ORG_A, shared, role="viewer")) as viewer:
+        r = viewer.post(
+            f"/v1/decision-plans/{plan['plan_id']}/approve",
+            json={"plan_hash": plan["plan_hash"], "nonce": plan["nonce"]},
+        )
+        assert r.status_code == 403 and r.json()["detail"]["code"] == "insufficient_role"
+    with SyncASGIClient(_app(_ORG_A, shared)) as admin:
+        r = admin.post(
+            f"/v1/decision-plans/{plan['plan_id']}/approve",
+            json={"plan_hash": plan["plan_hash"], "nonce": plan["nonce"]},
+        )
+        assert r.status_code == 200
+    with SyncASGIClient(_app(_ORG_A, shared, role="viewer")) as viewer:
+        r = viewer.post(f"/v1/decision-plans/{plan['plan_id']}/execute")
+        assert r.status_code == 403 and r.json()["detail"]["code"] == "insufficient_role"
 
 
 def test_cross_org_isolation_over_http() -> None:

@@ -15,7 +15,7 @@ import json
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from apps.api_server.decision_packs import renewal_capacity_allocation as _rca
@@ -82,6 +82,30 @@ def _canonical(obj: Any) -> str:
 
 def _hash(obj: Any) -> str:
     return hashlib.sha256(_canonical(obj).encode("utf-8")).hexdigest()
+
+
+# Approval challenges expire this long after the plan was PROPOSED (a leaked propose
+# response must not be approvable days later).
+_APPROVAL_NONCE_TTL = timedelta(hours=24)
+
+# Role hierarchy for minimum-role gates. Unknown/missing roles rank below everything, so a
+# scope with no role (or a made-up one) can never satisfy a gate — fail closed.
+_ROLE_RANK = {"viewer": 0, "member": 1, "admin": 2, "owner": 3}
+
+
+def _require_min_role(scope: RequestScope, required_role: str | None, *, action: str) -> None:
+    """Enforce a MINIMUM role (hierarchy-aware). No-op when no gate is requested."""
+
+    if required_role is None:
+        return
+    have = _ROLE_RANK.get((scope.role or "").lower(), -1)
+    need = _ROLE_RANK.get(required_role.lower())
+    if need is None:
+        need = max(_ROLE_RANK.values()) + 1  # unknown requirement = unsatisfiable, fail closed
+    if have < need:
+        raise DecisionServiceError(
+            "insufficient_role", f"{action} requires role '{required_role}' or higher"
+        )
 
 
 class DecisionService:
@@ -172,6 +196,14 @@ class DecisionService:
         case = await self._repo.get_case(case_id, scope.org_id, scope.workspace_id)
         if case is None:
             raise DecisionServiceError("case_not_found", f"Decision case {case_id} not found")
+        if case.pack_id != pack_id:
+            # A case is permanently bound to its pack: revisions/runs under a different pack
+            # would silently diverge from case.pack_id. Start a new case instead.
+            raise DecisionServiceError(
+                "invalid_framing",
+                f"pack_id cannot change on an existing case (case is '{case.pack_id}'); "
+                "create a new decision case",
+            )
         current = (
             await self._repo.get_revision(
                 case.current_revision_id, scope.org_id, scope.workspace_id
@@ -180,7 +212,15 @@ class DecisionService:
             else None
         )
         if current is not None and current.inputs_hash == inputs_hash:
-            return case, current  # no-op: identical framing
+            # Identical framing — but title/owner-only changes are NON-material updates
+            # that must still apply (they don't touch the immutable revision).
+            if case.title != title or (owner is not None and case.owner != owner):
+                case.title = title
+                if owner is not None:
+                    case.owner = owner
+                case.updated_at = self._now()
+                await self._repo.update_case(case)
+            return case, current
 
         # Material change → new immutable revision + invalidate prior approvals/plans.
         # Children inherit the CASE's workspace (not the caller's): an org-wide platform
@@ -292,9 +332,14 @@ class DecisionService:
 
         await self._build_recommendation(scope, case, run, result_dict)
 
-        case.status = "recommended" if result_dict.get("feasible") else "analyzing"
-        case.updated_at = self._now()
-        await self._repo.update_case(case)
+        # Status-only — a blind update_case here could revert a concurrent re-frame's
+        # current_revision pointer to this request's stale snapshot.
+        await self._repo.set_case_status(
+            case.id,
+            scope.org_id,
+            scope.workspace_id,
+            "recommended" if result_dict.get("feasible") else "analyzing",
+        )
         return run
 
     def _evidence_sources(self, rev: RevisionRecord, retention_mode: str) -> dict[str, Any]:
@@ -459,8 +504,9 @@ class DecisionService:
         expires_at: datetime | None = None,
     ) -> ApprovalRecord:
         if idempotency_key:
+            # Org-wide lookup — matches the scope of the DB unique index exactly.
             existing = await self._repo.find_approval_by_idempotency(
-                idempotency_key, scope.org_id, scope.workspace_id
+                idempotency_key, scope.org_id
             )
             if existing is not None:
                 # An idempotency key is only a safe replay if the request fingerprint matches
@@ -490,12 +536,16 @@ class DecisionService:
             )
         if plan.nonce != nonce or plan.nonce_consumed:
             raise DecisionServiceError("invalid_nonce", "approval nonce is invalid or already used")
+        # The approval challenge expires: by the caller-supplied deadline (if any) AND by the
+        # nonce TTL measured from when the plan was PROPOSED (so a leaked propose-response
+        # can't be approved days later).
         if expires_at is not None and self._now() > expires_at:
             raise DecisionServiceError("approval_expired", "approval challenge has expired")
-        if required_role is not None and scope.role != required_role:
+        if self._now() > plan.created_at + _APPROVAL_NONCE_TTL:
             raise DecisionServiceError(
-                "insufficient_role", f"approval requires role '{required_role}'"
+                "approval_expired", "the approval challenge for this plan has expired; re-propose"
             )
+        _require_min_role(scope, required_role, action="approval")
         # Material-change guard: the plan's revision must still be the case's current revision.
         case = await self._repo.get_case(plan.case_id, scope.org_id, scope.workspace_id)
         if case is None:
@@ -523,23 +573,34 @@ class DecisionService:
             expires_at=expires_at,
             decided_at=self._now(),
         )
-        await self._repo.add_approval(approval)
-
+        # Win the state transition FIRST (compare-and-set on 'proposed'): under concurrency
+        # exactly one approve consumes the nonce; the loser sees plan_not_approvable.
         plan.nonce_consumed = True
         plan.lifecycle_state = "approved"
         plan.approval_id = approval.id
         plan.updated_at = self._now()
-        await self._repo.update_plan(plan)
+        if not await self._repo.transition_plan_state(plan, "proposed"):
+            raise DecisionServiceError(
+                "plan_not_approvable", "the plan was concurrently approved or invalidated"
+            )
+        await self._repo.add_approval(approval)
 
-        case.status = "approved"
-        case.updated_at = self._now()
-        await self._repo.update_case(case)
+        # Status-only case update — never blind-apply a stale case snapshot (a concurrent
+        # re-frame's current_revision pointer must not be reverted here).
+        await self._repo.set_case_status(
+            case.id, scope.org_id, scope.workspace_id, "approved"
+        )
         return approval
 
     # ── 6. execute (approve != execute; requires a prior approval) ───────────────────
     async def execute_approved_plan(
-        self, scope: RequestScope, *, plan_id: uuid.UUID
+        self,
+        scope: RequestScope,
+        *,
+        plan_id: uuid.UUID,
+        required_role: str | None = None,
     ) -> ExecutionPlanRecord:
+        _require_min_role(scope, required_role, action="execution")
         plan = await self._repo.get_plan(plan_id, scope.org_id, scope.workspace_id)
         if plan is None:
             raise DecisionServiceError("plan_not_found", f"Execution plan {plan_id} not found")
@@ -563,11 +624,15 @@ class DecisionService:
         }
         plan.lifecycle_state = "executed"
         plan.updated_at = self._now()
-        await self._repo.update_plan(plan)
+        # Compare-and-set on 'approved': execute-once under concurrency (the loser 409s).
+        if not await self._repo.transition_plan_state(plan, "approved"):
+            raise DecisionServiceError(
+                "plan_not_approved", "the plan was concurrently executed or invalidated"
+            )
 
-        case.status = "monitoring"
-        case.updated_at = self._now()
-        await self._repo.update_case(case)
+        await self._repo.set_case_status(
+            case.id, scope.org_id, scope.workspace_id, "monitoring"
+        )
         return plan
 
     # ── 7. learn ─────────────────────────────────────────────────────────────────────
@@ -586,7 +651,13 @@ class DecisionService:
         delta: dict[str, Any] = {}
         if run_id is not None:
             run = await self._repo.get_run(run_id, scope.org_id, scope.workspace_id)
-            if run and run.result:
+            # The run must exist AND belong to THIS case — an outcome computed from another
+            # case's run would corrupt the learning loop with a nonsense delta.
+            if run is None or run.case_id != case.id:
+                raise DecisionServiceError(
+                    "run_not_found", "run_id does not reference an analysis run of this case"
+                )
+            if run.result:
                 rec_id = run.result.get("recommended_scenario_id")
                 chosen = next(
                     (s for s in run.result.get("scenarios", []) if s.get("id") == rec_id), None
@@ -608,9 +679,9 @@ class DecisionService:
             recorded_at=self._now(),
         )
         await self._repo.add_outcome(outcome)
-        case.status = "monitoring"
-        case.updated_at = self._now()
-        await self._repo.update_case(case)
+        await self._repo.set_case_status(
+            case.id, scope.org_id, scope.workspace_id, "monitoring"
+        )
         return outcome
 
     async def refresh_decision(

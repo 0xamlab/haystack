@@ -225,7 +225,8 @@ def test_stale_plan_cannot_be_approved_after_revision() -> None:
         )
         with pytest.raises(DecisionServiceError) as e:
             await svc.approve(scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce)
-        assert e.value.code in ("stale_plan", "invalid_nonce")  # plan may be compensated first
+        # the reframe compensates the plan (failed_compensated) before the stale check fires
+        assert e.value.code in ("stale_plan", "plan_not_approvable")
 
     asyncio.run(run())
 
@@ -326,6 +327,119 @@ def test_children_inherit_case_workspace_from_org_wide_caller() -> None:
             ws_scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce
         )
         assert approval.workspace_id == ws
+
+    asyncio.run(run())
+
+
+def test_concurrent_double_approve_single_winner() -> None:
+    # #320 review: two parallel approves with the same nonce -> exactly one wins (CAS).
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        r = await svc.run_decision_analysis(scope, case_id=case.id)
+        plan = await svc.propose_action_plan(scope, r.id)
+
+        async def try_approve():
+            try:
+                await svc.approve(scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce)
+                return "ok"
+            except DecisionServiceError as e:
+                return e.code
+
+        results = await asyncio.gather(try_approve(), try_approve())
+        assert sorted(results) == ["ok", "plan_not_approvable"]
+        approvals = await svc._repo.get_approvals_for_case(case.id, scope.org_id, scope.workspace_id)
+        assert len([a for a in approvals if a.status == "approved"]) == 1
+
+    asyncio.run(run())
+
+
+def test_concurrent_double_execute_single_winner() -> None:
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        r = await svc.run_decision_analysis(scope, case_id=case.id)
+        plan = await svc.propose_action_plan(scope, r.id)
+        await svc.approve(scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce)
+
+        async def try_execute():
+            try:
+                await svc.execute_approved_plan(scope, plan_id=plan.id)
+                return "ok"
+            except DecisionServiceError as e:
+                return e.code
+
+        results = await asyncio.gather(try_execute(), try_execute())
+        assert sorted(results) == ["ok", "plan_not_approved"]
+
+    asyncio.run(run())
+
+
+def test_approval_nonce_ttl_expires() -> None:
+    # #320 review: a leaked propose response must not be approvable after the nonce TTL.
+    async def run() -> None:
+        from datetime import timedelta
+
+        now = {"t": _FIXED_NOW}
+        svc = DecisionService(InMemoryDecisionRepository(), clock=lambda: now["t"])
+        scope = _scope()
+        case, _ = await _framed(svc, scope)
+        r = await svc.run_decision_analysis(scope, case_id=case.id)
+        plan = await svc.propose_action_plan(scope, r.id)
+        now["t"] = _FIXED_NOW + timedelta(hours=25)  # past the 24h nonce TTL
+        with pytest.raises(DecisionServiceError) as e:
+            await svc.approve(scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce)
+        assert e.value.code == "approval_expired"
+
+    asyncio.run(run())
+
+
+def test_outcome_run_must_belong_to_the_case() -> None:
+    # #320 review: an outcome must not compute its delta from another case's run.
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case_a, _ = await _framed(svc, scope)
+        case_b, _ = await svc.create_or_update_decision(
+            scope, pack_id="renewal_capacity_allocation", title="other case",
+            pack_input=_renewal_input(total_hours=60),
+        )
+        run_b = await svc.run_decision_analysis(scope, case_id=case_b.id)
+        with pytest.raises(DecisionServiceError) as e:
+            await svc.record_outcome(
+                scope, case_id=case_a.id, run_id=run_b.id, actual_metrics={"retained_arr": 1}
+            )
+        assert e.value.code == "run_not_found"
+
+    asyncio.run(run())
+
+
+def test_title_only_reframe_applies_without_new_revision() -> None:
+    # #320 review: identical framing + new title must update the case, not silently no-op.
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, rev1 = await _framed(svc, scope)
+        case2, rev2 = await svc.create_or_update_decision(
+            scope, pack_id="renewal_capacity_allocation", title="Renamed decision",
+            pack_input=_renewal_input(), case_id=case.id,
+        )
+        assert rev2.id == rev1.id  # same immutable revision
+        assert case2.title == "Renamed decision"
+        stored = await svc._repo.get_case(case.id, scope.org_id, scope.workspace_id)
+        assert stored.title == "Renamed decision"
+
+    asyncio.run(run())
+
+
+def test_pack_id_cannot_change_on_an_existing_case() -> None:
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        with pytest.raises(DecisionServiceError) as e:
+            await svc.create_or_update_decision(
+                scope, pack_id="some_other_pack", title="x",
+                pack_input=_renewal_input(), case_id=case.id,
+            )
+        assert e.value.code in ("invalid_framing", "unknown_pack")
 
     asyncio.run(run())
 
