@@ -17,14 +17,32 @@ from .capability_plane import (
     ProviderType,
 )
 from .data_connector import ConnectorStatus, ConnectorType, DataConnector
+from .decision_aggregate import (
+    AnalysisRun,
+    AnalysisRunStatus,
+    Approval,
+    ApprovalStatus,
+    CaseStatus,
+    ChangeClass,
+    DecisionCase,
+    DecisionPack,
+    DecisionRevision,
+    EvidenceSnapshot,
+    ExecutionLifecycleState,
+    ExecutionPlan,
+    Outcome,
+    Recommendation,
+    RetentionMode,
+)
 from .deployment import CloudProvider, Deployment, DeploymentStatus
+from .device_grant import DeviceGrant
+from .dormant_notification import DormantNotification
 from .github_app_installation import GithubAppInstallation, GithubWebhookDelivery
 from .job import Job, JobStatus, WebhookStatus
 from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
+from .model_registry import ModelArtifact, ModelVersion, ValidationStatus
 from .organization import Organization, OrgPlan, OrgStatus
 from .simulation_run import ExecutionType, RunStatus, SimulationMode, SimulationRun
-from .dormant_notification import DormantNotification
-from .device_grant import DeviceGrant
 from .team_invite import InviteStatus, TeamInvite
 from .tenant_provider_key import ENGINE_BACKEND, TenantProviderKey
 from .usage_record import UsageEndpoint, UsageRecord
@@ -81,4 +99,24 @@ __all__ = [
     "AuditAction",
     "GithubAppInstallation",
     "GithubWebhookDelivery",
+    # Model registry
+    "ModelArtifact",
+    "ModelVersion",
+    "ValidationStatus",
+    # Versioned decision aggregate
+    "DecisionPack",
+    "DecisionCase",
+    "DecisionRevision",
+    "EvidenceSnapshot",
+    "AnalysisRun",
+    "Recommendation",
+    "Approval",
+    "ExecutionPlan",
+    "Outcome",
+    "CaseStatus",
+    "AnalysisRunStatus",
+    "RetentionMode",
+    "ApprovalStatus",
+    "ExecutionLifecycleState",
+    "ChangeClass",
 ]
