@@ -62,7 +62,10 @@ async def resolve_entra_principal(principal: EntraPrincipal, db: AsyncSession) -
     )
     return AuthContext(
         org_id=row.org_id,
-        key_id=row.id,  # the mapping row is the credential of record (auditable)
+        # No api_keys row backs an Entra identity. key_id stays None so writers stamp NULL into
+        # the nullable api_key_id FK columns (never a dangling FK), and key-anchored endpoints
+        # can detect a keyless identity instead of 500-ing on a missing lookup.
+        key_id=None,
         key_prefix="entra",
         user_id=None,
         plan=plan,
@@ -71,7 +74,10 @@ async def resolve_entra_principal(principal: EntraPrincipal, db: AsyncSession) -
         role=row.role,
         email=principal.preferred_username or row.email or principal.principal_ref,
         is_platform=False,  # an Entra caller may NEVER assume X-Workspace-Id
-        is_service=principal.principal_type == "app",
+        # NOT a service credential: is_service carries a repo-specific allowance (org-wide
+        # connector READ) meant for the agent's engine-callback key. An Entra principal's
+        # permissions come from its provisioned mapping role, never from is_service.
+        is_service=False,
         workspace_id=row.workspace_id,  # derived from the mapping, not the request
         org_status=org_status,
         user_status="active",

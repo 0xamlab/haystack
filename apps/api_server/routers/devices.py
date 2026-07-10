@@ -455,10 +455,25 @@ async def device_heartbeat(
         node_admission_block_count,
     )
 
+    if ctx["key_id"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "api_key_identity_required",
+                    "message": "This endpoint requires an API-key identity.",
+                }
+            },
+        )
     result = await db.execute(
         select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
-    api_key_row = result.scalar_one()
+    api_key_row = result.scalar_one_or_none()
+    if api_key_row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "api_key_not_found", "message": "API key not found."}},
+        )
     plan = _plan_name(api_key_row.organization.plan)
     device_limit = _api_key_effective_device_limit(api_key_row, plan)
 
@@ -568,10 +583,25 @@ async def device_list(
 
     from apps.api_server.models.api_key import APIKey
 
+    if ctx["key_id"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "api_key_identity_required",
+                    "message": "This endpoint requires an API-key identity.",
+                }
+            },
+        )
     result = await db.execute(
         select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
-    api_key_row = result.scalar_one()
+    api_key_row = result.scalar_one_or_none()
+    if api_key_row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "api_key_not_found", "message": "API key not found."}},
+        )
     plan = _plan_name(api_key_row.organization.plan)
     device_limit = _api_key_effective_device_limit(api_key_row, plan)
 

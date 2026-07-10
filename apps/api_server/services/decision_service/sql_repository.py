@@ -154,6 +154,18 @@ class SqlDecisionRepository:
         await self._db.execute(stmt)
         await self._db.flush()
 
+    async def update_case_meta(self, case_id, org_id, workspace_id, *, title, owner=None):  # type: ignore[no-untyped-def]
+        values: dict[str, Any] = {"title": title}
+        if owner is not None:
+            values["owner"] = owner
+        stmt = (
+            update(DecisionCase)
+            .where(DecisionCase.id == case_id, *_scope(DecisionCase, org_id, workspace_id))
+            .values(**values)
+        )
+        await self._db.execute(stmt)
+        await self._db.flush()
+
     # ── revisions ──
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord:
         return await self._add(DecisionRevision, rev, _REVISION_FIELDS)

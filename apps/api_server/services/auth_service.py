@@ -29,7 +29,10 @@ _INPROC_AUTH_CACHE: dict = {}
 
 class AuthContext(TypedDict):
     org_id: uuid.UUID
-    key_id: uuid.UUID
+    # None for identities not backed by an api_keys row (e.g. a verified Entra principal).
+    # Writers stamp it into the nullable api_key_id FK columns; key-anchored endpoints must
+    # handle None rather than assume a lookup will succeed.
+    key_id: uuid.UUID | None
     key_prefix: str
     user_id: uuid.UUID | None
     plan: str

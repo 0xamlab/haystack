@@ -215,11 +215,14 @@ class DecisionService:
             # Identical framing — but title/owner-only changes are NON-material updates
             # that must still apply (they don't touch the immutable revision).
             if case.title != title or (owner is not None and case.owner != owner):
+                # Narrow title/owner update — must NOT blind-write the whole case snapshot,
+                # or it would revert a concurrent material re-frame's current_revision pointer.
+                await self._repo.update_case_meta(
+                    case.id, scope.org_id, scope.workspace_id, title=title, owner=owner
+                )
                 case.title = title
                 if owner is not None:
                     case.owner = owner
-                case.updated_at = self._now()
-                await self._repo.update_case(case)
             return case, current
 
         # Material change → new immutable revision + invalidate prior approvals/plans.
@@ -259,10 +262,14 @@ class DecisionService:
                 await self._repo.update_approval(ap)
                 if ap.plan_id:
                     plan = await self._repo.get_plan(ap.plan_id, scope.org_id, scope.workspace_id)
-                    if plan and plan.lifecycle_state not in ("executed", "reconciled"):
+                    # Compensate ONLY a plan still in its pre-execution state, via compare-and-set:
+                    # a concurrent execute may have moved it to 'executed' — never clobber that
+                    # (which would erase a real execution's receipt/audit).
+                    if plan and plan.lifecycle_state in ("proposed", "approved"):
+                        from_state = plan.lifecycle_state
                         plan.lifecycle_state = "failed_compensated"
                         plan.updated_at = self._now()
-                        await self._repo.update_plan(plan)
+                        await self._repo.transition_plan_state(plan, from_state)
 
     # ── 2. analyze (the async run executes the pack) ─────────────────────────────────
     async def run_decision_analysis(
@@ -503,6 +510,9 @@ class DecisionService:
         required_role: str | None = None,
         expires_at: datetime | None = None,
     ) -> ApprovalRecord:
+        # Role gate FIRST — before the idempotency replay fast-path — so a below-min-role caller
+        # can never receive approval material by replaying a known key + fingerprint.
+        _require_min_role(scope, required_role, action="approval")
         if idempotency_key:
             # Org-wide lookup — matches the scope of the DB unique index exactly.
             existing = await self._repo.find_approval_by_idempotency(
@@ -545,7 +555,6 @@ class DecisionService:
             raise DecisionServiceError(
                 "approval_expired", "the approval challenge for this plan has expired; re-propose"
             )
-        _require_min_role(scope, required_role, action="approval")
         # Material-change guard: the plan's revision must still be the case's current revision.
         case = await self._repo.get_case(plan.case_id, scope.org_id, scope.workspace_id)
         if case is None:

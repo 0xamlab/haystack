@@ -444,6 +444,76 @@ def test_pack_id_cannot_change_on_an_existing_case() -> None:
     asyncio.run(run())
 
 
+def test_role_gate_precedes_idempotency_replay() -> None:
+    # #321 review: a below-min-role caller replaying a known key+fingerprint must be rejected
+    # by the role gate, not handed the existing approval material.
+    async def run() -> None:
+        svc = _svc()
+        admin = _scope(role="admin")
+        case, _ = await _framed(svc, admin)
+        r = await svc.run_decision_analysis(admin, case_id=case.id)
+        plan = await svc.propose_action_plan(admin, r.id)
+        await svc.approve(
+            admin, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce,
+            idempotency_key="K", required_role="admin",
+        )
+        viewer = RequestScope(org_id=admin.org_id, workspace_id=None, principal="v", role="viewer")
+        with pytest.raises(DecisionServiceError) as e:
+            await svc.approve(
+                viewer, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce,
+                idempotency_key="K", required_role="admin",
+            )
+        assert e.value.code == "insufficient_role"
+
+    asyncio.run(run())
+
+
+def test_reframe_does_not_clobber_an_executed_plan() -> None:
+    # #321 review: invalidating approvals on a material re-frame must NOT revert an already
+    # EXECUTED plan to failed_compensated / erase its receipt.
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        r = await svc.run_decision_analysis(scope, case_id=case.id)
+        plan = await svc.propose_action_plan(scope, r.id)
+        await svc.approve(scope, plan_id=plan.id, plan_hash=plan.plan_hash, nonce=plan.nonce)
+        executed = await svc.execute_approved_plan(scope, plan_id=plan.id)
+        assert executed.lifecycle_state == "executed" and executed.receipt
+
+        await svc.create_or_update_decision(
+            scope, pack_id="renewal_capacity_allocation", title="reframed",
+            pack_input=_renewal_input(total_hours=80), case_id=case.id,
+        )
+        after = await svc._repo.get_plan(plan.id, scope.org_id, scope.workspace_id)
+        assert after.lifecycle_state == "executed"  # not clobbered
+        assert after.receipt is not None  # audit preserved
+
+    asyncio.run(run())
+
+
+def test_title_only_reframe_preserves_current_revision_pointer() -> None:
+    # #321 review: the title-only update must not blind-write the case (which could revert a
+    # concurrent material re-frame's current_revision pointer).
+    async def run() -> None:
+        svc, scope = _svc(), _scope()
+        case, _ = await _framed(svc, scope)
+        _, rev2 = await svc.create_or_update_decision(
+            scope, pack_id="renewal_capacity_allocation", title="v2",
+            pack_input=_renewal_input(total_hours=80), case_id=case.id,
+        )
+        # title-only change against the CURRENT (rev2) framing
+        case3, rev3 = await svc.create_or_update_decision(
+            scope, pack_id="renewal_capacity_allocation", title="v2 renamed",
+            pack_input=_renewal_input(total_hours=80), case_id=case.id,
+        )
+        assert rev3.id == rev2.id  # no new revision
+        stored = await svc._repo.get_case(case.id, scope.org_id, scope.workspace_id)
+        assert stored.current_revision_id == rev2.id  # pointer intact
+        assert stored.title == "v2 renamed"
+
+    asyncio.run(run())
+
+
 def test_tenancy_isolation_across_orgs() -> None:
     async def run() -> None:
         svc = _svc()

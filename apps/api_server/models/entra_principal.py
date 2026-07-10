@@ -34,15 +34,28 @@ class EntraPrincipalMapping(UUIDMixin, TimestampMixin, OrgWorkspaceScopedMixin, 
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     principal_oid: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     principal_type: Mapped[str] = mapped_column(
-        String(8), nullable=False, default="user", doc="user | app (service/managed identity)"
+        String(8),
+        nullable=False,
+        default="user",
+        server_default="user",
+        doc="user | app (service/managed identity)",
     )
     display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     role: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="member", doc="owner | admin | member | viewer"
+        String(20),
+        nullable=False,
+        default="member",
+        server_default="member",
+        doc="owner | admin | member | viewer",
     )
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="active", index=True, doc="active | revoked"
+        String(20),
+        nullable=False,
+        default="active",
+        server_default="active",
+        index=True,
+        doc="active | revoked",
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True, doc="Admin user who provisioned the mapping"

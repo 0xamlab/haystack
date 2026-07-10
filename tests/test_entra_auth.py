@@ -132,6 +132,23 @@ def test_app_only_token_yields_app_principal(_patch) -> None:
     assert principal.roles == ("Decision.Analyst",)
 
 
+def test_delegated_user_with_app_roles_but_no_scp_stays_user(_patch) -> None:
+    # #321 review (HIGH): a delegated USER token under an app-role assignment carries roles +
+    # no scp + no idtyp. It must classify as "user" (NOT "app") — the resolver would otherwise
+    # grant it a service allowance.
+    principal = _verify(_token(scp=None, roles=["App.Access"], idtyp=None))
+    assert principal.principal_type == "user"
+    assert principal.roles == ("App.Access",)
+
+
+def test_id_token_without_scope_or_role_is_rejected(_patch) -> None:
+    # #321 review: an ID token (no scp, no roles, no idtyp) replayed as an API bearer must be
+    # refused even if its aud is the app's client id.
+    with pytest.raises(EntraAuthError) as e:
+        _verify(_token(scp=None, roles=None, idtyp=None))
+    assert e.value.code == "not_api_access_token"
+
+
 def test_graph_token_is_rejected(_patch) -> None:
     with pytest.raises(EntraAuthError) as e:
         _verify(_token(aud="https://graph.microsoft.com"))

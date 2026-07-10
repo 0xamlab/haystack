@@ -92,10 +92,25 @@ async def refresh_credits(
 
     from apps.api_server.models.api_key import APIKey
 
+    if ctx["key_id"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "api_key_identity_required",
+                    "message": "This endpoint requires an API-key identity.",
+                }
+            },
+        )
     result = await db.execute(
         select(APIKey).options(selectinload(APIKey.organization)).where(APIKey.id == ctx["key_id"])
     )
-    api_key_row = result.scalar_one()
+    api_key_row = result.scalar_one_or_none()
+    if api_key_row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "api_key_not_found", "message": "API key not found."}},
+        )
     plan = str(api_key_row.organization.plan)
     org_id = api_key_row.org_id
 

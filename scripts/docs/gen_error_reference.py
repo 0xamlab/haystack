@@ -32,6 +32,7 @@ MEANINGS = {
     "authentication_required": "No valid credential was supplied. Send `Authorization: Bearer <key>`.",
     "invalid_api_key": "The API key is malformed or not recognized.",
     "api_key_not_found": "The referenced API key does not exist.",
+    "api_key_identity_required": "This endpoint needs an API-key identity; the caller authenticated with a non-key credential (e.g. a Microsoft Entra token).",
     "cannot_revoke_last_key": "You cannot revoke your last active key (it would lock you out).",
     "forbidden": "The key is valid but not permitted for this action.",
     "access_scope_denied": "The key's scope does not include this resource.",

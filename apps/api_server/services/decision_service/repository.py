@@ -42,6 +42,18 @@ class DecisionRepository(Protocol):
         """Narrow, status-only update — never blind-applies a stale case snapshot."""
         ...
 
+    async def update_case_meta(
+        self,
+        case_id: uuid.UUID,
+        org_id: uuid.UUID,
+        workspace_id: uuid.UUID | None,
+        *,
+        title: str,
+        owner: str | None = None,
+    ) -> None:
+        """Narrow title/owner update — must not touch the revision pointers or status."""
+        ...
+
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord: ...
     async def get_revision(
         self, revision_id: uuid.UUID, org_id: uuid.UUID, workspace_id: uuid.UUID | None
@@ -132,6 +144,13 @@ class InMemoryDecisionRepository:
         c = self._cases.get(case_id)
         if c is not None and _visible(c, org_id, workspace_id):
             c.status = status  # narrow: mutate only status on the STORED copy
+
+    async def update_case_meta(self, case_id, org_id, workspace_id, *, title, owner=None):  # type: ignore[no-untyped-def]
+        c = self._cases.get(case_id)
+        if c is not None and _visible(c, org_id, workspace_id):
+            c.title = title  # narrow: title (+owner) only, never revision pointers/status
+            if owner is not None:
+                c.owner = owner
 
     # ── revisions ──
     async def add_revision(self, rev: RevisionRecord) -> RevisionRecord:

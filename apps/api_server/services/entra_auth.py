@@ -272,10 +272,22 @@ async def verify_entra_token(token: str) -> EntraPrincipal:
 
     scopes = tuple(s for s in str(claims.get("scp") or "").split() if s)
     roles = tuple(str(r) for r in (claims.get("roles") or []) if r)
-    # idtyp=app marks an app-only (service/managed-identity) token; delegated user tokens
-    # carry scp. Fall back on that distinction when idtyp is absent.
     idtyp = str(claims.get("idtyp") or "").strip().lower()
-    principal_type = "app" if idtyp == "app" or (not scopes and roles) else "user"
+
+    # Reject ID tokens replayed as API bearers: a genuine Entra access token for a custom API
+    # carries delegated scopes (scp), app-role assignments (roles), or the app-only marker
+    # (idtyp=app). An ID token carries none of these — refuse it even if its aud happens to be
+    # the app's client-id GUID.
+    if not scopes and not roles and idtyp != "app":
+        raise EntraAuthError(
+            "not_api_access_token",
+            "Token is not an API access token for the Decision API (no scope, role, or app id).",
+        )
+
+    # principal_type is derived ONLY from the trustworthy idtyp claim. Do NOT infer "app" from
+    # "roles present but no scp": a delegated USER token under an app-role assignment (no
+    # delegated scopes exposed) legitimately carries roles + no scp, and must stay "user".
+    principal_type = "app" if idtyp == "app" else "user"
 
     return EntraPrincipal(
         tenant_id=tid,
