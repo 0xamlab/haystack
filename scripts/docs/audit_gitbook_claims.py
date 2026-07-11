@@ -87,10 +87,10 @@ PRIVATE_LEAK_PATTERNS = (
 DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
     (
         re.compile(r"@algenta/sdk"),
-        "unpublished_scoped_typescript_sdk_package",
+        "wrong_typescript_sdk_package",
         (
-            "Docs reference @algenta/sdk, but the current TypeScript package name is "
-            "algenta-sdk and the scoped npm package is not live."
+            "Docs reference @algenta/sdk, but the published TypeScript package name is "
+            "algenta-sdk."
         ),
     ),
 )

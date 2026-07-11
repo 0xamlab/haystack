@@ -23,7 +23,7 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | Term | Meaning |
 | --- | --- |
 | **HTTP API** | The versioned REST surface under `/v1`. The default integration path; no SDK required. See [API overview](../api/overview.md). |
-| **SDK** (`algenta-sdk`) | The live Python HTTP client for the API (`decision_engine.AlgentaClient`) and the source-built TypeScript client package name. See [Python SDK](../sdk/python.md). |
+| **SDK** (`algenta-sdk`) | The published Python HTTP client (`decision_engine.AlgentaClient`) and TypeScript/JavaScript client (`AlgentaClient`) for the API. See [Python SDK](../sdk/python.md) and [TypeScript SDK](../sdk/typescript.md). |
 | **`algenta` runtime package** | The local-first Python runtime source package — run flows in-process (`mode="local"`) or drive a remote engine through one `Runtime` object. Its public PyPI runtime release is not live yet. |
 | **MCP server** (`algenta-mcp`) | A Model Context Protocol bridge that exposes the engine as tools for Cursor, Claude Desktop, and other AI clients. See [MCP server](../sdk/mcp.md). |
 | **CLI** | The terminal clients: `de` (full API surface) and `algenta` (local-runtime demo + inspection). See [CLI reference](../cli.md). |

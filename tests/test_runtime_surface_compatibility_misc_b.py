@@ -343,43 +343,16 @@ def test_typescript_runtime_live_script_covers_api_helper_surface() -> None:
     )
     assert 'const rt = new Runtime({' in ts_readme
     assert 'const models = await rt.listModels();' in ts_readme
-    assert '`rt.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`' in ts_readme
     assert 'const tokenized = await rt.tokenize({ input: "alpha beta" });' in ts_readme
     assert "const usage = await rt.usage();" in ts_readme
     assert 'const recommendation = await rt.recommend(' in ts_readme
-    assert "- `rt.me()`" in ts_readme
-    assert '- `rt.updateMe({ name: "Mission Ops", org_name: "Mission Control" })`' in ts_readme
-    assert "- `rt.limits()`" in ts_readme
-    assert "- `rt.inviteTeamMember({ email, role })`" in ts_readme
-    assert "- `rt.updateTeamMemberRole(userId, role)`" in ts_readme
-    assert "- `rt.removeTeamMember(userId)`" in ts_readme
-    assert "- `rt.getAuditLogs({ page, limit })`" in ts_readme
-    assert "- `rt.getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })`" in ts_readme
-    assert "- `rt.getExecutionPolicy()`" in ts_readme
-    assert "- `rt.listExecutionPolicySnapshots()`" in ts_readme
-    assert "- `rt.listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })`" in ts_readme
-    assert "- `rt.listAgentRunCheckpoints(runId)`" in ts_readme
-    assert "- `rt.queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })`" in ts_readme
-    assert "- `rt.listAgentRunMissionEvents(runId, { limit })`" in ts_readme
-    assert "- `rt.queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })`" in ts_readme
-    assert "- `rt.listAgentRunTelemetry(runId, { limit })`" in ts_readme
-    assert "- `rt.queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })`" in ts_readme
-    assert "- `rt.replayAgentRun(runId, { checkpoint_id })`" in ts_readme
-    assert "- `rt.forkAgentRun(runId, { checkpoint_id })`" in ts_readme
-    assert "- `rt.listConnectors({ page, limit })`" in ts_readme
-    assert "- `rt.createConnector({ name, connector_type, description, config })`" in ts_readme
-    assert "- `rt.getConnector(connectorId)`" in ts_readme
-    assert "- `rt.updateConnector(connectorId, { description, config })`" in ts_readme
-    assert "- `rt.testConnector(connectorId | { type, url, data_path })`" in ts_readme
-    assert "- `rt.browseConnector(connectorId | { type, url, data_path })`" in ts_readme
-    assert "- `rt.deleteConnector(connectorId)`" in ts_readme
-    assert "- `previewTestConnector({ connector })`" in ts_readme
-    assert "- `previewBrowseConnector({ connector })`" in ts_readme
-    assert "- `rt.connect(source?, { name?, description?, connectorId?, connector?, selection?, datasetName?, persist?, visibility?, connectionName? })`" in ts_readme
-    assert "- `rt.getDataset(datasetId)`" in ts_readme
-    assert "- `rt.getDatasetSummary(datasetId)`" in ts_readme
-    assert "- `rt.refreshDataset(datasetId)`" in ts_readme
-    assert "- `rt.deleteDataset(datasetId)`" in ts_readme
+    assert "Runtime forwards the governed helper groups" in ts_readme
+    assert "models and vector utilities" in ts_readme
+    assert "account and team controls" in ts_readme
+    assert "connectors, datasets" in ts_readme
+    assert "repository intelligence, agent runs" in ts_readme
+    assert "deployment" in ts_readme
+    assert "lifecycle, and decision helpers" in ts_readme
 
 
 def test_typescript_sdk_readme_mentions_unified_capability_plane_examples() -> None:

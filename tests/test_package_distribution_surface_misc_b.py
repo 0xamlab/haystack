@@ -37,7 +37,17 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert package_json["name"] == "algenta-sdk"
     # LICENSE is published with the package (Apache-2.0, per GTM D2).
     assert package_json["files"] == ["dist", "proto", "README.md", "LICENSE"]
-    assert package_json["homepage"] == "https://algenta.ai"
+    assert package_json["homepage"] == "https://docs.algenta.ai/sdk/typescript"
+    assert package_json["description"] == (
+        "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, "
+        "simulations, governed data, and repository intelligence"
+    )
+    assert package_json["publishConfig"] == {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/",
+    }
+    assert len(readme_text.splitlines()) <= 600
+    assert len(readme_text.encode("utf-8")) <= 25000
     assert package_json["repository"]["directory"] == "packages/ts-sdk"
     assert package_json["bugs"]["url"] == "https://github.com/thyn-ai/algenta/issues"
     assert "src/**/*.test.ts" in tsconfig["exclude"]
@@ -64,8 +74,9 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "`mcp_call_first_party`" in readme_text
     assert "`decision_plan_creation`" in readme_text
     assert "`replay`" in readme_text
-    assert "client.listModels()" in readme_text
-    assert "client.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })" in readme_text
+    assert "## Public Methods" in readme_text
+    assert "listModels()" in readme_text
+    assert "resolveArtifactBridge({ repo_id, filename, revision, local_files_only })" in readme_text
     assert "ALGENTA_LLM_PROVIDER_MODELS_JSON" in readme_text
     assert "openai_compatible" in readme_text
     assert "openai" in readme_text
@@ -103,23 +114,26 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "`capabilities` is optional" in readme_text
     assert "optional `api_key_env`" in readme_text
     assert "chat-completions only" in readme_text
-    assert "client.chatCompletions({ messages, model })" in readme_text
-    assert "client.streamChatCompletions({ messages, model })" in readme_text
-    assert "client.streamResponses({ input, model, dimensions })" in readme_text
-    assert "client.planDecision(request)" in readme_text
-    assert "client.logDecision(request)" in readme_text
-    assert "client.listDecisions({ page, limit, with_outcome_only })" in readme_text
-    assert "client.getDecision(decisionId)" in readme_text
-    assert "client.recordOutcome(decisionId, { actual_outcome, outcome_notes })" in readme_text
-    assert "client.executeDecision(decisionId, { webhook_url, timeout_seconds })" in readme_text
-    assert "testWebhookDelivery(callbackUrl)" in readme_text
-    assert "client.deleteDecision(decisionId)" in readme_text
-    assert "client.me()" in readme_text
-    assert "client.usage()" in readme_text
-    assert "client.limits()" in readme_text
-    assert "client.listApiKeys()" in readme_text
-    assert "client.createApiKey({ label, expires_at, device_limit })" in readme_text
-    assert "client.revokeApiKey(keyId)" in readme_text
+    for method in (
+        "chatCompletions({ messages, model })",
+        "streamChatCompletions({ messages, model })",
+        "streamResponses({ input, model, dimensions })",
+        "planDecision(request)",
+        "logDecision(request)",
+        "listDecisions({ page, limit, with_outcome_only })",
+        "getDecision(decisionId)",
+        "recordOutcome(decisionId, { actual_outcome, outcome_notes })",
+        "executeDecision(decisionId, { webhook_url, timeout_seconds })",
+        "testWebhookDelivery(callbackUrl)",
+        "deleteDecision(decisionId)",
+        "me()",
+        "usage()",
+        "limits()",
+        "listApiKeys()",
+        "createApiKey({ label, expires_at, device_limit })",
+        "revokeApiKey(keyId)",
+    ):
+        assert method in readme_text
     assert "distributions()" in readme_text
     assert "templates()" in readme_text
     assert "submitJob(request, callbackUrl?)" in readme_text
@@ -158,25 +172,28 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "deleteDataset(datasetId)" in readme_text
     assert "listDevices({ page, limit })" in readme_text
     assert "revokeDevice(registrationId)" in readme_text
-    assert "client.createAgentRun(request)" in readme_text
-    assert "client.listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })" in readme_text
-    assert "client.getAgentRunEvents(runId, { limit })" in readme_text
-    assert "client.streamAgentRunEvents(runId, { limit })" in readme_text
-    assert "client.listAgentRunCheckpoints(runId)" in readme_text
-    assert "client.queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })" in readme_text
-    assert "client.listAgentRunMissionEvents(runId, { limit })" in readme_text
-    assert "client.queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })" in readme_text
-    assert "client.listAgentRunTelemetry(runId, { limit })" in readme_text
-    assert "client.queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })" in readme_text
-    assert "client.replayAgentRun(runId, { checkpoint_id })" in readme_text
-    assert "client.forkAgentRun(runId, { checkpoint_id })" in readme_text
-    assert "client.getAuditLogs({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash })" in readme_text
-    assert "client.getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })" in readme_text
-    assert "client.listExecutionPolicySnapshots()" in readme_text
-    assert "client.recommend(actions, { runs, seed })" in readme_text
-    assert "client.score(request, { expected_value, downside_risk })" in readme_text
-    assert "client.batch(items)" in readme_text
-    assert "client.compare(scenarios, { runs, seed })" in readme_text
+    for method in (
+        "createAgentRun(request)",
+        "listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })",
+        "getAgentRunEvents(runId, { limit })",
+        "streamAgentRunEvents(runId, { limit })",
+        "listAgentRunCheckpoints(runId)",
+        "queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })",
+        "listAgentRunMissionEvents(runId, { limit })",
+        "queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })",
+        "listAgentRunTelemetry(runId, { limit })",
+        "queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })",
+        "replayAgentRun(runId, { checkpoint_id })",
+        "forkAgentRun(runId, { checkpoint_id })",
+        "getAuditLogs({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash })",
+        "getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })",
+        "listExecutionPolicySnapshots()",
+        "recommend(actions, { runs, seed })",
+        "score(request, { expected_value, downside_risk })",
+        "batch(items)",
+        "compare(scenarios, { runs, seed })",
+    ):
+        assert method in readme_text
     assert "QueryFilterSpec" in readme_text
     assert "const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;" in readme_text
     assert 'throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");' in readme_text
@@ -201,15 +218,17 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "ALGENTA_DEPLOYMENT_MODE=air_gapped" in readme_text
     assert "must point `baseUrl` at your own" in readme_text
     assert "fail closed instead of silently falling back to" in readme_text
-    assert "Local Consumer Sync Checklist" in readme_text
+    assert "Local Consumer Sync Checklist" not in readme_text
     assert "pnpm --dir packages/ts-sdk build" in readme_text
-    assert "pagination-only `listDatasets(...)` shape" in readme_text
+    assert "pagination-only `listDatasets(...)` shape" not in readme_text
     assert "`listDatasets({ page?, limit? })`" not in readme_text
-    assert "stale `algenta-sdk` build" in readme_text
+    assert "stale `algenta-sdk` build" not in readme_text
     assert "getRuntimeModules()" in readme_text
     assert "getRuntimeBenchmarks()" in readme_text
     assert "Runtime" in readme_text
     assert "libraries()" in readme_text
+    assert "Runtime forwards the governed helper groups" in readme_text
+    assert "local/runtime-backed Mojo catalog" in readme_text
     assert 'const rt = new Runtime({' in readme_text
     assert 'mode: "self_hosted"' in readme_text
     assert "usage(): Promise<UsageInfo>;" in client_types
@@ -259,87 +278,19 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
         readme_text.index('const rt = new Runtime({') : readme_text.index("`libraries()` remains")
     ]
     assert "const models = await rt.listModels();" in readme_text
-    assert "`rt.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`" in readme_text
-    assert "ALGENTA_LLM_PROVIDER_MODELS_JSON" in readme_text
-    assert "openai_compatible" in readme_text
-    assert "openai" in readme_text
-    assert "anthropic" in readme_text
-    assert "ollama" in readme_text
-    assert "google_genai" in readme_text
-    assert "mistral" in readme_text
-    assert "cohere" in readme_text
-    assert "groq" in readme_text
-    assert "xai" in readme_text
-    assert "router" in readme_text
-    assert '"targets": ["provider.groq-llama", "provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"fallback_policy": "retryable_only"' in readme_text
-    assert '"fallback_on": ["provider_rate_limited", "provider_timeout"]' in readme_text
-    assert '"timeout_seconds": 18.0' in readme_text
-    assert '"header_envs": {"OpenAI-Organization": "OPENAI_ORG_ID"}' in readme_text
-    assert '"max_attempts": 2' in readme_text
-    assert '"chat_targets": ["provider.groq-llama", "provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"embedding_targets": ["provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"chat_fallback_policy": "retryable_only"' in readme_text
-    assert '"chat_fallback_on": ["provider_rate_limited"]' in readme_text
-    assert '"embedding_fallback_policy": "disabled"' in readme_text
-    assert '"embedding_fallback_on": ["provider_backend_error"]' in readme_text
-    assert '"chat_timeout_seconds": 12.5' in readme_text
-    assert '"embedding_timeout_seconds": 9.0' in readme_text
-    assert "required_provider_headers" in readme_text
-    assert "provider_auth_env_vars" in readme_text
-    assert "provider_auth_configured" in readme_text
-    assert "resolved_routing_targets" in readme_text
-    assert "resolved_chat_routing_targets" in readme_text
-    assert "resolved_embedding_routing_targets" in readme_text
-    assert '"chat_max_attempts": 2' in readme_text
-    assert '"embedding_max_attempts": 1' in readme_text
-    assert "Legacy `upstream_model`" in readme_text
-    assert "`capabilities` is optional" in readme_text
-    assert "optional `api_key_env`" in readme_text
-    assert "chat-completions only" in readme_text
+    assert "const tokenized = await rt.tokenize({ input: \"alpha beta\" });" in readme_text
     assert "const usage = await rt.usage();" in readme_text
     assert "const recommendation = await rt.recommend(" in readme_text
-    assert "`rt.listModels()`" in readme_text
-    assert "`rt.me()`" in readme_text
-    assert "`rt.usage()`" in readme_text
-    assert "`rt.limits()`" in readme_text
-    assert "`rt.listApiKeys()`" in readme_text
-    assert "`rt.createApiKey({ label, expires_at, device_limit })`" in readme_text
-    assert "`rt.revokeApiKey(keyId)`" in readme_text
-    assert "`rt.submitJob(request, callbackUrl?)`" in readme_text
-    assert "`rt.getJob(jobId)`" in readme_text
-    assert "`rt.getJobResult(jobId)`" in readme_text
-    assert "`rt.listJobs({ page, limit, status })`" in readme_text
-    assert "`rt.cancelJob(jobId)`" in readme_text
-    assert "`rt.pollJob(jobId, { timeoutMs, pollIntervalMs })`" in readme_text
-    assert "`rt.registerTrigger({ name, condition, simulation_template, webhook_url, execution_webhook_url, auto_execute, description })`" in readme_text
-    assert "`rt.listTriggers({ status, page, limit })`" in readme_text
-    assert "`rt.fireTrigger(triggerId, { force })`" in readme_text
-    assert "`rt.pauseTrigger(triggerId, { paused })`" in readme_text
-    assert "`rt.deleteTrigger(triggerId)`" in readme_text
-    assert "`rt.listConnectors({ page, limit })`" in readme_text
-    assert "`rt.createConnector({ name, connector_type, description, config })`" in readme_text
-    assert "`rt.getConnector(connectorId)`" in readme_text
-    assert "`rt.updateConnector(connectorId, { description, config })`" in readme_text
-    assert "`rt.testConnector(connectorId | { type, url, data_path })`" in readme_text
-    assert "`rt.browseConnector(connectorId | { type, url, data_path })`" in readme_text
-    assert "`rt.deleteConnector(connectorId)`" in readme_text
-    assert "`rt.connect(source?, { name?, description?, connectorId?, connector?, selection?, datasetName?, persist?, visibility?, connectionName? })`" in readme_text
-    assert "`rt.getDataset(datasetId)`" in readme_text
-    assert "`rt.getDatasetSummary(datasetId)`" in readme_text
-    assert "`rt.refreshDataset(datasetId)`" in readme_text
-    assert "`rt.deleteDataset(datasetId)`" in readme_text
-    assert "listDevices({ page, limit })" in readme_text
-    assert "revokeDevice(registrationId)" in readme_text
-    assert "`rt.streamAgentRunEvents(runId, { limit })`" in readme_text
-    assert "`rt.compare(scenarios, { runs, seed })`" in readme_text
-    assert "`rt.logDecision(request)`" in readme_text
-    assert "`rt.listDecisions({ page, limit, with_outcome_only })`" in readme_text
-    assert "`rt.getDecision(decisionId)`" in readme_text
-    assert "`rt.recordOutcome(decisionId, { actual_outcome, outcome_notes })`" in readme_text
-    assert "`rt.executeDecision(decisionId, { webhook_url, timeout_seconds })`" in readme_text
-    assert "`rt.testWebhookDelivery(callbackUrl)`" in readme_text
-    assert "`rt.deleteDecision(decisionId)`" in readme_text
+    assert "Runtime forwards the governed helper groups" in readme_text
+    for runtime_group in (
+        "models and vector utilities",
+        "account and team controls",
+        "connectors, datasets",
+        "repository intelligence, agent runs",
+        "deployment",
+        "lifecycle, and decision helpers",
+    ):
+        assert runtime_group in readme_text
     assert "private profiles must point `baseUrl` at your own self-hosted service" in readme_text
     assert 'export type RuntimeMaturity = "experimental" | "benchmarked" | "parity_tested" | "channel_covered" | "enterprise_ready" | "deprecated";' in shared_types
     assert 'export type RuntimeSideEffectClass = "read_only" | "write_scoped" | "write_external" | "exec_external" | "network_external";' in shared_types

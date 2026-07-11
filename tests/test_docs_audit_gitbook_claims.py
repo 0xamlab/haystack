@@ -93,7 +93,7 @@ def test_secret_scanner_allows_redacted_algenta_placeholders(tmp_path: Path) -> 
     assert issues == []
 
 
-def test_public_package_scanner_rejects_unpublished_scoped_typescript_sdk(tmp_path: Path) -> None:
+def test_public_package_scanner_rejects_wrong_scoped_typescript_sdk(tmp_path: Path) -> None:
     audit = _load_module()
     path = tmp_path / "page.md"
 
@@ -103,7 +103,7 @@ def test_public_package_scanner_rejects_unpublished_scoped_typescript_sdk(tmp_pa
         'import { AlgentaClient } from "@algenta/sdk";\n',
     )
 
-    assert [issue.code for issue in issues] == ["unpublished_scoped_typescript_sdk_package"]
+    assert [issue.code for issue in issues] == ["wrong_typescript_sdk_package"]
     assert issues[0].line == 1
 
 

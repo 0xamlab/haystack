@@ -1,6 +1,6 @@
 # algenta-sdk
 
-TypeScript and JavaScript SDK for Algenta public data, query, and simulation APIs.
+TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence.
 
 ## Install
 
@@ -172,6 +172,11 @@ await client.deleteConnector(savedConnector.id);
 
 ## Repository Intelligence Flow
 
+Repository intelligence turns a repository snapshot into governed evidence:
+snapshot, triage, graph, plan, simulate, and patch. The package README keeps
+this to the clean-machine path; full request schemas live in the TypeScript
+reference docs.
+
 ```ts
 const snapshot = await client.createRepositorySnapshot("repo_123", {
   ref: "main",
@@ -181,20 +186,7 @@ const snapshot = await client.createRepositorySnapshot("repo_123", {
 
 const triage = await client.triageRepository("repo_123", {
   snapshot_id: snapshot.snapshot_id,
-  signals: {
-    issue_text: "Production regression after the latest deploy",
-    diagnostics: [
-      {
-        path: "apps/api_server/services/repository_intelligence.py",
-        line: 2047,
-        severity: "error",
-        message: "Repository analysis is missing patch impact metadata.",
-      },
-    ],
-    failing_tests: ["tests/test_repository_intelligence_service.py::test_simulate_requires_patch_impact"],
-    changed_files: ["apps/api_server/services/repository_intelligence.py"],
-    workspace_context: ["incident-1842", "jira-912"],
-  },
+  signals: { issue_text: "Production regression after the latest deploy" },
 });
 
 const planRevision = await client.createRepositoryDecisionPlan("repo_123", {
@@ -225,103 +217,34 @@ const patchOnly = await client.applyRepository("repo_123", {
   mode: "patch_only",
 });
 
-console.log(planRevision.decision_plan.repository_analysis?.patch_impact_report_ref);
-console.log(graph.top_change_risk_files[0]?.file_path);
-console.log(simulation.recommended_action, simulation.score_breakdown);
-console.log(patchOnly.patch);
+console.log(graph.top_change_risk_files[0]?.file_path, patchOnly.patch);
 ```
 
 `createRepositoryDecisionPlan(...)` creates the immutable stored revision behind
 `POST /v1/repositories/{repository_id}/decision-plans`. The SDK keeps the method
-singular as a verb while the API stays plural as a resource.
-
-For a fully local self-hosted repository planner, set
+singular as a verb while the API stays plural as a resource. For a fully local
+self-hosted repository planner, set
 `ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1`.
-That planner is explicit and bounded; it currently supports deterministic
-Python return-literal mismatch repairs and fails closed with
-`repository_local_planner_unsupported` outside that contract.
+Stored repository `DecisionPlan` objects record `planner_model_id`,
+`planner_execution_mode`, and `planner_provider_backend` in
+`decision_plan.repository_analysis`.
 
-Every stored repository `DecisionPlan` records planner provenance in
-`decision_plan.repository_analysis` through `planner_model_id`,
-`planner_execution_mode`, and `planner_provider_backend`.
+Use `https://api.algenta.ai` only in Cloud Managed.
+`ALGENTA_DEPLOYMENT_MODE=self_hosted` and
+`ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `baseUrl` at your own
+self-hosted service and fail closed instead of silently falling back to Algenta
+cloud. `client.getContract()` also handles older self-hosted nodes that still
+return `404` for `/v1/meta/contract` by falling back to `/openapi.json` and
+reading `x-primary-data-query-contract`.
 
-`query()` remains available and unchanged when you only need the governed query body.
-
-Use `https://api.algenta.ai` only in Cloud Managed. `ALGENTA_DEPLOYMENT_MODE=self_hosted`
-and `ALGENTA_DEPLOYMENT_MODE=air_gapped` must point `baseUrl` at your own
-self-hosted service and fail closed instead of silently falling back to
-Algenta cloud.
-
-`client.getContract()` also handles older self-hosted nodes that still return
-`404` for `/v1/meta/contract` by falling back to `/openapi.json` and reading
-`x-primary-data-query-contract`.
-
-For formal runtime-proof surfaces, the client also exposes:
-
-- `client.getRuntimeManifest()`
-- `client.getRuntimeModules()`
-- `client.getRuntimeBenchmarks()`
-- `client.getRuntimeReleaseValidation()`
-
-`client.getRuntimeBenchmarks()` includes benchmark-class `evidence_paths`, so
-the typed runtime-proof surface carries concrete benchmark artifact linkage
-instead of only benchmark codes and descriptions.
-It currently publishes quality-gate benchmark classes `B6` checkpoint and
-replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and
-latency, and `B10` decision workflow completion latency, plus quality-gate SLO
+Formal runtime-proof surfaces are available through
+`client.getRuntimeManifest()`, `client.getRuntimeModules()`,
+`client.getRuntimeBenchmarks()`, and
+`client.getRuntimeReleaseValidation()`. `client.getRuntimeBenchmarks()`
+includes benchmark-class `evidence_paths`; current classes include `B6`
+checkpoint and replay overhead, `B7` MCP tool latency, `B9` RAG retrieval
+quality and latency, and `B10` decision workflow completion latency, with SLO
 budgets `mcp_call_first_party`, `decision_plan_creation`, and `replay`.
-`B10` is currently backed by the Repository Intelligence workflow artifact at
-`build/repository_intelligence_benchmark.json`.
-
-For the current plan-aligned utility and agent surfaces, the direct client also exposes:
-
-- `client.listModels()`
-- `client.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`
-- `client.tokenize({ input, model })`
-- `client.countTokens({ input, model })`
-- `client.chatCompletions({ messages, model })`
-- `client.streamChatCompletions({ messages, model })`
-- `client.responses({ input, model, dimensions })`
-- `client.streamResponses({ input, model, dimensions })`
-- `client.embeddings({ input, model, dimensions })`
-- `client.embeddingSimilarity({ left, right, model })`
-- `client.rerank({ query_embedding, documents, model, top_n })`
-- `client.planDecision(request)`
-- `client.logDecision(request)`
-- `client.listDecisions({ page, limit, with_outcome_only })`
-- `client.getDecision(decisionId)`
-- `client.recordOutcome(decisionId, { actual_outcome, outcome_notes })`
-- `client.executeDecision(decisionId, { webhook_url, timeout_seconds })`
-- `client.deleteDecision(decisionId)`
-- `client.createAgentRun(request)`
-- `client.listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })`
-- `client.getAgentRun(runId)`
-- `client.getAgentRunEvents(runId, { limit })`
-- `client.streamAgentRunEvents(runId, { limit })`
-- `client.listAgentRunCheckpoints(runId)`
-- `client.queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })`
-- `client.listAgentRunMissionEvents(runId, { limit })`
-- `client.queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })`
-- `client.listAgentRunTelemetry(runId, { limit })`
-- `client.queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })`
-- `client.replayAgentRun(runId, { checkpoint_id })`
-- `client.forkAgentRun(runId, { checkpoint_id })`
-- `client.resumeAgentRun(runId)`
-- `client.cancelAgentRun(runId)`
-- `client.approveAgentRun(runId)`
-- `client.getAuditLogs({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash })`
-- `client.getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })`
-- `client.listExecutionPolicySnapshots()`
-- `client.createRepositorySnapshot(...)`
-- `client.getRepositorySnapshot(...)`
-- `client.triageRepository(...)`
-- `client.createRepositoryDecisionPlan(...)`
-- `client.simulateRepository(...)`
-- `client.applyRepository(...)`
-- `client.recommend(actions, { runs, seed })`
-- `client.score(request, { expected_value, downside_risk })`
-- `client.batch(items)`
-- `client.compare(scenarios, { runs, seed })`
 
 ## Provider-Backed LLM Registry
 
@@ -565,6 +488,9 @@ Direct client calls use the same names under `client.*`, including
 
 ## Decision Runtime Helpers
 
+`AlgentaClient` exposes the same governed decision helpers used by the runtime:
+`recommend`, `score`, `batch`, and `compare`.
+
 ```ts
 import { AlgentaClient } from "algenta-sdk";
 
@@ -580,170 +506,29 @@ const client = new AlgentaClient({
 
 const recommendation = await client.recommend(
   [
-    {
-      name: "expand",
-      request: {
-        mode: "expert",
-        runs: 250,
-        simulation: {
-          variables: [{ name: "outcome", distribution: "fixed", params: { value: 140000 } }],
-          objective_function: "outcome",
-        },
-      },
-    },
-    {
-      name: "hold",
-      request: {
-        mode: "expert",
-        runs: 250,
-        simulation: {
-          variables: [{ name: "outcome", distribution: "fixed", params: { value: 90000 } }],
-          objective_function: "outcome",
-        },
-      },
-    },
+    { name: "expand", request: { mode: "expert", runs: 250 } },
+    { name: "hold", request: { mode: "expert", runs: 250 } },
   ],
   { runs: 250, seed: 42 },
 );
-
-const score = await client.score(
-  {
-    mode: "expert",
-    runs: 250,
-    simulation: {
-      variables: [{ name: "outcome", distribution: "normal", params: { mean: 100, std: 10 } }],
-      objective_function: "outcome",
-    },
-  },
-  { expected_value: 0.7, downside_risk: 0.3 },
-);
-
-const batch = await client.batch([
-  {
-    mode: "expert",
-    runs: 100,
-    simulation: {
-      variables: [{ name: "outcome", distribution: "fixed", params: { value: 100 } }],
-      objective_function: "outcome",
-    },
-  },
-  {
-    mode: "expert",
-    runs: 100,
-    simulation: {
-      variables: [{ name: "outcome", distribution: "fixed", params: { value: 120 } }],
-      objective_function: "outcome",
-    },
-  },
-]);
-
-const compared = await client.compare([
-  {
-    name: "base",
-    request: {
-      mode: "expert",
-      runs: 150,
-      simulation: {
-        variables: [{ name: "outcome", distribution: "fixed", params: { value: 100 } }],
-        objective_function: "outcome",
-      },
-    },
-  },
-  {
-    name: "stretch",
-    request: {
-      mode: "expert",
-      runs: 150,
-      simulation: {
-        variables: [{ name: "outcome", distribution: "fixed", params: { value: 120 } }],
-        objective_function: "outcome",
-      },
-    },
-  },
-]);
+const score = await client.score({ mode: "expert", runs: 250 }, { expected_value: 0.7, downside_risk: 0.3 });
+const batch = await client.batch([{ mode: "expert", runs: 100 }]);
+const compared = await client.compare([{ name: "base", request: { mode: "expert", runs: 150 } }]);
 
 console.log(recommendation.recommended_action, score.score, batch.total, compared.winner);
 ```
 
 The package exports `QueryFilterSpec` and `QueryFilterCondition` from the root
 type surface, so callers can build deterministic exact-query filters without
-inventing private request shapes.
-
-## Local Consumer Sync Checklist
-
-If a local app still only exposes a pagination-only `listDatasets(...)` shape,
-it is using a stale `algenta-sdk` build or a vendored copy that has not been
-synced yet.
-
-1. Rebuild the package from the repo root:
-
-   ```bash
-   pnpm build
-   ```
-
-   If you only want the SDK package build without the gateway package, the
-   package-local form still works:
-
-   ```bash
-   pnpm --dir packages/ts-sdk build
-   ```
-
-2. Restart the consuming app or dev server after the build completes.
-3. Verify the local package now exposes:
-   - `listDatasets({ search, status, sourceName, page, limit, compact })`
-   - `listConnectors({ page, limit })`
-   - `createConnector({ name, connector_type, description, config })`
-   - `getConnector(connectorId)`
-   - `updateConnector(connectorId, { description, config })`
-   - `testConnector(connectorId)`
-   - `browseConnector(connectorId)`
-   - `deleteConnector(connectorId)`
-   - `previewTestConnector({ connector })`
-   - `previewBrowseConnector({ connector })`
-   - `connectData({ connection_type, provider, dataset_name, description, connection_config })`
-   - `getDataset(datasetId)`
-   - `getContract()`
-   - `getRuntimeManifest()`
-   - `getRuntimeModules()`
-   - `getRuntimeBenchmarks()`
-   - `getRuntimeReleaseValidation()`
-   - `listModels()`
-   - `tokenize({ input, model })`
-   - `countTokens({ input, model })`
-   - `chatCompletions({ messages, model })`
-   - `streamChatCompletions({ messages, model })`
-   - `responses({ input, model, dimensions })`
-   - `streamResponses({ input, model, dimensions })`
-   - `embeddings({ input, model, dimensions })`
-   - `embeddingSimilarity({ left, right, model })`
-   - `rerank({ query_embedding, documents, model, top_n })`
-   - `planDecision(request)`
-   - `me()`
-   - `usage()`
-   - `limits()`
-   - `listApiKeys()`
-   - `createApiKey({ label, expires_at, device_limit })`
-   - `revokeApiKey(keyId)`
-   - `submitJob(request, callbackUrl?)`
-   - `getJob(jobId)`
-   - `getJobResult(jobId)`
-   - `cancelJob(jobId)`
-   - `pollJob(jobId, { timeoutMs, pollIntervalMs })`
-   - `createAgentRun(request)`
-   - `getAgentRun(runId)`
-   - `getAgentRunEvents(runId, { limit })`
-   - `streamAgentRunEvents(runId, { limit })`
-   - `resumeAgentRun(runId)`
-   - `cancelAgentRun(runId)`
-   - `approveAgentRun(runId)`
-   - `getDatasetSummary(datasetId)`
-   - `refreshDataset(datasetId)`
-   - `deleteDataset(datasetId)`
-   - `queryWithMetadata(request)`
-   - `queryBatch(request)`
-   - `querySqlReport(request)`
+inventing private request shapes. Repository contributors can rebuild from the
+repo root with `pnpm build`; the package-local form is
+`pnpm --dir packages/ts-sdk build`.
 
 ## Runtime and Local Libraries
+
+`Runtime` is the hosted or self-hosted runtime facade. It uses the same typed
+contracts as `AlgentaClient`; local library execution is exposed through
+`libraries()`.
 
 ```ts
 import { Runtime, libraries } from "algenta-sdk";
@@ -764,123 +549,21 @@ const tokenized = await rt.tokenize({ input: "alpha beta" });
 const usage = await rt.usage();
 const recommendation = await rt.recommend(
   [
-    {
-      name: "expand",
-      request: {
-        mode: "expert",
-        runs: 250,
-        simulation: {
-          variables: [{ name: "outcome", distribution: "fixed", params: { value: 140000 } }],
-          objective_function: "outcome",
-        },
-      },
-    },
-    {
-      name: "hold",
-      request: {
-        mode: "expert",
-        runs: 250,
-        simulation: {
-          variables: [{ name: "outcome", distribution: "fixed", params: { value: 90000 } }],
-          objective_function: "outcome",
-        },
-      },
-    },
+    { name: "expand", request: { mode: "expert", runs: 250 } },
+    { name: "hold", request: { mode: "expert", runs: 250 } },
   ],
   { runs: 250, seed: 42 },
 );
-
 const catalog = await libraries({ mode: "local" });
 
-console.log(usage.billing_period, usage.quota_used_pct);
+console.log(models.items.length, tokenized.tokens.length, usage.billing_period, recommendation.recommended_action, catalog.modules.length);
 ```
 
-`Runtime` uses the governed hosted or self-hosted data/query surface. Use
-Cloud Managed URLs only with `mode: "api"`. `mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Algenta cloud. In `mode: "api"` or `mode: "self_hosted"`, it now forwards the plan-aligned helper routes too:
-
-- `rt.listModels()`
-- `rt.resolveArtifactBridge({ repo_id, filename, revision, local_files_only })`
-- `rt.tokenize({ input, model })`
-- `rt.countTokens({ input, model })`
-- `rt.chatCompletions({ messages, model })`
-- `rt.streamChatCompletions({ messages, model })`
-- `rt.responses({ input, model, dimensions })`
-- `rt.streamResponses({ input, model, dimensions })`
-- `rt.embeddings({ input, model, dimensions })`
-- `rt.embeddingSimilarity({ left, right, model })`
-- `rt.rerank({ query_embedding, documents, model, top_n })`
-- `rt.planDecision(request)`
-- `rt.me()`
-- `rt.updateMe({ name: "Mission Ops", org_name: "Mission Control" })`
-- `rt.usage()`
-- `rt.limits()`
-- `rt.getBillingInfo()`
-- `rt.createBillingCheckout({ plan })`
-- `rt.createBillingPortal()`
-- `rt.refreshCredits({ device_id, billing_period, credits_used })`
-- `rt.ingestMeteringEvents({ device_id, events })`
-- `rt.listTeamMembers({ page, limit })`
-- `rt.inviteTeamMember({ email, role })`
-- `rt.updateTeamMemberRole(userId, role)`
-- `rt.removeTeamMember(userId)`
-- `rt.getAuditLogs({ page, limit })`
-- `rt.getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })`
-- `rt.getExecutionPolicy()`
-- `rt.listExecutionPolicySnapshots()`
-- `rt.listApiKeys()`
-- `rt.createApiKey({ label, expires_at, device_limit })`
-- `rt.revokeApiKey(keyId)`
-- `rt.submitJob(request, callbackUrl?)`
-- `rt.getJob(jobId)`
-- `rt.getJobResult(jobId)`
-- `rt.listJobs({ page, limit, status })`
-- `rt.cancelJob(jobId)`
-- `rt.pollJob(jobId, { timeoutMs, pollIntervalMs })`
-- `rt.testWebhookDelivery(callbackUrl)`
-- `rt.registerTrigger({ name, condition, simulation_template, webhook_url, execution_webhook_url, auto_execute, description })`
-- `rt.listTriggers({ status, page, limit })`
-- `rt.fireTrigger(triggerId, { force })`
-- `rt.pauseTrigger(triggerId, { paused })`
-- `rt.deleteTrigger(triggerId)`
-- `rt.createAgentRun(request)`
-- `rt.listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })`
-- `rt.getAgentRun(runId)`
-- `rt.getAgentRunEvents(runId, { limit })`
-- `rt.streamAgentRunEvents(runId, { limit })`
-- `rt.listAgentRunCheckpoints(runId)`
-- `rt.queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })`
-- `rt.listAgentRunMissionEvents(runId, { limit })`
-- `rt.queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })`
-- `rt.listAgentRunTelemetry(runId, { limit })`
-- `rt.queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })`
-- `rt.replayAgentRun(runId, { checkpoint_id })`
-- `rt.forkAgentRun(runId, { checkpoint_id })`
-- `rt.listConnectors({ page, limit })`
-- `rt.createConnector({ name, connector_type, description, config })`
-- `rt.getConnector(connectorId)`
-- `rt.updateConnector(connectorId, { description, config })`
-- `rt.testConnector(connectorId | { type, url, data_path })`
-- `rt.browseConnector(connectorId | { type, url, data_path })`
-- `rt.deleteConnector(connectorId)`
-- `rt.connect(source?, { name?, description?, connectorId?, connector?, selection?, datasetName?, persist?, visibility?, connectionName? })`
-- `rt.getDataset(datasetId)`
-- `rt.getDatasetSummary(datasetId)`
-- `rt.refreshDataset(datasetId)`
-- `rt.deleteDataset(datasetId)`
-- `rt.resumeAgentRun(runId)`
-- `rt.cancelAgentRun(runId)`
-- `rt.approveAgentRun(runId)`
-- `rt.recommend(actions, { runs, seed })`
-- `rt.score(request, { expected_value, downside_risk })`
-- `rt.batch(items)`
-- `rt.compare(scenarios, { runs, seed })`
-- `rt.logDecision(request)`
-- `rt.listDecisions({ page, limit, with_outcome_only })`
-- `rt.getDecision(decisionId)`
-- `rt.recordOutcome(decisionId, { actual_outcome, outcome_notes })`
-- `rt.executeDecision(decisionId, { webhook_url, timeout_seconds })`
-- `rt.deleteDecision(decisionId)`
-
+Runtime forwards the governed helper groups for models and vector utilities,
+account and team controls, API keys, jobs, triggers, connectors, datasets,
+audit logs, execution policy, repository intelligence, agent runs, deployment
+lifecycle, and decision helpers. `mode: "api"` targets Cloud Managed;
+`mode: "self_hosted"` and private profiles must point `baseUrl` at your own self-hosted service and fail closed instead of silently falling back to Algenta cloud.
 `libraries()` remains the local/runtime-backed Mojo catalog.
 
 ## Docs

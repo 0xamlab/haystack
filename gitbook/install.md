@@ -5,7 +5,7 @@ description: Install the published Algenta clients or run the self-hosted engine
 
 # Install
 
-This page gets Algenta onto your machine. It covers the public install paths that are live today: the self-hosted service, the Python HTTP SDK, and the MCP server for agent tools. The local `algenta` runtime package and TypeScript SDK are implemented in this repository but are not public registry installs yet; their sections are labeled source-build until the release is published. Pick the path that matches what you are building; you do not need all of them.
+This page gets Algenta onto your machine. It covers the public install paths that are live today: the self-hosted service, the Python HTTP SDK, the TypeScript SDK, and the MCP server for agent tools. The local `algenta` runtime package is implemented in this repository but is not a public registry install yet; its section is labeled source-build until the release is published. Pick the path that matches what you are building; you do not need all of them.
 
 {% hint style="info" %}
 To make a first call against the self-hosted service, you do not need to install any SDK or Python package. The installer prints a ready-to-run `curl` command. Reach for an SDK only when you want typed responses and retries inside your application code.
@@ -18,7 +18,7 @@ To make a first call against the self-hosted service, you do not need to install
 | Run the full Algenta service (API, worker, database, storage) locally or on a server | `curl ... install.sh \| bash` | [Self-hosted service](#self-hosted-service) |
 | Embed the deterministic runtime in a Python process | Source checkout only; public PyPI package is not live yet | [Local runtime package](#local-runtime-package) |
 | Call a running Algenta API from Python | `pip install algenta-sdk` | [Python SDK](#python-sdk) |
-| Call a running Algenta API from TypeScript or JavaScript | Source checkout only; public npm package is not live yet | [TypeScript SDK](#typescript-sdk) |
+| Call a running Algenta API from TypeScript or JavaScript | `npm install algenta-sdk` | [TypeScript SDK](#typescript-sdk) |
 | Expose Algenta as MCP tools to Cursor or Claude Desktop | `pipx install algenta-mcp` | [MCP server](#mcp-server) |
 
 ## Self-hosted service
@@ -238,14 +238,13 @@ If you call `AlgentaClient()` with no `api_key` and no `ALGENTA_API_KEY` set, co
 
 ## TypeScript SDK
 
-The TypeScript SDK source is in this repository, but the public npm package is not live yet. Do not use this as a clean-machine install step until the npm package is published.
+Install the TypeScript SDK from npm for a clean-machine Node.js integration.
 
-```bash title="source-build.sh"
-git clone https://github.com/thyn-ai/algenta.git
-cd algenta
-pnpm install
-pnpm --filter algenta-sdk build
+```bash title="install-ts-sdk.sh"
+npm install algenta-sdk
 ```
+
+Repository contributors can still build from source with `pnpm install` and `pnpm --filter algenta-sdk build`.
 
 ### Verify the TypeScript SDK
 

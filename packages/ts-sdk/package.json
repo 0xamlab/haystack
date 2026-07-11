@@ -1,7 +1,7 @@
 {
   "name": "algenta-sdk",
   "version": "1.0.0",
-  "description": "TypeScript/JavaScript SDK for Algenta public data, query, and simulation APIs",
+  "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,16 +26,21 @@
   },
   "keywords": [
     "algenta",
+    "sdk",
+    "typescript",
+    "javascript",
     "decision",
-    "query",
+    "runtime",
     "simulation",
     "monte-carlo",
+    "governed-data",
+    "repository-intelligence",
     "api"
   ],
-  "homepage": "https://algenta.ai",
+  "homepage": "https://docs.algenta.ai/sdk/typescript",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thyn-ai/algenta.git",
+    "url": "git+https://github.com/thyn-ai/algenta.git",
     "directory": "packages/ts-sdk"
   },
   "bugs": {
@@ -56,5 +61,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

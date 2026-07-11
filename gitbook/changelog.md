@@ -56,7 +56,7 @@ The Algenta engine and every surface that reaches it.
 **New**
 
 - The **HTTP API** under `/v1` — Monte Carlo simulation, decisions, governed data, and async jobs.
-- **Python SDK** (`algenta-sdk`, `AlgentaClient`) plus source-built TypeScript and in-process [`algenta` runtime](sdk/python.md) surfaces that are rolling toward public registry release.
+- **Python SDK** (`algenta-sdk`, `AlgentaClient`), **TypeScript SDK** (`algenta-sdk`, `AlgentaClient`), and the in-process [`algenta` runtime](sdk/python.md) surface that is rolling toward public registry release.
 - The [MCP server](sdk/mcp.md) (`algenta-mcp`) — governed datasets, exact queries, simulations, and agent runs exposed as tools for Cursor, Claude Desktop, and more.
 - Durable, fully **offline RS256 licensing** with product entitlements and capacity caps, plus BYOK provider keys.
 {% endupdate %}

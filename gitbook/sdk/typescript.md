@@ -5,7 +5,7 @@ description: Use Algenta from TypeScript or JavaScript — install the SDK, auth
 
 # TypeScript SDK
 
-The TypeScript and JavaScript client is implemented in the repository package named `algenta-sdk`. The public npm package is not live yet, so this page documents the source-build contract and future npm package shape. It gives you a single `AlgentaClient` for the hosted control plane and self-hosted engines, a `Runtime` class for local and self-hosted execution, and exported contract constants so your code can stay in lockstep with the API. It runs on Node.js 18+ and modern browsers, uses `fetch` with no required dependencies, and ships full type definitions.
+The TypeScript and JavaScript client is published to npm as `algenta-sdk`. It gives you a single `AlgentaClient` for the hosted control plane and self-hosted engines, a `Runtime` class for local and self-hosted execution, and exported contract constants so your code can stay in lockstep with the API. It runs on Node.js 18+ and modern browsers, uses `fetch` with no required dependencies, and ships full type definitions.
 
 {% hint style="info" %}
 The package is ESM-first and ships its own types. `main`, `module`, and `types` all resolve from `dist/`, so it works the same whether you import or require it.
@@ -13,14 +13,13 @@ The package is ESM-first and ships its own types. `main`, `module`, and `types` 
 
 ## Install
 
-Use the source checkout until the npm package is published:
+Install the public npm package:
 
-```bash title="source-build.sh"
-git clone https://github.com/thyn-ai/algenta.git
-cd algenta
-pnpm install
-pnpm --filter algenta-sdk build
+```bash title="install.sh"
+npm install algenta-sdk
 ```
+
+Repository contributors can still build the package from source with `pnpm install` and `pnpm --filter algenta-sdk build`.
 
 ## Quick start
 
