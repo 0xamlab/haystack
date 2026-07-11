@@ -71,6 +71,10 @@ _FORBIDDEN_AUDIENCES = frozenset(
 
 # tenant_id -> (fetched_at_monotonic, PyJWKSet)
 _jwks_cache: dict[str, tuple[float, PyJWKSet]] = {}
+# tenant_id -> last monotonic time we FORCE-refetched JWKS for an unknown kid. Bounds pre-auth forced
+# fetches so an unknown-kid flood can't amplify into unbounded live calls to Microsoft (see _signing_key).
+_last_forced_jwks_refetch: dict[str, float] = {}
+_FORCED_JWKS_REFETCH_COOLDOWN_S = 60
 
 
 class EntraAuthError(Exception):
@@ -206,8 +210,21 @@ async def _signing_key(token: str, tenant_id: str) -> Any:
         raise EntraAuthError("malformed_token", "Token header was not parseable.") from exc
     if not kid:
         raise EntraAuthError("malformed_token", "Token header is missing 'kid'.")
-    for forced in (False, True):
-        jwk_set = await _fetch_jwks(tenant_id, force=forced)
+    # Cache-first (rides the TTL). This lookup happens BEFORE signature verification, so a flood of
+    # tokens bearing random never-valid kids must NOT each trigger a live JWKS fetch to Microsoft
+    # (pre-auth egress-amplification DoS + upstream throttling of the gateway).
+    jwk_set = await _fetch_jwks(tenant_id, force=False)
+    for key in jwk_set.keys:
+        if key.key_id == kid:
+            return key.key
+    # kid not in the cached set. Force ONE refetch to ride real key rotation — but at most once per
+    # cooldown per tenant, so unknown-kid floods can't amplify into unbounded forced fetches. Within
+    # the cooldown, fail closed on the cached view (a genuinely rotated key is picked up on the next
+    # window; Entra overlaps old+new signing keys for far longer than this cooldown).
+    now = time.monotonic()
+    if now - _last_forced_jwks_refetch.get(tenant_id, 0.0) >= _FORCED_JWKS_REFETCH_COOLDOWN_S:
+        _last_forced_jwks_refetch[tenant_id] = now
+        jwk_set = await _fetch_jwks(tenant_id, force=True)
         for key in jwk_set.keys:
             if key.key_id == kid:
                 return key.key
@@ -300,10 +317,20 @@ async def verify_entra_token(token: str) -> EntraPrincipal:
     roles = tuple(str(r) for r in (claims.get("roles") or []) if r)
     idtyp = str(claims.get("idtyp") or "").strip().lower()
 
-    # Reject ID tokens replayed as API bearers: a genuine Entra access token for a custom API
-    # carries delegated scopes (scp), app-role assignments (roles), or the app-only marker
-    # (idtyp=app). An ID token carries none of these — refuse it even if its aud happens to be
-    # the app's client-id GUID.
+    # Reject ID tokens replayed as API bearers. This matters more once the bare client-id GUID is an
+    # accepted audience (a first-party app that is BOTH the sign-in app and the Decision API — like
+    # Thyn Accounts — mints ID tokens whose aud IS that GUID), so a claims-only check is needed.
+    #   1) `nonce` is an OIDC ID-token-only claim; access tokens NEVER carry it → a definitive,
+    #      zero-false-positive reject (an app-role-bearing ID token from an interactive flow is caught
+    #      here even though it has a `roles` claim).
+    #   2) A token with no scope, no role, AND not app-only is not an API access token at all.
+    # (The robust belt-and-suspenders is a DEDICATED Decision API app registration and/or setting
+    # ALGENTA_ENTRA_ALLOWED_CLIENT_APPS — see gitbook/integrations/microsoft/entra-sso.md.)
+    if claims.get("nonce"):
+        raise EntraAuthError(
+            "not_api_access_token",
+            "Token carries an OIDC nonce (an ID token); present a Decision API access token instead.",
+        )
     if not scopes and not roles and idtyp != "app":
         raise EntraAuthError(
             "not_api_access_token",

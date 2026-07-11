@@ -75,6 +75,7 @@ def _token(
     idtyp: str | None = None,
     azp: str | None = "client-app-1",
     kid: str = KID,
+    nonce: str | None = None,
 ) -> str:
     now = int(time.time())
     claims: dict[str, Any] = {
@@ -97,6 +98,8 @@ def _token(
         claims["idtyp"] = idtyp
     if azp is not None:
         claims["azp"] = azp
+    if nonce is not None:
+        claims["nonce"] = nonce
     return jwt.encode(claims, _PRIVATE_KEY, algorithm="RS256", headers={"kid": kid})
 
 
@@ -271,3 +274,38 @@ def test_looks_like_entra_token_routing(_patch) -> None:
     assert looks_like_entra_token(spoof) is False
     at_spoof = _token(iss=f"https://login.microsoftonline.com.evil.example/{TENANT}/v2.0")
     assert looks_like_entra_token(at_spoof) is False
+
+
+# ── C2: an ID token replayed as a bearer is rejected via the OIDC-only `nonce` claim, even when it
+#    carries an app-role `roles` claim (the case #356's bare-GUID audience widened) ─────────────────
+def test_id_token_with_nonce_is_rejected_even_with_roles(_patch) -> None:
+    with pytest.raises(EntraAuthError) as e:
+        _verify(_token(scp=None, roles=["App.Admin"], idtyp=None, nonce="n-abc123"))
+    assert e.value.code == "not_api_access_token"
+
+
+def test_access_token_without_nonce_still_accepted(_patch) -> None:
+    # regression: a genuine access token (no nonce) is unaffected by the nonce reject.
+    principal = _verify(_token())  # default carries scp, no nonce
+    assert principal.principal_type == "user"
+
+
+# ── C1: an unknown-kid FLOOD forces at most ONE live JWKS refetch per cooldown (no egress amplification) ──
+def test_unknown_kid_flood_forces_at_most_one_refetch(_patch, monkeypatch) -> None:
+    from apps.api_server.services import entra_auth as ea
+
+    ea._last_forced_jwks_refetch.clear()
+    forced_calls = {"n": 0}
+
+    async def counting_fetch(tenant_id: str, *, force: bool = False):
+        if force:
+            forced_calls["n"] += 1
+        return _jwks()  # never contains the attacker's random kid
+
+    monkeypatch.setattr(ea, "_fetch_jwks", counting_fetch)
+
+    for _ in range(8):  # a flood of tokens bearing never-valid random kids
+        with pytest.raises(EntraAuthError) as e:
+            _verify(_token(kid=f"random-{uuid.uuid4().hex}"))
+        assert e.value.code == "unknown_kid"
+    assert forced_calls["n"] == 1, f"expected 1 forced refetch, got {forced_calls['n']}"
