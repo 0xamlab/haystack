@@ -6384,7 +6384,7 @@
       {
         "bytes": 105,
         "language": "bash",
-        "line": 74,
+        "line": 76,
         "path": "operate/privacy-egress.md",
         "sha256": "ae720d2d5efe7314eebd43765dbaaca78c7dca78971cba58f1e456be8605d9b6",
         "validation": "command_inventory"
@@ -6392,7 +6392,7 @@
       {
         "bytes": 585,
         "language": "json",
-        "line": 79,
+        "line": 81,
         "path": "operate/privacy-egress.md",
         "sha256": "1f6e7dd326332c9455de8540c255bbab4d3c44e43abb0743b61566cea88cdb6b",
         "validation": "parsed"
@@ -6400,7 +6400,7 @@
       {
         "bytes": 117,
         "language": "bash",
-        "line": 107,
+        "line": 109,
         "path": "operate/privacy-egress.md",
         "sha256": "434ee8c238582413d8795a48b1e683f8d3c972341d78df660e255c10e8ed031b",
         "validation": "command_inventory"
@@ -6408,7 +6408,7 @@
       {
         "bytes": 493,
         "language": "json",
-        "line": 112,
+        "line": 114,
         "path": "operate/privacy-egress.md",
         "sha256": "94ac94c0afb9e2570191f3c8d212530520d2127cec2b260cb8f19e1c711b61ab",
         "validation": "parsed"
@@ -20363,6 +20363,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
+        "line": 112,
+        "match_kind": "exact",
+        "method": null,
+        "path": "integrations/azure/gateway.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/health",
         "line": 138,
         "match_kind": "exact",
         "method": null,
@@ -22874,7 +22883,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/privacy-report",
-        "line": 74,
+        "line": 76,
         "match_kind": "exact",
         "method": "GET",
         "path": "operate/privacy-egress.md",
@@ -22883,7 +22892,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/privacy-report",
-        "line": 75,
+        "line": 77,
         "match_kind": "exact",
         "method": null,
         "path": "operate/privacy-egress.md",
@@ -22892,7 +22901,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-log",
-        "line": 107,
+        "line": 109,
         "match_kind": "exact",
         "method": "GET",
         "path": "operate/privacy-egress.md",
@@ -22901,7 +22910,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-log",
-        "line": 108,
+        "line": 110,
         "match_kind": "exact",
         "method": null,
         "path": "operate/privacy-egress.md",
@@ -22910,7 +22919,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-policy",
-        "line": 140,
+        "line": 142,
         "match_kind": "exact",
         "method": "GET",
         "path": "operate/privacy-egress.md",
@@ -31752,31 +31761,31 @@
       },
       {
         "kind": "internal",
-        "line": 66,
+        "line": 68,
         "path": "operate/privacy-egress.md",
         "target": "../concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
-        "line": 66,
+        "line": 68,
         "path": "operate/privacy-egress.md",
         "target": "../configuration.md"
       },
       {
         "kind": "internal",
-        "line": 147,
+        "line": 149,
         "path": "operate/privacy-egress.md",
         "target": "../concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
-        "line": 148,
+        "line": 150,
         "path": "operate/privacy-egress.md",
         "target": "teams-rbac.md"
       },
       {
         "kind": "internal",
-        "line": 149,
+        "line": 151,
         "path": "operate/privacy-egress.md",
         "target": "../guides/air-gapped.md"
       },
@@ -35936,17 +35945,17 @@
         "term": "algenta"
       },
       {
-        "line": 75,
+        "line": 77,
         "path": "operate/privacy-egress.md",
         "term": "algenta"
       },
       {
-        "line": 99,
+        "line": 101,
         "path": "operate/privacy-egress.md",
         "term": "algenta"
       },
       {
-        "line": 108,
+        "line": 110,
         "path": "operate/privacy-egress.md",
         "term": "algenta"
       },
@@ -43382,7 +43391,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"https://api.algenta.ai/v1/admin/privacy-report\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 75,
+        "line": 77,
         "path": "operate/privacy-egress.md",
         "syntax_valid": true
       },
@@ -43390,7 +43399,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"https://api.algenta.ai/v1/admin/egress-log?page=1&limit=25\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 108,
+        "line": 110,
         "path": "operate/privacy-egress.md",
         "syntax_valid": true
       },
@@ -44165,7 +44174,8 @@
     "algenta_title": true,
     "cross_product_mentions": 0,
     "operations": 122,
-    "paths": 110
+    "paths": 110,
+    "runtime_encapsulation_mentions": 0
   },
   "package_registries": {
     "skipped": true
@@ -46131,7 +46141,7 @@
         "safe_static": 4,
         "static_only": 5
       },
-      "endpoint_mentions": 1,
+      "endpoint_mentions": 2,
       "external_links": 0,
       "internal_links": 4,
       "links": 4,
@@ -47547,7 +47557,7 @@
     "claim_mentions": 836,
     "command_execution_percent": 0.0,
     "commands_classified": 909,
-    "endpoint_mentions": 2109,
+    "endpoint_mentions": 2110,
     "failures": 0,
     "fixes": 0,
     "links_checked": 934,
@@ -47556,7 +47566,7 @@
     "skips": 709,
     "snippets_checked": 1012,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5800,
+    "source_items_inventoried": 5801,
     "warnings": 0
   },
   "totals": {
@@ -47566,7 +47576,7 @@
     "command_classification_percent": 100.0,
     "command_execution_percent": 0.0,
     "destructive_mutation_commands": 23,
-    "endpoint_mentions": 2109,
+    "endpoint_mentions": 2110,
     "environment_mutating_commands": 19,
     "executed_commands": 0,
     "external_links": 3,
@@ -47594,7 +47604,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 709,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5800,
+    "source_items_inventoried": 5801,
     "static_only_commands": 61,
     "static_or_guarded_commands": 708,
     "unique_endpoint_operations": 411,

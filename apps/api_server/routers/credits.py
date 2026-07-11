@@ -74,12 +74,12 @@ class CreditRefreshResponse(BaseModel):
 @router.post(
     "/v1/credits/refresh",
     response_model=CreditRefreshResponse,
-    summary="Issue a new execution credit batch for a local runtime device",
+    summary="Issue an execution credit batch to the bundled runtime",
     description=(
-        "Called automatically by the local runtime daemon when its credit pool "
-        "drops below 10%.  Returns the number of credits granted and the "
-        "expiry timestamp.  Denied (HTTP 429) when the org's monthly quota is "
-        "exhausted."
+        "The bundled runtime calls this endpoint automatically when its credit "
+        "pool drops below 10%. Returns the number of credits granted and the "
+        "expiry timestamp. Denied (HTTP 429) when the organization's monthly "
+        "quota is exhausted."
     ),
 )
 async def refresh_credits(

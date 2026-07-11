@@ -66,10 +66,10 @@ class MeteringBatchResponse(BaseModel):
 @router.post(
     "/v1/metering",
     response_model=MeteringBatchResponse,
-    summary="Ingest local runtime execution analytics",
+    summary="Ingest bundled runtime execution analytics",
     description=(
-        "Called by the local runtime daemon to flush buffered execution events. "
-        "Analytics only — quota enforcement is handled by the credit bucket. "
+        "The bundled runtime calls this endpoint automatically to flush buffered "
+        "execution events. Analytics only — quota enforcement is handled by the credit bucket. "
         "Events are structured-logged for the analytics pipeline."
     ),
 )

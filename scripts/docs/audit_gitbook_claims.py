@@ -801,7 +801,11 @@ def _audit_openapi_public_identity() -> tuple[list[Issue], dict[str, Any]]:
             "Canonical OpenAPI schema is missing.",
             "schemas/openapi/openapi.yaml",
         )
-        return [issue], {"algenta_title": False, "cross_product_mentions": 0}
+        return [issue], {
+            "algenta_title": False,
+            "cross_product_mentions": 0,
+            "runtime_encapsulation_mentions": 0,
+        }
 
     text = _read(spec_path)
     matches = list(re.finditer(r"\bcodna(?:\.ai)?\b", text, re.IGNORECASE))
@@ -815,6 +819,21 @@ def _audit_openapi_public_identity() -> tuple[list[Issue], dict[str, Any]]:
         )
         for match in matches
     ]
+    runtime_matches = [
+        match
+        for pattern in RUNTIME_ENCAPSULATION_PATTERNS
+        for match in pattern.finditer(text)
+    ]
+    issues.extend(
+        Issue(
+            "ERROR",
+            "openapi_runtime_encapsulation_leak",
+            "Public OpenAPI schema exposes a user-managed runtime lifecycle detail.",
+            "schemas/openapi/openapi.yaml",
+            _line_for_offset(text, match.start()),
+        )
+        for match in runtime_matches
+    )
     algenta_title = bool(re.search(r"(?m)^  title: Algenta API\s*$", text))
     if not algenta_title:
         issues.append(
@@ -829,6 +848,7 @@ def _audit_openapi_public_identity() -> tuple[list[Issue], dict[str, Any]]:
     return issues, {
         "algenta_title": algenta_title,
         "cross_product_mentions": len(matches),
+        "runtime_encapsulation_mentions": len(runtime_matches),
         "paths": len(operations),
         "operations": sum(len(methods) for methods in operations.values()),
     }
