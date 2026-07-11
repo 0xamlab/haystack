@@ -25,6 +25,13 @@ _EXPECTED_LICENSE = "Apache-2.0"
 # intentionally NOT in this Apache/version guard.
 _PYPROJECT_PKGS = ("python-sdk", "algenta", "algenta-core", "mcp")
 _TS_PKG = "ts-sdk"
+_SUPPORTED_PYTHON_CLASSIFIERS = {
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+}
 
 
 def _py_meta(pkg: str) -> dict:
@@ -66,6 +73,25 @@ def test_pyproject_declares_license_files() -> None:
     # PEP 639: the LICENSE must be declared so it lands in the sdist + wheel.
     for pkg in _PYPROJECT_PKGS:
         assert "LICENSE" in _py_meta(pkg).get("license-files", []), pkg
+
+
+def test_public_python_packages_declare_current_supported_python_versions() -> None:
+    for pkg in _PYPROJECT_PKGS:
+        classifiers = set(_py_meta(pkg).get("classifiers", []))
+        missing = sorted(_SUPPORTED_PYTHON_CLASSIFIERS - classifiers)
+        assert not missing, f"{pkg} missing Python support classifiers: {missing}"
+
+
+def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
+    ci = (_REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text("utf-8")
+    release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text("utf-8")
+    docs = (_REPO_ROOT / ".github" / "workflows" / "docs-audit.yml").read_text("utf-8")
+
+    assert 'PYTHON_VERSION: "3.14"' in ci
+    assert 'python-version: ["3.12", "3.14"]' in ci
+    assert 'python-version: ["3.10", "3.12", "3.14"]' in ci
+    assert 'PYTHON_VERSION: "3.14"' in release
+    assert 'python-version: "3.14"' in docs
 
 
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:

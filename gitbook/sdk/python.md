@@ -20,7 +20,7 @@ Install the published HTTP client from PyPI.
 pip install algenta-sdk
 ```
 
-The package requires Python 3.10 or newer and depends on `httpx>=0.28` and `pydantic>=2.7`.
+The package requires Python 3.10 or newer. CI verifies fresh wheel installs on Python 3.10, 3.12, and 3.14. It depends on `httpx>=0.28` and `pydantic>=2.7`.
 
 {% hint style="warning" %}
 The import name is `decision_engine`, not `algenta_sdk`. This is the historical module name and is stable. The runtime package imports as `algenta`.
