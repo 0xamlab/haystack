@@ -11,6 +11,7 @@ Inert until ``SUPABASE_URL`` (+ the GitHub App) is configured → 503, never a s
 
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any
 
@@ -18,6 +19,18 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.services import byok_org_resolver, supabase_auth
+
+
+def _auto_provision_enabled() -> bool:
+    """DARK by default: only when flipped on does a brand-new non-GitHub identity (google/apple/
+    microsoft) get an ``sb-user-{uid}`` personal org auto-created on first resolve. Off ⇒ they get a
+    ``no_org`` 403 (the link table + resolver still land first, additively)."""
+    return os.environ.get("ALGENTA_AUTO_PROVISION_SUPABASE_ORG", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def error_body(code: str, message: str) -> dict[str, Any]:
@@ -40,9 +53,11 @@ def bearer_token(authorization: str | None) -> str:
 
 
 async def verify_identity(authorization: str | None) -> dict[str, Any]:
-    """Verify the Supabase JWT and return the caller's GitHub identity (no org resolution).
+    """Verify the Supabase JWT and return the caller's PROVIDER-AGNOSTIC identity (no org resolution).
 
-    503 when website identity isn't configured or the verifier is unreachable; 401 for an
+    Returns ``{supabase_uid, email, provider, github_user_id|None, github_login|None}`` — the
+    ``supabase_uid`` (top-level ``sub``) is the stable identity key across GitHub / Google / Apple /
+    Microsoft. 503 when website identity isn't configured or the verifier is unreachable; 401 for an
     invalid/expired token. Shared by both the resolve-one and list-all paths below.
     """
     if not supabase_auth.supabase_configured():
@@ -53,7 +68,7 @@ async def verify_identity(authorization: str | None) -> dict[str, Any]:
     token = bearer_token(authorization)
     try:
         claims = await supabase_auth.verify_supabase_jwt(token)
-        return supabase_auth.extract_github_identity(claims)
+        return supabase_auth.extract_identity(claims)
     except supabase_auth.SupabaseAuthError as exc:
         status_code = 503 if exc.code in supabase_auth.SERVICE_ERROR_CODES else 401
         raise HTTPException(status_code=status_code, detail=error_body(exc.code, str(exc))) from exc
@@ -86,12 +101,15 @@ async def verify_and_resolve_org(
     """
     identity = await verify_identity(authorization)
     try:
-        org = await byok_org_resolver.resolve_org_for_github_user(
+        org = await byok_org_resolver.resolve_org_for_supabase_user(
             db,
-            github_user_id=identity["github_user_id"],
-            github_login=identity["github_login"],
+            supabase_uid=identity["supabase_uid"],
+            email=identity.get("email"),
+            github_user_id=identity.get("github_user_id"),
+            github_login=identity.get("github_login"),
             redis=redis,
             selected_org_id=selected_org_id,
+            auto_provision=_auto_provision_enabled(),
         )
     except byok_org_resolver.OrgResolutionError as exc:
         detail = error_body(exc.code, str(exc))
@@ -111,11 +129,14 @@ async def list_eligible_orgs(
     """
     identity = await verify_identity(authorization)
     try:
-        org = await byok_org_resolver.resolve_org_for_github_user(
+        org = await byok_org_resolver.resolve_org_for_supabase_user(
             db,
-            github_user_id=identity["github_user_id"],
-            github_login=identity["github_login"],
+            supabase_uid=identity["supabase_uid"],
+            email=identity.get("email"),
+            github_user_id=identity.get("github_user_id"),
+            github_login=identity.get("github_login"),
             redis=redis,
+            auto_provision=_auto_provision_enabled(),
         )
         return [{"id": str(org.id), "name": org.name}], identity
     except byok_org_resolver.OrgResolutionError as exc:

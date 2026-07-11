@@ -54,6 +54,89 @@ async def lookup_org_for_account(
     ).scalar_one_or_none()
 
 
+def _slug_for_supabase_uid(supabase_uid: str) -> str:
+    """Deterministic, collision-stable slug for a Supabase identity's personal org. Keyed on the
+    immutable Supabase ``sub`` (stable across all linked providers), so a provider link change can
+    never fork a second org. ``Organization.slug`` is UNIQUE → idempotent under the multi-replica
+    first-login race."""
+    return f"sb-user-{str(supabase_uid).strip()}"
+
+
+async def lookup_org_for_supabase_uid(db: AsyncSession, *, supabase_uid: str) -> Organization | None:
+    """Lookup-only resolution of a Supabase identity's personal org by the ``sb-user-{uid}`` slug —
+    NEVER creates. Returns the org or ``None``."""
+    slug = _slug_for_supabase_uid(supabase_uid)
+    return (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none()
+
+
+async def provision_org_for_supabase_uid(
+    db: AsyncSession, *, supabase_uid: str, email: str | None = None, name: str | None = None
+) -> Organization:
+    """Create (or return, idempotently) the personal FREE org for a Supabase identity, keyed on the
+    ``sb-user-{uid}`` slug. Mirrors :func:`provision_or_lookup_org_for_installation`'s create +
+    IntegrityError-race re-select, but keyed on the Supabase uid — NOT email (Apple privaterelay /
+    GitHub noreply make email unsafe as an identity key). A fresh org gets one OWNER ``User`` for the
+    OAuth identity (unusable password); email falls back to a per-uid noreply address when the token
+    carries none (e.g. Apple hidden-email). The caller commits (this only flushes)."""
+    import secrets as _secrets
+
+    from apps.api_server.models.user import User, UserRole, UserStatus
+    from apps.api_server.services.user_service import get_user_by_email, hash_password
+
+    slug = _slug_for_supabase_uid(supabase_uid)
+    existing = (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    display = (name or (email.split("@")[0] if email else "") or f"user-{supabase_uid[:8]}").strip()
+    org = Organization(
+        name=f"{display}'s Organization",
+        slug=slug,
+        plan=OrgPlan.FREE,
+        status=OrgStatus.ACTIVE,
+        managed_llm_enabled=bool(get_settings().algenta_managed_llm),
+    )
+    db.add(org)
+    try:
+        await db.flush()
+    except IntegrityError:
+        # A concurrent first-login on another replica created the same slug; resolve to it.
+        await db.rollback()
+        winner = (
+            await db.execute(select(Organization).where(Organization.slug == slug))
+        ).scalar_one_or_none()
+        if winner is not None:
+            return winner
+        raise
+
+    # Owner user for the OAuth identity. Pre-check the email so the insert never collides (which would
+    # roll back the whole txn incl. the org): if the token carries no email, or a real email already
+    # belongs to a DIFFERENT Supabase account, use a per-uid noreply address. The org identity key is
+    # the uid — email is only a display/contact field here, never the identity key.
+    real_email = (email or "").strip().lower()
+    if real_email and await get_user_by_email(real_email, db) is None:
+        owner_email = real_email
+    else:
+        owner_email = f"{supabase_uid}@users.noreply.thyn.ai"
+    user = User(
+        org_id=org.id,
+        email=owner_email,
+        password_hash=hash_password(_secrets.token_urlsafe(32)),  # unusable — OAuth, no password login
+        name=display,
+        role=UserRole.OWNER,
+        status=UserStatus.ACTIVE,
+        email_verified=bool(real_email) and owner_email == real_email,
+    )
+    db.add(user)
+    await db.flush()
+    logger.info("supabase_org_provisioned", org_id=str(org.id), slug=slug)
+    return org
+
+
 async def provision_or_lookup_org_for_installation(
     db: AsyncSession,
     *,

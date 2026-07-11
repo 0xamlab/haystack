@@ -39,6 +39,7 @@ from .device_grant import DeviceGrant
 from .dormant_notification import DormantNotification
 from .entra_principal import EntraPrincipalMapping
 from .github_app_installation import GithubAppInstallation, GithubWebhookDelivery
+from .identity_org_link import IdentityOrgLink
 from .job import Job, JobStatus, WebhookStatus
 from .llm_usage_record import USD_MICROS, LLMKeyType, LLMUsageRecord
 from .model_registry import ModelArtifact, ModelVersion, ValidationStatus
@@ -122,4 +123,5 @@ __all__ = [
     "ChangeClass",
     # Entra identity
     "EntraPrincipalMapping",
+    "IdentityOrgLink",
 ]

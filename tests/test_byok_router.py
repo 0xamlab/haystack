@@ -16,7 +16,13 @@ from apps.api_server.services import tenant_key_management as tk_mgmt
 from apps.api_server.services.byok_org_resolver import OrgResolutionError
 from tests._asgi_client import SyncASGIClient
 
-_IDENT = {"github_user_id": 583231, "github_login": "octocat", "email": "octocat@example.com"}
+_IDENT = {
+    "supabase_uid": "sb-uuid-octocat",
+    "github_user_id": 583231,
+    "github_login": "octocat",
+    "email": "octocat@example.com",
+    "provider": "github",
+}
 
 
 class _Org:
@@ -37,6 +43,8 @@ def _stub_auth(monkeypatch, *, configured=True, identity=None):
         return {"verified": True}
 
     monkeypatch.setattr(supabase_auth, "verify_supabase_jwt", _verify)
+    # verify_identity now uses the provider-agnostic extractor; keep the github one patched too.
+    monkeypatch.setattr(supabase_auth, "extract_identity", lambda claims: identity or _IDENT)
     monkeypatch.setattr(
         supabase_auth, "extract_github_identity", lambda claims: identity or _IDENT
     )
@@ -46,11 +54,11 @@ def test_post_byok_happy_path_stores_mapped_key(monkeypatch):
     org_id = uuid.uuid4()
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
         assert github_user_id == 583231 and github_login == "octocat"
         return _Org(org_id)
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
 
     captured = {}
 
@@ -160,10 +168,10 @@ def test_post_byok_invalid_jwt_is_401(monkeypatch):
 def test_post_byok_resolution_error_maps_status(monkeypatch):
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
         raise OrgResolutionError("no_org", "none", http_status=403)
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
     _overrides()
     try:
         with SyncASGIClient(app) as client:
@@ -181,13 +189,13 @@ def test_post_byok_resolution_error_maps_status(monkeypatch):
 def test_post_byok_encryption_required_is_409(monkeypatch):
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
         return _Org(uuid.uuid4())
 
     async def _set(db, **k):
         raise tk_mgmt.TenantKeyError("encryption_key_required", "need KEK")
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
     monkeypatch.setattr(tk_mgmt, "set_org_key", _set)
     _overrides()
     try:
@@ -207,13 +215,13 @@ def test_post_byok_rejects_engine_backend(monkeypatch):
     # The reserved engine key must NOT be manageable from the public website surface.
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
         raise AssertionError("must reject the engine backend before resolving an org")
 
     async def _set(db, **k):
         raise AssertionError("must never reach the key store for the engine backend")
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
     monkeypatch.setattr(tk_mgmt, "set_org_key", _set)
     _overrides()
     try:
@@ -233,7 +241,7 @@ def test_delete_byok_is_idempotent_204(monkeypatch):
     org_id = uuid.uuid4()
     _stub_auth(monkeypatch)
 
-    async def _resolve(db, *, github_user_id, github_login, redis, selected_org_id=None):
+    async def _resolve(db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):
         return _Org(org_id)
 
     captured = {}
@@ -242,7 +250,7 @@ def test_delete_byok_is_idempotent_204(monkeypatch):
         captured.update(org_id=org_id, api_backend=api_backend)
         return False  # nothing to delete -> still 204
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
     monkeypatch.setattr(tk_mgmt, "delete_org_key", _delete)
     _overrides()
     try:

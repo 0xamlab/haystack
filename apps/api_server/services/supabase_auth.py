@@ -230,3 +230,46 @@ def extract_github_identity(claims: dict[str, Any]) -> dict[str, Any]:
         "github_login": login,
         "email": str(email) if email else None,
     }
+
+
+def extract_identity(claims: dict[str, Any]) -> dict[str, Any]:
+    """Provider-AGNOSTIC identity from verified Supabase claims (does NOT require GitHub).
+
+    Returns ``{supabase_uid, email, provider, github_user_id: int|None, github_login: str|None}``.
+    ``supabase_uid`` is the stable top-level ``sub`` — the same across all providers linked to one
+    Supabase account — so GitHub / Google / Apple / Microsoft(azure) logins converge on one identity.
+    The ``github_*`` fields are populated ONLY when a GitHub provider is linked (for the additive
+    org-install / admin-membership resolution branch); they are ``None`` for other providers. This
+    never raises on a non-GitHub provider (unlike :func:`extract_github_identity`)."""
+    supabase_uid = str(claims.get("sub") or "").strip()
+    if not supabase_uid:
+        raise SupabaseAuthError("no_subject", "The token carries no subject (sub).")
+
+    app_meta = claims.get("app_metadata") or {}
+    user_meta = claims.get("user_metadata") or {}
+    provider = str(app_meta.get("provider") or "").lower()
+    providers = {
+        str(p).lower() for p in app_meta.get("providers", []) if isinstance(p, str | bytes)
+    }
+    email = claims.get("email") or user_meta.get("email")
+
+    github_user_id: int | None = None
+    github_login: str | None = None
+    if "github" in providers or provider == "github":
+        raw_id = user_meta.get("provider_id") or user_meta.get("sub")
+        try:
+            github_user_id = int(str(raw_id).strip())
+        except (TypeError, ValueError):
+            github_user_id = None
+        github_login = (
+            str(user_meta.get("user_name") or user_meta.get("preferred_username") or "").strip().lower()
+            or None
+        )
+
+    return {
+        "supabase_uid": supabase_uid,
+        "email": str(email) if email else None,
+        "provider": provider or (next(iter(sorted(providers)), "") if providers else ""),
+        "github_user_id": github_user_id,
+        "github_login": github_login,
+    }

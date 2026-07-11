@@ -22,13 +22,17 @@ from typing import Any
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.github_app_installation import GithubAppInstallation
 from apps.api_server.models.organization import Organization
 from apps.api_server.services import github_app_auth
 from apps.api_server.services.egress_guard import EgressPolicyDeniedError
-from apps.api_server.services.github_app_provisioning import lookup_org_for_account
+from apps.api_server.services.github_app_provisioning import (
+    lookup_org_for_account,
+    provision_org_for_supabase_uid,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -209,3 +213,89 @@ async def resolve_org_for_github_user(
     org = next(iter(eligible.values()))
     await _cache_org_id(redis, github_user_id, org.id)
     return org
+
+
+# ── Provider-agnostic resolution (github / google / apple / microsoft) ──────────────
+
+
+async def _org_for_identity_link(db: AsyncSession, supabase_uid: str) -> Organization | None:
+    """The org pointed at by this Supabase identity's link row, or None."""
+    from apps.api_server.models.identity_org_link import IdentityOrgLink
+
+    link = (
+        await db.execute(
+            select(IdentityOrgLink).where(IdentityOrgLink.supabase_uid == supabase_uid)
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        return None
+    return await _org_by_id(db, link.org_id)
+
+
+async def _ensure_identity_link(db: AsyncSession, *, supabase_uid: str, org_id: uuid.UUID) -> None:
+    """Point this Supabase identity at ``org_id`` (adopt-legacy / first-provision). Idempotent + race
+    safe: no-op if a link already exists; a concurrent insert rolls back only the SAVEPOINT (never the
+    outer transaction), so the winner's row stands. Best-effort — a link failure never blocks resolution."""
+    from apps.api_server.models.identity_org_link import IdentityOrgLink
+
+    existing = (
+        await db.execute(
+            select(IdentityOrgLink).where(IdentityOrgLink.supabase_uid == supabase_uid)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return
+    try:
+        async with db.begin_nested():
+            db.add(IdentityOrgLink(supabase_uid=supabase_uid, org_id=org_id))
+    except IntegrityError:
+        pass  # a concurrent request linked the same uid first — fine, the link exists
+
+
+async def resolve_org_for_supabase_user(
+    db: AsyncSession,
+    *,
+    supabase_uid: str,
+    email: str | None = None,
+    github_user_id: int | None = None,
+    github_login: str | None = None,
+    redis: Any | None = None,
+    selected_org_id: uuid.UUID | None = None,
+    auto_provision: bool = False,
+) -> Organization:
+    """Resolve the engine org for a verified Supabase identity, PROVIDER-AGNOSTICALLY.
+
+    - **GitHub identities** keep the full existing resolution (personal ``gh-user-{id}`` install +
+      admin-membership org installs + the multiple-orgs 409), then the resolved org is ADOPTED under
+      the Supabase uid (an ``identity_org_links`` row) so a later Google/Apple/Microsoft login on the
+      SAME Supabase account resolves to the SAME org.
+    - **Non-GitHub identities** resolve via the identity link (their adopted or provisioned personal
+      org). With ``auto_provision`` on, a brand-new identity gets an ``sb-user-{uid}`` FREE org on
+      first resolve; with it off (default/dark) they get a ``no_org`` 403 until the flip.
+
+    The identity key is the Supabase ``sub`` — never email (Apple privaterelay / GitHub noreply)."""
+    if github_user_id is not None:
+        org = await resolve_org_for_github_user(
+            db,
+            github_user_id=github_user_id,
+            github_login=github_login or "",
+            redis=redis,
+            selected_org_id=selected_org_id,
+        )
+        await _ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+        return org
+
+    linked = await _org_for_identity_link(db, supabase_uid)
+    if linked is not None:
+        return linked
+
+    if auto_provision:
+        org = await provision_org_for_supabase_uid(db, supabase_uid=supabase_uid, email=email)
+        await _ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+        return org
+
+    raise OrgResolutionError(
+        "no_org",
+        "No organization is linked to this account yet.",
+        http_status=403,
+    )

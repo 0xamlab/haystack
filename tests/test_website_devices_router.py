@@ -17,7 +17,7 @@ from apps.api_server.services import byok_org_resolver, supabase_auth
 from apps.api_server.services.auth_service import hash_api_key
 from tests._test_api_key_expiry_contract_helpers import *  # noqa: F401,F403
 
-_IDENT = {"github_user_id": 583231, "github_login": "octocat", "email": "octocat@example.com"}
+_IDENT = {"supabase_uid": "sb-uuid-octocat", "github_user_id": 583231, "github_login": "octocat", "email": "octocat@example.com", "provider": "github"}
 _BEARER = {"Authorization": "Bearer JWT"}
 
 
@@ -40,12 +40,13 @@ def _stub_supabase(monkeypatch: pytest.MonkeyPatch, *, configured: bool = True, 
         return {"verified": True}
 
     monkeypatch.setattr(supabase_auth, "verify_supabase_jwt", _verify)
+    monkeypatch.setattr(supabase_auth, "extract_identity", lambda _claims: _IDENT)
     monkeypatch.setattr(supabase_auth, "extract_github_identity", lambda _claims: _IDENT)
 
-    async def _resolve(_db, *, github_user_id, github_login, redis, selected_org_id=None):  # noqa: ANN001
+    async def _resolve(_db, *, supabase_uid=None, email=None, github_user_id=None, github_login=None, redis=None, selected_org_id=None, auto_provision=False):  # noqa: ANN001
         return org
 
-    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_github_user", _resolve)
+    monkeypatch.setattr(byok_org_resolver, "resolve_org_for_supabase_user", _resolve)
 
 
 def _payload(device_id: str) -> dict[str, object]:
