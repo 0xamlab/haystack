@@ -109,7 +109,7 @@ az deployment group create \
   --parameters @$PARAMETERS_FILE
 ```
 
-The deployment creates the managed identity and role assignments first, then Key Vault, storage, PostgreSQL, and finally the Container App wired to all of them.
+The deployment creates the managed identity and role assignments first, then Key Vault, storage, PostgreSQL, and finally the Container App wired to all of them. The gateway applies its database migrations automatically as it starts — there is no separate migration command to run before or after deploy, and a healthy `/v1/health` means they have already been applied.
 {% endstep %}
 
 {% step %}

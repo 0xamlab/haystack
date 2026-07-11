@@ -63,6 +63,8 @@ export ALGENTA_DISABLE_TELEMETRY=1
 export ALGENTA_EGRESS_ALLOWLIST="warehouse.internal,*.db.example.com,minio.local:9000"
 ```
 
+**Identity-provider key discovery is auto-permitted.** When Microsoft Entra sign-in is configured (`ALGENTA_ENTRA_TENANT_ID` and `ALGENTA_ENTRA_AUDIENCE` are set), the gateway automatically allows egress to Microsoft's Entra key-discovery (JWKS) endpoint so it can verify access-token signatures. This is allowed by construction — even under a fail-closed profile and without a manual `ALGENTA_EGRESS_ALLOWLIST` entry — so an allowed outbound decision to that Microsoft host in the egress log is expected, not a policy gap.
+
 See [Deployment modes & privacy](../concepts/deployment-modes.md) for how each mode derives its defaults and [Configuration reference](../configuration.md) for every variable.
 {% endstep %}
 

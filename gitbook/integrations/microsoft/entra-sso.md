@@ -15,13 +15,13 @@ Entra identity is **not active until you configure it**. The gateway only enforc
 
 ## Audience-scoped access tokens
 
-The single most important rule: the gateway accepts **only** an Entra **v2 access token whose audience is the Decision API** — the app-id URI of the gateway's own app registration, `api://$GATEWAY_AUDIENCE`, from an allowed tenant.
+The single most important rule: the gateway accepts **only** an Entra **v2 access token whose audience is the Decision API**, from an allowed tenant. Entra stamps that audience (`aud`) claim in one of two forms depending on the caller, and the gateway accepts **both** — as long as both name the *same* app registration you configured: the **Application ID URI** (`api://$GATEWAY_AUDIENCE`), which signed-in employee (delegated) tokens carry, and the **bare client-id GUID** of that registration, which app-only and Azure **managed-identity** tokens carry. You configure the audience once; both shapes are honored.
 
 A token minted for a different Microsoft resource is **rejected — never forwarded to the decision runtime**. In particular the gateway refuses:
 
 | Token presented | Result |
 | --- | --- |
-| Decision API access token (`aud = api://$GATEWAY_AUDIENCE`) from an allowed tenant | Accepted, mapped to a workspace |
+| Decision API access token (`aud = api://$GATEWAY_AUDIENCE`, or `aud =` the registration's client-id GUID) from an allowed tenant | Accepted, mapped to a workspace |
 | Microsoft Graph access token | Rejected — wrong resource |
 | Azure Resource Manager (ARM / `management.azure.com`) token | Rejected — wrong resource |
 | A raw **ID token** replayed as a bearer | Rejected — not an API access token |
@@ -113,7 +113,7 @@ Two optional settings tighten access further:
 - **Allowed client applications** — restrict which registered client apps may present tokens, by client id. Leave unset to allow any client app within an allowed tenant.
 
 {% hint style="info" %}
-Keep the audience exact. The gateway compares it against the token's `aud` claim, so `api://$GATEWAY_AUDIENCE` on the gateway must match the Application ID URI on the app registration character-for-character.
+Keep the audience exact. The gateway compares it against the token's `aud` claim: `api://$GATEWAY_AUDIENCE` on the gateway must match the Application ID URI on the app registration character-for-character. It also accepts that registration's **bare client-id GUID** as `aud` (the form app-only and managed-identity tokens carry) — so one audience setting covers both delegated and service callers, but only ever for the one registration you named.
 {% endhint %}
 
 ### Expected result
