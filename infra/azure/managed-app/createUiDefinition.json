@@ -1,0 +1,122 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+      {
+        "name": "namePrefix",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Resource name prefix",
+        "defaultValue": "algenta",
+        "toolTip": "3-12 lowercase alphanumerics; prefixes every resource name.",
+        "constraints": { "required": true, "regex": "^[a-z0-9]{3,12}$", "validationMessage": "3-12 lowercase letters/digits." }
+      },
+      {
+        "name": "postgresLocation",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Database region",
+        "defaultValue": "West US 2",
+        "toolTip": "Region for PostgreSQL Flexible Server. Pick a different region than the rest if your subscription is offer-restricted for Postgres in the primary region.",
+        "constraints": {
+          "allowedValues": [
+            { "label": "West US 2", "value": "westus2" },
+            { "label": "West US 3", "value": "westus3" },
+            { "label": "Central US", "value": "centralus" },
+            { "label": "East US 2", "value": "eastus2" },
+            { "label": "West Europe", "value": "westeurope" },
+            { "label": "North Europe", "value": "northeurope" },
+            { "label": "UK South", "value": "uksouth" }
+          ]
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "identity",
+        "label": "Sign-in (Microsoft Entra)",
+        "elements": [
+          {
+            "name": "entraInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "text": "Leave these blank to deploy with sign-in OFF (health-check only), then turn it on later. To enable employee sign-in now, paste your gateway app registration's tenant id and Application ID URI.",
+              "style": "Info"
+            }
+          },
+          {
+            "name": "entraTenantId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Entra tenant id (optional)",
+            "defaultValue": "",
+            "toolTip": "The directory whose employees may sign in. Blank = sign-in off."
+          },
+          {
+            "name": "entraAudience",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Application ID URI / audience (optional)",
+            "defaultValue": "",
+            "toolTip": "e.g. api://<client-id>. Blank = sign-in off."
+          }
+        ]
+      },
+      {
+        "name": "options",
+        "label": "Options & secrets",
+        "elements": [
+          {
+            "name": "deployRedis",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Deploy Azure Cache for Redis (multi-replica coordination)",
+            "toolTip": "Off = single-replica dev/eval (cheaper)."
+          },
+          {
+            "name": "secretsInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "text": "A published Marketplace managed application auto-generates these secrets. This form collects them so the template can store them in Key Vault.",
+              "style": "Info"
+            }
+          },
+          {
+            "name": "postgresAdminPassword",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "PostgreSQL admin password", "confirmPassword": "Confirm password" },
+            "toolTip": "Stored in Key Vault; never emitted as an output.",
+            "constraints": { "required": true, "regex": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{12,}$", "validationMessage": "12+ chars incl. upper, lower, and a digit." },
+            "options": { "hideConfirmation": false }
+          },
+          {
+            "name": "configEncryptionKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "Config encryption key (Fernet/base64)", "confirmPassword": "Confirm key" },
+            "toolTip": "Per-connector credential encryption key.",
+            "constraints": { "required": true },
+            "options": { "hideConfirmation": true }
+          },
+          {
+            "name": "jwtSecret",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": { "password": "JWT signing secret", "confirmPassword": "Confirm secret" },
+            "toolTip": "Signs hosted sessions.",
+            "constraints": { "required": true },
+            "options": { "hideConfirmation": true }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "namePrefix": "[basics('namePrefix')]",
+      "postgresLocation": "[basics('postgresLocation')]",
+      "deployRedis": "[steps('options').deployRedis]",
+      "entraTenantId": "[steps('identity').entraTenantId]",
+      "entraAudience": "[steps('identity').entraAudience]",
+      "postgresAdminPassword": "[steps('options').postgresAdminPassword]",
+      "configEncryptionKey": "[steps('options').configEncryptionKey]",
+      "jwtSecret": "[steps('options').jwtSecret]"
+    }
+  }
+}
