@@ -55,13 +55,13 @@ console.log(distributions.total, templates.total);
 | `me()` | `GET /v1/me` | Current user and organization. |
 | `updateMe(request)` | `PATCH /v1/me` | `UpdateMeRequest` (`name`, `org_name`). |
 | `usage()` | `GET /v1/usage` | Simulations run, API calls, quota usage. |
-| `limits()` | `GET /v1/limits` | Plan limits and rate limit. |
+| `limits()` | `GET /v1/limits` | Unlimited execution policy, request-shape bounds, and worker capacity. |
 | `distributions()` | `GET /v1/distributions` | Supported distributions with example params. |
 | `templates()` | `GET /v1/templates` | Simulation templates with example requests. |
 
 ## Billing and credits
 
-`getBillingInfo` reports the current plan and subscription; `createBillingCheckout` and `createBillingPortal` return a hosted `url` to redirect to. `refreshCredits` and `ingestMeteringEvents` support local-runtime metering.
+`getBillingInfo` reports the current plan and subscription; `createBillingCheckout` and `createBillingPortal` return a hosted `url` to redirect to. `refreshCredits` and `ingestMeteringEvents` are generic managed-runtime compatibility methods. Self-hosted Algenta does not use them for billing or enforcement.
 
 ```ts title="billing.ts"
 const billing = await client.getBillingInfo();

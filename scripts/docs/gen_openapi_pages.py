@@ -102,7 +102,8 @@ def render_reference(ordered, groups) -> str:
         "",
         "{% hint style=\"info\" %}",
         "To call any endpoint live (parameters, schemas, Test it), use the [API explorer](explorer.md). "
-        "Errors are listed on [Error codes](errors.md); limits on [Rate limits & quotas](rate-limits.md).",
+        "Errors are listed on [Error codes](errors.md); execution policy and safety bounds on "
+        "[Execution policy & safety limits](rate-limits.md).",
         "{% endhint %}",
         "",
     ]

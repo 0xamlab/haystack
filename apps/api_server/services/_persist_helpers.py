@@ -148,8 +148,12 @@ async def persist_simulation_run(
         usage_inserted = False
         logger.info("usage_record_already_billed", run_id=str(run_id), org_id=str(org_id))
 
-    # ── 4. Increment Redis quota counter (only on a genuine first insert) ──
-    if usage_inserted and redis_client is not None:
+    from apps.api_server.services.plan_limits import is_unmetered_execution_plan
+
+    metered_execution = not is_unmetered_execution_plan(plan)
+
+    # ── 4. Increment Redis quota counter (only for quota-governed plans) ───
+    if usage_inserted and metered_execution and redis_client is not None:
         try:
             from apps.api_server.services.quota_service import incr_quota_counter
 
@@ -157,8 +161,9 @@ async def persist_simulation_run(
         except Exception as exc:
             logger.warning("quota_counter_incr_failed", org_id=str(org_id), error=str(exc))
 
-    # ── 5. Push Stripe usage (fire-and-forget; only on a genuine first insert) ──
-    if usage_inserted:
+    # Algenta licenses are flat per device. Its local usage record supports customer-owned audit,
+    # but execution counts must never leave the deployment as Stripe meter events.
+    if usage_inserted and metered_execution:
         import asyncio
 
         asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))

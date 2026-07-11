@@ -74,12 +74,10 @@ class CreditRefreshResponse(BaseModel):
 @router.post(
     "/v1/credits/refresh",
     response_model=CreditRefreshResponse,
-    summary="Issue an execution credit batch to the bundled runtime",
+    summary="Issue a compatibility credit batch for a managed runtime",
     description=(
-        "The bundled runtime calls this endpoint automatically when its credit "
-        "pool drops below 10%. Returns the number of credits granted and the "
-        "expiry timestamp. Denied (HTTP 429) when the organization's monthly "
-        "quota is exhausted."
+        "Compatibility endpoint for quota-governed managed runtimes. Algenta editions are "
+        "unmetered and do not need execution credits; non-Algenta plans can return HTTP 429."
     ),
 )
 async def refresh_credits(

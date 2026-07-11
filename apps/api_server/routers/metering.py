@@ -1,8 +1,8 @@
 """
-/v1/metering — local runtime execution analytics ingestion.
+/v1/metering — optional managed-deployment execution analytics ingestion.
 
-Called by the Algenta daemon (apps.runtime.metering.MeteringQueue._flush)
-every 60 seconds with a batch of local execution events.
+Called only when a managed deployment explicitly enables control-plane sync. Self-hosted and
+air-gapped Algenta profiles keep audit records local and never call this endpoint automatically.
 
 This endpoint is analytics-only.  Quota enforcement is handled by the
 credit bucket (POST /v1/credits/refresh) and the device heartbeat.
@@ -66,11 +66,11 @@ class MeteringBatchResponse(BaseModel):
 @router.post(
     "/v1/metering",
     response_model=MeteringBatchResponse,
-    summary="Ingest bundled runtime execution analytics",
+    summary="Ingest managed-deployment execution analytics",
     description=(
-        "The bundled runtime calls this endpoint automatically to flush buffered "
-        "execution events. Analytics only — quota enforcement is handled by the credit bucket. "
-        "Events are structured-logged for the analytics pipeline."
+        "Compatibility endpoint for a managed deployment that explicitly enables control-plane "
+        "sync. Self-hosted Algenta editions do not call it automatically and have no execution "
+        "meter. Received events are analytics only and are not used for Algenta billing."
     ),
 )
 async def ingest_metering_events(

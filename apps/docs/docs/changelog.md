@@ -9,17 +9,17 @@ sidebar_position: 99
 ### Phase 5B — Hosted Account Interface + Billing
 - **Hosted account interface** — login, dashboard, API keys, playground, usage, billing, settings
 - **Stripe billing integration** — checkout sessions, customer portal, webhook handler, plan upgrades
-- **Quota alert emails** — HTML emails at 80% and 100% monthly usage via SMTP
+- **Generic hosted-plan quota alerts** — Algenta per-device editions remain unmetered
 - **Welcome email** on signup with quickstart snippet
 - Billing endpoints: `POST /v1/billing/checkout`, `POST /v1/billing/portal`, `GET /v1/billing/info`, `POST /v1/billing/webhook`
 - 223 unit tests total
 
 ### Phase 5A — Documentation Set + Rate Limiting + Usage Recording
 - **Documentation set** under `apps/docs/docs/` — quickstart, API reference, integration guides
-- **Rate limiting** — Redis per-minute sliding window per org
-- **Monthly quota enforcement** — HTTP 429 when quota exhausted
-- **Usage records** — `usage_records` table, `UsageRecord` model, migration 0004
-- `GET /v1/usage` now reads from `usage_records` (accurate billing count)
+- **Named endpoint abuse controls** — Redis counters for authentication and other narrow surfaces
+- **Generic hosted-plan quota enforcement** — not applied to Algenta per-device editions
+- **Local activity records** — `usage_records` table, `UsageRecord` model, migration 0004
+- `GET /v1/usage` reads customer-owned activity records for audit and capacity planning
 
 ### Phase 4 — Integrations + SDKs
 - **Python SDK** (`packages/python-sdk/`) — sync + async client, Pydantic models, typed exceptions

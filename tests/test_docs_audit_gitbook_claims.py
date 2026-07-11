@@ -188,6 +188,38 @@ def test_runtime_encapsulation_scanner_allows_integrated_runtime_language() -> N
     assert issues == []
 
 
+def test_pricing_contract_scanner_rejects_stale_live_rate_limit_page() -> None:
+    audit = _load_module()
+    text = """# Rate limits & quotas
+| Edition | Requests/minute | Monthly execution governance | Workers/device |
+| Community | 60 | 10,000 | 1 |
+When centrally governed execution reaches its monthly ceiling, retry next month.
+"""
+
+    issues = audit._find_pricing_contract_issues(
+        "live:/http-api/rate-limits.md",
+        text,
+    )
+
+    assert {issue.code for issue in issues} == {
+        "pricing_contract_required_text_missing",
+        "pricing_contract_stale_text",
+    }
+    assert sum(issue.code == "pricing_contract_stale_text" for issue in issues) == 3
+
+
+def test_pricing_contract_scanner_accepts_current_source_pages() -> None:
+    audit = _load_module()
+
+    for path in (
+        ROOT / "gitbook" / "api" / "rate-limits.md",
+        ROOT / "gitbook" / "licensing.md",
+        ROOT / "gitbook" / "billing.md",
+    ):
+        rel_path = str(path.relative_to(ROOT / "gitbook"))
+        assert audit._find_pricing_contract_issues(rel_path, path.read_text()) == []
+
+
 def test_machine_snippet_validator_rejects_malformed_json(tmp_path: Path) -> None:
     audit = _load_module()
     fence = audit.CodeFence(

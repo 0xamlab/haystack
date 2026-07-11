@@ -33,7 +33,7 @@ class PlanConfig:
     executions_month: int  # 0 = unlimited
     devices: int  # 0 = unlimited
     local_runtime: bool  # can register devices / use local daemon
-    rate_per_minute: int
+    rate_per_minute: int  # 0 = unlimited
     async_jobs: bool
     webhooks: bool
     max_runs_per_call: int
@@ -105,49 +105,49 @@ _PLANS: dict[str, PlanConfig] = {
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
         llm_spend_cap_usd_month=0,
     ),
-    # Algenta (the engine as a product). local_runtime is ON at every tier (the bundled in-process runtime
-    # is the whole point). price_usd_month is a display value; the real charge is the Stripe price.
-    # Two priced axes (see docs/pricing-algenta.md): HOSTED is per-SEAT (control plane counts seats);
-    # SELF-HOSTED is per-NODE (once the customer holds the binary, seats are unenforceable — the only
-    # enforceable unit is the running engine, capped by the active-node-cap). algenta_free is the free-
-    # FOREVER, no-card baseline: it always includes exactly ONE self-hosted node, non-commercial.
+    # Algenta (the engine as a product). Execution is unmetered at every tier: no monthly decision
+    # quota, plan request-rate cap, or async-job cap. Tiers differ only by licensed devices, seats,
+    # workers, and governance/support. Request-shape bounds remain uniform safety constraints.
+    # local_runtime is ON at every tier; price_usd_month is display-only (Stripe is authoritative).
+    # One paid unit licenses one device. Stripe quantity raises the org ceiling; before that quantity
+    # is synchronized, every Algenta plan fails safely to one device rather than granting a fleet.
     "algenta_free": PlanConfig(
         display_name="ALGENTA FREE",
         price_usd_month=0,
-        executions_month=10_000,
+        executions_month=0,
         devices=1,
         local_runtime=True,
-        rate_per_minute=60,
-        async_jobs=False,
-        webhooks=False,
-        max_runs_per_call=10_000,
-        max_batch=10,
+        rate_per_minute=0,
+        async_jobs=True,
+        webhooks=True,
+        max_runs_per_call=1_000_000,
+        max_batch=100,
         audit_trail=False,
         rbac=False,
         permitted_modules=["*"],
         credit_batch_size=1_000,
-        concurrent_jobs=1,
-        storage_gb=1,
+        concurrent_jobs=0,
+        storage_gb=0,
         llm_spend_cap_usd_month=0,
     ),
     # Pro — self-hosted, billed PER DEVICE ($99/device/mo, $948/device/yr; Stripe usage=licensed,
     # quantity = number of licensed devices). 5 workers/device, 1 seat. price_usd_month is the per-device
     # monthly price; the bill = $99 × devices.
     "algenta_pro": PlanConfig(
-        display_name="ALGENTA PRO", price_usd_month=99, executions_month=500_000,
-        devices=3, local_runtime=True, rate_per_minute=300, async_jobs=True, webhooks=True,
+        display_name="ALGENTA PRO", price_usd_month=99, executions_month=0,
+        devices=1, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
-        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=4, storage_gb=10,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=0, storage_gb=0,
         llm_spend_cap_usd_month=0,
     ),
     # Team — self-hosted, billed PER DEVICE ($499/device/mo, $4788/device/yr; Stripe usage=licensed,
     # quantity = number of licensed devices). 20 workers/device, 15 seats. price_usd_month is the
     # per-device monthly price; the bill = $499 × devices.
     "algenta_team": PlanConfig(
-        display_name="ALGENTA TEAM", price_usd_month=499, executions_month=500_000,
-        devices=10, local_runtime=True, rate_per_minute=1000, async_jobs=True, webhooks=True,
+        display_name="ALGENTA TEAM", price_usd_month=499, executions_month=0,
+        devices=1, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
-        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
+        permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=0, storage_gb=0,
         llm_spend_cap_usd_month=0,
     ),
     "developer": PlanConfig(
@@ -229,7 +229,7 @@ _PLANS: dict[str, PlanConfig] = {
         executions_month=0,  # unlimited
         devices=0,  # unlimited
         local_runtime=True,
-        rate_per_minute=10_000,
+        rate_per_minute=0,
         async_jobs=True,
         webhooks=True,
         max_runs_per_call=1_000_000,
@@ -266,11 +266,19 @@ def device_limit(plan: str) -> int:
 # ``Organization.licensed_devices``), so the org ceiling — not the static PlanConfig.devices — bounds
 # how many devices they can register. Per-seat plans (codna ``team`` / ``telys_team``) are NOT here.
 PER_DEVICE_PLANS = frozenset({"algenta_pro", "algenta_team"})
+UNMETERED_EXECUTION_PLANS = frozenset(
+    {"algenta_free", "algenta_pro", "algenta_team", "enterprise"}
+)
 
 
 def is_per_device_plan(plan: str) -> bool:
     """True if the plan is billed per device (Stripe quantity = licensed device count)."""
     return (plan or "").strip().lower() in PER_DEVICE_PLANS
+
+
+def is_unmetered_execution_plan(plan: str) -> bool:
+    """True when execution volume must never be billed or quota-enforced."""
+    return (plan or "").strip().lower() in UNMETERED_EXECUTION_PLANS
 
 
 def effective_device_limit(

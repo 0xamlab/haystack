@@ -17,6 +17,10 @@ billing unit is the **running engine = a device**. Everything is therefore **sel
 device**. One plan/entitlement schema; the paid tiers differ by per-device throughput (workers/device) and
 included team seats.
 
+Decisions are unlimited at every tier. There is no monthly execution quota, edition request meter,
+per-decision charge, or Stripe usage event. Customer-owned audit records stay inside the deployment;
+only licensed device quantity is billed.
+
 | Tier | Internal plan | Price | Billing unit | Workers/device | Seats |
 |---|---|---|---|---|---|
 | Community | `algenta_free` | **$0** | — (1 device) | 1 | 1 |
@@ -24,7 +28,7 @@ included team seats.
 | Team | `algenta_team` | **$499/device/mo** ($4788/device/yr) | **per device** (Stripe qty = devices) | 20 | 15 |
 | Enterprise | `enterprise` | from **$50k/yr** | fleet licensing (negotiated) | unlimited | negotiated |
 
-Community is non-commercial (1 device, 1 worker). Enterprise adds air-gapped mode + fleet licensing (your
+Community is non-commercial (1 device, 1 worker, 1 seat). Enterprise adds air-gapped mode + fleet licensing (your
 device count under one agreement) + SLA. Annual ≈ 2 months free (Pro $948 ≈ $79/mo; Team $4788 ≈ $399/mo).
 
 > **Removed (2026-07):** the old two-axis model (`algenta_pro` $29 flat, `algenta_team` $39/seat, and a
@@ -47,9 +51,8 @@ anti-cheat wiring, only the tier rows + minting correctly.
 
 `algenta_free` (Community) always includes **exactly one self-hosted device**, non-commercial: `price=0`,
 `devices=1`, `active_node_limit=1`, `concurrent_worker_limit=1`, `commercial_use=False`. This is the PLG
-top-of-funnel and near-zero-COGS to serve (local execution + BYOK LLM). It is also the **lapse target**: a
-cancelled/lapsed paid license downgrades to Community rather than hard-blocking. Asserted in
-`tests/test_algenta_pricing.py`.
+top-of-funnel and near-zero-COGS to serve (local execution + BYOK LLM). It is also the lapse target: a
+cancelled or expired paid license settles at Community capacity rather than stopping the engine.
 
 ## The anti-fleet-abuse defense (why one per-device license can't run across a fleet)
 

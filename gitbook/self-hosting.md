@@ -120,7 +120,7 @@ The generated `.env` defaults to the private enterprise profile. These are the f
 | `ALGENTA_DISABLE_CLOUD` | `1` | Blocks Algenta-owned cloud egress |
 | `ALGENTA_DISABLE_TELEMETRY` | `1` | Disables outbound/vendor telemetry (local audit still runs) |
 | `ALGENTA_TELEMETRY_MODE` | `local_audit` | Local-only audit; `control_plane_sync` only with an allowed control-plane URL |
-| `ALGENTA_METERING_MODE` | `local_audit` | Local-only metering records |
+| `ALGENTA_METERING_MODE` | `local_audit` | Local-only execution audit records; not a billing meter |
 | `ALGENTA_ALLOW_OUTBOUND_NETWORK` | `0` | Blocks Algenta-owned and undeclared public egress |
 | `ALGENTA_EGRESS_ALLOWLIST` | `minio:9000` | Comma-separated allowlist for explicit connector/operator egress (e.g. `minio:9000,*.customer.internal`) |
 | `ALGENTA_SOURCES_DIR` | `/home/app/.algenta/sources` | Local registry path for uploaded/queryable datasets |
@@ -128,7 +128,7 @@ The generated `.env` defaults to the private enterprise profile. These are the f
 | `ALGENTA_APP_BASE_URL` | empty | Separate dashboard/account UI origin; leave blank to keep links on the API origin |
 
 {% hint style="info" %}
-`ALGENTA_DISABLE_TELEMETRY=1` means no outbound or vendor telemetry. It does not disable local audit events, local metering records, or local egress logs — those stay on your host for the proof endpoints below.
+`ALGENTA_DISABLE_TELEMETRY=1` means no outbound or vendor telemetry. Local audit events and egress logs remain on your host for the proof endpoints below; they are not sent to Algenta and are not a billing meter.
 {% endhint %}
 
 When you front the API with a public hostname, set `ALGENTA_API_PUBLIC_BASE_URL` to that origin (for example `https://algenta.acme.internal`) so generated links and email content point at your deployment. Set `ALGENTA_APP_BASE_URL` only when you run a separate dashboard; leaving it blank in a private profile keeps user-facing links on the API origin instead of pointing at Algenta cloud.

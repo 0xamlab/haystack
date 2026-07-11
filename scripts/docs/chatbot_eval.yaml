@@ -116,9 +116,9 @@ evaluations:
     expected_pages: ["sdk/testing.md", "concepts/governed-data.md"]
 
   - id: rate-limits-source
-    question: "Where do rate limits and quotas come from?"
-    required_facts: ["plan", "limit"]
-    prohibited: ["unlimited for everyone", "no quotas exist"]
+    question: "Does Algenta limit decisions or requests by edition?"
+    required_facts: ["unlimited decisions", "no plan request meter", "request-shape", "workers/device"]
+    prohibited: ["10,000 executions per month", "requests/minute varies by edition", "upgrade for more decisions"]
     expected_pages: ["api/rate-limits.md", "billing.md"]
 
   - id: error-codes

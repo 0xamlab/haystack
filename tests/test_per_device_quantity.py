@@ -36,19 +36,19 @@ def test_is_per_device_plan() -> None:
 
 
 def test_effective_device_limit_org_ceiling_overrides_static() -> None:
-    # algenta_pro static devices=3; an org that licensed 10 devices can register 10.
+    # algenta_pro static devices=1; an org that licensed 10 devices can register 10.
     assert plan_limits.effective_device_limit("algenta_pro", None, org_ceiling=10) == 10
     # a per-key override still narrows within the org ceiling (sub-allocation).
     assert plan_limits.effective_device_limit("algenta_pro", 4, org_ceiling=10) == 4
     # 0 / missing ceiling → fall back to the static plan cap, never a lockout.
-    assert plan_limits.effective_device_limit("algenta_pro", None, org_ceiling=0) == 3
-    assert plan_limits.effective_device_limit("algenta_pro", None, org_ceiling=None) == 3
+    assert plan_limits.effective_device_limit("algenta_pro", None, org_ceiling=0) == 1
+    assert plan_limits.effective_device_limit("algenta_pro", None, org_ceiling=None) == 1
     # per-seat/other plans are byte-for-byte unchanged when no ceiling is passed.
     assert plan_limits.effective_device_limit("team", None) == plan_limits.device_limit("team")
 
 
 def test_validate_api_key_device_limit_uses_org_ceiling() -> None:
-    # a per-key override up to the org ceiling is accepted (even above the static plan cap of 3).
+    # a per-key override up to the org ceiling is accepted (even above the static one-device cap).
     assert plan_limits.validate_api_key_device_limit("algenta_pro", 8, org_ceiling=10) == 8
     with pytest.raises(ValueError):
         plan_limits.validate_api_key_device_limit("algenta_pro", 11, org_ceiling=10)
@@ -250,8 +250,11 @@ async def test_live_register_endpoint_enforces_org_wide_ceiling_across_keys(clie
         )
     await _set_licensed_devices(org_id, 2)  # licensed for exactly 2 devices
     try:
-        k1 = await _runtime_key(client, owner_key, device_limit=3)  # per-key cap 3 (static algenta_pro)
-        k2 = await _runtime_key(client, owner_key, device_limit=3)
+        k1 = await _runtime_key(client, owner_key, device_limit=2)
+        k2 = await _runtime_key(client, owner_key, device_limit=2)
+        listed = await client.get("/v1/api-keys", headers={"X-API-Key": owner_key})
+        assert listed.status_code == 200, listed.text
+        assert {entry["device_limit"] for entry in listed.json()} == {2}
         # 2 devices, one per key — within the org ceiling of 2.
         assert (await client.post("/v1/device/register", headers={"X-API-Key": k1}, json=_reg_payload("pd-live-device-0001"))).status_code == 200
         assert (await client.post("/v1/device/register", headers={"X-API-Key": k2}, json=_reg_payload("pd-live-device-0002"))).status_code == 200
@@ -266,7 +269,7 @@ async def test_live_register_endpoint_enforces_org_wide_ceiling_across_keys(clie
 @pytest.mark.anyio
 async def test_live_register_enforces_static_ceiling_when_unsynced(client, app) -> None:
     """Even with licensed_devices=0 (webhook not yet fired), a per-device org is bounded ORG-WIDE at
-    the static plan cap (algenta_pro=3) across keys — no multi-key sprawl window before the sync."""
+    the static plan cap (algenta_pro=1) across keys — no multi-key sprawl window before the sync."""
     from apps.api_server.middleware.auth import get_redis
 
     async def _fake_redis() -> object:
@@ -276,17 +279,14 @@ async def test_live_register_enforces_static_ceiling_when_unsynced(client, app) 
     owner_key, _ = await _seed_api_key(
         label="pd-unsynced", expires_at=datetime.now(UTC) + timedelta(days=30), plan=OrgPlan.ALGENTA_PRO
     )
-    # licensed_devices left at 0 (unsynced) → org-wide ceiling falls back to static algenta_pro=3.
+    # licensed_devices left at 0 (unsynced) → org-wide ceiling falls back to one paid unit.
     try:
-        k1 = await _runtime_key(client, owner_key, device_limit=3)
-        k2 = await _runtime_key(client, owner_key, device_limit=3)
+        k1 = await _runtime_key(client, owner_key, device_limit=1)
+        k2 = await _runtime_key(client, owner_key, device_limit=1)
         assert (await client.post("/v1/device/register", headers={"X-API-Key": k1}, json=_reg_payload("unsynced-device-0001"))).status_code == 200
-        assert (await client.post("/v1/device/register", headers={"X-API-Key": k1}, json=_reg_payload("unsynced-device-0002"))).status_code == 200
-        assert (await client.post("/v1/device/register", headers={"X-API-Key": k2}, json=_reg_payload("unsynced-device-0003"))).status_code == 200
-        # 4th device across keys exceeds the static org-wide cap of 3 → refused (no multi-key sprawl).
-        fourth = await client.post("/v1/device/register", headers={"X-API-Key": k2}, json=_reg_payload("unsynced-device-0004"))
-        assert fourth.status_code == 402, fourth.text
-        assert "licensed_device_limit_reached" in fourth.text, fourth.text
+        second = await client.post("/v1/device/register", headers={"X-API-Key": k2}, json=_reg_payload("unsynced-device-0002"))
+        assert second.status_code == 402, second.text
+        assert "licensed_device_limit_reached" in second.text, second.text
     finally:
         app.dependency_overrides.pop(get_redis, None)
 
@@ -302,12 +302,12 @@ async def test_license_jwt_carries_purchased_device_and_node_limits() -> None:
         org_id = str(
             (await s.execute(select(APIKey.org_id).where(APIKey.id == uuid.UUID(key_id)))).scalar_one()
         )
-    await _set_licensed_devices(org_id, 12)  # above the static algenta_team devices=10
+    await _set_licensed_devices(org_id, 12)  # above the static one-device fallback
     async with AsyncSessionLocal() as s:
         result = await register_device(key_raw, _dev_info(1), s)
         await s.commit()
     assert result is not None
-    assert result["device_limit"] == 12  # org ceiling, not the static 10
+    assert result["device_limit"] == 12  # org ceiling, not the static one-device fallback
     claims = jwt.decode(result["license_token"], options={"verify_signature": False})
     assert claims["device_limit"] == 12
     assert claims["active_node_limit"] == 12  # offline census cap = purchased device count
@@ -316,18 +316,17 @@ async def test_license_jwt_carries_purchased_device_and_node_limits() -> None:
 @pytest.mark.anyio
 async def test_register_falls_back_to_static_cap_when_unsynced() -> None:
     """licensed_devices=0 (webhook not yet fired) → enforcement uses the static plan cap, never a
-    lockout. algenta_pro static devices=3, so a 4th device is refused by the per-key/static cap."""
+    lockout. The one-device fallback refuses a second device until Stripe quantity is synchronized."""
     key_raw, key_id = await _seed_api_key(
         label="pd-fallback", expires_at=datetime.now(UTC) + timedelta(days=30), plan=OrgPlan.ALGENTA_PRO
     )
     # licensed_devices left at its default 0 (unsynced).
     async with AsyncSessionLocal() as s:
-        for i in range(3):  # static cap is 3 → all OK
-            await register_device(key_raw, _dev_info(i), s)
-            await s.commit()
+        await register_device(key_raw, _dev_info(0), s)
+        await s.commit()
     with pytest.raises(ValueError, match="[Dd]evice limit reached"):
         async with AsyncSessionLocal() as s:
-            await register_device(key_raw, _dev_info(99), s)
+            await register_device(key_raw, _dev_info(1), s)
             await s.commit()
 
 

@@ -452,7 +452,7 @@ def test_runtime_local_hosted_limits_recheck_offline_license_with_monotonic_time
         # NEW model: past hard-expiry with no reachable renewal, the offline license DOWNGRADES to
         # Community (free-forever) rather than hard-blocking. Verify at the license layer — the engine
         # keeps a valid license and serves at Community limits; paid caps/features resume on renewal.
-        # (Enterprise air-gapped — _local_license_required — still hard-blocks, covered elsewhere.)
+        # A previously valid Enterprise air-gapped term follows the same Community fallback.
         monotonic_now = 10.0 + (14 * 86_400) + 5.0
         downgraded = license_mod.load_license("de_live_test_key")
 
@@ -634,5 +634,4 @@ def test_runtime_local_connect_rejects_remote_canonical_connector() -> None:
         )
 
     assert exc.value.code == "unsupported_local_connector"
-
 

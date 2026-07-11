@@ -119,7 +119,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `playground_rate_limit` | The keyless playground rate limit was hit; slow down or use an API key. |
 | `preview_capability_not_executable` | This capability can be previewed but not executed in preview mode. |
 | `provider_key_not_found` | No BYOK provider key is configured for this backend. |
-| `quota_exceeded` | The plan's monthly quota is exhausted; upgrade or wait for reset. |
+| `quota_exceeded` | A custom or non-Algenta governance quota is exhausted; Algenta editions have no monthly execution quota. |
 | `rate_limit_backend_unavailable` | The rate-limit backend (Redis) is unreachable. |
 | `resource_write_conflict` | A concurrent write conflicted; retry. |
 | `runtime_library_metadata_missing` | The runtime library is missing required metadata. |

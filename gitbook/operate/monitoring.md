@@ -104,7 +104,7 @@ Algenta defines these application metrics (in addition to the default process an
 | `mojo_pool_wait_seconds` | histogram | — | Time spent waiting to acquire a worker from the warm pool. |
 | `quota_check_duration_seconds` | histogram | `source` (`redis` / `db`) | Quota-check latency, Redis fast path vs. DB fallback. |
 | `simulations_total` | counter | `mode`, `plan` | Total successful simulations. |
-| `simulation_errors_total` | counter | `error_type` | Errors by type (`engine_error`, `quota_exceeded`, `rate_limit`). |
+| `simulation_errors_total` | counter | `error_type` | Errors by type (`engine_error`, custom-policy `quota_exceeded`, endpoint `rate_limit`). Algenta editions do not emit plan execution quotas. |
 | `mojo_worker_restarts_total` | counter | — | Worker process restarts by the health monitor. A rising value signals an unhealthy engine. |
 
 Useful starting queries:

@@ -102,7 +102,7 @@ Every method raises a subclass of `DecisionEngineError`. All are importable from
 | `AuthenticationError` | `401` | Missing, invalid, expired, or revoked API key. |
 | `ValidationError` | `422` | Request failed validation; inspect `.validation_errors` / `.field_errors`. |
 | `NotFoundError` | `404` | Resource not found. |
-| `RateLimitError` | `429` | Quota or rate limit exceeded; carries `.retry_after`. The client already retried up to `max_retries`. |
+| `RateLimitError` | `429` | Endpoint abuse control, upstream provider limit, or operator policy; carries `.retry_after`. Algenta editions have no execution quota. |
 | `ServerError` | `5xx` | Server-side error. |
 | `DecisionEngineError` | any | Base class; carries `.status_code`, `.error_code`, `.request_id`, and `.details`. |
 

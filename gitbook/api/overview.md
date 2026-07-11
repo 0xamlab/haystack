@@ -177,7 +177,7 @@ The router areas map cleanly to where you look for a given capability. All paths
 | LLM | `/v1/models`, plus the chat/embedding/utility routes under `/v1` | The governed LLM surface; models routed per the catalog. |
 | Capabilities and connectors | `/v1/capability-providers`, `/v1/capability-bindings`, `/v1/capabilities`, `/v1/capabilities/route`, `/v1/capabilities/execute` | The capability plane: providers, bindings, routing and execution. |
 | Account, keys, devices | `/v1/me`, `/v1/usage`, `/v1/limits`, `/v1/api-keys`, `/v1/device/register`, `/v1/device/heartbeat`, `/v1/device/list` | Identity, usage, key management, device lifecycle. |
-| Billing, credits, metering | `/v1/billing/info`, `/v1/billing/checkout`, `/v1/billing/portal`, `/v1/credits/refresh`, `/v1/metering` | Plan and billing, credit buckets, local-runtime metering flush. |
+| Billing and managed compatibility | `/v1/billing/info`, `/v1/billing/checkout`, `/v1/billing/portal`, `/v1/credits/refresh`, `/v1/metering` | Plan and billing plus generic managed-runtime compatibility. Algenta editions are unmetered. |
 | License | `/v1/license/challenge`, `/v1/license/renew`, `/v1/license/revocations` | License verification and renewal for self-hosted and bound deployments. |
 
 The full, current set is always available at `/openapi.json` and described machine-readably at `/v1/meta/contract`.
@@ -249,7 +249,7 @@ Every error — auth, validation, not found, rate limit, server — is returned 
 | 401 | `authentication_required`, `invalid_api_key` | No key, or the key is invalid/expired/revoked. |
 | 403 | `organization_suspended`, `account_suspended`, `email_verification_required` | Authenticated but not permitted. |
 | 422 | `validation_error` | Request body or query params failed validation. `details` lists each `field` and `issue`. |
-| 429 | rate limit / quota exceeded | Slow down or upgrade your plan. |
+| 429 | endpoint abuse control, provider limit, or operator policy | Inspect the error code and honor `Retry-After` when present. |
 | 500 | `internal_error` | Unexpected server error; quote the `request_id`. |
 
 The complete, generated list of every code the API can return is on [Error codes](errors.md).
@@ -284,7 +284,7 @@ A few patterns hold across the API:
 - **Pagination** — list endpoints accept `limit`/`offset` and report totals; page until you have what you need.
 - **Idempotency** — mutating calls accept an idempotency key so a retry is safe (a reused key with a different body returns `idempotency_key_conflict`).
 - **Async jobs** — long-running work goes to `POST /v1/jobs`; poll `GET /v1/jobs/{id}` and fetch `GET /v1/jobs/{id}/result`.
-- **Rate limits & quotas** — see [Rate limits & quotas](rate-limits.md); back off with jitter on `429`.
+- **Execution policy & safety limits** — see [Execution policy & safety limits](rate-limits.md); Algenta decisions are unlimited, while endpoint-specific 429 responses name their actual control.
 
 The complete operation list is in the [endpoint reference](reference.md); try any of it live in the [API explorer](explorer.md).
 

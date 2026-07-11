@@ -184,7 +184,7 @@ CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
 
 REFRESH_CREDITS_SPEC: dict[str, Any] = {
     "name": "refresh_credits",
-    "description": "Issue one execution credit batch for a local runtime device.",
+    "description": "Issue a compatibility credit batch for a quota-governed managed runtime.",
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -199,7 +199,7 @@ REFRESH_CREDITS_SPEC: dict[str, Any] = {
 
 INGEST_METERING_EVENTS_SPEC: dict[str, Any] = {
     "name": "ingest_metering_events",
-    "description": "Ingest one local metering event batch for the active organization.",
+    "description": "Ingest an explicitly enabled managed-runtime analytics batch.",
     "inputSchema": {
         "type": "object",
         "properties": {

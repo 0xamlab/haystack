@@ -421,7 +421,7 @@ Never expose the MCP HTTP port directly to the public internet without an authen
 | `ALGENTA_API_KEY / DE_API_KEY environment variables are not set` | Export `ALGENTA_API_KEY` (or pass `Authorization: Bearer <key>` over HTTP) before launching. |
 | `mcp package not installed` | Reinstall or upgrade `algenta-mcp`; its declared dependencies include the MCP protocol library. Do not install a side dependency separately. |
 | `API error 401` | Rotate the key at `https://app.algenta.ai/dashboard/api-keys` (Cloud Managed) or in your operator deployment (self-hosted). |
-| `API error 429` | You are over the plan's requests/minute limit. Space out calls or upgrade. |
+| `API error 429` | Inspect the structured code for an endpoint abuse control, upstream provider limit, or operator policy; Algenta editions have no request meter. |
 | `503 mcp_transport_unavailable` on `/mcp/sse` | Upgrade to the current official Algenta API image or reinstall `algenta-mcp`; both bundle the transport. |
 | Tool not showing in Claude Desktop | Check JSON config syntax, restart the client, inspect `~/Library/Logs/Claude/`. |
 | MCP private profile error targeting an Algenta URL | In `self_hosted` / `air_gapped`, set `ALGENTA_BASE_URL` to your own engine; private profiles refuse Algenta-owned URLs. |

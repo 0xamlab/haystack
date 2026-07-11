@@ -65,7 +65,7 @@ client = AlgentaClient(
 | `ingest_metering_events(*, device_id, events)` | `POST /v1/metering` | `MeteringBatchResult` |
 
 - `create_billing_checkout` and `create_billing_portal` return a hosted session you redirect the user to.
-- `refresh_credits` and `ingest_metering_events` are used by a local runtime to reconcile its credit bucket and flush metered usage for a `device_id`.
+- `refresh_credits` and `ingest_metering_events` are generic managed-runtime compatibility methods. Self-hosted Algenta does not call them for billing or enforcement; decisions are unlimited and audit records remain local.
 
 ## Devices
 

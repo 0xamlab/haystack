@@ -1,9 +1,8 @@
 """A lapsed paid license downgrades to Community (free-forever), it does NOT hard-block.
 
 The engine runs on the customer's hardware; when a paid license expires and can't renew, a
-connected deployment keeps running at Community limits (1 device / 1 worker / non-commercial) —
-paid caps/features + updates resume on renewal. Enterprise air-gapped still hard-blocks (no
-renewal path); that gate is asserted where `_local_license_required()` is honored.
+deployment keeps running at Community limits (1 device / 1 worker / 1 seat / non-commercial) —
+paid caps/features + updates resume on renewal.
 """
 
 from __future__ import annotations
@@ -17,6 +16,7 @@ def test_community_fallback_keeps_running_at_free_limits() -> None:
     assert lic.plan == "algenta_free"  # downgraded to Community
     assert lic.device_limit == 1  # free-forever on one node
     assert lic.concurrent_worker_limit == 1  # Community per-device worker cap
+    assert lic.named_seat_limit == 1
     assert lic.commercial_use is False  # Community is non-commercial
     assert lic.expires_at == 0  # free-forever — never expires
     assert lic.source == "community-fallback"

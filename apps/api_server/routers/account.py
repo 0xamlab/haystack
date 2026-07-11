@@ -60,6 +60,7 @@ from apps.api_server.services.auth_service import (
 from apps.api_server.services.byok_org_resolver import ensure_identity_link
 from apps.api_server.services.plan_limits import (
     effective_device_limit,
+    is_per_device_plan,
     validate_api_key_device_limit,
 )
 from apps.api_server.services.plan_limits import (
@@ -80,6 +81,14 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Account"])
 
 
+def _organization_device_ceiling(plan: str, organization: Organization | None) -> int | None:
+    """Return a synchronized Stripe device quantity for per-device plans."""
+    if not is_per_device_plan(plan) or organization is None:
+        return None
+    licensed_devices = int(organization.licensed_devices or 0)
+    return licensed_devices if licensed_devices > 0 else None
+
+
 def _api_key_info_device_limit(auth: AuthContext, api_key: APIKey) -> int:
     plan = auth.get("plan")
     if plan is None:
@@ -93,6 +102,10 @@ def _api_key_info_device_limit(auth: AuthContext, api_key: APIKey) -> int:
     return effective_device_limit(
         plan,
         stored_limit if isinstance(stored_limit, int) else None,
+        org_ceiling=_organization_device_ceiling(
+            plan,
+            getattr(api_key, "organization", None),
+        ),
     )
 
 
@@ -299,7 +312,7 @@ async def usage(
 @router.get(
     "/v1/limits",
     response_model=LimitsResponse,
-    summary="Get rate limits and quotas for current plan",
+    summary="Get execution policy and request safety bounds",
 )
 async def limits(auth: AuthContext = Depends(get_current_org)) -> LimitsResponse:
     plan = auth["plan"]
@@ -539,8 +552,19 @@ async def create_api_key(
         error_code="api_key_create_rate_limited",
         error_message="Too many API keys created. Please wait a minute and retry.",
     )
+    organization = await db.get(Organization, auth["org_id"])
+    if organization is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "org_not_found", "message": "Organization not found."}},
+        )
+    org_device_ceiling = _organization_device_ceiling(auth["plan"], organization)
     try:
-        stored_device_limit = validate_api_key_device_limit(auth["plan"], payload.device_limit)
+        stored_device_limit = validate_api_key_device_limit(
+            auth["plan"],
+            payload.device_limit,
+            org_ceiling=org_device_ceiling,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
@@ -564,7 +588,11 @@ async def create_api_key(
     )
     db.add(api_key)
     await db.flush()
-    device_limit = effective_device_limit(auth["plan"], api_key.device_limit)
+    device_limit = effective_device_limit(
+        auth["plan"],
+        api_key.device_limit,
+        org_ceiling=org_device_ceiling,
+    )
     logger.info(
         "api_key_created",
         org_id=str(auth["org_id"]),

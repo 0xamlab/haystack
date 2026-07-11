@@ -160,26 +160,10 @@
       {
         "bytes": 85,
         "language": "bash",
-        "line": 17,
+        "line": 14,
         "path": "api/rate-limits.md",
         "sha256": "cb9d83233bb6a107cb2caf2c4906e83163bb263b4568b005f6f42b1439e24185",
         "validation": "command_inventory"
-      },
-      {
-        "bytes": 49,
-        "language": "text",
-        "line": 52,
-        "path": "api/rate-limits.md",
-        "sha256": "2c33cc279906fc96eb1a3229b29429c5eff8a86bc9677c2ebe901b4450a7b28b",
-        "validation": "static_inventory"
-      },
-      {
-        "bytes": 63,
-        "language": "text",
-        "line": 59,
-        "path": "api/rate-limits.md",
-        "sha256": "9c5bb4d5a6c7e0855d0ef72ea732347d15b3872f173537d73f69af102946d0ae",
-        "validation": "static_inventory"
       },
       {
         "bytes": 458,
@@ -518,17 +502,17 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 219,
+        "bytes": 289,
         "language": "json",
         "line": 35,
         "path": "billing.md",
-        "sha256": "db0579c61046e7185b24889e920b61254459a64f0a01f73e1806a9ddfe181e9c",
+        "sha256": "eda40ff697feac9ef915053e72d173e588027674776d463273b6e252a9a52051",
         "validation": "parsed"
       },
       {
         "bytes": 87,
         "language": "bash",
-        "line": 56,
+        "line": 58,
         "path": "billing.md",
         "sha256": "6b9c4523574ce0c357d569604ff8af461bf8a2bb3cb8b1ebf06b42b898feeae5",
         "validation": "command_inventory"
@@ -536,7 +520,7 @@
       {
         "bytes": 16,
         "language": "bash",
-        "line": 63,
+        "line": 65,
         "path": "billing.md",
         "sha256": "5117a13fcac6dbe4d3f46fe1c1bc0325a6e9fbf5616e05c5f73e0cf7c35ca100",
         "validation": "command_inventory"
@@ -544,7 +528,7 @@
       {
         "bytes": 134,
         "language": "json",
-        "line": 69,
+        "line": 71,
         "path": "billing.md",
         "sha256": "e58c3a2242f25e3f429ff2c2b56ab6c9152b17246e840f11a4f245d2f63eb042",
         "validation": "parsed"
@@ -816,7 +800,7 @@
       {
         "bytes": 75,
         "language": "bash",
-        "line": 575,
+        "line": 577,
         "path": "cli.md",
         "sha256": "ed7e099a2a6a843f43c5c85b6bb6456133bec753c76a660be906198d95b1508b",
         "validation": "command_inventory"
@@ -824,7 +808,7 @@
       {
         "bytes": 216,
         "language": "bash",
-        "line": 591,
+        "line": 593,
         "path": "cli.md",
         "sha256": "6d61ab4a45548d76bb7ed6dfd58b1008f45b56cf652e28a9062de2c2eee7496b",
         "validation": "command_inventory"
@@ -832,7 +816,7 @@
       {
         "bytes": 165,
         "language": "bash",
-        "line": 618,
+        "line": 620,
         "path": "cli.md",
         "sha256": "bf8de315dca65d1d81d8d9616239153f92b23874ca97383cc7295ad255737cc8",
         "validation": "command_inventory"
@@ -840,7 +824,7 @@
       {
         "bytes": 127,
         "language": "bash",
-        "line": 637,
+        "line": 639,
         "path": "cli.md",
         "sha256": "96b09c44a56695552f819aad413a60188ccc4b761d364e5659faa84d3717741e",
         "validation": "command_inventory"
@@ -848,7 +832,7 @@
       {
         "bytes": 86,
         "language": "bash",
-        "line": 654,
+        "line": 656,
         "path": "cli.md",
         "sha256": "02072e95f4a581ca6d427c66953760604916720618275e4f350ac17f0d738179",
         "validation": "command_inventory"
@@ -856,7 +840,7 @@
       {
         "bytes": 423,
         "language": "bash",
-        "line": 666,
+        "line": 668,
         "path": "cli.md",
         "sha256": "0b5c3c2cfde213dae5223abee50c9dc81cb07a16043f113033bb5533a4844705",
         "validation": "command_inventory"
@@ -864,7 +848,7 @@
       {
         "bytes": 86,
         "language": "bash",
-        "line": 681,
+        "line": 683,
         "path": "cli.md",
         "sha256": "cf2a28ba855f6ff6402e5296aa0cdc3ae4516cfe2a6141e17eeaaade2af75609",
         "validation": "command_inventory"
@@ -10868,27 +10852,18 @@
       {
         "authority_match": true,
         "endpoint": "/v1/limits",
+        "line": 12,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/rate-limits.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/limits",
         "line": 15,
         "match_kind": "exact",
-        "method": "GET",
-        "path": "api/rate-limits.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/limits",
-        "line": 18,
-        "match_kind": "exact",
         "method": null,
-        "path": "api/rate-limits.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/limits",
-        "line": 46,
-        "match_kind": "exact",
-        "method": "GET",
         "path": "api/rate-limits.md",
         "scope": "algenta"
       },
@@ -12461,7 +12436,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/usage",
-        "line": 52,
+        "line": 54,
         "match_kind": "exact",
         "method": "GET",
         "path": "billing.md",
@@ -12470,7 +12445,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/usage",
-        "line": 57,
+        "line": 59,
         "match_kind": "exact",
         "method": null,
         "path": "billing.md",
@@ -13298,7 +13273,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/credits/refresh",
-        "line": 572,
+        "line": 574,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13307,7 +13282,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/metering",
-        "line": 573,
+        "line": 575,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13316,7 +13291,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/team",
-        "line": 584,
+        "line": 586,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13325,7 +13300,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/team/invite",
-        "line": 585,
+        "line": 587,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13334,7 +13309,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/team/{}/role",
-        "line": 586,
+        "line": 588,
         "match_kind": "exact",
         "method": "PATCH",
         "path": "cli.md",
@@ -13343,7 +13318,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/team/{}",
-        "line": 587,
+        "line": 589,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "cli.md",
@@ -13352,7 +13327,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/audit-logs",
-        "line": 588,
+        "line": 590,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13361,7 +13336,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/audit-logs/artifacts",
-        "line": 589,
+        "line": 591,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13370,33 +13345,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployments/regions",
-        "line": 612,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/deployments",
-        "line": 613,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/deployments",
         "line": 614,
         "match_kind": "exact",
-        "method": "POST",
+        "method": "GET",
         "path": "cli.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}/cost",
+        "endpoint": "/v1/deployments",
         "line": 615,
         "match_kind": "exact",
         "method": "GET",
@@ -13405,8 +13362,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/deployments/{}",
+        "endpoint": "/v1/deployments",
         "line": 616,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/deployments/{}/cost",
+        "line": 617,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/deployments/{}",
+        "line": 618,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "cli.md",
@@ -13415,24 +13390,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 630,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/meta/contract",
-        "line": 631,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/version",
         "line": 632,
         "match_kind": "exact",
         "method": "GET",
@@ -13441,8 +13398,26 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate",
+        "endpoint": "/v1/meta/contract",
+        "line": 633,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/version",
         "line": 634,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate",
+        "line": 636,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13451,7 +13426,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/recommend",
-        "line": 635,
+        "line": 637,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13460,24 +13435,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/templates",
-        "line": 650,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/templates/{}/run",
-        "line": 651,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/simulate/templates/{}",
         "line": 652,
         "match_kind": "exact",
         "method": "GET",
@@ -13486,8 +13443,26 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/templates/{}/run",
+        "line": 653,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate/templates/{}",
+        "line": 654,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "cli.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/me",
-        "line": 682,
+        "line": 684,
         "match_kind": "exact",
         "method": null,
         "path": "cli.md",
@@ -17115,15 +17090,6 @@
         "authority_match": true,
         "endpoint": "/v1/simulate",
         "line": 11,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "guides/async-jobs.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/jobs",
-        "line": 21,
         "match_kind": "exact",
         "method": "POST",
         "path": "guides/async-jobs.md",
@@ -27975,19 +27941,19 @@
       },
       {
         "kind": "internal",
-        "line": 31,
+        "line": 34,
+        "path": "api/rate-limits.md",
+        "target": "../licensing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 54,
         "path": "api/rate-limits.md",
         "target": "../billing.md"
       },
       {
         "kind": "internal",
-        "line": 76,
-        "path": "api/rate-limits.md",
-        "target": "../billing.md"
-      },
-      {
-        "kind": "internal",
-        "line": 80,
+        "line": 58,
         "path": "api/rate-limits.md",
         "target": "errors.md"
       },
@@ -28095,37 +28061,37 @@
       },
       {
         "kind": "internal",
-        "line": 89,
+        "line": 91,
         "path": "billing.md",
         "target": "guides/byok.md"
       },
       {
         "kind": "internal",
-        "line": 90,
+        "line": 92,
         "path": "billing.md",
         "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
-        "line": 91,
+        "line": 93,
         "path": "billing.md",
         "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
-        "line": 96,
+        "line": 98,
         "path": "billing.md",
         "target": "licensing.md"
       },
       {
         "kind": "internal",
-        "line": 97,
+        "line": 99,
         "path": "billing.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 98,
+        "line": 100,
         "path": "billing.md",
         "target": "operate/teams-rbac.md"
       },
@@ -28251,19 +28217,19 @@
       },
       {
         "kind": "internal",
-        "line": 691,
+        "line": 693,
         "path": "cli.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 695,
+        "line": 697,
         "path": "cli.md",
         "target": "api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 699,
+        "line": 701,
         "path": "cli.md",
         "target": "troubleshooting.md"
       },
@@ -30543,12 +30509,6 @@
       },
       {
         "kind": "internal",
-        "line": 182,
-        "path": "guides/run-a-decision.md",
-        "target": "../billing.md"
-      },
-      {
-        "kind": "internal",
         "line": 186,
         "path": "guides/run-a-decision.md",
         "target": "../api/errors.md"
@@ -30636,12 +30596,6 @@
         "line": 143,
         "path": "guides/simulate.md",
         "target": "../api/rate-limits.md"
-      },
-      {
-        "kind": "internal",
-        "line": 143,
-        "path": "guides/simulate.md",
-        "target": "../billing.md"
       },
       {
         "kind": "internal",
@@ -32745,6 +32699,11 @@
         "term": "algenta"
       },
       {
+        "line": 122,
+        "path": "api/errors.md",
+        "term": "algenta"
+      },
+      {
         "line": 3,
         "path": "api/explorer.md",
         "term": "algenta"
@@ -32790,12 +32749,22 @@
         "term": "algenta"
       },
       {
+        "line": 180,
+        "path": "api/overview.md",
+        "term": "algenta"
+      },
+      {
         "line": 242,
         "path": "api/overview.md",
         "term": "algenta"
       },
       {
         "line": 269,
+        "path": "api/overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 287,
         "path": "api/overview.md",
         "term": "algenta"
       },
@@ -32810,22 +32779,17 @@
         "term": "algenta"
       },
       {
-        "line": 22,
+        "line": 8,
         "path": "api/rate-limits.md",
         "term": "algenta"
       },
       {
-        "line": 50,
+        "line": 49,
         "path": "api/rate-limits.md",
         "term": "algenta"
       },
       {
-        "line": 67,
-        "path": "api/rate-limits.md",
-        "term": "algenta"
-      },
-      {
-        "line": 71,
+        "line": 49,
         "path": "api/rate-limits.md",
         "term": "algenta"
       },
@@ -32861,6 +32825,11 @@
       },
       {
         "line": 10,
+        "path": "api/streaming.md",
+        "term": "algenta"
+      },
+      {
+        "line": 26,
         "path": "api/streaming.md",
         "term": "algenta"
       },
@@ -33010,22 +32979,37 @@
         "term": "algenta"
       },
       {
+        "line": 10,
+        "path": "billing.md",
+        "term": "algenta"
+      },
+      {
+        "line": 10,
+        "path": "billing.md",
+        "term": "algenta"
+      },
+      {
         "line": 23,
         "path": "billing.md",
         "term": "algenta"
       },
       {
-        "line": 57,
+        "line": 54,
         "path": "billing.md",
         "term": "algenta"
       },
       {
-        "line": 96,
+        "line": 59,
         "path": "billing.md",
         "term": "algenta"
       },
       {
-        "line": 97,
+        "line": 98,
+        "path": "billing.md",
+        "term": "algenta"
+      },
+      {
+        "line": 99,
         "path": "billing.md",
         "term": "algenta"
       },
@@ -33096,6 +33080,11 @@
       },
       {
         "line": 537,
+        "path": "cli.md",
+        "term": "algenta"
+      },
+      {
+        "line": 570,
         "path": "cli.md",
         "term": "algenta"
       },
@@ -33356,6 +33345,21 @@
       },
       {
         "line": 8,
+        "path": "configuration.md",
+        "term": "algenta"
+      },
+      {
+        "line": 28,
+        "path": "configuration.md",
+        "term": "algenta"
+      },
+      {
+        "line": 35,
+        "path": "configuration.md",
+        "term": "algenta"
+      },
+      {
+        "line": 40,
         "path": "configuration.md",
         "term": "algenta"
       },
@@ -34125,6 +34129,11 @@
         "term": "algenta"
       },
       {
+        "line": 21,
+        "path": "guides/async-jobs.md",
+        "term": "algenta"
+      },
+      {
         "line": 49,
         "path": "guides/async-jobs.md",
         "term": "algenta"
@@ -34875,7 +34884,22 @@
         "term": "algenta"
       },
       {
+        "line": 206,
+        "path": "guides/repository-intelligence.md",
+        "term": "algenta"
+      },
+      {
         "line": 8,
+        "path": "guides/run-a-decision.md",
+        "term": "algenta"
+      },
+      {
+        "line": 44,
+        "path": "guides/run-a-decision.md",
+        "term": "algenta"
+      },
+      {
+        "line": 182,
         "path": "guides/run-a-decision.md",
         "term": "algenta"
       },
@@ -34926,6 +34950,11 @@
       },
       {
         "line": 79,
+        "path": "guides/simulate.md",
+        "term": "algenta"
+      },
+      {
+        "line": 143,
         "path": "guides/simulate.md",
         "term": "algenta"
       },
@@ -35176,6 +35205,11 @@
       },
       {
         "line": 28,
+        "path": "help/glossary.md",
+        "term": "algenta"
+      },
+      {
+        "line": 73,
         "path": "help/glossary.md",
         "term": "algenta"
       },
@@ -35610,12 +35644,22 @@
         "term": "algenta"
       },
       {
-        "line": 3,
+        "line": 8,
         "path": "mcp-tools/control-plane.md",
         "term": "algenta"
       },
       {
         "line": 8,
+        "path": "mcp-tools/control-plane.md",
+        "term": "algenta"
+      },
+      {
+        "line": 48,
+        "path": "mcp-tools/control-plane.md",
+        "term": "algenta"
+      },
+      {
+        "line": 49,
         "path": "mcp-tools/control-plane.md",
         "term": "algenta"
       },
@@ -35906,6 +35950,11 @@
       },
       {
         "line": 98,
+        "path": "operate/monitoring.md",
+        "term": "algenta"
+      },
+      {
+        "line": 107,
         "path": "operate/monitoring.md",
         "term": "algenta"
       },
@@ -36355,6 +36404,11 @@
         "term": "algenta"
       },
       {
+        "line": 424,
+        "path": "sdk/mcp.md",
+        "term": "algenta"
+      },
+      {
         "line": 425,
         "path": "sdk/mcp.md",
         "term": "algenta"
@@ -36366,6 +36420,11 @@
       },
       {
         "line": 16,
+        "path": "sdk/python/account-and-control-plane.md",
+        "term": "algenta"
+      },
+      {
+        "line": 68,
         "path": "sdk/python/account-and-control-plane.md",
         "term": "algenta"
       },
@@ -36431,6 +36490,11 @@
       },
       {
         "line": 41,
+        "path": "sdk/python/overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 105,
         "path": "sdk/python/overview.md",
         "term": "algenta"
       },
@@ -36571,6 +36635,11 @@
       },
       {
         "line": 15,
+        "path": "sdk/typescript/account-and-control-plane.md",
+        "term": "algenta"
+      },
+      {
+        "line": 64,
         "path": "sdk/typescript/account-and-control-plane.md",
         "term": "algenta"
       },
@@ -36781,6 +36850,11 @@
       },
       {
         "line": 126,
+        "path": "self-hosting.md",
+        "term": "algenta"
+      },
+      {
+        "line": 131,
         "path": "self-hosting.md",
         "term": "algenta"
       },
@@ -37003,7 +37077,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_API_URL/v1/limits\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 18,
+        "line": 15,
         "path": "api/rate-limits.md",
         "syntax_valid": true
       },
@@ -37359,7 +37433,7 @@
         "classification": "requires_environment",
         "command": "curl -s https://api.algenta.ai/v1/usage \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 57,
+        "line": 59,
         "path": "billing.md",
         "syntax_valid": true
       },
@@ -37367,7 +37441,7 @@
         "classification": "requires_environment",
         "command": "de account usage",
         "executed": false,
-        "line": 64,
+        "line": 66,
         "path": "billing.md",
         "syntax_valid": true
       },
@@ -38295,7 +38369,7 @@
         "classification": "external_or_mutating",
         "command": "de credits refresh credit_batch.json",
         "executed": false,
-        "line": 576,
+        "line": 578,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38303,7 +38377,7 @@
         "classification": "requires_environment",
         "command": "de metering ingest metering_batch.json",
         "executed": false,
-        "line": 577,
+        "line": 579,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38311,7 +38385,7 @@
         "classification": "requires_environment",
         "command": "de team list",
         "executed": false,
-        "line": 592,
+        "line": 594,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38319,7 +38393,7 @@
         "classification": "requires_environment",
         "command": "de team invite teammate@example.com admin",
         "executed": false,
-        "line": 593,
+        "line": 595,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38327,7 +38401,7 @@
         "classification": "external_or_mutating",
         "command": "de team update-role $USER_ID member",
         "executed": false,
-        "line": 594,
+        "line": 596,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38335,7 +38409,7 @@
         "classification": "requires_environment",
         "command": "de team remove $USER_ID",
         "executed": false,
-        "line": 595,
+        "line": 597,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38343,7 +38417,7 @@
         "classification": "external_or_mutating",
         "command": "de team audit-logs --action api_key.create --limit 50",
         "executed": false,
-        "line": 596,
+        "line": 598,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38351,7 +38425,7 @@
         "classification": "requires_environment",
         "command": "de team audit-artifacts --resource-type api_key",
         "executed": false,
-        "line": 597,
+        "line": 599,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38359,7 +38433,7 @@
         "classification": "requires_environment",
         "command": "de deployments regions --format json",
         "executed": false,
-        "line": 619,
+        "line": 621,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38367,7 +38441,7 @@
         "classification": "external_or_mutating",
         "command": "de deployments create deployment.json",
         "executed": false,
-        "line": 620,
+        "line": 622,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38375,7 +38449,7 @@
         "classification": "requires_environment",
         "command": "de deployments get",
         "executed": false,
-        "line": 621,
+        "line": 623,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38383,7 +38457,7 @@
         "classification": "requires_environment",
         "command": "de deployments cost $DEPLOYMENT_ID",
         "executed": false,
-        "line": 622,
+        "line": 624,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38391,7 +38465,7 @@
         "classification": "destructive_mutation",
         "command": "de deployments delete $DEPLOYMENT_ID",
         "executed": false,
-        "line": 623,
+        "line": 625,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38399,7 +38473,7 @@
         "classification": "requires_environment",
         "command": "de health",
         "executed": false,
-        "line": 638,
+        "line": 640,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38407,7 +38481,7 @@
         "classification": "requires_environment",
         "command": "de contract --format json",
         "executed": false,
-        "line": 639,
+        "line": 641,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38415,7 +38489,7 @@
         "classification": "requires_environment",
         "command": "de version",
         "executed": false,
-        "line": 640,
+        "line": 642,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38423,7 +38497,7 @@
         "classification": "requires_environment",
         "command": "de benchmark",
         "executed": false,
-        "line": 641,
+        "line": 643,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38431,7 +38505,7 @@
         "classification": "requires_environment",
         "command": "de simulate examples/sample.json",
         "executed": false,
-        "line": 642,
+        "line": 644,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38439,7 +38513,7 @@
         "classification": "requires_environment",
         "command": "de recommend examples/compare.json",
         "executed": false,
-        "line": 643,
+        "line": 645,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38447,7 +38521,7 @@
         "classification": "requires_environment",
         "command": "de template list",
         "executed": false,
-        "line": 655,
+        "line": 657,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38455,7 +38529,7 @@
         "classification": "requires_environment",
         "command": "de template run finance_npv --runs 100000",
         "executed": false,
-        "line": 656,
+        "line": 658,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38463,7 +38537,7 @@
         "classification": "requires_environment",
         "command": "de template get finance_npv",
         "executed": false,
-        "line": 657,
+        "line": 659,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38471,7 +38545,7 @@
         "classification": "static_only",
         "command": "PREFIX=$(de keys create \"Batch worker\" --format json | jq -r '.key_prefix')",
         "executed": false,
-        "line": 668,
+        "line": 670,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38479,7 +38553,7 @@
         "classification": "static_only",
         "command": "JOB=$(de job submit large.json --format json | jq -r '.job_id')",
         "executed": false,
-        "line": 671,
+        "line": 673,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38487,7 +38561,7 @@
         "classification": "requires_environment",
         "command": "de job wait \"$JOB\" --timeout 900",
         "executed": false,
-        "line": 672,
+        "line": 674,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38495,7 +38569,7 @@
         "classification": "requires_environment",
         "command": "de job result \"$JOB\" --format json > result.json",
         "executed": false,
-        "line": 673,
+        "line": 675,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38503,7 +38577,7 @@
         "classification": "requires_environment",
         "command": "de health --format json | jq -e '.status == \"ok\"' > /dev/null",
         "executed": false,
-        "line": 676,
+        "line": 678,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -38511,7 +38585,7 @@
         "classification": "requires_environment",
         "command": "curl -s \"$ALGENTA_BASE_URL/v1/me\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" | jq",
         "executed": false,
-        "line": 682,
+        "line": 684,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -44666,7 +44740,7 @@
       "links": 2,
       "path": "api/errors.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44716,7 +44790,7 @@
       "links": 8,
       "path": "api/overview.md",
       "product_claims": {
-        "algenta": 8,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44726,7 +44800,7 @@
       "shell_commands": 12
     },
     {
-      "code_fences": 3,
+      "code_fences": 1,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -44735,13 +44809,13 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 3,
+      "endpoint_mentions": 2,
       "external_links": 0,
       "internal_links": 3,
       "links": 3,
       "path": "api/rate-limits.md",
       "product_claims": {
-        "algenta": 6,
+        "algenta": 5,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44791,7 +44865,7 @@
       "links": 8,
       "path": "api/streaming.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44841,7 +44915,7 @@
       "links": 8,
       "path": "billing.md",
       "product_claims": {
-        "algenta": 6,
+        "algenta": 9,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44891,7 +44965,7 @@
       "links": 3,
       "path": "cli.md",
       "product_claims": {
-        "algenta": 7,
+        "algenta": 8,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -45141,7 +45215,7 @@
       "links": 1,
       "path": "configuration.md",
       "product_claims": {
-        "algenta": 8,
+        "algenta": 11,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -45860,13 +45934,13 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 22,
+      "endpoint_mentions": 21,
       "external_links": 0,
       "internal_links": 10,
       "links": 10,
       "path": "guides/async-jobs.md",
       "product_claims": {
-        "algenta": 10,
+        "algenta": 11,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46316,7 +46390,7 @@
       "links": 12,
       "path": "guides/repository-intelligence.md",
       "product_claims": {
-        "algenta": 5,
+        "algenta": 6,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46337,11 +46411,11 @@
       },
       "endpoint_mentions": 11,
       "external_links": 0,
-      "internal_links": 8,
-      "links": 8,
+      "internal_links": 7,
+      "links": 7,
       "path": "guides/run-a-decision.md",
       "product_claims": {
-        "algenta": 1,
+        "algenta": 3,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46387,11 +46461,11 @@
       },
       "endpoint_mentions": 3,
       "external_links": 0,
-      "internal_links": 7,
-      "links": 7,
+      "internal_links": 6,
+      "links": 6,
       "path": "guides/simulate.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46516,7 +46590,7 @@
       "links": 11,
       "path": "help/glossary.md",
       "product_claims": {
-        "algenta": 8,
+        "algenta": 9,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46916,7 +46990,7 @@
       "links": 3,
       "path": "mcp-tools/control-plane.md",
       "product_claims": {
-        "algenta": 2,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47191,7 +47265,7 @@
       "links": 10,
       "path": "operate/monitoring.md",
       "product_claims": {
-        "algenta": 10,
+        "algenta": 11,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47366,7 +47440,7 @@
       "links": 4,
       "path": "sdk/mcp.md",
       "product_claims": {
-        "algenta": 24,
+        "algenta": 25,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47391,7 +47465,7 @@
       "links": 3,
       "path": "sdk/python/account-and-control-plane.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47541,7 +47615,7 @@
       "links": 9,
       "path": "sdk/python/overview.md",
       "product_claims": {
-        "algenta": 4,
+        "algenta": 5,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47691,7 +47765,7 @@
       "links": 4,
       "path": "sdk/typescript/account-and-control-plane.md",
       "product_claims": {
-        "algenta": 1,
+        "algenta": 2,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47941,7 +48015,7 @@
       "links": 7,
       "path": "self-hosting.md",
       "product_claims": {
-        "algenta": 27,
+        "algenta": 28,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -47985,7 +48059,7 @@
     "source_paths": 218
   },
   "snippets": {
-    "code_fences": 1012,
+    "code_fences": 1010,
     "executed_safe_commands": 70,
     "runnable_safe_commands": 70,
     "shell_commands": 909,
@@ -47999,31 +48073,31 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 836,
+    "claim_mentions": 860,
     "command_execution_percent": 100.0,
     "commands_classified": 909,
     "commands_executed": 70,
     "commands_unexecuted": 0,
-    "endpoint_mentions": 2110,
+    "endpoint_mentions": 2108,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 934,
+    "links_checked": 932,
     "pages_checked": 134,
     "shell_syntax_validation_percent": 100.0,
     "skips": 840,
-    "snippets_checked": 1012,
+    "snippets_checked": 1010,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5801,
+    "source_items_inventoried": 5819,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 836,
-    "code_fences": 1012,
+    "claim_mentions": 860,
+    "code_fences": 1010,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 24,
-    "endpoint_mentions": 2110,
+    "endpoint_mentions": 2108,
     "environment_mutating_commands": 19,
     "executed_commands": 70,
     "external_links": 3,
@@ -48031,11 +48105,11 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 839,
-    "internal_links": 920,
-    "links": 934,
+    "internal_links": 918,
+    "links": 932,
     "pages": 134,
     "product_claims": {
-      "algenta": 825,
+      "algenta": 849,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
@@ -48051,7 +48125,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 840,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5801,
+    "source_items_inventoried": 5819,
     "static_only_commands": 58,
     "static_or_guarded_commands": 839,
     "unexecuted_runnable_commands": 0,

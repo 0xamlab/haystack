@@ -10,7 +10,7 @@ All error responses use the same JSON structure:
 {
   "error": {
     "code": "quota_exceeded",
-    "message": "Monthly simulation quota exhausted (500/500). Upgrade your plan.",
+    "message": "Configured governance quota exhausted.",
     "request_id": "req_abc123",
     "docs_url": "https://docs.algenta.ai/errors/quota_exceeded"
   }
@@ -31,10 +31,11 @@ All error responses use the same JSON structure:
 
 | Code | HTTP | Description |
 |------|------|-------------|
-| `rate_limit_exceeded` | 429 | Too many requests per minute for your plan |
-| `quota_exceeded` | 429 | Monthly simulation quota exhausted |
+| `rate_limit_exceeded` | 429 | Endpoint abuse control or operator policy |
+| `quota_exceeded` | 429 | Custom non-Algenta governance quota exhausted |
 
-For `rate_limit_exceeded`, a `Retry-After: 60` header is included.
+Algenta editions have no monthly execution quota or edition request meter. When a 429 includes
+`Retry-After`, honor it for the specific endpoint or upstream provider that returned the error.
 
 ### Validation errors
 

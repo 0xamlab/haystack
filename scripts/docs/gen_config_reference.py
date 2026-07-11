@@ -36,8 +36,13 @@ DESCRIPTIONS = {
     ),
     "ALGENTA_DISABLE_CLOUD": "Opt out of any cloud integration (self-hosted).",
     "ALGENTA_DISABLE_TELEMETRY": "Disable all outbound/vendor telemetry; keep local audit.",
-    "ALGENTA_TELEMETRY_MODE": "Telemetry destination: disabled | local_audit | control_plane_sync.",
-    "ALGENTA_METERING_MODE": "Metering destination: disabled | local_audit | control_plane_sync.",
+    "ALGENTA_TELEMETRY_MODE": (
+        "Telemetry destination. Self-hosted Algenta defaults to local_audit with no outbound sync."
+    ),
+    "ALGENTA_METERING_MODE": (
+        "Execution-record destination. Self-hosted Algenta defaults to local_audit; "
+        "control_plane_sync is for explicitly configured managed deployments."
+    ),
     "ALGENTA_SERVICE_ROLE": (
         "Deployment role: full (default, with engine) | control_plane (engine-free)."
     ),
@@ -52,7 +57,9 @@ DESCRIPTIONS = {
     "ALGENTA_EGRESS_ALLOWLIST": "Comma-separated allowlist of permitted egress destinations.",
     "ALGENTA_AGENT_CORE_URL": "Optional bundled agent-runtime endpoint.",
     "ALGENTA_MANAGED_LLM": "Enable the pooled managed-LLM provider key (multi-tenant SaaS).",
-    "ALGENTA_ENFORCE_STORAGE_CAP": "Enforce the per-org free-tier storage_gb quota (opt-in).",
+    "ALGENTA_ENFORCE_STORAGE_CAP": (
+        "Enforce a configured organization storage policy (off by default; Algenta editions are uncapped)."
+    ),
     "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": (
         "Expose the /v1/libraries* runtime-library routes (off by default)."
     ),

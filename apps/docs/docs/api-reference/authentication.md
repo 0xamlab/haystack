@@ -96,8 +96,8 @@ previous key.
 | `401` | `authentication_required` | No API key provided |
 | `401` | `invalid_api_key` | Key does not exist, is revoked, or is expired |
 | `403` | `access_scope_denied` | The key is valid but not allowed to perform this action |
-| `429` | `rate_limit_exceeded` | Too many requests per minute |
-| `429` | `quota_exceeded` | Simulation quota exhausted |
+| `429` | `rate_limit_exceeded` | Endpoint abuse control, upstream provider limit, or operator policy |
+| `429` | `quota_exceeded` | Custom non-Algenta governance policy; Algenta editions have no execution quota |
 
 ## Related pages
 

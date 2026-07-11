@@ -38,7 +38,10 @@ MEANINGS = {
     "access_scope_denied": "The key's scope does not include this resource.",
     "not_found": "The requested resource does not exist.",
     "validation_error": "The request body failed schema validation; see `details`.",
-    "quota_exceeded": "The plan's monthly quota is exhausted; upgrade or wait for reset.",
+    "quota_exceeded": (
+        "A custom or non-Algenta governance quota is exhausted; Algenta editions have no "
+        "monthly execution quota."
+    ),
     "rate_limit_backend_unavailable": "The rate-limit backend (Redis) is unreachable.",
     "concurrent_jobs_exceeded": "Too many in-flight async jobs for the plan.",
     "storage_cap_exceeded": "The org's storage quota is full.",

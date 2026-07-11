@@ -31,6 +31,12 @@ def test_prices_match_the_card() -> None:
     assert plan_limits.get("algenta_team").price_usd_month == 499  # $499/device/mo
 
 
+def test_one_unsynced_paid_unit_never_grants_multiple_devices() -> None:
+    assert plan_limits.device_limit("algenta_free") == 1
+    assert plan_limits.device_limit("algenta_pro") == 1
+    assert plan_limits.device_limit("algenta_team") == 1
+
+
 # ── per-device worker concurrency: Community 1 · Pro 5 · Team 20 ─────────────────────
 def test_worker_caps_per_device() -> None:
     assert plan_limits.worker_limit("algenta_free") == 1
@@ -42,10 +48,10 @@ def test_worker_caps_per_device() -> None:
 @pytest.mark.anyio
 async def test_limits_endpoint_matches_algenta_enforcement() -> None:
     expected = {
-        "algenta_free": (10_000, 60, 10_000, 10, 1),
-        "algenta_pro": (500_000, 300, 1_000_000, 100, 4),
-        "algenta_team": (500_000, 1_000, 1_000_000, 100, 8),
-        "enterprise": (0, 10_000, 1_000_000, 100, 0),
+        "algenta_free": (0, 0, 1_000_000, 100, 0),
+        "algenta_pro": (0, 0, 1_000_000, 100, 0),
+        "algenta_team": (0, 0, 1_000_000, 100, 0),
+        "enterprise": (0, 0, 1_000_000, 100, 0),
     }
     for plan, values in expected.items():
         response = await limits({"plan": plan})  # type: ignore[arg-type]
@@ -64,6 +70,8 @@ def test_seat_caps() -> None:
     assert seat_limit("algenta_pro") == 1
     assert seat_limit("algenta_team") == 15
     assert resolve_entitlement("algenta_team").named_seat_limit == 15
+    assert resolve_entitlement("algenta_free").named_seat_limit == 1
+    assert resolve_entitlement("algenta_pro").named_seat_limit == 1
 
 
 # ── Community: free forever, self-hosted, exactly one device, non-commercial ─────────

@@ -1,21 +1,21 @@
 ---
 icon: gauge-high
-description: Inspect your plan's limits and observe usage for governance and audit. Algenta is licensed per device — see Licensing for editions and terms.
+description: Inspect unlimited execution policy and local governance records. Algenta is licensed per device, never per decision.
 ---
 
-# Usage & limits
+# Usage & execution policy
 
 Algenta is **licensed per device** — a flat license with unlimited decisions and **no usage-based billing**. There is no per-simulation metering, no compute overage, and no surprise invoice. For the editions (Community, Pro, Team, Enterprise), what a license grants, and how to install and verify one offline, see [Licensing & editions](licensing.md).
 
-This page covers the runtime's **governance and observability** endpoints: how to read your plan's configured limits and observe usage for audit. Metering, quotas, and per-key limits are **governance primitives you configure** to bound keys and AI agents — not a bill. Every command and endpoint below is real and runs against a hosted or self-hosted deployment.
+This page covers the runtime's **governance and observability** endpoints: how to inspect the unlimited execution policy and query customer-owned activity records for audit. These records stay inside a self-hosted deployment; Algenta execution counts are not sent to Algenta or Stripe. Every command and endpoint below is real and runs against a hosted or self-hosted deployment.
 
 {% hint style="info" %}
 Looking for pricing, editions, or how to license a commercial deployment? That lives in [Licensing & editions](licensing.md). This page is purely operational — inspecting limits and usage.
 {% endhint %}
 
-## Inspect your plan's limits
+## Inspect the effective policy
 
-`GET /v1/limits` returns the capabilities and governance caps configured for your plan (device count, rate limit, concurrency, and optional per-key quotas you can set to bound agents).
+`GET /v1/limits` returns execution policy and request-shape safety bounds. `0` means unlimited for monthly execution, plan request rate, and concurrent async jobs.
 
 {% tabs %}
 {% tab title="cURL" %}
@@ -34,14 +34,16 @@ de account limits
 {% tab title="Response" %}
 ```json
 {
-  "plan": "team",
+  "plan": "algenta_team",
+  "max_simulations_per_month": 0,
   "max_runs_per_simulation": 1000000,
   "max_batch_items": 100,
-  "rate_limit_per_minute": 1000,
+  "rate_limit_per_minute": 0,
   "async_jobs_enabled": true,
   "webhooks_enabled": true,
-  "concurrent_jobs": 8,
-  "storage_gb": 10
+  "concurrent_jobs": 0,
+  "storage_gb": 0,
+  "llm_spend_cap_usd_month": 0
 }
 ```
 {% endtab %}
@@ -49,7 +51,7 @@ de account limits
 
 ## Observe your usage
 
-`GET /v1/usage` reports your current activity for the period — counts, any configured governance limit, and (when you use managed keys) provider spend. It is **observability for audit and capacity planning**, not a usage bill: on the per-device license, decisions are unlimited and nothing here is invoiced.
+`GET /v1/usage` reports local activity for audit and capacity planning. On a self-hosted deployment these records remain in your database. They are not an Algenta usage bill or vendor telemetry: decisions are unlimited and nothing here is invoiced per call.
 
 {% tabs %}
 {% tab title="cURL" %}
@@ -84,7 +86,7 @@ Add `--format json` to any `de account` command for raw output suitable for scri
 
 ## Governance, not billing
 
-Keys, quotas, metering, and audit are **runtime primitives** — the same controls apply to humans, SDKs, and AI agents because every call crosses one governed boundary. You set them to keep autonomy inside the lines you draw, and they are decoupled from how you pay (a flat per-device license):
+Keys, local activity records, and audit are **runtime primitives** — the same controls apply to humans, SDKs, and AI agents because every call crosses one governed boundary. They are decoupled from how you pay: one flat license per device, with unlimited decisions.
 
 * **Per-tenant provider keys (BYOK)** — bring your own model keys, encrypted at rest. See [Bring your own key](guides/byok.md).
 * **Teams, roles & audit** — scope who can do what and keep an append-only trail. See [Teams, roles & audit logs](operate/teams-rbac.md).

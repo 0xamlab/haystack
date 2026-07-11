@@ -140,7 +140,7 @@ A successful call returns HTTP 200 with a decision envelope containing a populat
 {% endhint %}
 
 {% hint style="info" %}
-**HTTP 429.** Each successful call consumes one simulation from your monthly quota; a 429 means the quota or the per-plan rate limit is exhausted. See [Rate limits](../api/rate-limits.md) and [Plans, billing & credits](../billing.md).
+**HTTP 429.** Algenta editions have no monthly execution quota or plan request meter. A 429 identifies a narrow endpoint abuse control, an upstream provider limit, or an operator-configured policy; inspect the structured error code before retrying. See [Execution policy & safety limits](../api/rate-limits.md).
 {% endhint %}
 
 ## Next

@@ -8,8 +8,8 @@ are 1 seat: the account owner only — they cannot add teammates. `team` (and te
 per-SEAT-billed multi-seat plan; its cap is the number of seats purchased on the Stripe
 subscription, defaulting to DEFAULT_TEAM_SEATS until a quantity is synced.
 
-`algenta_team` is billed per-DEVICE (Stripe quantity = devices, not seats), so its team-seat cap
-is a FIXED bundle (15) from the pricing card — independent of how many devices they license.
+`algenta_team` is billed per DEVICE (Stripe quantity = devices, not seats), so its team-seat cap
+is a fixed bundle from the pricing card — independent of how many devices they license.
 `enterprise` is unlimited.
 """
 
@@ -18,8 +18,7 @@ _UNLIMITED = 0  # sentinel: 0 means "no cap"
 
 _MULTI_SEAT_PLANS = {"team", "telys_team"}  # per-seat billed: Stripe quantity = seats
 _UNLIMITED_PLANS = {"enterprise"}
-# Per-DEVICE-billed plans carry a FIXED team-seat bundle (seats are NOT the billing unit — devices
-# are). From the pricing card: Algenta Team includes 15 seats. (Algenta Pro is solo → 1 seat.)
+# Per-device plans carry fixed seat bundles; seats are not the billing unit.
 _FIXED_SEAT_PLANS = {"algenta_team": 15}
 
 

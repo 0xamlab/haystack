@@ -76,59 +76,59 @@ def render(data: dict[str, list[dict[str, Any]]]) -> str:
     out = [
         "---",
         "icon: gauge-high",
-        "description: The Algenta request-rate, execution-governance, batch, and worker limits "
-        "enforced for each edition.",
+        "description: Unlimited Algenta execution, request safety bounds, licensed worker "
+        "capacity, and configurable abuse controls.",
         "---",
         "",
-        "# Rate limits & governance limits",
+        "# Execution policy & safety limits",
         "",
-        "Algenta uses four separate controls. They are not interchangeable:",
+        "Algenta is licensed per device at a flat price. **Decisions and executions are unlimited "
+        "on every edition**: there is no monthly quota, per-decision charge, overage rate, or "
+        "edition-specific request meter. The self-hosted engine does not send execution counts to "
+        "Algenta or Stripe.",
         "",
-        "1. **Request rate** bounds selected compute and mutation routes per organization and UTC "
-        "minute.",
-        "2. **Monthly execution governance** bounds hosted control-plane execution. It is a safety "
-        "limit, not usage-based billing.",
-        "3. **Request shape limits** bound runs per call and batch size.",
-        "4. **Worker concurrency** bounds simultaneous bundled-runtime work per licensed device.",
+        "The runtime still records customer-owned audit events inside the deployment. Those local "
+        "records are governance data, not vendor telemetry or a billing meter.",
         "",
-        "`GET /v1/limits` is the authoritative response for the authenticated organization. It is "
-        "generated from the same plan table used by enforcement.",
+        "`GET /v1/limits` reports the effective execution policy. A value of `0` for monthly "
+        "execution, plan request rate, or concurrent jobs means unlimited.",
         "",
         "```bash",
         'curl -sS "$ALGENTA_API_URL/v1/limits" \\',
         '  -H "Authorization: Bearer $ALGENTA_API_KEY"',
         "```",
         "",
-        "## Algenta edition defaults",
+        "## Edition contract",
         "",
-        "| Edition | Requests/minute | Monthly execution governance | "
-        "Runs/call | Batch items | Async jobs | Concurrent jobs | Workers/device |",
-        "| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |",
+        "All editions have unlimited decisions, no edition request meter, async execution, and no "
+        "plan-level concurrent-job quota. The only tiered execution capacity is workers per "
+        "licensed device:",
+        "",
+        "| Edition | Decisions | Workers/device |",
+        "| --- | --- | ---: |",
     ]
     for row in data["plans"]:
         out.append(
-            f"| {row['edition']} | {_number(row['rate'])} | "
-            f"{_number(row['monthly'])} | {_number(row['runs'])} | {_number(row['batch'])} | "
-            f"{'yes' if row['async_jobs'] else 'no'} | {_number(row['concurrent_jobs'])} | "
+            f"| {row['edition']} | {_number(row['monthly'])} | "
             f"{_number(row['workers'], zero='negotiated')} |"
         )
     out += [
         "",
-        "The monthly value applies to centrally governed execution. A licensed local runtime does "
-        "not create a usage invoice; see [Usage & limits](../billing.md). Worker concurrency is "
-        "enforced by the bundled runtime from the signed license and changes on license renewal.",
+        "## Request-shape validation",
         "",
-        "## Which requests use the plan rate",
+        "The current API schema accepts up to 1,000,000 simulation runs in one request and up to "
+        "100 items in one batch. These uniform per-payload validation bounds prevent a single "
+        "request from monopolizing memory; they do not cap total calls, decisions, or monthly "
+        "execution. Split larger work across calls or async jobs.",
         "",
-        "The plan request rate is applied to compute-bearing route families, including "
-        "simulations, "
-        "decision generation, agent execution, repository analysis, LLM operations, and "
-        "runtime-library execution. Read-only account and discovery routes are not automatically "
-        "charged against this counter merely because they use the API.",
+        "Workers/device is licensed capacity, not a rate limit. The bundled runtime enforces the "
+        "signed-license value locally. See [Licensing & "
+        "editions](../licensing.md).",
         "",
-        "Separate abuse controls protect authentication and key-management routes. Their "
-        "deployment "
-        "defaults are:",
+        "## Security abuse controls",
+        "",
+        "Authentication and key-management endpoints retain narrow security controls. These are "
+        "not decision or execution quotas, and self-hosted operators can configure them:",
         "",
         "| Operation | Scope | Default |",
         "| --- | --- | ---: |",
@@ -137,44 +137,13 @@ def render(data: dict[str, list[dict[str, Any]]]) -> str:
         out.append(f"| {row['operation']} | {row['scope']} | {row['default']}{row['period']} |")
     out += [
         "",
-        "Self-hosted operators can lower or raise these abuse-control defaults in deployment "
-        "configuration. The authenticated `GET /v1/limits` response remains the source for plan "
-        "execution limits.",
+        "When one of these security controls is exceeded, the response is HTTP `429` with its "
+        "operation-specific error code and a `Retry-After` header. This does not consume or reduce "
+        "an edition execution allowance; no such allowance exists.",
         "",
-        "## Window and headers",
-        "",
-        "Plan request limits use a Redis counter for the current UTC minute. On applicable "
-        "successful responses, Algenta returns:",
-        "",
-        "```text",
-        "X-RateLimit-Limit: 300",
-        "X-RateLimit-Remaining: 299",
-        "```",
-        "",
-        "When the counter is exceeded, the response is HTTP `429` with error code "
-        "`rate_limit_exceeded` and:",
-        "",
-        "```text",
-        "Retry-After: 60",
-        "X-RateLimit-Limit: 300",
-        "X-RateLimit-Remaining: 0",
-        "```",
-        "",
-        "The `Retry-After` value is a conservative upper bound. Retry only idempotent operations "
-        "automatically, use jitter, and honor the header rather than hard-coding a shorter delay.",
-        "",
-        "If the rate-limit backend is unavailable under the production fail-closed policy, Algenta "
-        "returns HTTP `503` with `rate_limit_backend_unavailable` and `Retry-After: 30`. It does "
-        "not "
-        "silently pretend the limiter succeeded.",
-        "",
-        "## Monthly governance rejection",
-        "",
-        "When centrally governed execution reaches its monthly ceiling, Algenta returns HTTP `429` "
-        "with error code `quota_exceeded`, plus `used`, `limit`, and `billing_period`. This is not "
-        "a short rate window: retrying seconds later will not help. Wait for the next period or "
-        "change "
-        "the organization policy or edition.",
+        "Provider APIs and customer infrastructure can still apply their own capacity or rate "
+        "controls. Algenta surfaces those external errors explicitly rather than relabeling them as "
+        "an Algenta plan quota.",
         "",
         "## Related",
         "",
@@ -194,6 +163,13 @@ def main() -> int:
     data = extract()
     assert len(data["plans"]) == len(PUBLIC_PLANS)
     assert len(data["abuse"]) == len(ABUSE_FIELDS)
+    for row in data["plans"]:
+        assert row["monthly"] == 0
+        assert row["rate"] == 0
+        assert row["runs"] == 1_000_000
+        assert row["batch"] == 100
+        assert row["async_jobs"] is True
+        assert row["concurrent_jobs"] == 0
     markdown = render(data)
     if "--check" in sys.argv:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""

@@ -78,7 +78,7 @@ The license is a JWT stored at `~/.algenta/runtime/license.jwt` (or supplied via
 **Signature.** Offline / cloud licenses are verified with RS256 against the Algenta public key (`ALGENTA_LICENSE_PUBLIC_KEY` or `ALGENTA_LICENSE_PUBLIC_KEY_FILE`). Self-signed dev tokens use HS256. A token without a v2 (`ver >= 2`) claim is rejected.
 {% endstep %}
 {% step %}
-**Expiry and grace.** Expiry is checked against a persisted trusted clock that only moves forward. After `expires_at` the license enters a grace window (default 14 days) before a hard block.
+**Expiry and grace.** Expiry is checked against a persisted trusted clock that only moves forward. After `expires_at` the license enters a grace window (default 14 days). If renewal still fails after grace, a previously valid paid installation settles at Community capacity instead of stopping.
 {% endstep %}
 {% step %}
 **Identity.** The license carries the `device_id` it was issued for, and a v2 license can also carry a `device_pubkey_thumbprint`. On renewal the runtime proves possession of the bound private key by signing a server-issued nonce — the private key itself is never transmitted.
@@ -152,7 +152,7 @@ Each machine you register uses one **seat**, up to your plan's device limit. Whe
 
 Manage your devices yourself from your **account dashboard**, no API key required — you sign in with your normal account. The dashboard lists every machine on your plan with its platform and when it was last active (marked **active** or **idle**), and a **Revoke** action next to each one:
 
-- **See your seats.** The list shows how many of your devices are currently active versus idle, so you can tell at a glance which machine to retire.
+- **See your device slots.** The list shows which registered devices are active versus idle, so you can tell which machine to retire.
 - **Revoke to free a seat.** Revoking a device frees its seat immediately for a new machine. The revoked device loses access on its next license refresh.
 - **Add the replacement.** Once a seat is free, run `de login` on the new machine (see [Fix a device_identity_mismatch](#fix-a-device_identity_mismatch) above) and it registers into the freed seat.
 

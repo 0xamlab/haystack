@@ -8,11 +8,9 @@
  * for the duration of the simulation (up to 60 seconds for 1M runs).
  * A separate concurrent-connection counter prevents resource exhaustion.
  *
- * SSE limits (concurrent connections per org):
- *   free:       1
- *   developer:  3
- *   pro:        10
- *   enterprise: 50
+ * Algenta plans do not have request-volume quotas. Their SSE concurrency follows the licensed
+ * worker count because each active stream occupies a worker. Generic hosted plans retain their
+ * configurable abuse-protection limits.
  *
  * Also enforces a per-minute request limit on /v1/simulate/stream
  * (lower than regular, since each request is expensive).
@@ -35,18 +33,28 @@ function sseKey(orgId: string): string {
 
 /** Max concurrent SSE connections per plan. */
 const SSE_CONN_LIMITS: Record<string, number> = {
-  free:       parseInt(process.env.SSE_LIMIT_FREE       ?? '1'),
-  developer:  parseInt(process.env.SSE_LIMIT_DEVELOPER  ?? '3'),
-  pro:        parseInt(process.env.SSE_LIMIT_PRO        ?? '10'),
-  enterprise: parseInt(process.env.SSE_LIMIT_ENTERPRISE ?? '50'),
+  free:         parseInt(process.env.SSE_LIMIT_FREE         ?? '1'),
+  developer:    parseInt(process.env.SSE_LIMIT_DEVELOPER    ?? '3'),
+  pro:          parseInt(process.env.SSE_LIMIT_PRO          ?? '10'),
+  algenta_free: parseInt(process.env.SSE_LIMIT_ALGENTA_FREE ?? '1'),
+  algenta_pro:  parseInt(process.env.SSE_LIMIT_ALGENTA_PRO  ?? '5'),
+  algenta_team: parseInt(process.env.SSE_LIMIT_ALGENTA_TEAM ?? '20'),
+  enterprise:   parseInt(process.env.SSE_LIMIT_ENTERPRISE   ?? '0'),
 }
 
 /** Per-minute request limit for /v1/simulate/stream (much lower than regular). */
 const SSE_RATE_LIMITS: Record<string, number> = {
-  free:       parseInt(process.env.SSE_RATE_FREE       ?? '2'),
-  developer:  parseInt(process.env.SSE_RATE_DEVELOPER  ?? '10'),
-  pro:        parseInt(process.env.SSE_RATE_PRO        ?? '30'),
-  enterprise: parseInt(process.env.SSE_RATE_ENTERPRISE ?? '200'),
+  free:         parseInt(process.env.SSE_RATE_FREE       ?? '2'),
+  developer:    parseInt(process.env.SSE_RATE_DEVELOPER  ?? '10'),
+  pro:          parseInt(process.env.SSE_RATE_PRO        ?? '30'),
+  algenta_free: 0,
+  algenta_pro:  0,
+  algenta_team: 0,
+  enterprise:   parseInt(process.env.SSE_RATE_ENTERPRISE ?? '0'),
+}
+
+export function sseConnectionLimit(plan: string): number {
+  return SSE_CONN_LIMITS[plan] ?? SSE_CONN_LIMITS.free
 }
 
 export async function checkRateLimit(
@@ -54,6 +62,7 @@ export async function checkRateLimit(
   plan: string,
 ): Promise<{ allowed: boolean; remaining: number; limit: number }> {
   const limit = config.planLimits[plan] ?? config.planLimits.free
+  if (limit === 0) return { allowed: true, remaining: -1, limit }
 
   try {
     const redis = getRedis()
@@ -78,21 +87,27 @@ export async function acquireSSESlot(
   orgId: string,
   plan: string,
 ): Promise<{ allowed: boolean; current: number; limit: number }> {
-  const connLimit = SSE_CONN_LIMITS[plan] ?? SSE_CONN_LIMITS.free
+  const connLimit = sseConnectionLimit(plan)
   const rateLimit = SSE_RATE_LIMITS[plan] ?? SSE_RATE_LIMITS.free
+
+  if (connLimit === 0 && rateLimit === 0) {
+    return { allowed: true, current: 0, limit: 0 }
+  }
 
   try {
     const redis   = getRedis()
-    const rateKey = `sse_rate:${orgId}:${minuteKey(orgId).split(':')[2]}`
-
-    // 1. Per-minute rate limit for stream requests
-    const rateCount = await redis.incr(rateKey)
-    if (rateCount === 1) await redis.expire(rateKey, 70)
-    if (rateCount > rateLimit) {
-      return { allowed: false, current: rateCount, limit: rateLimit }
+    if (rateLimit > 0) {
+      const rateKey = `sse_rate:${orgId}:${minuteKey(orgId).split(':')[2]}`
+      const rateCount = await redis.incr(rateKey)
+      if (rateCount === 1) await redis.expire(rateKey, 70)
+      if (rateCount > rateLimit) {
+        return { allowed: false, current: rateCount, limit: rateLimit }
+      }
     }
 
-    // 2. Concurrent connection limit
+    if (connLimit === 0) return { allowed: true, current: 0, limit: 0 }
+
+    // Concurrent connections consume licensed worker capacity.
     const connKey = sseKey(orgId)
     const current = await redis.incr(connKey)
     // Connection TTL = 120s (generous — SSE sessions don't exceed 2 min for 1M run)
@@ -131,8 +146,10 @@ export async function rateLimitMiddleware(c: Context, next: Next) {
 
   const { allowed, remaining, limit } = await checkRateLimit(auth.orgId, auth.plan)
 
-  c.header('X-RateLimit-Limit',     String(limit))
-  c.header('X-RateLimit-Remaining', String(remaining))
+  if (limit > 0) {
+    c.header('X-RateLimit-Limit',     String(limit))
+    c.header('X-RateLimit-Remaining', String(remaining))
+  }
 
   if (!allowed) {
     return c.json({
@@ -162,8 +179,10 @@ export async function sseRateLimitMiddleware(c: Context, next: Next) {
 
   const { allowed, current, limit } = await acquireSSESlot(auth.orgId, auth.plan)
 
-  c.header('X-SSE-Connections-Current', String(current))
-  c.header('X-SSE-Connections-Limit',   String(limit))
+  if (limit > 0) {
+    c.header('X-SSE-Connections-Current', String(current))
+    c.header('X-SSE-Connections-Limit',   String(limit))
+  }
 
   if (!allowed) {
     return c.json({
@@ -183,7 +202,9 @@ export async function sseRateLimitMiddleware(c: Context, next: Next) {
   // Release slot after response completes (body fully consumed by client)
   // Use a detached microtask so we don't block the response
   const orgId = auth.orgId
-  Promise.resolve().then(() => releaseSSESlot(orgId)).catch(() => {})
+  if (limit > 0) {
+    Promise.resolve().then(() => releaseSSESlot(orgId)).catch(() => {})
+  }
 
   return
 }

@@ -142,7 +142,7 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
     "algenta_pro": EntitlementRecord(
         plan="algenta_pro", deployment_class="desktop",
         products=_algenta_full("pro"),
-        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=2,
+        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=5,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
     ),
     # Team — self-hosted, per-DEVICE ($499/device). 15 seats (fixed bundle from the pricing card, not
@@ -151,7 +151,7 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
     "algenta_team": EntitlementRecord(
         plan="algenta_team", deployment_class="server",
         products=_algenta_full("team"),
-        named_seat_limit=15, active_node_limit=SELF_SERVICE_MAX_NODES,
+        named_seat_limit=15, active_node_limit=1,
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
     ),

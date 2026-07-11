@@ -1,15 +1,12 @@
 """
-Metering — async, non-blocking usage event queue + 24h device sync.
+Local execution audit queue with optional managed-deployment synchronization.
 
 Two responsibilities:
-  1. Usage events — buffered, flushed every 60s to control plane
-  2. Device heartbeat — every 24h, sends device_id + usage summary to
-     control plane so it can count active machines per API key and
-     enforce device limits.
+  1. Usage events are buffered locally for runtime observability.
+  2. An explicitly configured managed profile can flush events and send a 24h device heartbeat.
 
-v1: events are logged locally only (no network flush).
-v4+: flush to Algenta control plane via POST /v1/metering
-     heartbeat to POST /v1/device/heartbeat
+Self-hosted and air-gapped profiles never start either outbound task. Their local records are not
+an Algenta edition meter and are not sent to Algenta or Stripe.
 """
 
 from __future__ import annotations

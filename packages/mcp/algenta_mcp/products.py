@@ -10,9 +10,9 @@ SECURITY MODEL — the product selector is a ROUTING HINT, not authorization:
   visible_tools = product_allowlist ∩ key_entitlements ∩ organization_policy
                   ∩ feature_entitlements          # what is listed/callable
 
-Usage limits (rate limit, monthly quota, managed-LLM spend cap) are enforced
-separately, at call time, on a *visible* tool — they gate execution, they do not
-hide tools.
+Explicit endpoint, provider, and operator controls are enforced separately at
+call time on a *visible* tool; they do not hide tools. Algenta editions have no
+monthly execution quota or edition request meter.
 
 FAIL CLOSED: an unknown/unentitled/not-yet-shipped product resolves to the EMPTY
 set (no tools), never the full Algenta registry.

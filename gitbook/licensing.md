@@ -41,7 +41,7 @@ The headline runtime cap is **concurrent workers per device** — how many jobs 
 The runtime worker broker enforces this locally (offline, no network call). Seats and nodes are pooled caps the control plane reconciles.
 
 {% hint style="info" %}
-**Air-gapped / never-phone-home operation is an Enterprise entitlement.** Self-serve tiers (Community, Pro, Team, and the per-node self-host plan) run **connected** so renewal stays subscription-gated — a lapsed subscription genuinely expires the license. Enterprise air-gapped licenses are device-bound and carry a finite worker cap.
+**Air-gapped / never-phone-home operation is an Enterprise entitlement.** Self-serve tiers renew online. Enterprise air-gapped licenses verify fully offline and do not require a network path.
 {% endhint %}
 
 ### Durable across redeploys
@@ -123,10 +123,10 @@ Exit codes: `0` = the license is valid, `1` = not valid (missing, wrong key, or 
 
 ## When a license lapses
 
-Your engine runs on your hardware — nothing reaches in to switch it off. When a paid license expires and isn't renewed, the engine **downgrades to Community (free-forever)** rather than stopping: it keeps running at Community limits (**1 device, 1 worker, non-commercial**), and paid caps, features, updates, and support resume the moment the license renews.
+Your engine runs on your hardware — nothing reaches in to switch it off. When a paid license expires and is not renewed, the engine **downgrades to Community (free-forever)** rather than stopping: it keeps running at Community limits (**1 device, 1 worker, 1 seat, non-commercial**), and paid capacity, updates, and support resume when the license renews.
 
-- **Connected deployments** re-check the subscription on each renewal, plus a short grace window for brief disconnects. A cancelled or downgraded plan takes effect on the next renewal, then settles at Community — so a one-time payment can't unlock a paid tier forever.
-- **Enterprise air-gapped** deployments have no connected renewal path, so a license that has hard-expired there **blocks** until a fresh signed license is installed. Provision a renewal before expiry.
+- **Connected deployments** re-check the subscription on renewal, with a grace window for brief disconnects. A cancelled or downgraded plan settles at Community after renewal fails.
+- **Enterprise air-gapped** deployments verify the installed signature locally. When its signed term lapses, the previously valid deployment also settles at Community; install a renewed license to restore Enterprise capacity.
 
 ## Editions and features
 

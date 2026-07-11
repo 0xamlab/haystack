@@ -41,8 +41,8 @@ settings = SettingsProxy()
         "Execute a Monte Carlo simulation and receive a structured decision envelope. "
         "Use `mode: 'auto'` for minimal setup or `mode: 'expert'` for full control.\n\n"
         "**Performance**: p50 < 15ms server-side (Mojo worker pool, async persistence).\n\n"
-        "**Quota**: Each successful call consumes 1 simulation from your monthly quota. "
-        "Returns HTTP 429 when quota or rate limit is exceeded."
+        "**Execution policy**: Algenta editions have unlimited decisions and no plan request "
+        "meter. HTTP 429 is reserved for explicit endpoint, provider, or operator controls."
     ),
 )
 async def simulate(

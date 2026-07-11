@@ -565,7 +565,9 @@ de billing checkout developer
 de billing portal
 ```
 
-### `credits` and `metering` — runtime accounting
+### `credits` and `metering` — managed-runtime compatibility
+
+These commands expose generic managed-deployment compatibility endpoints. Self-hosted Algenta editions do not use them for billing or enforcement: decisions are unlimited and the private profiles keep execution audit records local.
 
 | Command | Endpoint |
 | --- | --- |

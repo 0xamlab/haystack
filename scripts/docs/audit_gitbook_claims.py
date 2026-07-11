@@ -770,6 +770,93 @@ def _find_runtime_encapsulation_issues(rel_path: str, text: str) -> list[Issue]:
     return issues
 
 
+def _pricing_contract_name(rel_path: str) -> str | None:
+    normalized = rel_path.lower().split("?", 1)[0]
+    if normalized.endswith("/rate-limits.md") or normalized == "api/rate-limits.md":
+        return "rate_limits"
+    if normalized.endswith("/licensing.md") or normalized == "licensing.md":
+        return "licensing"
+    if normalized.endswith("/billing.md") or normalized == "billing.md":
+        return "billing"
+    return None
+
+
+def _find_pricing_contract_issues(rel_path: str, text: str) -> list[Issue]:
+    contract = _pricing_contract_name(rel_path)
+    if contract is None:
+        return []
+
+    required: dict[str, tuple[tuple[str, str], ...]] = {
+        "rate_limits": (
+            (r"Decisions and executions are unlimited on every edition", "unlimited decisions"),
+            (r"no monthly quota", "no monthly quota"),
+            (r"no .*edition-specific request meter", "no edition request meter"),
+            (r"\|\s*Community\s*\|\s*unlimited\s*\|\s*1\s*\|", "Community worker cap 1"),
+        ),
+        "licensing": (
+            (r"\|\s*Community \(free\)\s*\|\s*1\s*\|", "Community worker cap 1"),
+            (r"\|\s*Pro\s*\|\s*5\s*\|", "Pro worker cap 5"),
+            (r"\|\s*Team\s*\|\s*20\s*\|", "Team worker cap 20"),
+            (r"downgrades to Community", "lapse downgrade to Community"),
+            (
+                r"1 device, 1 worker, 1 seat, non-commercial",
+                "Community lapse capacity",
+            ),
+        ),
+        "billing": (
+            (r"unlimited decisions", "unlimited decisions"),
+            (r"not sent to Algenta or Stripe", "no outbound execution counts"),
+            (r"not an Algenta usage bill", "local audit is not an Algenta usage bill"),
+        ),
+    }
+    stale: dict[str, tuple[tuple[str, str], ...]] = {
+        "rate_limits": (
+            (r"Requests/minute", "edition requests-per-minute table"),
+            (r"Monthly execution governance", "monthly execution governance table"),
+            (r"reaches its monthly ceiling", "monthly quota rejection guidance"),
+        ),
+        "licensing": (
+            (r"per-node self-host plan", "removed per-node self-host plan"),
+            (r"lapsed subscription genuinely expires", "obsolete lapse behavior"),
+        ),
+        "billing": (
+            (
+                r"Metering, quotas, and per-key limits are",
+                "obsolete plan-metering explanation",
+            ),
+        ),
+    }
+
+    issues: list[Issue] = []
+    for pattern, label in required[contract]:
+        if re.search(pattern, text, re.IGNORECASE | re.DOTALL):
+            continue
+        issues.append(
+            Issue(
+                severity="ERROR",
+                code="pricing_contract_required_text_missing",
+                message="Pricing-critical documentation is missing a required current claim.",
+                path=rel_path,
+                details={"contract": contract, "required": label},
+            )
+        )
+    for pattern, label in stale[contract]:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match is None:
+            continue
+        issues.append(
+            Issue(
+                severity="ERROR",
+                code="pricing_contract_stale_text",
+                message="Pricing-critical documentation contains an obsolete claim.",
+                path=rel_path,
+                line=_line_for_offset(text, match.start()),
+                details={"contract": contract, "stale": label},
+            )
+        )
+    return issues
+
+
 def _validate_machine_snippet(fence: CodeFence) -> list[Issue]:
     issues: list[Issue] = []
     lang = fence.language
@@ -1100,6 +1187,7 @@ def _audit_page(
     issues.extend(_find_secret_issues(path, rel_path, text))
     issues.extend(_find_public_package_issues(path, rel_path, text))
     issues.extend(_find_runtime_encapsulation_issues(rel_path, text))
+    issues.extend(_find_pricing_contract_issues(rel_path, text))
     for link in links:
         internal_issue = _validate_internal_link(source, link, all_pages)
         if internal_issue:
@@ -2025,6 +2113,7 @@ def _audit_live(
             _find_public_package_issues(Path(route.lstrip("/")), f"live:{route}", text)
         )
         route_issues.extend(_find_runtime_encapsulation_issues(f"live:{route}", text))
+        route_issues.extend(_find_pricing_contract_issues(f"live:{route}", text))
         return route_issues
 
     if markdown_routes:

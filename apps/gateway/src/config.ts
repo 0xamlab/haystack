@@ -8,11 +8,14 @@ export const config = {
   jwtSecret:     process.env.JWT_SECRET                  ?? '',
   metricsSecret: process.env.METRICS_SECRET              ?? '',
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000'),
-  /** Per-plan rate limits (requests per window). Override via env. */
+  /** Generic hosted-plan limits. Algenta and Enterprise use 0 = no request meter. */
   planLimits: {
     free:       parseInt(process.env.RATE_LIMIT_FREE       ?? '60'),
     developer:  parseInt(process.env.RATE_LIMIT_DEVELOPER  ?? '300'),
     pro:        parseInt(process.env.RATE_LIMIT_PRO        ?? '1000'),
-    enterprise: parseInt(process.env.RATE_LIMIT_ENTERPRISE ?? '10000'),
+    algenta_free: 0,
+    algenta_pro:  0,
+    algenta_team: 0,
+    enterprise: parseInt(process.env.RATE_LIMIT_ENTERPRISE ?? '0'),
   } as Record<string, number>,
 } as const

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -113,6 +114,34 @@ async def test_retried_persist_bills_exactly_once(session_factory_and_org, monke
     assert await _count(factory, SimulationRun, org_id) == 1  # idempotent run insert
     assert await _count(factory, UsageRecord, org_id) == 1  # billed exactly once
     assert stripe_calls["n"] == 1  # real-money push fired once, not twice
+
+
+async def test_algenta_persist_never_pushes_usage_to_stripe_or_quota_redis(
+    session_factory_and_org, monkeypatch
+):
+    import apps.api_server.services._persist_helpers as ph
+    from apps.api_server.models.usage_record import UsageRecord
+
+    factory, org_id = session_factory_and_org
+    push = AsyncMock()
+    redis = AsyncMock()
+    monkeypatch.setattr(ph, "_push_stripe_usage", push)
+
+    async with factory() as session:
+        await ph.persist_simulation_run(
+            db=session,
+            persist_meta=_persist_meta(org_id, uuid.uuid4()),
+            plan="algenta_pro",
+            actor_email="owner@example.com",
+            client_ip="127.0.0.1",
+            redis_client=redis,
+        )
+        await session.commit()
+    await asyncio.sleep(0)
+
+    assert await _count(factory, UsageRecord, org_id) == 1
+    redis.incr.assert_not_awaited()
+    push.assert_not_awaited()
 
 
 async def test_null_usage_key_rows_are_exempt(session_factory_and_org):

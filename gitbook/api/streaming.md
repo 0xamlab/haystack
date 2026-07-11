@@ -23,7 +23,7 @@ SSE frames are line-based. A data frame is `data: <payload>\n\n`. A named-event 
 
 ## Streaming simulation
 
-`POST /v1/simulate/stream` runs the same computation as [`/v1/simulate`](../guides/simulate.md) but emits progress as the engine computes. It uses the same auth and quota checks, and the same request body (`mode: "auto"` or `mode: "expert"`).
+`POST /v1/simulate/stream` runs the same computation as [`/v1/simulate`](../guides/simulate.md) but emits progress as the engine computes. It uses the same authentication, request-shape checks, and request body (`mode: "auto"` or `mode: "expert"`). Algenta editions have no execution quota.
 
 This surface uses **named** SSE events.
 

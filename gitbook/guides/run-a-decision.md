@@ -41,7 +41,7 @@ A pretty-printed echo of the body confirms it parses; a traceback means fix the 
 {% step %}
 ### Run the decision over HTTP
 
-Post the body to `POST /v1/simulate`. Each successful call consumes one simulation from your monthly quota and returns HTTP 200 with a decision envelope. Server-side compute is fast (p50 under 15 ms via the Mojo worker pool); persistence happens asynchronously after the response is sent.
+Post the body to `POST /v1/simulate`. Each successful call returns HTTP 200 with a decision envelope; Algenta does not consume a monthly execution allowance because decisions are unlimited. Server-side compute is fast (p50 under 15 ms via the bundled runtime); persistence happens asynchronously after the response is sent.
 
 ```bash
 curl -sS -X POST "$ALGENTA_API_URL/v1/simulate" \
@@ -179,7 +179,7 @@ You have a decision envelope from `POST /v1/simulate` whose top-level `recommend
 ## Troubleshooting
 
 {% hint style="warning" %}
-**HTTP 429 (quota or rate limit).** Each successful simulation consumes one unit of your monthly quota, and a per-plan rate limit applies. A 429 means you hit one of them. See [Rate limits](../api/rate-limits.md) and [Plans, billing & credits](../billing.md).
+**HTTP 429.** Algenta does not apply a monthly quota or edition request meter. Read the structured error code: a narrow endpoint abuse control, upstream provider limit, or operator-configured policy can still return 429. See [Execution policy & safety limits](../api/rate-limits.md).
 {% endhint %}
 
 {% hint style="info" %}

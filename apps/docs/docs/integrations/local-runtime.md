@@ -144,7 +144,7 @@ closed without hosted registration, credit refresh, heartbeat, or metering
 flush. In that profile:
 
 - a valid local signed license file is required
-- `ALGENTA_DISABLE_TELEMETRY=1` still allows local audit and local metering
+- `ALGENTA_DISABLE_TELEMETRY=1` keeps local audit records but sends no usage telemetry
 - `ALGENTA_ALLOW_OUTBOUND_NETWORK=0` blocks Algenta-owned and undeclared public egress
 - `ALGENTA_EGRESS_ALLOWLIST` is the only way to permit explicit connector/operator egress
 

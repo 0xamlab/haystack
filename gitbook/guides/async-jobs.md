@@ -18,7 +18,7 @@ Use an async job when the work does not comfortably fit in one request/response 
 Submitting a job creates an underlying [simulation run](../guides/simulate.md) in the `queued` state with `execution_type = async`, then enqueues the work. If no background worker is available (common in local and self-hosted setups), the API executes the job in-process instead — the contract you poll is identical either way.
 
 {% hint style="warning" %}
-Async jobs are subject to a per-plan concurrency cap. If your organization already has the maximum number of in-flight jobs (those in `queued`, `validating`, or `running`), `POST /v1/jobs` is rejected with HTTP 429 and an error code of `concurrent_jobs_exceeded`. A cap of `0` means unlimited. See [Rate limits](../api/rate-limits.md).
+Async jobs are available on every Algenta edition and have no separate plan concurrency quota. Work still runs within the licensed workers/device capacity and the resources of your deployment. See [Execution policy & safety limits](../api/rate-limits.md).
 {% endhint %}
 
 ## Submit a job
@@ -265,5 +265,5 @@ You can verify your webhook endpoint before relying on it: `POST /v1/webhooks/te
 
 - [Simulate a scenario](../guides/simulate.md) — build the synchronous `POST /v1/simulate` body that async jobs wrap.
 - [Run an agent](../guides/agent-runs.md) — kick off and track long-running agent work the same way you track jobs.
-- [Rate limits](../api/rate-limits.md) — understand the per-plan concurrency caps that gate job submission.
+- [Execution policy & safety limits](../api/rate-limits.md) — distinguish unlimited execution from request-shape and worker-capacity controls.
 - [API reference](../api/reference.md) — the full schema for every job endpoint, field, and status value.

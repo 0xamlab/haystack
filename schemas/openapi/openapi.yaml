@@ -57,8 +57,9 @@ paths:
         **Performance**: p50 < 15ms server-side (Mojo worker pool, async persistence).
 
 
-        **Quota**: Each successful call consumes 1 simulation from your monthly quota.
-        Returns HTTP 429 when quota or rate limit is exceeded.'
+        **Execution policy**: Algenta editions have unlimited decisions and no plan
+        request meter. HTTP 429 is reserved for explicit endpoint, provider, or operator
+        controls.'
       operationId: simulate_v1_simulate_post
       requestBody:
         content:
@@ -433,7 +434,7 @@ paths:
     get:
       tags:
       - Account
-      summary: Get rate limits and quotas for current plan
+      summary: Get execution policy and request safety bounds
       operationId: limits_v1_limits_get
       responses:
         '200':
@@ -2969,10 +2970,10 @@ paths:
     post:
       tags:
       - credits
-      summary: Issue an execution credit batch to the bundled runtime
-      description: The bundled runtime calls this endpoint automatically when its credit
-        pool drops below 10%. Returns the number of credits granted and the expiry
-        timestamp. Denied (HTTP 429) when the organization's monthly quota is exhausted.
+      summary: Issue a compatibility credit batch for a managed runtime
+      description: Compatibility endpoint for quota-governed managed runtimes. Algenta
+        editions are unmetered and do not need execution credits; non-Algenta plans
+        can return HTTP 429.
       operationId: refresh_credits_v1_credits_refresh_post
       requestBody:
         content:
@@ -2999,10 +3000,11 @@ paths:
     post:
       tags:
       - metering
-      summary: Ingest bundled runtime execution analytics
-      description: "The bundled runtime calls this endpoint automatically to flush buffered\
-        \ execution events. Analytics only \u2014 quota enforcement is handled by the credit\
-        \ bucket. Events are structured-logged for the analytics pipeline."
+      summary: Ingest managed-deployment execution analytics
+      description: Compatibility endpoint for a managed deployment that explicitly enables
+        control-plane sync. Self-hosted Algenta editions do not call it automatically
+        and have no execution meter. Received events are analytics only and are not
+        used for Algenta billing.
       operationId: ingest_metering_events_v1_metering_post
       requestBody:
         content:

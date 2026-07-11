@@ -1,5 +1,6 @@
 """Unit tests for Phase 5A quota enforcement and usage recording."""
 
+import asyncio
 import uuid
 from types import SimpleNamespace
 from typing import Any, cast
@@ -92,10 +93,10 @@ class TestPlanQuotas:
 
     def test_algenta_plan_quotas_match_enforcement_contract(self):
         expected = {
-            "algenta_free": (10_000, 60, 10_000, 10),
-            "algenta_pro": (500_000, 300, 1_000_000, 100),
-            "algenta_team": (500_000, 1_000, 1_000_000, 100),
-            "enterprise": (0, 10_000, 1_000_000, 100),
+            "algenta_free": (0, 0, 1_000_000, 100),
+            "algenta_pro": (0, 0, 1_000_000, 100),
+            "algenta_team": (0, 0, 1_000_000, 100),
+            "enterprise": (0, 0, 1_000_000, 100),
         }
         for plan, values in expected.items():
             quota = get_plan_quota(plan)
@@ -110,7 +111,7 @@ class TestPlanQuotas:
         quota = get_plan_quota("algenta_free")
         quota["rate_per_minute"] = 1
 
-        assert get_plan_quota("algenta_free")["rate_per_minute"] == 60
+        assert get_plan_quota("algenta_free")["rate_per_minute"] == 0
 
 
 # ─── _current_billing_period ──────────────────────────────────────────────────
@@ -210,6 +211,15 @@ class TestCheckMonthlyQuota:
 
 
 class TestCheckRateLimit:
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("plan", ["algenta_free", "algenta_pro", "algenta_team", "enterprise"])
+    async def test_unmetered_algenta_plans_skip_redis(self, plan: str):
+        redis = _mock_redis(current_count=1)
+
+        await check_rate_limit(uuid.uuid4(), plan, redis)
+
+        redis.incr.assert_not_called()
+
     @pytest.mark.anyio
     async def test_under_rate_limit_does_not_raise(self):
         org_id = uuid.uuid4()
@@ -330,7 +340,7 @@ class TestQuotaMetrics:
         redis = AsyncMock()
         redis.get = AsyncMock(return_value=b"0")
 
-        await quota_service.check_quota_redis(uuid.uuid4(), "algenta_free", redis)
+        await quota_service.check_quota_redis(uuid.uuid4(), "free", redis)
 
         assert len(recorded) == 1
         assert recorded[0][0] == "redis"
@@ -341,6 +351,29 @@ class TestQuotaMetrics:
 
 
 class TestRecordUsage:
+    @pytest.mark.anyio
+    async def test_algenta_usage_remains_local_and_never_triggers_external_metering(
+        self, monkeypatch
+    ):
+        db = _mock_db()
+        push = AsyncMock()
+        alert = AsyncMock()
+        monkeypatch.setattr(quota_service, "_push_stripe_usage", push)
+        monkeypatch.setattr(quota_service, "_maybe_send_quota_alert", alert)
+
+        await record_usage(
+            org_id=uuid.uuid4(),
+            plan="algenta_pro",
+            endpoint=UsageEndpoint.SIMULATE,
+            db=db,
+            org_email="owner@example.com",
+        )
+        await asyncio.sleep(0)
+
+        db.add.assert_called_once()
+        push.assert_not_awaited()
+        alert.assert_not_awaited()
+
     @pytest.mark.anyio
     async def test_creates_usage_record(self):
         org_id = uuid.uuid4()

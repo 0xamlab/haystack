@@ -7,7 +7,7 @@ License lifecycle:
   3. Control plane issues signed JWT → stored in ~/.algenta/runtime/license.jwt
   4. Runtime validates JWT locally on every startup (no network)
   5. A persisted trusted clock keeps offline expiry checks non-decreasing
-  6. Background sync every 24h: sends usage + re-validates device count
+  6. Self-hosted/private profiles keep audit records local; managed profiles may explicitly sync
   7. Grace period: 14 days after expiry before hard block
 
 JWT payload:
@@ -461,11 +461,12 @@ def _make_invalid_license(message: str, *, api_key: str = "") -> DeviceLicense:
 def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLicense:
     """Free-forever Community fallback for a lapsed/expired PAID license.
 
-    A connected (non-air-gapped) deployment whose paid license hard-expires and cannot renew
-    DOWNGRADES to Community rather than hard-blocking: the engine keeps running on the user's
+    A deployment whose paid license hard-expires and cannot renew downgrades to Community rather
+    than hard-blocking: the engine keeps running on the user's
     hardware at Community limits (1 device, 1 worker, non-commercial); paid caps/features and
-    updates/support resume only when the license renews. Enterprise air-gapped deployments
-    (``_local_license_required``) have no connected renewal path and still hard-block.
+    updates/support resume only when the license renews. The fallback is local and works for a
+    previously valid connected or air-gapped license; an installation with no valid signed license
+    remains blocked when the deployment profile requires one.
     """
     from apps.runtime.device import get_device_id
 
@@ -1116,14 +1117,9 @@ def load_license(api_key: str = "") -> DeviceLicense:
                         if fresh and not fresh.is_hard_expired():
                             logger.info("license_auto_renewed", device_id=fresh.device_id[:8])
                             return _deny_if_revoked(fresh) or fresh
-                # Renewal unavailable (offline / unbound / server unreachable). Enterprise air-gapped
-                # deployments have no connected renewal path and MUST hold a valid local license —
-                # hard-block. Everyone else DOWNGRADES to Community (free-forever): the engine keeps
-                # running at Community limits; paid caps/features + updates/support resume on renewal.
-                if _local_license_required():
-                    parsed.valid = False
-                    parsed.message = "Local license expired — provision a fresh signed license before startup."
-                    return parsed
+                # Renewal unavailable (offline / unbound / server unreachable). A previously valid
+                # paid license settles at Community (free-forever), including in an air-gapped
+                # deployment. Missing or invalid local licenses still fail closed below.
                 logger.info(
                     "license_downgraded_to_community",
                     prev_plan=parsed.plan,

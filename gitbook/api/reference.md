@@ -8,7 +8,7 @@ description: The complete Algenta HTTP API endpoint reference — every operatio
 Every Algenta HTTP operation, grouped by area and generated from the canonical OpenAPI spec — so the list is complete and current. All routes are versioned under `/v1`; authenticate with `Authorization: Bearer <key>` (legacy `X-API-Key` is accepted).
 
 {% hint style="info" %}
-To call any endpoint live (parameters, schemas, Test it), use the [API explorer](explorer.md). Errors are listed on [Error codes](errors.md); limits on [Rate limits & quotas](rate-limits.md).
+To call any endpoint live (parameters, schemas, Test it), use the [API explorer](explorer.md). Errors are listed on [Error codes](errors.md); execution policy and safety bounds on [Execution policy & safety limits](rate-limits.md).
 {% endhint %}
 
 ## Account
@@ -18,7 +18,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/v1/me` | Get current user and org info |
 | `PATCH` | `/v1/me` | Update current user and/or org name |
 | `GET` | `/v1/usage` | Get usage summary for current billing period |
-| `GET` | `/v1/limits` | Get rate limits and quotas for current plan |
+| `GET` | `/v1/limits` | Get execution policy and request safety bounds |
 | `GET` | `/v1/distributions` | List supported distribution types |
 | `GET` | `/v1/templates` | List built-in simulation templates |
 | `GET` | `/v1/api-keys` | List active API keys |
@@ -273,7 +273,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 
 | Method | Path | Summary |
 | --- | --- | --- |
-| `POST` | `/v1/credits/refresh` | Issue an execution credit batch to the bundled runtime |
+| `POST` | `/v1/credits/refresh` | Issue a compatibility credit batch for a managed runtime |
 
 ## devices
 
@@ -288,4 +288,4 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 
 | Method | Path | Summary |
 | --- | --- | --- |
-| `POST` | `/v1/metering` | Ingest bundled runtime execution analytics |
+| `POST` | `/v1/metering` | Ingest managed-deployment execution analytics |

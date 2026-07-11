@@ -6,7 +6,7 @@ sidebar_position: 2
 
 Run a Monte Carlo simulation and receive a structured decision envelope.
 
-**Quota:** Each successful call consumes 1 simulation from your monthly quota.
+**Execution policy:** Algenta editions have unlimited decisions and no plan request meter.
 
 ## Auto Mode (Simple)
 
@@ -138,7 +138,7 @@ assert expected == result.result_hash  # tamper-proof verification
 
 | Code | `error.code` | Description |
 |------|-------------|-------------|
-| `429` | `quota_exceeded` | Monthly quota exhausted |
-| `429` | `rate_limit_exceeded` | Too many requests per minute |
+| `429` | `quota_exceeded` | Custom non-Algenta governance quota exhausted |
+| `429` | `rate_limit_exceeded` | Endpoint abuse control or operator policy |
 | `400` | `validation_error` | Invalid request body |
 | `401` | `invalid_api_key` | Authentication failed |

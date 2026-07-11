@@ -618,8 +618,8 @@ def test_cli_and_mcp_docs_cover_decision_runtime_helpers() -> None:
     assert "| `get_billing_info` | Get current billing plan and subscription info for the active organization. |" in mcp_readme
     assert "| `create_billing_checkout` | Create a Stripe Checkout session for the active organization. |" in mcp_readme
     assert "| `create_billing_portal` | Create a Stripe Billing Portal session for the active organization. |" in mcp_readme
-    assert "| `refresh_credits` | Issue one execution credit batch for a local runtime device. |" in mcp_readme
-    assert "| `ingest_metering_events` | Ingest one local metering event batch for the active organization. |" in mcp_readme
+    assert "| `refresh_credits` | Issue a compatibility credit batch for a quota-governed managed runtime. |" in mcp_readme
+    assert "| `ingest_metering_events` | Ingest an explicitly enabled managed-runtime analytics batch. |" in mcp_readme
     assert "| `list_devices` | List registered devices for the current organization. |" in mcp_readme
     assert "| `revoke_device` | Revoke one registered device by registration id for the current organization. |" in mcp_readme
     assert "| `get_audit_logs` | Get paginated audit logs for the current organization. |" in mcp_readme
@@ -644,4 +644,3 @@ def test_cli_and_mcp_docs_cover_decision_runtime_helpers() -> None:
     assert "client.inviteTeamMember({ email, role })" in ts_docs
     assert "client.updateTeamMemberRole(userId, role)" in ts_docs
     assert "client.removeTeamMember(userId)" in ts_docs
-

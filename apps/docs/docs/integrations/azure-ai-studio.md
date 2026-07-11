@@ -94,5 +94,5 @@ For Azure-hosted agents, put those behind an explicit approval step in the orche
 
 - `401 invalid_api_key`: wrong key or wrong auth mode
 - `429 rate_limit_exceeded`: honor `Retry-After`
-- `429 quota_exceeded`: monthly plan limit reached
+- `429 quota_exceeded`: custom non-Algenta governance policy reached; Algenta editions are unmetered
 - `503 mcp_upstream_unavailable`: if you proxy through MCP, treat it as an upstream outage

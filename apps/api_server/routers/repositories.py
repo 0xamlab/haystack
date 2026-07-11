@@ -161,10 +161,9 @@ def _is_offline_auth(auth: AuthContext) -> bool:
 
 
 async def _repo_preflight(auth: AuthContext, request: Request, redis_client: object) -> None:
-    """Per-minute rate limit + monthly quota gate for a billable repository compute call.
+    """Apply any explicit endpoint or non-Algenta governance controls before compute.
 
-    Raises HTTP 429 when the org's plan cap is exceeded (mirrors routers/simulate.py). Run at
-    the START of a billable handler, before any compute, so an over-cap caller short-circuits.
+    Algenta plans are unmetered, so both checks return without touching Redis for those plans.
     """
     if _is_offline_auth(auth):
         return  # per-device: no central rate-limit/quota DB on the device hot path
@@ -180,13 +179,12 @@ async def _meter_repository(
     redis_client: object,
     usage_key: str | None = None,
 ) -> None:
-    """Record ONE ``REPOSITORY`` UsageRecord (product=codna, tool_name=<tool>) for a successful
-    billable repo-intelligence call and bump the monthly quota counter.
+    """Record one local repository activity row after a successful compute call.
 
     Mirrors the canonical ``_persist_helpers`` sequence: insert inside a SAVEPOINT so a
     ``usage_key`` duplicate (retry / cross-replica race) rolls back ONLY this insert, and the
-    quota counter is incremented ONLY on a genuine first insert. The row commits with the request
-    session on success and rolls back if the request later fails — so failed calls are not billed.
+    quota counter is incremented only for quota-governed non-Algenta plans. The row commits with
+    the request session on success and rolls back if the request later fails.
     Call AFTER the compute succeeds.
     """
     if _is_offline_auth(auth):
@@ -214,7 +212,9 @@ async def _meter_repository(
         inserted = True
     except IntegrityError:
         logger.info("repository_usage_already_billed", tool=tool_name, org_id=str(auth["org_id"]))
-    if inserted and redis_client is not None:
+    from apps.api_server.services.plan_limits import is_unmetered_execution_plan
+
+    if inserted and redis_client is not None and not is_unmetered_execution_plan(auth["plan"]):
         try:
             await incr_quota_counter(auth["org_id"], period, redis_client)
         except Exception as exc:  # noqa: BLE001 — counter is best-effort; never fail the call

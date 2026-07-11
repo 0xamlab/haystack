@@ -217,6 +217,8 @@ async def check_rate_limit(
     Raises HTTP 429 if rate limit exceeded.
     """
     rpm_limit = int(_quota_cfg(plan)["rate_per_minute"])
+    if rpm_limit == 0:
+        return
     await check_named_rate_limit(
         org_id=org_id,
         redis_client=redis_client,
@@ -363,13 +365,19 @@ async def record_usage(
         period=period,
     )
 
-    # ── Push metered usage to Stripe (non-blocking) ────────────────────────
-    import asyncio
+    # Algenta is flat per-device licensing. Keep the local governance record, but never send
+    # execution counts to Stripe or emit quota alerts for an unmetered execution plan.
+    from apps.api_server.services.plan_limits import is_unmetered_execution_plan
 
-    asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=billing_units, db=db))
+    unmetered_execution = is_unmetered_execution_plan(plan)
+    if not unmetered_execution:
+        import asyncio
 
-    # ── Quota alert emails at 80% / 100% ──────────────────────────────────
-    if org_email:
+        asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=billing_units, db=db))
+
+    if org_email and not unmetered_execution:
+        import asyncio
+
         asyncio.create_task(
             _maybe_send_quota_alert(
                 org_id=org_id,

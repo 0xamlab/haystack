@@ -1,11 +1,11 @@
 ---
 icon: sliders
-description: MCP reference for the Algenta control plane — deployments, team members, devices, audit logs, execution policy, and billing, credits and metering.
+description: MCP reference for deployments, team members, devices, audit logs, execution policy, billing, and managed-runtime compatibility.
 ---
 
 # Control plane MCP tools
 
-These tools administer an organization: its **deployments**, **team**, **devices**, **audit trail**, **autonomous execution policy**, and **billing, credits and metering**. They are the same operations you would perform in the dashboard, exposed as MCP tools so an assistant can run them for you. Each maps one-to-one to an authenticated Algenta API endpoint scoped to the active organization.
+These tools administer an organization: its **deployments**, **team**, **devices**, **audit trail**, **autonomous execution policy**, and **billing**. The full registry also contains generic managed-runtime compatibility tools for credits and analytics ingestion. Product-scoped Algenta agents do not discover those compatibility tools because Algenta decisions are unmetered. Each tool maps one-to-one to an authenticated API endpoint scoped to the active organization.
 
 ## Deployment tools
 
@@ -38,15 +38,15 @@ These tools administer an organization: its **deployments**, **team**, **devices
 | `list_execution_policy_snapshots` | List persisted execution-policy snapshots. | none |
 | `update_execution_policy` | Update one or more execution-policy thresholds. | `min_confidence` (0–1), `risk_floor` (≥0), `require_calibration` (bool), `allow_reexecution` (bool) |
 
-## Billing, credits & metering tools
+## Billing and managed-runtime compatibility tools
 
 | Tool | What it does | Key inputs |
 | --- | --- | --- |
 | `get_billing_info` | Get the current billing plan and subscription info. | none |
 | `create_billing_checkout` | Create a checkout session to change plan. | `plan` (`developer`/`pro`) |
 | `create_billing_portal` | Create a billing-portal session to manage the subscription. | none |
-| `refresh_credits` | Issue one execution-credit batch for a local-runtime device. | `device_id` (required), `billing_period` (required, `YYYY-MM`), `credits_used` (≥0) |
-| `ingest_metering_events` | Ingest one local metering-event batch. | `device_id` (required), `events` (required array of `{event_type, module, function, engine_used, latency_ms, success, timestamp, request_id}`) |
+| `refresh_credits` | Issue a compatibility credit batch for a quota-governed managed runtime. Not used by Algenta editions. | `device_id` (required), `billing_period` (required, `YYYY-MM`), `credits_used` (≥0) |
+| `ingest_metering_events` | Ingest an explicitly enabled managed-runtime analytics batch. Not used automatically by private Algenta profiles. | `device_id` (required), `events` (required array of `{event_type, module, function, engine_used, latency_ms, success, timestamp, request_id}`) |
 
 {% hint style="warning" %}
 Control-plane tools change organization state — new deployments, role changes, device revocation, policy thresholds, and plan changes. They require an API key whose role permits the operation. Prefer a scoped key and review the change before confirming it.

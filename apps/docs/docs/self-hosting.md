@@ -174,7 +174,7 @@ The buyer-facing proof endpoints are:
 | `ALGENTA_DISABLE_CLOUD` | Set to `1` to block Algenta-owned cloud egress |
 | `ALGENTA_DISABLE_TELEMETRY` | Set to `1` to disable outbound/vendor telemetry while keeping local audit enabled |
 | `ALGENTA_TELEMETRY_MODE` | `local_audit` for local-only audit, `control_plane_sync` only when an allowed control plane URL is configured |
-| `ALGENTA_METERING_MODE` | `local_audit` for local-only metering, `control_plane_sync` only when explicitly permitted |
+| `ALGENTA_METERING_MODE` | `local_audit` for local execution audit records; `control_plane_sync` is only for an explicitly configured managed deployment |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | Set to `1` for strict local signed license enforcement; required by the `air_gapped` profile |
 | `ALGENTA_CONTROL_PLANE_URL` | Optional explicit control-plane URL; leave blank in the default private self-hosted profile |
 | `ALGENTA_ALLOW_OUTBOUND_NETWORK` | Set to `0` to block Algenta-owned and undeclared public egress |

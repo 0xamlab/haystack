@@ -380,7 +380,9 @@ async def _background_refresh() -> None:
             logger.warning(
                 "credit_refresh_quota_exhausted",
                 status=code,
-                hint=("Monthly quota exhausted; executions will block when credits drain."),
+                hint=(
+                    "Configured governance policy rejected refresh; Algenta plans are unmetered."
+                ),
             )
         else:
             logger.debug("credit_refresh_failed", error=str(exc))

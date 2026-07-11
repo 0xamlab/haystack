@@ -1,4 +1,4 @@
-"""UsageRecord model — per-request billing unit tracking."""
+"""UsageRecord model — customer-owned activity records and generic-plan metering."""
 
 import uuid
 from enum import StrEnum
@@ -24,12 +24,12 @@ class UsageEndpoint(StrEnum):
 
 class UsageRecord(UUIDMixin, TimestampMixin, Base):
     """
-    One row per billable API call.
+    One row per governed API call.
     Written synchronously in the hot path (simulation service).
     Used for:
-    - Monthly quota checks (count rows per org per billing_period)
+    - Generic non-Algenta quota checks (count rows per org per billing_period)
     - Usage dashboard in the external web interface (group by day/endpoint)
-    - Stripe metered billing hooks (future)
+    Algenta per-device plans retain rows locally for audit and never send them to Stripe.
     """
 
     __tablename__ = "usage_records"

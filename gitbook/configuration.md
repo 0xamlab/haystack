@@ -25,19 +25,19 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_DISABLE_TELEMETRY` | — | — | Disable all outbound/vendor telemetry; keep local audit. |
 | `ALGENTA_EGRESS_ALLOWLIST` | — | — | Comma-separated allowlist of permitted egress destinations. |
 | `ALGENTA_ENFORCE_LICENSE_VALIDATION` | — | — | Enable fail-closed license validation on self-hosted deployments. |
-| `ALGENTA_ENFORCE_STORAGE_CAP` | `False` | — | Enforce the per-org free-tier storage_gb quota (opt-in). |
+| `ALGENTA_ENFORCE_STORAGE_CAP` | `False` | — | Enforce a configured organization storage policy (off by default; Algenta editions are uncapped). |
 | `ALGENTA_ENGINE_IMAGE` | — | — | Docker image to deploy on all cloud providers. MUST be a pinned tag or @sha256 digest (e.g. .../api:git-<sha>); never a floating :latest. Empty = unconfigured (provisioning supplies a pinned ref). |
 | `ALGENTA_ENTRA_ALLOWED_CLIENT_APPS` | — | — | — |
 | `ALGENTA_ENTRA_ALLOWED_TENANTS` | — | — | — |
 | `ALGENTA_ENTRA_AUDIENCE` | — | — | — |
 | `ALGENTA_ENTRA_TENANT_ID` | — | — | — |
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
-| `ALGENTA_METERING_MODE` | — | — | Metering destination: disabled \| local_audit \| control_plane_sync. |
+| `ALGENTA_METERING_MODE` | — | — | Execution-record destination. Self-hosted Algenta defaults to local_audit; control_plane_sync is for explicitly configured managed deployments. |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | — | — | Require a valid local signed license; disable hosted/dev fallback. |
 | `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` | `False` | `RUNTIME_LIBRARY_HTTP_API_ENABLED` | Expose the /v1/libraries* runtime-library routes (off by default). |
 | `ALGENTA_SERVICE_ROLE` | `full` | — | Deployment role: full (default, with engine) \| control_plane (engine-free). |
 | `ALGENTA_SIMULATION_PERSIST_TRANSPORT` | `auto` | `SIMULATION_PERSIST_TRANSPORT` | Result persistence backend: auto \| celery \| in_process. |
-| `ALGENTA_TELEMETRY_MODE` | — | — | Telemetry destination: disabled \| local_audit \| control_plane_sync. |
+| `ALGENTA_TELEMETRY_MODE` | — | — | Telemetry destination. Self-hosted Algenta defaults to local_audit with no outbound sync. |
 | `API_ENV` | `development` | — | — |
 | `API_KEY_CREATE_RATE_LIMIT_PER_MINUTE` | `10` | — | — |
 | `API_KEY_PREFIX` | `de_live_` | — | — |

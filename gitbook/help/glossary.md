@@ -70,7 +70,7 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | **Air-gapped** | A self-hosted profile with zero outbound network — licensing and execution are fully local. |
 | **Control plane** | The hosted, engine-free surface (auth, accounts, teams, billing, licensing). A deployment runs `full` or `control_plane` via `ALGENTA_SERVICE_ROLE`. |
 | **Edition** | A licensed product surface over the engine, selected with `ALGENTA_PRODUCT`. |
-| **Metering / Credits / Quota** | How usage is counted (metering), topped up (credits), and capped per plan (quota). See [Plans, billing & credits](../billing.md). |
+| **Metering / Credits / Quota** | Generic managed-runtime compatibility controls. Algenta editions do not use them for billing or execution caps; local activity records remain customer-owned. See [Usage & execution policy](../billing.md). |
 | **Egress / Privacy report** | Outbound-network policy and the operator proof (`GET /v1/admin/privacy-report`) that a deployment is cloud-free. |
 
 ## Security & licensing

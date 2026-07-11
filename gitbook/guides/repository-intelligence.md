@@ -203,7 +203,7 @@ Triage itself returns inline. The heavier downstream stages — a security analy
 Poll `GET /v1/jobs/{job_id}` for status and `GET /v1/jobs/{job_id}/result` for the completed payload. See [Run asynchronous jobs](agent-runs.md) for the full async pattern.
 
 {% hint style="info" %}
-Every repository compute call is rate-limited per minute and counted against your monthly quota (an over-cap call returns `429`). Free-tier storage caps may also apply. Errors return a structured `{ "error": { "code", "message", "details", "request_id" } }` body — see [API errors](../api/reference.md).
+Repository compute has no Algenta edition request meter or monthly execution quota. Request-shape validation and your infrastructure capacity still apply. Errors return a structured `{ "error": { "code", "message", "details", "request_id" } }` body — see [API errors](../api/reference.md).
 {% endhint %}
 
 ## Capabilities check

@@ -86,8 +86,8 @@ Add to your MCP config (Cursor `~/.cursor/mcp.json`, or Claude Desktop `claude_d
 | `get_billing_info` | Get current billing plan and subscription info for the active organization. |
 | `create_billing_checkout` | Create a Stripe Checkout session for the active organization. |
 | `create_billing_portal` | Create a Stripe Billing Portal session for the active organization. |
-| `refresh_credits` | Issue one execution credit batch for a local runtime device. |
-| `ingest_metering_events` | Ingest one local metering event batch for the active organization. |
+| `refresh_credits` | Issue a compatibility credit batch for a quota-governed managed runtime. |
+| `ingest_metering_events` | Ingest an explicitly enabled managed-runtime analytics batch. |
 | `list_devices` | List registered devices for the current organization. |
 | `revoke_device` | Revoke one registered device by registration id for the current organization. |
 | `get_audit_logs` | Get paginated audit logs for the current organization. |
@@ -610,7 +610,7 @@ mcp-server:
   deployment.
 
 **`API error 429: Rate limit exceeded`**
-→ You're over your plan's requests/minute limit. Upgrade or space out calls.
+→ Inspect the structured code for an endpoint abuse control, provider limit, or operator policy. Algenta editions have no request meter.
 
 **Tool not showing in Claude Desktop**
 → Check the JSON config syntax, restart Claude Desktop, look for errors in `~/Library/Logs/Claude/`

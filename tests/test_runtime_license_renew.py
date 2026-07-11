@@ -108,8 +108,7 @@ def test_load_license_auto_renews_on_hard_expiry(monkeypatch) -> None:
 
 
 def test_load_license_expired_downgrades_to_community_when_renew_fails(monkeypatch) -> None:
-    # NEW model: a lapsed paid license that can't renew DOWNGRADES to Community (free-forever) —
-    # the engine keeps running at Community limits rather than hard-blocking.
+    # A lapsed paid license that cannot renew downgrades to Community (free-forever).
     expired = _lic(expires_at=1)
     monkeypatch.setattr(rt, "_load_raw_token", lambda *a, **k: "STORED")
     monkeypatch.setattr(rt, "_parse_token", lambda token, api_key="": expired)
@@ -121,17 +120,18 @@ def test_load_license_expired_downgrades_to_community_when_renew_fails(monkeypat
     assert result.plan == "algenta_free"  # downgraded to Community
     assert result.source == "community-fallback"
     assert result.concurrent_worker_limit == 1  # Community per-device worker cap
+    assert result.named_seat_limit == 1
     assert result.commercial_use is False
 
 
-def test_load_license_expired_hard_blocks_when_local_license_required(monkeypatch) -> None:
-    # Enterprise air-gapped (a local signed license is REQUIRED) has no connected renewal path,
-    # so a hard-expired license still hard-blocks — it does not silently downgrade.
+def test_load_license_expired_downgrades_when_local_license_required(monkeypatch) -> None:
+    # A previously valid air-gapped license also settles at Community when its signed term lapses.
     expired = _lic(expires_at=1)
     monkeypatch.setattr(rt, "_load_raw_token", lambda *a, **k: "STORED")
     monkeypatch.setattr(rt, "_parse_token", lambda token, api_key="": expired)
     monkeypatch.setattr(rt, "_local_license_required", lambda: True)
 
     result = rt.load_license("de_live_key")
-    assert result.valid is False
-    assert "expired" in result.message.lower()
+    assert result.valid is True
+    assert result.plan == "algenta_free"
+    assert result.source == "community-fallback"
