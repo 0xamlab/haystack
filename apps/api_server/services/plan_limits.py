@@ -337,3 +337,38 @@ def permitted_modules(plan: str) -> list[str]:
 def credit_batch_size(plan: str) -> int:
     """Credits issued per /v1/credits/refresh call."""
     return get(plan).credit_batch_size
+
+
+# Per-device concurrent worker cap — the "N workers per device" on the pricing page. This is the
+# SINGLE SOURCE OF TRUTH for that number: it flows into the signed license claims
+# (entitlement_service.to_license_claims) and is enforced offline by the runtime WorkerBroker
+# (apps/runtime/worker_broker.py). Adjust a value here and both the signer and every node follow on
+# the next license renewal — no other edit needed. 0 = unlimited (enterprise/negotiated).
+#
+# Kept as a dedicated map (not per-PlanConfig) so the commercial worker ladder is legible + trivial
+# to retune. Pricing (algenta.ai/pricing): Community 1 · Pro 5 · Team 20 · Enterprise unlimited.
+_WORKER_LIMITS: dict[str, int] = {
+    "free": 1,
+    "telys_developer": 1,
+    "algenta_free": 1,
+    "telys_pro": 5,
+    "algenta_pro": 5,
+    "developer": 5,
+    "pro": 5,
+    "proplus": 10,
+    "telys_team": 20,
+    "algenta_team": 20,
+    "algenta_selfhost": 20,
+    "team": 20,
+    "ultra": 20,
+    "enterprise": 0,  # negotiated / unlimited
+}
+
+
+def worker_limit(plan: str) -> int:
+    """Per-device concurrent worker cap for a plan. 0 = unlimited.
+
+    Single source of truth consumed by entitlement_service (license claims) and the runtime
+    WorkerBroker. Unknown plans fall back to the free cap (fail-closed to the smallest cap).
+    """
+    return _WORKER_LIMITS.get(plan, _WORKER_LIMITS["free"])

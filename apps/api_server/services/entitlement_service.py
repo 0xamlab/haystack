@@ -31,6 +31,7 @@ import structlog
 # Per-product feature sets are owned by the product registry (single source of truth). Re-exported through
 # this import so existing importers/tests (`from entitlement_service import CODNA_FEATURES_FULL`) still work,
 # and so the MCP feature→tool map in packages/mcp/algenta_mcp/products.py stays the mirror of codna's keys.
+from apps.api_server.services import plan_limits
 from apps.api_server.services.product_registry import (
     ALGENTA_FEATURES_FULL,
     CODNA_FEATURES_FULL,
@@ -43,7 +44,9 @@ logger = structlog.get_logger(__name__)
 # above it requires an enterprise contract (negotiated pools via per-org overrides).
 SELF_SERVICE_MAX_SEATS = 5
 SELF_SERVICE_MAX_NODES = 2
-SELF_SERVICE_MAX_WORKERS = 4
+# Top self-serve worker cap = the Team tier's per-device worker cap (pricing: Team = 20/device).
+# Above this ⇒ enterprise contract. Kept in sync with plan_limits._WORKER_LIMITS.
+SELF_SERVICE_MAX_WORKERS = 20
 
 
 @dataclass(frozen=True)
@@ -268,7 +271,12 @@ def resolve_entitlement(
     ``plan`` may be an OrgPlan enum or a plan-name string. ``overrides`` are admin/negotiated
     per-org adjustments (enterprise pools) applied authoritatively on top of the tier default.
     """
-    record = _TIER_CAPACITY[_coerce_plan(plan)]
+    plan_name = _coerce_plan(plan)
+    record = _TIER_CAPACITY[plan_name]
+    # concurrent_worker_limit is DYNAMIC — the single source of truth is plan_limits._WORKER_LIMITS,
+    # so the per-device worker cap tracks the pricing page (Community 1 / Pro 5 / Team 20) without
+    # editing this table. A per-org override (enterprise negotiation) still wins below.
+    record = replace(record, concurrent_worker_limit=plan_limits.worker_limit(plan_name))
     if overrides:
         record = _apply_overrides(record, overrides)
     return record
