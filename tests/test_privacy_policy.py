@@ -192,6 +192,17 @@ def test_supabase_url_host_is_trusted_for_egress() -> None:
     assert policy.allow_outbound_network is False  # general egress stays closed
 
 
+def test_entra_jwks_host_auto_allowlisted_when_configured() -> None:
+    # When the gateway accepts Entra tokens, login.microsoftonline.com is auto-allowlisted for the
+    # tenant JWKS fetch — else every Entra token 503s with "jwks_unreachable (egress policy)".
+    policy = build_privacy_policy(deployment_mode="self_hosted", entra_configured=True)
+    assert "login.microsoftonline.com" in policy.egress_allowlist
+    assert policy.allow_outbound_network is False  # general egress stays closed
+    # NOT added when Entra is unconfigured (dark) — no needless egress surface.
+    off = build_privacy_policy(deployment_mode="self_hosted", entra_configured=False)
+    assert "login.microsoftonline.com" not in off.egress_allowlist
+
+
 def test_supabase_host_merges_with_explicit_allowlist_without_duplicates() -> None:
     policy = build_privacy_policy(
         deployment_mode="self_hosted",

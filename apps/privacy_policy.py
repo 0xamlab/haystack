@@ -278,6 +278,7 @@ def build_privacy_policy(
     egress_allowlist: object | None = None,
     agent_core_url: object | None = None,
     supabase_url: object | None = None,
+    entra_configured: object | None = None,
     base_url_fallback: str | None = None,
 ) -> PrivacyPolicy:
     mode = _normalized_mode(deployment_mode)
@@ -370,6 +371,16 @@ def build_privacy_policy(
             supabase_host = ""
         if supabase_host and supabase_host not in effective_allowlist:
             effective_allowlist.append(supabase_host)
+
+    # Same self-host trust for the Microsoft Entra identity provider: when the gateway is configured to
+    # accept Entra tokens (ALGENTA_ENTRA_TENANT_ID + ALGENTA_ENTRA_AUDIENCE), it MUST fetch the tenant
+    # JWKS from login.microsoftonline.com to verify signatures. Auto-allow exactly that host so the
+    # fetch isn't blocked by the fail-closed egress guard — otherwise every Entra token 503s with an
+    # opaque "jwks_unreachable (egress policy)". Host constant mirrors services/entra_auth._LOGIN_HOST.
+    if _parse_optional_bool(entra_configured):
+        entra_jwks_host = "login.microsoftonline.com"
+        if entra_jwks_host not in effective_allowlist:
+            effective_allowlist.append(entra_jwks_host)
 
     policy = PrivacyPolicy(
         deployment_mode=mode,

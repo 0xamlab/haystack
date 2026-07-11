@@ -213,6 +213,9 @@ class Settings(BaseSettings):
             egress_allowlist=self.algenta_egress_allowlist,
             agent_core_url=self.algenta_agent_core_url,
             supabase_url=self.supabase_url,
+            entra_configured=bool(
+                (self.entra_tenant_id or "").strip() and (self.entra_audience or "").strip()
+            ),
         )
 
     # ─── Database ─────────────────────────────────────────────────────────────
