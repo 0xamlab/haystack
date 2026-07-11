@@ -226,7 +226,7 @@ def test_algenta_core_readme_covers_runtime_and_local_library_contracts() -> Non
     text = (ROOT / "packages" / "algenta" / "README.md").read_text()
     assert "Runtime" in text
     assert "de_live_" not in text
-    assert 'pip install "algenta-core[cloud]"' in text
+    assert 'pip install "algenta[cloud]"' in text
     assert 'Runtime(mode="api")' in text
     assert "intentionally fail" in text
     assert "algenta-sdk" in text

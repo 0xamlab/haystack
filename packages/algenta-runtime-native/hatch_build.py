@@ -1,12 +1,11 @@
-"""Hatch build hook: bundle the CI-built native runtime + signed manifest into a PLATFORM-TAGGED wheel.
+"""Hatch build hook: bundle the CI-built Algenta runtime into a platform-tagged wheel.
 
-Gated on ``ALGENTA_BUNDLE_RUNTIME=1`` (the build-runtime CI sets it after compiling + RS256-signing the Mojo
-runtime). Force-includes the artifacts into the ``algenta_runtime_native`` package and marks the wheel
-non-pure + platform-tagged so pip resolves the right build per OS/arch. When unset, produces a plain
-(empty-of-native) wheel — useful for dev, never published. Invariant: a PUBLISHED sidecar wheel always
-contains the native lib; an unsupported platform simply has no wheel (a generic pip "no matching
-distribution"), never a wheel that later asks for Mojo.
+Gated on ``ALGENTA_BUNDLE_RUNTIME=1``. Release wheels contain the prebuilt runtime
+worker, a signed manifest, and the release public key needed to verify that
+manifest offline. The package is an automatic dependency of ``algenta``; users do
+not install or configure it directly.
 """
+
 from __future__ import annotations
 
 import os
@@ -20,33 +19,53 @@ class CustomBuildHook(BuildHookInterface):
 
     def initialize(self, version: str, build_data: dict) -> None:  # noqa: ARG002
         if os.environ.get("ALGENTA_BUNDLE_RUNTIME") != "1":
-            return  # dev build: no native bundled (never published)
+            if os.environ.get("ALGENTA_ALLOW_EMPTY_RUNTIME_NATIVE_WHEEL") == "1":
+                return
+            raise RuntimeError(
+                "algenta-runtime-native cannot be built as an empty wheel. "
+                "Set ALGENTA_BUNDLE_RUNTIME=1 after compiling and signing the "
+                "runtime artifacts, or set ALGENTA_ALLOW_EMPTY_RUNTIME_NATIVE_WHEEL=1 "
+                "only for explicit local metadata smoke tests."
+            )
 
-        stem = "libalgenta_runtime"
-        ext = "dylib" if sys.platform == "darwin" else ("dll" if sys.platform.startswith("win") else "so")
         src_dir = os.environ.get("ALGENTA_RUNTIME_SRC") or os.path.abspath(
             os.path.join(self.root, "..", "..", "mojo_build")
         )
-        lib = os.path.join(src_dir, f"{stem}.{ext}")
-        manifest = os.path.join(src_dir, "manifest.json")
-        sig = os.path.join(src_dir, "manifest.sig")
-        for required in (lib, manifest, sig):
-            if not os.path.exists(required):
+        worker_name = (
+            "algenta-runtime-worker.exe"
+            if sys.platform.startswith("win")
+            else "algenta-runtime-worker"
+        )
+        required = (
+            os.path.join(src_dir, worker_name),
+            os.path.join(src_dir, "manifest.json"),
+            os.path.join(src_dir, "manifest.sig"),
+            os.path.join(src_dir, "algenta_release_pub.pem"),
+        )
+        for artifact in required:
+            if not os.path.exists(artifact):
                 raise FileNotFoundError(
-                    f"ALGENTA_BUNDLE_RUNTIME=1 but a required artifact is missing: {required}. "
-                    "The build-runtime CI must compile + RS256-sign the runtime (lib + manifest.json + "
-                    "manifest.sig) before building the sidecar wheel."
+                    "ALGENTA_BUNDLE_RUNTIME=1 but a required runtime artifact is "
+                    f"missing: {artifact}. The build-runtime workflow must compile, "
+                    "sign, and stage the bundled runtime before building the wheel."
                 )
 
         force_include = build_data.setdefault("force_include", {})
-        force_include[lib] = f"algenta_runtime_native/{stem}.{ext}"
-        force_include[manifest] = "algenta_runtime_native/manifest.json"
-        force_include[sig] = "algenta_runtime_native/manifest.sig"
+        force_include[required[0]] = f"algenta_runtime_native/{worker_name}"
+        force_include[required[1]] = "algenta_runtime_native/manifest.json"
+        force_include[required[2]] = "algenta_runtime_native/manifest.sig"
+        force_include[required[3]] = "algenta_runtime_native/algenta_release_pub.pem"
 
-        # macOS only: bundle the PREBUILT + code-signed + RS256-manifest-signed Secure Enclave helper
-        # (scripts/build_se_helper.py wrote it under <src>/se) so the runtime verifies + runs it instead of
-        # JIT-compiling swiftc — the clean-machine contract (no runtime compiler). The runtime resolves it
-        # via importlib.resources("algenta_runtime_native")/se and fails closed if the manifest doesn't verify.
+        stem = "libalgenta_runtime"
+        ext = (
+            "dylib"
+            if sys.platform == "darwin"
+            else ("dll" if sys.platform.startswith("win") else "so")
+        )
+        lib = os.path.join(src_dir, f"{stem}.{ext}")
+        if os.path.exists(lib):
+            force_include[lib] = f"algenta_runtime_native/{stem}.{ext}"
+
         if sys.platform == "darwin":
             se_dir = os.path.join(src_dir, "se")
             se_bin = os.path.join(se_dir, "algenta-se-helper")
@@ -58,9 +77,9 @@ class CustomBuildHook(BuildHookInterface):
                 force_include[se_sig] = "algenta_runtime_native/se/manifest.sig"
             elif os.environ.get("GITHUB_REF", "").startswith("refs/tags/"):
                 raise FileNotFoundError(
-                    "macOS sidecar tag build is missing the Secure Enclave helper "
-                    "(se/algenta-se-helper + manifest.json + manifest.sig). Run scripts/build_se_helper.py "
-                    "before building the sidecar wheel."
+                    "macOS runtime tag build is missing the Secure Enclave helper "
+                    "(se/algenta-se-helper + manifest.json + manifest.sig). Run "
+                    "scripts/build_se_helper.py before building the runtime wheel."
                 )
 
         build_data["pure_python"] = False

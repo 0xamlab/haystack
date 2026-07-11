@@ -1,13 +1,13 @@
 """
 POST /v1/simulate/stream — Server-Sent Events (SSE) progressive simulation output.
 
-The Mojo engine emits NDJSON lines to stdout:
+The Algenta runtime worker emits NDJSON lines to stdout:
   - type="progress"  → Welford online stats at every checkpoint_every runs
   - type="final"     → Complete DecisionEnvelope (last line)
 
 The SSE router:
   1. Validates auth + quota (same as /v1/simulate)
-  2. Spawns mojo_build/simulate with stream=true in the payload
+  2. Spawns the bundled runtime worker with stream=true in the payload
   3. Reads stdout line-by-line and yields each as an SSE data frame
   4. Client receives live progress then the final complete envelope
 
@@ -28,6 +28,7 @@ import json
 import os
 import textwrap
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Annotated, Any
 
 import structlog
@@ -46,14 +47,16 @@ from apps.api_server.services.simulation_payloads import (
     _build_auto_mojo_payload,
     _build_expert_mojo_payload,
 )
+from apps.runtime.native_worker import resolve_native_worker
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Streaming"], dependencies=[Depends(require_verified_email)])
 
-# ── Locate binary ─────────────────────────────────────────────────────────────
+# ── Locate bundled runtime worker ────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", ".."))
-_BIN = os.path.join(_ROOT, "mojo_build", "simulate")
+_ROOT = Path(os.path.abspath(os.path.join(_HERE, "..", "..", "..")))
+_RESOLVED_WORKER = resolve_native_worker(require_verified=False)
+_BIN = str(_RESOLVED_WORKER.path if _RESOLVED_WORKER else _ROOT / "mojo_build" / "simulate")
 
 
 # ── SSE helpers ───────────────────────────────────────────────────────────────
@@ -93,13 +96,18 @@ def _build_stream_payload(
 
 async def _stream_mojo(payload: dict[str, Any]) -> AsyncGenerator[str, None]:
     """
-    Spawn mojo binary, relay NDJSON lines as SSE frames.
+    Spawn the runtime worker, relay NDJSON lines as SSE frames.
     Yields SSE-formatted strings.
     """
     if not os.path.isfile(_BIN):
         yield _sse_event(
             "error",
-            json.dumps({"error": "Mojo engine not built", "hint": "run make build-mojo"}),
+            json.dumps(
+                {
+                    "error": "Algenta runtime worker is unavailable",
+                    "hint": "install an Algenta build with the bundled runtime for this platform",
+                }
+            ),
         )
         return
 

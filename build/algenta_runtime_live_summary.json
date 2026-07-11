@@ -2,32 +2,16 @@
   "artifact": "live_integration_summary",
   "details": {
     "api_key_configured": false,
-    "base_url": "http://127.0.0.1:59043",
+    "base_url": "http://127.0.0.1:59313",
     "failed_checks": [],
-    "skipped_checks": [
-      "API Runtime connector matrix",
-      "API Runtime connectors + dataset lifecycle surface",
-      "API Runtime repository intelligence surface",
-      "API Runtime account + API-key surface",
-      "API Runtime team/credits/metering/audit/execution-policy surface",
-      "API Runtime async jobs surface",
-      "API Runtime trigger lifecycle surface",
-      "API Runtime LLM utility plan surface",
-      "API Runtime proof routes",
-      "API Runtime deployment control surface",
-      "API Runtime deployment create/delete lifecycle",
-      "API Runtime decision runtime plan surface",
-      "API Runtime simplified product surface",
-      "API Runtime streaming LLM surface",
-      "API Runtime agent-run plan surface"
-    ]
+    "skipped_checks": []
   },
-  "elapsed_seconds": 1.727,
+  "elapsed_seconds": 7.037,
   "failed": 0,
-  "generated_at": "2026-07-10T02:57:01.625668Z",
+  "generated_at": "2026-07-11T02:26:36.577113Z",
   "name": "algenta_runtime_live",
-  "passed": 2,
+  "passed": 17,
   "script": "tests/integration/test_algenta_runtime_live.py",
-  "skipped": 15,
+  "skipped": 0,
   "total": 17
 }

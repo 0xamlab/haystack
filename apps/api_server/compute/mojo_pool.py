@@ -1,12 +1,12 @@
 """
-Mojo Worker Pool — long-lived processes with Unix domain socket IPC.
+Algenta Runtime Worker Pool — long-lived processes with Unix domain socket IPC.
 
 Replaces asyncio.create_subprocess_exec() per-request (~22ms OS fork+exec)
-with a pre-warmed pool of persistent Mojo worker processes (~0.5ms IPC).
+with a pre-warmed pool of persistent runtime worker processes (~0.5ms IPC).
 
 Architecture:
   - MOJO_POOL_SIZE workers spawned at FastAPI startup
-  - Each worker = 1 Mojo process + 1 persistent asyncio StreamReader/Writer pair
+  - Each worker = 1 runtime process + 1 persistent asyncio StreamReader/Writer pair
   - Workers stored in asyncio.Queue — acquire/release with no locks needed
   - Health monitor task restarts crashed workers within 50ms
   - Graceful shutdown: drain queue, send SIGTERM, wait for exit
@@ -38,13 +38,23 @@ from typing import Any
 import structlog
 
 from apps.api_server.compute.mojo_errors import MojoEngineError
+from apps.runtime.native_worker import resolve_native_worker
 
 logger = structlog.get_logger(__name__)
 
 __all__ = ["MojoEngineError", "MojoWorkerPool", "get_pool_sync", "invoke_via_pool", "set_pool"]
 
 _REPO_ROOT = Path(__file__).parents[3]
-_BINARY_PATH = _REPO_ROOT / "mojo_build" / "simulate"
+
+
+def _default_binary_path() -> Path:
+    resolved = resolve_native_worker(require_verified=False)
+    if resolved is not None and not resolved.public_error:
+        return resolved.path
+    return _REPO_ROOT / "mojo_build" / "simulate"
+
+
+_BINARY_PATH = _default_binary_path()
 _SOCKET_DIR = Path(tempfile.gettempdir()) / "algenta-mojo"
 
 
@@ -72,11 +82,14 @@ WORKER_READY_TIMEOUT_S = float(os.environ.get("MOJO_WORKER_READY_TIMEOUT_S", "5.
 PROBE_SOCKET_TIMEOUT_S = float(os.environ.get("MOJO_PROBE_SOCKET_TIMEOUT_S", "30.0"))
 PROBE_FRAME_TIMEOUT_S = float(os.environ.get("MOJO_PROBE_FRAME_TIMEOUT_S", "10.0"))
 PROBE_ATTEMPTS = int(os.environ.get("MOJO_PROBE_ATTEMPTS", "3"))
+WORKER_START_ATTEMPTS = int(os.environ.get("MOJO_WORKER_START_ATTEMPTS", "3"))
+WORKER_START_RETRY_DELAY_S = float(os.environ.get("MOJO_WORKER_START_RETRY_DELAY_S", "0.1"))
 
 # Phase 1: Control subprocess fallback policy.
 # "true"  — allow transparent subprocess fallback (dev default, slower but safe)
 # "false" — hard fail if pool cannot start; no subprocess fallback (production)
 _ALLOW_SUBPROCESS_FALLBACK = _env_flag("MOJO_ALLOW_SUBPROCESS_FALLBACK")
+_ALLOW_PARTIAL_POOL = _env_flag("MOJO_POOL_ALLOW_PARTIAL", "false")
 
 
 class _Worker:
@@ -208,7 +221,7 @@ class _Worker:
                 raise MojoEngineError(
                     f"Engine {payload.get('engine_type')} returned subprocess fallback "
                     "but MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
-                    "Rebuild the Mojo binary: make build-mojo",
+                    "Install an Algenta build with a healthy bundled runtime.",
                     exit_code=1,
                     code="unexpected_subprocess_fallback",
                     recoverable=False,
@@ -220,7 +233,10 @@ class _Worker:
                 "mojo_pool_unexpected_fallback",
                 engine_type=payload.get("engine_type"),
                 reason=result.get("reason", ""),
-                hint="All engines should be handled in server mode. Rebuild with make build-mojo.",
+                hint=(
+                    "All engines should be handled in server mode. "
+                    "Install a healthy bundled runtime."
+                ),
             )
             # In dev mode only: fall through to subprocess if explicitly allowed
             from apps.api_server.compute.mojo_adapter import _invoke_subprocess
@@ -327,7 +343,9 @@ class MojoWorkerPool:
             )
             header = await asyncio.wait_for(reader.readexactly(4), timeout=PROBE_FRAME_TIMEOUT_S)
             length = struct.unpack(">I", header)[0]
-            ready_data = await asyncio.wait_for(reader.readexactly(length), timeout=PROBE_FRAME_TIMEOUT_S)
+            ready_data = await asyncio.wait_for(
+                reader.readexactly(length), timeout=PROBE_FRAME_TIMEOUT_S
+            )
             ready = json.loads(ready_data)
             if ready.get("status") != "ready":
                 return False
@@ -361,7 +379,7 @@ class MojoWorkerPool:
                     "mojo_server_mode_compute_broken",
                     mean=mean,
                     hint="Binary creates socket but returns zero statistics. "
-                    "Falling back to subprocess mode. Rebuild with `make build-mojo`.",
+                    "Falling back to subprocess mode. Install a healthy bundled runtime.",
                 )
                 return False
 
@@ -393,8 +411,8 @@ class MojoWorkerPool:
         """
         if not _BINARY_PATH.exists() or not os.access(_BINARY_PATH, os.X_OK):
             msg = (
-                f"Mojo binary not found at {_BINARY_PATH}. "
-                "Run `make setup-mojo && make build-mojo` first."
+                f"Algenta runtime worker not found at {_BINARY_PATH}. "
+                "Install an Algenta build that includes the bundled runtime for this platform."
             )
             if not _ALLOW_SUBPROCESS_FALLBACK:
                 raise MojoEngineError(
@@ -429,17 +447,17 @@ class MojoWorkerPool:
             reason = "binary_does_not_support_server_mode"
             if not _ALLOW_SUBPROCESS_FALLBACK:
                 raise MojoEngineError(
-                    f"Binary at {_BINARY_PATH} does not support --server mode "
-                    "and MOJO_ALLOW_SUBPROCESS_FALLBACK=false. "
-                    "Run `make build-mojo` to rebuild.",
+                    f"Algenta runtime worker at {_BINARY_PATH} does not support server mode "
+                    "and runtime fallbacks are denied. "
+                    "Install a build with a healthy bundled runtime.",
                     code="server_mode_unavailable",
                     recoverable=True,
                     stage="pool_start",
                 )
             logger.warning(
                 "mojo_pool_server_mode_not_supported",
-                hint="Binary does not support --server. Run `make build-mojo` to rebuild. "
-                "Simulations will use subprocess fallback (slower but correct).",
+                hint="Runtime worker does not support server mode. "
+                "Simulations will use subprocess fallback when allowed.",
             )
             logger.info(
                 "mojo_runtime_mode", mode="subprocess_fallback", reason=reason, allow_fallback=True
@@ -455,19 +473,84 @@ class MojoWorkerPool:
 
         spawn_tasks = [self._spawn_worker(i) for i in range(self._size)]
         await asyncio.gather(*spawn_tasks)
+        if len(self._workers) != self._size:
+            missing = self._size - len(self._workers)
+            if _ALLOW_PARTIAL_POOL and self._workers:
+                logger.warning(
+                    "mojo_pool_ready_partial",
+                    workers=len(self._workers),
+                    expected=self._size,
+                    missing=missing,
+                )
+            else:
+                await self._stop_started_workers()
+                self._running = False
+                message = (
+                    f"Algenta runtime worker pool started {self.available}/{self._size} workers; "
+                    "refusing to run a partial pool."
+                )
+                if not _ALLOW_SUBPROCESS_FALLBACK:
+                    raise MojoEngineError(
+                        message,
+                        code="worker_pool_incomplete",
+                        recoverable=True,
+                        stage="pool_start",
+                        details={"workers_started": self.available, "workers_expected": self._size},
+                    )
+                logger.warning(
+                    "mojo_pool_start_incomplete",
+                    workers=self.available,
+                    expected=self._size,
+                    reason="partial_pool_refused",
+                )
+                logger.info(
+                    "mojo_runtime_mode",
+                    mode="subprocess_fallback",
+                    reason="worker_pool_incomplete",
+                    allow_fallback=True,
+                )
+                return
 
         self._monitor = asyncio.create_task(self._health_monitor(), name="mojo-health-monitor")
         logger.info("mojo_pool_ready", workers=len(self._workers))
 
-    async def _spawn_worker(self, worker_id: int) -> None:
-        """Spawn one worker and add to the available queue."""
-        worker = _Worker(worker_id)
-        try:
-            await worker.start()
-            self._workers.append(worker)
-            await self._queue.put(worker)
-        except Exception as exc:
-            logger.error("mojo_worker_spawn_failed", worker_id=worker_id, error=str(exc))
+    async def _stop_started_workers(self) -> None:
+        stop_tasks = [worker.stop() for worker in self._workers]
+        if stop_tasks:
+            await asyncio.gather(*stop_tasks, return_exceptions=True)
+        self._workers.clear()
+        self._queue = Queue()
+
+    async def _spawn_worker(self, worker_id: int) -> bool:
+        """Spawn one worker and add it to the available queue."""
+        attempts = max(1, WORKER_START_ATTEMPTS)
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            worker = _Worker(worker_id)
+            try:
+                await worker.start()
+                self._workers.append(worker)
+                await self._queue.put(worker)
+                return True
+            except Exception as exc:
+                last_error = exc
+                await worker.stop()
+                if attempt < attempts:
+                    logger.warning(
+                        "mojo_worker_spawn_retry",
+                        worker_id=worker_id,
+                        attempt=attempt,
+                        attempts=attempts,
+                        error=str(exc),
+                    )
+                    await asyncio.sleep(WORKER_START_RETRY_DELAY_S)
+        logger.error(
+            "mojo_worker_spawn_failed",
+            worker_id=worker_id,
+            attempts=attempts,
+            error=str(last_error) if last_error else "unknown",
+        )
+        return False
 
     async def invoke(
         self,

@@ -1,16 +1,16 @@
 {
   "api_key_configured": true,
   "artifact": "llm_rollout_live_summary",
-  "base_url": "http://127.0.0.1:54565",
+  "base_url": "http://127.0.0.1:52055",
   "channels": [
     "daemon_client",
     "runtime_local",
     "cli",
     "mcp"
   ],
-  "elapsed_seconds": 4.348,
+  "elapsed_seconds": 4.571,
   "failed": 0,
-  "generated_at": "2026-07-10T02:53:36Z",
+  "generated_at": "2026-07-11T02:21:58Z",
   "minimum_passed": 11,
   "name": "local_runtime_cli_mcp_matrix",
   "passed": 11,

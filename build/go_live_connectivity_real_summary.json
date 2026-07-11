@@ -59,9 +59,9 @@
       }
     ]
   },
-  "elapsed_seconds": 17.158,
+  "elapsed_seconds": 20.158,
   "failed": 0,
-  "generated_at": "2026-07-10T02:51:13.861005Z",
+  "generated_at": "2026-07-11T02:11:05.786571Z",
   "name": "go_live_connectivity_real",
   "passed": 65,
   "script": "tests/integration/test_go_live_connectivity_real.py",

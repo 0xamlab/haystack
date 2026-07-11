@@ -8,6 +8,7 @@ Falls back to the Python reference implementation (mojo/bindings/python_adapter.
 when the Mojo binary is not yet compiled. The Python fallback has the same
 input/output contract and is safe for development.
 """
+
 import asyncio
 import json
 import os
@@ -30,6 +31,7 @@ if _PROJECT_ROOT not in sys.path:
 
 class MojoEngineError(Exception):
     """Raised when the Mojo engine exits with a non-zero code or produces invalid output."""
+
     def __init__(self, message: str, stderr: str = "", exit_code: int = 0) -> None:
         super().__init__(message)
         self.stderr = stderr
@@ -38,6 +40,7 @@ class MojoEngineError(Exception):
 
 class MojoEngineNotFoundError(MojoEngineError):
     """Raised when the Mojo binary is not found at the configured path."""
+
     pass
 
 
@@ -48,6 +51,7 @@ async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     """
     try:
         from mojo.bindings.python_adapter import run_simulation  # type: ignore[import]
+
         logger.warning(
             "mojo_binary_not_found_using_python_fallback",
             binary_path=settings.mojo_binary_path,
@@ -56,13 +60,12 @@ async def _invoke_python_fallback(payload: dict[str, Any]) -> dict[str, Any]:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, run_simulation, payload)
         return result
-    except ImportError:
+    except ImportError as exc:
         raise MojoEngineNotFoundError(
-            f"Mojo engine binary not found at '{settings.mojo_binary_path}' "
-            f"and Python fallback could not be imported. "
-            f"Run 'make build-mojo' to compile the engine, or ensure "
-            f"mojo/bindings/python_adapter.py is accessible."
-        )
+            f"Algenta runtime worker not found at '{settings.mojo_binary_path}' "
+            f"and the development fallback could not be imported. "
+            f"Install an Algenta build that includes the bundled runtime for this platform."
+        ) from exc
 
 
 async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
@@ -91,8 +94,8 @@ async def invoke_engine(payload: dict[str, Any]) -> dict[str, Any]:
         if settings.is_development:
             return await _invoke_python_fallback(payload)
         raise MojoEngineNotFoundError(
-            f"Mojo engine binary not found at '{binary_path}'. "
-            f"Run 'make build-mojo' to compile it."
+            f"Algenta runtime worker not found at '{binary_path}'. "
+            f"Install an Algenta build that includes the bundled runtime for this platform."
         )
 
     input_json = json.dumps(payload)

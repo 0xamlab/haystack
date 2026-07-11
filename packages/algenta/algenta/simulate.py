@@ -290,7 +290,7 @@ def _cloud_run(
     try:
         import httpx
     except ImportError:
-        raise ImportError("Cloud mode requires httpx: pip install algenta-core[cloud]") from None
+        raise ImportError('Cloud mode requires httpx: pip install "algenta[cloud]"') from None
 
     if not api_key:
         import os

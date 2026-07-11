@@ -82,7 +82,7 @@ async def _mojo_call(
     sock_path: str = _DEFAULT_MOJO_SOCK,
 ) -> dict[str, Any]:
     """
-    Open a connection to the Mojo unix socket, send one request, return parsed JSON.
+    Open a connection to the runtime worker socket, send one request, return parsed JSON.
     Raises ConnectionRefusedError / FileNotFoundError if socket is not available.
     """
     reader, writer = await asyncio.open_unix_connection(sock_path)
@@ -94,7 +94,7 @@ async def _mojo_call(
         raw = await _mojo_recv(reader)
         decoded = json.loads(raw)
         if not isinstance(decoded, dict):
-            raise ValueError("Mojo worker returned a non-object response payload.")
+            raise ValueError("Runtime worker returned a non-object response payload.")
         return decoded
     finally:
         writer.close()

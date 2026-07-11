@@ -8,62 +8,62 @@
     "local_suite_count": 8,
     "slowest_suites": [
       {
-        "elapsed_seconds": 287.441,
+        "elapsed_seconds": 260.294,
         "name": "Root JavaScript workspace check",
         "ok": true
       },
       {
-        "elapsed_seconds": 45.33,
+        "elapsed_seconds": 115.788,
         "name": "Mojo libraries A-Z",
         "ok": true
       },
       {
-        "elapsed_seconds": 26.952,
-        "name": "Live Python Runtime integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 26.661,
+        "elapsed_seconds": 26.053,
         "name": "Source matrix runtime benchmark",
         "ok": true
       },
       {
-        "elapsed_seconds": 24.059,
+        "elapsed_seconds": 22.126,
         "name": "Live CLI integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 23.208,
-        "name": "Live AlgentaClient integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 16.812,
+        "elapsed_seconds": 16.862,
         "name": "Live TypeScript Runtime integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 11.479,
+        "elapsed_seconds": 12.739,
         "name": "Real local connectivity gate",
         "ok": true
       },
       {
-        "elapsed_seconds": 10.54,
+        "elapsed_seconds": 11.225,
         "name": "Real-data Mojo engines",
         "ok": true
       },
       {
-        "elapsed_seconds": 9.536,
+        "elapsed_seconds": 8.916,
+        "name": "Uploaded CSV exact benchmark",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 8.674,
         "name": "Live MCP integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 8.461,
+        "name": "Live Python SDK integration",
         "ok": true
       }
     ],
     "status": "complete",
     "top_level_suite_count": 3
   },
-  "elapsed_seconds": 552.157,
+  "elapsed_seconds": 558.716,
   "failed": 0,
-  "generated_at": "2026-07-10T02:45:52.480805Z",
+  "generated_at": "2026-07-11T02:30:13.220209Z",
   "name": "go_live_full_real",
   "passed": 24,
   "script": "tests/integration/test_go_live_full_real.py",

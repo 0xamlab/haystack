@@ -274,7 +274,7 @@ def _should_use_interactive(args: argparse.Namespace) -> bool:
 def _emit_demo_banner(*, interactive: bool) -> None:
     banner_lines = [
         "Local mode | register -> resolve -> verify -> query",
-        f"Bundled source: {_DEMO_SOURCE_NAME} | algenta-core",
+        f"Bundled source: {_DEMO_SOURCE_NAME} | algenta",
         (
             "Interactive menu | choose a scenario"
             if interactive

@@ -44,7 +44,7 @@ def test_inspect_mojo_binary_freshness_reports_stale_sources(tmp_path: Path) -> 
     assert freshness.exists is True
     assert freshness.is_fresh is False
     assert freshness.stale_sources == (source,)
-    assert "make build-mojo" in freshness.failure_message()
+    assert "Refresh the Algenta runtime artifact" in freshness.failure_message()
 
 
 def test_inspect_mojo_binary_freshness_accepts_fresh_binary(tmp_path: Path) -> None:

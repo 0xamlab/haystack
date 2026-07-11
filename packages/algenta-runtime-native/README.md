@@ -1,10 +1,11 @@
 # algenta-runtime-native
 
-The **proprietary** native runtime for [`algenta`](https://pypi.org/project/algenta/) — a per-platform wheel
-that carries the prebuilt in-process engine and its RS256-signed manifest.
+Internal runtime artifact package for [`algenta`](https://pypi.org/project/algenta/).
 
-You don't install this directly; `pip install algenta` pulls the matching per-platform build automatically
-(it's a hard-pinned dependency). It has no public API and no command — the `algenta` CLI loads it in-process
-via `importlib.resources`, verifying the signed manifest + SHA-256 + ABI before use.
+Users do not install this package directly. `pip install algenta` resolves the
+matching platform runtime automatically. The wheel carries the prebuilt Algenta
+runtime worker, signed manifest, and release public key needed for offline
+integrity verification.
 
-Wheels-only, per-platform (macOS arm64 + Linux x86_64 first). Built + signed by the `build-runtime` CI.
+Wheels-only, per-platform (macOS arm64 + Linux x86_64 first). Built and signed by
+the `build-runtime` workflow.

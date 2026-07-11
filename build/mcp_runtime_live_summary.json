@@ -2,13 +2,13 @@
   "artifact": "live_integration_summary",
   "details": {
     "api_key_configured": true,
-    "base_url": "http://127.0.0.1:50548",
+    "base_url": "http://127.0.0.1:49200",
     "failed_checks": [],
     "skipped_checks": []
   },
-  "elapsed_seconds": 2.258,
+  "elapsed_seconds": 2.57,
   "failed": 0,
-  "generated_at": "2026-07-10T02:51:44.123179Z",
+  "generated_at": "2026-07-11T02:20:42.173868Z",
   "name": "mcp_runtime_live",
   "passed": 7,
   "script": "tests/integration/test_mcp_runtime_live.py",

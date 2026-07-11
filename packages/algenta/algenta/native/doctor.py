@@ -1,8 +1,9 @@
+# ruff: noqa: T201
 """`algenta runtime doctor` — the required diagnostic.
 
-Prints the runtime source / mode / path / platform tag / ABI / license / fallback / tcp-listeners, and
-returns a non-zero exit code if the bundled in-process runtime isn't healthy. It NEVER mentions Mojo,
-Modular, Docker, or a daemon — the whole point is that the user never learns those exist. This is also the
+Prints runtime diagnostics, license state, fallback policy, and listener status,
+returns a non-zero exit code if the bundled in-process runtime isn't healthy. It never mentions
+internal implementation names or separate setup instructions. This is also the
 target of the clean-machine CI contract, which greps this output for the invariant lines.
 """
 from __future__ import annotations

@@ -13,7 +13,7 @@ class MojoRuntimeError(RuntimeError):
 
 
 class MojoRuntimeConfigurationError(MojoRuntimeError):
-    """Raised when the local Mojo runtime SDK is unavailable."""
+    """Raised when the bundled local runtime SDK is unavailable."""
 
 
 class MojoModuleNotRegisteredError(MojoRuntimeError):

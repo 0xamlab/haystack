@@ -19,8 +19,8 @@ def _load_runtime_class():
     except ImportError as exc:  # pragma: no cover - exercised in packaged environments
         raise MojoRuntimeConfigurationError(
             "compute_runtime_unavailable",
-            "The local Mojo runtime SDK is unavailable. Use the full decision-engine "
-            "workspace or install the runtime components before accessing Mojo libraries.",
+            "The bundled local runtime SDK is unavailable. Install a supported "
+            "algenta package/runtime build before accessing local runtime libraries.",
         ) from exc
     return RuntimeSDK
 
@@ -31,8 +31,8 @@ def _load_runtime_inventory():
     except ImportError as exc:  # pragma: no cover - exercised in packaged environments
         raise MojoRuntimeConfigurationError(
             "compute_runtime_unavailable",
-            "The local Mojo runtime inventory is unavailable. Use the full decision-engine "
-            "workspace or install the runtime components before accessing Mojo libraries.",
+            "The bundled local runtime inventory is unavailable. Install a supported "
+            "algenta package/runtime build before accessing local runtime libraries.",
         ) from exc
     return lambda: discover_runtime_library_modules(executable_only=True)
 

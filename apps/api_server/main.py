@@ -141,7 +141,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             error=str(exc),
             hint=(
                 "Simulations will use subprocess fallback. "
-                "Run `make build-mojo` to enable the pool."
+                "Install an Algenta build with the bundled runtime to enable the pool."
             ),
         )
         app.state.mojo_pool = None

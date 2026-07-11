@@ -33,6 +33,7 @@ from apps.api_server.compute.mojo_errors import (
     validate_mojo_payload,
 )
 from apps.api_server.config import SettingsProxy
+from apps.runtime.native_worker import resolve_native_worker
 
 logger = structlog.get_logger(__name__)
 settings = SettingsProxy()
@@ -40,7 +41,16 @@ settings = SettingsProxy()
 __all__ = ["MojoEngineError", "invoke_engine", "invoke_engine_sync"]
 
 _REPO_ROOT = Path(__file__).parents[3]
-_BINARY_PATH = _REPO_ROOT / "mojo_build" / "simulate"
+
+
+def _default_binary_path() -> Path:
+    resolved = resolve_native_worker(require_verified=False)
+    if resolved is not None and not resolved.public_error:
+        return resolved.path
+    return _REPO_ROOT / "mojo_build" / "simulate"
+
+
+_BINARY_PATH = _default_binary_path()
 _PYTHON_ADAPTER_PATH = _REPO_ROOT / "mojo" / "bindings" / "python_adapter.py"
 _PYTHON_FALLBACK_ENGINES = frozenset(
     {
@@ -452,8 +462,8 @@ async def _invoke_subprocess(
             )
             return await _invoke_python_fallback(payload)
         raise MojoEngineError(
-            f"Mojo binary not found at {_BINARY_PATH}. "
-            "Run `make setup-mojo && make build-mojo` to build the native engine.",
+            f"Algenta runtime worker not found at {_BINARY_PATH}. "
+            "Install an Algenta build that includes the bundled runtime for this platform.",
             code="binary_missing",
             recoverable=True,
             engine_type=engine_type,
@@ -480,7 +490,7 @@ async def _invoke_subprocess(
             )
             return await _invoke_python_fallback(payload)
         raise MojoEngineError(
-            f"Mojo engine could not start from {_BINARY_PATH}: {exc}",
+            f"Algenta runtime worker could not start from {_BINARY_PATH}: {exc}",
             code="binary_unexecutable",
             recoverable=True,
             engine_type=engine_type,
@@ -495,7 +505,7 @@ async def _invoke_subprocess(
     except TimeoutError as exc:
         proc.kill()
         raise MojoEngineError(
-            f"Mojo engine timed out after {timeout}s",
+            f"Algenta runtime worker timed out after {timeout}s",
             exit_code=124,
             code="timeout",
             recoverable=True,
@@ -518,7 +528,7 @@ async def _invoke_subprocess(
             )
             return await _invoke_python_fallback(payload)
         raise MojoEngineError(
-            f"Mojo engine I/O failed while invoking {_BINARY_PATH}: {exc}",
+            f"Algenta runtime worker I/O failed while invoking {_BINARY_PATH}: {exc}",
             code="subprocess_io_failed",
             recoverable=True,
             engine_type=engine_type,
@@ -537,7 +547,7 @@ async def _invoke_subprocess(
             )
             return await _invoke_python_fallback(payload)
         raise MojoEngineError(
-            f"Mojo engine exited with code {return_code}",
+            f"Algenta runtime worker exited with code {return_code}",
             stderr=stderr.decode(errors="replace"),
             exit_code=return_code,
             code="engine_crash" if return_code < 0 else "engine_failed",
@@ -563,8 +573,8 @@ def _invoke_subprocess_sync(payload: dict[str, Any], *, timeout: float = 60.0) -
             )
             return _invoke_python_fallback_sync(payload)
         raise MojoEngineError(
-            f"Mojo binary not found at {_BINARY_PATH}. "
-            "Run `make setup-mojo && make build-mojo` to build the native engine.",
+            f"Algenta runtime worker not found at {_BINARY_PATH}. "
+            "Install an Algenta build that includes the bundled runtime for this platform.",
             code="binary_missing",
             recoverable=True,
             engine_type=engine_type,
@@ -581,7 +591,7 @@ def _invoke_subprocess_sync(payload: dict[str, Any], *, timeout: float = 60.0) -
         )
     except subprocess.TimeoutExpired as exc:
         raise MojoEngineError(
-            f"Mojo engine timed out after {timeout}s",
+            f"Algenta runtime worker timed out after {timeout}s",
             exit_code=124,
             code="timeout",
             recoverable=True,
@@ -599,7 +609,7 @@ def _invoke_subprocess_sync(payload: dict[str, Any], *, timeout: float = 60.0) -
             )
             return _invoke_python_fallback_sync(payload)
         raise MojoEngineError(
-            f"Mojo engine could not start from {_BINARY_PATH}: {exc}",
+            f"Algenta runtime worker could not start from {_BINARY_PATH}: {exc}",
             code="binary_unexecutable",
             recoverable=True,
             engine_type=engine_type,
@@ -617,7 +627,7 @@ def _invoke_subprocess_sync(payload: dict[str, Any], *, timeout: float = 60.0) -
             )
             return _invoke_python_fallback_sync(payload)
         raise MojoEngineError(
-            f"Mojo engine exited with code {proc.returncode}",
+            f"Algenta runtime worker exited with code {proc.returncode}",
             stderr=proc.stderr.decode(errors="replace"),
             exit_code=proc.returncode or -1,
             code="engine_crash" if proc.returncode < 0 else "engine_failed",

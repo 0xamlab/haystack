@@ -30,11 +30,12 @@ class MojoBinaryFreshness:
 
     def failure_message(self) -> str:
         if not self.exists:
-            return f"Compiled Mojo binary not found at {self.binary_path}."
+            return f"Compiled Algenta runtime worker not found at {self.binary_path}."
         stale_list = ", ".join(str(path) for path in self.stale_sources)
         return (
-            f"Compiled Mojo binary at {self.binary_path} is stale relative to: {stale_list}. "
-            "Rebuild with `make build-mojo` before starting the runtime kernel."
+            f"Compiled Algenta runtime worker at {self.binary_path} is stale "
+            f"relative to: {stale_list}. "
+            "Refresh the Algenta runtime artifact before starting the runtime kernel."
         )
 
 
@@ -77,10 +78,7 @@ def _manifest_freshness(binary_path: Path) -> tuple[tuple[Path, ...], tuple[Path
     except (OSError, json.JSONDecodeError):
         return (manifest_path,), (manifest_path,)
 
-    if (
-        not isinstance(payload, dict)
-        or payload.get("schema_version") != _MANIFEST_SCHEMA_VERSION
-    ):
+    if not isinstance(payload, dict) or payload.get("schema_version") != _MANIFEST_SCHEMA_VERSION:
         return (manifest_path,), (manifest_path,)
 
     manifest_binary_path = _resolve_manifest_source_path(payload.get("binary_path"))
@@ -148,9 +146,7 @@ def inspect_mojo_binary_freshness(
 
     binary_mtime_ns = binary_path.stat().st_mtime_ns
     stale_sources = tuple(
-        path
-        for path in source_paths
-        if path.exists() and path.stat().st_mtime_ns > binary_mtime_ns
+        path for path in source_paths if path.exists() and path.stat().st_mtime_ns > binary_mtime_ns
     )
     return MojoBinaryFreshness(
         binary_path=binary_path,

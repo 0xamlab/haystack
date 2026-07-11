@@ -106,7 +106,7 @@ class AlgentaClient(_AccountBillingMixin, _DecisionsMixin, _ProductsJobsTriggers
         except ImportError as exc:
             raise ImportError(
                 "Plan-aligned cloud routes require the decision-engine SDK package. "
-                "Install algenta-core with cloud/runtime dependencies."
+                "Install algenta with cloud runtime dependencies or install algenta-sdk directly."
             ) from exc
         client = decision_engine.DecisionEngineClient(
             api_key=self.api_key,

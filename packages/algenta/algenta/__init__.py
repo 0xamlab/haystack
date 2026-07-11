@@ -1,5 +1,5 @@
 """
-algenta-core — runtime-first local package for deterministic structured-data execution.
+algenta — runtime-first package for deterministic structured-data execution.
 
 Primary path:
 

@@ -1,13 +1,13 @@
 {
   "api_key_configured": true,
   "artifact": "llm_rollout_live_summary",
-  "base_url": "http://127.0.0.1:52304",
+  "base_url": "http://127.0.0.1:49941",
   "channels": [
     "python_sdk"
   ],
-  "elapsed_seconds": 2.095,
+  "elapsed_seconds": 2.542,
   "failed": 0,
-  "generated_at": "2026-07-10T02:52:29Z",
+  "generated_at": "2026-07-11T02:21:09Z",
   "minimum_passed": 7,
   "name": "python_sdk_local_runtime",
   "passed": 7,

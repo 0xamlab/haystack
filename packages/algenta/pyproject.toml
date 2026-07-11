@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "algenta"
 version = "1.0.0"
-description = "Algenta — repository intelligence & decision engine. pip install algenta -> algenta login -> algenta ... (bundled in-process runtime; no Mojo/Docker/daemon)."
+description = "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime."
 readme = "README.md"
 requires-python = ">=3.10"
 # The Python here (CLI, login, SDK client, runtime loader/doctor) is Apache-2.0. The proprietary native
-# runtime ships SEPARATELY in the `algenta-runtime-native` sidecar (per-platform), so THIS distribution
-# stays pure-Python + Apache-2.0 and platform-agnostic — the sidecar carries the proprietary binary.
+# runtime ships as an automatic per-platform dependency, so THIS distribution stays pure-Python +
+# Apache-2.0 and platform-agnostic while the native artifact remains in its own wheel.
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = [
@@ -29,10 +29,10 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-# The native runtime is an AUTOMATIC required dependency (not an extra) — `pip install algenta` pulls the
-# matching per-platform sidecar. On an unsupported platform this fails at pip resolution (a generic "no
-# matching distribution"), never a broken install that later asks for Mojo. Pinned == to keep the ABI in
-# lockstep. cryptography backs offline manifest/license verification.
+# The local runtime is an automatic required dependency, not an extra. An
+# unsupported platform must fail during package resolution instead of installing
+# a broken CLI. Pinned == keeps the package/runtime ABI in lockstep.
+# cryptography backs offline manifest/license verification.
 dependencies = [
     "algenta-runtime-native==1.0.0",
     "cryptography>=42",

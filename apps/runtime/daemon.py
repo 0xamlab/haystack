@@ -34,6 +34,7 @@ from pathlib import Path
 import structlog
 
 from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
+from apps.runtime.native_worker import resolve_native_worker
 
 logger = structlog.get_logger(__name__)
 
@@ -44,9 +45,27 @@ _PID_FILE = _RUNTIME_DIR / "daemon.pid"
 _LOG_FILE = _RUNTIME_DIR / "daemon.log"
 _TEMP_DIR = Path(tempfile.gettempdir())
 
-# Mojo binary
+# Bundled runtime worker executable. ALGENTA_MOJO_BINARY remains as a legacy dev override.
 _REPO_ROOT = Path(__file__).parent.parent.parent
-_MOJO_BINARY = Path(os.environ.get("ALGENTA_MOJO_BINARY", _REPO_ROOT / "mojo_build" / "simulate"))
+_RESOLVED_WORKER = resolve_native_worker(require_verified=False)
+_MOJO_BINARY = Path(
+    os.environ.get(
+        "ALGENTA_NATIVE_WORKER",
+        os.environ.get(
+            "ALGENTA_RUNTIME_WORKER",
+            os.environ.get(
+                "ALGENTA_MOJO_BINARY",
+                str(
+                    _RESOLVED_WORKER.path
+                    if _RESOLVED_WORKER
+                    else _REPO_ROOT / "mojo_build" / "simulate"
+                ),
+            ),
+        ),
+    )
+)
+_MOJO_BINARY_SOURCE = _RESOLVED_WORKER.source if _RESOLVED_WORKER else "repo-dev runtime"
+_MOJO_BINARY_VERIFIED = bool(_RESOLVED_WORKER and _RESOLVED_WORKER.verified)
 _MOJO_SOCK = os.environ.get(
     "ALGENTA_MOJO_SOCK",
     str(_TEMP_DIR / "algenta-mojo" / "worker-0.sock"),
@@ -137,9 +156,10 @@ def _validate_daemon_startup_prerequisites() -> None:
             or "A valid local signed license is required before starting the runtime daemon."
         )
 
-    # Offline node-cap L1: a device-bound self-host license may run only on its bound node. Fail closed at
-    # boot (air-gap-safe, no network). Enforcing is True here — the dark predicate returned early above.
-    # The L2 peer census (shared-Redis clusters) runs later in RuntimeServer.start().
+    # Offline node-cap L1: a device-bound self-host license may run only on its bound node.
+    # Fail closed at boot (air-gap-safe, no network). Enforcing is True here, after
+    # the dark predicate returned early above. The L2 peer census (shared-Redis
+    # clusters) runs later in RuntimeServer.start().
     from apps.runtime import node_broker
 
     node_broker.assert_node_binding(license_record, enforcing=True)
@@ -165,12 +185,12 @@ class MojoProcess:
                 "mojo_binary_not_found",
                 path=str(_MOJO_BINARY),
                 hint=(
-                    "Run: cd mojo_env && pixi run mojo build "
-                    "../mojo/engine/main.mojo -o ../mojo_build/simulate"
+                    "Install an Algenta build that includes the bundled runtime "
+                    "for this platform."
                 ),
             )
             return False
-        if not freshness.is_fresh:
+        if not _MOJO_BINARY_VERIFIED and not freshness.is_fresh:
             raise RuntimeError(freshness.failure_message())
 
         # Ensure socket directory exists
@@ -186,7 +206,12 @@ class MojoProcess:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
-        logger.info("mojo_process_started", pid=self._proc.pid, sock=_MOJO_SOCK)
+        logger.info(
+            "runtime_worker_started",
+            pid=self._proc.pid,
+            sock=_MOJO_SOCK,
+            source=_MOJO_BINARY_SOURCE,
+        )
         return True
 
     def stop(self) -> None:
@@ -196,7 +221,7 @@ class MojoProcess:
                 self._proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._proc.kill()
-            logger.info("mojo_process_stopped", pid=self._proc.pid)
+            logger.info("runtime_worker_stopped", pid=self._proc.pid)
         self._proc = None
 
     def is_running(self) -> bool:
@@ -264,11 +289,11 @@ async def _run_daemon() -> None:
     if mojo_started:
         ready = mojo.wait_ready(timeout=8.0)
         if ready:
-            logger.info("mojo_ready", sock=_MOJO_SOCK)
+            logger.info("runtime_worker_ready", sock=_MOJO_SOCK)
         else:
-            logger.warning("mojo_socket_not_ready", timeout=8.0)
+            logger.warning("runtime_worker_socket_not_ready", timeout=8.0)
     else:
-        logger.info("mojo_binary_unavailable_runtime_continues")
+        logger.info("runtime_worker_unavailable_runtime_continues")
 
     executor = Executor(mojo_sock=_MOJO_SOCK)
     server = RuntimeServer(executor=executor, start_time=start_time)
@@ -289,7 +314,7 @@ async def _run_daemon() -> None:
     loop.add_signal_handler(signal.SIGINT, _handle_signal, signal.SIGINT)
 
     elapsed = round((time.monotonic() - start_time) * 1000, 1)
-    runtime_mode = "mojo" if mojo_started and library_runtime_available() else "unavailable"
+    runtime_mode = "worker" if mojo_started and library_runtime_available() else "unavailable"
 
     _emit(
         f"Algenta Runtime {_VERSION} started in {elapsed}ms  "
@@ -370,7 +395,7 @@ def cmd_status() -> None:
         _emit(
             f"Algenta Runtime running (pid={pid})\n"
             f"  gRPC unix socket: {_DAEMON_SOCK}  ({'ok' if sock_ok else 'missing'})\n"
-            f"  Mojo unix socket: {_MOJO_SOCK}  ({'ok' if mojo_ok else 'not present'})\n"
+            f"  Runtime worker socket: {_MOJO_SOCK}  ({'ok' if mojo_ok else 'not present'})\n"
             f"  TCP:              {_DAEMON_TCP}"
         )
     else:

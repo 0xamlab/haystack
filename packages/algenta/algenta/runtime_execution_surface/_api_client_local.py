@@ -139,7 +139,7 @@ def runtime_api_client(runtime: Any) -> Any:
             "api_sdk_missing",
             (
                 "API-backed runtime modes require the algenta-sdk package. "
-                "Install algenta-sdk or algenta-core[cloud]."
+                "Install algenta-sdk or algenta[cloud]."
             ),
         ) from exc
     runtime._api_client = DecisionEngineClient(

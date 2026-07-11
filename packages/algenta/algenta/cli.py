@@ -75,7 +75,7 @@ def _format_ms(ms: float) -> str:
 def cmd_benchmark() -> None:
     n_samples = 50_000
     print("\n" + "─" * 58)
-    print("  Algenta Core — Local Benchmark")
+    print("  Algenta — Local Benchmark")
     print("─" * 58)
     print(f"  Sampling {n_samples:,} normal variates\n")
 
@@ -84,12 +84,12 @@ def cmd_benchmark() -> None:
     ratio = python_ms / (algenta_ms + 1e-9)
 
     print(f"  Python baseline:    {_format_ms(python_ms)}")
-    print(f"  algenta-core:       {_format_ms(algenta_ms)}")
+    print(f"  algenta:            {_format_ms(algenta_ms)}")
     print(f"\n  Speedup:            {ratio:.1f}×")
     print()
 
     if ratio >= 2:
-        print(f"  algenta-core is {ratio:.1f}× faster than raw Python.")
+        print(f"  algenta is {ratio:.1f}× faster than raw Python.")
     else:
         print("  Performance is similar — algenta advantage scales with")
         print("  problem size and when the Mojo backend is available.")

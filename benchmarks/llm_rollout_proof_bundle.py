@@ -1,3 +1,4 @@
+# ruff: noqa: E402,E501,I001
 from __future__ import annotations
 
 import argparse
@@ -192,6 +193,8 @@ SERVING_EXTENSION_CHANNEL_SUITES = (
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
 def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
     parity_artifact = bundle["parity_artifact"]
     compiled_artifact = bundle["compiled_runtime_artifact"]
@@ -227,7 +230,7 @@ def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
             f"{compiled_artifact['module_count']} modules, "
             f"{compiled_artifact['function_count']} functions, "
             f"{compiled_artifact['failed_function_count']} failures, "
-            "all `engine_used=\"mojo\"`, "
+            'all `engine_used="mojo"`, '
             f"worst cold {float(compiled_artifact['max_cold_ms']['value']):.2f} ms, "
             f"warm {float(compiled_artifact['max_warm_ms']['value']):.3f} ms, "
             f"hot {float(compiled_artifact['max_hot_ms']['value']):.3f} ms | "
@@ -260,7 +263,7 @@ def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
             "| Supported channel coverage | "
             f"Python SDK {live_by_name['python_sdk_local_runtime']['passed']}/"
             f"{live_by_name['python_sdk_local_runtime']['minimum_passed']} passed, "
-            "CLI + DaemonClient + `Runtime(mode=\"local\")` + MCP "
+            'CLI + DaemonClient + `Runtime(mode="local")` + MCP '
             f"{live_by_name['local_runtime_cli_mcp_matrix']['passed']}/"
             f"{live_by_name['local_runtime_cli_mcp_matrix']['minimum_passed']} passed, "
             "TypeScript SDK "
@@ -337,7 +340,7 @@ def sync_rollout_scorecard(
         raise ValueError("scorecard rollout section end marker not found")
 
     replacement = render_rollout_scorecard_section(bundle)
-    updated = f"{text[:start_index]}{replacement}{text[end_index + 1:]}"
+    updated = f"{text[:start_index]}{replacement}{text[end_index + 1 :]}"
     scorecard_path.write_text(updated, encoding="utf-8")
     sync_shared_benchmark_scorecard(scorecard_path=scorecard_path)
 
@@ -379,9 +382,7 @@ def _validate_compiled_runtime_artifact(payload: dict[str, Any]) -> None:
                 )
 
 
-def _max_latency(
-    payload: dict[str, Any], key: str
-) -> tuple[float, str | None, str | None]:
+def _max_latency(payload: dict[str, Any], key: str) -> tuple[float, str | None, str | None]:
     maximum: tuple[float, str | None, str | None] = (0.0, None, None)
     modules = payload.get("modules", {})
     if not isinstance(modules, dict):
@@ -397,9 +398,7 @@ def _max_latency(
     return maximum
 
 
-def _module_max_latency(
-    functions: dict[str, Any], key: str
-) -> tuple[float, str | None]:
+def _module_max_latency(functions: dict[str, Any], key: str) -> tuple[float, str | None]:
     maximum: tuple[float, str | None] = (0.0, None)
     for function_name, function_payload in functions.items():
         value = float(function_payload.get(key, 0.0) or 0.0)
@@ -606,9 +605,7 @@ def _run_live_suite(script_path: str, timeout_seconds: int) -> tuple[int, float,
     existing_pythonpath = env.get("PYTHONPATH", "")
     root_path = str(PROJECT_ROOT)
     env["PYTHONPATH"] = (
-        root_path
-        if not existing_pythonpath
-        else f"{root_path}{os.pathsep}{existing_pythonpath}"
+        root_path if not existing_pythonpath else f"{root_path}{os.pathsep}{existing_pythonpath}"
     )
     proc = subprocess.run(  # noqa: S603
         [sys.executable, script_path],
@@ -629,9 +626,7 @@ def _run_test_command(command: list[str], timeout_seconds: int) -> tuple[int, fl
     existing_pythonpath = env.get("PYTHONPATH", "")
     root_path = str(PROJECT_ROOT)
     env["PYTHONPATH"] = (
-        root_path
-        if not existing_pythonpath
-        else f"{root_path}{os.pathsep}{existing_pythonpath}"
+        root_path if not existing_pythonpath else f"{root_path}{os.pathsep}{existing_pythonpath}"
     )
     proc = subprocess.run(  # noqa: S603
         command,
@@ -651,9 +646,7 @@ def _run_repo_command(command: list[str], timeout_seconds: int) -> str:
     existing_pythonpath = env.get("PYTHONPATH", "")
     root_path = str(PROJECT_ROOT)
     env["PYTHONPATH"] = (
-        root_path
-        if not existing_pythonpath
-        else f"{root_path}{os.pathsep}{existing_pythonpath}"
+        root_path if not existing_pythonpath else f"{root_path}{os.pathsep}{existing_pythonpath}"
     )
     proc = subprocess.run(  # noqa: S603
         command,
@@ -666,9 +659,7 @@ def _run_repo_command(command: list[str], timeout_seconds: int) -> str:
     output = f"{proc.stdout}\n{proc.stderr}".strip()
     if proc.returncode != 0:
         raise RuntimeError(
-            f"Command failed: {' '.join(command)}\n"
-            f"return_code={proc.returncode}\n"
-            f"output:\n{output}"
+            f"Command failed: {' '.join(command)}\nreturn_code={proc.returncode}\noutput:\n{output}"
         )
     return output
 
@@ -755,6 +746,13 @@ def _normalize_live_suite_results(live_suite_results: list[dict[str, Any]]) -> l
                     f"live suite {suite['name']} failed validation: "
                     f"status={status}, passed={passed}, failed={failed}, skipped={skipped}"
                 )
+        elif status == "failed":
+            if failed == 0 and passed >= reported_minimum:
+                raise ValueError(
+                    f"live suite {suite['name']} reported failed status without failed checks: "
+                    f"passed={passed}, failed={failed}, skipped={skipped}, "
+                    f"minimum_passed={reported_minimum}"
+                )
         elif status != "skipped":
             raise ValueError(f"unsupported live suite status for {suite['name']}: {status}")
         normalized.append(
@@ -781,8 +779,10 @@ def _collect_sdk_contract_suite_results() -> list[dict[str, Any]]:
             int(suite["timeout_seconds"]),
         )
         counts = _parse_test_runner_summary(output)
-        if return_code != 0 or counts["failed"] != 0 or counts["passed"] < int(
-            suite["minimum_passed"]
+        if (
+            return_code != 0
+            or counts["failed"] != 0
+            or counts["passed"] < int(suite["minimum_passed"])
         ):
             raise RuntimeError(
                 f"sdk contract suite {suite['name']} failed validation.\n"
@@ -815,8 +815,10 @@ def _collect_http_flag_contract_suite_results() -> list[dict[str, Any]]:
             int(suite["timeout_seconds"]),
         )
         counts = _parse_test_runner_summary(output)
-        if return_code != 0 or counts["failed"] != 0 or counts["passed"] < int(
-            suite["minimum_passed"]
+        if (
+            return_code != 0
+            or counts["failed"] != 0
+            or counts["passed"] < int(suite["minimum_passed"])
         ):
             raise RuntimeError(
                 f"http flag contract suite {suite['name']} failed validation.\n"
@@ -883,7 +885,7 @@ def _collect_http_flag_live_suite_results(run_live: bool) -> list[dict[str, Any]
 
 
 def _normalize_http_flag_live_suite_results(
-    http_flag_live_suite_results: list[dict[str, Any]]
+    http_flag_live_suite_results: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     expected_by_name = {suite["name"]: suite for suite in HTTP_FLAG_LIVE_SUITES}
     actual_names = {str(item.get("name", "")) for item in http_flag_live_suite_results}
@@ -905,6 +907,12 @@ def _normalize_http_flag_live_suite_results(
                 raise ValueError(
                     f"http flag live suite {suite['name']} failed validation: "
                     f"status={status}, passed={passed}, failed={failed}, skipped={skipped}"
+                )
+        elif status == "failed":
+            if failed == 0 and passed >= int(suite["minimum_passed"]):
+                raise ValueError(
+                    f"http flag live suite {suite['name']} reported failed status without "
+                    f"failed checks: passed={passed}, failed={failed}, skipped={skipped}"
                 )
         elif status != "skipped":
             raise ValueError(
@@ -937,7 +945,9 @@ def _cached_live_suite_score(
     return (passed_count, len(live_suites) + len(http_flag_live_suites))
 
 
-def _load_live_suite_artifact_results() -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
+def _load_live_suite_artifact_results() -> tuple[
+    list[dict[str, Any]] | None, list[dict[str, Any]] | None
+]:
     live_suite_results: list[dict[str, Any]] = []
     http_flag_live_suite_results: list[dict[str, Any]] = []
 
@@ -1008,20 +1018,25 @@ def _load_best_cached_live_suite_results(
 
     artifact_live_suites, artifact_http_flag_live_suites = _load_live_suite_artifact_results()
     if artifact_live_suites is not None and artifact_http_flag_live_suites is not None:
-        normalized_live_suites = _normalize_live_suite_results(artifact_live_suites)
-        normalized_http_flag_live_suites = _normalize_http_flag_live_suite_results(
-            artifact_http_flag_live_suites
-        )
-        score = _cached_live_suite_score(
-            normalized_live_suites,
-            normalized_http_flag_live_suites,
-        )
-        if best is None or score >= best[0]:
-            best = (
-                score,
+        try:
+            normalized_live_suites = _normalize_live_suite_results(artifact_live_suites)
+            normalized_http_flag_live_suites = _normalize_http_flag_live_suite_results(
+                artifact_http_flag_live_suites
+            )
+        except Exception:  # noqa: BLE001
+            normalized_live_suites = None
+            normalized_http_flag_live_suites = None
+        if normalized_live_suites is not None and normalized_http_flag_live_suites is not None:
+            score = _cached_live_suite_score(
                 normalized_live_suites,
                 normalized_http_flag_live_suites,
             )
+            if best is None or score >= best[0]:
+                best = (
+                    score,
+                    normalized_live_suites,
+                    normalized_http_flag_live_suites,
+                )
 
     if best is None:
         return (None, None)

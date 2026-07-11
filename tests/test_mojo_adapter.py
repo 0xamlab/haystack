@@ -382,7 +382,7 @@ async def test_invoke_subprocess_raises_when_binary_missing_and_runtime_fallback
     with pytest.raises(mojo_adapter.MojoEngineError) as exc_info:
         await mojo_adapter._invoke_subprocess({"engine_type": "monte_carlo", "runs": 100})
 
-    assert "Mojo binary not found" in str(exc_info.value)
+    assert "Algenta runtime worker not found" in str(exc_info.value)
     assert exc_info.value.code == "binary_missing"
 
 
@@ -613,6 +613,89 @@ def test_invoke_subprocess_sync_uses_python_fallback_when_binary_is_unexecutable
     assert result["simulation_model"] == "monte_carlo"
     assert result["engine_type"] == "monte_carlo"
     assert result["scenarios_run"] == 250
+
+
+@pytest.mark.anyio
+async def test_pool_start_retries_transient_worker_spawn_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    attempts_by_worker: dict[int, int] = {}
+
+    class _FlakyWorker:
+        def __init__(self, worker_id: int) -> None:
+            self.id = worker_id
+            self.healthy = False
+
+        async def start(self) -> None:
+            attempts_by_worker[self.id] = attempts_by_worker.get(self.id, 0) + 1
+            if self.id == 0 and attempts_by_worker[self.id] == 1:
+                raise ConnectionRefusedError("socket not ready")
+            self.healthy = True
+
+        async def stop(self) -> None:
+            self.healthy = False
+
+    created_tasks: list[str] = []
+
+    def _fake_create_task(coro, *, name=None):  # type: ignore[no-untyped-def]
+        created_tasks.append(str(name))
+        coro.close()
+        return SimpleNamespace(cancel=lambda: None)
+
+    async def _supports_server_mode(self) -> bool:
+        return True
+
+    monkeypatch.setattr(mojo_pool, "_Worker", _FlakyWorker)
+    monkeypatch.setattr(mojo_pool.MojoWorkerPool, "_binary_supports_server_mode", _supports_server_mode)
+    monkeypatch.setattr(mojo_pool, "WORKER_START_ATTEMPTS", 2)
+    monkeypatch.setattr(mojo_pool, "WORKER_START_RETRY_DELAY_S", 0.0)
+    monkeypatch.setattr(mojo_pool, "_ALLOW_PARTIAL_POOL", False)
+    monkeypatch.setattr(asyncio, "create_task", _fake_create_task)
+
+    pool = mojo_pool.MojoWorkerPool(size=2)
+    await pool.start()
+
+    assert pool.running is True
+    assert pool.available == 2
+    assert attempts_by_worker == {0: 2, 1: 1}
+    assert created_tasks == ["mojo-health-monitor"]
+
+
+@pytest.mark.anyio
+async def test_pool_start_rejects_partial_pool_when_fallback_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.compute import mojo_pool
+
+    class _FailingWorker:
+        def __init__(self, worker_id: int) -> None:
+            self.id = worker_id
+            self.healthy = False
+
+        async def start(self) -> None:
+            raise ConnectionRefusedError("socket not ready")
+
+        async def stop(self) -> None:
+            self.healthy = False
+
+    async def _supports_server_mode(self) -> bool:
+        return True
+
+    monkeypatch.setattr(mojo_pool, "_Worker", _FailingWorker)
+    monkeypatch.setattr(mojo_pool.MojoWorkerPool, "_binary_supports_server_mode", _supports_server_mode)
+    monkeypatch.setattr(mojo_pool, "WORKER_START_ATTEMPTS", 1)
+    monkeypatch.setattr(mojo_pool, "_ALLOW_PARTIAL_POOL", False)
+    monkeypatch.setattr(mojo_pool, "_ALLOW_SUBPROCESS_FALLBACK", False)
+
+    pool = mojo_pool.MojoWorkerPool(size=2)
+    with pytest.raises(mojo_pool.MojoEngineError) as exc_info:
+        await pool.start()
+
+    assert exc_info.value.code == "worker_pool_incomplete"
+    assert pool.running is False
+    assert pool.available == 0
 
 
 @pytest.mark.anyio

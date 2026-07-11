@@ -186,7 +186,7 @@ def _cloud_analyze(
     try:
         import httpx
     except ImportError:
-        raise ImportError("Cloud mode requires: pip install algenta-core[cloud]") from None
+        raise ImportError('Cloud mode requires: pip install "algenta[cloud]"') from None
 
     if not api_key:
         import os

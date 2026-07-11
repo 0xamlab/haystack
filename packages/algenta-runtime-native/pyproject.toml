@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "algenta-runtime-native"
 version = "1.0.0"
-description = "Algenta native runtime (proprietary) — the prebuilt, in-process engine + signed manifest loaded by the `algenta` CLI. Not a standalone API."
+description = "Bundled Algenta runtime artifacts for the algenta package. Installed automatically; not a standalone API."
 readme = "README.md"
 requires-python = ">=3.10"
 # Proprietary: this wheel carries the compiled native runtime. Kept in its OWN distribution + import
@@ -26,7 +26,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 dependencies = []
-# No [project.scripts] — the sidecar owns no command.
+# No [project.scripts] — this artifact package owns no public command.
 
 [project.urls]
 Homepage = "https://algenta.ai"
@@ -34,7 +34,7 @@ Repository = "https://github.com/thyn-ai/algenta"
 
 [tool.hatch.build.targets.wheel]
 packages = ["algenta_runtime_native"]
-# Force the CI-built native lib + signed manifest (added by the hook on ALGENTA_BUNDLE_RUNTIME=1) into the wheel.
+# Force the CI-built runtime worker + signed manifest into the wheel.
 artifacts = ["algenta_runtime_native/*"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]

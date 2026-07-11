@@ -1,26 +1,26 @@
-# algenta-core
+# algenta
 
-High-level Algenta runtime SDK for governed data/query flows, local runtime control, and local Mojo libraries.
+Algenta is the public Python package for the Algenta CLI, governed data/query flows, repository intelligence, local runtime control, and local runtime libraries. The native runtime is installed automatically on supported platforms; users do not need a separate toolchain, service process, or runtime setup step.
 
 ## Install
 
 For pure local runtime work only:
 
 ```bash
-pip install algenta-core
+pip install algenta
 ```
 
 For hosted API-backed runtime mode from a published package index:
 
 ```bash
-pip install "algenta-core[cloud]"
+pip install "algenta[cloud]"
 ```
 
 `Runtime(mode="api")` and `Runtime(mode="self_hosted")` intentionally fail
 closed if `algenta-sdk` is not installed.
 
 If you are validating unpublished local artifacts, install the local
-`algenta-sdk` and `algenta-core` artifacts together instead of assuming the
+`algenta-sdk` and `algenta` artifacts together instead of assuming the
 `[cloud]` extra can resolve an unpublished `algenta-sdk` from a package index.
 
 ## Root Contract Exports
@@ -488,7 +488,7 @@ published under `PRIMARY_DATA_QUERY_CONTRACT["governed_filter_contract"]`.
 The runtime package also exports `QueryFilterCondition` and `QueryFilterSpec`
 for deterministic exact-query filters across hosted and local execution.
 
-## Local Mojo Libraries
+## Local Runtime Libraries
 
 ```python
 from algenta import libraries
@@ -497,7 +497,7 @@ catalog = libraries(mode="local", auto_start_daemon=True)
 print(catalog.names()[:10])
 ```
 
-`libraries()` remains the local/runtime-backed Mojo surface. It is separate from
+`libraries()` remains the local/runtime-backed Mojo surface, delivered through the bundled local runtime. It is separate from
 the hosted or self-hosted governed data/query API, but it can accept local
 `api_key` and `base_url` when you want the local daemon to enforce a hosted
 device license.
@@ -570,5 +570,5 @@ quality-gate SLO budgets `mcp_call_first_party`, `decision_plan_creation`, and
 
 ## Docs
 
-- [Algenta core docs](https://docs.algenta.ai/core)
+- [Algenta docs](https://docs.algenta.ai)
 - [Local runtime guide](https://docs.algenta.ai/integrations/local-runtime)

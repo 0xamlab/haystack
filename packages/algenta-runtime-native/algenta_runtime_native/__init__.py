@@ -1,13 +1,7 @@
-"""Algenta native runtime (proprietary) — the prebuilt in-process engine + its RS256-signed manifest.
+"""Bundled Algenta runtime artifacts.
 
-This package exists only to CARRY the per-platform native artifacts in their own import namespace:
-
-    libalgenta_runtime.{dylib,so,dll}   # the native runtime
-    manifest.json / manifest.sig        # signed integrity manifest
-
-The `algenta` CLI locates this directory via ``importlib.resources.files("algenta_runtime_native")``, then
-verifies the manifest signature + SHA-256 + ABI before dlopen'ing the lib in-process. There is no public
-Python API here — do NOT import it for functionality. Ships as per-platform wheels only (no sdist).
+This package exists only so ``pip install algenta`` can resolve the matching
+prebuilt runtime for the current platform. It exposes no public Python API.
 """
 
 __version__ = "1.0.0"

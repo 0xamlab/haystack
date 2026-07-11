@@ -5,14 +5,14 @@
   "channels": [
     "typescript_sdk"
   ],
-  "elapsed_seconds": 17.488,
+  "elapsed_seconds": 24.06,
   "failed": 0,
-  "generated_at": "2026-07-10T02:56:49Z",
+  "generated_at": "2026-07-11T02:26:09Z",
   "minimum_passed": 1,
   "name": "typescript_sdk_local_runtime",
-  "passed": 2,
+  "passed": 15,
   "script": "tests/integration/test_typescript_runtime_live.py",
-  "skipped": 13,
+  "skipped": 0,
   "status": "passed",
   "total": 15
 }

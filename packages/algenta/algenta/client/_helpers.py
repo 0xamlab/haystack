@@ -30,7 +30,7 @@ def _cloud_get(path: str, api_key: str, base_url: str) -> dict[str, Any]:
     try:
         import httpx
     except ImportError:
-        raise ImportError("Cloud mode requires: pip install algenta-core[cloud]") from None
+        raise ImportError('Cloud mode requires: pip install "algenta[cloud]"') from None
     resp = httpx.get(
         f"{base_url}{path}",
         headers={"Authorization": f"Bearer {api_key}"},

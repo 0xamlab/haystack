@@ -1,7 +1,9 @@
+# ruff: noqa: F405
 """Tests for test_llm_rollout_proof_bundle: misc.
 
 Extracted from /Users/angel/Developer/decision-engine/.claude/worktrees/wf_6761da26-f90-2/tests/test_llm_rollout_proof_bundle.py during modularization.
 """
+
 from __future__ import annotations
 
 from tests._test_llm_rollout_proof_bundle_helpers import *  # noqa: F401,F403
@@ -64,7 +66,10 @@ def test_rollout_proof_bundle_channel_sets_match_supported_surfaces() -> None:
         "-q",
         "tests/test_runtime_libraries_api.py",
     )
-    assert HTTP_FLAG_LIVE_SUITES[0]["script"] == "tests/integration/test_runtime_libraries_http_live.py"
+    assert (
+        HTTP_FLAG_LIVE_SUITES[0]["script"]
+        == "tests/integration/test_runtime_libraries_http_live.py"
+    )
     assert HTTP_FLAG_LIVE_SUITES[0]["channels"] == ("http_api_feature_flag",)
     assert HTTP_FLAG_LIVE_SUITES[0]["minimum_passed"] == 4
     assert tuple(item["channel"] for item in SERVING_EXTENSION_CHANNEL_SUITES) == (
@@ -149,6 +154,130 @@ def test_normalize_live_suite_results_accepts_lower_reported_minimum_when_skippe
     assert by_name["typescript_sdk_local_runtime"]["skipped"] == 9
 
 
+def test_normalize_live_suite_results_accepts_failed_artifact_status() -> None:
+    normalized = proof_bundle._normalize_live_suite_results(
+        [
+            {
+                "name": "python_sdk_local_runtime",
+                "status": "failed",
+                "minimum_passed": 7,
+                "passed": 2,
+                "failed": 5,
+                "skipped": 0,
+                "elapsed_seconds": 8.699,
+            },
+            {
+                "name": "typescript_sdk_local_runtime",
+                "status": "passed",
+                "minimum_passed": 2,
+                "passed": 2,
+                "failed": 0,
+                "skipped": 0,
+                "elapsed_seconds": 16.467,
+            },
+            {
+                "name": "local_runtime_cli_mcp_matrix",
+                "status": "passed",
+                "minimum_passed": 11,
+                "passed": 11,
+                "failed": 0,
+                "skipped": 0,
+                "elapsed_seconds": 73.083,
+            },
+        ]
+    )
+
+    by_name = {item["name"]: item for item in normalized}
+    assert by_name["python_sdk_local_runtime"]["status"] == "failed"
+    assert by_name["python_sdk_local_runtime"]["failed"] == 5
+
+
+def test_normalize_http_flag_live_suite_results_accepts_failed_artifact_status() -> None:
+    normalized = proof_bundle._normalize_http_flag_live_suite_results(
+        [
+            {
+                "name": "public_http_library_routes_feature_flag_live",
+                "status": "failed",
+                "minimum_passed": 4,
+                "passed": 2,
+                "failed": 2,
+                "skipped": 0,
+                "elapsed_seconds": 22.418,
+            }
+        ]
+    )
+
+    assert normalized[0]["status"] == "failed"
+    assert normalized[0]["failed"] == 2
+
+
+def test_cached_live_suite_loader_ignores_invalid_artifact_source(monkeypatch, tmp_path) -> None:
+    cached_output = tmp_path / "llm_rollout_proof_bundle.json"
+    valid_live_suites = [
+        {
+            "name": "python_sdk_local_runtime",
+            "status": "passed",
+            "minimum_passed": 7,
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+        },
+        {
+            "name": "typescript_sdk_local_runtime",
+            "status": "passed",
+            "minimum_passed": 2,
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+        },
+        {
+            "name": "local_runtime_cli_mcp_matrix",
+            "status": "passed",
+            "minimum_passed": 11,
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+        },
+    ]
+    valid_http_flag_live_suites = [
+        {
+            "name": "public_http_library_routes_feature_flag_live",
+            "status": "passed",
+            "minimum_passed": 4,
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+        }
+    ]
+    cached_output.write_text(
+        json.dumps(
+            {
+                "live_suites": valid_live_suites,
+                "http_flag_live_suites": valid_http_flag_live_suites,
+            }
+        ),
+        encoding="utf-8",
+    )
+    invalid_artifact_live_suites = [dict(item) for item in valid_live_suites]
+    invalid_artifact_live_suites[1].update({"minimum_passed": 1, "passed": 1, "skipped": 0})
+    monkeypatch.setattr(
+        proof_bundle,
+        "_load_live_suite_artifact_results",
+        lambda: (invalid_artifact_live_suites, valid_http_flag_live_suites),
+    )
+
+    live_suites, http_flag_live_suites = proof_bundle._load_best_cached_live_suite_results(
+        cached_output
+    )
+
+    assert live_suites is not None
+    assert http_flag_live_suites is not None
+    by_name = {item["name"]: item for item in live_suites}
+    assert by_name["typescript_sdk_local_runtime"]["minimum_passed"] == 2
+    assert by_name["typescript_sdk_local_runtime"]["passed"] == 2
+    assert http_flag_live_suites[0]["passed"] == 4
+
+
 def test_main_skip_live_reuses_cached_live_suite_results(monkeypatch, tmp_path, capsys) -> None:
     output_path = tmp_path / "bundle_out.json"
     synced: dict[str, object] = {}
@@ -210,7 +339,9 @@ def test_main_skip_live_reuses_cached_live_suite_results(monkeypatch, tmp_path, 
             "bundle", bundle
         ),
     )
-    monkeypatch.setattr(sys, "argv", ["llm_rollout_proof_bundle.py", "--skip-live", "--output", str(output_path)])
+    monkeypatch.setattr(
+        sys, "argv", ["llm_rollout_proof_bundle.py", "--skip-live", "--output", str(output_path)]
+    )
 
     assert proof_bundle.main() == 0
     assert forwarded["run_live"] is False
@@ -313,7 +444,9 @@ def test_sync_rollout_scorecard_rewrites_rollout_section(tmp_path) -> None:
     }
 
     original_sync_shared = proof_bundle.sync_shared_benchmark_scorecard
-    proof_bundle.sync_shared_benchmark_scorecard = lambda *, scorecard_path=proof_bundle.SCORECARD_PATH: None
+    proof_bundle.sync_shared_benchmark_scorecard = (
+        lambda *, scorecard_path=proof_bundle.SCORECARD_PATH: None
+    )
     try:
         proof_bundle.sync_rollout_scorecard(bundle, scorecard_path=scorecard_path)
     finally:
@@ -321,8 +454,14 @@ def test_sync_rollout_scorecard_rewrites_rollout_section(tmp_path) -> None:
 
     text = scorecard_path.read_text(encoding="utf-8")
     assert "## LLM rollout proof (2026-05-22)" in text
-    assert "22 libraries, 209 public runtime functions, 106.72x median, 156.85x mean, 677.97x max" in text
-    assert "22 modules, 209 functions, 0 failures, all `engine_used=\"mojo\"`, worst cold 50.88 ms, warm 0.457 ms, hot 0.363 ms" in text
+    assert (
+        "22 libraries, 209 public runtime functions, 106.72x median, 156.85x mean, 677.97x max"
+        in text
+    )
+    assert (
+        '22 modules, 209 functions, 0 failures, all `engine_used="mojo"`, worst cold 50.88 ms, warm 0.457 ms, hot 0.363 ms'
+        in text
+    )
     assert "TypeScript SDK 4 passed and 0 API-backed skips when `DE_API_KEY` is unset" in text
     assert "## Non-negotiable product requirement" in text
 
@@ -739,5 +878,3 @@ def test_build_proof_bundle_accepts_explicit_live_suite_results(monkeypatch) -> 
     ]
     assert [item["status"] for item in live_suites] == ["passed", "passed", "passed"]
     assert live_suites[1]["skipped"] == 2
-
-

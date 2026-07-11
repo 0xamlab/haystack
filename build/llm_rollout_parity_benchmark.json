@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-07-09T22:44:04",
+  "timestamp": "2026-07-10T22:27:14",
   "n_iterations": 10000,
   "n_libraries": 22,
-  "suite_duration_s": 4.3,
+  "suite_duration_s": 4.1,
   "benchmark_inventory": {
     "kind": "benchmark_discovery_inventory",
     "total_libraries": 22,
@@ -27,62 +27,62 @@
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 101.3,
-      "py_total_ns": 506.48,
-      "mojo_total_ns": 5.0
+      "speedup_x": 97.35,
+      "py_total_ns": 506.22,
+      "mojo_total_ns": 5.2
     },
     {
       "lib": "continuous_batching",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 129.29,
-      "py_total_ns": 685.23,
-      "mojo_total_ns": 5.3
+      "speedup_x": 137.38,
+      "py_total_ns": 714.4,
+      "mojo_total_ns": 5.2
     },
     {
       "lib": "embeddings",
       "status": "ok",
       "n_functions": 12,
       "n_compared": 12,
-      "speedup_x": 6.16,
-      "py_total_ns": 8316.44,
-      "mojo_total_ns": 1350.4
+      "speedup_x": 5.06,
+      "py_total_ns": 7311.89,
+      "mojo_total_ns": 1444.2
     },
     {
       "lib": "flash_attention",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 125.5,
-      "py_total_ns": 715.38,
-      "mojo_total_ns": 5.7
+      "speedup_x": 152.92,
+      "py_total_ns": 902.25,
+      "mojo_total_ns": 5.9
     },
     {
       "lib": "generation_loop",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 102.07,
-      "py_total_ns": 449.11,
-      "mojo_total_ns": 4.4
+      "speedup_x": 103.36,
+      "py_total_ns": 465.11,
+      "mojo_total_ns": 4.5
     },
     {
       "lib": "inference_cost_latency",
       "status": "ok",
       "n_functions": 11,
       "n_compared": 11,
-      "speedup_x": 293.11,
-      "py_total_ns": 2081.11,
-      "mojo_total_ns": 7.1
+      "speedup_x": 326.45,
+      "py_total_ns": 2285.12,
+      "mojo_total_ns": 7.0
     },
     {
       "lib": "inference_engine",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 118.08,
-      "py_total_ns": 602.23,
+      "speedup_x": 122.42,
+      "py_total_ns": 624.36,
       "mojo_total_ns": 5.1
     },
     {
@@ -90,8 +90,8 @@
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 118.92,
-      "py_total_ns": 618.39,
+      "speedup_x": 114.3,
+      "py_total_ns": 594.35,
       "mojo_total_ns": 5.2
     },
     {
@@ -99,130 +99,130 @@
       "status": "ok",
       "n_functions": 11,
       "n_compared": 11,
-      "speedup_x": 90.97,
-      "py_total_ns": 736.86,
-      "mojo_total_ns": 8.1
+      "speedup_x": 117.35,
+      "py_total_ns": 751.02,
+      "mojo_total_ns": 6.4
     },
     {
       "lib": "paged_kv_cache",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 114.76,
-      "py_total_ns": 493.48,
-      "mojo_total_ns": 4.3
+      "speedup_x": 121.08,
+      "py_total_ns": 532.73,
+      "mojo_total_ns": 4.4
     },
     {
       "lib": "rerank_eval",
       "status": "ok",
       "n_functions": 9,
       "n_compared": 9,
-      "speedup_x": 54.63,
-      "py_total_ns": 3867.54,
-      "mojo_total_ns": 70.8
+      "speedup_x": 62.01,
+      "py_total_ns": 3782.49,
+      "mojo_total_ns": 61.0
     },
     {
       "lib": "rlhf_dpo",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 123.37,
-      "py_total_ns": 838.88,
-      "mojo_total_ns": 6.8
+      "speedup_x": 164.35,
+      "py_total_ns": 838.18,
+      "mojo_total_ns": 5.1
     },
     {
       "lib": "sparse_attention",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 108.03,
-      "py_total_ns": 583.35,
-      "mojo_total_ns": 5.4
+      "speedup_x": 116.6,
+      "py_total_ns": 606.32,
+      "mojo_total_ns": 5.2
     },
     {
       "lib": "sparse_vector",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 8.17,
-      "py_total_ns": 3488.1,
-      "mojo_total_ns": 427.1
+      "speedup_x": 7.87,
+      "py_total_ns": 3445.08,
+      "mojo_total_ns": 438.0
     },
     {
       "lib": "speculative_decoding",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 124.0,
-      "py_total_ns": 620.0,
-      "mojo_total_ns": 5.0
+      "speedup_x": 118.68,
+      "py_total_ns": 605.28,
+      "mojo_total_ns": 5.1
     },
     {
       "lib": "text_tokenizer",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 8.57,
-      "py_total_ns": 7634.21,
-      "mojo_total_ns": 890.4
+      "speedup_x": 8.44,
+      "py_total_ns": 7537.76,
+      "mojo_total_ns": 893.0
     },
     {
       "lib": "transformer_attention",
       "status": "ok",
       "n_functions": 11,
       "n_compared": 11,
-      "speedup_x": 135.24,
-      "py_total_ns": 784.37,
-      "mojo_total_ns": 5.8
+      "speedup_x": 135.25,
+      "py_total_ns": 797.95,
+      "mojo_total_ns": 5.9
     },
     {
       "lib": "transformer_blocks",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 101.47,
-      "py_total_ns": 649.4,
-      "mojo_total_ns": 6.4
+      "speedup_x": 102.53,
+      "py_total_ns": 666.42,
+      "mojo_total_ns": 6.5
     },
     {
       "lib": "vector_kernels_ranker",
       "status": "ok",
       "n_functions": 1,
       "n_compared": 1,
-      "speedup_x": 51.48,
-      "py_total_ns": 195220.32,
-      "mojo_total_ns": 3792.1
+      "speedup_x": 44.13,
+      "py_total_ns": 163632.21,
+      "mojo_total_ns": 3707.8
     },
     {
       "lib": "vector_kernels_table",
       "status": "ok",
       "n_functions": 4,
       "n_compared": 4,
-      "speedup_x": 121.44,
-      "py_total_ns": 171357.31,
-      "mojo_total_ns": 1411.1
+      "speedup_x": 104.18,
+      "py_total_ns": 147345.92,
+      "mojo_total_ns": 1414.4
     },
     {
       "lib": "vector_search",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 120.57,
-      "py_total_ns": 566.69,
-      "mojo_total_ns": 4.7
+      "speedup_x": 124.63,
+      "py_total_ns": 548.38,
+      "mojo_total_ns": 4.4
     },
     {
       "lib": "vector_similarity",
       "status": "ok",
       "n_functions": 10,
       "n_compared": 10,
-      "speedup_x": 106.32,
-      "py_total_ns": 627.3,
-      "mojo_total_ns": 5.9
+      "speedup_x": 105.81,
+      "py_total_ns": 603.1,
+      "mojo_total_ns": 5.7
     }
   ],
-  "median_speedup_x": 114.76,
-  "mean_speedup_x": 102.88,
-  "max_speedup_x": 293.11,
-  "min_speedup_x": 6.16
+  "median_speedup_x": 116.6,
+  "mean_speedup_x": 108.73,
+  "max_speedup_x": 326.45,
+  "min_speedup_x": 5.06
 }

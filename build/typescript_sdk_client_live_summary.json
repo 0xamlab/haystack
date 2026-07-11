@@ -2,31 +2,16 @@
   "artifact": "live_integration_summary",
   "details": {
     "api_key_configured": false,
-    "base_url": "http://127.0.0.1:57939",
+    "base_url": "http://127.0.0.1:57405",
     "failed_checks": [],
-    "skipped_checks": [
-      "TypeScript SDK client contract + runtime proof routes",
-      "TypeScript SDK client account/API-key surface",
-      "TypeScript SDK client connectors + dataset lifecycle surface",
-      "TypeScript SDK client repository intelligence surface",
-      "TypeScript SDK client team/credits/metering/audit/execution-policy surface",
-      "TypeScript SDK client trigger lifecycle surface",
-      "TypeScript SDK client deployment create/delete lifecycle",
-      "TypeScript SDK client decision runtime surface",
-      "TypeScript SDK client simplified product surface",
-      "TypeScript SDK client LLM utility surface",
-      "TypeScript SDK client streaming LLM surface",
-      "TypeScript SDK client plan_decision + agent-runs lifecycle",
-      "TypeScript SDK client agent-run event stream",
-      "TypeScript SDK client simulate path"
-    ]
+    "skipped_checks": []
   },
-  "elapsed_seconds": 4.663,
+  "elapsed_seconds": 10.398,
   "failed": 0,
-  "generated_at": "2026-07-10T02:56:30.611010Z",
+  "generated_at": "2026-07-11T02:25:43.888986Z",
   "name": "typescript_sdk_client_live",
-  "passed": 1,
+  "passed": 15,
   "script": "tests/integration/test_typescript_sdk_client_live.py",
-  "skipped": 14,
+  "skipped": 0,
   "total": 15
 }
