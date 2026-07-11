@@ -9,10 +9,12 @@ pydantic==2.10.6
 pydantic-settings==2.7.1
 
 # ─── Database ──────────────────────────────────────────────────────────────────
-sqlalchemy[asyncio]==2.0.28
-asyncpg==0.29.0
-alembic==1.13.1
-greenlet==3.0.3
+# Keep the database stack Python-3.14-compatible; Fly release_command imports
+# Alembic/SQLAlchemy before applying migrations.
+sqlalchemy[asyncio]==2.0.51
+asyncpg==0.31.0
+alembic==1.18.5
+greenlet==3.5.3
 
 # ─── Redis ─────────────────────────────────────────────────────────────────────
 redis[asyncio]==5.0.3

@@ -29,12 +29,15 @@ pydantic[email]==2.12.0
 pydantic-settings==2.7.1
 openapi-spec-validator==0.9.0
 
-# Database (needed for model imports)
-sqlalchemy[asyncio]==2.0.28
+# Database (needed for model imports). The production Fly image runs Python 3.14;
+# SQLAlchemy 2.0.28 aborts during import on 3.14 because TypingOnly sees new
+# interpreter-injected class attributes. Keep these pins in sync with
+# apps/api-server/requirements.txt and tests/test_fly_deploy_dependency_surface.py.
+sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
 psycopg2-binary==2.9.11
-alembic==1.13.1
-greenlet==3.2.3
+alembic==1.18.5
+greenlet==3.5.3
 
 # Redis
 redis[asyncio]==5.0.3
