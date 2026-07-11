@@ -23,6 +23,7 @@
 
 ## Concepts
 
+* [The governed decision lifecycle](concepts/decision-service.md)
 * [Governed data & query](concepts/governed-data.md)
 * [The capability plane](concepts/capability-plane.md)
 * [Simulation models & distributions](concepts/simulation-models.md)
@@ -34,6 +35,8 @@
 
 * [Make your first query](guides/first-query.md)
 * [Run a decision](guides/run-a-decision.md)
+* [Drive a governed decision](guides/governed-decisions.md)
+* [Renewal Capacity Allocation pack](guides/renewal-capacity-allocation.md)
 * [Simulate a scenario](guides/simulate.md)
 * [Run a what-if sweep](guides/what-if.md)
 * [Recommend, score & compare](guides/recommend-and-score.md)
@@ -108,6 +111,14 @@
 * [Control plane tools](mcp-tools/control-plane.md)
 * [Account & meta tools](mcp-tools/account-and-meta.md)
 * [Runtime library tools](mcp-tools/runtime-libraries.md)
+
+## Microsoft & Azure
+
+* [Algenta for Microsoft Cloud](integrations/microsoft/overview.md)
+* [Decision Agent in Copilot & Teams](integrations/microsoft/copilot-teams.md)
+* [Excel Decision Add-in](integrations/microsoft/excel.md)
+* [Sign in with Microsoft Entra](integrations/microsoft/entra-sso.md)
+* [Deploy the decision gateway to your Azure](integrations/azure/gateway.md)
 
 ## Deploy & Operate
 

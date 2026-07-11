@@ -127,5 +127,13 @@
   "sdk/typescript/repositories.md": "reference",
   "sdk/typescript/simulations-and-queries.md": "reference",
   "self-hosting.md": "task",
-  "troubleshooting.md": "troubleshooting"
+  "troubleshooting.md": "troubleshooting",
+  "concepts/decision-service.md": "concept",
+  "guides/governed-decisions.md": "task",
+  "guides/renewal-capacity-allocation.md": "task",
+  "integrations/microsoft/overview.md": "index",
+  "integrations/microsoft/copilot-teams.md": "integration",
+  "integrations/microsoft/excel.md": "task",
+  "integrations/microsoft/entra-sso.md": "task",
+  "integrations/azure/gateway.md": "task"
 }
