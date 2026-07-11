@@ -34,6 +34,37 @@ def fail(code: str, message: str, **details: object) -> None:
     raise SystemExit(1)
 
 
+def verify_embedded_mcp_router() -> None:
+    products_path = Path("/app/packages/mcp/algenta_mcp/products.py")
+    if not products_path.is_file():
+        fail(
+            "mcp_product_registry_missing",
+            "The API image does not contain the canonical embedded MCP product registry.",
+            path=str(products_path),
+        )
+    try:
+        from apps.mcp_server.server import create_fastapi_router
+    except Exception as exc:
+        fail(
+            "mcp_router_import_failed",
+            "The API image cannot import the embedded MCP FastAPI router.",
+            error=str(exc),
+        )
+    router = create_fastapi_router()
+    if router is None:
+        fail(
+            "mcp_router_unavailable",
+            "The API image did not construct the embedded MCP FastAPI router.",
+        )
+    paths = sorted(str(getattr(route, "path", "")) for route in router.routes)
+    if "/mcp/tools" not in paths:
+        fail(
+            "mcp_tools_route_missing",
+            "The API image embedded MCP router does not expose /mcp/tools.",
+            paths=paths,
+        )
+
+
 def recv_frame(sock: socket.socket, *, timeout_s: float) -> dict[str, object]:
     sock.settimeout(timeout_s)
     header = sock.recv(4)
@@ -63,6 +94,8 @@ def send_frame(sock: socket.socket, payload: dict[str, object]) -> None:
 
 
 def main() -> None:
+    verify_embedded_mcp_router()
+
     binary = Path(os.environ.get("MOJO_BINARY_PATH", "/app/mojo_build/simulate"))
     if not binary.is_file():
         fail("mojo_binary_missing", "The API image does not contain the bundled Mojo worker.", binary=str(binary))

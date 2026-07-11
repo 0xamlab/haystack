@@ -82,6 +82,22 @@ def test_production_dockerfiles_preserve_mojo_embedded_python_prefix() -> None:
         assert "PYTHONHOME=/app/mojo_env" not in text, relative_path
 
 
+def test_api_production_image_includes_embedded_mcp_router_sources() -> None:
+    """The public API image must not lose /mcp routes by omitting the MCP source package."""
+
+    text = (ROOT / "infra/docker/Dockerfile.api.prod").read_text()
+    assert "COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/" in text
+
+
+def test_api_image_smoke_verifies_embedded_mcp_router() -> None:
+    """The deploy-time image smoke must fail before Fly if embedded MCP routes are missing."""
+
+    text = (ROOT / "scripts/verify_api_image_mojo_server_mode.sh").read_text()
+    assert "/app/packages/mcp/algenta_mcp/products.py" in text
+    assert "create_fastapi_router" in text
+    assert '"/mcp/tools"' in text
+
+
 def test_deploy_workflows_smoke_api_image_mojo_server_mode_before_fly() -> None:
     """The API image must prove bundled Mojo server mode before Fly rolls machines."""
 

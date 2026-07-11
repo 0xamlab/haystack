@@ -48,6 +48,7 @@ COPY --from=builder /build/context/engines/ /app/engines/
 COPY --from=builder /build/context/training/ /app/training/
 COPY --from=builder /build/context/scripts/ /app/scripts/
 COPY --from=builder /build/context/mojo/ /app/mojo/
+COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/
 
 # Runtime-manifest source artifacts (committed under build/, ~150KB) so the public
 # /v1/runtime/manifest endpoint doesn't 500 on missing files (no tracked .dockerignore excludes build/).
