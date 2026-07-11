@@ -71,7 +71,7 @@ async def handler(arguments: dict[str, Any]) -> str:
 
     payload: dict[str, Any] = {
         "mode": mode,
-        "n_simulations": n_sims,
+        "runs": n_sims,
     }
 
     if mode == "auto":

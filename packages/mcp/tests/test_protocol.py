@@ -2,7 +2,7 @@
 
 In-process tests against a respx-mocked upstream API (no network, no running server). They lock
 the contract that matters for a Cursor/Claude-Desktop install:
-  - the tool catalog (list-tools) is the decoupled set (daemon tools dropped; repo fix/pipeline kept);
+  - the tool catalog is decoupled: daemon tools dropped; repo fix/pipeline kept;
   - call-tool dispatches + forwards the caller's API key as `Authorization: Bearer …`;
   - request_overrides swaps the forwarded key per request;
   - errors (401 / 5xx / timeout) never leak the API key into the surfaced message;
@@ -14,14 +14,14 @@ Sync tests drive the async handlers via asyncio.run + respx as a context manager
 from __future__ import annotations
 
 import asyncio
+import json
 
 import httpx
 import pytest
 import respx
-
 from algenta_mcp import registry
 from algenta_mcp.client import request_overrides
-from algenta_mcp.errors import MCPToolError
+from algenta_mcp.errors import MCPToolError, serialize_tool_error
 
 _KEY = "de_live_SECRET_must_not_leak_0123456789abcdef"
 _OVERRIDE_KEY = "de_live_OVERRIDE_key_must_not_leak_fedcba9876"
@@ -62,6 +62,41 @@ def test_call_tool_forwards_bearer_auth_to_configured_base_url() -> None:
         assert "contract_version" in out
 
 
+def test_simulate_maps_n_simulations_to_api_runs() -> None:
+    with respx.mock as router:
+        route = router.post(f"{_BASE}/v1/simulate").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "recommended_action": "proceed",
+                    "confidence": 1.0,
+                    "rationale": "ok",
+                    "metrics": {"expected_value": 1.0, "probability_of_loss": 0.0},
+                    "percentiles": {"p5": 1.0, "p95": 1.0},
+                    "scenarios_run": 1234,
+                    "run_id": "run_123",
+                },
+            )
+        )
+
+        out = asyncio.run(
+            registry.call_tool(
+                "simulate",
+                {
+                    "objective": "maximize_net_value",
+                    "n_simulations": 1234,
+                    "variables": [{"name": "revenue", "low": 1.0, "high": 2.0}],
+                },
+            )
+        )
+
+        assert route.called
+        body = json.loads(route.calls.last.request.read().decode())
+        assert body["runs"] == 1234
+        assert "n_simulations" not in body
+        assert json.loads(out)["scenarios_run"] == 1234
+
+
 def test_request_overrides_swaps_the_forwarded_key() -> None:
     with respx.mock as router:
         route = router.get(f"{_BASE}/v1/meta/contract").mock(
@@ -74,9 +109,6 @@ def test_request_overrides_swaps_the_forwarded_key() -> None:
 
         asyncio.run(_run())
         assert route.calls.last.request.headers["authorization"] == f"Bearer {_OVERRIDE_KEY}"
-
-
-from algenta_mcp.errors import serialize_tool_error
 
 
 @pytest.mark.parametrize(
@@ -97,7 +129,8 @@ def test_upstream_errors_never_leak_the_api_key(response) -> None:
             asyncio.run(registry.call_tool("get_contract", {}))
     # Check BOTH surfaces a client/operator actually sees: the raised message (logged via str(exc))
     # AND the serialized tool error returned over the MCP wire.
-    surfaces = f"{exc.value!r} {exc.value} {serialize_tool_error(exc.value, tool_name='get_contract')}"
+    serialized = serialize_tool_error(exc.value, tool_name="get_contract")
+    surfaces = f"{exc.value!r} {exc.value} {serialized}"
     assert _KEY not in surfaces, "API key leaked into a surfaced/returned tool error"
 
 
