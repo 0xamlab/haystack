@@ -63,10 +63,22 @@ class TestPlanFromSubscription:
 
 
 # ── checkout allowlist permits algenta (self-serve website) ────────────────────────────────────
-def test_website_checkout_allowlist_includes_algenta_pro():
-    assert "algenta_pro" in _CHECKOUT_PLANS
+def test_website_checkout_allowlist_includes_algenta_pro_and_team():
+    assert {"algenta_pro", "algenta_team"} <= _CHECKOUT_PLANS
     # regression: existing brands still sellable
     assert {"pro", "team", "telys_pro"} <= _CHECKOUT_PLANS
+
+
+# ── CheckoutRequest carries the per-device / per-seat quantity (webhook syncs it) ────────────────
+def test_checkout_request_quantity():
+    from apps.api_server.routers.website_billing import CheckoutRequest
+
+    assert CheckoutRequest(plan="algenta_team").quantity == 1  # default
+    assert CheckoutRequest(plan="algenta_team", quantity=20).quantity == 20  # per-device count
+    import pytest
+
+    with pytest.raises(Exception):  # noqa: B017 — pydantic ValidationError for < 1
+        CheckoutRequest(plan="algenta_pro", quantity=0)
 
 
 # ── price-id resolution is placeholder-safe ─────────────────────────────────────────────────────

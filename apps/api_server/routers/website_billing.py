@@ -45,7 +45,7 @@ router = APIRouter(tags=["account"])
 # ladder is Developer (free) / Pro / Enterprise (contact-sales) — telys_team is retained for existing
 # orgs + enforcement but is NOT publicly sellable, so it's excluded from self-serve checkout.
 # Keep in sync with the Stripe catalog (product.metadata.source=telys) + stripe_service.PLAN_PRICE_IDS.
-_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "algenta_pro"})
+_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "algenta_pro", "algenta_team"})
 
 
 def _require_billing() -> None:
@@ -62,6 +62,9 @@ def _require_billing() -> None:
 
 class CheckoutRequest(BaseModel):
     plan: str = Field(min_length=1, max_length=32)
+    # Units to purchase: per-DEVICE for algenta_pro/algenta_team (Stripe quantity = licensed devices),
+    # per-SEAT for team. Defaults to 1; the webhook syncs this quantity into licensed_devices / seats.
+    quantity: int = Field(default=1, ge=1, le=10000)
 
 
 @router.get(
@@ -175,6 +178,7 @@ async def account_billing_checkout(
         str(org.id),
         email,
         plan,
+        quantity=payload.quantity,
         success_url=redirect_urls.success_url,
         cancel_url=redirect_urls.cancel_url,
     )
