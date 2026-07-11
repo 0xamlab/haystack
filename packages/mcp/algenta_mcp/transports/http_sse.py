@@ -168,7 +168,7 @@ def _build_http_app() -> ASGIApp:
             async with sse_transport.connect_sse(scope, receive, send) as streams:
                 init_opts = InitializationOptions(
                     server_name="algenta-decision-engine",
-                    server_version="1.0.0",
+                    server_version="1.0.2",
                     capabilities=server.get_capabilities(
                         notification_options=NotificationOptions(),
                         experimental_capabilities={},
@@ -297,7 +297,7 @@ def _build_fastapi_router() -> APIRouter | None:
         async with sse_transport.connect_sse(scope, receive, send) as streams:
             init_opts = InitializationOptions(
                 server_name="algenta-decision-engine",
-                server_version="1.0.0",
+                server_version="1.0.2",
                 capabilities=mcp_server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},

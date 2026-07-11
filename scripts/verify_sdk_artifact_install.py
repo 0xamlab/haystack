@@ -16,15 +16,24 @@ import tempfile
 import venv
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 compatibility; `build` installs tomli.
+    import tomli as tomllib
+
 _ROOT = Path(__file__).resolve().parents[1]
-_EXPECTED_VERSION = "1.0.0"
+
+
+def _project_version(pkg: str) -> str:
+    pyproject = _ROOT / "packages" / pkg / "pyproject.toml"
+    return tomllib.loads(pyproject.read_text("utf-8"))["project"]["version"]
 
 # pkg dir -> import-smoke executed inside the fresh venv (must not depend on the repo source tree).
 _SMOKES: dict[str, str] = {
     "python-sdk": (
         "import decision_engine as m; "
         "from decision_engine import DecisionEngineClient, AlgentaClient; "
-        f"assert m.__version__ == {_EXPECTED_VERSION!r}, m.__version__; "
+        f"assert m.__version__ == {_project_version('python-sdk')!r}, m.__version__; "
         "assert DecisionEngineClient and AlgentaClient; "
         "print('python-sdk', m.__version__, 'OK')"
     ),
@@ -42,7 +51,7 @@ def _verify(pkg: str, smoke: str) -> None:
     pkg_dir = _ROOT / "packages" / pkg
     with tempfile.TemporaryDirectory(prefix=f"artifact-{pkg}-") as tmp:
         dist = Path(tmp) / "dist"
-        _run([sys.executable, "-m", "build", "--outdir", str(dist), str(pkg_dir)])
+        _run([sys.executable, "-m", "build", "--outdir", str(dist), str(pkg_dir)], cwd=tmp)
         wheels = list(dist.glob("*.whl"))
         sdists = list(dist.glob("*.tar.gz"))
         assert wheels, f"{pkg}: no wheel built"
@@ -64,7 +73,7 @@ def _verify_mcp() -> None:
     with tempfile.TemporaryDirectory(prefix="artifact-mcp-") as tmp:
         dist = Path(tmp) / "dist"
         for pkg in ("python-sdk", "mcp"):
-            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)])
+            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)], cwd=tmp)
         env_dir = Path(tmp) / "venv"
         venv.create(env_dir, with_pip=True)
         bindir = env_dir / ("Scripts" if sys.platform == "win32" else "bin")
@@ -100,7 +109,7 @@ def _verify_algenta() -> None:
         env = {k: v for k, v in os.environ.items() if k != "ALGENTA_BUNDLE_RUNTIME"}
         env["ALGENTA_ALLOW_EMPTY_RUNTIME_NATIVE_WHEEL"] = "1"
         for pkg in ("algenta-runtime-native", "algenta"):
-            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)], env=env)
+            _run([sys.executable, "-m", "build", "--outdir", str(dist), str(_ROOT / "packages" / pkg)], cwd=tmp, env=env)
         env_dir = Path(tmp) / "venv"
         venv.create(env_dir, with_pip=True)
         bindir = env_dir / ("Scripts" if sys.platform == "win32" else "bin")
@@ -115,7 +124,7 @@ def _verify_algenta() -> None:
                 "-c",
                 "import algenta as m; from algenta import Runtime; "
                 "from algenta.native import loader, doctor, verify; "
-                f"assert m.__version__ == {_EXPECTED_VERSION!r}, m.__version__; "
+                f"assert m.__version__ == {_project_version('algenta')!r}, m.__version__; "
                 "assert Runtime and doctor and verify; "
                 "assert loader.available() is False; "  # no bundled native runtime in this metadata smoke
                 "print('algenta', m.__version__, 'OK')",

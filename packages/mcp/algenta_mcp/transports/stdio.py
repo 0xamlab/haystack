@@ -62,7 +62,7 @@ async def run_stdio_server() -> None:
     async with stdio_server() as (read_stream, write_stream):
         init_opts = InitializationOptions(
             server_name="algenta-decision-engine",
-            server_version="1.0.0",
+            server_version="1.0.2",
             capabilities=server.get_capabilities(
                 notification_options=None,
                 experimental_capabilities={},

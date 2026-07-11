@@ -199,7 +199,7 @@ describe("DecisionEngineClient — misc", () => {
             Authorization: "Bearer de_test_123",
             "X-Algenta-Device-Id": "ts-device-00000001",
             [HOSTNAME_HASH_HEADER]: expect.any(String),
-            "X-Algenta-SDK-Version": "algenta-ts/1.0.0",
+            "X-Algenta-SDK-Version": "algenta-ts/1.0.2",
           }),
         }),
       );

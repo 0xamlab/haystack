@@ -273,7 +273,7 @@ export const DEFAULT_TIMEOUT = 120_000;
 export const DEFAULT_MAX_RETRIES = 3;
 export const DEFAULT_JOIN_PATH_HOPS = 4;
 export const MAX_JOIN_PATH_HOPS = 6;
-export const SDK_USER_AGENT = "algenta-ts/1.0.0";
+export const SDK_USER_AGENT = "algenta-ts/1.0.2";
 
 export const RUNTIME_MATURITY_VALUES = [
   "experimental",

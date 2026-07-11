@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 
 _LAZY_EXPORTS = {
     "CodnaClient": ("decision_engine.client_facade", "CodnaClient"),
