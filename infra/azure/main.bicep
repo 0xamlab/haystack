@@ -53,6 +53,12 @@ param entraTenantId string = ''
 @description('Entra audience = the gateway app registration app-id URI or client id (empty = Entra off).')
 param entraAudience string = ''
 
+@description('Azure Container Registry name that holds the api image (empty = public/anonymous image, no ACR pull wired).')
+param acrName string = ''
+
+@description('ACR login server, e.g. myregistry.azurecr.io (required when acrName is set).')
+param acrLoginServer string = ''
+
 var suffix = uniqueString(resourceGroup().id)
 var kvName = take('${namePrefix}kv${suffix}', 24)
 var saName = take('${namePrefix}sa${suffix}', 24)
@@ -63,10 +69,31 @@ var blobContainer = 'artifacts'
 // Built-in role definition ids.
 var roleKeyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
 var roleStorageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+var roleAcrPull = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+var useAcr = !empty(acrName)
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${namePrefix}-id'
   location: location
+}
+
+// When the api image lives in a private ACR, grant the app's managed identity AcrPull on it
+// (the registry is created outside this template; referenced as existing) so the Container App
+// can pull without admin creds. dependsOn ensures the grant lands before the app's first pull.
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = if (useAcr) {
+  name: acrName
+}
+
+resource acrRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (useAcr) {
+  name: guid(acrName, identity.id, roleAcrPull)
+  scope: acr
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions', roleAcrPull
+    )
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -226,6 +253,9 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     managedEnvironmentId: caeEnv.id
     configuration: {
+      registries: useAcr ? [
+        { server: acrLoginServer, identity: identity.id }
+      ] : []
       ingress: {
         external: true
         targetPort: 8000
@@ -277,7 +307,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
       scale: { minReplicas: 1, maxReplicas: 3 }
     }
   }
-  dependsOn: [ kvRole, storageRole, pgDatabase ]
+  dependsOn: [ kvRole, storageRole, pgDatabase, acrRole ]
 }
 
 @description('The gateway base URL — point the Copilot/Excel/Foundry adapters here.')

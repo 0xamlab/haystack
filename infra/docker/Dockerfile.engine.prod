@@ -22,7 +22,7 @@ FROM ${SIDECAR_IMAGE} AS sidecar
 FROM ${MOJO_IMAGE} AS mojo
 
 # ── Stage 1: Python builder (mirrors Dockerfile.worker.prod) ─────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev \
@@ -34,7 +34,7 @@ COPY . /build/context/
 RUN mkdir -p /build/context/mojo_build
 
 # ── Stage 2: Runtime (worker + bun + sidecar app) ────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 WORKDIR /app
 
 # libpq5 for the worker; curl for the sidecar healthcheck; git + ca-certificates for repo clones.
