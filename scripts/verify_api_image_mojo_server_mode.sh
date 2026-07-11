@@ -65,6 +65,38 @@ def verify_embedded_mcp_router() -> None:
         )
 
 
+def verify_platform_contract_manifest() -> None:
+    manifest_path = Path("/app/apps/docs/integration_manifest.v1.json")
+    if not manifest_path.is_file():
+        fail(
+            "platform_contract_manifest_missing",
+            "The API image does not contain the platform contract manifest required by /v1/meta/contract.",
+            path=str(manifest_path),
+        )
+    try:
+        from apps.platform_contract import load_platform_contract_manifest_model
+    except Exception as exc:
+        fail(
+            "platform_contract_import_failed",
+            "The API image cannot import the platform contract loader.",
+            error=str(exc),
+        )
+    try:
+        payload = load_platform_contract_manifest_model()
+    except Exception as exc:
+        fail(
+            "platform_contract_manifest_invalid",
+            "The API image cannot load the platform contract manifest required by /v1/meta/contract.",
+            error=str(exc),
+        )
+    if payload.primary_data_query_contract.api.contract_endpoint != "/v1/meta/contract":
+        fail(
+            "platform_contract_endpoint_mismatch",
+            "The platform contract manifest does not advertise the canonical contract endpoint.",
+            contract_endpoint=payload.primary_data_query_contract.api.contract_endpoint,
+        )
+
+
 def recv_frame(sock: socket.socket, *, timeout_s: float) -> dict[str, object]:
     sock.settimeout(timeout_s)
     header = sock.recv(4)
@@ -94,6 +126,7 @@ def send_frame(sock: socket.socket, payload: dict[str, object]) -> None:
 
 
 def main() -> None:
+    verify_platform_contract_manifest()
     verify_embedded_mcp_router()
 
     binary = Path(os.environ.get("MOJO_BINARY_PATH", "/app/mojo_build/simulate"))

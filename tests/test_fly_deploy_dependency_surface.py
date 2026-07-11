@@ -89,6 +89,15 @@ def test_api_production_image_includes_embedded_mcp_router_sources() -> None:
     assert "COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/" in text
 
 
+def test_api_production_context_keeps_platform_contract_manifest() -> None:
+    """The public API image must include the manifest behind /v1/meta/contract."""
+
+    text = (ROOT / ".dockerignore").read_text()
+    assert "apps/docs" in text
+    assert "!apps/docs/" in text
+    assert "!apps/docs/integration_manifest.v1.json" in text
+
+
 def test_api_image_smoke_verifies_embedded_mcp_router() -> None:
     """The deploy-time image smoke must fail before Fly if embedded MCP routes are missing."""
 
@@ -96,6 +105,15 @@ def test_api_image_smoke_verifies_embedded_mcp_router() -> None:
     assert "/app/packages/mcp/algenta_mcp/products.py" in text
     assert "create_fastapi_router" in text
     assert '"/mcp/tools"' in text
+
+
+def test_api_image_smoke_verifies_platform_contract_manifest() -> None:
+    """The deploy-time image smoke must fail before Fly if /v1/meta/contract cannot load."""
+
+    text = (ROOT / "scripts/verify_api_image_mojo_server_mode.sh").read_text()
+    assert "/app/apps/docs/integration_manifest.v1.json" in text
+    assert "load_platform_contract_manifest_model" in text
+    assert "platform_contract_manifest_missing" in text
 
 
 def test_deploy_workflows_smoke_api_image_mojo_server_mode_before_fly() -> None:

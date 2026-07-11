@@ -28,6 +28,8 @@ node_modules
 benchmarks
 gitbook
 apps/docs
+!apps/docs/
+!apps/docs/integration_manifest.v1.json
 mojo_build
 dist
 *.log
