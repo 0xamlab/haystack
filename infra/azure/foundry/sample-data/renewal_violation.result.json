@@ -1,0 +1,51 @@
+{
+  "feasible": true,
+  "recommended_scenario_id": "recommended",
+  "no_feasible_solution": null,
+  "data_quality_score": 0.9,
+  "model_version": "renewal_capacity_allocation@seeded-bad",
+  "constraints": [
+    {
+      "name": "total_capacity",
+      "kind": "hard",
+      "satisfied": false,
+      "detail": "60h used of 40h available",
+      "slack": -20.0
+    },
+    {
+      "name": "strategic_min_hours",
+      "kind": "hard",
+      "satisfied": true,
+      "slack": null
+    }
+  ],
+  "provenance": {
+    "observed_facts": [
+      "renewal_accounts"
+    ],
+    "simulated_outcomes": [
+      "retained_arr"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "recommended",
+      "label": "Recommended",
+      "rank": 1,
+      "feasible": true,
+      "expected_retained_arr": 900000.0,
+      "uplift_arr": 500000.0,
+      "capacity_utilization": 1.5,
+      "allocations": [
+        {
+          "account_id": "A1",
+          "arr": 100000,
+          "hours": 60,
+          "baseline_renewal_probability": 0.5,
+          "estimated_renewal_probability": 1.2
+        }
+      ]
+    }
+  ],
+  "sensitivity": []
+}

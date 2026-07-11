@@ -1,0 +1,12 @@
+{
+  "$comment": "Azure AI Foundry OpenAPI tool for the Algenta Decision API. Points at the gateway's REDUCED, versioned agent spec (coarse ops only — approval mutation, execution, admin and workspace selection are structurally absent). Validate field names against your Foundry project's current tool schema before registering.",
+  "type": "openapi",
+  "name": "algenta_decision_api",
+  "description": "Coarse governed-decision operations: frame a decision, run the analysis (async), read the result, inspect evidence, propose a plan, record an outcome. Approval and execution are NOT available here — they are separate, credentialed human actions.",
+  "spec_url": "https://$GATEWAY_HOST/openapi/decision-agent.json",
+  "auth": {
+    "type": "managed_identity",
+    "audience": "api://$GATEWAY_AUDIENCE",
+    "$comment": "A Foundry service/managed identity token, audience-scoped to the Decision API. The gateway maps the identity to a restricted workspace + app-role; a Graph or ARM token is rejected."
+  }
+}

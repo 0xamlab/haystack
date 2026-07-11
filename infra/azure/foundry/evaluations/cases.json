@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "name": "renewal_clean",
+      "result": "renewal_clean.result.json",
+      "recommendation": "renewal_clean.recommendation.json",
+      "expect": "pass"
+    },
+    {
+      "name": "renewal_seeded_violation",
+      "result": "renewal_violation.result.json",
+      "expect": "fail"
+    }
+  ]
+}

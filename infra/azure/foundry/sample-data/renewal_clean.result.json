@@ -1,0 +1,308 @@
+{
+  "confidence": "low",
+  "confidence_downgraded": false,
+  "constraints": [
+    {
+      "detail": "40h used of 40h available",
+      "kind": "hard",
+      "name": "total_capacity",
+      "satisfied": true,
+      "slack": 0.0
+    },
+    {
+      "detail": "2 strategic account(s) each guaranteed \u2265 4h",
+      "kind": "hard",
+      "name": "strategic_min_hours",
+      "satisfied": true,
+      "slack": null
+    }
+  ],
+  "data_quality_score": 100,
+  "disclaimer": "Model-estimated retained ARR under the stated intervention assumptions. Figures are simulated outcomes, not guaranteed results.",
+  "evidence_notes": [],
+  "feasible": true,
+  "model_version": "renewal_capacity_allocation.outcome_model@v0.1.0",
+  "no_feasible_solution": null,
+  "pack_version": "renewal_capacity_allocation@v0.1.0",
+  "provenance": {
+    "customer_assumptions": [
+      "Intervention effectiveness = 0.35 (default_prior, uncalibrated).",
+      "Saturation at 8h; max useful 16h/account.",
+      "Strategic minimum = 4h (hard)."
+    ],
+    "estimated_parameters": [
+      "Baseline renewal probabilities derived from account health via the outcome-model curve."
+    ],
+    "observed_facts": [
+      "5 renewal accounts in scope with validated ARR and renewal date.",
+      "40h of customer-success capacity available."
+    ],
+    "simulated_outcomes": [
+      "Expected retained ARR under the recommendation: $736,164 (+$142,715 vs baseline)."
+    ]
+  },
+  "recommended_scenario_id": "recommended",
+  "scenarios": [
+    {
+      "allocations": [
+        {
+          "account_id": "A1",
+          "arr": 500000.0,
+          "baseline_expected_retained_arr": 188724.39,
+          "baseline_renewal_probability": 0.377449,
+          "estimated_expected_retained_arr": 188724.39,
+          "estimated_renewal_probability": 0.377449,
+          "hours": 0.0,
+          "name": "BigCo",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "standard",
+          "selected": false,
+          "uplift_arr": 0.0
+        },
+        {
+          "account_id": "A2",
+          "arr": 300000.0,
+          "baseline_expected_retained_arr": 192150.01,
+          "baseline_renewal_probability": 0.6405,
+          "estimated_expected_retained_arr": 192150.01,
+          "estimated_renewal_probability": 0.6405,
+          "hours": 0.0,
+          "name": "MidCo",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "standard",
+          "selected": false,
+          "uplift_arr": 0.0
+        },
+        {
+          "account_id": "A3",
+          "arr": 60000.0,
+          "baseline_expected_retained_arr": 18564.58,
+          "baseline_renewal_probability": 0.30941,
+          "estimated_expected_retained_arr": 18564.58,
+          "estimated_renewal_probability": 0.30941,
+          "hours": 0.0,
+          "name": "SmallStrategic",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "strategic",
+          "selected": false,
+          "uplift_arr": 0.0
+        },
+        {
+          "account_id": "A4",
+          "arr": 200000.0,
+          "baseline_expected_retained_arr": 144510.24,
+          "baseline_renewal_probability": 0.722551,
+          "estimated_expected_retained_arr": 144510.24,
+          "estimated_renewal_probability": 0.722551,
+          "hours": 0.0,
+          "name": "GrowthCo",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "standard",
+          "selected": false,
+          "uplift_arr": 0.0
+        },
+        {
+          "account_id": "A5",
+          "arr": 90000.0,
+          "baseline_expected_retained_arr": 49500.0,
+          "baseline_renewal_probability": 0.55,
+          "estimated_expected_retained_arr": 49500.0,
+          "estimated_renewal_probability": 0.55,
+          "hours": 0.0,
+          "name": "KeyStrategic",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "strategic",
+          "selected": false,
+          "uplift_arr": 0.0
+        }
+      ],
+      "baseline_retained_arr": 593449.22,
+      "capacity_utilization": 0.0,
+      "expected_retained_arr": 593449.22,
+      "feasible": true,
+      "id": "baseline",
+      "label": "Baseline \u2014 no additional intervention",
+      "rank": 2,
+      "rejected_reason": null,
+      "total_hours_used": 0.0,
+      "uplift_arr": 0.0
+    },
+    {
+      "allocations": [
+        {
+          "account_id": "A1",
+          "arr": 500000.0,
+          "baseline_expected_retained_arr": 188724.39,
+          "baseline_renewal_probability": 0.377449,
+          "estimated_expected_retained_arr": 282926.55,
+          "estimated_renewal_probability": 0.565853,
+          "hours": 16.0,
+          "name": "BigCo",
+          "reason": "16h \u2192 +$94,202 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 94202.16
+        },
+        {
+          "account_id": "A2",
+          "arr": 300000.0,
+          "baseline_expected_retained_arr": 192150.01,
+          "baseline_renewal_probability": 0.6405,
+          "estimated_expected_retained_arr": 220353.44,
+          "estimated_renewal_probability": 0.734511,
+          "hours": 11.0,
+          "name": "MidCo",
+          "reason": "11h \u2192 +$28,203 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 28203.44
+        },
+        {
+          "account_id": "A3",
+          "arr": 60000.0,
+          "baseline_expected_retained_arr": 18564.58,
+          "baseline_renewal_probability": 0.30941,
+          "estimated_expected_retained_arr": 24270.82,
+          "estimated_renewal_probability": 0.404514,
+          "hours": 4.0,
+          "name": "SmallStrategic",
+          "reason": "4h \u2192 +$5,706 expected retained ARR",
+          "segment": "strategic",
+          "selected": true,
+          "uplift_arr": 5706.25
+        },
+        {
+          "account_id": "A4",
+          "arr": 200000.0,
+          "baseline_expected_retained_arr": 144510.24,
+          "baseline_renewal_probability": 0.722551,
+          "estimated_expected_retained_arr": 153536.12,
+          "estimated_renewal_probability": 0.767681,
+          "hours": 5.0,
+          "name": "GrowthCo",
+          "reason": "5h \u2192 +$9,026 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 9025.88
+        },
+        {
+          "account_id": "A5",
+          "arr": 90000.0,
+          "baseline_expected_retained_arr": 49500.0,
+          "baseline_renewal_probability": 0.55,
+          "estimated_expected_retained_arr": 55077.43,
+          "estimated_renewal_probability": 0.611971,
+          "hours": 4.0,
+          "name": "KeyStrategic",
+          "reason": "4h \u2192 +$5,577 expected retained ARR",
+          "segment": "strategic",
+          "selected": true,
+          "uplift_arr": 5577.43
+        }
+      ],
+      "baseline_retained_arr": 593449.22,
+      "capacity_utilization": 1.0,
+      "expected_retained_arr": 736164.37,
+      "feasible": true,
+      "id": "recommended",
+      "label": "Recommended \u2014 marginal-optimal allocation",
+      "rank": 1,
+      "rejected_reason": null,
+      "total_hours_used": 40.0,
+      "uplift_arr": 142715.16
+    },
+    {
+      "allocations": [
+        {
+          "account_id": "A1",
+          "arr": 500000.0,
+          "baseline_expected_retained_arr": 188724.39,
+          "baseline_renewal_probability": 0.377449,
+          "estimated_expected_retained_arr": 282926.55,
+          "estimated_renewal_probability": 0.565853,
+          "hours": 16.0,
+          "name": "BigCo",
+          "reason": "16h \u2192 +$94,202 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 94202.16
+        },
+        {
+          "account_id": "A2",
+          "arr": 300000.0,
+          "baseline_expected_retained_arr": 192150.01,
+          "baseline_renewal_probability": 0.6405,
+          "estimated_expected_retained_arr": 224788.94,
+          "estimated_renewal_probability": 0.749296,
+          "hours": 16.0,
+          "name": "MidCo",
+          "reason": "16h \u2192 +$32,639 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 32638.93
+        },
+        {
+          "account_id": "A3",
+          "arr": 60000.0,
+          "baseline_expected_retained_arr": 18564.58,
+          "baseline_renewal_probability": 0.30941,
+          "estimated_expected_retained_arr": 18564.58,
+          "estimated_renewal_probability": 0.30941,
+          "hours": 0.0,
+          "name": "SmallStrategic",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "strategic",
+          "selected": false,
+          "uplift_arr": 0.0
+        },
+        {
+          "account_id": "A4",
+          "arr": 200000.0,
+          "baseline_expected_retained_arr": 144510.24,
+          "baseline_renewal_probability": 0.722551,
+          "estimated_expected_retained_arr": 156786.92,
+          "estimated_renewal_probability": 0.783935,
+          "hours": 8.0,
+          "name": "GrowthCo",
+          "reason": "8h \u2192 +$12,277 expected retained ARR",
+          "segment": "standard",
+          "selected": true,
+          "uplift_arr": 12276.68
+        },
+        {
+          "account_id": "A5",
+          "arr": 90000.0,
+          "baseline_expected_retained_arr": 49500.0,
+          "baseline_renewal_probability": 0.55,
+          "estimated_expected_retained_arr": 49500.0,
+          "estimated_renewal_probability": 0.55,
+          "hours": 0.0,
+          "name": "KeyStrategic",
+          "reason": "Not prioritized \u2014 lower marginal retained-ARR gain than funded accounts",
+          "segment": "strategic",
+          "selected": false,
+          "uplift_arr": 0.0
+        }
+      ],
+      "baseline_retained_arr": 593449.22,
+      "capacity_utilization": 1.0,
+      "expected_retained_arr": 732566.98,
+      "feasible": false,
+      "id": "concentrate_top_arr",
+      "label": "Concentrate on highest-ARR accounts",
+      "rank": null,
+      "rejected_reason": "Strategic account 'SmallStrategic' receives 0h < 4h minimum guarantee",
+      "total_hours_used": 40.0,
+      "uplift_arr": 139117.77
+    }
+  ],
+  "sensitivity": [
+    {
+      "base_value": 0.35,
+      "description": "The allocation is stable to intervention-effectiveness down to 0.05 \u2014 a uniform change scales retained-ARR magnitude, not where hours go. At half the assumed effectiveness (0.17), estimated uplift falls to ~$71,358 (from ~$142,715).",
+      "direction": "below",
+      "parameter": "intervention_effectiveness",
+      "threshold_value": null
+    }
+  ]
+}
