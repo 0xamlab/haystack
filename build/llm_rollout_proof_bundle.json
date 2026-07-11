@@ -1,6 +1,6 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-07-11T02:40:38Z",
+  "generated_at": "2026-07-11T06:21:09Z",
   "expected_modules": 22,
   "expected_functions": 209,
   "public_supported_channels": [
@@ -20,10 +20,10 @@
     "path": "build/llm_rollout_parity_benchmark.json",
     "library_count": 22,
     "function_count": 209,
-    "median_speedup_x": 116.6,
-    "mean_speedup_x": 108.73,
-    "max_speedup_x": 326.45,
-    "timestamp": "2026-07-10T22:27:14"
+    "median_speedup_x": 113.31,
+    "mean_speedup_x": 105.47,
+    "max_speedup_x": 301.24,
+    "timestamp": "2026-07-11T02:20:06"
   },
   "compiled_runtime_artifact": {
     "path": "build/llm_compiled_runtime_benchmark.json",
@@ -32,17 +32,17 @@
     "failed_function_count": 0,
     "transport": "compiled_worker",
     "max_cold_ms": {
-      "value": 199.3248750222847,
+      "value": 190.29045797651634,
       "module": "bpe_tokenizer",
       "function": "bpe_merge_score"
     },
     "max_warm_ms": {
-      "value": 0.9550839895382524,
+      "value": 0.9117500158026814,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     },
     "max_hot_ms": {
-      "value": 0.925708474824205,
+      "value": 0.9341455297544599,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     }
@@ -2148,7 +2148,7 @@
     {
       "name": "python_sdk_package_contract",
       "command": [
-        "/private/tmp/algenta-runtime-sidecar.Ehjzzu/mojo_env/.pixi/envs/default/bin/python",
+        "/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python",
         "-m",
         "pytest",
         "-q",
@@ -2164,7 +2164,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 0.941,
+      "elapsed_seconds": 1.077,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -2190,7 +2190,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 0.613,
+      "elapsed_seconds": 0.693,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -2200,7 +2200,7 @@
     {
       "name": "public_http_library_routes_feature_flag",
       "command": [
-        "/private/tmp/algenta-runtime-sidecar.Ehjzzu/mojo_env/.pixi/envs/default/bin/python",
+        "/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python",
         "-m",
         "pytest",
         "-q",
@@ -2213,7 +2213,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 4.715,
+      "elapsed_seconds": 5.161,
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -2234,7 +2234,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 4.658,
+      "elapsed_seconds": 4.274,
       "passed": 4,
       "failed": 0,
       "skipped": 0
@@ -2246,61 +2246,61 @@
     "functions_compared": 60,
     "all_modules_fully_compared": true,
     "all_compiled_engine_used_mojo": true,
-    "min_speedup_x": 103.36,
-    "max_speedup_x": 137.38,
+    "min_speedup_x": 64.1,
+    "max_speedup_x": 119.31,
     "max_cold_ms": {
-      "value": 0.6916660349816084,
-      "module": "continuous_batching",
-      "function": "preemption_score"
+      "value": 0.5412079626694322,
+      "module": "inference_engine",
+      "function": "latency_percentile_estimate"
     },
     "max_warm_ms": {
-      "value": 0.39537495467811823,
-      "module": "generation_loop",
-      "function": "typical_sampling_accept"
+      "value": 0.37591601721942425,
+      "module": "continuous_batching",
+      "function": "streaming_first_token_latency"
     },
     "max_hot_ms": {
-      "value": 0.3801459970418364,
+      "value": 0.34702051198109984,
       "module": "speculative_decoding",
-      "function": "structured_repair_score"
+      "function": "draft_model_speedup"
     },
     "modules": [
       {
         "name": "kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 114.3,
+        "parity_speedup_x": 100.55,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3809169866144657,
-          "function": "kv_cache_memory_per_layer"
+          "value": 0.37037505535408854,
+          "function": "incremental_decode_kv_append"
         },
         "max_warm_ms": {
-          "value": 0.3552910056896508,
-          "function": "kv_cache_total_memory"
+          "value": 0.31579198548570275,
+          "function": "prefix_cache_hit_bytes"
         },
         "max_hot_ms": {
-          "value": 0.36329199792817235,
-          "function": "kv_eviction_score_lru"
+          "value": 0.3103335329797119,
+          "function": "radix_cache_shared_prefix_len"
         }
       },
       {
         "name": "paged_kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 121.08,
+        "parity_speedup_x": 116.15,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.6520000169984996,
-          "function": "cache_eviction_beladys_score"
-        },
-        "max_warm_ms": {
-          "value": 0.3867500345222652,
+          "value": 0.3655829932540655,
           "function": "cache_eviction_lru_score"
         },
+        "max_warm_ms": {
+          "value": 0.33674994483590126,
+          "function": "cache_hit_latency_saving"
+        },
         "max_hot_ms": {
-          "value": 0.35729201044887304,
+          "value": 0.32070852466858923,
           "function": "cache_eviction_lru_score"
         }
       },
@@ -2308,80 +2308,80 @@
         "name": "continuous_batching",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 137.38,
+        "parity_speedup_x": 106.98,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.6916660349816084,
-          "function": "preemption_score"
+          "value": 0.3967920201830566,
+          "function": "decode_throughput_tokens"
         },
         "max_warm_ms": {
-          "value": 0.3689580480568111,
-          "function": "preemption_score"
+          "value": 0.37591601721942425,
+          "function": "streaming_first_token_latency"
         },
         "max_hot_ms": {
-          "value": 0.3333119966555387,
-          "function": "iteration_level_batch_size"
+          "value": 0.3279169904999435,
+          "function": "admission_control_accept"
         }
       },
       {
         "name": "inference_engine",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 122.42,
+        "parity_speedup_x": 119.31,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3522500046528876,
-          "function": "batch_padding_mask"
+          "value": 0.5412079626694322,
+          "function": "latency_percentile_estimate"
         },
         "max_warm_ms": {
-          "value": 0.34266599686816335,
-          "function": "batch_padding_mask"
+          "value": 0.33000000985339284,
+          "function": "latency_percentile_estimate"
         },
         "max_hot_ms": {
-          "value": 0.3118335152976215,
-          "function": "throughput_tokens_per_sec"
+          "value": 0.3343124990351498,
+          "function": "dynamic_batching_priority"
         }
       },
       {
         "name": "speculative_decoding",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 118.68,
+        "parity_speedup_x": 112.6,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.4802910261787474,
+          "value": 0.3676670021377504,
           "function": "constrained_beam_score"
         },
         "max_warm_ms": {
-          "value": 0.32412499422207475,
-          "function": "speculative_expected_tokens"
+          "value": 0.36258395994082093,
+          "function": "structured_repair_score"
         },
         "max_hot_ms": {
-          "value": 0.3801459970418364,
-          "function": "structured_repair_score"
+          "value": 0.34702051198109984,
+          "function": "draft_model_speedup"
         }
       },
       {
         "name": "generation_loop",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 103.36,
+        "parity_speedup_x": 64.1,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.36574999103322625,
-          "function": "presence_penalty_logit"
+          "value": 0.32991700572893023,
+          "function": "frequency_penalty_logit"
         },
         "max_warm_ms": {
-          "value": 0.39537495467811823,
-          "function": "typical_sampling_accept"
+          "value": 0.3326660371385515,
+          "function": "eos_stop_score"
         },
         "max_hot_ms": {
-          "value": 0.3494374977890402,
-          "function": "typical_sampling_accept"
+          "value": 0.3325834986753762,
+          "function": "eta_sampling_accept"
         }
       }
     ]
@@ -2504,7 +2504,7 @@
       ],
       "minimum_passed": 7,
       "status": "passed",
-      "elapsed_seconds": 3.13,
+      "elapsed_seconds": 2.914,
       "passed": 7,
       "failed": 0,
       "skipped": 0
@@ -2517,7 +2517,7 @@
       ],
       "minimum_passed": 2,
       "status": "passed",
-      "elapsed_seconds": 16.862,
+      "elapsed_seconds": 17.199,
       "passed": 15,
       "failed": 0,
       "skipped": 0
@@ -2533,7 +2533,7 @@
       ],
       "minimum_passed": 11,
       "status": "passed",
-      "elapsed_seconds": 5.093,
+      "elapsed_seconds": 5.218,
       "passed": 11,
       "failed": 0,
       "skipped": 0

@@ -1,14 +1,14 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:57027",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:54418",
     "failed_checks": [],
     "skipped_checks": []
   },
-  "elapsed_seconds": 12.17,
+  "elapsed_seconds": 25.17,
   "failed": 0,
-  "generated_at": "2026-07-11T02:25:32.625215Z",
+  "generated_at": "2026-07-11T06:17:46.971823Z",
   "name": "algenta_client_live",
   "passed": 18,
   "script": "tests/integration/test_algenta_client_live.py",

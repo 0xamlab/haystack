@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import socket
 import statistics
 import struct
@@ -29,10 +30,21 @@ build_runtime_library_worker_request = _MOJO_LIBRARY_RUNNER.build_runtime_librar
 parse_runtime_library_worker_response = _MOJO_LIBRARY_RUNNER.parse_runtime_library_worker_response
 
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "llm_compiled_runtime_benchmark.json"
-MOJO_BINARY = PROJECT_ROOT / "mojo_build" / "simulate"
+
+
+def _resolve_mojo_binary() -> Path:
+    for env_name in ("ALGENTA_NATIVE_WORKER", "ALGENTA_RUNTIME_WORKER", "ALGENTA_MOJO_BINARY"):
+        configured = os.environ.get(env_name, "").strip()
+        if configured:
+            return Path(configured).expanduser()
+    return PROJECT_ROOT / "mojo_build" / "simulate"
+
+
+MOJO_BINARY = _resolve_mojo_binary()
 # Single source of truth lives in the prod-shipped core module so apps/ never imports
 # benchmarks/ (which isn't packaged into the api/worker/engine images).
-from apps.runtime_manifest._module_order import LLM_ROLLOUT_MODULE_ORDER as TARGET_MODULES
+_RUNTIME_MODULE_ORDER = importlib.import_module("apps.runtime_manifest._module_order")
+TARGET_MODULES = _RUNTIME_MODULE_ORDER.LLM_ROLLOUT_MODULE_ORDER
 _VECTOR_RANKER_FIXTURE = (
     '{"query":{"name":"unit_price","role_hint":"unit_measure","source":"POS"},'
     '"candidates":[{"source":"POS","name":"unit_price"},'

@@ -1,17 +1,19 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:60007",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:64984",
     "failed_checks": [],
-    "skipped_checks": []
+    "skipped_checks": [
+      "Repository intelligence snapshot/triage/decision-plan/simulate/apply responses are valid JSON"
+    ]
   },
-  "elapsed_seconds": 18.61,
+  "elapsed_seconds": 17.566,
   "failed": 0,
-  "generated_at": "2026-07-11T02:27:06.642029Z",
+  "generated_at": "2026-07-11T06:22:28.129513Z",
   "name": "openapi_integration",
-  "passed": 90,
+  "passed": 89,
   "script": "tests/integration/test_openapi.py",
-  "skipped": 0,
+  "skipped": 1,
   "total": 90
 }

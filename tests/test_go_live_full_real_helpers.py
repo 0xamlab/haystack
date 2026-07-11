@@ -75,7 +75,14 @@ def test_run_live_suite_with_fresh_server_retries_startup_once(
     ok, elapsed, output = go_live.run_live_suite_with_fresh_server(
         "Live Runtime",
         ["python", "tests/integration/test_algenta_runtime_live.py"],
-        env_base={"PYTHONPATH": "."},
+        env_base={
+            "PYTHONPATH": ".",
+            "DE_BASE_URL": "http://127.0.0.1:1",
+            "ALGENTA_BASE_URL": "http://127.0.0.1:2",
+            "ALGENTA_API_URL": "http://127.0.0.1:3",
+            "ALGENTA_CONTROL_PLANE_URL": "http://127.0.0.1:4",
+            "ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS": "1",
+        },
         timeout=120,
     )
 
@@ -88,6 +95,13 @@ def test_run_live_suite_with_fresh_server_retries_startup_once(
     assert wait_calls[0][1] == 120.0
     assert start_envs[0]["ALGENTA_RUNTIME_DIR"].endswith("runtime_1")
     assert start_envs[1]["ALGENTA_RUNTIME_DIR"].endswith("runtime_2")
+    assert start_envs[1]["DE_BASE_URL"] == "http://127.0.0.1:55102"
+    assert start_envs[1]["ALGENTA_BASE_URL"] == "http://127.0.0.1:55102"
+    assert start_envs[1]["ALGENTA_API_URL"] == "http://127.0.0.1:55102"
+    assert start_envs[1]["ALGENTA_CONTROL_PLANE_URL"] == "http://127.0.0.1:55102"
+    assert start_envs[1]["DE_API_KEY"] == "de_test_key"
+    assert start_envs[1]["ALGENTA_API_KEY"] == "de_test_key"
+    assert start_envs[1]["ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS"] == "0"
     assert (
         start_envs[0]["ALGENTA_SIMULATION_PERSIST_TRANSPORT"]
         == LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
@@ -212,6 +226,50 @@ def test_live_suites_use_canonical_cli_integration_script() -> None:
         [go_live.sys.executable, "tests/integration/test_cli.py"],
         300,
     ) in go_live.LIVE_SUITES
+
+
+def test_go_live_runtime_required_modules_include_rollout_and_catalog_smoke() -> None:
+    from tests.llm_rollout_matrix import LLM_ROLLOUT_MODULE_NAMES
+
+    required = go_live._go_live_runtime_required_modules()
+
+    assert tuple(required[: len(LLM_ROLLOUT_MODULE_NAMES)]) == LLM_ROLLOUT_MODULE_NAMES
+    assert "ab_testing" in required
+    assert "elevator" in required
+    assert len(required) == len(set(required))
+
+
+def test_worker_manifest_supports_filtered_and_full_builds(tmp_path) -> None:
+    worker = tmp_path / "simulate"
+    worker.write_text("binary", encoding="utf-8")
+
+    manifest = worker.with_name("simulate.manifest.json")
+    manifest.write_text(
+        json.dumps({"module_filter": ["bpe_tokenizer", "ab_testing"]}),
+        encoding="utf-8",
+    )
+
+    assert go_live._worker_manifest_supports_modules(worker, ("bpe_tokenizer",)) is True
+    assert go_live._worker_manifest_supports_modules(worker, ("ab_testing",)) is True
+    assert go_live._worker_manifest_supports_modules(worker, ("text.tokenizer",)) is False
+
+    manifest.write_text(json.dumps({"module_filter": []}), encoding="utf-8")
+
+    assert go_live._worker_manifest_supports_modules(worker, ("text.tokenizer",)) is True
+
+
+def test_runtime_worker_env_sets_current_and_legacy_overrides(tmp_path) -> None:
+    worker = tmp_path / "simulate"
+
+    env = go_live._runtime_worker_env(worker)
+
+    resolved = str(worker.resolve())
+    assert env == {
+        "ALGENTA_NATIVE_WORKER": resolved,
+        "ALGENTA_RUNTIME_WORKER": resolved,
+        "ALGENTA_MOJO_BINARY": resolved,
+        "MOJO_BINARY_PATH": resolved,
+    }
 
 
 def test_write_llm_rollout_proof_bundle_persists_sdk_contract_suites(

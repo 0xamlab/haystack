@@ -1,72 +1,72 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "completed_suite_count": 24,
-    "expected_suite_count": 24,
+    "completed_suite_count": 25,
+    "expected_suite_count": 25,
     "failed_suite_names": [],
     "live_suite_count": 13,
     "local_suite_count": 8,
     "slowest_suites": [
       {
-        "elapsed_seconds": 260.294,
-        "name": "Root JavaScript workspace check",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 115.788,
+        "elapsed_seconds": 48.505,
         "name": "Mojo libraries A-Z",
         "ok": true
       },
       {
-        "elapsed_seconds": 26.053,
+        "elapsed_seconds": 27.051,
         "name": "Source matrix runtime benchmark",
         "ok": true
       },
       {
-        "elapsed_seconds": 22.126,
+        "elapsed_seconds": 25.486,
+        "name": "Live Python Runtime integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 25.409,
+        "name": "Live AlgentaClient integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 23.857,
         "name": "Live CLI integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 16.862,
+        "elapsed_seconds": 17.199,
         "name": "Live TypeScript Runtime integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 12.739,
-        "name": "Real local connectivity gate",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 11.225,
+        "elapsed_seconds": 12.874,
         "name": "Real-data Mojo engines",
         "ok": true
       },
       {
-        "elapsed_seconds": 8.916,
-        "name": "Uploaded CSV exact benchmark",
+        "elapsed_seconds": 12.225,
+        "name": "Real local connectivity gate",
         "ok": true
       },
       {
-        "elapsed_seconds": 8.674,
+        "elapsed_seconds": 10.669,
         "name": "Live MCP integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 8.461,
-        "name": "Live Python SDK integration",
+        "elapsed_seconds": 8.864,
+        "name": "Uploaded CSV exact benchmark",
         "ok": true
       }
     ],
     "status": "complete",
-    "top_level_suite_count": 3
+    "top_level_suite_count": 4
   },
-  "elapsed_seconds": 558.716,
+  "elapsed_seconds": 282.125,
   "failed": 0,
-  "generated_at": "2026-07-11T02:30:13.220209Z",
+  "generated_at": "2026-07-11T06:21:58.071293Z",
   "name": "go_live_full_real",
-  "passed": 24,
+  "passed": 25,
   "script": "tests/integration/test_go_live_full_real.py",
   "skipped": 0,
-  "total": 24
+  "total": 25
 }

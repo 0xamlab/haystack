@@ -745,9 +745,11 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
     assert "tests/test_llm_rollout_scorecard.py" in scripts["test:formal-runtime-foundation"]
     assert "tests/test_plan_alignment_matrix.py" in scripts["test:formal-runtime-foundation"]
     assert scripts["test:formal-runtime-foundation"].startswith(
+        'RUNTIME_WORKER="$PWD/build/go-live-runtime/simulate"; '
         "./scripts/run_repo_python.sh tests/integration/test_csv_pipeline.py && "
         "./scripts/run_repo_python.sh benchmarks/scorecard_suite_summaries.py && "
-        'if [ "${DE_SKIP_GO_LIVE_VERIFY:-0}" != "1" ]; then ./scripts/run_repo_python.sh tests/go_live_verify.py; fi && '
+        'if [ "${DE_SKIP_GO_LIVE_VERIFY:-0}" != "1" ]; then ./scripts/run_repo_python.sh tests/go_live_verify.py --skip-pytest; fi && '
+        'if [ -x "$RUNTIME_WORKER" ]; then export ALGENTA_NATIVE_WORKER="$RUNTIME_WORKER" ALGENTA_RUNTIME_WORKER="$RUNTIME_WORKER" ALGENTA_MOJO_BINARY="$RUNTIME_WORKER" MOJO_BINARY_PATH="$RUNTIME_WORKER"; fi && '
         "./scripts/run_repo_python.sh benchmarks/llm_rollout_proof_bundle.py --skip-live && "
         "./scripts/run_repo_python.sh -m pytest -q "
     )

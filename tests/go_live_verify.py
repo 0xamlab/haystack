@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tests.go_live_matrix_status import (
+from tests.go_live_matrix_status import (  # noqa: E402
     MatrixCaseStatus,
     collect_matrix_status,
     collect_requirement_failures,
@@ -27,8 +27,10 @@ from tests.go_live_matrix_status import (
     render_requirement_failures,
     summarize_operational_gaps,
 )
-from tests.go_live_secret_resolver import describe_go_live_env_resolution
-from tests.integration.connector_validation_catalog import ALL_CONNECTOR_VALIDATION_CASES
+from tests.go_live_secret_resolver import describe_go_live_env_resolution  # noqa: E402
+from tests.integration.connector_validation_catalog import (  # noqa: E402
+    ALL_CONNECTOR_VALIDATION_CASES,
+)
 
 DEFAULT_SUMMARY_OUTPUT = ROOT / "build" / "go_live_verify_summary.json"
 DEFAULT_REPORT_OUTPUT = ROOT / "build" / "go_live_verify_report.md"
@@ -60,6 +62,24 @@ def resolve_python_executable() -> str:
     if venv_python.exists():
         return str(venv_python)
     return sys.executable
+
+
+def build_go_live_runtime_worker_env(
+    *,
+    include_full_real: bool,
+    include_pytest: bool,
+) -> dict[str, str]:
+    if not include_full_real and not include_pytest:
+        return {}
+
+    from tests.integration.test_go_live_full_real import (
+        _ensure_go_live_runtime_worker,
+        _runtime_worker_env,
+    )
+
+    print("\n=== runtime_worker ===")
+    worker_path = _ensure_go_live_runtime_worker()
+    return _runtime_worker_env(worker_path)
 
 
 def build_verification_steps(
@@ -117,8 +137,12 @@ def build_verification_steps(
     return steps
 
 
-def run_verification_steps(steps: list[VerificationStep]) -> list[VerificationResult]:
-    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+def run_verification_steps(
+    steps: list[VerificationStep],
+    *,
+    env_overrides: dict[str, str] | None = None,
+) -> list[VerificationResult]:
+    env = {**os.environ, "PYTHONPATH": str(ROOT), **(env_overrides or {})}
     results: list[VerificationResult] = []
     for step in steps:
         print(f"\n=== {step.name} ===")
@@ -814,14 +838,14 @@ def build_gap_action_env_setup_summary(
         action_code for action_code in all_action_codes if not action_env_names.get(action_code)
     )
 
-    resolver_supported_env_names = set(
+    resolver_supported_env_names = {
         str(env_name)
         for env_name in (gap_env_resolution_summary.get("resolver_supported_env_names") or [])
-    )
-    manual_only_env_names = set(
+    }
+    manual_only_env_names = {
         str(env_name)
         for env_name in (gap_env_resolution_summary.get("manual_only_env_names") or [])
-    )
+    }
     resolved_template_paths = template_paths or {
         "root_env_example": ROOT_ENV_EXAMPLE_PATH,
         "go_live_validation_env_example": GO_LIVE_VALIDATION_ENV_EXAMPLE_PATH,
@@ -1776,7 +1800,11 @@ def main(argv: list[str] | None = None) -> None:
         print(f"wrote verification summary: {args.output}")
         raise SystemExit(1)
 
-    results = run_verification_steps(planned_steps)
+    runtime_env = build_go_live_runtime_worker_env(
+        include_full_real=not args.skip_full_real,
+        include_pytest=not args.skip_pytest,
+    )
+    results = run_verification_steps(planned_steps, env_overrides=runtime_env)
     summary = summarize_verification(
         matrix_payload,
         planned_steps,

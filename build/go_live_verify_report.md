@@ -1,22 +1,22 @@
 # Go-live verifier report
 
-- Generated at: `2026-07-10T01:29:01Z`
-- Python: `/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python`
-- Summary path: `/private/tmp/algenta-gitbook-live-install-fix-20260710/build/go_live_verify_summary.json`
+- Generated at: `2026-07-11T06:21:58Z`
+- Python: `/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python`
+- Summary path: `/private/tmp/algenta-gitbook-audit-clone.m4FiBv/build/go_live_verify_summary.json`
 
 ## Matrix
 
-- Configured: `7/19`
-- Behavior-ready: `7/19`
+- Configured: `8/19`
+- Behavior-ready: `8/19`
 - `public_no_auth`: `7/8` configured, `7/8` behavior-ready
 - `credentialed_example`: `0/2` configured, `0/2` behavior-ready
-- `customer_credentials_required`: `0/9` configured, `0/9` behavior-ready
+- `customer_credentials_required`: `1/9` configured, `1/9` behavior-ready
 
 ## Execution
 
-- Completed steps: `connectivity`
-- Failed steps: `full_real`
-- Planned steps: `connectivity, full_real, pytest`
+- Completed steps: `connectivity, full_real`
+- Failed steps: `none`
+- Planned steps: `connectivity, full_real`
 
 ## Filters
 
@@ -26,7 +26,7 @@
 ## Options
 
 - include_full_real: `True`
-- include_pytest: `True`
+- include_pytest: `False`
 - require_all_configured: `False`
 - require_all_behavior_ready: `False`
 - strict: `False`
@@ -35,20 +35,15 @@
 
 ### `connectivity`
 
-- Command: `/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python -u /private/tmp/algenta-gitbook-live-install-fix-20260710/tests/integration/test_go_live_connectivity_real.py --parallel-tasks 4`
+- Command: `/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python -u /private/tmp/algenta-gitbook-audit-clone.m4FiBv/tests/integration/test_go_live_connectivity_real.py --parallel-tasks 4`
 - Return code: `0`
-- Duration: `19.70s`
+- Duration: `20.65s`
 
 ### `full_real`
 
-- Command: `/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python -u /private/tmp/algenta-gitbook-live-install-fix-20260710/tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
-- Return code: `1`
-- Duration: `496.80s`
-
-### `pytest`
-
-- Command: `/private/tmp/algenta-gitbook-live-install-fix-20260710/mojo_env/.pixi/envs/default/bin/python -m pytest tests -q`
-- Result: `not run`
+- Command: `/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python -u /private/tmp/algenta-gitbook-audit-clone.m4FiBv/tests/integration/test_go_live_full_real.py --parallel-tasks 4 --mojo-workers 4 --mojo-timeout 30`
+- Return code: `0`
+- Duration: `327.18s`
 
 ## Requirement failures
 
@@ -56,16 +51,16 @@
 
 ## Gap sources
 
-- Static matrix gaps: `12`
-- Live connectivity skips: `12`
-- Merged operational gaps: `12`
-- Static gaps by tier: `credentialed_example 2, customer_credentials_required 9, public_no_auth 1`
-- Static gaps by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, redis 1, rest_api 3, s3 1, snowflake 1`
-- Live skips by tier: `credentialed_example 2, customer_credentials_required 9, public_no_auth 1`
-- Live skips by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, redis 1, rest_api 3, s3 1, snowflake 1`
-- Merged gaps by tier: `credentialed_example 2, customer_credentials_required 9, public_no_auth 1`
-- Merged gaps by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, redis 1, rest_api 3, s3 1, snowflake 1`
-- Merged gaps by source: `static_matrix+live_connectivity 12`
+- Static matrix gaps: `11`
+- Live connectivity skips: `11`
+- Merged operational gaps: `11`
+- Static gaps by tier: `credentialed_example 2, customer_credentials_required 8, public_no_auth 1`
+- Static gaps by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, rest_api 3, s3 1, snowflake 1`
+- Live skips by tier: `credentialed_example 2, customer_credentials_required 8, public_no_auth 1`
+- Live skips by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, rest_api 3, s3 1, snowflake 1`
+- Merged gaps by tier: `credentialed_example 2, customer_credentials_required 8, public_no_auth 1`
+- Merged gaps by connector: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, rest_api 3, s3 1, snowflake 1`
+- Merged gaps by source: `static_matrix+live_connectivity 11`
 - Live-only blockers beyond the static matrix: `none`
 
 ## Live connectivity skips
@@ -80,7 +75,6 @@
 - `customer_credentials_required` / `customer_s3_source_registration` (`s3`, `not_configured`): required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY
 - `customer_credentials_required` / `elasticsearch_customer_connector_test` (`elasticsearch`, `not_configured`): required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY
 - `customer_credentials_required` / `neo4j_customer_connector_test` (`neo4j`, `not_configured`): required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD
-- `customer_credentials_required` / `redis_customer_connector_test` (`redis`, `not_configured`): required env not provided: DE_TEST_REDIS_URL
 - `customer_credentials_required` / `snowflake_customer_connector_test` (`snowflake`, `not_configured`): required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE
 - `public_no_auth` / `dlt_github_issues` (`rest_api`, `not_configured`): unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1
 
@@ -95,7 +89,6 @@
 - `customer_credentials_required` / `customer_s3_source_registration` (`s3`, `not_configured`) [source: static_matrix+live_connectivity] [actions: set_customer_connector_envs]: required env not provided: DE_TEST_S3_BUCKET, DE_TEST_S3_KEY
 - `customer_credentials_required` / `elasticsearch_customer_connector_test` (`elasticsearch`, `not_configured`) [source: static_matrix+live_connectivity] [actions: set_customer_connector_envs]: required env not provided: DE_TEST_ELASTICSEARCH_URL, DE_TEST_ELASTICSEARCH_API_KEY
 - `customer_credentials_required` / `neo4j_customer_connector_test` (`neo4j`, `not_configured`) [source: static_matrix+live_connectivity] [actions: set_customer_connector_envs]: required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD
-- `customer_credentials_required` / `redis_customer_connector_test` (`redis`, `not_configured`) [source: static_matrix+live_connectivity] [actions: set_customer_connector_envs]: required env not provided: DE_TEST_REDIS_URL
 - `customer_credentials_required` / `snowflake_customer_connector_test` (`snowflake`, `not_configured`) [source: static_matrix+live_connectivity] [actions: set_customer_connector_envs]: required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE
 - `public_no_auth` / `dlt_github_issues` (`rest_api`, `not_configured`) [source: static_matrix+live_connectivity] [actions: enable_opt_in_public_cases]: unauthenticated dlt GitHub issues case disabled by default; set DE_ENABLE_SLOW_PUBLIC_REST_CASES=1
 
@@ -112,33 +105,32 @@
 
 ## Action routing
 
-- Direct remediation coverage: `12/12` cases
-- Action case counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 2, set_customer_connector_envs 9`
-- Action env counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 2, set_customer_connector_envs 24`
-- Action connector counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 1, set_customer_connector_envs 9`
+- Direct remediation coverage: `11/11` cases
+- Action case counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 2, set_customer_connector_envs 8`
+- Action env counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 2, set_customer_connector_envs 23`
+- Action connector counts: `enable_opt_in_public_cases 1, set_credentialed_example_envs 1, set_customer_connector_envs 8`
 - Terminal actions: `rerun_strict_go_live_gate`
 - Unmapped cases: `none`
 - `enable_opt_in_public_cases` cases: `dlt_github_issues`
 - `set_credentialed_example_envs` cases: `dlt_github_issues_token, fivetran_fred_gnpca`
-- `set_customer_connector_envs` cases: `bigquery_customer_connector_test, clickhouse_customer_connector_test, customer_azure_blob_source_registration, customer_gcs_source_registration, customer_s3_source_registration, elasticsearch_customer_connector_test, neo4j_customer_connector_test, redis_customer_connector_test, snowflake_customer_connector_test`
+- `set_customer_connector_envs` cases: `bigquery_customer_connector_test, clickhouse_customer_connector_test, customer_azure_blob_source_registration, customer_gcs_source_registration, customer_s3_source_registration, elasticsearch_customer_connector_test, neo4j_customer_connector_test, snowflake_customer_connector_test`
 - `enable_opt_in_public_cases` envs: `DE_ENABLE_SLOW_PUBLIC_REST_CASES`
 - `set_credentialed_example_envs` envs: `DE_TEST_FRED_API_KEY, DE_TEST_GITHUB_TOKEN`
-- `set_customer_connector_envs` envs: `DE_TEST_AZURE_ACCOUNT_URL, DE_TEST_AZURE_BLOB, DE_TEST_AZURE_BLOB_URL, DE_TEST_AZURE_CONNECTION_STRING, DE_TEST_AZURE_CONTAINER, DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON, DE_TEST_CLICKHOUSE_PASSWORD, DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_ELASTICSEARCH_API_KEY, DE_TEST_ELASTICSEARCH_URL, DE_TEST_GCS_BLOB, DE_TEST_GCS_BUCKET, DE_TEST_NEO4J_PASSWORD, DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_REDIS_URL, DE_TEST_S3_BUCKET, DE_TEST_S3_KEY, DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_WAREHOUSE`
+- `set_customer_connector_envs` envs: `DE_TEST_AZURE_ACCOUNT_URL, DE_TEST_AZURE_BLOB, DE_TEST_AZURE_BLOB_URL, DE_TEST_AZURE_CONNECTION_STRING, DE_TEST_AZURE_CONTAINER, DE_TEST_BIGQUERY_PROJECT_ID, DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON, DE_TEST_CLICKHOUSE_PASSWORD, DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_ELASTICSEARCH_API_KEY, DE_TEST_ELASTICSEARCH_URL, DE_TEST_GCS_BLOB, DE_TEST_GCS_BUCKET, DE_TEST_NEO4J_PASSWORD, DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_S3_BUCKET, DE_TEST_S3_KEY, DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_WAREHOUSE`
 - `enable_opt_in_public_cases` connectors: `rest_api`
 - `set_credentialed_example_envs` connectors: `rest_api`
-- `set_customer_connector_envs` connectors: `azure_blob, bigquery, clickhouse, elasticsearch, gcs, neo4j, redis, s3, snowflake`
+- `set_customer_connector_envs` connectors: `azure_blob, bigquery, clickhouse, elasticsearch, gcs, neo4j, s3, snowflake`
 
 ## Connector routing
 
-- Connector case counts: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, redis 1, rest_api 3, s3 1, snowflake 1`
-- Connector env counts: `azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, redis 1, rest_api 3, s3 2, snowflake 4`
+- Connector case counts: `azure_blob 1, bigquery 1, clickhouse 1, elasticsearch 1, gcs 1, neo4j 1, rest_api 3, s3 1, snowflake 1`
+- Connector env counts: `azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, rest_api 3, s3 2, snowflake 4`
 - `azure_blob` cases: `customer_azure_blob_source_registration`
 - `bigquery` cases: `bigquery_customer_connector_test`
 - `clickhouse` cases: `clickhouse_customer_connector_test`
 - `elasticsearch` cases: `elasticsearch_customer_connector_test`
 - `gcs` cases: `customer_gcs_source_registration`
 - `neo4j` cases: `neo4j_customer_connector_test`
-- `redis` cases: `redis_customer_connector_test`
 - `rest_api` cases: `dlt_github_issues, dlt_github_issues_token, fivetran_fred_gnpca`
 - `s3` cases: `customer_s3_source_registration`
 - `snowflake` cases: `snowflake_customer_connector_test`
@@ -148,7 +140,6 @@
 - `elasticsearch` actions: `set_customer_connector_envs`
 - `gcs` actions: `set_customer_connector_envs`
 - `neo4j` actions: `set_customer_connector_envs`
-- `redis` actions: `set_customer_connector_envs`
 - `rest_api` actions: `enable_opt_in_public_cases, set_credentialed_example_envs`
 - `s3` actions: `set_customer_connector_envs`
 - `snowflake` actions: `set_customer_connector_envs`
@@ -158,15 +149,14 @@
 - `elasticsearch` envs: `DE_TEST_ELASTICSEARCH_API_KEY, DE_TEST_ELASTICSEARCH_URL`
 - `gcs` envs: `DE_TEST_GCS_BLOB, DE_TEST_GCS_BUCKET`
 - `neo4j` envs: `DE_TEST_NEO4J_PASSWORD, DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME`
-- `redis` envs: `DE_TEST_REDIS_URL`
 - `rest_api` envs: `DE_ENABLE_SLOW_PUBLIC_REST_CASES, DE_TEST_FRED_API_KEY, DE_TEST_GITHUB_TOKEN`
 - `s3` envs: `DE_TEST_S3_BUCKET, DE_TEST_S3_KEY`
 - `snowflake` envs: `DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_WAREHOUSE`
 
 ## Env routing
 
-- Total mapped envs: `27`
-- Tier env counts: `credentialed_example 2, customer_credentials_required 24, public_no_auth 1`
+- Total mapped envs: `26`
+- Tier env counts: `credentialed_example 2, customer_credentials_required 23, public_no_auth 1`
 - Shared envs: `none`
 - `DE_ENABLE_SLOW_PUBLIC_REST_CASES` cases: `dlt_github_issues`
 - `DE_TEST_AZURE_ACCOUNT_URL` cases: `customer_azure_blob_source_registration`
@@ -188,7 +178,6 @@
 - `DE_TEST_NEO4J_PASSWORD` cases: `neo4j_customer_connector_test`
 - `DE_TEST_NEO4J_URI` cases: `neo4j_customer_connector_test`
 - `DE_TEST_NEO4J_USERNAME` cases: `neo4j_customer_connector_test`
-- `DE_TEST_REDIS_URL` cases: `redis_customer_connector_test`
 - `DE_TEST_S3_BUCKET` cases: `customer_s3_source_registration`
 - `DE_TEST_S3_KEY` cases: `customer_s3_source_registration`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` cases: `snowflake_customer_connector_test`
@@ -215,7 +204,6 @@
 - `DE_TEST_NEO4J_PASSWORD` actions: `set_customer_connector_envs`
 - `DE_TEST_NEO4J_URI` actions: `set_customer_connector_envs`
 - `DE_TEST_NEO4J_USERNAME` actions: `set_customer_connector_envs`
-- `DE_TEST_REDIS_URL` actions: `set_customer_connector_envs`
 - `DE_TEST_S3_BUCKET` actions: `set_customer_connector_envs`
 - `DE_TEST_S3_KEY` actions: `set_customer_connector_envs`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` actions: `set_customer_connector_envs`
@@ -242,7 +230,6 @@
 - `DE_TEST_NEO4J_PASSWORD` connectors: `neo4j`
 - `DE_TEST_NEO4J_URI` connectors: `neo4j`
 - `DE_TEST_NEO4J_USERNAME` connectors: `neo4j`
-- `DE_TEST_REDIS_URL` connectors: `redis`
 - `DE_TEST_S3_BUCKET` connectors: `s3`
 - `DE_TEST_S3_KEY` connectors: `s3`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` connectors: `snowflake`
@@ -269,7 +256,6 @@
 - `DE_TEST_NEO4J_PASSWORD` tiers: `customer_credentials_required`
 - `DE_TEST_NEO4J_URI` tiers: `customer_credentials_required`
 - `DE_TEST_NEO4J_USERNAME` tiers: `customer_credentials_required`
-- `DE_TEST_REDIS_URL` tiers: `customer_credentials_required`
 - `DE_TEST_S3_BUCKET` tiers: `customer_credentials_required`
 - `DE_TEST_S3_KEY` tiers: `customer_credentials_required`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` tiers: `customer_credentials_required`
@@ -279,9 +265,9 @@
 
 ## Env resolution
 
-- Resolver-supported envs: `26`
+- Resolver-supported envs: `25`
 - Manual-only envs: `1`
-- Group env counts: `azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, redis 1, s3 2, snowflake 4`
+- Group env counts: `azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, s3 2, snowflake 4`
 - Manual-only env names: `DE_ENABLE_SLOW_PUBLIC_REST_CASES`
 - `DE_ENABLE_SLOW_PUBLIC_REST_CASES` candidates: `DE_ENABLE_SLOW_PUBLIC_REST_CASES`
 - `DE_TEST_AZURE_ACCOUNT_URL` candidates: `DE_TEST_AZURE_ACCOUNT_URL, AZURE_ACCOUNT_URL`
@@ -303,7 +289,6 @@
 - `DE_TEST_NEO4J_PASSWORD` candidates: `DE_TEST_NEO4J_PASSWORD, NEO4J_PASSWORD`
 - `DE_TEST_NEO4J_URI` candidates: `DE_TEST_NEO4J_URI, NEO4J_URI, NEO4J_URL`
 - `DE_TEST_NEO4J_USERNAME` candidates: `DE_TEST_NEO4J_USERNAME, NEO4J_USERNAME, NEO4J_USER`
-- `DE_TEST_REDIS_URL` candidates: `DE_TEST_REDIS_URL, REDIS_URL`
 - `DE_TEST_S3_BUCKET` candidates: `DE_TEST_S3_BUCKET, S3_BUCKET`
 - `DE_TEST_S3_KEY` candidates: `DE_TEST_S3_KEY, S3_KEY`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` candidates: `DE_TEST_SNOWFLAKE_ACCOUNT, SNOWFLAKE_ACCOUNT`
@@ -327,7 +312,6 @@
 - `DE_TEST_NEO4J_PASSWORD` group: `neo4j`
 - `DE_TEST_NEO4J_URI` group: `neo4j`
 - `DE_TEST_NEO4J_USERNAME` group: `neo4j`
-- `DE_TEST_REDIS_URL` group: `redis`
 - `DE_TEST_S3_BUCKET` group: `s3`
 - `DE_TEST_S3_KEY` group: `s3`
 - `DE_TEST_SNOWFLAKE_ACCOUNT` group: `snowflake`
@@ -337,7 +321,7 @@
 
 ## Env template coverage
 
-- Gap env total: `27`
+- Gap env total: `26`
 - All templates cover all current gap envs: `yes`
-- `go_live_validation_env_example` (`tests/integration/go_live_validation.env.example`): `27/27` documented, missing `none`
-- `root_env_example` (`.env.example`): `27/27` documented, missing `none`
+- `go_live_validation_env_example` (`tests/integration/go_live_validation.env.example`): `26/26` documented, missing `none`
+- `root_env_example` (`.env.example`): `26/26` documented, missing `none`

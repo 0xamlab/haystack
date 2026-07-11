@@ -1,14 +1,14 @@
 {
-  "api_key_configured": false,
+  "api_key_configured": true,
   "artifact": "llm_rollout_live_summary",
-  "base_url": "http://127.0.0.1:8000",
+  "base_url": "http://127.0.0.1:56953",
   "channels": [
     "typescript_sdk"
   ],
-  "elapsed_seconds": 24.06,
+  "elapsed_seconds": 16.169,
   "failed": 0,
-  "generated_at": "2026-07-11T02:26:09Z",
-  "minimum_passed": 1,
+  "generated_at": "2026-07-11T06:18:43Z",
+  "minimum_passed": 2,
   "name": "typescript_sdk_local_runtime",
   "passed": 15,
   "script": "tests/integration/test_typescript_runtime_live.py",

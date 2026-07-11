@@ -24,7 +24,7 @@ de health
 de contract
 ```
 
-The TypeScript SDK is source-build until the npm package is published; it is not a clean-machine `de` CLI install path today.
+The TypeScript SDK is available as `algenta-sdk` on npm for JavaScript and TypeScript API clients. It does not install the `de` CLI; use the Python `algenta-sdk` package when you need the terminal command.
 
 Running `de` with no arguments prints the full usage banner.
 

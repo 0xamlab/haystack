@@ -1,0 +1,3407 @@
+{
+  "agent_readability": {
+    "codex_ready": true,
+    "cursor_ready": true,
+    "google_ai_ready": true,
+    "missing_prompt_evals": [],
+    "required_prompt_evals": [
+      "codex-mcp-install",
+      "cursor-mcp-install",
+      "gemini-docs-ingestion",
+      "google-search-crawlability"
+    ]
+  },
+  "issues": [],
+  "live": {
+    "base_url": "https://docs.algenta.ai",
+    "docs_mcp_status": 405,
+    "llms_full_status": 200,
+    "llms_txt_status": 200,
+    "markdown_pages_checked": 136,
+    "robots_status": 200,
+    "sitemap_matches_source_navigation": true,
+    "sitemap_urls": 136,
+    "source_navigation_urls": 136
+  },
+  "live_url": "https://docs.algenta.ai",
+  "package_registries": {
+    "npm": {
+      "algenta-sdk": {
+        "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
+        "license": "Apache-2.0",
+        "status": 200,
+        "version": "1.0.2"
+      }
+    },
+    "public_runtime_install_claims": 0,
+    "public_runtime_native_install_claims": 0,
+    "pypi": {
+      "algenta": {
+        "status": 404,
+        "summary": "",
+        "version": ""
+      },
+      "algenta-mcp": {
+        "status": 200,
+        "summary": "Algenta MCP server \u2014 a Model Context Protocol surface for the Algenta API (Cursor, Claude Desktop, \u2026)",
+        "version": "1.0.0"
+      },
+      "algenta-runtime-native": {
+        "status": 404,
+        "summary": "",
+        "version": ""
+      },
+      "algenta-sdk": {
+        "status": 200,
+        "summary": "Python SDK for Algenta \u2014 public data, query, and simulation API",
+        "version": "1.0.2"
+      }
+    },
+    "skipped": false
+  },
+  "pages": [
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 136,
+      "links": 136,
+      "path": "SUMMARY.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "api/errors.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "api/explorer.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 17,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 10,
+        "safe_static": 2,
+        "static_only": 12
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "api/overview.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 24
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "api/rate-limits.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "api/reference.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 2,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 11
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "api/streaming.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 14
+    },
+    {
+      "code_fences": 31,
+      "command_counts": {
+        "destructive_mutation": 7,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 26,
+        "safe_static": 2,
+        "static_only": 12
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "authentication.md",
+      "product_claims": {
+        "algenta": 26,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 1
+      },
+      "shell_commands": 48
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "billing.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 4
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 20,
+      "links": 20,
+      "path": "changelog.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 41,
+      "command_counts": {
+        "destructive_mutation": 6,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 130,
+        "safe_static": 5,
+        "static_only": 11
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "cli.md",
+      "product_claims": {
+        "algenta": 13,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 2
+      },
+      "shell_commands": 153
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "concepts/capability-plane.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 10
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "concepts/decision-memory.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 11
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "concepts/decision-service.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 4,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "concepts/deployment-modes.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 4
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "concepts/engine.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "concepts/execution-ownership.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "concepts/governed-data.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "concepts/simulation-models.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 29,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 4,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 5,
+      "path": "concepts.md",
+      "product_claims": {
+        "algenta": 19,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 1,
+      "links": 1,
+      "path": "configuration.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 2,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 8,
+        "static_only": 23
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/azure-blob.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 43
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 2,
+        "static_only": 15
+      },
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 11,
+      "path": "connectors/bigquery.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 22
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 11
+      },
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 11,
+      "path": "connectors/clickhouse.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 14
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 6,
+        "static_only": 33
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/code-repositories.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 50
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 6
+      },
+      "external_links": 0,
+      "internal_links": 12,
+      "links": 12,
+      "path": "connectors/databases.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 11
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 8,
+        "static_only": 18
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/elasticsearch.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 37
+    },
+    {
+      "code_fences": 14,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 6,
+        "static_only": 40
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/files.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 58
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 7,
+        "static_only": 26
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/gcs.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 45
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 7,
+        "static_only": 18
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "connectors/mssql.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 30
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 7,
+        "static_only": 17
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "connectors/mysql.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 29
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 8,
+        "static_only": 20
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/neo4j.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 39
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 7
+      },
+      "external_links": 0,
+      "internal_links": 15,
+      "links": 15,
+      "path": "connectors/overview.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 11
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 8,
+        "static_only": 20
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "connectors/postgres.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 39
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 8,
+        "static_only": 26
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/redis.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 46
+    },
+    {
+      "code_fences": 12,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 8,
+        "static_only": 20
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "connectors/redshift.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 39
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 10
+      },
+      "external_links": 0,
+      "internal_links": 17,
+      "links": 17,
+      "path": "connectors/reference.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 12
+    },
+    {
+      "code_fences": 14,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 5,
+        "static_only": 46
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "connectors/rest-api.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 63
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 9,
+        "static_only": 28
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "connectors/s3.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 49
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 8,
+        "static_only": 28
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "connectors/snowflake.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 48
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 6,
+        "static_only": 21
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "connectors/sqlite.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 39
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/catalog.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 4
+      },
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/filtered-install.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 2,
+        "cohenta": 1,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 5
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 1
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "engine/health.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 1,
+        "static_only": 8
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "engine/mojo-sidecar.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 12
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 4
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "engine/runtime-libraries.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 8
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "engine/runtime-library-catalog.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 11,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 15,
+        "safe_static": 5,
+        "static_only": 6
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/agent-runs.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 1
+      },
+      "shell_commands": 26
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 4,
+        "static_only": 10
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "guides/air-gapped.md",
+      "product_claims": {
+        "algenta": 13,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 17
+    },
+    {
+      "code_fences": 14,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 16
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "guides/async-jobs.md",
+      "product_claims": {
+        "algenta": 10,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 21
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/byok.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 8,
+        "safe_static": 0,
+        "static_only": 7
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/capabilities.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 15
+    },
+    {
+      "code_fences": 20,
+      "command_counts": {
+        "destructive_mutation": 2,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 0,
+        "static_only": 26
+      },
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 11,
+      "path": "guides/capability-bindings.md",
+      "product_claims": {
+        "algenta": 20,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 39
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 7,
+        "safe_static": 5,
+        "static_only": 4
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "guides/ci-cd.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 1,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 17
+    },
+    {
+      "code_fences": 11,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 13,
+        "safe_static": 5,
+        "static_only": 18
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "guides/connect-data.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 36
+    },
+    {
+      "code_fences": 17,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 0,
+        "static_only": 32
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "guides/decision-memory-api.md",
+      "product_claims": {
+        "algenta": 22,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 44
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 7,
+        "safe_static": 1,
+        "static_only": 10
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "guides/decision-memory.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 18
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 3,
+        "static_only": 1
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 8,
+      "path": "guides/device-binding.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 7
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 4
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/execution-policy.md",
+      "product_claims": {
+        "algenta": 12,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 8
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 10
+      },
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 9,
+      "path": "guides/external-mcp.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 13
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 5,
+        "static_only": 17
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "guides/first-query.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 25
+    },
+    {
+      "code_fences": 18,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 9,
+        "safe_static": 0,
+        "static_only": 24
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "guides/governed-decisions.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 33
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "guides/governed-query.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 6,
+        "safe_static": 0,
+        "static_only": 12
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "guides/instant-map.md",
+      "product_claims": {
+        "algenta": 15,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 19
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 27
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "guides/recommend-and-score.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 31
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "guides/renewal-capacity-allocation.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 19,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 7,
+        "safe_static": 4,
+        "static_only": 38
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/repository-fix.md",
+      "product_claims": {
+        "algenta": 18,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 49
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 29
+      },
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 12,
+      "path": "guides/repository-intelligence.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 33
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "guides/run-a-decision.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 17
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/security-analysis.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 19
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 13
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "guides/simulate.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 14
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 20
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "guides/triggers.md",
+      "product_claims": {
+        "algenta": 13,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 26
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 11
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "guides/webhooks.md",
+      "product_claims": {
+        "algenta": 15,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 13
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 26
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "guides/what-if.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 28
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "help/ai-access.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 11,
+      "links": 11,
+      "path": "help/glossary.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 1,
+        "cohenta": 1,
+        "decimas": 1,
+        "escrypto": 1,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 9,
+      "path": "help/quick-reference.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 1,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 19,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 7,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 1,
+        "static_only": 18
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 11,
+      "path": "install.md",
+      "product_claims": {
+        "algenta": 30,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 31
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 4,
+        "static_only": 7
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "integrations/azure/gateway.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 12
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "integrations/microsoft/copilot-teams.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 2
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 4,
+      "path": "integrations/microsoft/entra-sso.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "integrations/microsoft/excel.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "integrations/microsoft/overview.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 2,
+        "static_only": 2
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 6,
+      "path": "licensing.md",
+      "product_claims": {
+        "algenta": 13,
+        "codna": 8,
+        "cohenta": 2,
+        "decimas": 2,
+        "escrypto": 2,
+        "mission": 0
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 17,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 12,
+        "safe_static": 0,
+        "static_only": 13
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "llm/completions.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 25
+    },
+    {
+      "code_fences": 14,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 7,
+        "safe_static": 0,
+        "static_only": 15
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "llm/embeddings.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 22
+    },
+    {
+      "code_fences": 9,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 2,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 9,
+      "path": "llm/models.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 2
+      },
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 9,
+      "path": "login.md",
+      "product_claims": {
+        "algenta": 24,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 7
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "mcp-tools/account-and-meta.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 5
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 5
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "mcp-tools/agent-runs.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 2
+      },
+      "shell_commands": 9
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "mcp-tools/capability-plane.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "mcp-tools/connectors.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 5
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "mcp-tools/control-plane.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 5
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 0,
+        "static_only": 6
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "mcp-tools/data.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 9
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "mcp-tools/decisions.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 23
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "mcp-tools/jobs-and-triggers.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 28
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "mcp-tools/llm.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "mcp-tools/overview.md",
+      "product_claims": {
+        "algenta": 5,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 8
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "mcp-tools/query.md",
+      "product_claims": {
+        "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 9
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "mcp-tools/repository-intelligence.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "mcp-tools/runtime-libraries.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 1,
+        "static_only": 1
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "operate/byok-kms.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 11,
+      "command_counts": {
+        "destructive_mutation": 2,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 7,
+        "safe_static": 0,
+        "static_only": 17
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "operate/deployments-and-nodes.md",
+      "product_claims": {
+        "algenta": 12,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 26
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 6,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "operate/device-key-store.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 7
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 1,
+        "static_only": 1
+      },
+      "external_links": 0,
+      "internal_links": 10,
+      "links": 10,
+      "path": "operate/monitoring.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 7
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 3,
+        "safe_static": 3,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "operate/privacy-egress.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "operate/teams-rbac.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 0,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 14,
+      "links": 14,
+      "path": "overview.md",
+      "product_claims": {
+        "algenta": 7,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 6,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 16
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "playground.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 20
+    },
+    {
+      "code_fences": 17,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 2,
+        "external_or_mutating": 0,
+        "requires_environment": 8,
+        "safe_static": 2,
+        "static_only": 17
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "quickstart.md",
+      "product_claims": {
+        "algenta": 23,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 29
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 16,
+        "safe_static": 0,
+        "static_only": 2
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "sdk/algenta-cli.md",
+      "product_claims": {
+        "algenta": 54,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 19
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 2,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 1,
+      "internal_links": 8,
+      "links": 9,
+      "path": "sdk/mcp-registry.md",
+      "product_claims": {
+        "algenta": 27,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 4
+    },
+    {
+      "code_fences": 16,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 2,
+        "static_only": 12
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/mcp.md",
+      "product_claims": {
+        "algenta": 22,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 20
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/python/account-and-control-plane.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "sdk/python/agent-runs.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "sdk/python/connectors-and-data.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/python/decisions-and-products.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/python/jobs-triggers-capabilities.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/python/llm.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 9,
+      "links": 9,
+      "path": "sdk/python/overview.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/python/repositories.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 2,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 6,
+      "path": "sdk/python/simulations-and-queries.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 29,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 6,
+        "safe_static": 2,
+        "static_only": 9
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/python.md",
+      "product_claims": {
+        "algenta": 23,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 18
+    },
+    {
+      "code_fences": 8,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "sdk/testing.md",
+      "product_claims": {
+        "algenta": 9,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 8,
+      "links": 8,
+      "path": "sdk/tool-discovery.md",
+      "product_claims": {
+        "algenta": 6,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 2
+    },
+    {
+      "code_fences": 13,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/typescript/account-and-control-plane.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 5
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "sdk/typescript/agent-runs.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 5
+      },
+      "shell_commands": 6
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/typescript/connectors-and-data.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/typescript/decisions-and-products.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 10,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "sdk/typescript/jobs-triggers-capabilities.md",
+      "product_claims": {
+        "algenta": 4,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/typescript/llm.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "sdk/typescript/overview.md",
+      "product_claims": {
+        "algenta": 3,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 5,
+      "links": 5,
+      "path": "sdk/typescript/repositories.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 1
+    },
+    {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "sdk/typescript/simulations-and-queries.md",
+      "product_claims": {
+        "algenta": 0,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 24,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 9
+      },
+      "external_links": 0,
+      "internal_links": 7,
+      "links": 7,
+      "path": "sdk/typescript.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 12
+    },
+    {
+      "code_fences": 19,
+      "command_counts": {
+        "destructive_mutation": 1,
+        "environment_mutating": 3,
+        "external_or_mutating": 0,
+        "requires_environment": 5,
+        "safe_static": 2,
+        "static_only": 27
+      },
+      "external_links": 0,
+      "internal_links": 6,
+      "links": 7,
+      "path": "self-hosting.md",
+      "product_claims": {
+        "algenta": 26,
+        "codna": 2,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 38
+    },
+    {
+      "code_fences": 11,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 11,
+        "safe_static": 8,
+        "static_only": 1
+      },
+      "external_links": 1,
+      "internal_links": 4,
+      "links": 5,
+      "path": "troubleshooting.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 20
+    }
+  ],
+  "snippets": {
+    "code_fences": 1081,
+    "runnable_safe_commands": 197,
+    "shell_commands": 2018,
+    "static_or_guarded_commands": 1821
+  },
+  "source": "gitbook",
+  "source_claims": {
+    "hardcoded_mcp_tool_count_claims": 0,
+    "mcp_registry_tool_count": 140
+  },
+  "status": "pass",
+  "summary": {
+    "blockers": 0,
+    "claim_mentions": 960,
+    "commands_classified": 2018,
+    "failures": 0,
+    "fixes": 0,
+    "links_checked": 967,
+    "pages_checked": 137,
+    "skips": 1821,
+    "snippets_checked": 1081,
+    "warnings": 0
+  },
+  "totals": {
+    "blockers": 0,
+    "claim_mentions": 960,
+    "code_fences": 1081,
+    "destructive_mutation_commands": 23,
+    "environment_mutating_commands": 26,
+    "external_links": 2,
+    "external_or_mutating_commands": 0,
+    "failures": 0,
+    "fixes": 0,
+    "internal_links": 952,
+    "links": 967,
+    "pages": 137,
+    "product_claims": {
+      "algenta": 920,
+      "codna": 19,
+      "cohenta": 4,
+      "decimas": 3,
+      "escrypto": 3,
+      "mission": 11
+    },
+    "public_pages": 136,
+    "requires_environment_commands": 670,
+    "runnable_commands": 197,
+    "safe_static_commands": 197,
+    "shell_commands": 2018,
+    "skips": 1821,
+    "static_only_commands": 1102,
+    "static_or_guarded_commands": 1821,
+    "warnings": 0
+  }
+}

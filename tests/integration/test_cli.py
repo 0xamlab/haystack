@@ -57,10 +57,10 @@ from tests.integration.live_data_source_server import (
     default_refreshable_dataset_payload,
     static_json_server,
 )
-from tests.integration.live_local_surface_env import configure_local_live_server_env
 from tests.integration.live_integration_artifacts import (
     write_live_integration_summary_from_results,
 )
+from tests.integration.live_local_surface_env import configure_local_live_server_env
 from tests.integration.live_repository_fixture import (
     assert_repository_intelligence_capabilities_payload,
     live_repository_fixture,
@@ -119,6 +119,11 @@ def _missing_live_api_key_reason(exc: BaseException) -> str | None:
     if isinstance(error, dict) and error.get("code") == "invalid_api_key":
         return "DE_API_KEY is not set; skipping authenticated CLI checks that require a real live key."
     return None
+
+
+def _runtime_proof_api_key_available() -> bool:
+    forced_local = os.environ.get("ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS", "").strip().lower()
+    return API_KEY_CONFIGURED or forced_local in {"1", "true", "yes", "on"}
 
 
 def _read_log(log_path: Path | None) -> str:
@@ -1037,7 +1042,7 @@ print("=" * 70)
 
 
 def test_cli_runtime_admin_benchmarks():
-    if not API_KEY_CONFIGURED:
+    if not _runtime_proof_api_key_available():
         raise EnvironmentBlocked(
             "DE_API_KEY is not set; skipping authenticated CLI checks that require a real live key."
         )
@@ -1107,7 +1112,7 @@ check("CLI runtime proof surface → benchmark classes + evidence", test_cli_run
 
 
 def test_cli_runtime_manifest():
-    if not API_KEY_CONFIGURED:
+    if not _runtime_proof_api_key_available():
         raise EnvironmentBlocked(
             "DE_API_KEY is not set; skipping authenticated CLI checks that require a real live key."
         )

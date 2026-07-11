@@ -69,9 +69,11 @@ def test_root_package_json_exposes_repo_root_js_commands() -> None:
     assert "tests/test_plan_alignment_matrix.py" in scripts["test:formal-runtime-foundation"]
     assert RUN_REPO_PYTHON.exists()
     assert scripts["test:formal-runtime-foundation"].startswith(
+        'RUNTIME_WORKER="$PWD/build/go-live-runtime/simulate"; '
         "./scripts/run_repo_python.sh tests/integration/test_csv_pipeline.py && "
         "./scripts/run_repo_python.sh benchmarks/scorecard_suite_summaries.py && "
-        'if [ "${DE_SKIP_GO_LIVE_VERIFY:-0}" != "1" ]; then ./scripts/run_repo_python.sh tests/go_live_verify.py; fi && '
+        'if [ "${DE_SKIP_GO_LIVE_VERIFY:-0}" != "1" ]; then ./scripts/run_repo_python.sh tests/go_live_verify.py --skip-pytest; fi && '
+        'if [ -x "$RUNTIME_WORKER" ]; then export ALGENTA_NATIVE_WORKER="$RUNTIME_WORKER" ALGENTA_RUNTIME_WORKER="$RUNTIME_WORKER" ALGENTA_MOJO_BINARY="$RUNTIME_WORKER" MOJO_BINARY_PATH="$RUNTIME_WORKER"; fi && '
         "./scripts/run_repo_python.sh benchmarks/llm_rollout_proof_bundle.py --skip-live && "
         "./scripts/run_repo_python.sh -m pytest -q "
     )
@@ -124,11 +126,16 @@ def test_makefile_exposes_root_js_targets() -> None:
     assert "js-lint:" in text
     assert "\t" + "pnpm lint" in text
     assert "js-test:" in text
-    assert "\t" + "pnpm test" in text
+    assert "\t" + "pnpm test:js" in text
     assert "js-build:" in text
     assert "\t" + "pnpm build" in text
     assert "js-check:" in text
-    assert "\t" + "pnpm check" in text
+    makefile_after_js_check = text.split("js-check:", 1)[1].split("## Auto-format code", 1)[0]
+    assert "\t" + "pnpm lint" in makefile_after_js_check
+    assert "\t" + "pnpm test:js" in makefile_after_js_check
+    assert "\t" + "pnpm build" in makefile_after_js_check
+    assert "pnpm check" not in makefile_after_js_check
+    assert "\t" + "pnpm test\n" not in makefile_after_js_check
     assert "test-unit:" in text
     assert "\t$(REPO_PYTHON) -m pytest tests/unit/ -v --tb=short" in text
     assert "test-integration:" in text

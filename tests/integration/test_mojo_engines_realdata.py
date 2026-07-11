@@ -66,8 +66,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from tests.integration.live_capacity_blockers import classify_simulation_capacity_blocker
-from tests.integration.live_integration_artifacts import write_live_integration_summary
+from tests.integration.live_capacity_blockers import (  # noqa: E402
+    classify_simulation_capacity_blocker,
+)
+from tests.integration.live_integration_artifacts import (  # noqa: E402
+    write_live_integration_summary,
+)
 
 socket.setdefaulttimeout(30)
 
@@ -90,7 +94,17 @@ BASE_URL = resolve_local_live_base_url()
 API_KEY = resolve_local_live_api_key()
 API_KEY_CONFIGURED = has_configured_local_live_api_key()
 TEST_FILES = _PROJECT_ROOT / "test_files"
-BINARY_PATH = _PROJECT_ROOT / "mojo_build" / "simulate"
+
+
+def _resolve_runtime_worker_path() -> Path:
+    for env_name in ("ALGENTA_NATIVE_WORKER", "ALGENTA_RUNTIME_WORKER", "ALGENTA_MOJO_BINARY"):
+        configured = os.environ.get(env_name, "").strip()
+        if configured:
+            return Path(configured).expanduser()
+    return _PROJECT_ROOT / "mojo_build" / "simulate"
+
+
+BINARY_PATH = _resolve_runtime_worker_path()
 ADAPTER_PATH = _PROJECT_ROOT / "mojo" / "bindings" / "python_adapter.py"
 
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
@@ -176,7 +190,7 @@ def skip(name: str, reason: str) -> None:
     _emit(f"  {SKIP} {name}: {reason}")
 
 
-class EnvironmentBlocked(RuntimeError):
+class EnvironmentBlocked(RuntimeError):  # noqa: N818
     """Raised when the live environment cannot execute simulation due to quota/capacity."""
 
 

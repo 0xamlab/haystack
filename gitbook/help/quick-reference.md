@@ -13,7 +13,7 @@ The fastest lookup in the docs: find your task, copy the call. Each row shows th
 | --- | --- | --- |
 | **HTTP API** (`/v1`) | Any language, zero install | [API overview](../api/overview.md) |
 | **Python SDK** | Live typed client over the API | [Python SDK](../sdk/python.md) |
-| **TypeScript SDK** | Source-built typed client until npm publication | [TypeScript SDK](../sdk/typescript.md) |
+| **TypeScript SDK** | Live typed client from npm (`algenta-sdk`) | [TypeScript SDK](../sdk/typescript.md) |
 | **`algenta` Runtime** | Source-built local execution until PyPI runtime publication | [Quickstart](../quickstart.md) |
 | **MCP server** | AI agents (Cursor, Claude Desktop) | [MCP server](../sdk/mcp.md) |
 | **`de` CLI** | The terminal | [CLI reference](../cli.md) |

@@ -1,14 +1,14 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:57405",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:58519",
     "failed_checks": [],
     "skipped_checks": []
   },
-  "elapsed_seconds": 10.398,
+  "elapsed_seconds": 3.98,
   "failed": 0,
-  "generated_at": "2026-07-11T02:25:43.888986Z",
+  "generated_at": "2026-07-11T06:18:51.442099Z",
   "name": "typescript_sdk_client_live",
   "passed": 15,
   "script": "tests/integration/test_typescript_sdk_client_live.py",

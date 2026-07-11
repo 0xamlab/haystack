@@ -25,6 +25,7 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
 
     assert report["status"] == "pass"
+    assert report["source"] == "gitbook"
     assert report["summary"]["pages_checked"] >= 120
     assert report["summary"]["links_checked"] >= 200
     assert report["summary"]["snippets_checked"] >= 900
@@ -152,14 +153,155 @@ def test_sitemap_url_to_markdown_route_maps_gitbook_urls() -> None:
     )
 
 
-def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch) -> None:
+def test_summary_expected_sitemap_urls_maps_gitbook_navigation(tmp_path: Path) -> None:
+    audit = _load_module()
+    (tmp_path / "SUMMARY.md").write_text(
+        """# Table of contents
+
+* [What Algenta is](overview.md)
+
+## Getting Started
+
+* [Install](install.md)
+
+## Run the engine
+
+* [Run the Mojo engine](engine/mojo-sidecar.md)
+* [How the engine works](concepts/engine.md)
+
+## SDKs
+
+* [TypeScript client reference](sdk/typescript/overview.md)
+* [MCP server](sdk/mcp.md)
+
+## Microsoft & Azure
+
+* [Algenta for Microsoft Cloud](integrations/microsoft/overview.md)
+* [Deploy the decision gateway to your Azure](integrations/azure/gateway.md)
+
+## Deploy & Operate
+
+* [Device key store](operate/device-key-store.md)
+""",
+        encoding="utf-8",
+    )
+
+    assert audit._summary_expected_sitemap_urls(tmp_path, "https://docs.example/") == [
+        "https://docs.example",
+        "https://docs.example/getting-started/install",
+        "https://docs.example/run-the-engine/mojo-sidecar",
+        "https://docs.example/run-the-engine/engine",
+        "https://docs.example/sdks/typescript/overview",
+        "https://docs.example/sdks/mcp",
+        "https://docs.example/microsoft-and-azure/overview",
+        "https://docs.example/microsoft-and-azure/gateway",
+        "https://docs.example/deploy-and-operate/device-key-store",
+    ]
+
+
+def test_package_registry_audit_accepts_current_public_sdk_packages(monkeypatch) -> None:
+    audit = _load_module()
+
+    def fake_fetch_json(url: str, *, timeout: float = 20.0):
+        del timeout
+        if url.startswith("https://pypi.org/pypi/"):
+            package = url.split("/pypi/", 1)[1].split("/", 1)[0]
+            if package in {"algenta-sdk", "algenta-mcp"}:
+                return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
+            return 404, None
+        if url == "https://registry.npmjs.org/algenta-sdk/latest":
+            return 200, {
+                "version": "1.0.2",
+                "description": "TypeScript SDK for Algenta",
+                "license": "Apache-2.0",
+            }
+        return 500, None
+
+    monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
+
+    issues, report = audit._audit_package_registries("pip install algenta-sdk")
+
+    assert issues == []
+    assert report["pypi"]["algenta-sdk"]["status"] == 200
+    assert report["pypi"]["algenta-mcp"]["status"] == 200
+    assert report["pypi"]["algenta"]["status"] == 404
+    assert report["npm"]["algenta-sdk"]["version"] == "1.0.2"
+    assert report["public_runtime_install_claims"] == 0
+
+
+def test_package_registry_audit_rejects_public_runtime_install_before_pypi_live(
+    monkeypatch,
+) -> None:
+    audit = _load_module()
+
+    def fake_fetch_json(url: str, *, timeout: float = 20.0):
+        del timeout
+        if url.startswith("https://pypi.org/pypi/"):
+            package = url.split("/pypi/", 1)[1].split("/", 1)[0]
+            if package in {"algenta-sdk", "algenta-mcp"}:
+                return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
+            return 404, None
+        if url == "https://registry.npmjs.org/algenta-sdk/latest":
+            return 200, {"version": "1.0.2", "description": "TypeScript SDK", "license": "Apache-2.0"}
+        return 500, None
+
+    monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
+
+    issues, report = audit._audit_package_registries("python3 -m pip install algenta\n")
+
+    assert [issue.code for issue in issues] == ["runtime_package_install_not_live"]
+    assert report["public_runtime_install_claims"] == 1
+
+
+def test_package_registry_audit_rejects_stale_runtime_caveat_after_pypi_live(
+    monkeypatch,
+) -> None:
+    audit = _load_module()
+
+    def fake_fetch_json(url: str, *, timeout: float = 20.0):
+        del timeout
+        if url.startswith("https://pypi.org/pypi/"):
+            package = url.split("/pypi/", 1)[1].split("/", 1)[0]
+            if package in {"algenta-sdk", "algenta-mcp", "algenta"}:
+                return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
+            return 404, None
+        if url == "https://registry.npmjs.org/algenta-sdk/latest":
+            return 200, {"version": "1.0.2", "description": "TypeScript SDK", "license": "Apache-2.0"}
+        return 500, None
+
+    monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
+
+    issues, report = audit._audit_package_registries(
+        "The runtime distribution is not public on PyPI yet."
+    )
+
+    assert [issue.code for issue in issues] == ["stale_runtime_registry_caveat"]
+    assert report["pypi"]["algenta"]["status"] == 200
+
+
+def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: Path) -> None:
     audit = _load_module()
     fetched_urls: list[str] = []
+    (tmp_path / "SUMMARY.md").write_text(
+        """# Table of contents
+
+* [What Algenta is](overview.md)
+
+## SDKs
+
+* [MCP server](sdk/mcp.md)
+
+## Help
+
+* [Using these docs with AI](help/ai-access.md)
+""",
+        encoding="utf-8",
+    )
     sitemap = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://docs.example</loc></url>
-  <url><loc>https://docs.example/sdk/mcp</loc></url>
-  <url><loc>https://docs.example/guides/ai-access/</loc></url>
+  <url><loc>https://docs.example/sdks/mcp</loc></url>
+  <url><loc>https://docs.example/help/ai-access</loc></url>
 </urlset>
 """
 
@@ -178,19 +320,21 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch) -> None:
             return 405, b'{"jsonrpc":"2.0","error":{"code":-32000}}', "application/json"
         if (
             url.endswith("/.md")
-            or url.endswith("/sdk/mcp.md")
-            or url.endswith("/guides/ai-access.md")
+            or url.endswith("/sdks/mcp.md")
+            or url.endswith("/help/ai-access.md")
         ):
             return 200, b"# Algenta page\n", "text/markdown; charset=utf-8"
         return 404, b"not found", "text/plain"
 
     monkeypatch.setattr(audit, "_fetch", fake_fetch)
 
-    issues, report = audit._audit_live("https://docs.example", public_page_count=3)
+    issues, report = audit._audit_live("https://docs.example", public_page_count=3, source=tmp_path)
 
     assert issues == []
     assert report["sitemap_urls"] == 3
+    assert report["source_navigation_urls"] == 3
+    assert report["sitemap_matches_source_navigation"] is True
     assert report["markdown_pages_checked"] == 3
     assert "https://docs.example/.md" in fetched_urls
-    assert "https://docs.example/sdk/mcp.md" in fetched_urls
-    assert "https://docs.example/guides/ai-access.md" in fetched_urls
+    assert "https://docs.example/sdks/mcp.md" in fetched_urls
+    assert "https://docs.example/help/ai-access.md" in fetched_urls

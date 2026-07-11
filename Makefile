@@ -1,4 +1,4 @@
-.PHONY: dev dev-api dev-local dev-up dev-build down logs seed self-host-smoke self-host-persistence-proof self-host-install-proof self-host-endpoint-matrix self-host-status self-host-verify docs-gitbook-status docs-gitbook-pack docs-gitbook-verify docs-gen docs-check capability-plane-verify repository-intelligence-channel-parity \
+.PHONY: dev dev-api dev-local dev-up dev-build down logs seed self-host-smoke self-host-persistence-proof self-host-install-proof self-host-endpoint-matrix self-host-status self-host-verify docs-gitbook-status docs-gitbook-pack docs-gitbook-verify docs-gen docs-check docs-a-z-audit docs-a-z-audit-live capability-plane-verify repository-intelligence-channel-parity \
         migrate migrate-down migrate-new mcp-setup mcp-stdio mcp-http \
         test test-unit test-integration test-contract test-load \
         lint format typecheck openapi clean help stop-api logs-api-local \
@@ -230,6 +230,22 @@ docs-gen:
 docs-coverage:
 	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
 
+## A-Z GitBook source audit: snippets, links, private leakage, and Cursor/Codex/Google readiness
+docs-a-z-audit:
+	$(REPO_PYTHON) scripts/docs/audit_gitbook_claims.py \
+		--source gitbook \
+		--skip-live \
+		--strict \
+		--json-report build/docs-audit/gitbook-a-z.json
+
+## A-Z GitBook live audit: source audit plus published sitemap/robots/llms/.md/docs-MCP probes
+docs-a-z-audit-live:
+	$(REPO_PYTHON) scripts/docs/audit_gitbook_claims.py \
+		--source gitbook \
+		--live https://docs.algenta.ai \
+		--strict \
+		--json-report build/docs-audit/gitbook-a-z.json
+
 ## CI no-drift gate: fail if any generated reference page is stale vs the code
 docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_config_reference.py --check
@@ -238,6 +254,7 @@ docs-check:
 	$(REPO_PYTHON) scripts/docs/gen_openapi_pages.py --check
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
 	$(REPO_PYTHON) scripts/docs/check_docs_coverage.py
+	$(REPO_PYTHON) scripts/docs/audit_gitbook_claims.py --source gitbook --skip-live --strict --json-report build/docs-audit/gitbook-a-z.json
 
 ## capability-plane-verify: run the focused capability-plane proof bundle across contract, API, MCP, runtime, CLI, and docs
 capability-plane-verify:
@@ -550,15 +567,17 @@ js-lint:
 
 ## Run the shipped JavaScript/TypeScript test surface from the repo root
 js-test:
-	pnpm test
+	pnpm test:js
 
 ## Build the shipped JavaScript packages from the repo root
 js-build:
 	pnpm build
 
-## Run the full JavaScript/TypeScript install + lint + test + build path
+## Run the JavaScript/TypeScript lint + test + build path without re-entering the full repo check graph
 js-check:
-	pnpm check
+	pnpm lint
+	pnpm test:js
+	pnpm build
 
 ## Auto-format code
 format:

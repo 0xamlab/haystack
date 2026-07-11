@@ -1,20 +1,17 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:56337",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:59353",
     "failed_checks": [],
-    "skipped_checks": [
-      "CLI runtime proof surface \u2192 benchmark classes + evidence",
-      "CLI runtime proof surface \u2192 signed manifest benchmark classes"
-    ]
+    "skipped_checks": []
   },
-  "elapsed_seconds": 26.785,
+  "elapsed_seconds": 23.542,
   "failed": 0,
-  "generated_at": "2026-07-11T02:25:19.570762Z",
+  "generated_at": "2026-07-11T06:19:27.550171Z",
   "name": "cli_integration",
-  "passed": 41,
+  "passed": 43,
   "script": "tests/integration/test_cli.py",
-  "skipped": 2,
+  "skipped": 0,
   "total": 43
 }

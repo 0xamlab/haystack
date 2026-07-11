@@ -1,14 +1,14 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:58865",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:53388",
     "failed_checks": [],
     "skipped_checks": []
   },
-  "elapsed_seconds": 14.368,
+  "elapsed_seconds": 7.73,
   "failed": 0,
-  "generated_at": "2026-07-11T02:26:24.389204Z",
+  "generated_at": "2026-07-11T06:17:17.792710Z",
   "name": "python_sdk_integration",
   "passed": 45,
   "script": "tests/integration/test_python_sdk.py",

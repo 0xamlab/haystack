@@ -1,15 +1,15 @@
 {
   "artifact": "live_integration_summary",
   "details": {
-    "api_key_configured": false,
-    "base_url": "http://127.0.0.1:59634",
+    "api_key_configured": true,
+    "base_url": "http://127.0.0.1:52498",
     "expected_tool_count": 112,
     "failed_checks": [],
     "skipped_checks": []
   },
-  "elapsed_seconds": 9.807,
+  "elapsed_seconds": 9.851,
   "failed": 0,
-  "generated_at": "2026-07-11T02:26:47.291998Z",
+  "generated_at": "2026-07-11T06:16:58.327105Z",
   "name": "mcp_server_integration",
   "passed": 65,
   "script": "tests/integration/test_mcp_server.py",

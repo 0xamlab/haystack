@@ -29,6 +29,8 @@ import json
 import os
 import re
 import shutil
+import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -71,6 +73,16 @@ PASS = "✅"
 FAIL = "❌"
 SUITE_NAME = "go_live_full_real"
 SUMMARY_ARTIFACT = LIVE_INTEGRATION_SUMMARY_ARTIFACTS[SUITE_NAME]
+GO_LIVE_RUNTIME_DIR = ROOT / "build" / "go-live-runtime"
+GO_LIVE_RUNTIME_WORKER_ENV = "ALGENTA_GO_LIVE_RUNTIME_WORKER"
+GO_LIVE_RUNTIME_BUILD_TIMEOUT = int(
+    os.environ.get("ALGENTA_GO_LIVE_RUNTIME_BUILD_TIMEOUT", "420")
+)
+GO_LIVE_RUNTIME_SMOKE_TIMEOUT = float(
+    os.environ.get("ALGENTA_GO_LIVE_RUNTIME_SMOKE_TIMEOUT", "15")
+)
+GO_LIVE_RUNTIME_EXTRA_MODULES = ("ab_testing", "elevator")
+RUNTIME_PREFLIGHT_SUITE = "Go-live source runtime worker preflight"
 
 LIVE_SUITES: tuple[tuple[str, list[str], int], ...] = (
     ("Live MCP integration", [sys.executable, "tests/integration/test_mcp_server.py"], 300),
@@ -176,7 +188,7 @@ LOCAL_SUITES: tuple[tuple[str, list[str], int], ...] = (
         1200,
     ),
 )
-EXPECTED_SUITE_COUNT = 1 + len(LIVE_SUITES) + 1 + len(LOCAL_SUITES) + 1 + 1
+EXPECTED_SUITE_COUNT = 1 + 1 + len(LIVE_SUITES) + 1 + len(LOCAL_SUITES) + 1 + 1
 
 
 def _text_output(data: object) -> str:
@@ -229,6 +241,304 @@ def run_suite(
     return ok, elapsed, output
 
 
+def _tail(text: str, *, max_lines: int = 80) -> str:
+    lines = text.splitlines()
+    return "\n".join(lines[-max_lines:] if lines else ["<no output>"])
+
+
+def _go_live_runtime_worker_path() -> Path:
+    configured = os.environ.get(GO_LIVE_RUNTIME_WORKER_ENV, "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return GO_LIVE_RUNTIME_DIR / "simulate"
+
+
+def _go_live_runtime_required_modules() -> tuple[str, ...]:
+    from tests.llm_rollout_matrix import LLM_ROLLOUT_MODULE_NAMES
+
+    if not LLM_ROLLOUT_MODULE_NAMES:
+        raise RuntimeError("LLM rollout runtime module fixture is empty.")
+    return tuple(dict.fromkeys((*LLM_ROLLOUT_MODULE_NAMES, *GO_LIVE_RUNTIME_EXTRA_MODULES)))
+
+
+def _runtime_worker_env(worker_path: Path) -> dict[str, str]:
+    resolved = str(worker_path.resolve())
+    return {
+        "ALGENTA_NATIVE_WORKER": resolved,
+        "ALGENTA_RUNTIME_WORKER": resolved,
+        "ALGENTA_MOJO_BINARY": resolved,
+        "MOJO_BINARY_PATH": resolved,
+    }
+
+
+def _worker_manifest_path(worker_path: Path) -> Path:
+    return worker_path.with_name(f"{worker_path.name}.manifest.json")
+
+
+def _read_worker_manifest(worker_path: Path) -> dict[str, Any] | None:
+    manifest_path = _worker_manifest_path(worker_path)
+    if not manifest_path.exists():
+        return None
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _worker_manifest_supports_modules(
+    worker_path: Path,
+    required_modules: tuple[str, ...],
+) -> bool:
+    manifest = _read_worker_manifest(worker_path)
+    if manifest is None:
+        return False
+    module_filter = manifest.get("module_filter")
+    if module_filter == []:
+        return True
+    if not isinstance(module_filter, list):
+        return False
+    filtered_modules = {item for item in module_filter if isinstance(item, str)}
+    return set(required_modules).issubset(filtered_modules)
+
+
+def _worker_manifest_is_current(
+    worker_path: Path,
+    required_modules: tuple[str, ...],
+) -> bool:
+    if not worker_path.exists() or not os.access(worker_path, os.X_OK):
+        return False
+    if not _worker_manifest_supports_modules(worker_path, required_modules):
+        return False
+    from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
+
+    return inspect_mojo_binary_freshness(worker_path).is_fresh
+
+
+def _recv_worker_frame(sock: socket.socket) -> dict[str, Any]:
+    header = sock.recv(4)
+    if len(header) != 4:
+        raise RuntimeError("Runtime worker returned a short frame header.")
+    frame_len = struct.unpack(">I", header)[0]
+    payload = bytearray()
+    while len(payload) < frame_len:
+        chunk = sock.recv(frame_len - len(payload))
+        if not chunk:
+            raise RuntimeError("Runtime worker closed the socket before completing a frame.")
+        payload.extend(chunk)
+    decoded = json.loads(payload.decode("utf-8"))
+    if not isinstance(decoded, dict):
+        raise RuntimeError("Runtime worker returned a non-object frame.")
+    return decoded
+
+
+def _send_worker_frame(sock: socket.socket, payload: dict[str, Any]) -> dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    sock.sendall(struct.pack(">I", len(body)) + body)
+    return _recv_worker_frame(sock)
+
+
+def _wait_for_worker_socket(
+    proc: subprocess.Popen[str],
+    socket_path: Path,
+) -> None:
+    deadline = time.monotonic() + GO_LIVE_RUNTIME_SMOKE_TIMEOUT
+    while not socket_path.exists():
+        if proc.poll() is not None:
+            output = proc.stdout.read() if proc.stdout is not None else ""
+            raise RuntimeError(
+                "Runtime worker exited before opening the smoke-test socket.\n"
+                + _tail(output)
+            )
+        if time.monotonic() >= deadline:
+            proc.terminate()
+            raise TimeoutError("Timed out waiting for runtime worker smoke-test socket.")
+        time.sleep(0.01)
+
+
+def _connect_worker_socket(socket_path: Path) -> socket.socket:
+    deadline = time.monotonic() + GO_LIVE_RUNTIME_SMOKE_TIMEOUT
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(GO_LIVE_RUNTIME_SMOKE_TIMEOUT)
+        try:
+            client.connect(str(socket_path))
+            return client
+        except OSError as exc:
+            last_error = exc
+            client.close()
+            time.sleep(0.01)
+    raise RuntimeError(f"Timed out connecting to runtime worker socket: {last_error}")
+
+
+def _smoke_go_live_runtime_worker(worker_path: Path) -> None:
+    from apps.runtime.mojo_library_runner import (
+        build_runtime_library_worker_request,
+        parse_runtime_library_worker_response,
+    )
+    from tests.llm_rollout_matrix import LLM_ROLLOUT_FUNCTION_CASES, assert_rollout_channel_result
+
+    if not LLM_ROLLOUT_FUNCTION_CASES:
+        raise RuntimeError("LLM rollout runtime function fixture is empty.")
+    case = next(
+        (
+            item
+            for item in LLM_ROLLOUT_FUNCTION_CASES
+            if item.module == "bpe_tokenizer" and item.function == "bpe_merge_score"
+        ),
+        LLM_ROLLOUT_FUNCTION_CASES[0],
+    )
+    function_spec, request = build_runtime_library_worker_request(
+        case.module,
+        case.function,
+        case.args,
+    )
+    tmp_dir = Path(tempfile.mkdtemp(prefix="algenta-go-live-runtime-smoke-"))
+    socket_path = tmp_dir / "worker.sock"
+    proc: subprocess.Popen[str] | None = None
+    try:
+        proc = subprocess.Popen(
+            [str(worker_path), "--server", str(socket_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        _wait_for_worker_socket(proc, socket_path)
+        with _connect_worker_socket(socket_path) as client:
+            ready = _recv_worker_frame(client)
+            if ready != {"status": "ready"}:
+                raise RuntimeError(f"Unexpected runtime worker handshake: {ready!r}")
+            response = _send_worker_frame(client, request)
+        result = parse_runtime_library_worker_response(
+            case.module,
+            case.function,
+            response,
+            function_spec=function_spec,
+        )
+        assert_rollout_channel_result(case, result)
+    finally:
+        if proc is not None and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=2.0)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _build_go_live_runtime_worker(
+    worker_path: Path,
+    required_modules: tuple[str, ...],
+) -> None:
+    build_script = ROOT / "scripts" / "build_mojo_binary.sh"
+    source_main = ROOT / "mojo" / "engine" / "main.mojo"
+    worker_path.parent.mkdir(parents=True, exist_ok=True)
+    build_dir = Path(tempfile.mkdtemp(prefix="src-", dir=str(worker_path.parent)))
+    try:
+        temp_main = build_dir / "main.mojo"
+        temp_dispatch = build_dir / "runtime_library_dispatch_generated.mojo"
+        temp_main.write_text(source_main.read_text(encoding="utf-8"), encoding="utf-8")
+        env = {
+            **os.environ,
+            "MOJO_SRC": str(temp_main),
+            "DISPATCH_OUTPUT_PATH": str(temp_dispatch),
+            "ENGINE_INCLUDE_DIR": str(ROOT / "mojo" / "engine"),
+            "BINARY_PATH": str(worker_path),
+            "OBJECT_PATH": str(worker_path.with_suffix(".o")),
+            "TEMP_OBJECT_PATH": str(worker_path.with_suffix(".o.tmp")),
+            "TEMP_BINARY_PATH": str(worker_path.with_name(f"{worker_path.name}.tmp")),
+            "MOJO_RUNTIME_MODULE_FILTER": ",".join(required_modules),
+        }
+        proc = subprocess.run(
+            ["bash", str(build_script)],
+            cwd=str(ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=GO_LIVE_RUNTIME_BUILD_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError(
+            "Timed out building the filtered go-live runtime worker after "
+            f"{GO_LIVE_RUNTIME_BUILD_TIMEOUT}s."
+        ) from exc
+    finally:
+        shutil.rmtree(build_dir, ignore_errors=True)
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode != 0:
+        raise RuntimeError("Filtered go-live runtime worker build failed.\n" + _tail(output))
+
+
+def _ensure_go_live_runtime_worker() -> Path:
+    worker_path = _go_live_runtime_worker_path()
+    required_modules = _go_live_runtime_required_modules()
+    worker_path.parent.mkdir(parents=True, exist_ok=True)
+    if _worker_manifest_is_current(worker_path, required_modules):
+        try:
+            _smoke_go_live_runtime_worker(worker_path)
+            print(f"  {PASS} Using preflighted runtime worker: {worker_path}", flush=True)
+            return worker_path
+        except Exception as exc:  # noqa: BLE001
+            print(f"  … Rebuilding runtime worker after smoke failure: {exc}", flush=True)
+
+    print(
+        "  … Building filtered go-live runtime worker "
+        f"({len(required_modules)} modules): {worker_path}",
+        flush=True,
+    )
+    _build_go_live_runtime_worker(worker_path, required_modules)
+    if not _worker_manifest_is_current(worker_path, required_modules):
+        raise RuntimeError("Filtered go-live runtime worker built without a current manifest.")
+    _smoke_go_live_runtime_worker(worker_path)
+    print(f"  {PASS} Runtime worker preflight passed: {worker_path}", flush=True)
+    return worker_path
+
+
+def _run_runtime_worker_preflight() -> tuple[bool, float, str, Path | None]:
+    print(f"  … Starting {RUNTIME_PREFLIGHT_SUITE}", flush=True)
+    started = time.perf_counter()
+    try:
+        worker_path = _ensure_go_live_runtime_worker()
+        elapsed = time.perf_counter() - started
+        return True, elapsed, str(worker_path), worker_path
+    except Exception as exc:  # noqa: BLE001
+        elapsed = time.perf_counter() - started
+        message = f"{type(exc).__name__}: {exc}"
+        print(f"  {FAIL} {RUNTIME_PREFLIGHT_SUITE} ({elapsed:.1f}s)", flush=True)
+        print("    ── output tail ──", flush=True)
+        for line in _tail(message).splitlines():
+            print(f"    │ {line}", flush=True)
+        return False, elapsed, message, None
+
+
+def _fresh_live_suite_env(
+    *,
+    env_base: dict[str, str],
+    api_port: int,
+    api_key: str,
+    runtime_dir: Path,
+) -> dict[str, str]:
+    base_url = f"http://127.0.0.1:{api_port}"
+    return {
+        **env_base,
+        "DE_BASE_URL": base_url,
+        "ALGENTA_BASE_URL": base_url,
+        "ALGENTA_API_URL": base_url,
+        "ALGENTA_CONTROL_PLANE_URL": base_url,
+        "DE_API_KEY": api_key,
+        "ALGENTA_API_KEY": api_key,
+        "ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS": "0",
+        "ALGENTA_RUNTIME_DIR": str(runtime_dir),
+        "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
+            LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
+        ),
+    }
+
+
 def run_live_suite_with_fresh_server(
     name: str,
     cmd: list[str],
@@ -249,17 +559,12 @@ def run_live_suite_with_fresh_server(
             runtime_dir = tmp_root / f"runtime_{attempt}"
             sources_dir.mkdir(parents=True, exist_ok=True)
             runtime_dir.mkdir(parents=True, exist_ok=True)
-            env_live = {
-                **env_base,
-                "DE_BASE_URL": f"http://127.0.0.1:{api_port}",
-                "DE_API_KEY": api_key,
-                "ALGENTA_BASE_URL": f"http://127.0.0.1:{api_port}",
-                "ALGENTA_API_KEY": api_key,
-                "ALGENTA_RUNTIME_DIR": str(runtime_dir),
-                "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
-                    LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
-                ),
-            }
+            env_live = _fresh_live_suite_env(
+                env_base=env_base,
+                api_port=api_port,
+                api_key=api_key,
+                runtime_dir=runtime_dir,
+            )
             try:
                 api_server = start_api_server(api_port, sources_dir, env_live)
                 wait_for_http(
@@ -322,7 +627,7 @@ def _write_summary_artifact(results: list[tuple[str, bool, float]], *, completed
     details = {
         "live_suite_count": len(LIVE_SUITES) + 1,
         "local_suite_count": len(LOCAL_SUITES),
-        "top_level_suite_count": 3,
+        "top_level_suite_count": 4,
         "status": "complete" if completed else "incomplete",
         "completed_suite_count": len(results),
         "expected_suite_count": EXPECTED_SUITE_COUNT,
@@ -459,6 +764,14 @@ def main() -> int:
     completed = False
 
     try:
+        ok, elapsed, _preflight_output, runtime_worker_path = _run_runtime_worker_preflight()
+        results.append((RUNTIME_PREFLIGHT_SUITE, ok, elapsed))
+        if not ok or runtime_worker_path is None:
+            print("\nRuntime worker preflight failed. Aborting broader suite.", flush=True)
+            return 1
+
+        runtime_env = _runtime_worker_env(runtime_worker_path)
+
         # Phase 1: self-contained local connectivity gate
         env_base = {
             "PYTHONPATH": str(ROOT),
@@ -466,6 +779,7 @@ def main() -> int:
             "DATABASE_URL_SYNC": DEFAULT_DB_URL_SYNC,
             "REDIS_URL": DEFAULT_REDIS_URL,
             "ARROW_USER_SIMD_LEVEL": os.environ.get("ARROW_USER_SIMD_LEVEL", "NONE"),
+            **runtime_env,
         }
 
         ok, elapsed, _ = run_suite(

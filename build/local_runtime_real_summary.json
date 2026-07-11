@@ -2,12 +2,12 @@
   "artifact": "live_integration_summary",
   "details": {
     "api_key_configured": true,
-    "base_url": "http://127.0.0.1:52913",
+    "base_url": "http://127.0.0.1:60515",
     "failed_checks": []
   },
-  "elapsed_seconds": 1.036,
+  "elapsed_seconds": 0.763,
   "failed": 0,
-  "generated_at": "2026-07-11T02:22:29.445181Z",
+  "generated_at": "2026-07-11T06:19:32.283852Z",
   "name": "local_runtime_real",
   "passed": 4,
   "script": "tests/integration/test_local_runtime_real.py",

@@ -95,6 +95,56 @@ DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
     ),
 )
 
+SUMMARY_HEADING_ROUTE_SLUGS = {
+    "Getting Started": "getting-started",
+    "Run the engine": "run-the-engine",
+    "Concepts": "concepts",
+    "Guides": "guides",
+    "LLM API": "llm-api",
+    "SDKs": "sdks",
+    "MCP tools": "mcp-tools",
+    "Microsoft & Azure": "microsoft-and-azure",
+    "Deploy & Operate": "deploy-and-operate",
+    "HTTP API": "http-api",
+    "Connectors": "connectors",
+    "Help": "help",
+}
+
+SUMMARY_ROUTE_PREFIX_STRIPS = {
+    "run-the-engine": ("engine/", "concepts/"),
+    "concepts": ("concepts/",),
+    "guides": ("guides/",),
+    "llm-api": ("llm/",),
+    "sdks": ("sdk/",),
+    "mcp-tools": ("mcp-tools/",),
+    "deploy-and-operate": ("operate/",),
+    "http-api": ("api/",),
+    "connectors": ("connectors/",),
+    "help": ("help/",),
+}
+
+REQUIRED_PYPI_PACKAGES = ("algenta-sdk", "algenta-mcp")
+REQUIRED_NPM_PACKAGES = ("algenta-sdk",)
+OPTIONAL_RUNTIME_PYPI_PACKAGES = ("algenta", "algenta-runtime-native")
+
+PUBLIC_ALGENTA_RUNTIME_INSTALL_RE = re.compile(
+    r"(?im)^\s*(?:\$\s*)?(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?"
+    r"pip\s+install\s+(?!-e\b)[\"']?algenta[\"']?(?:\s|$)"
+)
+PUBLIC_RUNTIME_NATIVE_INSTALL_RE = re.compile(
+    r"(?im)^\s*(?:\$\s*)?(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?"
+    r"pip\s+install\s+(?!-e\b)[\"']?algenta-runtime-native[\"']?(?:\s|$)"
+)
+RUNTIME_NOT_LIVE_PHRASES = (
+    "public pypi runtime distribution is not live yet",
+    "public pypi runtime release is not live yet",
+    "public pypi package is not live yet",
+    "runtime distribution is not public on pypi yet",
+    "not a public pypi install yet",
+    "not a public registry install yet",
+    "not a public pypi install path today",
+)
+
 
 @dataclass(frozen=True)
 class Issue:
@@ -143,6 +193,13 @@ def _rel(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
+def _report_path(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def _line_for_offset(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
@@ -153,6 +210,50 @@ def _read(path: Path) -> str:
 
 def _markdown_pages(source: Path) -> list[Path]:
     return sorted(path for path in source.rglob("*.md") if path.is_file())
+
+
+def _route_tail_for_summary_target(section_slug: str, target: str) -> str:
+    tail = target.split("#", 1)[0].removesuffix(".md").strip("/")
+    for prefix in SUMMARY_ROUTE_PREFIX_STRIPS.get(section_slug, ()):  # deterministic order
+        if tail.startswith(prefix):
+            return tail[len(prefix) :]
+    path_tail_sections = {"microsoft-and-azure", "deploy-and-operate", "run-the-engine"}
+    if "/" in tail and section_slug in path_tail_sections:
+        return tail.rsplit("/", 1)[-1]
+    if "/" in tail and section_slug in {"getting-started", "help"}:
+        return tail.rsplit("/", 1)[-1]
+    return tail
+
+
+def _summary_expected_sitemap_urls(source: Path, base_url: str) -> list[str]:
+    summary_path = source / "SUMMARY.md"
+    if not summary_path.is_file():
+        return []
+    base = base_url.rstrip("/")
+    urls: list[str] = []
+    current_heading: str | None = None
+    link_re = re.compile(r"^\s*\*\s+\[[^\]]+\]\(([^)]+\.md(?:#[^)]+)?)\)")
+    for line in _read(summary_path).splitlines():
+        heading_match = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading_match:
+            current_heading = heading_match.group(1).strip()
+            continue
+        link_match = link_re.match(line)
+        if not link_match:
+            continue
+        target = link_match.group(1)
+        if current_heading is None and target.split("#", 1)[0] == "overview.md":
+            route = ""
+        else:
+            section_slug = SUMMARY_HEADING_ROUTE_SLUGS.get(current_heading or "")
+            if not section_slug:
+                continue
+            tail = _route_tail_for_summary_target(section_slug, target)
+            route = f"/{section_slug}/{tail}" if tail else f"/{section_slug}"
+        url = f"{base}{route}"
+        if url not in urls:
+            urls.append(url)
+    return urls
 
 
 def _strip_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -650,6 +751,115 @@ def _fetch(
         return int(exc.code), exc.read(max_bytes + 1), exc.headers.get("content-type", "")
 
 
+def _fetch_json(url: str, *, timeout: float = 20.0) -> tuple[int, dict[str, Any] | None]:
+    status, body, _ = _fetch(url, max_bytes=1_000_000, timeout=timeout)
+    if status != 200:
+        return status, None
+    try:
+        payload = json.loads(body.decode("utf-8", "replace"))
+    except json.JSONDecodeError:
+        return status, None
+    if not isinstance(payload, dict):
+        return status, None
+    return status, payload
+
+
+def _audit_package_registries(corpus: str) -> tuple[list[Issue], dict[str, Any]]:
+    issues: list[Issue] = []
+    report: dict[str, Any] = {
+        "skipped": False,
+        "pypi": {},
+        "npm": {},
+        "public_runtime_install_claims": 0,
+        "public_runtime_native_install_claims": 0,
+    }
+
+    for package in (*REQUIRED_PYPI_PACKAGES, *OPTIONAL_RUNTIME_PYPI_PACKAGES):
+        status, payload = _fetch_json(f"https://pypi.org/pypi/{package}/json")
+        info = payload.get("info", {}) if payload else {}
+        report["pypi"][package] = {
+            "status": status,
+            "version": info.get("version", "") if isinstance(info, dict) else "",
+            "summary": info.get("summary", "") if isinstance(info, dict) else "",
+        }
+        if package in REQUIRED_PYPI_PACKAGES and status != 200:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "pypi_package_unavailable",
+                    "Docs reference a required public PyPI package that is unavailable.",
+                    details={"package": package, "status": status},
+                )
+            )
+
+    for package in REQUIRED_NPM_PACKAGES:
+        status, payload = _fetch_json(f"https://registry.npmjs.org/{package}/latest")
+        report["npm"][package] = {
+            "status": status,
+            "version": payload.get("version", "") if payload else "",
+            "description": payload.get("description", "") if payload else "",
+            "license": payload.get("license", "") if payload else "",
+        }
+        if status != 200:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "npm_package_unavailable",
+                    "Docs reference a required public npm package that is unavailable.",
+                    details={"package": package, "status": status},
+                )
+            )
+
+    runtime_installs = list(PUBLIC_ALGENTA_RUNTIME_INSTALL_RE.finditer(corpus))
+    native_installs = list(PUBLIC_RUNTIME_NATIVE_INSTALL_RE.finditer(corpus))
+    report["public_runtime_install_claims"] = len(runtime_installs)
+    report["public_runtime_native_install_claims"] = len(native_installs)
+    if runtime_installs and report["pypi"].get("algenta", {}).get("status") != 200:
+        issues.append(
+            Issue(
+                "ERROR",
+                "runtime_package_install_not_live",
+                (
+                    "Docs contain a public `pip install algenta` command, "
+                    "but PyPI does not serve algenta."
+                ),
+                details={
+                    "package": "algenta",
+                    "status": report["pypi"].get("algenta", {}).get("status"),
+                },
+            )
+        )
+    if native_installs and report["pypi"].get("algenta-runtime-native", {}).get("status") != 200:
+        issues.append(
+            Issue(
+                "ERROR",
+                "runtime_native_install_not_live",
+                (
+                    "Docs contain a public `pip install algenta-runtime-native` command, "
+                    "but PyPI does not serve it."
+                ),
+                details={
+                    "package": "algenta-runtime-native",
+                    "status": report["pypi"].get("algenta-runtime-native", {}).get("status"),
+                },
+            )
+        )
+    lower_corpus = corpus.lower()
+    if report["pypi"].get("algenta", {}).get("status") == 200 and any(
+        phrase in lower_corpus for phrase in RUNTIME_NOT_LIVE_PHRASES
+    ):
+        issues.append(
+            Issue(
+                "ERROR",
+                "stale_runtime_registry_caveat",
+                "Docs still say the algenta runtime package is not public, but PyPI serves it.",
+                details={"package": "algenta", "status": 200},
+            )
+        )
+
+    return issues, report
+
+
 def _sitemap_url_to_markdown_route(base_url: str, page_url: str) -> str | None:
     base = urllib.parse.urlparse(base_url.rstrip("/"))
     parsed = urllib.parse.urlparse(page_url)
@@ -661,7 +871,9 @@ def _sitemap_url_to_markdown_route(base_url: str, page_url: str) -> str | None:
     return f"{path.rstrip('/')}.md"
 
 
-def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dict[str, Any]]:
+def _audit_live(
+    live_url: str, public_page_count: int, source: Path
+) -> tuple[list[Issue], dict[str, Any]]:
     base = live_url.rstrip("/")
     issues: list[Issue] = []
     sitemap_urls: list[str] = []
@@ -672,6 +884,8 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
         "llms_txt_status": None,
         "llms_full_status": None,
         "markdown_pages_checked": 0,
+        "source_navigation_urls": 0,
+        "sitemap_matches_source_navigation": False,
         "docs_mcp_status": None,
     }
 
@@ -694,6 +908,9 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
             ]
             sitemap_urls = [url for url in urls if url]
             result["sitemap_urls"] = len(urls)
+            expected_navigation_urls = _summary_expected_sitemap_urls(source, base)
+            result["source_navigation_urls"] = len(expected_navigation_urls)
+            result["sitemap_matches_source_navigation"] = sitemap_urls == expected_navigation_urls
             if len(urls) < public_page_count:
                 issues.append(
                     Issue(
@@ -706,6 +923,37 @@ def _audit_live(live_url: str, public_page_count: int) -> tuple[list[Issue], dic
                         },
                     )
                 )
+            if expected_navigation_urls:
+                missing = sorted(set(expected_navigation_urls) - set(sitemap_urls))
+                extra = sorted(set(sitemap_urls) - set(expected_navigation_urls))
+                if missing or extra:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "live_sitemap_source_navigation_mismatch",
+                            "Live sitemap URLs do not match GitBook SUMMARY.md navigation.",
+                            details={"missing": missing[:20], "extra": extra[:20]},
+                        )
+                    )
+                elif sitemap_urls != expected_navigation_urls:
+                    first_mismatch = next(
+                        (
+                            {"expected": expected, "actual": actual, "index": index}
+                            for index, (expected, actual) in enumerate(
+                                zip(expected_navigation_urls, sitemap_urls, strict=True), start=1
+                            )
+                            if expected != actual
+                        ),
+                        None,
+                    )
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            "live_sitemap_source_navigation_order_mismatch",
+                            "Live sitemap URL order does not match GitBook SUMMARY.md navigation.",
+                            details=first_mismatch or {},
+                        )
+                    )
         except ET.ParseError as exc:
             issues.append(
                 Issue("ERROR", "live_sitemap_invalid_xml", f"Live sitemap XML is invalid: {exc}")
@@ -852,10 +1100,14 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     issues.extend(agent_issues)
     source_claim_issues, source_claim_report = _audit_source_claims(source, pages)
     issues.extend(source_claim_issues)
+    corpus = "\n".join(_read(path) for path in pages)
     live_report: dict[str, Any] = {"skipped": bool(skip_live)}
+    package_registry_report: dict[str, Any] = {"skipped": bool(skip_live or not live_url)}
     if live_url and not skip_live:
-        live_issues, live_report = _audit_live(live_url, int(totals["public_pages"]))
+        live_issues, live_report = _audit_live(live_url, int(totals["public_pages"]), source)
         issues.extend(live_issues)
+        package_registry_issues, package_registry_report = _audit_package_registries(corpus)
+        issues.extend(package_registry_issues)
 
     issue_rows = [issue.to_json() for issue in issues]
     failures = sum(1 for issue in issues if issue.severity == "ERROR")
@@ -883,7 +1135,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     )
     return {
         "status": "pass" if failures == 0 else "fail",
-        "source": str(source),
+        "source": _report_path(source),
         "live_url": live_url or "",
         "totals": totals,
         "snippets": {
@@ -895,6 +1147,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         "agent_readability": agent_report,
         "source_claims": source_claim_report,
         "live": live_report,
+        "package_registries": package_registry_report,
         "issues": issue_rows,
         "summary": {
             "failures": failures,

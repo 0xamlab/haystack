@@ -10,9 +10,9 @@
     "skipped": 0,
     "skipped_checks": []
   },
-  "elapsed_seconds": 11.259,
+  "elapsed_seconds": 10.591,
   "failed": 0,
-  "generated_at": "2026-07-11T02:20:23.269071Z",
+  "generated_at": "2026-07-11T06:16:44.835671Z",
   "name": "go_live_connectivity_local_only",
   "passed": 51,
   "script": "tests/integration/test_go_live_connectivity_real.py",

@@ -7,7 +7,7 @@
     "selected_connectors": [],
     "selected_tiers": [],
     "skip_external_validation": false,
-    "skipped": 12,
+    "skipped": 11,
     "skipped_checks": [
       {
         "name": "dlt GitHub issues example source registration",
@@ -34,10 +34,6 @@
         "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB"
       },
       {
-        "name": "Redis connector /test",
-        "reason": "required env not provided: DE_TEST_REDIS_URL"
-      },
-      {
         "name": "ClickHouse connector /test",
         "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD"
       },
@@ -59,12 +55,12 @@
       }
     ]
   },
-  "elapsed_seconds": 20.158,
+  "elapsed_seconds": 19.204,
   "failed": 0,
-  "generated_at": "2026-07-11T02:11:05.786571Z",
+  "generated_at": "2026-07-11T06:16:30.891012Z",
   "name": "go_live_connectivity_real",
-  "passed": 65,
+  "passed": 67,
   "script": "tests/integration/test_go_live_connectivity_real.py",
-  "skipped": 12,
-  "total": 77
+  "skipped": 11,
+  "total": 78
 }
