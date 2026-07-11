@@ -1451,6 +1451,24 @@ def _fetch(
         return int(exc.code), exc.read(max_bytes + 1), exc.headers.get("content-type", "")
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, ARG002
+        return None
+
+
+def _fetch_redirect_target(url: str, *, timeout: float = 20.0) -> tuple[int, str]:
+    request = urllib.request.Request(  # noqa: S310 - caller controls audited live URL.
+        url,
+        headers={"User-Agent": "algenta-docs-audit/1.0"},
+    )
+    opener = urllib.request.build_opener(_NoRedirectHandler)
+    try:
+        with opener.open(request, timeout=timeout) as response:  # noqa: S310
+            return int(response.status), response.headers.get("location", "")
+    except urllib.error.HTTPError as exc:
+        return int(exc.code), exc.headers.get("location", "")
+
+
 def _fetch_json(url: str, *, timeout: float = 20.0) -> tuple[int, dict[str, Any] | None]:
     status, body, _ = _fetch(url, max_bytes=1_000_000, timeout=timeout)
     if status != 200:
@@ -1547,6 +1565,71 @@ def _mcp_text_content(result: dict[str, Any] | None) -> str:
     )
 
 
+def _validate_docs_mcp_tool_url_aliases(
+    base: str, tools: Any
+) -> tuple[list[Issue], list[dict[str, Any]]]:
+    issues: list[Issue] = []
+    aliases: list[dict[str, Any]] = []
+    expected_origin = urllib.parse.urlsplit(base)
+    tool_rows = tools if isinstance(tools, list) else []
+
+    for tool in tool_rows:
+        if not isinstance(tool, dict) or not isinstance(tool.get("name"), str):
+            continue
+        description = tool.get("description", "")
+        if not isinstance(description, str):
+            continue
+        for match in re.finditer(r"https?://[^\s)`]+", description):
+            example = match.group(0).rstrip(".,;:!?")
+            parsed = urllib.parse.urlsplit(example)
+            normalized_path = re.sub(r"/{2,}", "/", parsed.path)
+            if normalized_path == parsed.path:
+                continue
+
+            canonical = urllib.parse.urlunsplit(parsed._replace(path=normalized_path))
+            same_origin = (
+                parsed.scheme.lower() == expected_origin.scheme.lower()
+                and parsed.netloc.lower() == expected_origin.netloc.lower()
+            )
+            redirect_status, location = _fetch_redirect_target(example)
+            redirect_target = urllib.parse.urljoin(example, location) if location else ""
+            canonical_status, _, _ = _fetch(canonical)
+            equivalent = (
+                same_origin
+                and redirect_status in {301, 302, 307, 308}
+                and redirect_target == canonical
+                and canonical_status == 200
+            )
+            aliases.append(
+                {
+                    "tool": tool["name"],
+                    "example": example,
+                    "canonical": canonical,
+                    "redirect_status": redirect_status,
+                    "redirect_target": redirect_target,
+                    "canonical_status": canonical_status,
+                    "equivalent": equivalent,
+                }
+            )
+            if not equivalent:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "docs_mcp_noncanonical_tool_url",
+                        "GitBook docs MCP tool metadata contains an unsafe URL alias.",
+                        details={
+                            "tool": tool["name"],
+                            "example": example,
+                            "canonical": canonical,
+                            "redirect_status": redirect_status,
+                            "redirect_target": redirect_target,
+                            "canonical_status": canonical_status,
+                        },
+                    )
+                )
+    return issues, aliases
+
+
 def _validate_docs_mcp_tools(tools: Any) -> tuple[list[Issue], list[str]]:
     issues: list[Issue] = []
     tool_rows = tools if isinstance(tools, list) else []
@@ -1580,17 +1663,6 @@ def _validate_docs_mcp_tools(tools: Any) -> tuple[list[Issue], list[str]]:
                     details={"tool": name, "required_input": required_input},
                 )
             )
-    for name, tool in by_name.items():
-        description = tool.get("description", "")
-        if isinstance(description, str) and re.search(r"https?://[^/\s]+//", description):
-            issues.append(
-                Issue(
-                    "WARNING",
-                    "docs_mcp_noncanonical_tool_url",
-                    "GitBook docs MCP tool metadata contains a double-slash URL path.",
-                    details={"tool": name},
-                )
-            )
     return issues, sorted(by_name)
 
 
@@ -1602,6 +1674,7 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
         "protocol_version": None,
         "tools_status": None,
         "tools": [],
+        "tool_url_aliases": [],
         "search_status": None,
         "page_status": None,
     }
@@ -1638,10 +1711,11 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
     )
     tools_result = _jsonrpc_result(payload, 2)
     report["tools_status"] = status
-    tool_issues, tool_names = _validate_docs_mcp_tools(
-        tools_result.get("tools") if tools_result else None
-    )
+    tools = tools_result.get("tools") if tools_result else None
+    tool_issues, tool_names = _validate_docs_mcp_tools(tools)
+    tool_url_issues, tool_url_aliases = _validate_docs_mcp_tool_url_aliases(base, tools)
     report["tools"] = tool_names
+    report["tool_url_aliases"] = tool_url_aliases
     if status != 200 or tools_result is None:
         issues.append(
             Issue(
@@ -1652,6 +1726,7 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
             )
         )
     issues.extend(tool_issues)
+    issues.extend(tool_url_issues)
 
     search_request = {
         "jsonrpc": "2.0",

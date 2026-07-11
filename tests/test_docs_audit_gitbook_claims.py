@@ -603,6 +603,7 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
         "protocol_version": "2025-03-26",
         "tools_status": 200,
         "tools": ["getPage", "searchDocumentation"],
+        "tool_url_aliases": [],
         "search_status": 200,
         "page_status": 200,
     }
@@ -654,15 +655,51 @@ def test_validate_docs_mcp_tools_rejects_mutating_or_untyped_contracts() -> None
     ]
 
 
-def test_validate_docs_mcp_tools_reports_noncanonical_description_url() -> None:
+def test_validate_docs_mcp_tool_url_aliases_accepts_canonical_redirect(monkeypatch) -> None:
     audit = _load_module()
     search = _docs_mcp_tool("searchDocumentation", "query")
     page = _docs_mcp_tool("getPage", "url")
     page["description"] = "Example: https://docs.algenta.ai//getting-started"
+    monkeypatch.setattr(
+        audit,
+        "_fetch_redirect_target",
+        lambda url: (307, "https://docs.algenta.ai/getting-started"),
+    )
+    monkeypatch.setattr(
+        audit,
+        "_fetch",
+        lambda url: (200, b"canonical page", "text/html"),
+    )
 
-    issues, _ = audit._validate_docs_mcp_tools([search, page])
+    issues, aliases = audit._validate_docs_mcp_tool_url_aliases(
+        "https://docs.algenta.ai", [search, page]
+    )
+
+    assert issues == []
+    assert aliases == [
+        {
+            "tool": "getPage",
+            "example": "https://docs.algenta.ai//getting-started",
+            "canonical": "https://docs.algenta.ai/getting-started",
+            "redirect_status": 307,
+            "redirect_target": "https://docs.algenta.ai/getting-started",
+            "canonical_status": 200,
+            "equivalent": True,
+        }
+    ]
+
+
+def test_validate_docs_mcp_tool_url_aliases_rejects_broken_redirect(monkeypatch) -> None:
+    audit = _load_module()
+    page = _docs_mcp_tool("getPage", "url")
+    page["description"] = "Example: https://docs.algenta.ai//getting-started"
+    monkeypatch.setattr(audit, "_fetch_redirect_target", lambda url: (307, "/wrong"))
+    monkeypatch.setattr(audit, "_fetch", lambda url: (404, b"missing", "text/html"))
+
+    issues, aliases = audit._validate_docs_mcp_tool_url_aliases("https://docs.algenta.ai", [page])
 
     assert [issue.code for issue in issues] == ["docs_mcp_noncanonical_tool_url"]
+    assert aliases[0]["equivalent"] is False
 
 
 def test_fetch_llms_full_pages_follows_bounded_pagination(monkeypatch) -> None:
