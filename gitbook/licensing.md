@@ -27,6 +27,23 @@ A license carries: plan, device limit, permitted modules, expiry, **product enti
 The license is a **device entitlement**, not your data plane. It carries signed claims only — it never reads customer data, schema data, or runtime payloads. Verification is fully offline; nothing about your repositories or simulations leaves the machine.
 {% endhint %}
 
+### Capacity caps (per device)
+
+The headline runtime cap is **concurrent workers per device** — how many jobs one machine runs in parallel — by tier:
+
+| Tier | Workers per device |
+|---|---|
+| Community (free) | 1 |
+| Pro | 5 |
+| Team | 20 |
+| Enterprise | Unlimited (negotiated) |
+
+The runtime worker broker enforces this locally (offline, no network call). Seats and nodes are pooled caps the control plane reconciles.
+
+{% hint style="info" %}
+**Air-gapped / never-phone-home operation is an Enterprise entitlement.** Self-serve tiers (Community, Pro, Team, and the per-node self-host plan) run **connected** so renewal stays subscription-gated — a lapsed subscription genuinely expires the license. Enterprise air-gapped licenses are device-bound and carry a finite worker cap.
+{% endhint %}
+
 ### Durable across redeploys
 
 The runtime reads the token from the file first. If no file is present, it falls back, in order, to these environment sources — so a hosted or air-gapped engine keeps a valid license across redeploys without a persistent volume (the JWT lives in a platform secret):
@@ -103,6 +120,13 @@ Exit codes: `0` = the license is valid, `1` = not valid (missing, wrong key, or 
 {% hint style="info" %}
 **Expected result:** `OK` and exit `0`. If it fails, the output names the cause — no installed license, the wrong public key, or expired past grace. The bottom hint line is the next action; if your license has expired, request a renewed one.
 {% endhint %}
+
+## When a license lapses
+
+Your engine runs on your hardware — nothing reaches in to switch it off. When a paid license expires and isn't renewed, the engine **downgrades to Community (free-forever)** rather than stopping: it keeps running at Community limits (**1 device, 1 worker, non-commercial**), and paid caps, features, updates, and support resume the moment the license renews.
+
+- **Connected deployments** re-check the subscription on each renewal, plus a short grace window for brief disconnects. A cancelled or downgraded plan takes effect on the next renewal, then settles at Community — so a one-time payment can't unlock a paid tier forever.
+- **Enterprise air-gapped** deployments have no connected renewal path, so a license that has hard-expired there **blocks** until a fresh signed license is installed. Provision a renewal before expiry.
 
 ## Editions and features
 

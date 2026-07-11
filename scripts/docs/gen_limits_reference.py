@@ -59,6 +59,23 @@ def extract():
     return rows
 
 
+def _worker_caps():
+    """Per-device worker concurrency by tier, sourced from plan_limits (the single source of
+    truth used by the runtime worker broker) so the doc can never drift from the enforced caps."""
+    from apps.api_server.services import plan_limits
+
+    def cap(plan: str) -> str:
+        n = plan_limits.worker_limit(plan)
+        return "Unlimited (negotiated)" if n <= 0 else str(n)
+
+    return [
+        ("Community (free)", cap("free")),
+        ("Pro", cap("algenta_pro")),
+        ("Team", cap("algenta_team")),
+        ("Enterprise", cap("enterprise")),
+    ]
+
+
 def render(rows):
     out = [
         "---",
@@ -69,9 +86,10 @@ def render(rows):
         "",
         "# Rate limits & quotas",
         "",
-        "Algenta enforces per-plan **quotas** (monthly usage) and per-endpoint **rate limits** (abuse "
-        "protection). The values below are the authoritative numbers the engine enforces. Plan tiers "
-        "are on [Plans, billing & credits](../billing.md).",
+        "Algenta enforces three things: per-plan **quotas** (monthly usage), per-endpoint **rate "
+        "limits** (abuse protection), and a **per-device worker concurrency cap** (how many jobs one "
+        "machine runs in parallel). The values below are the authoritative numbers the engine "
+        "enforces. Plan tiers are on [Plans, billing & credits](../billing.md).",
         "",
         "| Setting | Default | What it limits |",
         "| --- | --- | --- |",
@@ -80,6 +98,24 @@ def render(rows):
         dv = f"`{dflt}`" if dflt != "" else "—"
         out.append(f"| `{env}` | {dv} | {MEANINGS.get(env, '—')} |")
     out += [
+        "",
+        "## Per-device worker concurrency",
+        "",
+        "The self-hosted engine caps **concurrent workers per device** — how many "
+        "simulations/analyses a single machine runs in parallel. This is enforced locally by the "
+        "runtime worker broker (offline-capable, no network call), and the cap comes from your "
+        "license tier:",
+        "",
+        "| Tier | Workers per device |",
+        "| --- | --- |",
+    ]
+    for tier, workers in _worker_caps():
+        out.append(f"| {tier} | {workers} |")
+    out += [
+        "",
+        "Work beyond the cap queues until a slot frees (or is rejected immediately on a "
+        "non-blocking request). Upgrading your plan raises the cap on the **next license renewal** "
+        "— no redeploy needed.",
         "",
         "## Handling limits",
         "",

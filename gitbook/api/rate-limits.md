@@ -5,7 +5,7 @@ description: Algenta rate limits and plan quotas — the authoritative numbers t
 
 # Rate limits & quotas
 
-Algenta enforces per-plan **quotas** (monthly usage) and per-endpoint **rate limits** (abuse protection). The values below are the authoritative numbers the engine enforces. Plan tiers are on [Plans, billing & credits](../billing.md).
+Algenta enforces three things: per-plan **quotas** (monthly usage), per-endpoint **rate limits** (abuse protection), and a **per-device worker concurrency cap** (how many jobs one machine runs in parallel). The values below are the authoritative numbers the engine enforces. Plan tiers are on [Plans, billing & credits](../billing.md).
 
 | Setting | Default | What it limits |
 | --- | --- | --- |
@@ -22,6 +22,19 @@ Algenta enforces per-plan **quotas** (monthly usage) and per-endpoint **rate lim
 | `SIGNUP_MAX_PER_DAY_PER_EMAIL` | `2` | Sign-ups per day per email. |
 | `SIGNUP_RATE_LIMIT_PER_MINUTE` | `3` | Sign-up attempts per minute (abuse protection). |
 | `WEBHOOK_MAX_RETRIES` | `3` | — |
+
+## Per-device worker concurrency
+
+The self-hosted engine caps **concurrent workers per device** — how many simulations/analyses a single machine runs in parallel. This is enforced locally by the runtime worker broker (offline-capable, no network call), and the cap comes from your license tier:
+
+| Tier | Workers per device |
+| --- | --- |
+| Community (free) | 1 |
+| Pro | 5 |
+| Team | 20 |
+| Enterprise | Unlimited (negotiated) |
+
+Work beyond the cap queues until a slot frees (or is rejected immediately on a non-blocking request). Upgrading your plan raises the cap on the **next license renewal** — no redeploy needed.
 
 ## Handling limits
 
