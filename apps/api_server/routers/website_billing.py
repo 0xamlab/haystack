@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.api_server.config import get_settings as _get_settings
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_redis
 from apps.api_server.models.llm_usage_record import USD_MICROS
@@ -65,6 +66,29 @@ class CheckoutRequest(BaseModel):
     # Units to purchase: per-DEVICE for algenta_pro/algenta_team (Stripe quantity = licensed devices),
     # per-SEAT for team. Defaults to 1; the webhook syncs this quantity into licensed_devices / seats.
     quantity: int = Field(default=1, ge=1, le=10000)
+    # Post-checkout redirect back to the CALLER (the accounts portal). Validated against the trusted
+    # accounts host (open-redirect protection); ignored if it points anywhere else. Omit → derived default.
+    success_url: str | None = Field(default=None, max_length=2048)
+    cancel_url: str | None = Field(default=None, max_length=2048)
+
+
+def _validated_return_url(url: str | None) -> str | None:
+    """Accept a caller-supplied post-checkout redirect ONLY when its host matches a TRUSTED host —
+    the accounts portal (`accounts_base_url`) or localhost (dev). Anything else (an attacker-supplied
+    URL) is dropped so Checkout can't be turned into an open redirect. Returns the URL or None."""
+    if not url:
+        return None
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("https", "http") or not parsed.hostname:
+        return None
+    trusted: set[str] = set()
+    accounts_host = urlparse(str(_get_settings().accounts_base_url)).hostname
+    if accounts_host:
+        trusted.add(accounts_host.lower())
+    trusted.update({"localhost", "127.0.0.1"})
+    return url if parsed.hostname.lower() in trusted else None
 
 
 @router.get(
@@ -173,14 +197,18 @@ async def account_billing_checkout(
         ).scalar_one_or_none()
         email = user.email if user else "unknown@example.com"
 
+    # Redirect back to the caller (the accounts portal) when it supplies a trusted-host URL; otherwise
+    # fall back to the engine-derived dashboard URL. Validation blocks an open redirect via Checkout.
     redirect_urls = resolve_billing_redirect_urls(request_origin=request_origin_base_url(request))
+    success_url = _validated_return_url(payload.success_url) or redirect_urls.success_url
+    cancel_url = _validated_return_url(payload.cancel_url) or redirect_urls.cancel_url
     return await create_checkout_session(
         str(org.id),
         email,
         plan,
         quantity=payload.quantity,
-        success_url=redirect_urls.success_url,
-        cancel_url=redirect_urls.cancel_url,
+        success_url=success_url,
+        cancel_url=cancel_url,
     )
 
 

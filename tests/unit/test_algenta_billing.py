@@ -81,6 +81,25 @@ def test_checkout_request_quantity():
         CheckoutRequest(plan="algenta_pro", quantity=0)
 
 
+# ── checkout redirect URLs: trusted-host only (no open redirect) ─────────────────────────────────
+def test_validated_return_url_allows_trusted_and_blocks_others(monkeypatch):
+    from types import SimpleNamespace
+
+    from apps.api_server.routers import website_billing as wb
+
+    monkeypatch.setattr(
+        wb, "_get_settings", lambda: SimpleNamespace(accounts_base_url="https://accounts.thyn.ai")
+    )
+    # accounts portal host → allowed
+    assert wb._validated_return_url("https://accounts.thyn.ai/account?checkout=success") is not None
+    assert wb._validated_return_url("http://localhost:3000/account") is not None  # dev
+    # attacker / any other host → dropped (falls back to the derived default)
+    assert wb._validated_return_url("https://evil.example.com/account") is None
+    assert wb._validated_return_url("https://accounts.thyn.ai.evil.com/x") is None  # not exact host
+    assert wb._validated_return_url(None) is None
+    assert wb._validated_return_url("not-a-url") is None
+
+
 # ── price-id resolution is placeholder-safe ─────────────────────────────────────────────────────
 class TestAlgentaPriceResolution:
     def _patch(self, pro: str, team: str):
