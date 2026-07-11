@@ -295,10 +295,6 @@ class Settings(BaseSettings):
     # `billing` flag (product_registry) until the owner flips it after verifying in Stripe test-mode.
     stripe_price_algenta_pro: str = Field(default="price_algenta_pro_replace_me")
     stripe_price_algenta_team: str = Field(default="price_algenta_team_replace_me")
-    # Self-hosted, billed PER ACTIVE NODE ($199/node). Self-serve checkout provisions a single-node license;
-    # multi-node / air-gapped self-host is an offline per-node mint (scripts/issue_offline_license.py
-    # --paid-selfhost) or an enterprise site license — never a self-serve unbounded quantity.
-    stripe_price_algenta_selfhost: str = Field(default="price_algenta_selfhost_replace_me")
 
     # ─── GitHub App (codna "watch CI / open fix PRs") ─────────────────────────
     # Inert until configured: webhook route, token minter, and event handlers all

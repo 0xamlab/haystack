@@ -26,7 +26,8 @@ def test_free_tier_has_no_local_engine_license() -> None:
     rec = resolve_entitlement("free")
     assert rec.products == {}  # cloud-API only — free download stays inert
     assert rec.commercial_use is False
-    assert rec.concurrent_worker_limit == 0
+    # worker cap sourced from plan_limits (free=1); inert here — free grants no local engine.
+    assert rec.concurrent_worker_limit == 1
     assert rec.deployment_class == ""
 
 
@@ -36,7 +37,8 @@ def test_pro_tier_grants_full_codna_within_ceiling() -> None:
     assert rec.products["codna"].features == frozenset(CODNA_FEATURES_FULL)
     assert rec.products["codna"].tier == "pro"
     assert rec.deployment_class == "desktop"
-    assert (rec.named_seat_limit, rec.active_node_limit, rec.concurrent_worker_limit) == (1, 1, 2)
+    # worker cap sourced from plan_limits (pro=5 workers/device).
+    assert (rec.named_seat_limit, rec.active_node_limit, rec.concurrent_worker_limit) == (1, 1, 5)
     assert rec.commercial_use is True
 
 
@@ -53,7 +55,8 @@ def test_developer_and_pro_are_the_same_commercial_tier() -> None:
 
 def test_team_tier_sits_at_the_self_service_ceiling() -> None:
     rec = resolve_entitlement("team")
-    assert (rec.named_seat_limit, rec.active_node_limit, rec.concurrent_worker_limit) == (5, 2, 4)
+    # worker cap sourced from plan_limits (team=20 workers/device).
+    assert (rec.named_seat_limit, rec.active_node_limit, rec.concurrent_worker_limit) == (5, 2, 20)
     assert rec.deployment_class == "server"
     assert within_self_service_ceiling(rec) is True
 
@@ -159,7 +162,7 @@ def test_to_license_claims_shape() -> None:
     assert claims["plan"] == "team"
     assert claims["products"]["codna"]["tier"] == "team"
     assert sorted(claims["products"]["codna"]["features"]) == sorted(CODNA_FEATURES_FULL)
-    assert claims["concurrent_worker_limit"] == 4
+    assert claims["concurrent_worker_limit"] == 20  # team = 20 workers/device (plan_limits)
     assert claims["offline_grace_days"] == 3
 
 
@@ -177,7 +180,7 @@ def test_claims_round_trip_into_runtime_device_license() -> None:
     assert lic.has_product("codna") is True
     assert lic.product_features("codna") == frozenset(CODNA_FEATURES_FULL)
     assert lic.product_tier("codna") == "team"
-    assert lic.worker_limit() == rec.concurrent_worker_limit == 4
+    assert lic.worker_limit() == rec.concurrent_worker_limit == 20
     assert lic.named_seat_limit == rec.named_seat_limit == 5
     assert lic.active_node_limit == rec.active_node_limit == 2
     assert lic.commercial_use is True

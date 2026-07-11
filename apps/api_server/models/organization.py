@@ -19,10 +19,12 @@ class OrgPlan(StrEnum):
     TELYS_DEVELOPER = "telys_developer"  # free, 1-device, local/non-commercial Telys runtime dev license
     TELYS_PRO = "telys_pro"      # paid Telys runtime — commercial, multi-device
     TELYS_TEAM = "telys_team"    # paid Telys runtime — team/server seats
-    ALGENTA_FREE = "algenta_free"    # free forever, 1 self-hosted node, local/non-commercial Algenta engine
-    ALGENTA_PRO = "algenta_pro"      # paid Algenta engine — hosted, commercial, single seat
-    ALGENTA_TEAM = "algenta_team"    # paid Algenta engine — hosted, per-seat team
-    ALGENTA_SELFHOST = "algenta_selfhost"  # paid Algenta engine — self-hosted, PER ACTIVE NODE ($199/node)
+    ALGENTA_FREE = "algenta_free"    # Community — free forever, self-hosted, 1 device · 1 worker, non-commercial
+    ALGENTA_PRO = "algenta_pro"      # Pro — self-hosted, PER DEVICE ($99/device), 5 workers/device, 1 seat
+    ALGENTA_TEAM = "algenta_team"    # Team — self-hosted, PER DEVICE ($499/device), 20 workers/device, 15 seats
+    # NOTE: `algenta_selfhost` was removed (2026-07). All paid Algenta tiers are self-hosted + per-device;
+    # there is no separate self-host plan. The Postgres org_plan enum still carries the orphaned value
+    # (migration 0050) — Postgres can't DROP an enum value — but it is unused and no longer offered.
 
 
 class OrgStatus(StrEnum):

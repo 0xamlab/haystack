@@ -34,7 +34,7 @@ from apps.api_server.services.egress_guard import audit_context_from_auth
 from apps.api_server.services.entitlement_service import entitlement_for_org
 from apps.api_server.services.plan_limits import device_limit as _plan_device_limit
 from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
-from apps.api_server.services.team_seats import seat_limit as _seat_limit
+from apps.api_server.services.product_registry import get_product, product_for_plan
 from apps.api_server.services.public_url_policy import (
     request_origin_base_url,
     resolve_billing_redirect_urls,
@@ -45,9 +45,17 @@ from apps.api_server.services.stripe_service import (
     handle_checkout_completed,
     verify_stripe_webhook,
 )
+from apps.api_server.services.team_seats import seat_limit as _seat_limit
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Billing"])
+
+# Stripe subscription statuses that mean dunning is EXHAUSTED — the customer stopped paying and
+# Stripe has given up retrying. These downgrade to Community (anti-pay-once-leave). We deliberately
+# do NOT include "past_due": that is still inside Stripe's retry window (a transient/declined card
+# that may recover), so cutting the customer off then would be over-enforcement. Letting Stripe's
+# own dunning ladder run first gives the ~one-renewal-cycle grace the short license TTL expects.
+_DELINQUENT_TERMINAL_STATUSES = frozenset({"unpaid", "canceled", "incomplete_expired"})
 
 
 async def _suspend_excess_members(db: AsyncSession, org_id: Any, seat_cap: int) -> int:
@@ -97,7 +105,7 @@ async def checkout(
     if plan not in (
         "developer", "pro", "proplus", "ultra", "team",
         "telys_pro", "telys_team",
-        "algenta_pro", "algenta_team", "algenta_selfhost",
+        "algenta_pro", "algenta_team",
     ):
         raise HTTPException(
             status_code=400,
@@ -306,6 +314,30 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
+            # Dunning exhausted (unpaid / canceled / incomplete_expired) → the customer stopped
+            # paying and Stripe gave up retrying. Downgrade to Community NOW, before the eventual
+            # delete, so a delinquent monthly subscriber loses paid entitlement within ~one cycle
+            # rather than weeks later. `past_due` is deliberately NOT terminal — it's still inside
+            # Stripe's retry window (a transient decline that may recover), so it keeps the plan.
+            if status in _DELINQUENT_TERMINAL_STATUSES:
+                await _upsert_subscription(
+                    db,
+                    str(org.id),
+                    subscription_id,
+                    customer_id,
+                    plan_name,
+                    status,
+                    period_end=period_end,
+                    cancel_at_end=cancel_at_end,
+                )
+                await _downgrade_to_community(
+                    db,
+                    org,
+                    reason=f"subscription_{status}",
+                    event_id=event.get("id"),
+                    subscription_resource_id=subscription_id,
+                )
+                return
             # An ACTIVE subscription should map to a KNOWN paid price. plan_name=='free' here means
             # an unknown/misconfigured price_id (see _plan_from_subscription's fallback) — do NOT
             # downgrade-and-de-entitle a paying customer on a parse failure. A genuine cancellation
@@ -404,42 +436,15 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
-            prev_plan = _org_plan_name(org)
-            org.plan = OrgPlan.FREE
-            await db.flush()
-            # Cancellation is unambiguous → revoke ALL the org's devices. free has no local
-            # runtime, so every device becomes unauthorized; the revoked rows land in the signed
-            # CRL (build_revocation_payload) and can no longer renew/re-register.
-            revoked = await revoke_org_devices(org.id, db)
-            logger.info("subscription_cancelled", org_id=str(org.id), devices_revoked=revoked)
-            await write_audit_event(
+            # Cancellation is unambiguous → drop to the product's Community tier (algenta_free keeps
+            # the free-forever device re-capped to 1; cloud-only free revokes all devices).
+            await _downgrade_to_community(
                 db,
-                org.id,
-                AuditAction.ENTITLEMENT_REVOKED,
-                actor_email="stripe-webhook",
-                resource_type="subscription",
-                resource_id=obj.get("id") or str(org.id),
-                metadata={
-                    "old_plan": prev_plan,
-                    "new_plan": "free",
-                    "reason": "subscription.deleted",
-                    "event_id": event.get("id"),
-                },
+                org,
+                reason="subscription.deleted",
+                event_id=event.get("id"),
+                subscription_resource_id=obj.get("id"),
             )
-            if revoked:
-                await write_audit_event(
-                    db,
-                    org.id,
-                    AuditAction.DEVICE_REVOKED,
-                    actor_email="stripe-webhook",
-                    resource_type="device",
-                    resource_id=str(org.id),
-                    metadata={
-                        "count": revoked,
-                        "reason": "subscription.deleted",
-                        "event_id": event.get("id"),
-                    },
-                )
 
     # ── Invoice paid → reset usage counter ───────────────────────────────────
     elif event_type == "invoice.paid":
@@ -467,6 +472,109 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
 
 def _org_plan_name(org: Organization) -> str:
     return getattr(org.plan, "value", str(org.plan))
+
+
+def _community_downgrade_plan(prev_plan: str) -> OrgPlan:
+    """The Community / free-forever tier to drop to when a paid subscription ends, in the SAME
+    product namespace as the prior plan.
+
+    ``algenta_pro/algenta_team`` → ``algenta_free`` (Community — free-forever, self-hosted, 1 device);
+    ``telys_*`` → ``telys_developer``; unprefixed codna/core plans → generic ``free``. This is what makes
+    a lapsed Algenta customer land on the intended limited Community grant instead of the generic
+    cloud-only ``free`` tier (whose entitlement has an EMPTY products dict and would strip the engine
+    license entirely). If the product's default tier isn't a valid enum value, fail safe to ``free``.
+    """
+    cfg = get_product(product_for_plan(prev_plan))
+    tier = cfg.default_free_tier if cfg else "free"
+    try:
+        return OrgPlan(tier)
+    except ValueError:
+        return OrgPlan.FREE
+
+
+async def _downgrade_to_community(
+    db: AsyncSession,
+    org: Organization,
+    *,
+    reason: str,
+    event_id: str | None,
+    subscription_resource_id: str | None,
+) -> None:
+    """Drop a paid org to its product's Community tier and re-cap devices/seats accordingly.
+
+    Used by both a clean cancellation (``customer.subscription.deleted``) and dunning-exhausted
+    delinquency (``customer.subscription.updated`` with a terminal status). Device handling depends on
+    the landing tier: a local-runtime Community tier (``algenta_free`` — 1 device) is RE-CAPPED so the
+    free-forever device survives; a cloud-only ``free`` tier (no local runtime) has ALL devices revoked
+    since none can hold a valid license. Does NOT commit — the caller commits with the event-id ledger.
+    """
+    prev_plan = _org_plan_name(org)
+    new_plan_enum = _community_downgrade_plan(prev_plan)
+    org.plan = new_plan_enum
+    await db.flush()
+    new_plan = new_plan_enum.value
+
+    if _plan_local_runtime(new_plan) and _plan_device_limit(new_plan) > 0:
+        # Keep the Community device(s); revoke only devices beyond the free-forever cap.
+        revoked = await revoke_excess_org_devices(org.id, _plan_device_limit(new_plan), db)
+    else:
+        # Cloud-only free: no device can hold a license → revoke all (rows land in the signed CRL).
+        revoked = await revoke_org_devices(org.id, db)
+
+    logger.info(
+        "subscription_downgraded_to_community",
+        org_id=str(org.id),
+        prev_plan=prev_plan,
+        new_plan=new_plan,
+        reason=reason,
+        devices_revoked=revoked,
+    )
+    await write_audit_event(
+        db,
+        org.id,
+        AuditAction.ENTITLEMENT_REVOKED,
+        actor_email="stripe-webhook",
+        resource_type="subscription",
+        resource_id=subscription_resource_id or str(org.id),
+        metadata={"old_plan": prev_plan, "new_plan": new_plan, "reason": reason, "event_id": event_id},
+    )
+    if revoked:
+        await write_audit_event(
+            db,
+            org.id,
+            AuditAction.DEVICE_REVOKED,
+            actor_email="stripe-webhook",
+            resource_type="device",
+            resource_id=str(org.id),
+            metadata={"count": revoked, "reason": reason, "event_id": event_id},
+        )
+
+    # Suspend members beyond the Community seat cap (owners always kept).
+    seat_cap = _seat_limit(new_plan)
+    suspended = await _suspend_excess_members(db, org.id, seat_cap)
+    if suspended:
+        logger.info(
+            "subscription_downgrade_excess_members_suspended",
+            org_id=str(org.id),
+            plan=new_plan,
+            count=suspended,
+        )
+        await write_audit_event(
+            db,
+            org.id,
+            AuditAction.PLAN_DOWNGRADE,
+            actor_email="stripe-webhook",
+            resource_type="team_member",
+            resource_id=str(org.id),
+            metadata={
+                "suspended_members": suspended,
+                "new_plan": new_plan,
+                "seat_cap": seat_cap,
+                "reason": reason,
+                "event_id": event_id,
+            },
+        )
+    await _audit_entitlement_recompute(db, org, reason, event_id)
 
 
 async def _audit_entitlement_recompute(

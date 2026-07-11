@@ -72,7 +72,7 @@ def days_left_for_stage(stage: str) -> int | None:
 PAID_PLANS = {
     "developer", "pro", "proplus", "ultra", "team",
     "telys_pro", "telys_team",
-    "algenta_pro", "algenta_team", "algenta_selfhost",
+    "algenta_pro", "algenta_team",
 }
 KEEP_URL = "https://accounts.thyn.ai/login"
 

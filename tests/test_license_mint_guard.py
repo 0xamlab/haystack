@@ -117,7 +117,7 @@ def test_airgapped_requires_enterprise_plan() -> None:
     violations = paid_selfhost_violations(
         _paid_selfhost(
             deployment_class="airgapped",
-            plan="algenta_selfhost",
+            plan="algenta_team",
             device_pubkey_thumbprint="thumb-xyz",
             concurrent_worker_limit=2,
         )
@@ -151,12 +151,14 @@ def test_oem_claims_are_rejected_as_paid_selfhost() -> None:
     assert "finite caps" in joined or "redistribut" in joined
 
 
-# ── the algenta_selfhost tier, minted for real, is a safe paid license ──────────────
-def test_algenta_selfhost_entitlement_claims_pass_the_guard() -> None:
-    """The algenta_selfhost tier → license claims must satisfy the guard (it's the paid per-node tier)."""
+# ── the algenta_team tier, minted for real, is a safe paid self-host license ─────────
+def test_algenta_team_entitlement_claims_pass_the_guard() -> None:
+    """The paid per-device Algenta Team tier → license claims must satisfy the guard (finite caps,
+    non-OEM, non-redistributable). Pro/Team are the self-hosted per-device tiers now that the separate
+    algenta_selfhost plan was removed."""
     from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
 
-    rec = resolve_entitlement("algenta_selfhost")
+    rec = resolve_entitlement("algenta_team")
     claims = to_license_claims(rec)
     assert claims["deployment_class"] == "server"
     assert claims["commercial_use"] is True

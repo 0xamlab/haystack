@@ -130,37 +130,24 @@ _PLANS: dict[str, PlanConfig] = {
         storage_gb=1,
         llm_spend_cap_usd_month=0,
     ),
-    # Hosted, single commercial seat. Anchored to the repo-intelligence band (CodeRabbit/Greptile/Qodo
-    # $24–30); $29 is the top charm point of that band, below Codna proplus $60.
+    # Pro — self-hosted, billed PER DEVICE ($99/device/mo, $948/device/yr; Stripe usage=licensed,
+    # quantity = number of licensed devices). 5 workers/device, 1 seat. price_usd_month is the per-device
+    # monthly price; the bill = $99 × devices.
     "algenta_pro": PlanConfig(
-        display_name="ALGENTA PRO", price_usd_month=29, executions_month=500_000,
+        display_name="ALGENTA PRO", price_usd_month=99, executions_month=500_000,
         devices=3, local_runtime=True, rate_per_minute=300, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=False,
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=4, storage_gb=10,
         llm_spend_cap_usd_month=0,
     ),
-    # Hosted, PER-SEAT. price_usd_month is the per-seat price; the bill = price × seats (Stripe adjustable
-    # quantity, see stripe_service.create_checkout_session). Market Team band is $30–40/seat (Cursor/
-    # Graphite $40, Greptile $30); $39 lands at center. Was a $99 flat plan (~$20 effective/seat).
+    # Team — self-hosted, billed PER DEVICE ($499/device/mo, $4788/device/yr; Stripe usage=licensed,
+    # quantity = number of licensed devices). 20 workers/device, 15 seats. price_usd_month is the
+    # per-device monthly price; the bill = $499 × devices.
     "algenta_team": PlanConfig(
-        display_name="ALGENTA TEAM", price_usd_month=39, executions_month=500_000,
+        display_name="ALGENTA TEAM", price_usd_month=499, executions_month=500_000,
         devices=10, local_runtime=True, rate_per_minute=1000, async_jobs=True, webhooks=True,
         max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=8, storage_gb=10,
-        llm_spend_cap_usd_month=0,
-    ),
-    # SELF-HOSTED, PER ACTIVE NODE. price_usd_month is the price per running engine node ($199/node/mo).
-    # The enforceable unit self-hosted is the node (device), NOT the seat — otherwise one cheap license
-    # runs across an entire fleet. Enforced by the active-node-cap (device_service.node_admission_block_count,
-    # ALGENTA_ENFORCE_ACTIVE_NODE_CAP=1) for connected deployments; multi-node / air-gapped / >2-node self-
-    # host is minted as an OFFLINE per-node license (scripts/issue_offline_license.py --paid-selfhost, which
-    # requires finite caps + non-OEM via scripts/license_mint_guard), NEVER an OEM license. seats within a
-    # node are not separately charged. anthropic/openai/google are BYOK (llm_spend_cap=0).
-    "algenta_selfhost": PlanConfig(
-        display_name="ALGENTA SELF-HOSTED", price_usd_month=199, executions_month=2_000_000,
-        devices=1, local_runtime=True, rate_per_minute=2000, async_jobs=True, webhooks=True,
-        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
-        permitted_modules=["*"], credit_batch_size=25_000, concurrent_jobs=20, storage_gb=100,
         llm_spend_cap_usd_month=0,
     ),
     "developer": PlanConfig(
@@ -358,7 +345,6 @@ _WORKER_LIMITS: dict[str, int] = {
     "proplus": 10,
     "telys_team": 20,
     "algenta_team": 20,
-    "algenta_selfhost": 20,
     "team": 20,
     "ultra": 20,
     "enterprise": 0,  # negotiated / unlimited

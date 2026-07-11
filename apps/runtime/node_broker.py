@@ -10,9 +10,9 @@ Layered, strongest-to-weakest (see docs/pricing-algenta.md):
 
 * **L1 device-binding (air-gap-safe, primary).** A per-node license carries ``device_pubkey_thumbprint``
   (the node's Ed25519 public-key thumbprint, ``device_keypair.public_key_thumbprint``). At boot the node
-  proves it holds the matching private key by recomputing the thumbprint; a mismatch fails closed. For the
-  ``algenta_selfhost`` unit (``active_node_limit=1``) this alone is an offline node cap of 1 with zero
-  coordination — a token cannot run on a second machine (whose key is different). As strong as the private
+  proves it holds the matching private key by recomputing the thumbprint; a mismatch fails closed. For a
+  single-device unit (``active_node_limit=1``, e.g. Community) this alone is an offline node cap of 1 with
+  zero coordination — a token cannot run on a second machine (whose key is different). As strong as the private
   key store: OS keychain / machine-id-encrypted file today, TPM/Secure-Enclave optional hardening later.
 
 * **L2 peer census (shared-Redis clusters, defense-in-depth, opt-in ``ALGENTA_ENFORCE_PEER_NODE_CAP``).**

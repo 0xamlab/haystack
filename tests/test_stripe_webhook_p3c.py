@@ -257,3 +257,83 @@ async def test_cancel_is_idempotent() -> None:
     # The 2nd call revokes 0 (already revoked) → only ONE DEVICE_REVOKED audit row.
     device_revokes = [a for a in await _audit_actions(org_id) if a == AuditAction.DEVICE_REVOKED.value]
     assert len(device_revokes) == 1
+
+
+# ── product-namespaced Community downgrade (anti-pay-once-leave target fix) ──────
+
+
+@pytest.mark.anyio
+async def test_algenta_cancel_downgrades_to_algenta_free_not_free() -> None:
+    """A cancelled paid Algenta org must land on the free-forever Community tier `algenta_free`
+    (1 device, keeps the newest) — NOT the generic cloud-only `free` whose entitlement has an empty
+    products dict and would strip the engine grant entirely. This is the downgrade-target fix."""
+    cus = f"cus_{uuid.uuid4().hex}"
+    # device 0 heartbeated most recently (newest) → survives the re-cap to 1 device.
+    org_id, device_ids = await _seed(OrgPlan.ALGENTA_PRO, cus, [1, 2, 3])
+    await _process(_event("customer.subscription.deleted", cus))
+
+    assert await _org_plan(org_id) == OrgPlan.ALGENTA_FREE  # NOT OrgPlan.FREE
+    statuses = await _statuses(org_id)
+    assert statuses[device_ids[0]] == DeviceStatus.ACTIVE  # free-forever node kept
+    assert statuses[device_ids[1]] == DeviceStatus.REVOKED
+    assert statuses[device_ids[2]] == DeviceStatus.REVOKED
+    actions = await _audit_actions(org_id)
+    assert AuditAction.ENTITLEMENT_REVOKED.value in actions
+    assert AuditAction.DEVICE_REVOKED.value in actions
+
+
+@pytest.mark.anyio
+async def test_telys_cancel_downgrades_to_telys_developer() -> None:
+    """Same product-namespaced downgrade for Telys: cancel lands on telys_developer, not generic free."""
+    cus = f"cus_{uuid.uuid4().hex}"
+    org_id, device_ids = await _seed(OrgPlan.TELYS_PRO, cus, [1, 2])
+    await _process(_event("customer.subscription.deleted", cus))
+    assert await _org_plan(org_id) == OrgPlan.TELYS_DEVELOPER
+    statuses = await _statuses(org_id)
+    assert statuses[device_ids[0]] == DeviceStatus.ACTIVE  # 1-node Community tier keeps newest
+    assert statuses[device_ids[1]] == DeviceStatus.REVOKED
+
+
+# ── dunning-exhausted delinquency downgrades; transient past_due does NOT ────────
+
+
+@pytest.mark.anyio
+async def test_delinquent_unpaid_downgrades_to_community() -> None:
+    """Dunning exhausted (subscription status `unpaid`) downgrades to the product Community tier
+    BEFORE the eventual delete — so a delinquent monthly subscriber loses paid entitlement within
+    ~one cycle instead of weeks later when Stripe finally cancels."""
+    cus = f"cus_{uuid.uuid4().hex}"
+    org_id, device_ids = await _seed(OrgPlan.ALGENTA_PRO, cus, [1, 2, 3])  # algenta_pro cap 3
+    await _process(_event("customer.subscription.updated", cus, status="unpaid"))
+    assert await _org_plan(org_id) == OrgPlan.ALGENTA_FREE
+    statuses = await _statuses(org_id)
+    # re-capped to the 1-node Community tier: newest kept, the rest revoked.
+    assert statuses[device_ids[0]] == DeviceStatus.ACTIVE
+    assert statuses[device_ids[1]] == DeviceStatus.REVOKED
+    assert statuses[device_ids[2]] == DeviceStatus.REVOKED
+    assert AuditAction.ENTITLEMENT_REVOKED.value in await _audit_actions(org_id)
+
+
+@pytest.mark.anyio
+async def test_past_due_keeps_plan_and_does_not_downgrade(monkeypatch) -> None:
+    """`past_due` is inside Stripe's retry window (a transient decline that may recover) — it must
+    NOT downgrade a paying customer to Community. Only terminal dunning states (unpaid/canceled/
+    incomplete_expired) do; a genuine cancellation still arrives as subscription.deleted."""
+    monkeypatch.setattr(
+        billing,
+        "_get_settings",
+        lambda: types.SimpleNamespace(stripe_price_algenta_pro="price_algenta_pro_test"),
+    )
+    cus = f"cus_{uuid.uuid4().hex}"
+    org_id, _ = await _seed(OrgPlan.ALGENTA_PRO, cus, [1, 2])  # within cap 3
+    await _process(
+        _event(
+            "customer.subscription.updated",
+            cus,
+            status="past_due",
+            items={"data": [{"price": {"id": "price_algenta_pro_test"}}]},
+        )
+    )
+    assert await _org_plan(org_id) == OrgPlan.ALGENTA_PRO  # kept — past_due is not terminal
+    statuses = await _statuses(org_id)
+    assert all(st == DeviceStatus.ACTIVE for st in statuses.values())

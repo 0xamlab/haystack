@@ -1,44 +1,52 @@
-# Algenta pricing — two axes: hosted per-seat, self-hosted per-node
+# Algenta pricing — self-hosted, licensed per device
 
 Engineering reference for how Algenta's paid tiers are priced and enforced. External/marketing copy lives
-elsewhere (GitBook is external-only); this documents the model + the anti-abuse machinery.
+elsewhere (GitBook is external-only); this documents the model + the anti-abuse machinery. The live card is
+[algenta.ai/pricing](https://algenta.ai/pricing); the Stripe products (`source=algenta`, `usage=licensed`)
+are the source of truth for prices.
 
 ## The decision
 
-One plan/entitlement schema, **two priced dimensions selected by deployment**. Derived from a broad-market
-survey (repository-intelligence + code-review + agentic tools) grounded against Algenta's own tier limits and
-the already-published Codna/Telys prices.
+The engine runs on the customer's hardware at **every** tier (Community included), so the only enforceable
+billing unit is the **running engine = a device**. Everything is therefore **self-hosted, licensed per
+device**. One plan/entitlement schema; the paid tiers differ by per-device throughput (workers/device) and
+included team seats.
 
-| Tier | Deployment | Price | Billing unit | Notes |
-|---|---|---|---|---|
-| `algenta_free` | hosted **or** self-host | **$0** | — | **free forever, exactly 1 node**, non-commercial, full features |
-| `algenta_pro` | hosted | **$29/mo** | flat (1 seat) | repo-intel band (CodeRabbit/Greptile/Qodo $24–30) |
-| `algenta_team` | hosted | **$39/seat/mo** | **per seat** (Stripe adjustable quantity) | market Team band $30–40/seat |
-| `algenta_selfhost` | self-hosted | **$199/active node/mo** | **per node** | infra/runtime comps (SonarQube/Redis/TeamCity) |
-| enterprise | either | custom (~$60–100+/seat or site license from ~$40k/yr) | negotiated | via per-org `entitlement_overrides` |
+| Tier | Internal plan | Price | Billing unit | Workers/device | Seats |
+|---|---|---|---|---|---|
+| Community | `algenta_free` | **$0** | — (1 device) | 1 | 1 |
+| Pro | `algenta_pro` | **$99/device/mo** ($948/device/yr) | **per device** (Stripe qty = devices) | 5 | 1 |
+| Team | `algenta_team` | **$499/device/mo** ($4788/device/yr) | **per device** (Stripe qty = devices) | 20 | 15 |
+| Enterprise | `enterprise` | from **$50k/yr** | fleet licensing (negotiated) | unlimited | negotiated |
 
-Annual list motion = ~2 months free (16.7%, market standard).
+Community is non-commercial (1 device, 1 worker). Enterprise adds air-gapped mode + fleet licensing (your
+device count under one agreement) + SLA. Annual ≈ 2 months free (Pro $948 ≈ $79/mo; Team $4788 ≈ $399/mo).
 
-## Why hosted = per-seat but self-hosted = per-node
+> **Removed (2026-07):** the old two-axis model (`algenta_pro` $29 flat, `algenta_team` $39/seat, and a
+> separate `algenta_selfhost` $199/node) no longer exists. Pro/Team ARE the per-device self-host tiers.
 
-Per-seat is only enforceable when **we** run the infra and count seats (the hosted axis). Once a customer
-holds the engine binary (self-hosted), seats are unenforceable — they can point unlimited users at one
-instance. The only enforceable unit is the **running engine = the active node**. So self-hosted is billed
-**per node**, which also matches how self-managed infra tools price (SonarQube per instance, Redis per
-node/shard, TeamCity per agent, HashiCorp historically per node). A self-hosted node serves many users, so
-`$199/node ≈ 5×` a `$39` hosted seat.
+## Why per device
 
-This is the same model Codna ships — Algenta rides the **same shared platform machinery**
-(`device_service`, `entitlement_service`, `worker_broker`, offline RS256 verification via
-`product_registry`); no separate anti-cheat wiring, only the tier rows + minting correctly.
+Once a customer holds the engine binary, seats are unenforceable — they can point unlimited users at one
+instance. The only unit the runtime can enforce is the **running engine = the device** (its bound key). So
+every tier is billed per device; workers-per-device (1/5/20) and included seats (1/1/15) are the differentiators.
+This matches how self-managed infra tools price (SonarQube per instance, TeamCity per agent, HashiCorp
+historically per node). The Stripe prices are `usage=licensed`: the subscription **quantity = the number of
+licensed devices**.
 
-## Free forever on one node
+Algenta rides the **same shared platform machinery** Codna/Telys ship (`device_service`,
+`entitlement_service`, `worker_broker`, offline RS256 verification via `product_registry`); no separate
+anti-cheat wiring, only the tier rows + minting correctly.
 
-`algenta_free` always includes **exactly one self-hosted node**, non-commercial: `price=0`, `devices=1`,
-`active_node_limit=1`, `commercial_use=False`. This is the PLG top-of-funnel and is near-zero-COGS to serve
-(local execution + BYOK LLM). Asserted in `tests/test_algenta_selfhost_pricing.py`.
+## Free forever on one device
 
-## The anti-fleet-abuse defense (why one $199 license can't run across a fleet)
+`algenta_free` (Community) always includes **exactly one self-hosted device**, non-commercial: `price=0`,
+`devices=1`, `active_node_limit=1`, `concurrent_worker_limit=1`, `commercial_use=False`. This is the PLG
+top-of-funnel and near-zero-COGS to serve (local execution + BYOK LLM). It is also the **lapse target**: a
+cancelled/lapsed paid license downgrades to Community rather than hard-blocking. Asserted in
+`tests/test_algenta_pricing.py`.
+
+## The anti-fleet-abuse defense (why one per-device license can't run across a fleet)
 
 The enforcement is **not** the price — it's the **active-node-cap + minting with finite, non-OEM caps**.
 
@@ -68,8 +76,8 @@ layered strongest-to-weakest and fail-closed:
 - **L1 — device binding (air-gap-safe, primary).** At daemon boot (`_validate_daemon_startup_prerequisites`,
   before anything binds) a device-bound license (`device_pubkey_thumbprint` set) must run on the machine
   whose Ed25519 private key reproduces that thumbprint (`device_keypair.public_key_thumbprint`); mismatch →
-  `NodeAdmissionError`, refuse to boot. For the `algenta_selfhost` unit (`active_node_limit=1`) this alone is
-  an offline node cap of 1 with zero coordination — the token can't run on a second machine.
+  `NodeAdmissionError`, refuse to boot. For a single-device unit (`active_node_limit=1`, e.g. Community) this
+  alone is an offline device cap of 1 with zero coordination — the token can't run on a second machine.
 - **L2 — peer census (shared-Redis clusters, opt-in `ALGENTA_ENFORCE_PEER_NODE_CAP`).** For a shared-token
   cluster (`active_node_limit=N`), nodes count each other in an atomic sorted-set census keyed by
   `license_id` on the customer's OWN coordination Redis (`apps/runtime/coordination.py`), refreshed by a
@@ -122,17 +130,18 @@ the strongest practical posture rather than overcoming it:
 - **Default-off cap is a provisioning footgun.** A paid self-host deployment that forgets
   `ALGENTA_ENFORCE_ACTIVE_NODE_CAP=1` (connected) / `ALGENTA_ENFORCE_PEER_NODE_CAP=1` (cluster) is uncapped.
   The mint output prints a reminder; deployment automation must set it.
-- **Multi-node self-serve** provisions one node via Stripe checkout; larger node counts scale
-  `active_node_limit` via per-org `entitlement_overrides` (enterprise) + an offline per-node mint. Tightly
-  coupling Stripe subscription quantity → `active_node_limit` needs persisted overrides (future).
+- **Per-device quantity → device cap.** Checkout must set Stripe quantity = number of licensed devices, and
+  the webhook must sync that quantity into the org's device cap (`active_node_limit` / device allowance) so a
+  paying customer can register exactly the devices they bought. This is the Part-2 billing inversion (today
+  the seat-quantity plumbing predates the per-device card); enterprise fleet counts still scale via per-org
+  `entitlement_overrides` + offline per-device mints.
 - Autoscale burst/grace + a documented node definition (pod vs VM) so an over-cap scale-up degrades
   gracefully rather than refusing to boot.
 
 ## Sibling consistency
 
-Algenta Pro `$29` < Codna proplus `$60`; Algenta Team `$39/seat` below Codna everywhere — the gap is
-explained by Codna bundling managed-LLM spend (`llm_spend_cap` $50–$2,000/mo) while Algenta is BYOK
-(`llm_spend_cap=0`, customer pays providers directly). Telys is the current byte-for-byte entitlement twin at
-`$0/$25/$99`; Algenta diverges upward because repository intelligence commands the $30–40 repo-review band a
-raw memory runtime does not — realign Telys or keep the divergence documented, but don't ship two
-identical-entitlement SKUs at different prices unexplained.
+Algenta is priced per **device** ($99/$499) where Codna/Telys are priced per **seat** — different billing
+units for different products, so a direct seat-to-seat comparison doesn't apply. Algenta is BYOK
+(`llm_spend_cap=0`, customer pays providers directly) whereas Codna bundles managed-LLM spend
+(`llm_spend_cap` $50–$2,000/mo); a per-device Algenta license serves many users on one machine, so the
+per-device price sits well above any single hosted seat by design.
