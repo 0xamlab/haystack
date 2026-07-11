@@ -8,6 +8,7 @@ Supported sources:
   elasticsearch → explicit Query DSL fetches and index browsing
   file       → CSV, TSV, JSON (nested + flat), Excel, Parquet (base64 or path)
   neo4j      → explicit Cypher queries and schema browsing against Neo4j / Aura
+  oracle     → Oracle Database / Autonomous Database via python-oracledb Thin mode
   redis      → deterministic key snapshots via explicit keys and key browsing
   sql        → PostgreSQL, MySQL, SQLite, any SQLAlchemy-compatible async DSN
   rest_api   → REST APIs with dot-path navigation + JSON auto-flattening
@@ -26,6 +27,7 @@ from .cloud_connector import AzureBlobConnector, GCSConnector, S3Connector
 from .elasticsearch_connector import ElasticsearchConnector
 from .file_connector import FileConnector, _flatten_dict
 from .neo4j_connector import Neo4jConnector
+from .oracle_connector import OracleConnector
 from .redis_connector import RedisConnector
 from .rest_connector import RESTConnector
 from .sql_connector import SQLConnector
@@ -36,6 +38,7 @@ __all__ = [
     "FileConnector",
     "ElasticsearchConnector",
     "Neo4jConnector",
+    "OracleConnector",
     "RedisConnector",
     "SQLConnector",
     "RESTConnector",

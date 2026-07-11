@@ -19,6 +19,7 @@ _SQL_DEFAULT_PORTS: dict[str, int] = {
     "https": 8443,
     "mssql": 1433,
     "mysql": 3306,
+    "oracle": 1521,
     "postgres": 5432,
     "postgresql": 5432,
     "redshift": 5432,
@@ -77,7 +78,10 @@ def sql_connection_destination(connection_string: str) -> str | None:
         normalized_account = (
             account if "." in account else f"{account}.snowflakecomputing.com"
         )
-        return _format_destination(normalized_account, parsed.port or _SQL_DEFAULT_PORTS["snowflake"])
+        return _format_destination(
+            normalized_account,
+            parsed.port or _SQL_DEFAULT_PORTS["snowflake"],
+        )
     if parsed.hostname:
         return _parsed_host_destination(
             parsed,

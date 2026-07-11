@@ -68,6 +68,8 @@ def _infer_database_type(config: dict[str, Any]) -> str | None:
             return "mysql"
         if normalized.startswith("mssql") or normalized.startswith("sqlserver"):
             return "mssql"
+        if normalized.startswith("oracle"):
+            return "oracle"
         if normalized.startswith("redshift"):
             return "redshift"
         if normalized.startswith("clickhouse"):
@@ -108,6 +110,8 @@ def _infer_database_type(config: dict[str, Any]) -> str | None:
         return "elasticsearch"
     if "server" in config:
         return "mssql"
+    if "service_name" in config or "wallet_location" in config:
+        return "oracle"
     if "host" in config:
         return "postgres"
     return None
@@ -155,7 +159,7 @@ def normalize_connection_provider(
                             "code": "invalid_connection_provider",
                             "message": (
                                 "Database connections require provider one of postgres, mysql, "
-                                "mssql, redshift, clickhouse, snowflake, bigquery, sqlite, "
+                                "mssql, oracle, redshift, clickhouse, snowflake, bigquery, sqlite, "
                                 "elasticsearch, neo4j, redis or a recognizable connection_string."
                             ),
                         }
@@ -567,6 +571,44 @@ def build_source_spec(
         if provider == "redis":
             source = make_source(connection=_build_redis_connection(cfg, sel))
             return source, True, None
+        if provider == "oracle":
+            sql_query = str(
+                sel.get("sql_query") or cfg.get("sql_query") or cfg.get("query") or ""
+            ).strip()
+            table = str(sel.get("table") or cfg.get("table") or "").strip()
+            if not sql_query and table:
+                sql_query = _sql_source_selection_query_for_provider(table, provider=provider)
+            if not sql_query:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "selection_required",
+                            "message": (
+                                "Database datasets require selection.table or selection.sql_query."
+                            ),
+                        }
+                    },
+                )
+            connection = strip_none(
+                {
+                    "type": "oracle",
+                    "connection_string": cfg.get("connection_string"),
+                    "user": cfg.get("user", cfg.get("username")),
+                    "password": cfg.get("password"),
+                    "dsn": cfg.get("dsn", cfg.get("connect_descriptor")),
+                    "host": cfg.get("host"),
+                    "port": cfg.get("port"),
+                    "service_name": cfg.get("service_name", cfg.get("database")),
+                    "config_dir": cfg.get("config_dir", cfg.get("tns_admin")),
+                    "wallet_location": cfg.get("wallet_location"),
+                    "wallet_password": cfg.get("wallet_password"),
+                    "query": sql_query,
+                    "limit": cfg.get("limit"),
+                    "fetch_batch_size": cfg.get("fetch_batch_size"),
+                }
+            )
+            return make_source(connection=connection), True, None
         connection_string = _build_database_connection_string(provider, cfg)
         sql_query = str(
             sel.get("sql_query") or cfg.get("sql_query") or cfg.get("query") or ""

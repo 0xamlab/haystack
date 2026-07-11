@@ -84,6 +84,10 @@ MEANINGS = {
     "invalid_connection_config": "The connector configuration is missing required fields or has invalid values.",
     "invalid_connection_provider": "The connection provider is not recognized.",
     "invalid_connection_type": "The connector type is not one of the supported types.",
+    "invalid_connector_status": (
+        "The saved connector has an invalid verification status; repair the persisted record "
+        "before retrying."
+    ),
     "invalid_credentials": "The supplied credentials were rejected by the data source.",
     "missing_connection_string": "A connection string is required for this connector.",
     "use_connection": "Provide a saved connection id instead of inline connection details for this operation.",

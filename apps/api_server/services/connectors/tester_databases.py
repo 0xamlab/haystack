@@ -14,14 +14,14 @@ from apps.api_server.services.connector_egress import (
 )
 from apps.api_server.services.egress_guard import EgressPolicyDeniedError
 
-logger = structlog.get_logger(__name__)
-
 from .tester_common import (
     ConnectorTestOutcome,
     elapsed_ms,
     failure_outcome,
     success_outcome,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 async def test_postgres_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
@@ -76,6 +76,54 @@ async def test_postgres_connector(config: dict[str, Any]) -> ConnectorTestOutcom
         logger.exception("connector_test_failed", connector="postgres")
         return failure_outcome(
             message="PostgreSQL connection failed.",
+            latency_ms=elapsed_ms(started_at),
+            exception=exc,
+        )
+
+
+async def test_oracle_connector(config: dict[str, Any]) -> ConnectorTestOutcome:
+    try:
+        import oracledb  # noqa: F401
+    except ImportError:
+        return failure_outcome(
+            message=(
+                "Oracle connector runtime is unavailable. Reinstall the Algenta API "
+                "package to restore its bundled python-oracledb dependency."
+            ),
+            latency_ms=0,
+            error_type="invalid_config",
+            recoverable=True,
+        )
+
+    from apps.api_server.connectors.oracle_connector import OracleConnector
+
+    started_at = time.perf_counter()
+    try:
+        await asyncio.to_thread(OracleConnector._validate_sync, config)
+        settings = OracleConnector.connection_settings(config)
+        return success_outcome(
+            f"Oracle Database connection successful ({settings.host}:{settings.port})",
+            elapsed_ms(started_at),
+        )
+    except EgressPolicyDeniedError as exc:
+        return failure_outcome(
+            message=f"Oracle Database blocked by privacy policy: {exc.decision.reason}",
+            latency_ms=elapsed_ms(started_at),
+            error_type="permission",
+            recoverable=True,
+        )
+    except (TypeError, ValueError) as exc:
+        return failure_outcome(
+            message="Oracle Database connector configuration is invalid.",
+            latency_ms=elapsed_ms(started_at),
+            error_type="invalid_config",
+            recoverable=True,
+            exception=exc,
+        )
+    except Exception as exc:
+        logger.exception("connector_test_failed", connector="oracle")
+        return failure_outcome(
+            message="Oracle Database connection failed.",
             latency_ms=elapsed_ms(started_at),
             exception=exc,
         )

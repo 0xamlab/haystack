@@ -36,7 +36,7 @@ Optional live external checks:
   - tier 1 public third-party REST example connectors by default
   - tier 2 auth-required third-party REST examples when fixture credentials are set
   - custom s3 / gcs / azure_blob through source registration when env vars are set
-  - tier 3 Redis / ClickHouse / Snowflake / BigQuery live validation when customer credentials are set
+  - tier 3 Redis / Oracle / ClickHouse / Snowflake / BigQuery live validation when customer credentials are set
 
 Run:
   python3 tests/integration/test_go_live_connectivity_real.py
@@ -405,7 +405,9 @@ def _wait_for_port_open(
     raise LocalRedisBootstrapError(detail)
 
 
-def ensure_local_redis_available(redis_url: str, *, label: str = "Redis") -> LocalRedisBootstrap | None:
+def ensure_local_redis_available(
+    redis_url: str, *, label: str = "Redis"
+) -> LocalRedisBootstrap | None:
     host, port = _parse_redis_endpoint(redis_url)
     try:
         ensure_port_open(host, port, label)
@@ -794,6 +796,10 @@ def _schema_columns_from_connection(
         from apps.api_server.connectors.rest_connector import RESTConnector
 
         table = run_async(RESTConnector(connection).fetch_table())
+    elif case.connector_type == "oracle":
+        from apps.api_server.connectors.oracle_connector import OracleConnector
+
+        table = run_async(OracleConnector(connection).fetch_table())
     else:
         table = None
 
@@ -893,6 +899,9 @@ def _negative_connector_config_for_case(case) -> dict[str, Any] | None:  # type:
     if case.connector_type == "neo4j":
         config["password"] = "algenta-invalid-password"
         return config
+    if case.connector_type == "oracle":
+        config["user"] = "ALGENTA_INVALID_USER"
+        return config
     if case.connector_type == "snowflake":
         config["password"] = "algenta-invalid-password"
         return config
@@ -935,7 +944,7 @@ def _fetch_budget_key(case, connection: dict[str, Any]) -> str:  # type: ignore[
         return "fetch_ms.rest_single_dataset"
     if case.connector_type == "clickhouse":
         return "fetch_ms.clickhouse_cloud_fixture"
-    if case.connector_type in {"snowflake", "bigquery"}:
+    if case.connector_type in {"oracle", "snowflake", "bigquery"}:
         return "fetch_ms.warehouse_fixture"
     return "fetch_ms.object_single"
 
@@ -943,6 +952,8 @@ def _fetch_budget_key(case, connection: dict[str, Any]) -> str:  # type: ignore[
 def _failure_response_budget_key(case) -> str:  # type: ignore[no-untyped-def]
     if case.connector_type == "neo4j":
         return "failure_response_ms.neo4j_connector_test"
+    if case.connector_type == "oracle":
+        return "failure_response_ms.oracle_connector_test"
     return "failure_response_ms"
 
 
@@ -1014,7 +1025,13 @@ def _run_negative_fetch_probe(case) -> dict[str, Any]:  # type: ignore[no-untype
 
 
 def _run_negative_connector_probe(case) -> dict[str, Any]:  # type: ignore[no-untyped-def]
-    if case.connector_type in {"snowflake", "bigquery", "clickhouse", "elasticsearch"}:
+    if case.connector_type in {
+        "oracle",
+        "snowflake",
+        "bigquery",
+        "clickhouse",
+        "elasticsearch",
+    }:
         config = _negative_connector_config_for_case(case)
     else:
         config = _negative_connection_for_case(case)
@@ -1024,6 +1041,7 @@ def _run_negative_connector_probe(case) -> dict[str, Any]:  # type: ignore[no-un
         "error_type": outcome.error_type,
         "recoverable": outcome.recoverable,
         "failure_response_ms": float(outcome.latency_ms or 0.0),
+        "failure_response_budget_key": _failure_response_budget_key(case),
         "message": outcome.message,
     }
 
@@ -1213,6 +1231,140 @@ def _warm_server_registration_case(
     )
 
 
+def _validate_oracle_connect_data_probe_reuse(
+    client: httpx.Client,
+    api_key: str,
+    *,
+    case,
+    connection: dict[str, Any],
+    expected_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    suffix = uuid.uuid4().hex[:8]
+    connector_id: str | None = None
+    dataset_ids: list[str] = []
+    selection = {"sql_query": str(connection["query"])}
+
+    def _connector() -> dict[str, Any]:
+        assert connector_id is not None
+        _, body = api_request(
+            client,
+            "GET",
+            f"/v1/connectors/{connector_id}",
+            api_key=api_key,
+            expected_status=200,
+        )
+        return body
+
+    try:
+        (_, first_body), first_connect_ms = timed_api_request(
+            client,
+            "POST",
+            "/v1/data/connect",
+            api_key=api_key,
+            json_body={
+                "connection_type": "database",
+                "provider": "oracle",
+                "connection_name": f"Oracle live {suffix}",
+                "dataset_name": f"oracle_live_first_{suffix}",
+                "connection_config": case.build_connector_config(),
+                "selection": selection,
+                "visibility": "private",
+            },
+            expected_status=200,
+        )
+        assert first_body["status"] == "ready", first_body
+        connector_id = str(first_body["connection_id"])
+        dataset_ids.append(str(first_body["dataset_id"]))
+        first_connector = _connector()
+        assert first_connector["status"] == "live", first_connector
+        verified_at = first_connector["last_tested_at"]
+        assert verified_at, first_connector
+
+        (_, resume_body), resume_connect_ms = timed_api_request(
+            client,
+            "POST",
+            "/v1/data/connect",
+            api_key=api_key,
+            json_body={
+                "connection_type": "database",
+                "provider": "oracle",
+                "dataset_name": f"oracle_live_resume_{suffix}",
+                "connection_id": connector_id,
+                "selection": selection,
+                "visibility": "private",
+            },
+            expected_status=200,
+        )
+        assert resume_body["status"] == "ready", resume_body
+        assert resume_body["message"] == (
+            "Connection credentials already verified at registration."
+        ), resume_body
+        dataset_ids.append(str(resume_body["dataset_id"]))
+        assert _connector()["last_tested_at"] == verified_at
+
+        _, dataset_body = api_request(
+            client,
+            "GET",
+            f"/v1/data/{dataset_ids[0]}",
+            api_key=api_key,
+            expected_status=200,
+        )
+        metric_column = choose_metric_column(dataset_body["schema"], expected_records)
+        expected_value = compute_expected_aggregate(expected_records, metric_column, "sum")
+        (_, query_body), query_ms = timed_api_request(
+            client,
+            "POST",
+            "/v1/query",
+            api_key=api_key,
+            json_body={
+                "dataset_id": dataset_ids[0],
+                "metric_column": metric_column,
+                "aggregation": "sum",
+            },
+            expected_status=200,
+        )
+        actual_value = (
+            query_body["result"]["value"]
+            if isinstance(query_body.get("result"), dict)
+            else query_body["result"]
+        )
+        assert math.isclose(actual_value, expected_value, rel_tol=1e-9, abs_tol=1e-9)
+        assert _connector()["last_tested_at"] == verified_at
+
+        (_, _refresh_body), refresh_ms = timed_api_request(
+            client,
+            "POST",
+            f"/v1/data/{dataset_ids[0]}/refresh",
+            api_key=api_key,
+            expected_status=200,
+        )
+        assert _connector()["last_tested_at"] == verified_at
+        return {
+            "first_connect_ms": round(first_connect_ms, 3),
+            "resume_connect_ms": round(resume_connect_ms, 3),
+            "query_ms": round(query_ms, 3),
+            "refresh_ms": round(refresh_ms, 3),
+            "persisted_verification_reused": True,
+        }
+    finally:
+        for dataset_id in dict.fromkeys(dataset_ids):
+            api_request(
+                client,
+                "DELETE",
+                f"/v1/data/{dataset_id}",
+                api_key=api_key,
+                expected_status=200,
+            )
+        if connector_id is not None and not dataset_ids:
+            api_request(
+                client,
+                "DELETE",
+                f"/v1/connectors/{connector_id}",
+                api_key=api_key,
+                expected_status=200,
+            )
+
+
 def run_behavior_validation_case(
     client: httpx.Client,
     api_key: str,
@@ -1320,6 +1472,14 @@ def run_behavior_validation_case(
         raise
     assert first_records, f"{case.case_id} first live fetch returned zero records"
     assert second_records, f"{case.case_id} second live fetch returned zero records"
+    if case.connector_type == "oracle":
+        summary["connect_data_probe_reuse"] = _validate_oracle_connect_data_probe_reuse(
+            client,
+            api_key,
+            case=case,
+            connection=connection,
+            expected_records=first_records,
+        )
 
     first_schema_columns = _schema_columns_from_connection(case, connection, first_records)
     second_schema_columns = _schema_columns_from_connection(case, connection, second_records)
@@ -1428,9 +1588,7 @@ def run_behavior_validation_case(
             expected_status=200,
         )
         resolved_plan = resolve_first_body.get("resolved_plan")
-        assert resolved_plan, (
-            f"{case.case_id} did not return a resolved_plan: {resolve_first_body}"
-        )
+        assert resolved_plan, f"{case.case_id} did not return a resolved_plan: {resolve_first_body}"
         resolve_first_ms = float(resolve_first_body.get("latency_ms") or resolve_first_http_ms)
         (_, query_first_body), query_first_http_ms = timed_api_request(
             client,
@@ -1522,6 +1680,7 @@ def run_behavior_validation_case(
                 "gcs",
                 "azure_blob",
                 "redis",
+                "oracle",
                 "snowflake",
                 "bigquery",
                 "clickhouse",
@@ -1531,7 +1690,9 @@ def run_behavior_validation_case(
             else:
                 negative_probe = _run_negative_fetch_probe(case)
             assert negative_probe["error_type"] not in {None, "unknown"}, negative_probe
-            assert negative_probe["error_type"] in _behavior_negative_expectations(case), negative_probe
+            assert negative_probe["error_type"] in _behavior_negative_expectations(case), (
+                negative_probe
+            )
             summary["negative_probe"] = negative_probe
 
         rate_limit_probe = _run_rate_limit_probe(case)
@@ -1562,6 +1723,7 @@ def assert_behavior_sla_summary() -> None:
         "exact_hit_ms": [],
         "failure_response_ms": [],
         "failure_response_ms.neo4j_connector_test": [],
+        "failure_response_ms.oracle_connector_test": [],
         "total_request_ms": [],
         "first_query_total_ms": [],
         "fetch_ms.rest_single_dataset": [],
@@ -1610,6 +1772,7 @@ def assert_behavior_sla_summary() -> None:
             )
     for metric_name in (
         "failure_response_ms.neo4j_connector_test",
+        "failure_response_ms.oracle_connector_test",
         "total_request_ms",
         "first_query_total_ms",
         "fetch_ms.rest_single_dataset",
@@ -2452,9 +2615,7 @@ def main() -> int:
             "skipped": skipped,
             "failed_checks": [name for icon, name, _ in results if icon == FAIL],
             "skipped_checks": [
-                {"name": name, "reason": detail}
-                for icon, name, detail in results
-                if icon == SKIP
+                {"name": name, "reason": detail} for icon, name, detail in results if icon == SKIP
             ],
             "parallel_tasks": args.parallel_tasks,
             "selected_tiers": list(selected_tiers or ()),

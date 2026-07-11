@@ -80,6 +80,17 @@ def build_connect_request_interactive() -> dict[str, Any]:
             config["connection_string"] = connection_string
         elif provider == "sqlite":
             config["path"] = prompt_text("SQLite path")
+        elif provider == "oracle":
+            config["host"] = prompt_text("Host")
+            config["service_name"] = prompt_text("Service name")
+            config["user"] = prompt_text("Database user", "ADMIN")
+            config["password"] = prompt_text("Database password", secret=True)
+            wallet_location = prompt_text("Wallet directory", "")
+            default_port = "1522" if wallet_location else "1521"
+            config["port"] = int(prompt_text("Port", default_port))
+            if wallet_location:
+                config["wallet_location"] = wallet_location
+                config["wallet_password"] = prompt_text("Wallet password", secret=True)
         else:
             config["host"] = prompt_text("Host", "localhost")
             config["port"] = int(prompt_text("Port", "5432"))

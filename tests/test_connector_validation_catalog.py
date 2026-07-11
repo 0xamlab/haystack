@@ -84,6 +84,7 @@ def test_tier3_connector_validation_cases_are_live_only_validations() -> None:
         "clickhouse_customer_connector_test",
         "elasticsearch_customer_connector_test",
         "neo4j_customer_connector_test",
+        "oracle_customer_connector_test",
         "snowflake_customer_connector_test",
         "bigquery_customer_connector_test",
     } == {case.case_id for case in CUSTOMER_CREDENTIAL_REQUIRED_CASES}
@@ -269,6 +270,85 @@ def test_tier3_warehouse_cases_build_queries_from_table_selectors(
     assert (
         bigquery_connection["query"]
         == "SELECT * FROM `proj.samples.shakespeare` ORDER BY 1 LIMIT 100"
+    )
+
+
+def test_tier3_oracle_case_builds_wallet_behavior_connection(monkeypatch) -> None:
+    wallet_dir = "/secure/oracle-wallet"
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "database-pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "analytics_low")
+    monkeypatch.setenv("DE_TEST_ORACLE_HOST", "adb.example.oraclecloud.com")
+    monkeypatch.setenv("DE_TEST_ORACLE_PORT", "1522")
+    monkeypatch.setenv("DE_TEST_ORACLE_CONFIG_DIR", wallet_dir)
+    monkeypatch.setenv("DE_TEST_ORACLE_WALLET_LOCATION", wallet_dir)
+    monkeypatch.setenv("DE_TEST_ORACLE_WALLET_PASSWORD", "wallet-pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_TABLE", "REPORTING.FACTS")
+
+    cases_by_id = {case.case_id: case for case in CUSTOMER_CREDENTIAL_REQUIRED_CASES}
+    oracle_case = cases_by_id["oracle_customer_connector_test"]
+
+    assert oracle_case.supports_behavior_validation() is True
+    assert oracle_case.effective_validation_mode() == "register_and_exact_query"
+    assert oracle_case.build_runtime_connection() == {
+        "type": "oracle",
+        "user": "reader",
+        "password": "database-pass",
+        "dsn": "analytics_low",
+        "host": "adb.example.oraclecloud.com",
+        "port": 1522,
+        "config_dir": wallet_dir,
+        "wallet_location": wallet_dir,
+        "wallet_password": "wallet-pass",
+        "query": 'SELECT * FROM "REPORTING"."FACTS" ORDER BY 1',
+        "limit": 100,
+    }
+
+
+def test_tier3_oracle_case_rejects_incomplete_wallet_configuration(monkeypatch) -> None:
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "database-pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "analytics_low")
+    monkeypatch.setenv("DE_TEST_ORACLE_HOST", "adb.example.oraclecloud.com")
+    monkeypatch.setenv("DE_TEST_ORACLE_WALLET_LOCATION", "/secure/oracle-wallet")
+    monkeypatch.delenv("DE_TEST_ORACLE_WALLET_PASSWORD", raising=False)
+
+    cases_by_id = {case.case_id: case for case in CUSTOMER_CREDENTIAL_REQUIRED_CASES}
+    oracle_case = cases_by_id["oracle_customer_connector_test"]
+
+    assert oracle_case.is_configured() is False
+    assert oracle_case.skip_reason() == (
+        "DE_TEST_ORACLE_WALLET_LOCATION and DE_TEST_ORACLE_WALLET_PASSWORD "
+        "must be provided together"
+    )
+
+
+def test_tier3_oracle_case_infers_host_from_easy_connect_dsn(monkeypatch) -> None:
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "database-pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "oracle.example.com:1521/analytics")
+    monkeypatch.delenv("DE_TEST_ORACLE_HOST", raising=False)
+
+    cases_by_id = {case.case_id: case for case in CUSTOMER_CREDENTIAL_REQUIRED_CASES}
+    oracle_case = cases_by_id["oracle_customer_connector_test"]
+
+    assert oracle_case.is_configured() is True
+    assert oracle_case.skip_reason() is None
+
+
+def test_tier3_oracle_case_requires_host_for_tns_alias(monkeypatch) -> None:
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "database-pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "analytics_low")
+    monkeypatch.setenv("DE_TEST_ORACLE_CONFIG_DIR", "/secure/oracle-wallet")
+    monkeypatch.delenv("DE_TEST_ORACLE_HOST", raising=False)
+
+    cases_by_id = {case.case_id: case for case in CUSTOMER_CREDENTIAL_REQUIRED_CASES}
+    oracle_case = cases_by_id["oracle_customer_connector_test"]
+
+    assert oracle_case.is_configured() is False
+    assert oracle_case.skip_reason() == (
+        "TNS alias DSNs require DE_TEST_ORACLE_HOST for egress validation"
     )
 
 

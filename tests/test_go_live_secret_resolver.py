@@ -148,6 +148,61 @@ def test_populate_go_live_test_env_from_keys_txt_accepts_snowflake_pat_alias(
     assert applied["DE_TEST_SNOWFLAKE_WAREHOUSE"] == "compute_wh"
 
 
+def test_populate_go_live_test_env_from_keys_txt_accepts_oracle_aliases(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    keys_path = tmp_path / "keys.txt"
+    keys_path.write_text(
+        "\n".join(
+            [
+                "ORACLE_USER=reader",
+                "ORACLE_PASSWORD=oracle-pass",
+                "ORACLE_DSN=analytics_low",
+                "ORACLE_HOST=adb.example.oraclecloud.com",
+                "ORACLE_PORT=1522",
+                "TNS_ADMIN=/secure/oracle-wallet",
+                "ORACLE_WALLET_LOCATION=/secure/oracle-wallet",
+                "ORACLE_WALLET_PASSWORD=wallet-pass",
+                "ORACLE_TABLE=REPORTING.FACTS",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    for name in resolver._GROUP_MEMBERS["oracle"]:
+        monkeypatch.delenv(name, raising=False)
+
+    applied = resolver.populate_go_live_test_env_from_keys_txt(keys_path=keys_path)
+
+    assert applied["DE_TEST_ORACLE_USER"] == "reader"
+    assert applied["DE_TEST_ORACLE_PASSWORD"] == "oracle-pass"
+    assert applied["DE_TEST_ORACLE_DSN"] == "analytics_low"
+    assert applied["DE_TEST_ORACLE_HOST"] == "adb.example.oraclecloud.com"
+    assert applied["DE_TEST_ORACLE_CONFIG_DIR"] == "/secure/oracle-wallet"
+    assert applied["DE_TEST_ORACLE_TABLE"] == "REPORTING.FACTS"
+
+
+def test_populate_go_live_test_env_accepts_oracle_easy_connect_without_host(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    keys_path = tmp_path / "keys.txt"
+    keys_path.write_text(
+        "ORACLE_USER=reader\n"
+        "ORACLE_PASSWORD=oracle-pass\n"
+        "ORACLE_DSN=oracle.example.com:1521/analytics\n",
+        encoding="utf-8",
+    )
+    for name in resolver._GROUP_MEMBERS["oracle"]:
+        monkeypatch.delenv(name, raising=False)
+
+    applied = resolver.populate_go_live_test_env_from_keys_txt(keys_path=keys_path)
+
+    assert applied["DE_TEST_ORACLE_DSN"] == "oracle.example.com:1521/analytics"
+    assert "DE_TEST_ORACLE_HOST" not in applied
+
+
 def test_populate_go_live_test_env_from_keys_txt_accepts_clickhouse_aliases(
     monkeypatch,
     tmp_path: Path,

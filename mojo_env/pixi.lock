@@ -158,6 +158,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c0/7d/9ec53c92ae8a87baf2fd0d8ccba4e72ce650eef653b3d34b8bc058ecfb64/google_cloud_storage-2.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/c6/ba/14b9112c3f81c2b26cdd16748a5317263db1227e363bd29491d3291ad6e8/oracledb-4.0.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/7f/09065fd9e27da0eda08b4d6897f1c13535066174cc023af248fc2a8d5e5a/asn1crypto-1.5.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/87/8bab77b323f16d67be364031220069f79159117dd5e43eeb4be2fef1ac9b/billiard-4.2.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
@@ -342,6 +343,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/de/15/545e2b6cf2e3be84bc1ed85613edd75b8aea69807a71c26f4ca6a9258e82/email_validator-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e5/60/a06fe7da34eca79dacbf958a2ba0c6eea85bc2b29de20080bf40f72f66fa/rpds_py-2026.5.1-cp314-cp314-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/e6/c1/e31ea17105b037b8b637a0e2936fc3cab65f87098c79df50fdf443a0ca6e/oracledb-4.0.1-cp314-cp314-macosx_10_15_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/e7/c8/e2645aa8ed02fd4c7a2f59d68783b65b1f3cbdfe39a6308e156509d1fee8/googleapis_common_protos-1.75.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/eb/75/1a0392bcc21c44dcdf87b3cf2d137e7829be2c083a1e38d44efca3d57a16/tqdm-4.68.2-py3-none-any.whl
@@ -2828,6 +2830,27 @@ packages:
   - psutil ; extra == 'test'
   - setuptools ; extra == 'test'
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/c6/ba/14b9112c3f81c2b26cdd16748a5317263db1227e363bd29491d3291ad6e8/oracledb-4.0.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+  name: oracledb
+  version: 4.0.1
+  sha256: 7156ef112a901967b3ee89b6c582bafc5a3082c47ca566de1a79e9ac3b48da32
+  requires_dist:
+  - cryptography>=3.2.1
+  - typing-extensions>=4.14.0
+  - anyio ; extra == 'test'
+  - numpy ; extra == 'test'
+  - pandas ; extra == 'test'
+  - pyarrow ; extra == 'test'
+  - pytest ; extra == 'test'
+  - tox ; extra == 'test'
+  - oci ; extra == 'oci-config'
+  - oci ; extra == 'oci-auth'
+  - requests>=2.33 ; extra == 'oci-auth'
+  - azure-appconfiguration ; extra == 'azure-config'
+  - azure-identity ; extra == 'azure-config'
+  - azure-keyvault-secrets ; extra == 'azure-config'
+  - msal ; extra == 'azure-auth'
+  requires_python: '>=3.9'
 - pypi: https://files.pythonhosted.org/packages/c9/7f/09065fd9e27da0eda08b4d6897f1c13535066174cc023af248fc2a8d5e5a/asn1crypto-1.5.1-py2.py3-none-any.whl
   name: asn1crypto
   version: 1.5.1
@@ -3114,6 +3137,27 @@ packages:
   version: 2026.5.1
   sha256: 413b424f7c4ee65ab5e5be91f5731be0f8b41a1ee2b12dfe810d716312e95a78
   requires_python: '>=3.11'
+- pypi: https://files.pythonhosted.org/packages/e6/c1/e31ea17105b037b8b637a0e2936fc3cab65f87098c79df50fdf443a0ca6e/oracledb-4.0.1-cp314-cp314-macosx_10_15_universal2.whl
+  name: oracledb
+  version: 4.0.1
+  sha256: cb7727f93ff962ab826bc3d0bca4b0e5bf45ecb7c525551c70c9e094f0f27027
+  requires_dist:
+  - cryptography>=3.2.1
+  - typing-extensions>=4.14.0
+  - anyio ; extra == 'test'
+  - numpy ; extra == 'test'
+  - pandas ; extra == 'test'
+  - pyarrow ; extra == 'test'
+  - pytest ; extra == 'test'
+  - tox ; extra == 'test'
+  - oci ; extra == 'oci-config'
+  - oci ; extra == 'oci-auth'
+  - requests>=2.33 ; extra == 'oci-auth'
+  - azure-appconfiguration ; extra == 'azure-config'
+  - azure-identity ; extra == 'azure-config'
+  - azure-keyvault-secrets ; extra == 'azure-config'
+  - msal ; extra == 'azure-auth'
+  requires_python: '>=3.9'
 - pypi: https://files.pythonhosted.org/packages/e7/c8/e2645aa8ed02fd4c7a2f59d68783b65b1f3cbdfe39a6308e156509d1fee8/googleapis_common_protos-1.75.0-py3-none-any.whl
   name: googleapis-common-protos
   version: 1.75.0

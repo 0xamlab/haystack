@@ -102,6 +102,15 @@ def test_summarize_metric_series_accepts_neo4j_connector_test_failure_budget() -
     assert summary["ok"] is True
 
 
+def test_summarize_metric_series_accepts_oracle_external_auth_failure_budget() -> None:
+    summary = summarize_metric_series(
+        [3_200.0],
+        P1_METRIC_BUDGETS["failure_response_ms.oracle_connector_test"],
+    )
+
+    assert summary["ok"] is True
+
+
 def test_total_request_budget_allows_real_public_connector_variance() -> None:
     summary = summarize_metric_series(
         [181.245, 287.044, 376.077],

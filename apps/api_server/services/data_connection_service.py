@@ -10,7 +10,8 @@ from typing import Any
 import structlog
 from fastapi import HTTPException
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.models.data_connector import (
@@ -26,10 +27,6 @@ from apps.api_server.services.config_crypto import (
     encrypt_config_json,
 )
 from apps.api_server.services.connector_contract import normalize_connect_payload
-from apps.api_server.services.workspace_scope import (
-    workspace_id_for_write,
-    workspace_scope_clauses,
-)
 from apps.api_server.services.connectors import test_connector_real
 from apps.api_server.services.data_connection_browse import (
     browse_connector_real,
@@ -59,6 +56,10 @@ from apps.api_server.services.data_visibility import (
     list_visible_connectors,
     normalize_visibility,
     visibility_hash,
+)
+from apps.api_server.services.workspace_scope import (
+    workspace_id_for_write,
+    workspace_scope_clauses,
 )
 
 __all__ = [
@@ -132,22 +133,179 @@ def _selection_is_complete(
     return True
 
 
+def _connector_status(connector: DataConnector) -> ConnectorStatus:
+    raw_status = getattr(connector, "status", ConnectorStatus.UNTESTED)
+    status_value = getattr(raw_status, "value", raw_status)
+    try:
+        return ConnectorStatus(str(status_value))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": "invalid_connector_status",
+                    "message": "Connection has an invalid persisted verification status.",
+                    "details": {"connector_id": str(connector.id)},
+                }
+            },
+        ) from exc
+
+
+def _persisted_verification_outcome(
+    connector: DataConnector,
+) -> tuple[bool, str, int] | None:
+    status = _connector_status(connector)
+    if status == ConnectorStatus.LIVE:
+        return True, "Connection credentials already verified at registration.", 0
+    if status == ConnectorStatus.ERROR:
+        message = (
+            str(getattr(connector, "error_message", "") or "").strip()
+            or "Connection credential verification failed at registration."
+        )
+        return False, message, 0
+    return None
+
+
+def _copy_verification_state(*, source: DataConnector, target: DataConnector) -> None:
+    target.status = source.status
+    target.last_tested_at = source.last_tested_at
+    target.error_message = source.error_message
+
+
+def _connector_is_transient(connector: DataConnector) -> bool:
+    try:
+        return bool(sa_inspect(connector).transient)
+    except NoInspectionAvailable:
+        return False
+
+
+async def _test_and_persist_local_connector(
+    connector: DataConnector,
+) -> tuple[bool, str, int]:
+    from apps.api_server.services import local_connector_store
+
+    record = local_connector_store.get_connector(str(connector.id))
+    if record is None or record.get("org_id") != str(connector.org_id):
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "not_found", "message": "Connection not found."}},
+        )
+    parsed_config = json.loads(
+        decrypt_config_json(connector.config_json, org_id=connector.org_id) or "{}"
+    )
+    config = parsed_config if isinstance(parsed_config, dict) else {}
+    success, message, latency_ms = await test_connector_real(
+        connector.connector_type.value,
+        config,
+    )
+    tested_at = datetime.now(tz=UTC)
+    connector.status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR
+    connector.last_tested_at = tested_at
+    connector.error_message = None if success else message
+    record.update(
+        {
+            "status": connector.status.value,
+            "last_tested_at": tested_at.isoformat(),
+            "error_message": connector.error_message,
+        }
+    )
+    local_connector_store.save_connector(record)
+    return success, message, latency_ms
+
+
 async def _test_and_persist_connector(
     connector: DataConnector,
     db: AsyncSession,
 ) -> tuple[bool, str, int]:
+    if _connector_is_transient(connector):
+        return await _test_and_persist_local_connector(connector)
+
+    locked_result = await db.execute(
+        select(DataConnector)
+        .where(
+            DataConnector.id == connector.id,
+            DataConnector.org_id == connector.org_id,
+        )
+        .with_for_update()
+    )
+    locked_connector = locked_result.scalar_one_or_none()
+    if locked_connector is None:
+        await db.rollback()
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "not_found",
+                    "message": "Connection was deleted before credential verification began.",
+                }
+            },
+        )
+
+    persisted_outcome = _persisted_verification_outcome(locked_connector)
+    if persisted_outcome is not None:
+        await db.commit()
+        _copy_verification_state(source=locked_connector, target=connector)
+        return persisted_outcome
+
     parsed_config = json.loads(
-        decrypt_config_json(connector.config_json, org_id=getattr(connector, "org_id", "")) or "{}"
+        decrypt_config_json(
+            locked_connector.config_json,
+            org_id=getattr(locked_connector, "org_id", ""),
+        )
+        or "{}"
     )
     config = parsed_config if isinstance(parsed_config, dict) else {}
-    success, message, latency_ms = await test_connector_real(connector.connector_type.value, config)
-    connector.status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR
-    connector.last_tested_at = datetime.now(tz=UTC)
-    connector.error_message = None if success else message
-    if sa_inspect(connector).persistent:
-        await db.commit()
-        await db.refresh(connector)
+    success, message, latency_ms = await test_connector_real(
+        locked_connector.connector_type.value,
+        config,
+    )
+    status = ConnectorStatus.LIVE if success else ConnectorStatus.ERROR
+    tested_at = datetime.now(tz=UTC)
+    error_message = None if success else message
+    result = await db.execute(
+        update(DataConnector)
+        .where(
+            DataConnector.id == locked_connector.id,
+            DataConnector.org_id == locked_connector.org_id,
+        )
+        .values(
+            status=status,
+            last_tested_at=tested_at,
+            error_message=error_message,
+        )
+    )
+    if result.rowcount != 1:
+        await db.rollback()
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "not_found",
+                    "message": "Connection was deleted before its test result could be saved.",
+                }
+            },
+        )
+    await db.commit()
+    locked_connector.status = status
+    locked_connector.last_tested_at = tested_at
+    locked_connector.error_message = error_message
+    _copy_verification_state(source=locked_connector, target=connector)
     return success, message, latency_ms
+
+
+async def _verify_connector_once(
+    connector: DataConnector,
+    db: AsyncSession,
+) -> tuple[bool, str, int]:
+    persisted_outcome = _persisted_verification_outcome(connector)
+    if persisted_outcome is not None:
+        logger.info(
+            "connector_credential_probe_reused",
+            connector_id=str(connector.id),
+            status=_connector_status(connector).value,
+        )
+        return persisted_outcome
+    return await _test_and_persist_connector(connector, db)
 
 
 async def create_or_reuse_connector(
@@ -265,10 +423,13 @@ async def connect_data(
             db,
             uuid.UUID(str(connector_id)),
             auth,
-            for_update=True,
         )
         connector_config = json.loads(
-            decrypt_config_json(connector.config_json, org_id=getattr(connector, "org_id", "")) or "{}"
+            decrypt_config_json(
+                connector.config_json,
+                org_id=getattr(connector, "org_id", ""),
+            )
+            or "{}"
         )
         broad_type, provider = normalize_connection_provider(
             connector.connector_type.value,
@@ -303,7 +464,7 @@ async def connect_data(
         )
 
     if connector is not None:
-        success, message, latency_ms = await _test_and_persist_connector(connector, db)
+        success, message, latency_ms = await _verify_connector_once(connector, db)
         if not success:
             return {
                 "status": "failed",

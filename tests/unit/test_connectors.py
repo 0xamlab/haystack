@@ -13,6 +13,7 @@ def test_connector_model_enums():
     assert ConnectorType.ELASTICSEARCH.value == "elasticsearch"
     assert ConnectorType.NEO4J.value == "neo4j"
     assert ConnectorType.REDIS.value == "redis"
+    assert ConnectorType.ORACLE.value == "oracle"
     assert ConnectorType.S3.value == "s3"
     assert ConnectorType.REST.value == "rest"
     assert ConnectorStatus.LIVE.value == "live"
@@ -44,6 +45,7 @@ def test_connector_model_all_types_present():
         "sqlite",
         "mysql",
         "mssql",
+        "oracle",
         "rest",
         "file",
     }

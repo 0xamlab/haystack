@@ -28,6 +28,10 @@ def _clear_settings_cache() -> None:
         ("postgresql://reader:secret@postgres.internal/analytics", "postgres.internal:5432"),
         ("mysql+pymysql://reader:secret@mysql.internal/orders", "mysql.internal:3306"),
         (
+            "oracle+oracledb://reader:secret@oracle.internal:1521/?service_name=analytics",
+            "oracle.internal:1521",
+        ),
+        (
             "clickhouse://default:secret@clickhouse.internal:8443/default?secure=true",
             "clickhouse.internal:8443",
         ),

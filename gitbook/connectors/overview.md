@@ -13,7 +13,7 @@ Connectors are the *capability* of the data plane: you point Algenta at a table,
 
 Every connector has three things:
 
-* A **type** — for example `postgres`, `snowflake`, `clickhouse`, `s3`, or `rest_api`.
+* A **type** — for example `postgres`, `oracle`, `snowflake`, `s3`, or `rest_api`.
 * A **config** — a JSON object whose fields depend on the type (a `connection_string` and `query` for SQL, a `bucket` and `key` for object storage, a `url` and `data_path` for REST).
 * A **status** — `untested` when first created, `live` once a real connection succeeds, or `error` with a message when it fails.
 
@@ -30,7 +30,7 @@ Algenta groups connector types into five families. Pick the one that matches whe
 
 | Category | What it reaches | Types |
 | --- | --- | --- |
-| **Database** | Operational SQL and NoSQL stores | `postgres`, `mysql`, `mssql`, `sqlite`, `redis`, `neo4j`, `elasticsearch` |
+| **Database** | Operational SQL and NoSQL stores | `postgres`, `oracle`, `mysql`, `mssql`, `sqlite`, `redis`, `neo4j`, `elasticsearch` |
 | **Warehouse** | Analytical columnar engines | `snowflake`, `bigquery`, `clickhouse`, `redshift` |
 | **Object storage** | Cloud blob stores | `s3`, `gcs`, `azure` |
 | **REST** | Any HTTP/JSON API | `rest`, `rest_api` |
@@ -79,6 +79,7 @@ Each guide below walks one source end to end — the exact config fields, a test
 <table data-view="cards">
 <thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
 <tbody>
+<tr><td><strong>Oracle Database</strong></td><td>Connect Oracle Database or Autonomous Database through bundled Thin mode, with optional mTLS wallet fields.</td><td><a href="oracle.md">oracle.md</a></td></tr>
 <tr><td><strong>Snowflake</strong></td><td>Connect a Snowflake warehouse with a snowflake:// DSN, account, and warehouse.</td><td><a href="snowflake.md">snowflake.md</a></td></tr>
 <tr><td><strong>BigQuery</strong></td><td>Query a BigQuery dataset through a service-account credential.</td><td><a href="bigquery.md">bigquery.md</a></td></tr>
 <tr><td><strong>ClickHouse</strong></td><td>Reach a ClickHouse cluster over HTTP(S) with a clickhouse:// DSN.</td><td><a href="clickhouse.md">clickhouse.md</a></td></tr>

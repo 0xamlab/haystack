@@ -115,6 +115,16 @@ def test_classify_connector_failure_maps_redis_bad_password_to_auth() -> None:
     assert recoverable is True
 
 
+def test_classify_connector_failure_maps_oracle_exception_to_auth() -> None:
+    error_type, recoverable = classify_connector_failure(
+        message="Oracle Database connection failed.",
+        exception=RuntimeError("ORA-01017: invalid username/password; logon denied"),
+    )
+
+    assert error_type == "auth"
+    assert recoverable is True
+
+
 def test_classify_connector_failure_maps_postgres_missing_role_to_auth() -> None:
     error_type, recoverable = classify_connector_failure(
         message='PostgreSQL connection failed: role "nobody" does not exist'
@@ -215,6 +225,34 @@ async def test_connector_real_detailed_uses_gcs_connector_validation_path(
 
 
 @pytest.mark.anyio
+async def test_connector_real_detailed_supports_oracle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.api_server.connectors.oracle_connector import OracleConnector
+
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        OracleConnector,
+        "_validate_sync",
+        lambda config: calls.append(config),
+    )
+
+    outcome = await test_connector_real_detailed(
+        "oracle",
+        {
+            "user": "APP_READER",
+            "password": "secret",
+            "dsn": "oracle.internal:1521/analytics",
+        },
+    )
+
+    assert len(calls) == 1
+    assert outcome.success is True
+    assert outcome.status == "live"
+    assert outcome.error_type is None
+
+
+@pytest.mark.anyio
 async def test_connector_real_detailed_activates_snowflake_session_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -296,6 +334,7 @@ async def test_connector_real_detailed_supports_clickhouse(
     # (it's an optional connector dep), so stub it into sys.modules so the
     # import succeeds and the monkeypatched _clickhouse_connect is reached.
     import sys
+
     monkeypatch.setitem(sys.modules, "clickhouse_connect", types.ModuleType("clickhouse_connect"))
 
     monkeypatch.setattr(
@@ -381,6 +420,7 @@ async def test_connector_real_detailed_reuses_clickhouse_validation_pool(
     # See test_connector_real_detailed_supports_clickhouse for why this stub
     # is needed in CI (clickhouse-connect is an optional dep, not installed).
     import sys
+
     monkeypatch.setitem(sys.modules, "clickhouse_connect", types.ModuleType("clickhouse_connect"))
 
     monkeypatch.setattr(

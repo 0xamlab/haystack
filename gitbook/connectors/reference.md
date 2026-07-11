@@ -13,7 +13,7 @@ Connectors are created through the API or [CLI](../cli.md). The two key fields o
 
 | Category | Connector types |
 | --- | --- |
-| Databases | `postgres`, `mysql`, `mssql`, `sqlite`, `clickhouse`, `redshift` |
+| Databases | `postgres`, `oracle`, `mysql`, `mssql`, `sqlite`, `clickhouse`, `redshift` |
 | Warehouses | `snowflake`, `bigquery` |
 | Object storage | `s3`, `gcs`, `azure` |
 | API | `rest` |
@@ -77,6 +77,25 @@ All SQL databases accept either discrete connection fields or a single `connecti
 | `connection_string` | yes* | SQLAlchemy DSN, e.g. `postgresql://...`. Use this **or** the discrete fields. |
 
 `*` Provide either `connection_string` **or** the host/database/user fields.
+
+### oracle
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `user` | yes | Oracle Database user. `username` is accepted as an alias. |
+| `password` | yes | Database password, not an OCI auth token or wallet password. |
+| `dsn` | yes* | Easy Connect string, connect descriptor, or TNS alias. |
+| `host` | yes for a TNS alias | Used for fail-closed egress validation; inferred from Easy Connect and descriptors. |
+| `port` | no | Defaults to `1521`, or `1522` with a wallet. |
+| `service_name` | yes* | Combined with `host` when `dsn` is omitted. `database` is accepted as an alias. |
+| `config_dir` | wallet/TNS alias | Directory containing `tnsnames.ora`. `tns_admin` is accepted as an alias. |
+| `wallet_location` | mTLS only | Directory containing `ewallet.pem` in Thin mode. |
+| `wallet_password` | with `wallet_location` | Wallet decryption password; distinct from the database password. |
+| `schema` | no | Limits browse results to one Oracle owner/schema. |
+| `pool_min` / `pool_max` | no | Bounded session pool; defaults to `0` / `4`. |
+| `fetch_batch_size` | no | Arrow batch size; defaults to `10000`. |
+
+`*` Provide `dsn`, or provide `host` plus `service_name`. See [Oracle Database](oracle.md) for TLS, mTLS, one-time verification, and complete examples.
 
 ### mysql
 

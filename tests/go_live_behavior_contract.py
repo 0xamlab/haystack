@@ -27,6 +27,11 @@ P1_METRIC_BUDGETS: dict[str, MetricBudget] = {
     "total_request_ms": MetricBudget(severity="P1", p95=450.0, p99=700.0),
     "first_query_total_ms": MetricBudget(severity="P1", p95=200.0, p99=350.0),
     "failure_response_ms.neo4j_connector_test": MetricBudget(severity="P1", p95=600.0, p99=900.0),
+    # Autonomous Database intentionally delays rejected mTLS authentication.
+    # This is an explicit operator probe, not a warm query-path budget.
+    "failure_response_ms.oracle_connector_test": MetricBudget(
+        severity="P1", p95=3_500.0, p99=4_500.0
+    ),
     "fetch_ms.rest_single_dataset": MetricBudget(severity="P1", p95=200.0, p99=400.0),
     "fetch_ms.object_single": MetricBudget(severity="P1", p95=300.0, p99=500.0),
     "fetch_ms.warehouse_fixture": MetricBudget(severity="P1", p95=300.0, p99=500.0),
@@ -53,7 +58,7 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 def _json_ready(value: Any) -> Any:
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if value is None or isinstance(value, bool | int | float | str):
         if isinstance(value, float) and math.isnan(value):
             return "NaN"
         return value

@@ -418,7 +418,23 @@ BigQuery behavior validation requires one of:
 - `DE_TEST_BIGQUERY_QUERY`
 - `DE_TEST_BIGQUERY_DATASET` and `DE_TEST_BIGQUERY_TABLE`
 
-Without those selectors, Snowflake and BigQuery intentionally remain `connector_test_only`.
+Oracle base connector test envs:
+
+- `DE_TEST_ORACLE_USER`
+- `DE_TEST_ORACLE_PASSWORD`
+- `DE_TEST_ORACLE_DSN`
+- `DE_TEST_ORACLE_HOST` when the DSN is a TNS alias (Easy Connect strings and
+  full descriptors expose the host directly)
+- `DE_TEST_ORACLE_PORT` (defaults to `1521`, or use `1522` for mTLS)
+- `DE_TEST_ORACLE_CONFIG_DIR` for `tnsnames.ora`
+- `DE_TEST_ORACLE_WALLET_LOCATION` and `DE_TEST_ORACLE_WALLET_PASSWORD` for mTLS
+- `DE_TEST_ORACLE_SCHEMA` to limit browse validation
+
+Oracle behavior validation also requires `DE_TEST_ORACLE_QUERY` or
+`DE_TEST_ORACLE_TABLE`.
+
+Without those selectors, Oracle, Snowflake, and BigQuery intentionally remain
+`connector_test_only`.
 
 The operator surface also accepts repo-root `keys.txt` aliases for the Tier 3
 and warehouse secrets. Examples:
@@ -427,6 +443,7 @@ and warehouse secrets. Examples:
 - ClickHouse: `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`, `CLICKHOUSE_QUERY`, `CLICKHOUSE_TABLE`
 - Snowflake: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_PAT`, `SNOWFLAKE_ACCESS_TOKEN`, `SNOWFLAKE_PROGRAMMATIC_ACCESS_TOKEN`, `SNOWFLAKE_WAREHOUSE`
 - BigQuery: `BIGQUERY_PROJECT_ID`, `BIGQUERY_SERVICE_ACCOUNT_JSON`, or `GOOGLE_APPLICATION_CREDENTIALS`
+- Oracle: `ORACLE_USER`, `ORACLE_PASSWORD`, `ORACLE_DSN`, `ORACLE_HOST`, `ORACLE_PORT`, `TNS_ADMIN`, `ORACLE_WALLET_LOCATION`, `ORACLE_WALLET_PASSWORD`, `ORACLE_QUERY`, `ORACLE_TABLE`
 - GCS: `GCS_BUCKET`, `GCS_BLOB`, `GCS_CREDENTIALS`, or `GOOGLE_APPLICATION_CREDENTIALS`
 - S3: `S3_BUCKET`, `S3_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 - Azure: `AZURE_CONNECTION_STRING`, `AZURE_ACCOUNT_URL`, `AZURE_CONTAINER`, `AZURE_BLOB`, `AZURE_BLOB_URL`

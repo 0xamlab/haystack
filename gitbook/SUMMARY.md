@@ -151,6 +151,7 @@
 * [BigQuery](connectors/bigquery.md)
 * [ClickHouse](connectors/clickhouse.md)
 * [PostgreSQL](connectors/postgres.md)
+* [Oracle Database](connectors/oracle.md)
 * [MySQL](connectors/mysql.md)
 * [Microsoft SQL Server](connectors/mssql.md)
 * [SQLite](connectors/sqlite.md)

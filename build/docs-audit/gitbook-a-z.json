@@ -2142,6 +2142,46 @@
         "validation": "parsed"
       },
       {
+        "bytes": 222,
+        "language": "bash",
+        "line": 51,
+        "path": "connectors/oracle.md",
+        "sha256": "f8b122165c901efebffead915fb150ed50c1c9f15311be24022783c18ade659c",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 546,
+        "language": "bash",
+        "line": 58,
+        "path": "connectors/oracle.md",
+        "sha256": "752273549b919ea270342eb7f59d19008bc8611136a4cd2c443a700a8480089f",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 222,
+        "language": "bash",
+        "line": 87,
+        "path": "connectors/oracle.md",
+        "sha256": "486dc0592a29d1615ecb0447faf268bf8b3c3854fb90c0665a50718e0bb3e444",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 316,
+        "language": "json",
+        "line": 96,
+        "path": "connectors/oracle.md",
+        "sha256": "fc0616c4ee9ee1c36840707075a0fc481de6e2de83aede81eb67c9690299db9c",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 673,
+        "language": "bash",
+        "line": 116,
+        "path": "connectors/oracle.md",
+        "sha256": "456536f2a7e7e79f326e28f8806cb479701773e1e9b277d380678b1701b0c60c",
+        "validation": "command_inventory"
+      },
+      {
         "bytes": 98,
         "language": "bash",
         "line": 22,
@@ -2464,7 +2504,7 @@
       {
         "bytes": 535,
         "language": "bash",
-        "line": 268,
+        "line": 287,
         "path": "connectors/reference.md",
         "sha256": "298e5a21fd23a9af5ae48f0c3beca3c1dd32cda4cf201f11c2a504390850b14b",
         "validation": "command_inventory"
@@ -2472,7 +2512,7 @@
       {
         "bytes": 658,
         "language": "python",
-        "line": 290,
+        "line": 309,
         "path": "connectors/reference.md",
         "sha256": "5768965427f8fd323338479cbdd074fdc35c612e7f83e64d6375faa30a1f881a",
         "validation": "parsed"
@@ -15687,6 +15727,51 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/data/connect",
+        "line": 49,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "connectors/oracle.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/data/connect",
+        "line": 59,
+        "match_kind": "exact",
+        "method": null,
+        "path": "connectors/oracle.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/connectors",
+        "line": 117,
+        "match_kind": "exact",
+        "method": null,
+        "path": "connectors/oracle.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/connectors/",
+        "line": 132,
+        "match_kind": "route_family",
+        "method": null,
+        "path": "connectors/oracle.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/connectors/",
+        "line": 135,
+        "match_kind": "route_family",
+        "method": null,
+        "path": "connectors/oracle.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/connectors/types",
         "line": 23,
         "match_kind": "exact",
@@ -16246,7 +16331,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/connectors",
-        "line": 269,
+        "line": 288,
         "match_kind": "exact",
         "method": null,
         "path": "connectors/reference.md",
@@ -16255,7 +16340,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/connectors/",
-        "line": 284,
+        "line": 303,
         "match_kind": "route_family",
         "method": null,
         "path": "connectors/reference.md",
@@ -16264,7 +16349,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/connectors",
-        "line": 299,
+        "line": 318,
         "match_kind": "exact",
         "method": null,
         "path": "connectors/reference.md",
@@ -16273,7 +16358,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/connectors/{created",
-        "line": 315,
+        "line": 334,
         "match_kind": "template",
         "method": null,
         "path": "connectors/reference.md",
@@ -28351,107 +28436,113 @@
         "kind": "internal",
         "line": 154,
         "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
         "line": 155,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
+        "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
         "line": 156,
         "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
+        "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
         "line": 157,
         "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 158,
         "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 159,
         "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 160,
         "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 161,
         "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 162,
         "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 163,
         "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 164,
         "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 165,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/files.md"
       },
       {
         "kind": "internal",
         "line": 166,
         "path": "SUMMARY.md",
-        "target": "connectors/rest-api.md"
+        "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
-        "line": 170,
+        "line": 167,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
         "line": 171,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
         "line": 172,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 173,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "help/quick-reference.md"
       },
       {
         "kind": "internal",
         "line": 174,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 175,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -28463,7 +28554,7 @@
       },
       {
         "kind": "internal",
-        "line": 149,
+        "line": 150,
         "path": "api/errors.md",
         "target": "../troubleshooting.md"
       },
@@ -29233,6 +29324,12 @@
         "kind": "internal",
         "line": 22,
         "path": "connectors/databases.md",
+        "target": "oracle.md"
+      },
+      {
+        "kind": "internal",
+        "line": 22,
+        "path": "connectors/databases.md",
         "target": "snowflake.md"
       },
       {
@@ -29572,6 +29669,30 @@
         "target": "reference.md"
       },
       {
+        "kind": "external",
+        "line": 23,
+        "path": "connectors/oracle.md",
+        "target": "https://python-oracledb.readthedocs.io/en/stable/user_guide/connection_handling.html#connecting-with-python-oracledb-thin-mode-using-mtls"
+      },
+      {
+        "kind": "internal",
+        "line": 168,
+        "path": "connectors/oracle.md",
+        "target": "databases.md"
+      },
+      {
+        "kind": "internal",
+        "line": 172,
+        "path": "connectors/oracle.md",
+        "target": "reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 176,
+        "path": "connectors/oracle.md",
+        "target": "../guides/governed-query.md"
+      },
+      {
         "kind": "internal",
         "line": 8,
         "path": "connectors/overview.md",
@@ -29597,7 +29718,7 @@
       },
       {
         "kind": "internal",
-        "line": 111,
+        "line": 112,
         "path": "connectors/overview.md",
         "target": "../troubleshooting.md"
       },
@@ -29605,59 +29726,65 @@
         "kind": "internal",
         "line": 82,
         "path": "connectors/overview.md",
-        "target": "snowflake.md"
+        "target": "oracle.md"
       },
       {
         "kind": "internal",
         "line": 83,
         "path": "connectors/overview.md",
-        "target": "bigquery.md"
+        "target": "snowflake.md"
       },
       {
         "kind": "internal",
         "line": 84,
         "path": "connectors/overview.md",
-        "target": "clickhouse.md"
+        "target": "bigquery.md"
       },
       {
         "kind": "internal",
         "line": 85,
         "path": "connectors/overview.md",
-        "target": "rest-api.md"
+        "target": "clickhouse.md"
       },
       {
         "kind": "internal",
-        "line": 94,
+        "line": 86,
         "path": "connectors/overview.md",
-        "target": "reference.md"
+        "target": "rest-api.md"
       },
       {
         "kind": "internal",
         "line": 95,
         "path": "connectors/overview.md",
-        "target": "../guides/connect-data.md"
+        "target": "reference.md"
       },
       {
         "kind": "internal",
         "line": 96,
         "path": "connectors/overview.md",
-        "target": "../concepts/governed-data.md"
+        "target": "../guides/connect-data.md"
       },
       {
         "kind": "internal",
-        "line": 105,
+        "line": 97,
         "path": "connectors/overview.md",
-        "target": "../guides/first-query.md"
+        "target": "../concepts/governed-data.md"
       },
       {
         "kind": "internal",
         "line": 106,
         "path": "connectors/overview.md",
-        "target": "../guides/governed-query.md"
+        "target": "../guides/first-query.md"
       },
       {
         "kind": "internal",
         "line": 107,
+        "path": "connectors/overview.md",
+        "target": "../guides/governed-query.md"
+      },
+      {
+        "kind": "internal",
+        "line": 108,
         "path": "connectors/overview.md",
         "target": "../api/reference.md"
       },
@@ -29831,73 +29958,79 @@
       },
       {
         "kind": "internal",
-        "line": 123,
+        "line": 98,
+        "path": "connectors/reference.md",
+        "target": "oracle.md"
+      },
+      {
+        "kind": "internal",
+        "line": 142,
         "path": "connectors/reference.md",
         "target": "clickhouse.md"
       },
       {
         "kind": "internal",
-        "line": 152,
+        "line": 171,
         "path": "connectors/reference.md",
         "target": "snowflake.md"
       },
       {
         "kind": "internal",
-        "line": 161,
+        "line": 180,
         "path": "connectors/reference.md",
         "target": "bigquery.md"
       },
       {
         "kind": "internal",
-        "line": 245,
+        "line": 264,
         "path": "connectors/reference.md",
         "target": "rest-api.md"
       },
       {
         "kind": "internal",
-        "line": 323,
+        "line": 342,
         "path": "connectors/reference.md",
         "target": "../api/errors.md"
       },
       {
         "kind": "internal",
-        "line": 327,
+        "line": 346,
         "path": "connectors/reference.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 328,
+        "line": 347,
         "path": "connectors/reference.md",
         "target": "../guides/connect-data.md"
       },
       {
         "kind": "internal",
-        "line": 329,
+        "line": 348,
         "path": "connectors/reference.md",
         "target": "../guides/governed-query.md"
       },
       {
         "kind": "internal",
-        "line": 330,
+        "line": 349,
         "path": "connectors/reference.md",
         "target": "../concepts/governed-data.md"
       },
       {
         "kind": "internal",
-        "line": 331,
+        "line": 350,
         "path": "connectors/reference.md",
         "target": "../api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 331,
+        "line": 350,
         "path": "connectors/reference.md",
         "target": "../api/explorer.md"
       },
       {
         "kind": "internal",
-        "line": 332,
+        "line": 351,
         "path": "connectors/reference.md",
         "target": "../help/glossary.md"
       },
@@ -34409,6 +34542,71 @@
         "term": "algenta"
       },
       {
+        "line": 3,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 45,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 52,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 80,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 85,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 85,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 110,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 143,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
+        "line": 145,
+        "path": "connectors/oracle.md",
+        "term": "algenta"
+      },
+      {
         "line": 8,
         "path": "connectors/overview.md",
         "term": "algenta"
@@ -34514,7 +34712,7 @@
         "term": "algenta"
       },
       {
-        "line": 295,
+        "line": 314,
         "path": "connectors/reference.md",
         "term": "algenta"
       },
@@ -41095,6 +41293,110 @@
         "syntax_valid": true
       },
       {
+        "classification": "safe_static",
+        "command": "export ALGENTA_API_URL=\"https://api.algenta.ai\"",
+        "executed": false,
+        "line": 52,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_DB_USER=\"APP_READER\"",
+        "executed": false,
+        "line": 53,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_DB_PASSWORD=\"${ORACLE_DB_PASSWORD:?set ORACLE_DB_PASSWORD}\"",
+        "executed": false,
+        "line": 54,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_DSN=\"db.example.oraclecloud.com:1521/analytics_low\"",
+        "executed": false,
+        "line": 55,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/data/connect\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d \"{\n\\\"connection_type\\\": \\\"database\\\",\n\\\"provider\\\": \\\"oracle\\\",\n\\\"connection_name\\\": \\\"Oracle analytics\\\",\n\\\"dataset_name\\\": \\\"oracle_orders\\\",\n\\\"connection_config\\\": {\n\\\"user\\\": \\\"$ORACLE_DB_USER\\\",\n\\\"password\\\": \\\"$ORACLE_DB_PASSWORD\\\",\n\\\"dsn\\\": \\\"$ORACLE_DSN\\\"\n},\n\\\"selection\\\": {\\\"table\\\": \\\"REPORTING.ORDERS\\\"},\n\\\"visibility\\\": \\\"private\\\"\n}\"",
+        "executed": false,
+        "line": 59,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_WALLET_DIR=\"/run/secrets/oracle-wallet\"",
+        "executed": false,
+        "line": 88,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_WALLET_PASSWORD=\"${ORACLE_WALLET_PASSWORD:?set ORACLE_WALLET_PASSWORD}\"",
+        "executed": false,
+        "line": 89,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_DSN=\"analytics_low\"",
+        "executed": false,
+        "line": 90,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export ORACLE_HOST=\"adb.example.oraclecloud.com\"",
+        "executed": false,
+        "line": 91,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/connectors\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d \"{\n\\\"name\\\": \\\"Oracle analytics\\\",\n\\\"connector_type\\\": \\\"oracle\\\",\n\\\"config\\\": {\n\\\"user\\\": \\\"$ORACLE_DB_USER\\\",\n\\\"password\\\": \\\"$ORACLE_DB_PASSWORD\\\",\n\\\"dsn\\\": \\\"$ORACLE_DSN\\\"\n}\n}\"",
+        "executed": false,
+        "line": 117,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "safe_static",
+        "command": "export CONNECTOR_ID=\"${CONNECTOR_ID:?set CONNECTOR_ID from the create response}\"",
+        "executed": false,
+        "line": 130,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/connectors/$CONNECTOR_ID/test\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
+        "executed": false,
+        "line": 132,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS \"$ALGENTA_API_URL/v1/connectors/$CONNECTOR_ID/browse\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
+        "executed": false,
+        "line": 135,
+        "path": "connectors/oracle.md",
+        "syntax_valid": true
+      },
+      {
         "classification": "requires_environment",
         "command": "curl -s https://api.algenta.ai/v1/connectors/types \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
@@ -41546,7 +41848,7 @@
         "classification": "requires_environment",
         "command": "curl -X POST \"$ALGENTA_API_URL/v1/connectors\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"name\": \"analytics-pg\",\n\"connector_type\": \"postgres\",\n\"config\": {\n\"host\": \"db.internal\",\n\"port\": 5432,\n\"database\": \"analytics\",\n\"user\": \"reader\",\n\"password\": \"'\"$ALGENTA_DB_PASSWORD\"'\"\n}\n}'",
         "executed": false,
-        "line": 269,
+        "line": 288,
         "path": "connectors/reference.md",
         "syntax_valid": true
       },
@@ -41554,7 +41856,7 @@
         "classification": "requires_environment",
         "command": "curl -X POST \"$ALGENTA_API_URL/v1/connectors/$CONNECTOR_ID/test\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 284,
+        "line": 303,
         "path": "connectors/reference.md",
         "syntax_valid": true
       },
@@ -46004,7 +46306,7 @@
   "live": {
     "skipped": true
   },
-  "live_url": "",
+  "live_url": "https://docs.algenta.ai",
   "openapi_identity": {
     "algenta_title": true,
     "cross_product_mentions": 0,
@@ -46027,8 +46329,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 136,
-      "links": 136,
+      "internal_links": 137,
+      "links": 137,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 5,
@@ -46652,8 +46954,8 @@
       },
       "endpoint_mentions": 12,
       "external_links": 0,
-      "internal_links": 12,
-      "links": 12,
+      "internal_links": 13,
+      "links": 13,
       "path": "connectors/databases.md",
       "product_claims": {
         "algenta": 4,
@@ -46816,6 +47118,31 @@
       "shell_commands": 19
     },
     {
+      "code_fences": 5,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 9,
+        "static_only": 0
+      },
+      "endpoint_mentions": 5,
+      "external_links": 1,
+      "internal_links": 3,
+      "links": 4,
+      "path": "connectors/oracle.md",
+      "product_claims": {
+        "algenta": 13,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 13
+    },
+    {
       "code_fences": 2,
       "command_counts": {
         "destructive_mutation": 0,
@@ -46827,8 +47154,8 @@
       },
       "endpoint_mentions": 9,
       "external_links": 0,
-      "internal_links": 15,
-      "links": 15,
+      "internal_links": 16,
+      "links": 16,
       "path": "connectors/overview.md",
       "product_claims": {
         "algenta": 7,
@@ -46927,8 +47254,8 @@
       },
       "endpoint_mentions": 10,
       "external_links": 0,
-      "internal_links": 17,
-      "links": 17,
+      "internal_links": 18,
+      "links": 18,
       "path": "connectors/reference.md",
       "product_claims": {
         "algenta": 3,
@@ -49450,10 +49777,10 @@
     "source_paths": 218
   },
   "snippets": {
-    "code_fences": 1079,
-    "runnable_safe_commands": 197,
-    "shell_commands": 976,
-    "static_or_guarded_commands": 779
+    "code_fences": 1084,
+    "runnable_safe_commands": 206,
+    "shell_commands": 989,
+    "static_or_guarded_commands": 783
   },
   "source": "gitbook",
   "source_claims": {
@@ -49463,59 +49790,59 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 949,
+    "claim_mentions": 962,
     "command_execution_percent": 0.0,
-    "commands_classified": 976,
-    "endpoint_mentions": 2110,
+    "commands_classified": 989,
+    "endpoint_mentions": 2115,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 967,
-    "pages_checked": 137,
+    "links_checked": 975,
+    "pages_checked": 138,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 780,
-    "snippets_checked": 1079,
+    "skips": 784,
+    "snippets_checked": 1084,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6081,
+    "source_items_inventoried": 6125,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 949,
-    "code_fences": 1079,
+    "claim_mentions": 962,
+    "code_fences": 1084,
     "command_classification_percent": 100.0,
     "command_execution_percent": 0.0,
     "destructive_mutation_commands": 23,
-    "endpoint_mentions": 2110,
+    "endpoint_mentions": 2115,
     "environment_mutating_commands": 25,
     "executed_commands": 0,
-    "external_links": 2,
+    "external_links": 3,
     "external_or_mutating_commands": 0,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 779,
-    "internal_links": 952,
-    "links": 967,
-    "pages": 137,
+    "guarded_commands": 783,
+    "internal_links": 959,
+    "links": 975,
+    "pages": 138,
     "product_claims": {
-      "algenta": 938,
+      "algenta": 951,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 11
     },
-    "public_pages": 136,
-    "requires_environment_commands": 644,
-    "runnable_commands": 197,
-    "safe_static_commands": 197,
-    "shell_commands": 976,
-    "shell_syntax_validated_commands": 976,
+    "public_pages": 137,
+    "requires_environment_commands": 648,
+    "runnable_commands": 206,
+    "safe_static_commands": 206,
+    "shell_commands": 989,
+    "shell_syntax_validated_commands": 989,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 780,
+    "skips": 784,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6081,
+    "source_items_inventoried": 6125,
     "static_only_commands": 87,
-    "static_or_guarded_commands": 779,
+    "static_or_guarded_commands": 783,
     "unique_endpoint_operations": 411,
     "warnings": 0
   }

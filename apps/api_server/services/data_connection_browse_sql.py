@@ -20,6 +20,7 @@ _DATABASE_TYPES = {
     "postgresql",
     "mysql",
     "mssql",
+    "oracle",
     "redshift",
     "clickhouse",
     "snowflake",
@@ -184,6 +185,26 @@ def _build_database_connection_string(provider: str, config: dict[str, Any]) -> 
             f"mssql+pyodbc://{user}:{password}@{host}:{port_value}/{database}"
             f"?driver={driver.replace(' ', '+')}"
         )
+    if provider == "oracle":
+        service_name = str(config.get("service_name") or database).strip()
+        if not (host and user and password and service_name):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "missing_connection_string",
+                        "message": (
+                            "oracle connections require connection_string or "
+                            "host/user/password/service_name."
+                        ),
+                    }
+                },
+            )
+        port_value = int(port or (1522 if config.get("wallet_location") else 1521))
+        return (
+            f"oracle+oracledb://{quote(user, safe='')}:{quote(password, safe='')}@"
+            f"{host}:{port_value}/?service_name={quote(service_name, safe='')}"
+        )
     if provider == "sqlite":
         path = str(config.get("path", ""))
         if not path:
@@ -276,6 +297,11 @@ async def _browse_sql(
     provider: str | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     normalized_provider = (provider or "postgres").strip().lower()
+    if normalized_provider == "oracle":
+        from apps.api_server.connectors.oracle_connector import OracleConnector
+
+        items = await asyncio.to_thread(OracleConnector._browse_sync, config)
+        return items, f"Found {len(items)} browsable database objects"
     connection_string = _build_database_connection_string(
         normalized_provider,
         config,

@@ -38,7 +38,8 @@ def classify_connector_failure(
     exception: BaseException | None = None,
     status_code: int | None = None,
 ) -> tuple[FailureType, bool]:
-    lower = message.lower()
+    exception_message = str(exception) if exception is not None else ""
+    lower = f"{message}\n{exception_message}".lower()
     exc_name = type(exception).__name__.lower() if exception is not None else ""
 
     if status_code == 401:
@@ -60,15 +61,13 @@ def classify_connector_failure(
     if status_code is not None and 400 <= status_code < 500:
         return "invalid_config", True
 
-    if isinstance(exception, (TimeoutError, httpx.TimeoutException)):
+    if isinstance(exception, TimeoutError | httpx.TimeoutException):
         return "timeout", True
     if isinstance(exception, FileNotFoundError):
         return "not_found", True
     if isinstance(exception, PermissionError):
         return "permission", True
-    if "egress_policy_denied" in lower or (
-        "egress blocked" in lower and "privacy policy" in lower
-    ):
+    if "egress_policy_denied" in lower or ("egress blocked" in lower and "privacy policy" in lower):
         return "permission", True
 
     if 'role "' in lower and "does not exist" in lower:
@@ -80,6 +79,9 @@ def classify_connector_failure(
         "authentication required",
         "incorrect username or password",
         "invalid username-password pair",
+        "invalid username/password",
+        "logon denied",
+        "ora-01017",
         "invalid api key",
         "invalid access token",
         "invalid token",

@@ -16,6 +16,7 @@ _CANONICAL_DATABASE_TYPES = {
     "postgresql",
     "mysql",
     "mssql",
+    "oracle",
     "redshift",
     "clickhouse",
     "snowflake",

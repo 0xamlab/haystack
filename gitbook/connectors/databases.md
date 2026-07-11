@@ -15,11 +15,11 @@ This is direct connectivity over the database's own wire protocol — not a sync
 
 | Family | Types |
 | --- | --- |
-| Relational | `postgres`, `mysql`, `mssql`, `sqlite` |
+| Relational | `postgres`, `oracle`, `mysql`, `mssql`, `sqlite` |
 | Warehouse | `snowflake`, `bigquery`, `clickhouse`, `redshift` |
 | Graph, cache & search | `neo4j`, `redis`, `elasticsearch` |
 
-All SQL databases accept either a single `connection_string` DSN or discrete `host` / `port` / `database` / `user` / `password` fields. For the exact config fields per type, see the [Connectors reference](reference.md); for worked, source-specific walkthroughs see [Snowflake](snowflake.md), [BigQuery](bigquery.md), and [ClickHouse](clickhouse.md).
+SQL databases accept a single `connection_string` DSN or provider-specific discrete fields. Oracle also accepts an Easy Connect DSN or an Autonomous Database TNS alias with optional mTLS wallet fields. For the exact config fields per type, see the [Connectors reference](reference.md); for worked walkthroughs see [Oracle Database](oracle.md), [Snowflake](snowflake.md), [BigQuery](bigquery.md), and [ClickHouse](clickhouse.md).
 
 ## Connect it in four steps
 

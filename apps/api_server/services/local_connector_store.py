@@ -69,7 +69,7 @@ def synthesize_connector(record: dict[str, Any]):
         visibility=record.get("visibility") or "private",
         owner_user_id=_u(record.get("owner_user_id")),
         owner_key_id=_u(record.get("owner_key_id")),
-        last_tested_at=None,
-        error_message=None,
+        last_tested_at=_dt(record.get("last_tested_at")),
+        error_message=record.get("error_message"),
         created_at=_dt(record.get("created_at")),
     )

@@ -24,6 +24,7 @@ class ConnectorType(enum.StrEnum):
     SQLITE = "sqlite"
     MYSQL = "mysql"
     MSSQL = "mssql"
+    ORACLE = "oracle"
     NEO4J = "neo4j"
     REDIS = "redis"
     REST = "rest"

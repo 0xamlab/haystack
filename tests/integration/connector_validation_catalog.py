@@ -43,6 +43,11 @@ _AZURE_CUSTOM_ENV_NAMES = (
     "DE_TEST_AZURE_BLOB",
     "DE_TEST_AZURE_BLOB_URL",
 )
+_ORACLE_REQUIRED_ENV_NAMES = (
+    "DE_TEST_ORACLE_USER",
+    "DE_TEST_ORACLE_PASSWORD",
+    "DE_TEST_ORACLE_DSN",
+)
 
 
 def _any_env_set(names: tuple[str, ...]) -> bool:
@@ -171,6 +176,80 @@ def _load_sql_records(connection: dict[str, Any]) -> list[dict[str, Any]]:
         if SQLConnector._is_snowflake_dsn(connection_string):
             return SQLConnector._fetch_snowflake_sync(connection_string, query_body, limit)
     return asyncio.run(SQLConnector(connection).fetch_data())
+
+
+def _build_oracle_connector_config() -> dict[str, Any]:
+    wallet_location = str(os.environ.get("DE_TEST_ORACLE_WALLET_LOCATION", "")).strip()
+    config: dict[str, Any] = {
+        "user": str(os.environ.get("DE_TEST_ORACLE_USER", "")).strip(),
+        "password": str(os.environ.get("DE_TEST_ORACLE_PASSWORD", "")).strip(),
+        "dsn": str(os.environ.get("DE_TEST_ORACLE_DSN", "")).strip(),
+        "host": str(os.environ.get("DE_TEST_ORACLE_HOST", "")).strip(),
+        "port": int(os.environ.get("DE_TEST_ORACLE_PORT", "1522" if wallet_location else "1521")),
+    }
+    optional_values = {
+        "config_dir": str(os.environ.get("DE_TEST_ORACLE_CONFIG_DIR", "")).strip()
+        or wallet_location,
+        "wallet_location": wallet_location,
+        "wallet_password": str(os.environ.get("DE_TEST_ORACLE_WALLET_PASSWORD", "")).strip(),
+        "schema": str(os.environ.get("DE_TEST_ORACLE_SCHEMA", "")).strip(),
+    }
+    config.update({key: value for key, value in optional_values.items() if value})
+    return config
+
+
+def _build_oracle_connection() -> dict[str, Any]:
+    from apps.api_server.services.data_connection_browse_sql import (
+        _sql_source_selection_query_for_provider,
+    )
+
+    connection = {"type": "oracle", **_build_oracle_connector_config()}
+    query = str(os.environ.get("DE_TEST_ORACLE_QUERY", "")).strip()
+    table = str(os.environ.get("DE_TEST_ORACLE_TABLE", "")).strip()
+    if not query:
+        if not table:
+            raise ValueError(
+                "Oracle behavior validation requires DE_TEST_ORACLE_QUERY or DE_TEST_ORACLE_TABLE."
+            )
+        query = _sql_source_selection_query_for_provider(table, provider="oracle") + " ORDER BY 1"
+    connection["query"] = query
+    connection["limit"] = int(os.environ.get("DE_TEST_ORACLE_LIMIT", "100"))
+    return connection
+
+
+def _load_oracle_records(connection: dict[str, Any]) -> list[dict[str, Any]]:
+    from apps.api_server.connectors.oracle_connector import OracleConnector
+
+    return asyncio.run(OracleConnector(connection).fetch_data())
+
+
+def _oracle_config_skip_reason() -> str | None:
+    wallet_location = str(os.environ.get("DE_TEST_ORACLE_WALLET_LOCATION", "")).strip()
+    wallet_password = str(os.environ.get("DE_TEST_ORACLE_WALLET_PASSWORD", "")).strip()
+    if bool(wallet_location) != bool(wallet_password):
+        return (
+            "DE_TEST_ORACLE_WALLET_LOCATION and DE_TEST_ORACLE_WALLET_PASSWORD "
+            "must be provided together"
+        )
+    dsn = str(os.environ.get("DE_TEST_ORACLE_DSN", "")).strip()
+    host = str(os.environ.get("DE_TEST_ORACLE_HOST", "")).strip()
+    config_dir = str(os.environ.get("DE_TEST_ORACLE_CONFIG_DIR", "")).strip()
+    is_tns_alias = dsn and not any(marker in dsn for marker in ("/", "(", ":"))
+    if is_tns_alias and not host:
+        return "TNS alias DSNs require DE_TEST_ORACLE_HOST for egress validation"
+    if is_tns_alias and not (config_dir or wallet_location):
+        return "TNS alias DSNs require DE_TEST_ORACLE_CONFIG_DIR or wallet location"
+    return None
+
+
+def _oracle_behavior_skip_reason() -> str | None:
+    config_reason = _oracle_config_skip_reason()
+    if config_reason:
+        return config_reason
+    return _warehouse_behavior_selector_required(
+        "DE_TEST_ORACLE_QUERY",
+        ("DE_TEST_ORACLE_TABLE",),
+    )()
 
 
 def _snowflake_database() -> str:
@@ -949,6 +1028,33 @@ CUSTOMER_CREDENTIAL_REQUIRED_CASES: tuple[ConnectorValidationCase, ...] = (
         ),
         docs_url="https://neo4j.com/docs/python-manual/current/",
         notes="Live-only Neo4j Aura validation against customer credentials.",
+    ),
+    ConnectorValidationCase(
+        case_id="oracle_customer_connector_test",
+        label="Oracle Database connector /test",
+        ecosystem="core",
+        example_name="oracle_customer_live",
+        connector_type="oracle",
+        tier="customer_credentials_required",
+        validation_mode="connector_test_only",
+        behavior_mode="connector_test_only",
+        connector_config_factory=_build_oracle_connector_config,
+        enabled_by_default=False,
+        negative_probe="invalid_auth",
+        value_drift_mode="strict_sample_hash",
+        required_env_vars=_ORACLE_REQUIRED_ENV_NAMES,
+        availability_check=_oracle_config_skip_reason,
+        behavior_validation_mode="register_and_exact_query",
+        behavior_mode_override="immutable",
+        behavior_connection_factory=_build_oracle_connection,
+        behavior_expected_records_loader=_load_oracle_records,
+        behavior_required_env_vars=_ORACLE_REQUIRED_ENV_NAMES,
+        behavior_availability_check=_oracle_behavior_skip_reason,
+        docs_url="https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/connecting-python.html",
+        notes=(
+            "Live Oracle Database validation with optional Autonomous Database mTLS wallet. "
+            "Behavior mode requires DE_TEST_ORACLE_QUERY or DE_TEST_ORACLE_TABLE."
+        ),
     ),
     ConnectorValidationCase(
         case_id="snowflake_customer_connector_test",

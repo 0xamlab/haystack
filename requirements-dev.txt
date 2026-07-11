@@ -14,6 +14,7 @@ azure-storage-blob==12.20.0            # Azure Blob connector
 clickhouse-connect==1.0.0              # ClickHouse connector
 neo4j==5.28.4                          # Neo4j / Aura connector
 snowflake-connector-python>=3.9.0      # Snowflake connector
+oracledb==4.0.1                        # Oracle Database connector (Thin mode)
 
 # Core web framework (needed for import resolution even in unit tests)
 fastapi==0.133.1

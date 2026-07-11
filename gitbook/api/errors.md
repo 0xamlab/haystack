@@ -69,6 +69,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `invalid_connection_config` | The connector configuration is missing required fields or has invalid values. |
 | `invalid_connection_provider` | The connection provider is not recognized. |
 | `invalid_connection_type` | The connector type is not one of the supported types. |
+| `invalid_connector_status` | The saved connector has an invalid verification status; repair the persisted record before retrying. |
 | `invalid_credentials` | The supplied credentials were rejected by the data source. |
 | `invalid_device_limit` | The requested device limit is out of the allowed range. |
 | `invalid_filter_condition` | A query filter condition is malformed. |

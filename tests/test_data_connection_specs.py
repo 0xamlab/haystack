@@ -50,6 +50,10 @@ async def test_browse_sql_returns_full_schema_when_schema_filter_is_explicit(
     engine = _FakeEngine(rows)
 
     monkeypatch.setattr("sqlalchemy.create_engine", lambda *_args, **_kwargs: engine)
+    monkeypatch.setattr(
+        "apps.api_server.services.data_connection_browse_sql.enforce_sql_connection_egress",
+        lambda *_args, **_kwargs: None,
+    )
 
     items, message = await specs._browse_sql(
         {
@@ -80,6 +84,10 @@ async def test_browse_sql_preserves_global_cap_without_schema_filter(
     engine = _FakeEngine(rows)
 
     monkeypatch.setattr("sqlalchemy.create_engine", lambda *_args, **_kwargs: engine)
+    monkeypatch.setattr(
+        "apps.api_server.services.data_connection_browse_sql.enforce_sql_connection_egress",
+        lambda *_args, **_kwargs: None,
+    )
 
     items, message = await specs._browse_sql(
         {
@@ -186,6 +194,72 @@ def test_normalize_connection_provider_maps_database_clickhouse() -> None:
 
     assert broad == "database"
     assert provider == "clickhouse"
+
+
+def test_normalize_connection_provider_maps_database_oracle() -> None:
+    broad, provider = specs.normalize_connection_provider(
+        "database",
+        {
+            "service_name": "analytics_low",
+            "host": "adb.example.oraclecloud.com",
+        },
+    )
+
+    assert broad == "database"
+    assert provider == "oracle"
+
+
+def test_build_source_spec_builds_oracle_wallet_connection() -> None:
+    source, refreshable, _ = specs.build_source_spec(
+        dataset_name="Oracle orders",
+        connection_type="database",
+        provider="oracle",
+        connection_config={
+            "host": "adb.example.oraclecloud.com",
+            "port": 1522,
+            "service_name": "analytics_low",
+            "user": "APP_READER",
+            "password": "secret",
+            "dsn": "tcps://adb.example.oraclecloud.com:1522/analytics_low",
+            "wallet_location": "/secure/wallet",
+            "wallet_password": "wallet-secret",
+            "limit": 250,
+        },
+        selection={"table": "REPORTING.ORDERS"},
+        direct_payload={},
+    )
+
+    assert refreshable is True
+    assert source.connection == {
+        "type": "oracle",
+        "user": "APP_READER",
+        "password": "secret",
+        "dsn": "tcps://adb.example.oraclecloud.com:1522/analytics_low",
+        "host": "adb.example.oraclecloud.com",
+        "port": 1522,
+        "service_name": "analytics_low",
+        "wallet_location": "/secure/wallet",
+        "wallet_password": "wallet-secret",
+        "query": 'SELECT * FROM "REPORTING"."ORDERS"',
+        "limit": 250,
+    }
+
+
+def test_build_database_connection_string_builds_oracle_url() -> None:
+    connection_string = specs._build_database_connection_string(
+        "oracle",
+        {
+            "host": "oracle.internal",
+            "port": 1521,
+            "service_name": "analytics",
+            "user": "reader",
+            "password": "p@ss word",
+        },
+    )
+
+    assert connection_string == (
+        "oracle+oracledb://reader:p%40ss%20word@oracle.internal:1521/?service_name=analytics"
+    )
 
 
 @pytest.mark.parametrize(

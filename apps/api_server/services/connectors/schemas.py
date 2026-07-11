@@ -64,6 +64,7 @@ VALID_TYPES = {
     "sqlite",
     "mysql",
     "mssql",
+    "oracle",
     "neo4j",
     "redis",
     "elastic",

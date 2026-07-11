@@ -34,6 +34,10 @@ def test_collect_matrix_status_reports_public_case_as_configured_without_envs(mo
         "DE_TEST_SNOWFLAKE_WAREHOUSE",
         "DE_TEST_BIGQUERY_PROJECT_ID",
         "DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON",
+        "DE_TEST_ORACLE_USER",
+        "DE_TEST_ORACLE_PASSWORD",
+        "DE_TEST_ORACLE_DSN",
+        "DE_TEST_ORACLE_HOST",
     ):
         monkeypatch.delenv(env_name, raising=False)
 
@@ -84,6 +88,14 @@ def test_collect_matrix_status_reports_public_case_as_configured_without_envs(mo
     )
     assert snowflake.effective_validation_mode == "connector_test_only"
 
+    oracle = statuses["oracle_customer_connector_test"]
+    assert oracle.configured is False
+    assert oracle.skip_reason == (
+        "required env not provided: DE_TEST_ORACLE_USER, DE_TEST_ORACLE_PASSWORD, "
+        "DE_TEST_ORACLE_DSN"
+    )
+    assert oracle.effective_validation_mode == "connector_test_only"
+
 
 def test_parse_selected_tiers_accepts_known_tiers_and_rejects_unknown() -> None:
     assert parse_selected_tiers("credentialed_example") == ("credentialed_example",)
@@ -133,6 +145,11 @@ def test_collect_matrix_status_upgrades_warehouse_behavior_only_with_selectors(m
     )
     monkeypatch.setenv("DE_TEST_BIGQUERY_DATASET", "samples")
     monkeypatch.setenv("DE_TEST_BIGQUERY_TABLE", "shakespeare")
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "oracle.example.com:1521/analytics")
+    monkeypatch.setenv("DE_TEST_ORACLE_HOST", "oracle.example.com")
+    monkeypatch.setenv("DE_TEST_ORACLE_TABLE", "REPORTING.FACTS")
 
     statuses = {
         status.case_id: status for status in collect_matrix_status(ALL_CONNECTOR_VALIDATION_CASES)
@@ -145,6 +162,7 @@ def test_collect_matrix_status_upgrades_warehouse_behavior_only_with_selectors(m
     neo4j = statuses["neo4j_customer_connector_test"]
     snowflake = statuses["snowflake_customer_connector_test"]
     bigquery = statuses["bigquery_customer_connector_test"]
+    oracle = statuses["oracle_customer_connector_test"]
 
     assert redis_status.configured is True
     assert redis_status.behavior_ready is True
@@ -169,6 +187,10 @@ def test_collect_matrix_status_upgrades_warehouse_behavior_only_with_selectors(m
     assert bigquery.behavior_ready is True
     assert bigquery.behavior_upgrade_active is True
     assert bigquery.effective_validation_mode == "register_and_exact_query"
+    assert oracle.configured is True
+    assert oracle.behavior_ready is True
+    assert oracle.behavior_upgrade_active is True
+    assert oracle.effective_validation_mode == "register_and_exact_query"
     assert (
         "redis_customer_connector_test | customer_credentials_required | "
         "redis | configured | behavior=connector_test_only"
@@ -193,6 +215,10 @@ def test_collect_matrix_status_upgrades_warehouse_behavior_only_with_selectors(m
         "bigquery_customer_connector_test | customer_credentials_required | "
         "bigquery | configured | behavior=register_and_exact_query"
     ) in rendered
+    assert (
+        "oracle_customer_connector_test | customer_credentials_required | "
+        "oracle | configured | behavior=register_and_exact_query"
+    ) in rendered
 
 
 def test_matrix_status_payload_is_machine_readable(monkeypatch) -> None:
@@ -210,6 +236,7 @@ def test_matrix_status_payload_is_machine_readable(monkeypatch) -> None:
     assert "elasticsearch_customer_connector_test" in case_ids
     assert "neo4j_customer_connector_test" in case_ids
     assert "snowflake_customer_connector_test" in case_ids
+    assert "oracle_customer_connector_test" in case_ids
     assert any(gap["case_id"] == "dlt_github_issues" for gap in payload["operational_gaps"])
 
 
@@ -247,6 +274,10 @@ def test_collect_requirement_failures_reports_missing_cases_for_strict_mode(monk
     monkeypatch.delenv("DE_TEST_SNOWFLAKE_WAREHOUSE", raising=False)
     monkeypatch.delenv("DE_TEST_BIGQUERY_PROJECT_ID", raising=False)
     monkeypatch.delenv("DE_TEST_BIGQUERY_SERVICE_ACCOUNT_JSON", raising=False)
+    monkeypatch.delenv("DE_TEST_ORACLE_USER", raising=False)
+    monkeypatch.delenv("DE_TEST_ORACLE_PASSWORD", raising=False)
+    monkeypatch.delenv("DE_TEST_ORACLE_DSN", raising=False)
+    monkeypatch.delenv("DE_TEST_ORACLE_HOST", raising=False)
 
     failures = collect_requirement_failures(
         collect_matrix_status(ALL_CONNECTOR_VALIDATION_CASES),
@@ -264,6 +295,8 @@ def test_collect_requirement_failures_reports_missing_cases_for_strict_mode(monk
     assert ("all_behavior_ready", "neo4j_customer_connector_test") in failure_index
     assert ("all_behavior_ready", "clickhouse_customer_connector_test") in failure_index
     assert ("all_behavior_ready", "snowflake_customer_connector_test") in failure_index
+    assert ("all_configured", "oracle_customer_connector_test") in failure_index
+    assert ("all_behavior_ready", "oracle_customer_connector_test") in failure_index
     assert ("all_configured", "fivetran_noaa_station_kilg") not in failure_index
     assert ("all_configured", "dlt_github_issues") in failure_index
 
@@ -301,6 +334,11 @@ def test_collect_requirement_failures_is_empty_when_all_cases_are_enabled(monkey
     )
     monkeypatch.setenv("DE_TEST_BIGQUERY_DATASET", "samples")
     monkeypatch.setenv("DE_TEST_BIGQUERY_TABLE", "shakespeare")
+    monkeypatch.setenv("DE_TEST_ORACLE_USER", "reader")
+    monkeypatch.setenv("DE_TEST_ORACLE_PASSWORD", "pass")
+    monkeypatch.setenv("DE_TEST_ORACLE_DSN", "oracle.example.com:1521/analytics")
+    monkeypatch.setenv("DE_TEST_ORACLE_HOST", "oracle.example.com")
+    monkeypatch.setenv("DE_TEST_ORACLE_TABLE", "REPORTING.FACTS")
 
     failures = collect_requirement_failures(
         collect_matrix_status(ALL_CONNECTOR_VALIDATION_CASES),
