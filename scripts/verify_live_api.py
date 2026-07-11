@@ -15,11 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from apps.platform_contract_constants import API_KEY_PREFIX_LIVE
-from scripts.local_operator_contract import resolve_operator_base_url
+from apps.platform_contract_constants import API_KEY_PREFIX_LIVE  # noqa: E402
+from scripts.local_operator_contract import resolve_operator_base_url  # noqa: E402
 
 PASS = "✅"  # noqa: S105 - status glyph, not a credential
 FAIL = "❌"
+AUDIT_USER_AGENT = "algenta-live-api-verifier/1.0"
+DEFAULT_HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": AUDIT_USER_AGENT,
+}
 
 
 def _invalid_api_key(label: str) -> str:
@@ -37,7 +43,7 @@ def req(
     """Make HTTP request, return (status_code, response_body_dict)."""
     url = f"{base_url}{path}"
     data = json.dumps(body).encode() if body else None
-    request_headers = {"Content-Type": "application/json"}
+    request_headers = dict(DEFAULT_HEADERS)
     if headers:
         request_headers.update(headers)
     request = urllib.request.Request(  # noqa: S310 - explicit verification target chosen by operator
@@ -48,11 +54,45 @@ def req(
     )
     try:
         with urllib.request.urlopen(request) as response:  # noqa: S310 - explicit verification target
-            return response.status, json.loads(response.read())
+            return response.status, _decode_json_response(
+                status=response.status,
+                raw=response.read(),
+                url=url,
+            )
     except urllib.error.HTTPError as exc:
-        return exc.code, json.loads(exc.read())
+        return exc.code, _decode_json_response(status=exc.code, raw=exc.read(), url=url)
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Cannot connect to {base_url} — is the API server running?") from exc
+
+
+def _decode_json_response(*, status: int, raw: bytes, url: str) -> dict[str, Any]:
+    try:
+        decoded = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        decoded = raw.decode("utf-8", "replace")
+    try:
+        body = json.loads(decoded) if decoded else {}
+    except json.JSONDecodeError:
+        return {
+            "error": {
+                "code": "non_json_response",
+                "message": "Expected JSON response from live API verifier target.",
+                "details": {
+                    "status_code": status,
+                    "url": url,
+                    "body_prefix": decoded[:240],
+                },
+            }
+        }
+    if not isinstance(body, dict):
+        return {
+            "error": {
+                "code": "unexpected_json_response",
+                "message": "Expected a JSON object response from live API verifier target.",
+                "details": {"status_code": status, "url": url, "json_type": type(body).__name__},
+            }
+        }
+    return body
 
 
 def run_check(
@@ -134,7 +174,11 @@ def run_verification(base_url: str) -> int:
         error = body.get("error", {})
         assert error.get("code") == "invalid_api_key"
 
-    run_check(results, "POST /v1/simulate with invalid key → 401 + code: invalid_api_key", test_invalid_key)
+    run_check(
+        results,
+        "POST /v1/simulate with invalid key → 401 + code: invalid_api_key",
+        test_invalid_key,
+    )
 
     def test_malformed_body() -> None:
         status, body = req(
@@ -151,6 +195,7 @@ def run_verification(base_url: str) -> int:
     def test_request_id_header() -> None:
         request = urllib.request.Request(  # noqa: S310 - explicit verification target
             f"{base_url}/v1/health",
+            headers={"Accept": "application/json", "User-Agent": AUDIT_USER_AGENT},
             method="GET",
         )
         with urllib.request.urlopen(request) as response:  # noqa: S310 - explicit verification target
