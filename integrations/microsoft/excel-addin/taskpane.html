@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!-- Algenta Decisions — Excel task pane (Build order 8). Static host; talks to the customer gateway. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Algenta Decisions</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <script src="taskpane.js" defer></script>
+    <style>
+      body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; padding: 12px; color: #201f1e; }
+      h1 { font-size: 15px; margin: 0 0 8px; }
+      .muted { color: #605e5c; font-size: 12px; }
+      label { display: block; font-size: 12px; margin: 8px 0 2px; }
+      input, select { width: 100%; box-sizing: border-box; padding: 6px; }
+      button { margin-top: 10px; padding: 8px 12px; border: 0; border-radius: 4px;
+               background: #0f6cbd; color: #fff; cursor: pointer; }
+      button.secondary { background: #edebe9; color: #201f1e; }
+      #preview, #result { margin-top: 12px; font-size: 12px; white-space: pre-wrap;
+               background: #faf9f8; border: 1px solid #edebe9; border-radius: 4px; padding: 8px; }
+      .pill { display: inline-block; background: #e1dfdd; border-radius: 10px; padding: 1px 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Algenta Decisions</h1>
+    <p class="muted">Frame a decision from a selected table and run it in your organization's Azure.
+      Results write to new sheets after a preview. Data stays in your environment.</p>
+
+    <label for="gateway">Gateway URL</label>
+    <input id="gateway" placeholder="https://your-gateway.azurecontainerapps.io" />
+
+    <label for="pack">Decision Pack</label>
+    <select id="pack">
+      <option value="renewal_capacity_allocation">Renewal Capacity Allocation</option>
+    </select>
+
+    <label for="title">Decision title</label>
+    <input id="title" value="Q3 renewals" />
+
+    <button id="preview-btn" class="secondary">1 · Preview selection</button>
+    <div id="preview"></div>
+
+    <button id="run-btn">2 · Run analysis</button>
+    <div id="result"></div>
+
+    <button id="approve-btn" class="secondary" disabled>3 · Approve recommendation</button>
+    <p id="status" class="muted"></p>
+  </body>
+</html>

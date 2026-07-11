@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "0.1.0",
+  "id": "REPLACE_WITH_TEAMS_APP_ID_GUID",
+  "developer": {
+    "name": "Algenta",
+    "websiteUrl": "https://algenta.ai",
+    "privacyUrl": "https://algenta.ai/privacy",
+    "termsOfUseUrl": "https://algenta.ai/terms"
+  },
+  "name": {
+    "short": "Algenta Decisions",
+    "full": "Algenta Decision Agent"
+  },
+  "description": {
+    "short": "Governed decisions inside Microsoft 365 — computed in your Azure.",
+    "full": "Algenta turns enterprise data and operating models into governed decisions across Microsoft 365, powered by a decision runtime deployed in your organization's Azure. Frame a decision, run scenarios and optimization, get a recommendation with evidence, and propose a plan for approval."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0F6CBD",
+  "copilotAgents": {
+    "declarativeAgents": [
+      {
+        "id": "algentaDecisionAgent",
+        "file": "declarativeAgent.json"
+      }
+    ]
+  },
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["YOUR-GATEWAY"]
+}
