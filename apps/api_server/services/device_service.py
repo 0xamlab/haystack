@@ -82,6 +82,12 @@ _JWT_ALGORITHM = "HS256"
 _JWT_ISSUER = "algenta-control-plane"
 _GRACE_DAYS = 14
 _LICENSE_TTL_DAYS = 365  # fallback TTL for keys without an explicit expiry
+# Online licenses are SHORT-LIVED + renewal-gated so a lapsed subscription actually expires them
+# (anti "pay once and leave"). The node re-mints via /v1/license/renew — which reflects the CURRENT
+# org plan (so a cancel/downgrade takes effect on the next renewal) — well within this rolling window,
+# plus a _GRACE_DAYS buffer for brief disconnects. Air-gapped / offline enterprise mints use a
+# separate long-lived path (scripts/issue_offline_license.py), NOT this online mint. Env-adjustable.
+_LICENSE_RENEWAL_TTL_DAYS = max(1, int(os.environ.get("ALGENTA_LICENSE_RENEWAL_TTL_DAYS", "35") or "35"))
 HOSTED_DEVICE_ID_HEADER = "X-Algenta-Device-Id"
 HOSTED_DEVICE_PLATFORM_HEADER = "X-Algenta-Platform"
 HOSTED_DEVICE_PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version"
@@ -814,7 +820,11 @@ def _issue_license_jwt(
     device_pubkey_thumbprint: str = "",
 ) -> str:
     now = int(time.time())
-    effective_expires_at = now + (_LICENSE_TTL_DAYS * 86400)
+    # Online licenses are capped to a SHORT rolling window so the node must renew (and renewal
+    # reflects the current subscription/plan). Never longer than the rolling window — even a
+    # no-expiry or far-future key gets a short, renewal-gated license (closes "pay once and leave").
+    rolling_expires_at = now + (_LICENSE_RENEWAL_TTL_DAYS * 86400)
+    effective_expires_at = rolling_expires_at
     key_expires_at = 0
     if api_key_expires_at is not None:
         normalized_expiry = (
@@ -823,7 +833,8 @@ def _issue_license_jwt(
             else api_key_expires_at.replace(tzinfo=UTC)
         )
         key_expires_at = int(normalized_expiry.timestamp())
-        effective_expires_at = key_expires_at
+        # Honor an earlier key expiry (e.g. a subscription period end) but never extend past the window.
+        effective_expires_at = min(key_expires_at, rolling_expires_at)
     license_id = str(uuid.uuid4())
     payload = {
         "api_key_prefix": api_key_prefix,

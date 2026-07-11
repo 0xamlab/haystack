@@ -101,13 +101,28 @@ def test_airgapped_requires_worker_cap() -> None:
 
 
 def test_airgapped_device_bound_with_worker_cap_passes() -> None:
+    # Air-gapped is enterprise-only (self-serve tiers must stay connected so renewal is sub-gated).
     assert is_paid_selfhost_safe(
         _paid_selfhost(
             deployment_class="airgapped",
+            plan="enterprise",
             device_pubkey_thumbprint="thumb-xyz",
             concurrent_worker_limit=2,
         )
     )
+
+
+def test_airgapped_requires_enterprise_plan() -> None:
+    # A non-enterprise (self-serve) air-gap mint is the pay-once-leave hole: no renewal check offline.
+    violations = paid_selfhost_violations(
+        _paid_selfhost(
+            deployment_class="airgapped",
+            plan="algenta_selfhost",
+            device_pubkey_thumbprint="thumb-xyz",
+            concurrent_worker_limit=2,
+        )
+    )
+    assert any("enterprise" in v for v in violations)
 
 
 # ── the OEM minter's output can NEVER pass as paid self-host ─────────────────────────

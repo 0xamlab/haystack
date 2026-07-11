@@ -75,6 +75,7 @@ def paid_selfhost_violations(claims: Mapping[str, object]) -> list[str]:
     worker_limit = _as_int(claims.get("concurrent_worker_limit"))
     grace_days = _as_int(claims.get("offline_grace_days"))
     thumbprint = str(claims.get("device_pubkey_thumbprint", "")).strip()
+    plan = str(claims.get("plan", "")).strip().lower()
 
     # 1) Never an OEM / redistribution license for a paying customer — that's the fleet-portable shape.
     if deployment_class == "oem" or _is_truthy(claims.get("oem")):
@@ -100,6 +101,15 @@ def paid_selfhost_violations(claims: Mapping[str, object]) -> list[str]:
     # 4) Air-gapped must be device-bound with a finite worker cap (active_node_limit is not runtime-enforced
     #    offline, so it's the only thing stopping one token from running on every air-gapped box).
     if deployment_class == "airgapped":
+        # Air-gapped / never-phone-home operation is an ENTERPRISE-ONLY entitlement. Self-serve tiers
+        # (free/pro/team/selfhost) MUST stay connected so renewal is subscription-gated — otherwise a
+        # customer pays once, takes an air-gap token, and never renews (the pay-once-leave hole).
+        if plan != "enterprise":
+            violations.append(
+                f"air-gapped deployment_class requires the enterprise plan (got plan={plan!r}): air-gapped "
+                "operation is enterprise-only. Self-serve tiers must run connected so a lapsed subscription "
+                "actually expires the license."
+            )
         if not thumbprint:
             violations.append(
                 "air-gapped license is not device-bound: pass --device-pubkey-thumbprint (active_node_limit "
