@@ -13,12 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (layer cache)
-COPY requirements-dev.txt ./
+# Copy requirements first (layer cache). The public API image includes the MCP transport;
+# self-host operators must never have to install a second dependency set in a running container.
+COPY requirements-dev.txt requirements-mcp.txt ./
 
 # Install Python dependencies into /install prefix
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --prefix=/install -r requirements-dev.txt
+    pip install --no-cache-dir --prefix=/install \
+      -r requirements-dev.txt \
+      -r requirements-mcp.txt
 
 # Stage repository sources and guarantee optional build directories exist.
 COPY . /build/context/

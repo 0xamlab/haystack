@@ -107,15 +107,6 @@ try {
 Branch on `err.errorCode` (or `instanceof`), not on the human-readable `message`. Codes are stable; messages are not.
 {% endhint %}
 
-{% expandable title="Compatibility names for older integrations" %}
-`AlgentaClient` is the canonical export. The same constructor is also exported as `DecisionEngineClient` and `CodnaClient`, with matching `AlgentaClientConfig` / `DecisionEngineClientConfig` / `CodnaClientConfig` config types, so older integrations keep working unchanged.
-
-```typescript
-import { AlgentaClient, DecisionEngineClient, CodnaClient } from "algenta-sdk";
-// All three are the same class.
-```
-{% endexpandable %}
-
 ## Where to go next
 
 Pick the method group you need — each page tables every method with its HTTP route and runnable examples.

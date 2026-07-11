@@ -1,5 +1,5 @@
 """
-engines/manifest.py — Codna OS engine registry.
+engines/manifest.py — Algenta engine registry.
 
 Maps each product-level engine to its constituent Mojo libraries,
 API surface, and use cases.  Single source of truth — imported by
@@ -16,7 +16,7 @@ class Engine:
     name: str
     slug: str  # URL / API key  e.g. "decision"
     description: str
-    api_path: str  # top-level route prefix
+    api_path: str  # primary callable API endpoint
     mojo_libs: list[str]  # mojo/engine/*.mojo contributors
     use_cases: list[str]
     tier: str  # "core" | "advanced" | "platform"
@@ -54,7 +54,7 @@ ENGINES: list[Engine] = [
             "LLM and model inference runtime with paged KV cache, "
             "flash attention, speculative decoding, and generation control."
         ),
-        api_path="/v1/inference",
+        api_path="/v1/chat/completions",
         mojo_libs=[
             "transformer_attention",
             "kv_cache",
@@ -77,7 +77,7 @@ ENGINES: list[Engine] = [
             "Execution and reasoning engine for autonomous agents: "
             "tool calling, workflow DAGs, structured output, and memory."
         ),
-        api_path="/v1/agent",
+        api_path="/v1/agent/run",
         mojo_libs=[
             "agent_runtime",
             "workflow_engine",
@@ -97,7 +97,7 @@ ENGINES: list[Engine] = [
             "Search and context engine combining dense vector search, "
             "BM25, cross-encoder reranking, and MMR diversity."
         ),
-        api_path="/v1/retrieval",
+        api_path="/v1/retrieve",
         mojo_libs=[
             "vector_search",
             "rag_retrieval",
@@ -136,7 +136,7 @@ ENGINES: list[Engine] = [
             "Production serving runtime: continuous batching, scheduling, "
             "latency optimization, fault tolerance, and auto-scaling."
         ),
-        api_path="/v1/serving",
+        api_path="/v1/responses",
         mojo_libs=[
             "continuous_batching",
             "scheduler_ops",
@@ -156,7 +156,7 @@ ENGINES: list[Engine] = [
             "Full ML training runtime: autograd, optimizers, distributed "
             "collectives, LoRA fine-tuning, RLHF/DPO, and training stability."
         ),
-        api_path="/v1/training",
+        api_path="/v1/ingest",
         mojo_libs=[
             "autograd_ops",
             "autograd_graph",
@@ -198,7 +198,7 @@ ENGINES: list[Engine] = [
             "Model lifecycle and interoperability: load, shard, adapt, "
             "and manage models across safetensors, GGUF, ONNX, and HF formats."
         ),
-        api_path="/v1/model",
+        api_path="/v1/models",
         mojo_libs=[
             "model_serialization",
             "model_interop",
@@ -219,7 +219,7 @@ ENGINES: list[Engine] = [
             "AI compute cost optimizer: cost-aware routing, GPU/CPU placement, "
             "model tier selection, and SLA-budget tradeoffs."
         ),
-        api_path="/v1/cost",
+        api_path="/v1/deployments/{deployment_id}/cost",
         mojo_libs=[
             "cost_router",
             "execution_planner",
@@ -237,7 +237,7 @@ ENGINES: list[Engine] = [
             "Enterprise safety layer: prompt injection detection, PII filtering, "
             "output safety, differential privacy, RBAC, and audit logging."
         ),
-        api_path="/v1/security",
+        api_path="/v1/repositories/{repository_id}/security-analyses",
         mojo_libs=[
             "security_governance",
             "inference_security",
@@ -250,10 +250,10 @@ ENGINES: list[Engine] = [
         name="Hybrid Intelligence Engine",
         slug="hybrid",
         description=(
-            "Codna's moat: ML prediction + physics simulation + "
-            "optimization + symbolic rules unified into one reasoning system."
+            "ML prediction, physics simulation, optimization, and symbolic rules "
+            "unified into one reasoning system."
         ),
-        api_path="/v1/hybrid",
+        api_path="/v1/recommend",
         mojo_libs=[
             "hybrid_reasoning",
             "decision_ml_fusion",

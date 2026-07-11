@@ -91,7 +91,7 @@ python3 scripts/license_status.py
 ```text
 OK  license valid=True version=2 source=offline-local plan=enterprise
       deployment_class=server commercial_use=True
-      product codna: tier=pro features=apply,fix,repo_graph,simulate,triage
+      product algenta: tier=selfhost features=apply,fix,local_runtime,repo_graph,simulate,triage
       caps: seats=25 nodes=3 workers=12
       expiry: expires_at=... key_expires_at=... expired=False in_grace=False hard_expired=False
 ```
@@ -109,7 +109,7 @@ python3 scripts/license_status.py --json
   "plan": "enterprise",
   "deployment_class": "server",
   "gate_satisfied": true,
-  "products": { "codna": { "tier": "pro", "features": ["apply", "fix", "repo_graph", "simulate", "triage"] } }
+  "products": { "algenta": { "tier": "selfhost", "features": ["apply", "fix", "local_runtime", "repo_graph", "simulate", "triage"] } }
 }
 ```
 {% endtab %}
@@ -130,20 +130,17 @@ Your engine runs on your hardware — nothing reaches in to switch it off. When 
 
 ## Editions and features
 
-Algenta is the engine; each product is a curated **edition** over the same MCP/API core. A license grants per-product **features**, and the local engine maps each granted feature to the concrete tools it unlocks:
+Algenta licenses grant product-scoped **features**, and the local engine maps each granted feature to the concrete tools it unlocks:
 
 ```text
 available_tools = installed ∩ product_allowlist ∩ license_feature_tools
 ```
 
-| Edition | Product key | Status | Feature buckets (Codna) |
+| Edition | Product key | Status | Feature buckets |
 |---|---|---|---|
-| Codna (coding) | `codna` | Shipped | `repo_graph`, `triage`, `simulate`, `fix`, `apply` |
-| Cohenta (marketing) | `cohenta` | Reserved (empty, fails closed) | — |
-| Decimas (trading) | `decimas` | Reserved (empty, fails closed) | — |
-| Escrypto (crypto governance) | `escrypto` | Reserved (empty, fails closed) | — |
+| Algenta | `algenta` | Shipped | `local_runtime`, `repo_graph`, `triage`, `simulate`, `fix`, `apply` |
 
-The Codna feature buckets map to tools as follows:
+The repository-intelligence feature buckets map to tools as follows:
 
 | Feature | Tools unlocked |
 |---|---|
@@ -154,7 +151,7 @@ The Codna feature buckets map to tools as follows:
 | `fix` | `run_repository_fix`, `run_repository_pipeline`, `create_agent_run`, `get_agent_run`, `get_agent_run_events`, `cancel_agent_run` |
 | `apply` | `apply_repository` |
 
-A license granting all five features (`codna:pro:repo_graph,triage,simulate,fix,apply`) yields the full Codna edition. A narrower grant exposes only those tools.
+A license granting the full Algenta feature set yields the complete licensed edition. A narrower grant exposes only the corresponding tools.
 
 {% hint style="info" %}
 The product selector (`X-Algenta-Product` / `ALGENTA_PRODUCT`) is a routing hint, not authorization. Visibility is the intersection of the product allowlist, the verified key's entitlements, organization policy, and the license's feature grants. An unknown or unentitled product resolves to the **empty** set — never the full registry.

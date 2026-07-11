@@ -12,8 +12,10 @@ on:
       - "scripts/gitbook/**"
       - "scripts/docs/**"
       - "apps/mcp_server/**"
-      - "apps/api_server/config.py"
+      - "apps/api_server/**"
       - "apps/api-server/config.py"
+      - "engines/manifest.py"
+      - "schemas/openapi/openapi.yaml"
       - ".gitbook.yaml"
       - ".github/workflows/docs-audit.yml"
   push:
@@ -23,8 +25,10 @@ on:
       - "scripts/gitbook/**"
       - "scripts/docs/**"
       - "apps/mcp_server/**"
-      - "apps/api_server/config.py"
+      - "apps/api_server/**"
       - "apps/api-server/config.py"
+      - "engines/manifest.py"
+      - "schemas/openapi/openapi.yaml"
       - ".gitbook.yaml"
       - ".github/workflows/docs-audit.yml"
 

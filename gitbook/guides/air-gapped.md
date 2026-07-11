@@ -175,7 +175,7 @@ MOJO_BINARY_PATH=/app/mojo_build/simulate
 ```bash
 # BYOK against an in-perimeter, OpenAI-compatible model gateway.
 ANTHROPIC_API_KEY=sk-ant-...
-ALGENTA_CONFIG_ENCRYPTION_KEY=<64-hex-kek>
+ALGENTA_CONFIG_ENCRYPTION_KEY="<64-hex-kek>"
 ALGENTA_EGRESS_ALLOWLIST="llm-gateway.internal:443"
 ```
 

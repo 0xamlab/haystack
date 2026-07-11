@@ -49,13 +49,9 @@ with AlgentaClient(api_key=os.environ["ALGENTA_API_KEY"]) as client:
     print(client.list_models().data)
 ```
 
-{% hint style="info" %}
-`AlgentaClient` is the preferred name. `DecisionEngineClient` and `CodnaClient` are accepted aliases for the same class, kept for backward compatibility.
-{% endhint %}
-
 ## Sync vs async
 
-Every method has an async equivalent on `AsyncAlgentaClient`, which is an async context manager exposing the identical surface. Aliases `AsyncDecisionEngineClient` and `AsyncCodnaClient` refer to the same class.
+Every method has an async equivalent on `AsyncAlgentaClient`, which is an async context manager exposing the identical surface.
 
 {% tabs %}
 {% tab title="Sync" %}

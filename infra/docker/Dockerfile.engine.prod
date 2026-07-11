@@ -1,16 +1,11 @@
-# Combined worker + agent-core sidecar image for the co-located Fly `codna-engine` app.
+# Combined async-worker + agent-runtime image for Algenta deployments.
 #
-# WHY combined: the agent-core contract is shared-filesystem — the Celery worker materializes a
-# repo `working_dir` and the sidecar mutates files in that SAME path, then Python recomputes the
-# diff (apps/api_server/services/repository_intelligence_agent_core_client.py). Fly volumes attach
-# to a single Machine, so the worker and the sidecar must run on the same Machine sharing the volume
-# mounted at /home/app/.algenta. This image runs both via infra/docker/engine-entrypoint.sh.
-#
-# The sidecar is the codna-published, digest-pinned image (built by thyn-ai/codna CI, NOT here).
-# Bump SIDECAR_IMAGE when adopting a newer sidecar (keep it digest-pinned for reproducible deploys).
+# WHY combined: the agent-runtime contract is shared-filesystem. The Celery worker materializes a
+# repo `working_dir`, the agent runtime mutates files in that same path, and Python recomputes the
+# diff. They must run in one container with /home/app/.algenta mounted as a shared volume.
 #
 # Build (from repo root):
-#   docker build -f infra/docker/Dockerfile.engine.prod -t codna-engine .
+#   docker build -f infra/docker/Dockerfile.engine.prod -t algenta-engine .
 
 # Both ARGs must precede the first FROM to be global (usable in FROM lines); an ARG declared after
 # a FROM is stage-scoped and reads blank in a later FROM (`base name should not be blank`).
@@ -33,11 +28,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . /build/context/
 RUN mkdir -p /build/context/mojo_build
 
-# ── Stage 2: Runtime (worker + bun + sidecar app) ────────────────────────────
+# ── Stage 2: Runtime (worker + bundled agent app) ────────────────────────────
 FROM python:3.14-slim AS runtime
 WORKDIR /app
 
-# libpq5 for the worker; curl for the sidecar healthcheck; git + ca-certificates for repo clones.
+# libpq5 for the worker; curl for the healthcheck; git + ca-certificates for repo clones.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 curl git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -47,7 +42,11 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /home/app --c
 # Worker (Python) runtime + app + Mojo engine
 COPY --from=builder /install /usr/local
 COPY --from=builder /build/context/apps/ /app/apps/
+COPY --from=builder /build/context/engines/ /app/engines/
+COPY --from=builder /build/context/training/ /app/training/
+COPY --from=builder /build/context/scripts/ /app/scripts/
 COPY --from=builder /build/context/mojo/ /app/mojo/
+COPY --from=builder /build/context/packages/mcp/ /app/packages/mcp/
 
 # Runtime-manifest source artifacts (committed under build/, ~150KB) so /v1/runtime/manifest
 # doesn't 500 on missing files (no tracked .dockerignore excludes build/).
@@ -65,7 +64,7 @@ COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/d
 # would corrupt the worker's Python 3.14 runtime.
 RUN mkdir -p /build && ln -s /app/mojo_env /build/mojo_env && chmod +x /app/mojo_build/simulate
 
-# Bun runtime + the prebuilt agent-core sidecar from the codna image
+# Bun runtime + the prebuilt agent application are encapsulated in this final image.
 COPY --from=sidecar /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=sidecar --chown=app:app /app/agent-core /app/agent-core
 
@@ -81,7 +80,7 @@ ENV HOME=/home/app \
     AGENT_CORE_PORT=8787
 USER app
 
-# The sidecar listens here; api reaches it over Fly private networking (codna-engine.internal:8787).
+# The bundled agent runtime listens here; the API reaches it over the private container network.
 EXPOSE 8787
 
 CMD ["/usr/local/bin/engine-entrypoint.sh"]

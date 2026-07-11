@@ -28,7 +28,7 @@ Every engine is returned with the same fields.
 | `name` | string | Human-readable engine name, e.g. `Decision Engine`. |
 | `slug` | string | Stable identifier used in the URL and as a routing key, e.g. `decision`. |
 | `description` | string | One-paragraph summary of what the engine does. |
-| `api_path` | string | Top-level route prefix the engine serves, e.g. `/v1/decision`. |
+| `api_path` | string | Primary callable endpoint for the engine, e.g. `/v1/decision`. |
 | `mojo_libs` | string[] | The runtime libraries that contribute to the engine. |
 | `use_cases` | string[] | Representative workloads the engine targets. |
 | `tier` | string | One of `core`, `advanced`, or `platform`. |
@@ -44,11 +44,11 @@ The foundational engines most deployments use directly.
 | Engine | `slug` | `api_path` | Use cases |
 | --- | --- | --- | --- |
 | Decision Engine | `decision` | `/v1/decision` | pricing, risk analysis, supply chain, routing |
-| Inference Engine | `inference` | `/v1/inference` | chat, generation, embeddings, real-time inference |
-| Agent Engine | `agent` | `/v1/agent` | automation, copilots, workflows, orchestration |
-| Retrieval Engine | `retrieval` | `/v1/retrieval` | enterprise search, knowledge systems, copilots, RAG |
+| Inference Engine | `inference` | `/v1/chat/completions` | chat, generation, embeddings, real-time inference |
+| Agent Engine | `agent` | `/v1/agent/run` | automation, copilots, workflows, orchestration |
+| Retrieval Engine | `retrieval` | `/v1/retrieve` | enterprise search, knowledge systems, copilots, RAG |
 | Optimization Engine | `optimize` | `/v1/optimize` | pricing optimization, routing, scheduling, resource allocation |
-| Serving Engine | `serving` | `/v1/serving` | APIs, real-time serving, scaling, production deployment |
+| Serving Engine | `serving` | `/v1/responses` | APIs, real-time serving, scaling, production deployment |
 {% endtab %}
 
 {% tab title="Advanced" %}
@@ -56,10 +56,10 @@ Engines for the model and data lifecycle.
 
 | Engine | `slug` | `api_path` | Use cases |
 | --- | --- | --- | --- |
-| Training Engine | `training` | `/v1/training` | model training, fine-tuning, RLHF, experimentation |
+| Training Engine | `training` | `/v1/ingest` | model training, fine-tuning, RLHF, experimentation |
 | Data Engine | `data` | `/v1/data` | ETL, feature pipelines, analytics, data quality |
-| Model Engine | `model` | `/v1/model` | loading, managing, adapting models, format conversion |
-| Cost Engine | `cost` | `/v1/cost` | cost optimization, routing workloads, infra decisions, FinOps |
+| Model Engine | `model` | `/v1/models` | loading, managing, adapting models, format conversion |
+| Cost Engine | `cost` | `/v1/deployments/{deployment_id}/cost` | cost optimization, routing workloads, infra decisions, FinOps |
 {% endtab %}
 
 {% tab title="Platform" %}
@@ -67,13 +67,13 @@ Cross-cutting engines that govern and combine the others.
 
 | Engine | `slug` | `api_path` | Use cases |
 | --- | --- | --- | --- |
-| Security & Governance Engine | `security` | `/v1/security` | compliance, safe AI, enterprise deployment, audit |
-| Hybrid Intelligence Engine | `hybrid` | `/v1/hybrid` | strategic decisions, forecasting + optimization, advanced analytics, digital twins |
+| Security & Governance Engine | `security` | `/v1/repositories/{repository_id}/security-analyses` | compliance, safe AI, enterprise deployment, audit |
+| Hybrid Intelligence Engine | `hybrid` | `/v1/recommend` | strategic decisions, forecasting + optimization, advanced analytics, digital twins |
 {% endtab %}
 {% endtabs %}
 
 {% hint style="info" %}
-The catalog is the source of truth for `api_path`. Read `slug` -> `api_path` from the live catalog and route to it, rather than hardcoding a prefix that a future build may move.
+The catalog is the source of truth for `api_path`. Read `slug` -> `api_path` from the live catalog rather than hardcoding an endpoint that a future build may move.
 {% endhint %}
 
 ## List every engine

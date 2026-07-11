@@ -108,7 +108,7 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         runtime_release_validation_cls = algenta.RuntimeReleaseValidationOutput
         runtime_slo_budget_applies_to_enum = algenta.RuntimeSLOBudgetAppliesTo
         runtime_slo_budget_name_enum = algenta.RuntimeSLOBudgetName
-        runtime_error_cls = algenta.CodnaRuntimeError
+        runtime_error_cls = algenta.AlgentaRuntimeError
         map_data_fn = algenta.map_data
         contract_version = algenta.CONTRACT_VERSION
         brand = algenta.BRAND
@@ -194,7 +194,7 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         assert runtime_release_validation_cls.__name__ == "RuntimeReleaseValidationOutput"
         assert runtime_slo_budget_applies_to_enum.__name__ == "RuntimeSLOBudgetAppliesTo"
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetName"
-        assert runtime_error_cls.__name__ == "CodnaRuntimeError"
+        assert runtime_error_cls is algenta.CodnaRuntimeError
         assert callable(map_data_fn)
         assert contract_version == "v1.3"
         assert brand == "Algenta"

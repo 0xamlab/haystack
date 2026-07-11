@@ -22,6 +22,7 @@ and a least-privilege service key is denied /apply (the #131 guard, end-to-end o
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from pathlib import Path
@@ -36,7 +37,7 @@ from tests.integration.live_repository_fixture import live_repository_fixture
 _SENTINEL_PROVIDER_KEY = "sk-ant-e2e-DO-NOT-LEAK-0000000000000000"
 _VERIFIED_AGENTIC_MODEL = "repository.verified_agentic_v1"
 
-pytestmark = pytest.mark.anyio
+pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
@@ -51,6 +52,7 @@ async def client():
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://testserver"
         ) as ac:
+            setattr(ac, "_algenta_lifespan_loop", asyncio.get_running_loop())
             yield ac
 
 
@@ -138,6 +140,7 @@ def _stub_run_agent():
 
 
 async def test_agentic_headline_journey(client, monkeypatch) -> None:
+    assert asyncio.get_running_loop() is getattr(client, "_algenta_lifespan_loop")
     monkeypatch.setenv("ANTHROPIC_API_KEY", _SENTINEL_PROVIDER_KEY)
     # Deterministic agent step (no Node, no sidecar, no live model).
     from apps.api_server.services import repository_intelligence_verified_agentic as va

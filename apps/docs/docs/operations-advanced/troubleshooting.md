@@ -33,7 +33,7 @@ docker compose -f infra/docker/docker-compose.selfhosted.yml ps
 
 Expected output:
 
-- `api`, `worker`, `postgres`, `redis`, and `minio` are present
+- `api`, `engine`, `postgres`, `redis`, and `minio` are present
 
 Failure meaning:
 
@@ -41,7 +41,7 @@ Failure meaning:
 
 Next action:
 
-- inspect `api` and `worker` logs first
+- inspect `api` and `engine` logs first
 
 ## The API is not healthy
 
@@ -83,10 +83,10 @@ Next action:
 
 - fix the reported error, then restart the stack
 
-## Worker jobs do not complete
+## Engine jobs do not complete
 
 ```bash
-docker compose -f infra/docker/docker-compose.selfhosted.yml logs --tail=200 worker
+docker compose -f infra/docker/docker-compose.selfhosted.yml logs --tail=200 engine
 ```
 
 Expected output:
@@ -96,11 +96,11 @@ Expected output:
 
 Failure meaning:
 
-- the worker cannot start or cannot reach Redis/PostgreSQL
+- the engine cannot start or cannot reach Redis/PostgreSQL
 
 Next action:
 
-- verify `REDIS_URL`, database connectivity, and restart the worker
+- verify `REDIS_URL`, database connectivity, and restart the engine
 
 ## The bootstrap key was not created
 

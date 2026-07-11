@@ -1,10 +1,10 @@
 #!/bin/bash
-# Supervises the two co-located engine processes on the Fly `codna-engine` Machine:
-#   1) the agent-core sidecar (Bun) on 0.0.0.0:8787, and
+# Supervises the two co-located processes in the Algenta engine image:
+#   1) the bundled agent runtime (Bun) on 0.0.0.0:8787, and
 #   2) the Celery worker (Python) consuming persist,simulate,repository.
-# They share /home/app/.algenta (the Fly volume) — the worker materializes the repo working_dir
-# and the sidecar mutates it. If either process exits, we tear the other down and exit non-zero so
-# Fly restarts the whole Machine (never a half-dead engine).
+# They share /home/app/.algenta: the worker materializes the repo working_dir and the agent runtime
+# mutates it. If either process exits, the container exits non-zero so the runtime restarts the
+# complete engine instead of leaving a half-dead service.
 set -euo pipefail
 
 SIDECAR_PID=""
@@ -16,8 +16,7 @@ term() {
 }
 trap term TERM INT
 
-# 1) agent-core sidecar (Bun) — binds 0.0.0.0:8787 (reachable at codna-engine.internal:8787 from the
-#    api app, and at localhost:8787 from the co-located worker).
+# 1) Bundled agent runtime (Bun), reachable on port 8787 from the API and on loopback from the worker.
 ( cd /app/agent-core && exec bun run-server.mjs ) &
 SIDECAR_PID=$!
 
@@ -28,7 +27,7 @@ SIDECAR_PID=$!
     --concurrency="${CELERY_CONCURRENCY:-2}" ) &
 WORKER_PID=$!
 
-# Exit as soon as either child dies; Fly restarts the Machine.
+# Exit as soon as either child dies so the container is restarted as one unit.
 wait -n "$SIDECAR_PID" "$WORKER_PID"
 term
 wait 2>/dev/null || true

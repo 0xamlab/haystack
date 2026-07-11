@@ -38,6 +38,9 @@ class CodnaRuntimeError(Exception):
         return self.validation_errors
 
 
+AlgentaRuntimeError = CodnaRuntimeError
+
+
 class RuntimeConfigurationError(CodnaRuntimeError):
     """Raised when the runtime is not configured for the requested mode."""
 

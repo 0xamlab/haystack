@@ -33,6 +33,7 @@ if __name__ == "__main__" and os.environ.get("ALGENTA_SKIP_MOJO_RUNTIME", "0") =
 
 import asyncio
 import contextlib
+import hashlib
 import importlib
 import io
 import json
@@ -638,8 +639,11 @@ def _run_api_migrations(env: dict[str, str]) -> None:
 
 
 def _runtime_daemon_env(runtime_dir: Path, tcp_port: int, api_key: str) -> dict[str, str]:
+    test_device_id = hashlib.sha256(str(runtime_dir).encode("utf-8")).hexdigest()[:32]
     env = {
         "ALGENTA_RUNTIME_DIR": str(runtime_dir),
+        "ALGENTA_DEVICE_ID": test_device_id,
+        "DE_DEVICE_ID": test_device_id,
         "ALGENTA_CONTROL_PLANE_URL": BASE_URL,
         "ALGENTA_BASE_URL": BASE_URL,
         "DE_BASE_URL": BASE_URL,
@@ -773,6 +777,35 @@ def _bootstrap_runtime_entitlement() -> None:
         )
 
 
+def _revoke_runtime_test_device(api_key: str, device_id: str) -> None:
+    list_request = urllib.request.Request(
+        f"{BASE_URL}/v1/device/list?limit=200",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="GET",
+    )
+    with urllib.request.urlopen(list_request, timeout=10) as response:
+        payload = json.loads(response.read())
+    device_prefix = f"{device_id[:8]}..."
+    matches = [
+        row
+        for row in payload.get("devices", [])
+        if isinstance(row, dict) and row.get("device_id") == device_prefix
+    ]
+    if len(matches) != 1 or not isinstance(matches[0].get("id"), str):
+        raise RuntimeError(
+            "Could not identify exactly one temporary runtime device registration for cleanup."
+        )
+    revoke_request = urllib.request.Request(
+        f"{BASE_URL}/v1/device/{matches[0]['id']}",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="DELETE",
+    )
+    with urllib.request.urlopen(revoke_request, timeout=10) as response:
+        revoke_payload = json.loads(response.read())
+    if revoke_payload.get("revoked") is not True:
+        raise RuntimeError("Temporary runtime device registration cleanup was not confirmed.")
+
+
 @contextlib.contextmanager
 def local_runtime_daemon() -> dict[str, str]:
     runtime_dir = Path(tempfile.mkdtemp(prefix="algenta-ts-mojo-live-"))
@@ -791,8 +824,10 @@ def local_runtime_daemon() -> dict[str, str]:
     _reload_runtime_modules()
     from apps.runtime.daemon import cmd_start, cmd_stop, is_running
 
+    registered_device = False
     try:
         _bootstrap_runtime_entitlement()
+        registered_device = bool(runtime_api_key)
         if is_running():
             with contextlib.redirect_stdout(io.StringIO()):
                 cmd_stop()
@@ -806,6 +841,11 @@ def local_runtime_daemon() -> dict[str, str]:
                 with contextlib.redirect_stdout(io.StringIO()):
                     cmd_stop()
         finally:
+            if registered_device:
+                _revoke_runtime_test_device(
+                    runtime_api_key,
+                    env_updates["ALGENTA_DEVICE_ID"],
+                )
             for key, old_value in old_env.items():
                 if old_value is None:
                     os.environ.pop(key, None)

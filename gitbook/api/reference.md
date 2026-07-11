@@ -179,7 +179,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 
 | Method | Path | Summary |
 | --- | --- | --- |
-| `POST` | `/v1/playground` | Try Codna — no API key required |
+| `POST` | `/v1/playground` | Try Algenta — no API key required |
 
 ## Products
 
@@ -241,7 +241,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | --- | --- | --- |
 | `GET` | `/v1/health` | Health check |
 | `GET` | `/v1/version` | API and engine version |
-| `GET` | `/v1/meta/contract` | Machine-readable Codna contract |
+| `GET` | `/v1/meta/contract` | Machine-readable Algenta contract |
 
 ## Team
 

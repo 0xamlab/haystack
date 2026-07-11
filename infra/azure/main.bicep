@@ -69,7 +69,7 @@ var suffix = uniqueString(resourceGroup().id)
 var kvName = take('${namePrefix}kv${suffix}', 24)
 var saName = take('${namePrefix}sa${suffix}', 24)
 var pgName = '${namePrefix}-pg-${suffix}${pgNameSuffix}'
-var dbName = 'decision_engine'
+var dbName = 'algenta'
 var blobContainer = 'artifacts'
 
 // Built-in role definition ids.

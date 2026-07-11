@@ -42,10 +42,10 @@ A request for a module that wasn't compiled in fails with **"module not register
 
 ## 3. Expose only one edition
 
-A single engine can present a curated **edition** surface (Codna, Cohenta, …) instead of every tool. Set **`ALGENTA_PRODUCT`** (or send `X-Algenta-Product` per request); the MCP/API tool set is filtered to that edition's allowlist (unknown product → empty set, fail-closed).
+A single engine can present the licensed **Algenta edition** instead of every installed tool. Set **`ALGENTA_PRODUCT`** (or send `X-Algenta-Product` per request); the MCP/API tool set is filtered to that edition's allowlist (unknown product → empty set, fail-closed).
 
 ```bash title="edition.env"
-ALGENTA_PRODUCT=codna     # only this edition's tools are visible
+ALGENTA_PRODUCT=algenta   # only the licensed Algenta tools are visible
 ```
 
 ## 4. Run only the control plane

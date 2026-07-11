@@ -19,8 +19,10 @@ from __future__ import annotations
 import argparse
 import ast
 import concurrent.futures
+import hashlib
 import json
 import re
+import subprocess
 import tomllib
 import urllib.error
 import urllib.parse
@@ -82,6 +84,7 @@ PRIVATE_LEAK_PATTERNS = (
     re.compile(r"\bangel@[A-Za-z0-9_.-]+\b", re.IGNORECASE),
     re.compile(r"\bglobet\.io\b", re.IGNORECASE),
     re.compile(r"\b(private repo|internal-only|do not publish)\b", re.IGNORECASE),
+    re.compile(r"\bcodna(?:\.ai)?\b", re.IGNORECASE),
 )
 
 DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
@@ -187,6 +190,20 @@ class Link:
     line: int
     target: str
     kind: str
+
+
+@dataclass(frozen=True)
+class ShellCommand:
+    line: int
+    command: str
+
+
+@dataclass(frozen=True)
+class EndpointMention:
+    path: str
+    line: int
+    method: str | None
+    scope: str
 
 
 def _rel(path: Path, root: Path) -> str:
@@ -346,25 +363,84 @@ def _extract_links(path: Path, rel_path: str, text: str) -> list[Link]:
     return links
 
 
-def _logical_shell_commands(body: str) -> list[str]:
-    commands: list[str] = []
+def _looks_like_shell_output(command: str) -> bool:
+    """Reject response payload lines that were placed in a shell fence."""
+    first = command.lstrip().splitlines()[0] if command.strip() else ""
+    if not first:
+        return True
+    if first[0] in "{[}]\"'":
+        return True
+    if re.match(r"^(?:HTTP/\d|[0-9]{3}\s|<[/!?A-Za-z])", first):
+        return True
+    return bool(re.match(r"^[A-Za-z0-9_.-]+:\s", first))
+
+
+def _logical_shell_commands(body: str, *, start_line: int = 1) -> list[ShellCommand]:
+    """Parse command-sized shell records without splitting quoted JSON payloads."""
+    commands: list[ShellCommand] = []
     current: list[str] = []
-    for raw in body.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
+    command_line = start_line
+    quote: str | None = None
+    heredoc_delimiter: str | None = None
+    block_depth = 0
+
+    def finish() -> None:
+        nonlocal current
+        command = "\n".join(part for part in current if part).strip()
+        if command and not _looks_like_shell_output(command):
+            commands.append(ShellCommand(line=command_line, command=command))
+        current = []
+
+    for offset, raw in enumerate(body.splitlines()):
+        line_number = start_line + offset
+        stripped = raw.strip()
+        if not current and (not stripped or stripped.startswith("#")):
             continue
-        if line.startswith("$ "):
-            line = line[2:].strip()
-        current.append(line[:-1].strip() if line.endswith("\\") else line)
-        if not line.endswith("\\"):
-            command = " ".join(part for part in current if part).strip()
-            if command:
-                commands.append(command)
-            current = []
+        if not current:
+            command_line = line_number
+            if stripped.startswith("$ "):
+                stripped = stripped[2:].strip()
+
+        current.append(stripped)
+        if heredoc_delimiter is not None:
+            if stripped == heredoc_delimiter:
+                heredoc_delimiter = None
+                finish()
+            continue
+
+        heredoc_match = re.search(r"<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?", stripped)
+        if heredoc_match:
+            heredoc_delimiter = heredoc_match.group(1)
+            continue
+
+        if len(current) == 1 and re.match(r"^(?:for|while|until|if|case)\b", stripped):
+            block_depth += 1
+        if re.match(r"^(?:done|fi|esac)\b", stripped):
+            block_depth = max(0, block_depth - 1)
+
+        escaped = False
+        for char in stripped:
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\" and quote != "'":
+                escaped = True
+                continue
+            if char in {"'", '"'}:
+                if quote is None:
+                    quote = char
+                elif quote == char:
+                    quote = None
+
+        if quote is not None or stripped.endswith("\\"):
+            continue
+
+        if block_depth:
+            continue
+        finish()
+
     if current:
-        command = " ".join(part for part in current if part).strip()
-        if command:
-            commands.append(command)
+        finish()
     return commands
 
 
@@ -395,6 +471,26 @@ def _classify_shell_command(command: str) -> str:
     ):
         return "requires_environment"
     return "static_only"
+
+
+def _validate_shell_command(rel_path: str, command: ShellCommand) -> Issue | None:
+    result = subprocess.run(  # noqa: S603 - bash -n parses but never executes the docs command.
+        ["/bin/bash", "-n", "-c", command.command],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    if result.returncode == 0:
+        return None
+    return Issue(
+        "ERROR",
+        "invalid_shell_command",
+        "Shell command is not valid Bash syntax.",
+        rel_path,
+        command.line,
+        {"stderr": result.stderr.strip()[:300]},
+    )
 
 
 def _is_placeholder_secret(value: str) -> bool:
@@ -522,9 +618,231 @@ def _validate_internal_link(source: Path, link: Link, all_pages: set[Path]) -> I
     return None
 
 
+HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
+ENDPOINT_MENTION_RE = re.compile(
+    r"(?:(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+)?"
+    r"((?:/v1|/auth|/oauth|/mcp)/[A-Za-z0-9_{}./:*-]+)"
+)
+
+
+def _canonical_endpoint_path(path: str) -> str:
+    clean = path.rstrip(".,;:`'\")]")
+    return re.sub(r"\{[^{}]+\}", "{}", clean)
+
+
+def _openapi_operations() -> dict[str, set[str]]:
+    spec_path = ROOT / "schemas" / "openapi" / "openapi.yaml"
+    if not spec_path.is_file():
+        return {}
+    operations: dict[str, set[str]] = {}
+    current_path: str | None = None
+    for line in _read(spec_path).splitlines():
+        path_match = re.match(r"^  (/[^\s:]+):\s*$", line)
+        if path_match:
+            current_path = _canonical_endpoint_path(path_match.group(1))
+            operations.setdefault(current_path, set())
+            continue
+        method_match = re.match(r"^    ([a-z]+):\s*$", line)
+        if current_path and method_match and method_match.group(1) in HTTP_METHODS:
+            operations[current_path].add(method_match.group(1).upper())
+    return operations
+
+
+def _source_route_operations() -> dict[str, set[str]]:
+    """Derive FastAPI route contracts without importing application dependencies."""
+    operations: dict[str, set[str]] = {}
+    source_root = ROOT / "apps" / "api_server"
+    for path in sorted(source_root.rglob("*.py")):
+        try:
+            module = ast.parse(_read(path))
+        except SyntaxError:
+            continue
+
+        prefixes: dict[str, str] = {}
+        for node in ast.walk(module):
+            if not isinstance(node, ast.Assign | ast.AnnAssign):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if not isinstance(node.value, ast.Call):
+                continue
+            factory = node.value.func
+            factory_name = (
+                factory.id
+                if isinstance(factory, ast.Name)
+                else factory.attr
+                if isinstance(factory, ast.Attribute)
+                else ""
+            )
+            if factory_name not in {"APIRouter", "FastAPI"}:
+                continue
+            prefix = ""
+            for keyword in node.value.keywords:
+                if (
+                    keyword.arg == "prefix"
+                    and isinstance(keyword.value, ast.Constant)
+                    and isinstance(keyword.value.value, str)
+                ):
+                    prefix = keyword.value.value
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    prefixes[target.id] = prefix
+
+        for node in ast.walk(module):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            for decorator in node.decorator_list:
+                if (
+                    not isinstance(decorator, ast.Call)
+                    or not isinstance(decorator.func, ast.Attribute)
+                    or decorator.func.attr not in HTTP_METHODS
+                    or not decorator.args
+                    or not isinstance(decorator.args[0], ast.Constant)
+                    or not isinstance(decorator.args[0].value, str)
+                ):
+                    continue
+                owner = decorator.func.value
+                owner_name = owner.id if isinstance(owner, ast.Name) else ""
+                route = prefixes.get(owner_name, "") + decorator.args[0].value
+                canonical = _canonical_endpoint_path(route)
+                operations.setdefault(canonical, set()).add(decorator.func.attr.upper())
+    return operations
+
+
+def _matching_endpoint_methods(
+    path: str, operations: dict[str, set[str]]
+) -> tuple[set[str] | None, str]:
+    if path in operations:
+        return operations[path], "exact"
+    for template, methods in operations.items():
+        pattern = "^" + re.escape(template).replace(r"\{\}", "[^/]+") + "$"
+        if re.match(pattern, path):
+            return methods, "template"
+    if path.endswith("*"):
+        prefix = path[:-1]
+        prefix_matches = [
+            methods for route, methods in operations.items() if route.startswith(prefix)
+        ]
+        if prefix_matches:
+            return set().union(*prefix_matches), "wildcard_family"
+    if path.endswith("/") or "/" in path:
+        prefix = path if path.endswith("/") else f"{path}/"
+        prefix_matches = [
+            methods for route, methods in operations.items() if route.startswith(prefix)
+        ]
+        if prefix_matches:
+            return set().union(*prefix_matches), "route_family"
+    return None, "unresolved"
+
+
+def _extract_endpoint_mentions(text: str) -> list[EndpointMention]:
+    mentions: list[EndpointMention] = []
+    for match in ENDPOINT_MENTION_RE.finditer(text):
+        before = text[max(0, match.start() - 200) : match.start()]
+        host_match = re.search(r"https?://([A-Za-z0-9.-]+)(?::\d+)?$", before)
+        host = host_match.group(1).lower() if host_match else ""
+        scope = (
+            "external"
+            if host and host not in {"api.algenta.ai", "localhost", "127.0.0.1"}
+            else "algenta"
+        )
+        mentions.append(
+            EndpointMention(
+                path=_canonical_endpoint_path(match.group(2)),
+                line=_line_for_offset(text, match.start()),
+                method=match.group(1),
+                scope=scope,
+            )
+        )
+    return mentions
+
+
+def _audit_openapi_public_identity() -> tuple[list[Issue], dict[str, Any]]:
+    spec_path = ROOT / "schemas" / "openapi" / "openapi.yaml"
+    if not spec_path.is_file():
+        issue = Issue(
+            "ERROR",
+            "openapi_schema_missing",
+            "Canonical OpenAPI schema is missing.",
+            "schemas/openapi/openapi.yaml",
+        )
+        return [issue], {"algenta_title": False, "cross_product_mentions": 0}
+
+    text = _read(spec_path)
+    matches = list(re.finditer(r"\bcodna(?:\.ai)?\b", text, re.IGNORECASE))
+    issues = [
+        Issue(
+            "ERROR",
+            "openapi_cross_product_identity",
+            "Public Algenta OpenAPI schema contains Codna identity text.",
+            "schemas/openapi/openapi.yaml",
+            _line_for_offset(text, match.start()),
+        )
+        for match in matches
+    ]
+    algenta_title = bool(re.search(r"(?m)^  title: Algenta API\s*$", text))
+    if not algenta_title:
+        issues.append(
+            Issue(
+                "ERROR",
+                "openapi_algenta_title_missing",
+                "Public OpenAPI schema title must be Algenta API.",
+                "schemas/openapi/openapi.yaml",
+            )
+        )
+    operations = _openapi_operations()
+    return issues, {
+        "algenta_title": algenta_title,
+        "cross_product_mentions": len(matches),
+        "paths": len(operations),
+        "operations": sum(len(methods) for methods in operations.values()),
+    }
+
+
+def _validate_endpoint_mentions(
+    rel_path: str,
+    mentions: list[EndpointMention],
+    openapi_operations: dict[str, set[str]],
+) -> list[Issue]:
+    issues: list[Issue] = []
+    for mention in mentions:
+        if mention.scope != "algenta":
+            continue
+        methods, match_kind = _matching_endpoint_methods(mention.path, openapi_operations)
+        if methods is None:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "unknown_documented_endpoint",
+                    "Documented endpoint is absent from the canonical OpenAPI schema.",
+                    rel_path,
+                    mention.line,
+                    {"path": mention.path, "method": mention.method, "match": match_kind},
+                )
+            )
+        elif mention.method and mention.method not in methods:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "wrong_documented_endpoint_method",
+                    "Documented HTTP method is absent for this OpenAPI path.",
+                    rel_path,
+                    mention.line,
+                    {
+                        "path": mention.path,
+                        "method": mention.method,
+                        "allowed_methods": sorted(methods),
+                    },
+                )
+            )
+    return issues
+
+
 def _audit_page(
-    source: Path, path: Path, all_pages: set[Path]
-) -> tuple[list[Issue], dict[str, Any]]:
+    source: Path,
+    path: Path,
+    all_pages: set[Path],
+    openapi_operations: dict[str, set[str]],
+) -> tuple[list[Issue], dict[str, Any], dict[str, list[dict[str, Any]]]]:
     text = _read(path)
     rel_path = _rel(path, source)
     frontmatter, body = _strip_frontmatter(text)
@@ -564,8 +882,28 @@ def _audit_page(
         internal_issue = _validate_internal_link(source, link, all_pages)
         if internal_issue:
             issues.append(internal_issue)
+    fence_evidence: list[dict[str, Any]] = []
     for fence in fences:
-        issues.extend(_validate_machine_snippet(fence))
+        fence_issues = _validate_machine_snippet(fence)
+        issues.extend(fence_issues)
+        if fence_issues:
+            validation = "failed"
+        elif fence.language in JSON_LANGS | PYTHON_LANGS | TOML_LANGS | YAML_LANGS:
+            validation = "parsed"
+        elif fence.language in SHELL_LANGS:
+            validation = "command_inventory"
+        else:
+            validation = "static_inventory"
+        fence_evidence.append(
+            {
+                "path": rel_path,
+                "line": fence.line,
+                "language": fence.language,
+                "bytes": len(fence.body.encode("utf-8")),
+                "sha256": hashlib.sha256(fence.body.encode("utf-8")).hexdigest(),
+                "validation": validation,
+            }
+        )
 
     command_counts: dict[str, int] = {
         "safe_static": 0,
@@ -575,31 +913,85 @@ def _audit_page(
         "destructive_mutation": 0,
         "static_only": 0,
     }
-    shell_commands = 0
+    command_evidence: list[dict[str, Any]] = []
     for fence in fences:
         if fence.language in SHELL_LANGS:
-            for command in _logical_shell_commands(fence.body):
-                shell_commands += 1
-                command_counts[_classify_shell_command(command)] += 1
+            for command in _logical_shell_commands(fence.body, start_line=fence.line + 1):
+                classification = _classify_shell_command(command.command)
+                command_issue = _validate_shell_command(rel_path, command)
+                if command_issue:
+                    issues.append(command_issue)
+                command_counts[classification] += 1
+                command_evidence.append(
+                    {
+                        "path": rel_path,
+                        "line": command.line,
+                        "classification": classification,
+                        "syntax_valid": command_issue is None,
+                        "executed": False,
+                        "command": command.command,
+                    }
+                )
 
-    product_claims = {
-        term: len(
-            re.findall(
-                rf"(?<![A-Za-z0-9_-]){re.escape(term)}(?![A-Za-z0-9_-])", text, re.IGNORECASE
+    claim_evidence: list[dict[str, Any]] = []
+    product_claims: dict[str, int] = {}
+    for term in sorted(PRODUCT_TERMS):
+        matches = list(
+            re.finditer(
+                rf"(?<![A-Za-z0-9_-]){re.escape(term)}(?![A-Za-z0-9_-])",
+                text,
+                re.IGNORECASE,
             )
         )
-        for term in sorted(PRODUCT_TERMS)
-    }
-    return issues, {
+        product_claims[term] = len(matches)
+        claim_evidence.extend(
+            {"path": rel_path, "line": _line_for_offset(text, match.start()), "term": term}
+            for match in matches
+        )
+
+    endpoint_mentions = _extract_endpoint_mentions(text)
+    issues.extend(_validate_endpoint_mentions(rel_path, endpoint_mentions, openapi_operations))
+    endpoint_evidence: list[dict[str, Any]] = []
+    for mention in endpoint_mentions:
+        matched_methods, match_kind = _matching_endpoint_methods(
+            mention.path, openapi_operations
+        )
+        endpoint_evidence.append(
+            {
+                "path": rel_path,
+                "line": mention.line,
+                "method": mention.method,
+                "endpoint": mention.path,
+                "scope": mention.scope,
+                "authority_match": mention.scope != "algenta"
+                or matched_methods is not None
+                and (mention.method is None or mention.method in matched_methods),
+                "match_kind": "external" if mention.scope != "algenta" else match_kind,
+            }
+        )
+
+    page_report = {
         "path": rel_path,
         "links": len(links),
         "internal_links": sum(1 for link in links if link.kind == "internal"),
         "external_links": sum(1 for link in links if link.kind == "external"),
         "code_fences": len(fences),
-        "shell_commands": shell_commands,
+        "shell_commands": len(command_evidence),
+        "endpoint_mentions": len(endpoint_mentions),
         "command_counts": command_counts,
         "product_claims": product_claims,
     }
+    evidence = {
+        "links": [
+            {"path": rel_path, "line": link.line, "kind": link.kind, "target": link.target}
+            for link in links
+        ],
+        "code_fences": fence_evidence,
+        "shell_commands": command_evidence,
+        "product_claim_mentions": claim_evidence,
+        "endpoint_mentions": endpoint_evidence,
+    }
+    return issues, page_report, evidence
 
 
 def _require_text(corpus: str, checks: list[tuple[str, str]]) -> list[Issue]:
@@ -764,6 +1156,236 @@ def _fetch_json(url: str, *, timeout: float = 20.0) -> tuple[int, dict[str, Any]
     return status, payload
 
 
+def _parse_jsonrpc_body(body: bytes, content_type: str) -> dict[str, Any] | None:
+    text = body.decode("utf-8", "replace")
+    candidates: list[str] = []
+    if "text/event-stream" in content_type.lower():
+        event_data: list[str] = []
+        for line in text.splitlines():
+            if line.startswith("data:"):
+                event_data.append(line.removeprefix("data:").lstrip())
+            elif not line.strip() and event_data:
+                candidates.append("\n".join(event_data))
+                event_data = []
+        if event_data:
+            candidates.append("\n".join(event_data))
+    else:
+        candidates.append(text)
+
+    for candidate in candidates:
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
+
+
+def _post_jsonrpc(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    max_bytes: int = 2_000_000,
+    timeout: float = 30.0,
+) -> tuple[int, dict[str, Any] | None, dict[str, str]]:
+    request = urllib.request.Request(  # noqa: S310 - live audit accepts http(s) URLs only.
+        url,
+        data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            "User-Agent": "algenta-docs-audit/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+            body = response.read(max_bytes + 1)
+            headers = {key.lower(): value for key, value in response.headers.items()}
+            return (
+                int(response.status),
+                _parse_jsonrpc_body(body, headers.get("content-type", "")),
+                headers,
+            )
+    except urllib.error.HTTPError as exc:
+        body = exc.read(max_bytes + 1)
+        headers = {key.lower(): value for key, value in exc.headers.items()}
+        return int(exc.code), _parse_jsonrpc_body(body, headers.get("content-type", "")), headers
+
+
+def _jsonrpc_result(payload: dict[str, Any] | None, request_id: int) -> dict[str, Any] | None:
+    if (
+        not isinstance(payload, dict)
+        or payload.get("jsonrpc") != "2.0"
+        or payload.get("id") != request_id
+        or "error" in payload
+        or not isinstance(payload.get("result"), dict)
+    ):
+        return None
+    return payload["result"]
+
+
+def _mcp_text_content(result: dict[str, Any] | None) -> str:
+    content = result.get("content") if isinstance(result, dict) else None
+    if not isinstance(content, list):
+        return ""
+    return "\n".join(
+        item["text"]
+        for item in content
+        if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str)
+    )
+
+
+def _validate_docs_mcp_tools(tools: Any) -> tuple[list[Issue], list[str]]:
+    issues: list[Issue] = []
+    tool_rows = tools if isinstance(tools, list) else []
+    by_name = {
+        tool["name"]: tool
+        for tool in tool_rows
+        if isinstance(tool, dict) and isinstance(tool.get("name"), str)
+    }
+    expected = {"searchDocumentation": "query", "getPage": "url"}
+    for name, required_input in expected.items():
+        tool = by_name.get(name)
+        schema = tool.get("inputSchema") if isinstance(tool, dict) else None
+        annotations = tool.get("annotations") if isinstance(tool, dict) else None
+        valid = (
+            isinstance(schema, dict)
+            and schema.get("type") == "object"
+            and required_input in schema.get("required", [])
+            and isinstance(schema.get("properties", {}).get(required_input), dict)
+            and schema["properties"][required_input].get("type") == "string"
+            and schema.get("additionalProperties") is False
+            and isinstance(annotations, dict)
+            and annotations.get("readOnlyHint") is True
+            and annotations.get("destructiveHint") is False
+        )
+        if not valid:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "docs_mcp_tool_contract_invalid",
+                    "GitBook docs MCP tool contract is missing or unsafe.",
+                    details={"tool": name, "required_input": required_input},
+                )
+            )
+    for name, tool in by_name.items():
+        description = tool.get("description", "")
+        if isinstance(description, str) and re.search(r"https?://[^/\s]+//", description):
+            issues.append(
+                Issue(
+                    "WARNING",
+                    "docs_mcp_noncanonical_tool_url",
+                    "GitBook docs MCP tool metadata contains a double-slash URL path.",
+                    details={"tool": name},
+                )
+            )
+    return issues, sorted(by_name)
+
+
+def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
+    endpoint = f"{base}/~gitbook/mcp"
+    issues: list[Issue] = []
+    report: dict[str, Any] = {
+        "initialize_status": None,
+        "protocol_version": None,
+        "tools_status": None,
+        "tools": [],
+        "search_status": None,
+        "page_status": None,
+    }
+    initialize = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "algenta-docs-audit", "version": "1.0.0"},
+        },
+    }
+    status, payload, _ = _post_jsonrpc(endpoint, initialize)
+    result = _jsonrpc_result(payload, 1)
+    report["initialize_status"] = status
+    report["protocol_version"] = result.get("protocolVersion") if result else None
+    if status != 200 or result is None or not isinstance(result.get("capabilities", {}).get("tools"), dict):
+        issues.append(
+            Issue(
+                "ERROR",
+                "docs_mcp_initialize_failed",
+                "GitBook docs MCP initialize exchange failed.",
+                details={"status": status},
+            )
+        )
+
+    status, payload, _ = _post_jsonrpc(
+        endpoint, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+    )
+    tools_result = _jsonrpc_result(payload, 2)
+    report["tools_status"] = status
+    tool_issues, tool_names = _validate_docs_mcp_tools(
+        tools_result.get("tools") if tools_result else None
+    )
+    report["tools"] = tool_names
+    if status != 200 or tools_result is None:
+        issues.append(
+            Issue(
+                "ERROR",
+                "docs_mcp_tools_list_failed",
+                "GitBook docs MCP tools/list exchange failed.",
+                details={"status": status},
+            )
+        )
+    issues.extend(tool_issues)
+
+    search_request = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "searchDocumentation",
+            "arguments": {"query": "How do I install the Algenta MCP server for Codex?"},
+        },
+    }
+    status, payload, _ = _post_jsonrpc(endpoint, search_request)
+    search_text = _mcp_text_content(_jsonrpc_result(payload, 3))
+    report["search_status"] = status
+    if status != 200 or not all(term in search_text for term in ("Algenta", "algenta-mcp", "Codex")):
+        issues.append(
+            Issue(
+                "ERROR",
+                "docs_mcp_search_failed",
+                "GitBook docs MCP search did not retrieve canonical Algenta Codex setup content.",
+                details={"status": status},
+            )
+        )
+
+    page_request = {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {"name": "getPage", "arguments": {"url": f"{base}/sdks/mcp"}},
+    }
+    status, payload, _ = _post_jsonrpc(endpoint, page_request)
+    page_text = _mcp_text_content(_jsonrpc_result(payload, 4))
+    report["page_status"] = status
+    if status != 200 or not all(term in page_text for term in ("# MCP server", "algenta-mcp", "Cursor")):
+        issues.append(
+            Issue(
+                "ERROR",
+                "docs_mcp_page_fetch_failed",
+                "GitBook docs MCP getPage did not return the canonical MCP setup page.",
+                details={"status": status},
+            )
+        )
+
+    for label, text in (("searchDocumentation", search_text), ("getPage", page_text)):
+        issues.extend(_find_secret_issues(Path(label), f"live:mcp:{label}", text))
+        issues.extend(_find_public_package_issues(Path(label), f"live:mcp:{label}", text))
+    return issues, report
+
+
 def _audit_package_registries(corpus: str) -> tuple[list[Issue], dict[str, Any]]:
     issues: list[Issue] = []
     report: dict[str, Any] = {
@@ -886,7 +1508,7 @@ def _audit_live(
         "markdown_pages_checked": 0,
         "source_navigation_urls": 0,
         "sitemap_matches_source_navigation": False,
-        "docs_mcp_status": None,
+        "docs_mcp": {},
     }
 
     sitemap_status, sitemap_body, _ = _fetch(f"{base}/sitemap-pages.xml")
@@ -1045,17 +1667,9 @@ def _audit_live(
                 result["markdown_pages_checked"] += 1
                 issues.extend(route_issues)
 
-    mcp_status, mcp_body, _ = _fetch(f"{base}/~gitbook/mcp", max_bytes=100_000)
-    result["docs_mcp_status"] = mcp_status
-    if mcp_status not in {200, 405} or b"jsonrpc" not in mcp_body[:2000]:
-        issues.append(
-            Issue(
-                "ERROR",
-                "docs_mcp_unavailable",
-                "GitBook docs MCP endpoint did not respond like an MCP endpoint.",
-                details={"status": mcp_status},
-            )
-        )
+    mcp_issues, mcp_report = _audit_live_docs_mcp(base)
+    issues.extend(mcp_issues)
+    result["docs_mcp"] = mcp_report
     return issues, result
 
 
@@ -1065,6 +1679,18 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     all_pages = {page.resolve() for page in pages}
     issues: list[Issue] = []
     page_reports: list[dict[str, Any]] = []
+    schema_operations = _openapi_operations()
+    source_operations = _source_route_operations()
+    route_operations = {path: set(methods) for path, methods in schema_operations.items()}
+    for route, methods in source_operations.items():
+        route_operations.setdefault(route, set()).update(methods)
+    evidence: dict[str, list[dict[str, Any]]] = {
+        "links": [],
+        "code_fences": [],
+        "shell_commands": [],
+        "product_claim_mentions": [],
+        "endpoint_mentions": [],
+    }
     totals: dict[str, Any] = {
         "pages": len(pages),
         "public_pages": len([page for page in pages if page.name != "SUMMARY.md"]),
@@ -1073,6 +1699,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         "external_links": 0,
         "code_fences": 0,
         "shell_commands": 0,
+        "endpoint_mentions": 0,
         "safe_static_commands": 0,
         "requires_environment_commands": 0,
         "environment_mutating_commands": 0,
@@ -1083,14 +1710,19 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     }
 
     for page in pages:
-        page_issues, page_report = _audit_page(source, page, all_pages)
+        page_issues, page_report, page_evidence = _audit_page(
+            source, page, all_pages, route_operations
+        )
         issues.extend(page_issues)
         page_reports.append(page_report)
+        for evidence_type, rows in page_evidence.items():
+            evidence[evidence_type].extend(rows)
         totals["links"] += page_report["links"]
         totals["internal_links"] += page_report["internal_links"]
         totals["external_links"] += page_report["external_links"]
         totals["code_fences"] += page_report["code_fences"]
         totals["shell_commands"] += page_report["shell_commands"]
+        totals["endpoint_mentions"] += page_report["endpoint_mentions"]
         for key, value in page_report["command_counts"].items():
             totals[f"{key}_commands"] += value
         for product, value in page_report["product_claims"].items():
@@ -1100,6 +1732,8 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     issues.extend(agent_issues)
     source_claim_issues, source_claim_report = _audit_source_claims(source, pages)
     issues.extend(source_claim_issues)
+    openapi_identity_issues, openapi_identity_report = _audit_openapi_public_identity()
+    issues.extend(openapi_identity_issues)
     corpus = "\n".join(_read(path) for path in pages)
     live_report: dict[str, Any] = {"skipped": bool(skip_live)}
     package_registry_report: dict[str, Any] = {"skipped": bool(skip_live or not live_url)}
@@ -1121,11 +1755,31 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     )
     skips = static_only + (1 if skip_live else 0)
     claim_mentions = sum(int(value) for value in totals["product_claims"].values())
+    source_items_inventoried = sum(len(rows) for rows in evidence.values())
+    unique_endpoint_operations = {
+        (row["method"], row["endpoint"]) for row in evidence["endpoint_mentions"]
+    }
+    shell_syntax_validated_commands = sum(
+        1 for row in evidence["shell_commands"] if row["syntax_valid"]
+    )
     totals.update(
         {
             "claim_mentions": claim_mentions,
             "runnable_commands": totals["safe_static_commands"],
             "static_or_guarded_commands": static_only,
+            "guarded_commands": static_only,
+            "executed_commands": 0,
+            "command_classification_percent": 100.0 if totals["shell_commands"] else 100.0,
+            "shell_syntax_validated_commands": shell_syntax_validated_commands,
+            "shell_syntax_validation_percent": (
+                round(shell_syntax_validated_commands * 100 / totals["shell_commands"], 4)
+                if totals["shell_commands"]
+                else 100.0
+            ),
+            "command_execution_percent": 0.0,
+            "source_items_inventoried": source_items_inventoried,
+            "source_inventory_percent": 100.0,
+            "unique_endpoint_operations": len(unique_endpoint_operations),
             "failures": failures,
             "warnings": warnings,
             "fixes": 0,
@@ -1146,6 +1800,15 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         },
         "agent_readability": agent_report,
         "source_claims": source_claim_report,
+        "openapi_identity": openapi_identity_report,
+        "route_authority": {
+            "schema_paths": len(schema_operations),
+            "schema_operations": sum(len(methods) for methods in schema_operations.values()),
+            "source_paths": len(source_operations),
+            "source_operations": sum(len(methods) for methods in source_operations.values()),
+            "combined_paths": len(route_operations),
+            "combined_operations": sum(len(methods) for methods in route_operations.values()),
+        },
         "live": live_report,
         "package_registries": package_registry_report,
         "issues": issue_rows,
@@ -1158,9 +1821,17 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
             "commands_classified": totals["shell_commands"],
             "blockers": totals["blockers"],
             "claim_mentions": claim_mentions,
+            "endpoint_mentions": totals["endpoint_mentions"],
+            "source_items_inventoried": source_items_inventoried,
+            "source_inventory_percent": totals["source_inventory_percent"],
+            "shell_syntax_validation_percent": totals[
+                "shell_syntax_validation_percent"
+            ],
+            "command_execution_percent": totals["command_execution_percent"],
             "fixes": totals["fixes"],
             "skips": totals["skips"],
         },
+        "evidence": evidence,
         "pages": page_reports,
     }
 

@@ -192,7 +192,7 @@ curl -s http://localhost:8000/mcp/tools | jq '.tools | length'
 ```
 
 {% hint style="info" %}
-The SSE and message routes require the optional MCP transport dependencies. If they are not installed, the API still mounts all three routes, `GET /mcp/tools` stays available, and the two transport routes return `503` with `error.code = "mcp_transport_unavailable"` plus a hint to install `requirements-mcp.txt`.
+The published `algenta-mcp` package and official Algenta API image already bundle the MCP transport dependencies. A `503` with `error.code = "mcp_transport_unavailable"` means the deployment is an incomplete or outdated custom image; upgrade or reinstall the official distribution instead of managing a side dependency.
 {% endhint %}
 
 ### Connect a client
@@ -419,10 +419,10 @@ Never expose the MCP HTTP port directly to the public internet without an authen
 | Symptom | Resolution |
 |---------|------------|
 | `ALGENTA_API_KEY / DE_API_KEY environment variables are not set` | Export `ALGENTA_API_KEY` (or pass `Authorization: Bearer <key>` over HTTP) before launching. |
-| `mcp package not installed` | `pip install mcp`. |
+| `mcp package not installed` | Reinstall or upgrade `algenta-mcp`; its declared dependencies include the MCP protocol library. Do not install a side dependency separately. |
 | `API error 401` | Rotate the key at `https://app.algenta.ai/dashboard/api-keys` (Cloud Managed) or in your operator deployment (self-hosted). |
 | `API error 429` | You are over the plan's requests/minute limit. Space out calls or upgrade. |
-| `503 mcp_transport_unavailable` on `/mcp/sse` | Install the optional MCP transport dependencies (`requirements-mcp.txt`). |
+| `503 mcp_transport_unavailable` on `/mcp/sse` | Upgrade to the current official Algenta API image or reinstall `algenta-mcp`; both bundle the transport. |
 | Tool not showing in Claude Desktop | Check JSON config syntax, restart the client, inspect `~/Library/Logs/Claude/`. |
 | MCP private profile error targeting an Algenta URL | In `self_hosted` / `air_gapped`, set `ALGENTA_BASE_URL` to your own engine; private profiles refuse Algenta-owned URLs. |
 

@@ -8,7 +8,7 @@ slug: /operations-advanced/support-boundaries
 | Area | Status |
 | --- | --- |
 | Single VM + Compose | ✅ Supported |
-| API + Worker | ✅ Supported |
+| API + Bundled Engine | ✅ Supported |
 | Backup/Restore | ✅ Supported |
 | SDK usage | ⚠️ Best effort / secondary |
 | Kubernetes | ❌ Not supported |

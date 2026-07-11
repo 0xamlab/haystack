@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: Codna API
-  description: Hosted and self-hosted Codna API for governed data discovery, exact
+  title: Algenta API
+  description: Hosted and self-hosted Algenta API for governed data discovery, exact
     queries, read-only SQL reports, and simulation workflows.
   version: 1.0.0
 paths:
@@ -35,7 +35,7 @@ paths:
     get:
       tags:
       - System
-      summary: Machine-readable Codna contract
+      summary: Machine-readable Algenta contract
       operationId: contract_v1_meta_contract_get
       responses:
         '200':
@@ -1027,7 +1027,7 @@ paths:
       tags:
       - Infrastructure
       summary: Register a self-hosted compute node
-      description: 'Called by self-hosted Codna workers on startup to register with
+      description: 'Called by self-hosted Algenta workers on startup to register with
         the API.
 
         The node will appear in GET /v1/infrastructure for the org.'
@@ -1869,7 +1869,7 @@ paths:
       tags:
       - Engines
       summary: List all engines
-      description: Return the full Codna OS engine catalogue.
+      description: Return the full Algenta engine catalogue.
       operationId: list_engines_v1_engines_get
       parameters:
       - name: page
@@ -1948,9 +1948,9 @@ paths:
       tags:
       - Products
       summary: Get an optimal decision
-      description: "Give Codna your inputs and constraints. Get back the optimal\
+      description: "Give Algenta your inputs and constraints. Get back the optimal\
         \ action with confidence, risk, and plain-English reasoning.\n\nEvaluates\
-        \ thousands of possible scenarios in milliseconds using the Codna API \u2014\
+        \ thousands of possible scenarios in milliseconds using the Algenta API \u2014\
         \ no statistics or simulation expertise required."
       operationId: decision_v1_decision_post
       requestBody:
@@ -1979,7 +1979,7 @@ paths:
       tags:
       - Products
       summary: Run an AI agent task
-      description: 'Give the Codna Agent Engine a task. It breaks it down, uses
+      description: 'Give the Algenta Agent Engine a task. It breaks it down, uses
         tools (search, simulate, optimize, calculate), and returns a structured result.
 
 
@@ -2013,7 +2013,7 @@ paths:
       summary: Optimize a business variable
       description: "Find the optimal value for pricing, routing, scheduling, or resource\
         \ allocation.\n\nDescribe your objective and constraints in plain English\
-        \ \u2014 Codna finds the best configuration across thousands of iterations."
+        \ \u2014 Algenta finds the best configuration across thousands of iterations."
       operationId: optimize_v1_optimize_post
       requestBody:
         content:
@@ -2108,7 +2108,7 @@ paths:
         \ keys and merges\n- Auto-detects distributions, polarity, units, and objective\
         \ function\n- Selects the best simulation engine for your data shape\n- Set\
         \ `auto_run: true` to get simulation results immediately\n\nPowered by the\
-        \ Codna FieldMapper \u2014 same logic as `field_mapper.mojo`."
+        \ Algenta FieldMapper \u2014 same logic as `field_mapper.mojo`."
       operationId: ingest_v1_ingest_post
       requestBody:
         content:
@@ -2477,7 +2477,7 @@ paths:
         \ structured intent \u2014 produced by an LLM from the user's natural-language\
         \ question. It does NOT accept raw text.\n\n**Separation of concerns:**\n\
         - LLM: language \u2192 structured intent, ambiguity resolution, user interaction\n\
-        - Codna: schema understanding, math relationships, fast execution, correctness\n\
+        - Algenta: schema understanding, math relationships, fast execution, correctness\n\
         \n**Role resolution:**\n1. Detect derived formulas across all numeric column\
         \ triples (Mojo, ~100ms)\n2. Assign structural roles: derived_measure, base_measure,\
         \ unit_measure\u2026\n3. Match requested role \u2192 best column\n4. Execute\
@@ -2514,7 +2514,7 @@ paths:
       - Semantic Query
       summary: Infer and return the structural schema of data sources
       description: "**Call this once when a user connects a data source.**\n\nReturns\
-        \ the full Codna structural schema: column roles, detected formulas, cardinality,\
+        \ the full Algenta structural schema: column roles, detected formulas, cardinality,\
         \ and `query_hints` the LLM should use when calling `POST /v1/query`.\n\n\
         The schema is also embedded as Arrow metadata in the returned Parquet bytes\
         \ (`parquet_b64`), which the LLM agent can store and reuse \u2014 no re-profiling\
@@ -2650,7 +2650,7 @@ paths:
     post:
       tags:
       - Playground
-      summary: "Try Codna \u2014 no API key required"
+      summary: "Try Algenta \u2014 no API key required"
       description: '**No sign-up. No API key. Just try it.**
 
 
@@ -2658,7 +2658,7 @@ paths:
         call. Rate limited at 10 requests/minute per IP.
 
 
-        Upgrade at [codna.ai/dashboard](https://codna.ai/dashboard) for:
+        Upgrade at [algenta.ai](https://algenta.ai) for:
 
         - 500 simulations/month free
 
@@ -4078,7 +4078,7 @@ components:
       required:
       - task
       title: AgentRunRequest
-      description: 'Give Codna a task. It plans, executes tools, and returns a structured
+      description: 'Give Algenta a task. It plans, executes tools, and returns a structured
         result.
 
 
@@ -5879,8 +5879,8 @@ components:
       required:
       - inputs
       title: DecisionRequest
-      description: "Ask Codna: given these inputs and constraints, what should I\
-        \ do?\n\nCodna tests thousands of possible outcomes and returns the optimal\
+      description: "Ask Algenta: given these inputs and constraints, what should I\
+        \ do?\n\nAlgenta tests thousands of possible outcomes and returns the optimal\
         \ action\nwith confidence, risk, and reasoning \u2014 no statistics knowledge\
         \ required."
     DecisionResponse:
@@ -11313,8 +11313,8 @@ components:
       name: X-API-Key
       description: Legacy compatibility header for existing v1 clients.
 servers:
-- url: https://api.codna.ai
-x-canonical-mcp-endpoint: https://api.codna.ai/mcp/sse
+- url: https://api.algenta.ai
+x-canonical-mcp-endpoint: https://api.algenta.ai/mcp/sse
 x-primary-data-query-contract:
   api:
     contract_endpoint: /v1/meta/contract

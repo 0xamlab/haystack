@@ -41,13 +41,13 @@ DESCRIPTIONS = {
     "ALGENTA_CONTROL_PLANE_URL": "Control-plane endpoint for satellite deployments.",
     "ALGENTA_ALLOW_OUTBOUND_NETWORK": "Permit egress (default false in air-gapped).",
     "ALGENTA_EGRESS_ALLOWLIST": "Comma-separated allowlist of permitted egress destinations.",
-    "ALGENTA_AGENT_CORE_URL": "Optional agent-runtime (sidecar) endpoint.",
+    "ALGENTA_AGENT_CORE_URL": "Optional bundled agent-runtime endpoint.",
     "ALGENTA_MANAGED_LLM": "Enable the pooled managed-LLM provider key (multi-tenant SaaS).",
     "ALGENTA_ENFORCE_STORAGE_CAP": "Enforce the per-org free-tier storage_gb quota (opt-in).",
     "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": "Expose the /v1/libraries* runtime-library routes (off by default).",
     "ALGENTA_SIMULATION_PERSIST_TRANSPORT": "Result persistence backend: auto | celery | in_process.",
     "ALGENTA_CONFIG_ENCRYPTION_KEY": "Encrypts per-tenant provider keys at rest — durable secret, never rotate without re-encrypting.",
-    "ALGENTA_PRODUCT": "Edition surface to expose (e.g. codna); filters the tool set.",
+    "ALGENTA_PRODUCT": "Edition surface to expose (e.g. algenta); filters the tool set.",
     "ALGENTA_DEVICE_ID": "Pin a stable device identity for a device-capped key (16-64 chars).",
     "RUNTIME_FALLBACK_MODE": "Engine fallback policy: deny (prod) | allow | auto (dev only).",
     "MOJO_BINARY_PATH": "Path to the compiled Mojo engine binary.",
@@ -92,8 +92,9 @@ def _is_internal(field_name: str) -> bool:
 
 
 def extract() -> list[tuple[str, str, str, str]]:
-    from apps.api_server.config import Settings
     from pydantic_core import PydanticUndefined
+
+    from apps.api_server.config import Settings
 
     rows: list[tuple[str, str, str, str]] = []
     for name, info in Settings.model_fields.items():

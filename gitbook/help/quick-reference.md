@@ -41,7 +41,7 @@ The fastest lookup in the docs: find your task, copy the call. Each row shows th
 | `ALGENTA_API_KEY` | Your bearer credential (`DE_API_KEY` is a legacy alias). |
 | `ALGENTA_BASE_URL` | The engine URL for self-hosted clients (absolute, e.g. `http://localhost:8000`). |
 | `ALGENTA_DEPLOYMENT_MODE` | `saas` \| `self_hosted` \| `air_gapped` \| … — the privacy/egress profile. |
-| `ALGENTA_PRODUCT` | The edition surface to expose (e.g. `codna`). |
+| `ALGENTA_PRODUCT` | The edition surface to expose (for example, `algenta`). |
 | `RUNTIME_FALLBACK_MODE` | `deny` \| `allow` \| `auto` — whether the API may leave the Mojo pool. |
 
 ## When something breaks

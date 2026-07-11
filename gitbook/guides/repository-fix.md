@@ -468,12 +468,11 @@ You land on a short success page confirming the installation is connected. There
 
 Once installed, GitHub delivers events to the app's inbound receiver, `POST /webhooks/github`. The receiver verifies GitHub's HMAC signature, dedupes the delivery, and returns `202` within seconds; the multi-step fix runs asynchronously in the background. Three events start a fix:
 
-- **A labeled issue** — add the `codna-fix` label to a GitHub issue.
 - **A failing CI check** — a completed `check_suite` whose conclusion is `failure`, `timed_out`, `startup_failure`, or `action_required`.
 - **A submitted pull-request review** — a review left on an open PR.
 
 {% hint style="success" %}
-**Expected result** — after the install completes, labeling an issue `codna-fix` (or a CI check failing) opens a fix pull request in that repository without any further API calls.
+**Expected result** — after the install completes, a failing CI check opens a fix pull request in that repository without any further API calls.
 {% endhint %}
 
 ## Next steps

@@ -12,7 +12,7 @@ registration, and Entra admin-consent can't be automated from a template.
 - **Log Analytics + Application Insights**,
 - **Key Vault** (RBAC) holding `config-encryption-key` and `jwt-secret`,
 - a **Storage account + `artifacts` blob container** (the native decision-artifact store),
-- **PostgreSQL Flexible Server** + the `decision_engine` database,
+- **PostgreSQL Flexible Server** + the `algenta` database,
 - optional **Azure Cache for Redis** (`deployRedis`),
 - a **Container App** (the api) wired to the MI, Key Vault secret references, and the Azure Blob
   object store, in the **private profile** (`DISABLE_CLOUD=1`, empty control-plane URL).
@@ -34,7 +34,7 @@ az deployment group create -g algenta-rg -f main.bicep -p @main.parameters.json
 ```
 
 ## Owner-only go-live steps (can't be templated — the Phase-0 gate)
-1. **Image access** — make the api image (and the codna sidecar) pullable by the Container App
+1. **Image access** — make the pinned Algenta API image pullable by the Container App
    (public, or grant the MI `AcrPull` on your registry / a GHCR pull secret). Pin by digest.
 2. **Entra app registration** — register the gateway API app; expose an app-id-URI or use its
    client id as `ALGENTA_ENTRA_AUDIENCE`; set `ALGENTA_ENTRA_TENANT_ID`. Grant **admin consent**

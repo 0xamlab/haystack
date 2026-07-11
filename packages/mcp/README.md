@@ -384,16 +384,12 @@ python -m algenta_mcp.server --transport http --port 8001
 ALGENTA_MCP_PORT=8001 python -m algenta_mcp.server --transport http
 ```
 
-Or if you have the Algenta API server running, the MCP is already mounted at:
+Or if you have the official Algenta API image running, the MCP is already mounted at:
 - **`GET  /mcp/tools`** — List tools (JSON, no auth needed, always available)
-- **`GET  /mcp/sse`** — SSE connection endpoint when the optional MCP transport dependencies are installed
-- **`POST /mcp/messages`** — Message handler when the optional MCP transport dependencies are installed
+- **`GET  /mcp/sse`** — SSE connection endpoint
+- **`POST /mcp/messages`** — Message handler
 
-If the optional MCP transport dependencies are not installed, the API still mounts all three routes, but:
-- **`GET  /mcp/tools`** stays available
-- **`GET  /mcp/sse`** returns `503` with `error.code = "mcp_transport_unavailable"`
-- **`POST /mcp/messages`** returns `503` with `error.code = "mcp_transport_unavailable"`
-- both transport routes include the hint: `Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages.`
+The published `algenta-mcp` package and official Algenta API image bundle the MCP transport dependencies. A `503` with `error.code = "mcp_transport_unavailable"` identifies an incomplete or outdated custom image; upgrade or reinstall the official distribution instead of installing a side dependency in the running environment.
 
 ---
 
@@ -605,7 +601,7 @@ mcp-server:
 → Set `export ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>` or `export DE_API_KEY=<YOUR_LEGACY_DECISION_ENGINE_API_KEY>` before running
 
 **`mcp package not installed`**
-→ Run `pip install mcp`
+→ Reinstall or upgrade `algenta-mcp`. The package declares the MCP protocol library; do not install it separately.
 
 **`API error 401: Unauthorized`**
 → In Cloud Managed, check or rotate the key at

@@ -16,20 +16,18 @@ Postgres / Dragonfly / MinIO) must be pinned so CI is reproducible and can't sil
 provisioning is wired).
 
 Out of scope by design: ``infra/docker/docker-compose.yml`` is the LOCAL-DEV compose — it builds the
-api/worker images locally (no registry pull) and is a developer convenience, not a shipped self-host
+application images locally (no registry pull) and is a developer convenience, not a shipped self-host
 artifact; its remaining infra ``:latest`` pulls (minio/mc) are intentionally not gated here.
-
-The codna agent-core sidecar default is now DIGEST-PINNED (``…/codna/sidecar@sha256:…``) in the
-self-hosted compose — the previously-tracked ``:latest`` exception is resolved
-(``test_sidecar_default_is_digest_pinned`` keeps it pinned). It remains a PRIVATE ghcr image, so the
-deploy host still needs ``read:packages`` to pull it (or override via ``ALGENTA_SIDECAR_IMAGE``);
-that is an access concern, separate from the floating-tag concern this guard enforces.
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
+from packaging.version import Version
 
 _ROOT = Path(__file__).resolve().parents[1]
 _INSTALL = _ROOT / "install.sh"
@@ -41,6 +39,9 @@ _DOCS_DIR = _ROOT / "apps" / "docs" / "docs"
 _SCRIPTS_DIR = _ROOT / "scripts"
 _CI_WORKFLOW = _ROOT / ".github" / "workflows" / "ci.yml"
 _CONFIG = _ROOT / "apps" / "api_server" / "config.py"
+_API_DOCKERFILE = _DOCKER_DIR / "Dockerfile.api.prod"
+_API_REQUIREMENTS = _ROOT / "requirements-dev.txt"
+_MCP_REQUIREMENTS = _ROOT / "requirements-mcp.txt"
 
 # An image tag of `latest`, whether hardcoded (`foo:latest`) or a silent compose default
 # (`${VAR:-latest}`), case-insensitive. The lookbehind requires an image-name char before the colon
@@ -109,13 +110,13 @@ def test_compose_images_are_pinned() -> None:
 
 
 def test_self_host_app_images_are_pin_required() -> None:
-    # The algenta api + worker images we publish must be FAIL-CLOSED on a pinned tag/digest
+    # The Algenta API + bundled engine images must be fail-closed on a pinned tag/digest
     # (`${ALGENTA_IMAGE_TAG:?...}`), not a silent :-latest default. install.sh, the proof scripts,
     # the docs, and .env.example all provide ALGENTA_IMAGE_TAG, so this never blocks a real deploy.
     compose = _SELFHOSTED.read_text(encoding="utf-8")
     assert "/api:${ALGENTA_IMAGE_TAG:?" in compose, "api image must require a pinned ALGENTA_IMAGE_TAG"
-    assert "/worker:${ALGENTA_IMAGE_TAG:?" in compose, "worker image must require a pinned ALGENTA_IMAGE_TAG"
-    assert "${ALGENTA_IMAGE_TAG:-latest}" not in compose, "api/worker must not silently default to :latest"
+    assert "/engine:${ALGENTA_IMAGE_TAG:?" in compose, "engine image must require a pinned ALGENTA_IMAGE_TAG"
+    assert "${ALGENTA_IMAGE_TAG:-latest}" not in compose, "api/engine must not silently default to :latest"
 
 
 def test_install_script_pins_the_image_tag() -> None:
@@ -152,12 +153,41 @@ def test_provisioning_engine_image_default_is_pinned() -> None:
     )
 
 
-def test_sidecar_default_is_digest_pinned() -> None:
-    # The codna sidecar default must stay pinned to an immutable @sha256 digest (never :latest) — it
-    # used to be the one tolerated floating tag; now it's resolved. The override var still lets an
-    # operator supply their own ref.
+def test_self_host_uses_bundled_engine_image() -> None:
     compose = _SELFHOSTED.read_text(encoding="utf-8")
-    assert "ghcr.io/thyn-ai/codna/sidecar@sha256:" in compose, (
-        "the codna sidecar default must be digest-pinned (…/codna/sidecar@sha256:…)"
-    )
-    assert "codna/sidecar:latest" not in compose, "codna sidecar must not use a floating :latest tag"
+    assert "ghcr.io/thyn-ai/algenta}/engine:${ALGENTA_IMAGE_TAG:?" in compose
+    assert "ALGENTA_SIDECAR_IMAGE" not in compose
+    assert "codna/sidecar" not in compose
+
+
+def test_api_image_bundles_mcp_transport_dependencies() -> None:
+    dockerfile = _API_DOCKERFILE.read_text(encoding="utf-8")
+    assert "COPY requirements-dev.txt requirements-mcp.txt ./" in dockerfile
+    assert "-r requirements-mcp.txt" in dockerfile
+
+
+def _direct_requirements(path: Path) -> dict[str, Requirement]:
+    requirements: dict[str, Requirement] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line or line.startswith("-"):
+            continue
+        requirement = Requirement(line)
+        requirements[canonicalize_name(requirement.name)] = requirement
+    return requirements
+
+
+def test_api_and_mcp_requirement_pins_are_compatible() -> None:
+    api = _direct_requirements(_API_REQUIREMENTS)
+    mcp = _direct_requirements(_MCP_REQUIREMENTS)
+
+    failures: list[str] = []
+    for name in sorted(api.keys() & mcp.keys()):
+        exact_pins = [spec.version for spec in api[name].specifier if spec.operator == "=="]
+        if len(exact_pins) != 1:
+            continue
+        pinned_version = Version(exact_pins[0])
+        if pinned_version not in mcp[name].specifier:
+            failures.append(f"{name}=={pinned_version} does not satisfy {mcp[name].specifier}")
+
+    assert not failures, "API and MCP requirements cannot be installed together:\n  " + "\n  ".join(failures)

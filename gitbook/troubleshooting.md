@@ -144,7 +144,7 @@ Per-tenant provider keys are encrypted at rest with `ALGENTA_CONFIG_ENCRYPTION_K
 
 ```bash title="infra/docker/.env"
 # keep this stable across restarts — generated once
-ALGENTA_CONFIG_ENCRYPTION_KEY=<64-hex characters, generated once>
+ALGENTA_CONFIG_ENCRYPTION_KEY="<64-hex characters, generated once>"
 ```
 
 Treat it as durable secret material: keep it in your Compose `.env`, back it up alongside (not inside) your database, and never rotate it without re-encrypting existing rows.

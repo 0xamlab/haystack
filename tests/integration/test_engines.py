@@ -154,6 +154,18 @@ def test_router_methods():
         )
 
 
+def test_catalog_api_paths_are_registered():
+    from apps.api_server.main import app
+
+    registered_paths = {route.path for route in app.routes}
+    for engine in ENGINES:
+        check(
+            f"{engine.slug}: api_path is registered",
+            engine.api_path in registered_paths,
+            engine.api_path,
+        )
+
+
 # ── Layer B: HTTP integration tests ─────────────────────────────────────────
 
 
@@ -216,6 +228,7 @@ def main() -> None:
         test_core_engines_have_key_libs,
         test_router_routes,
         test_router_methods,
+        test_catalog_api_paths_are_registered,
     ]
     for fn in layer_a:
         try:

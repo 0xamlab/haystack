@@ -102,7 +102,7 @@ wait_for_postgres() {
 
 build_images() {
   docker build -f "$ROOT_DIR/infra/docker/Dockerfile.api.prod" -t "${IMAGE_REGISTRY}/api:${IMAGE_TAG}" "$ROOT_DIR"
-  docker build -f "$ROOT_DIR/infra/docker/Dockerfile.worker.prod" -t "${IMAGE_REGISTRY}/worker:${IMAGE_TAG}" "$ROOT_DIR"
+  docker build -f "$ROOT_DIR/infra/docker/Dockerfile.engine.prod" -t "${IMAGE_REGISTRY}/engine:${IMAGE_TAG}" "$ROOT_DIR"
 }
 
 prune_dangling_images() {
@@ -112,7 +112,9 @@ prune_dangling_images() {
 }
 
 write_env_file() {
-  local jwt_secret webhook_secret
+  local agent_core_token config_encryption_key jwt_secret webhook_secret
+  agent_core_token="$(openssl rand -hex 32)"
+  config_encryption_key="$(openssl rand -hex 32)"
   jwt_secret="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || openssl rand -hex 32)"
   webhook_secret="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 2>/dev/null || openssl rand -hex 16)"
 
@@ -137,7 +139,14 @@ MINIO_CONSOLE_HOST_PORT=${MINIO_CONSOLE_HOST_PORT}
 MOJO_BINARY_PATH=/app/mojo_build/simulate
 MOJO_TIMEOUT_SECONDS=30
 MOJO_MAX_CONCURRENT=4
-RUNTIME_FALLBACK_MODE=allow
+RUNTIME_FALLBACK_MODE=deny
+ALGENTA_CONFIG_ENCRYPTION_KEY=${config_encryption_key}
+AGENT_CORE_AUTH_TOKEN=${agent_core_token}
+AGENT_CORE_REQUIRE_AUTH=1
+ALGENTA_AGENT_CORE_URL=http://engine:8787
+ALGENTA_ENGINE_URL=http://api:8000
+ALGENTA_ENGINE_API_KEY=
+ALGENTA_API_KEY=
 ALGENTA_IMAGE_REGISTRY=${IMAGE_REGISTRY}
 ALGENTA_IMAGE_TAG=${IMAGE_TAG}
 ALGENTA_SOURCES_DIR=/home/app/.algenta/sources
@@ -166,7 +175,7 @@ run_infra_services() {
 }
 
 run_app_services() {
-  compose_cmd --project-name "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d api worker
+  compose_cmd --project-name "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d api engine
 }
 
 run_migrations() {
@@ -503,6 +512,7 @@ restore_postgres() {
 main() {
   require_cmd docker
   require_cmd curl
+  require_cmd openssl
   require_cmd python3
   require_docker_daemon
   detect_compose
@@ -620,7 +630,7 @@ main() {
   echo "==> Restoring PostgreSQL"
   restore_postgres "$postgres_backup"
 
-  echo "==> Starting API and worker"
+  echo "==> Starting API and bundled engine"
   run_app_services
   wait_for_health "http://localhost:${API_PORT}/v1/health"
 

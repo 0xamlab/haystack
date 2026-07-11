@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "namePrefix": { "value": "algenta" },
-    "apiImage": { "value": "ghcr.io/thyn-ai/decision-engine/api@sha256:REPLACE_WITH_DIGEST" },
+    "apiImage": { "value": "ghcr.io/thyn-ai/algenta/api@sha256:REPLACE_WITH_DIGEST" },
     "postgresAdminPassword": { "value": "REPLACE_WITH_A_STRONG_PASSWORD" },
     "configEncryptionKey": { "value": "REPLACE_WITH_A_FERNET_KEY" },
     "jwtSecret": { "value": "REPLACE_WITH_A_RANDOM_SECRET" },

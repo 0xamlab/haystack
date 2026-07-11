@@ -1,9 +1,9 @@
-# Algenta Decision Engine — Self-Hosted Service Stack
-# One-line install: curl -fsSL https://codna.ai/install.sh | bash
+# Algenta — Self-Hosted Service Stack
+# One-line install: curl -fsSL https://algenta.ai/install.sh | bash
 #
 # Services:
 #   api       — FastAPI backend (port 8000)
-#   worker    — Async job worker
+#   engine    — Async worker + bundled Mojo and agent runtimes
 #   postgres  — PostgreSQL 16
 #   redis     — Redis 7
 #   minio     — S3-compatible object storage
@@ -13,7 +13,7 @@ name: algenta
 services:
   # ── API Server ────────────────────────────────────────────────────────────
   api:
-    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/api:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
+    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/thyn-ai/algenta}/api:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
@@ -46,7 +46,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ALGENTA_SOURCES_DIR: ${ALGENTA_SOURCES_DIR:-/home/app/.algenta/sources}
       ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
-      ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
+      ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://engine:8787}
       ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
       # Loopback URL + key the agent head uses to call back into /v1, and the KEK that encrypts
       # per-tenant provider keys at rest. The engine block is only attached to the agent task spec
@@ -62,7 +62,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      sidecar:
+      engine:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
@@ -74,9 +74,10 @@ services:
       - ./data/logs:/app/logs
       - sources_data:/home/app/.algenta
 
-  # ── Async Worker ──────────────────────────────────────────────────────────
-  worker:
-    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}/worker:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
+  # ── Bundled Engine Runtime ────────────────────────────────────────────────
+  # One Algenta image contains the async worker, compiled Mojo runtime, and agent runtime.
+  engine:
+    image: ${ALGENTA_IMAGE_REGISTRY:-ghcr.io/thyn-ai/algenta}/engine:${ALGENTA_IMAGE_TAG:?set ALGENTA_IMAGE_TAG to a pinned image tag or digest - install.sh resolves it; never ship a floating tag}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -92,49 +93,29 @@ services:
       RESULT_STORAGE_ENABLED: ${RESULT_STORAGE_ENABLED:-true}
       ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
       ALGENTA_SOURCES_DIR: ${ALGENTA_SOURCES_DIR:-/home/app/.algenta/sources}
-      ALGENTA_AGENT_CORE_URL: ${ALGENTA_AGENT_CORE_URL:-http://sidecar:8787}
+      ALGENTA_AGENT_CORE_URL: http://127.0.0.1:8787
       ALGENTA_AGENT_CORE_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
-      # The worker re-resolves per-tenant keys from the DB (needs the KEK) and builds the same agent
-      # task_spec (needs ALGENTA_ENGINE_URL + the engine-callback key). Sourced from .env (durable).
       ALGENTA_ENGINE_URL: ${ALGENTA_ENGINE_URL:-http://api:8000}
       ALGENTA_ENGINE_API_KEY: ${ALGENTA_ENGINE_API_KEY:-}
       ALGENTA_API_KEY: ${ALGENTA_API_KEY:-}
       ALGENTA_CONFIG_ENCRYPTION_KEY: ${ALGENTA_CONFIG_ENCRYPTION_KEY:-}
+      AGENT_CORE_HOST: 0.0.0.0
+      AGENT_CORE_PORT: "8787"
+      AGENT_CORE_MAX_CONCURRENCY: ${AGENT_CORE_MAX_CONCURRENCY:-8}
+      AGENT_CORE_AUTH_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
+      AGENT_CORE_REQUIRE_AUTH: ${AGENT_CORE_REQUIRE_AUTH:-1}
+      ALGENTA_DEPLOYMENT_MODE: ${ALGENTA_DEPLOYMENT_MODE:-self_hosted}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ALGENTA_AGENT_PROVIDER: ${ALGENTA_AGENT_PROVIDER:-}
+      ALGENTA_AGENT_MODEL: ${ALGENTA_AGENT_MODEL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      sidecar:
-        condition: service_healthy
-    volumes:
-      # Shared with the sidecar: the worker materializes the snapshot working_dir, the
-      # sidecar mutates files in it (until artifacts move to the object store, Wave B8).
-      - sources_data:/home/app/.algenta
-
-  # ── Agent-core sidecar (forked-Cline execution head) ──────────────────────
-  # Built + published by thyn-ai/codna (the agent head's home), consumed over the unchanged
-  # HTTP seam. NOTE: this is a private GHCR image — the deploy host needs read:packages access to
-  # ghcr.io/thyn-ai/codna. Override the image via ALGENTA_SIDECAR_IMAGE.
-  # Default is DIGEST-PINNED (not a floating :latest) for reproducible deploys — this digest is codna
-  # main @ git-696e7cc (the codna ci publish-sidecar push). Bump it when adopting a newer sidecar.
-  sidecar:
-    image: ${ALGENTA_SIDECAR_IMAGE:-ghcr.io/thyn-ai/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b}
-    restart: unless-stopped
-    # Scale horizontally with `docker compose up --scale sidecar=N`; api/worker reach it
-    # via the round-robin `sidecar` service DNS, and /ready sheds load from busy replicas.
-    environment:
-      AGENT_CORE_HOST: 0.0.0.0
-      AGENT_CORE_PORT: "8787"
-      AGENT_CORE_MAX_CONCURRENCY: ${AGENT_CORE_MAX_CONCURRENCY:-8}
-      AGENT_CORE_AUTH_TOKEN: ${AGENT_CORE_AUTH_TOKEN:-}
-      AGENT_CORE_REQUIRE_AUTH: ${AGENT_CORE_REQUIRE_AUTH:-0}
-      ALGENTA_DEPLOYMENT_MODE: ${ALGENTA_DEPLOYMENT_MODE:-self_hosted}
-      ALGENTA_RUNTIME_DIR: ${ALGENTA_RUNTIME_DIR:-/home/app/.algenta/runtime}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ALGENTA_AGENT_PROVIDER: ${ALGENTA_AGENT_PROVIDER:-}
-      ALGENTA_AGENT_MODEL: ${ALGENTA_AGENT_MODEL:-}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      minio:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
       interval: 30s

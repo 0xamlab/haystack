@@ -81,6 +81,7 @@ _LAZY_EXPORTS = {
     "ImportBundlePreview": ("algenta.runtime_model_import_preview", "ImportBundlePreview"),
     "ImportFailure": ("algenta.runtime_model_import_preview", "ImportFailure"),
     "CodnaRuntimeError": ("algenta.runtime_errors", "CodnaRuntimeError"),
+    "AlgentaRuntimeError": ("algenta.runtime_errors", "AlgentaRuntimeError"),
     "RuntimeConfigurationError": ("algenta.runtime_errors", "RuntimeConfigurationError"),
     "RuntimeValidationError": ("algenta.runtime_errors", "RuntimeValidationError"),
     "ConnectorMetadata": ("algenta.runtime_connector_model_metadata", "ConnectorMetadata"),

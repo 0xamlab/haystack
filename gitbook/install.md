@@ -46,7 +46,7 @@ The installer:
 1. Checks for Docker and Docker Compose and confirms the daemon is reachable.
 2. Resolves a pinned release and writes the Compose bundle to `$HOME/.algenta`.
 3. Generates a `.env` with stable secrets (kept owner-only at mode `600`).
-4. Pulls the `ghcr.io/algenta/decision-engine` image and starts the stack.
+4. Pulls the pinned Algenta images from `ghcr.io/thyn-ai/algenta` and starts the stack.
 5. Waits for the API, runs database migrations, and bootstraps an owner plus an API key.
 {% endstep %}
 
@@ -111,7 +111,7 @@ Set these before running the installer to control where it installs, which port 
 | `ALGENTA_API_PORT` | `8000` | Host port the API binds to. |
 | `ALGENTA_VERSION` | latest `main` | Release ref to pin. A git SHA or a release tag. |
 | `ALGENTA_IMAGE_TAG` | derived from the ref | Exact image tag to pull. |
-| `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/algenta/decision-engine` | Image registry and repository. |
+| `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/thyn-ai/algenta` | Image registry and repository. |
 | `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set to `1` to skip `compose pull` (use an already-pulled image). |
 
 {% expandable title="Pin a specific build and bind a non-default port" %}

@@ -158,7 +158,7 @@ Because the CLI exits non-zero on every engine error, `set -e` (or any CI runner
 
 ## Automated fix-PRs (related capability)
 
-If your goal is to have an agent open a fix pull request automatically when CI fails, that workflow is delivered as a separate distribution — the **codna** GitHub App and Action — built on this same Algenta repository-intelligence surface. It is a distinct product, not a `de` flag. From the engine side you would reach the same machinery with `de repositories triage`, `de repositories simulate`, and `de repositories apply`. See [Triage a repository](repository-intelligence.md) for the underlying capability.
+Automated fix pull requests use the same Algenta repository-intelligence surface. From the engine side, run `de repositories triage`, `de repositories simulate`, and `de repositories apply`. See [Triage a repository](repository-intelligence.md) for the underlying capability.
 
 ## Next steps
 

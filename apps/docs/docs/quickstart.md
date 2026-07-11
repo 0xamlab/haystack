@@ -22,7 +22,7 @@ The installer:
 - validates Docker and Compose
 - downloads the self-hosted Compose bundle
 - generates `.env`
-- pulls pinned API and worker images
+- pulls pinned API and bundled engine images
 - starts the stack
 - runs migrations
 - creates a bootstrap owner and API key

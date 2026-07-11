@@ -53,7 +53,7 @@ client = AlgentaClient(
 | `register_trigger(*, name, condition, simulation_template, webhook_url=None, execution_webhook_url=None, auto_execute=False, description=None)` | `POST /v1/triggers` | `TriggerSummaryResult` |
 | `list_triggers(*, status="all", page=None, limit=None)` | `GET /v1/triggers` | `TriggerListResult` |
 | `fire_trigger(trigger_id, *, force=False)` | `POST /v1/triggers/{trigger_id}/fire` | `TriggerFireResult` |
-| `pause_trigger(trigger_id, *, paused=True)` | `POST /v1/triggers/{trigger_id}/pause` | `TriggerPauseResult` |
+| `pause_trigger(trigger_id, *, paused=True)` | `PATCH /v1/triggers/{trigger_id}/pause` | `TriggerPauseResult` |
 | `delete_trigger(trigger_id)` | `DELETE /v1/triggers/{trigger_id}` | `TriggerDeleteResult` |
 
 - `register_trigger` binds a `condition` to a `simulation_template`; when the condition matches, the trigger runs the template and (if `auto_execute=True`) executes the recommended action. `webhook_url` and `execution_webhook_url` receive the results.

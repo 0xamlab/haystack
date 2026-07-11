@@ -151,7 +151,7 @@ def test_operations_docs_cover_setup_tls_logs_and_upgrade() -> None:
     assert "# Logs & Metrics" in logs
     assert "docker compose -f infra/docker/docker-compose.selfhosted.yml ps" in logs
     assert "docker compose -f infra/docker/docker-compose.selfhosted.yml logs -f api" in logs
-    assert "docker compose -f infra/docker/docker-compose.selfhosted.yml logs -f worker" in logs
+    assert "docker compose -f infra/docker/docker-compose.selfhosted.yml logs -f engine" in logs
     assert "curl http://localhost:8000/metrics" in logs
     assert "X-Metrics-Secret" in logs
     assert "make self-host-status" in logs
@@ -193,7 +193,7 @@ def test_advanced_operator_docs_cover_backup_warning_troubleshooting_and_support
     assert "docker compose -f infra/docker/docker-compose.selfhosted.yml ps" in troubleshooting
     assert "curl http://localhost:8000/v1/health" in troubleshooting
     assert "logs --tail=200 api" in troubleshooting
-    assert "logs --tail=200 worker" in troubleshooting
+    assert "logs --tail=200 engine" in troubleshooting
     assert "python scripts/bootstrap_self_host.py" in troubleshooting
     assert "BOOTSTRAP_API_KEY_ID=..." in troubleshooting
     assert "BOOTSTRAP_API_KEY_PREFIX=..." in troubleshooting
@@ -204,7 +204,7 @@ def test_advanced_operator_docs_cover_backup_warning_troubleshooting_and_support
     expected_table = """| Area | Status |
 | --- | --- |
 | Single VM + Compose | ✅ Supported |
-| API + Worker | ✅ Supported |
+| API + Bundled Engine | ✅ Supported |
 | Backup/Restore | ✅ Supported |
 | SDK usage | ⚠️ Best effort / secondary |
 | Kubernetes | ❌ Not supported |
@@ -316,7 +316,7 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "bootstrap_self_host.py" in install
     assert "seed_dev.py" not in install
     assert "${COMPOSE_DISPLAY} logs -f api" in install
-    assert "${COMPOSE_DISPLAY} logs -f worker" in install
+    assert "${COMPOSE_DISPLAY} logs -f engine" in install
     assert "ALGENTA_SOURCES_DIR=/home/app/.algenta/sources" in install
     assert "RESULT_STORAGE_ENABLED=true" in install
     assert "ALGENTA_DEPLOYMENT_MODE=self_hosted" in install
@@ -324,10 +324,10 @@ def test_install_script_and_compose_lock_service_only_boundary() -> None:
     assert "ALGENTA_TELEMETRY_MODE=local_audit" in install
 
     assert "portal:" not in compose
-    # api/worker images are fail-closed on a pinned ALGENTA_IMAGE_TAG (never a silent :latest);
+    # API/engine images are fail-closed on a pinned ALGENTA_IMAGE_TAG (never a silent :latest);
     # enforced by tests/test_image_pin_guard.py.
     assert "/api:${ALGENTA_IMAGE_TAG:?" in compose
-    assert "/worker:${ALGENTA_IMAGE_TAG:?" in compose
+    assert "/engine:${ALGENTA_IMAGE_TAG:?" in compose
     assert "command: python -m apps.worker.main" not in compose
     assert "DATABASE_URL_SYNC" in compose
     assert "ALGENTA_SOURCES_DIR" in compose

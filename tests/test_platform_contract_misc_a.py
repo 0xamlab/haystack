@@ -642,7 +642,9 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "GET  /mcp/sse" in mcp_readme
     assert "POST /mcp/messages" in mcp_readme
     assert "mcp_transport_unavailable" in mcp_readme
-    assert "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages." in mcp_readme
+    assert "official image bundles the MCP transport dependencies" in mcp_readme
+    assert "operators should upgrade the image rather than modify a running container" in mcp_readme
+    assert "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages." not in mcp_readme
     assert "search='otp'" not in mcp_readme
     assert "query_batch(...)" in claude_codex
     assert "query_sql_report(...)" in claude_codex
@@ -745,5 +747,4 @@ def test_core_query_docs_cover_discovery_first_and_adjacent_surfaces() -> None:
     assert "record-filter contract" in query_doc
     assert "connector exposes deterministic records" in query_doc
     assert "Do not use `query()` as a planning shortcut" in query_doc
-
 

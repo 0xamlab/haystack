@@ -21,7 +21,7 @@ EXPECTED_SECTION_LABELS = [
 EXPECTED_SUPPORT_BOUNDARIES = """| Area | Status |
 | --- | --- |
 | Single VM + Compose | ✅ Supported |
-| API + Worker | ✅ Supported |
+| API + Bundled Engine | ✅ Supported |
 | Backup/Restore | ✅ Supported |
 | SDK usage | ⚠️ Best effort / secondary |
 | Kubernetes | ❌ Not supported |
@@ -194,7 +194,7 @@ def _validate_operations_and_advanced() -> None:
         "docker compose -f infra/docker/docker-compose.selfhosted.yml ps",
         "curl http://localhost:8000/v1/health",
         "logs --tail=200 api",
-        "logs --tail=200 worker",
+        "logs --tail=200 engine",
     ]
     for snippet in troubleshooting_checks:
         if snippet not in troubleshooting:

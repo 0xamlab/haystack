@@ -15,9 +15,16 @@ from apps.mcp_server import products
 from apps.mcp_server.registry import TOOLS, call_tool, get_tool_specs
 
 
-def test_product_registry_has_all_four_verticals() -> None:
-    assert set(products.PRODUCT_EDITIONS) == {"codna", "cohenta", "decimas", "escrypto"}
+def test_product_registry_has_all_verticals() -> None:
+    assert set(products.PRODUCT_EDITIONS) == {
+        "algenta",
+        "codna",
+        "cohenta",
+        "decimas",
+        "escrypto",
+    }
     # Algenta is the only edition populated so far; the rest fail closed (empty) until shipped.
+    assert products.PRODUCT_EDITIONS["algenta"]
     assert products.PRODUCT_EDITIONS["codna"]
     assert products.PRODUCT_EDITIONS["cohenta"] == frozenset()
     assert products.PRODUCT_EDITIONS["decimas"] == frozenset()
@@ -28,6 +35,16 @@ def test_codna_allowlist_is_subset_of_live_registry() -> None:
     """Anti-drift: every tool the Algenta edition advertises must exist in the registry."""
     missing = products.PRODUCT_EDITIONS["codna"] - set(TOOLS)
     assert not missing, f"Algenta edition references tools absent from the registry: {sorted(missing)}"
+
+
+def test_algenta_allowlist_and_features_are_live() -> None:
+    algenta = products.PRODUCT_EDITIONS["algenta"]
+    assert algenta == products.PRODUCT_EDITIONS["codna"]
+    assert algenta <= set(TOOLS)
+    assert products.product_allowlist("algenta") == algenta
+    assert products.feature_tool_constraint(
+        "algenta", products.PRODUCT_FEATURE_TOOLS["algenta"]
+    ) == algenta
 
 
 def test_product_allowlist_fails_closed() -> None:

@@ -14,7 +14,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | Variable | Default | Aliases | Description |
 | --- | --- | --- | --- |
 | `ALGENTA_ACCOUNTS_BASE_URL` | `https://accounts.thyn.ai` | `ACCOUNTS_BASE_URL` | — |
-| `ALGENTA_AGENT_CORE_URL` | — | — | Optional agent-runtime (sidecar) endpoint. |
+| `ALGENTA_AGENT_CORE_URL` | — | — | Optional bundled agent-runtime endpoint. |
 | `ALGENTA_ALLOW_OUTBOUND_NETWORK` | — | — | Permit egress (default false in air-gapped). |
 | `ALGENTA_API_PUBLIC_BASE_URL` | — | `API_PUBLIC_BASE_URL` | Public-facing API base URL (cloud). |
 | `ALGENTA_APP_BASE_URL` | — | `APP_BASE_URL`, `DE_APP_BASE_URL` | Dashboard / console base URL for self-hosted links. |
@@ -89,12 +89,12 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `QUOTA_PRO_SIMULATIONS_MONTH` | `100000` | — | — |
 | `REDIS_URL` | `redis://localhost:6379/0` | — | Redis connection (cache / queue / coordination). |
 | `RESEND_API_KEY` | — | — | — |
-| `RESEND_FROM_EMAIL` | `Codna <noreply@codna.ai>` | — | — |
+| `RESEND_FROM_EMAIL` | `Algenta <noreply@algenta.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
 | `RS256_LICENSE_PRODUCTS` | — | — | — |
 | `RUNTIME_FALLBACK_MODE` | `auto` | — | Engine fallback policy: deny (prod) \| allow \| auto (dev only). |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
-| `S3_BUCKET_NAME` | `decision-engine-results` | — | — |
+| `S3_BUCKET_NAME` | `algenta-results` | — | — |
 | `S3_ENDPOINT_URL` | — | — | — |
 | `S3_REGION` | `us-east-1` | — | — |
 | `S3_SECRET_ACCESS_KEY` | `minioadmin` | — | — |

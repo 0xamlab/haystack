@@ -80,10 +80,6 @@ The constructor accepts four arguments.
 | `timeout` | `float` | `120.0` | Request timeout in seconds. |
 | `max_retries` | `int` | `3` | Retries on `429` and `5xx`. |
 
-{% hint style="info" %}
-`AlgentaClient` is the preferred name. `DecisionEngineClient` and `CodnaClient` are accepted aliases for backward compatibility; all three are the same class.
-{% endhint %}
-
 {% expandable title="Advanced: contract constants" %}
 The package re-exports the platform contract so you can read endpoint paths and defaults without hard-coding them.
 
@@ -398,10 +394,6 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-{% hint style="info" %}
-`AsyncDecisionEngineClient` and `AsyncCodnaClient` are aliases of `AsyncAlgentaClient`.
-{% endhint %}
-
 ## The source-built Runtime (`algenta`)
 
 `Runtime` is the runtime-first object in the source package. It connects to sources, resolves a request into an executable plan, and runs the query. This section documents the implemented surface for source builds and future runtime releases; it is not a public PyPI install path today.
@@ -586,7 +578,7 @@ except DecisionEngineError as exc:
 ```
 
 {% hint style="info" %}
-The runtime raises `CodnaRuntimeError`, `RuntimeConfigurationError`, and `RuntimeValidationError` (all importable from `algenta`) for local-execution and descriptor problems.
+The runtime raises `AlgentaRuntimeError`, `RuntimeConfigurationError`, and `RuntimeValidationError` (all importable from `algenta`) for local-execution and descriptor problems.
 {% endhint %}
 
 ## Related pages

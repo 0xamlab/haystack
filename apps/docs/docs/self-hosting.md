@@ -12,7 +12,7 @@ Use this page after [Quickstart](/quickstart). It covers the supported self-host
 Self-hosted v1 is the service product:
 
 - API service
-- worker service
+- bundled engine service (async worker, Mojo runtime, and agent runtime)
 - PostgreSQL
 - Redis
 - object storage
@@ -36,8 +36,8 @@ Use this path when you need to inspect or modify the Compose bundle directly.
 ### 1. Download the bundle
 
 ```bash
-git clone https://github.com/algenta/decision-engine
-cd decision-engine
+git clone https://github.com/thyn-ai/algenta
+cd algenta
 cp .env.example .env
 ```
 
@@ -50,7 +50,7 @@ DATABASE_URL_SYNC=postgresql://algenta:algenta_secret@postgres:5432/algenta
 REDIS_URL=redis://redis:6379/0
 JWT_SECRET=change-me-use-256-bit-random-value
 RESULT_STORAGE_ENABLED=true
-ALGENTA_IMAGE_REGISTRY=ghcr.io/algenta/decision-engine
+ALGENTA_IMAGE_REGISTRY=ghcr.io/thyn-ai/algenta
 ALGENTA_IMAGE_TAG=git-YOUR_RELEASE_TAG
 ALGENTA_DEPLOYMENT_MODE=self_hosted
 ALGENTA_DISABLE_CLOUD=1
@@ -196,8 +196,8 @@ The buyer-facing proof endpoints are:
 
 | Variable | Description |
 | --- | --- |
-| `ALGENTA_IMAGE_REGISTRY` | Registry prefix for API and worker images |
-| `ALGENTA_IMAGE_TAG` | Pinned API and worker image tag |
+| `ALGENTA_IMAGE_REGISTRY` | Registry prefix for API and bundled engine images |
+| `ALGENTA_IMAGE_TAG` | Pinned API and bundled engine image tag |
 
 ## Related pages
 

@@ -217,17 +217,17 @@ class Settings(BaseSettings):
 
     # ─── Database ─────────────────────────────────────────────────────────────
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/decision_engine"
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/algenta"
     )
     database_url_sync: str = Field(
-        default="postgresql://postgres:postgres@localhost:5432/decision_engine"
+        default="postgresql://postgres:postgres@localhost:5432/algenta"
     )
 
     # ─── Redis ────────────────────────────────────────────────────────────────
     redis_url: str = Field(default="redis://localhost:6379/0")
 
     # ─── Object Storage ───────────────────────────────────────────────────────
-    s3_bucket_name: str = Field(default="decision-engine-results")
+    s3_bucket_name: str = Field(default="algenta-results")
     s3_endpoint_url: str | None = Field(default=None)
     s3_access_key_id: str = Field(default="minioadmin")
     s3_secret_access_key: str = Field(default="minioadmin")
@@ -455,7 +455,7 @@ class Settings(BaseSettings):
     # Resend (transactional email — team invites, dormant-account notices). Empty = disabled
     # (send_* helpers no-op + log a warning instead of raising).
     resend_api_key: str = Field(default="")
-    resend_from_email: str = Field(default="Codna <noreply@codna.ai>")
+    resend_from_email: str = Field(default="Algenta <noreply@algenta.ai>")
 
     # ─── Webhooks ─────────────────────────────────────────────────────────────
     webhook_signing_secret: str = Field(default="change-me-in-production")

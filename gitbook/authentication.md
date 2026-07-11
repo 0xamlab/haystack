@@ -513,12 +513,12 @@ A backend with no configured key returns `404 provider_key_not_found`.
 | Send a key | `Authorization: Bearer de_live_...` (or legacy `X-API-Key`) |
 | Set the key for SDK/CLI | `export ALGENTA_API_KEY=...` (fallback `DE_API_KEY`) |
 | Set a self-hosted base URL | `export ALGENTA_BASE_URL=...` (fallbacks `DE_BASE_URL`, `ALGENTA_API_URL`) |
-| List / create / revoke keys | `GET` / `POST` / `DELETE /v1/api-keys`, or `de keys list\|create\|revoke` |
+| List / create / revoke keys | `GET /v1/api-keys`, `POST /v1/api-keys`, `DELETE /v1/api-keys/{key_id}`, or `de keys list\|create\|revoke` |
 | Register / log out a machine | `de login` / `de logout` |
 | Save a key without binding | `de config set-key <key> [base_url]` |
 | List / revoke devices | `de devices list\|revoke`, or `/v1/device/list`, `DELETE /v1/device/{id}` |
 | Hosted auth | `POST /auth/signup`, `/auth/login`, `GET /auth/verify`, `POST /auth/forgot-password`, `/auth/reset-password` |
-| BYOK provider keys | `GET` / `POST` / `DELETE /v1/provider-keys` (admin; needs `ALGENTA_CONFIG_ENCRYPTION_KEY`) |
+| BYOK provider keys | `GET /v1/provider-keys`, `POST /v1/provider-keys`, `DELETE /v1/provider-keys/{backend}` (admin; needs `ALGENTA_CONFIG_ENCRYPTION_KEY`) |
 
 ## Related pages
 

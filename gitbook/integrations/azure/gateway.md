@@ -14,7 +14,7 @@ It is guided rather than one-click on purpose. A few steps need an operator with
 In one resource group, the deployment template creates:
 
 - A **Container App** running the decision runtime in a **private profile** with cloud features disabled — cloud egress and telemetry are turned off and the control-plane URL is empty, so decisions are computed in your Azure decision plane.
-- **Azure Database for PostgreSQL Flexible Server**, with the `decision_engine` database, for gateway state.
+- **Azure Database for PostgreSQL Flexible Server**, with the `algenta` database, for gateway state.
 - **Azure Blob Storage** (a storage account plus a private `artifacts` container) as the evidence and artifact store, via a **native Azure Blob storage backend** — no separate storage sidecar container is deployed.
 - **Azure Key Vault** holding every secret (database password, config-encryption key, session-signing secret). The container references the vault by URL, so only secret **references**, never the secret values, live in configuration or the database.
 - A **user-assigned managed identity** with **least-privilege** role assignments — `Key Vault Secrets User` and `Storage Blob Data Contributor`, nothing broader. The app authenticates to Key Vault and Blob with this identity, so no long-lived storage or database keys are distributed.

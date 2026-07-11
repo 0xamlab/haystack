@@ -78,7 +78,7 @@ compose_cmd() {
 
 build_images() {
   docker build -f "$ROOT_DIR/infra/docker/Dockerfile.api.prod" -t "${IMAGE_REGISTRY}/api:${IMAGE_TAG}" "$ROOT_DIR"
-  docker build -f "$ROOT_DIR/infra/docker/Dockerfile.worker.prod" -t "${IMAGE_REGISTRY}/worker:${IMAGE_TAG}" "$ROOT_DIR"
+  docker build -f "$ROOT_DIR/infra/docker/Dockerfile.engine.prod" -t "${IMAGE_REGISTRY}/engine:${IMAGE_TAG}" "$ROOT_DIR"
 }
 
 prune_dangling_images() {

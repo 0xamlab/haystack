@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.14"]
+        python-version: ["3.14"]
 
     services:
       postgres:
@@ -304,14 +304,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # The combined worker+sidecar image for the co-located Fly `codna-engine` app. Its Dockerfile
-      # FROMs the codna-published sidecar (ghcr.io/thyn-ai/codna/sidecar@sha256:…). That base is
-      # a PRIVATE cross-repo package, so pulling it needs read:packages on thyn-ai/codna — the
-      # default GITHUB_TOKEN here does NOT have it. Provide a CODNA_GHCR_READ_TOKEN secret (a PAT with
-      # read:packages) OR make the codna sidecar package public (owner item D1). These steps are
-      # skipped when CODNA_TOKEN is empty so the api/worker build still succeeds.
-      - name: Log in to GHCR for the codna sidecar base image
-        if: ${{ env.CODNA_TOKEN != '' }}
+      # The published Algenta engine encapsulates the async worker, Mojo binary, and agent runtime.
+      # Its internal base is private, so a missing read token must fail the release rather than
+      # silently omit the image required by the public self-host installer.
+      - name: Require bundled engine build credential
+        if: ${{ env.CODNA_TOKEN == '' }}
+        run: |
+          echo "CODNA_GHCR_READ_TOKEN is required to publish the Algenta engine image" >&2
+          exit 1
+
+      - name: Log in to GHCR for the bundled engine base
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -320,7 +322,6 @@ jobs:
 
       - name: Extract metadata for Engine image
         id: meta-engine
-        if: ${{ env.CODNA_TOKEN != '' }}
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/engine
@@ -328,8 +329,7 @@ jobs:
             type=sha,prefix=git-,format=short
             type=raw,value=latest
 
-      - name: Build and push Engine image (worker + agent-core sidecar)
-        if: ${{ env.CODNA_TOKEN != '' }}
+      - name: Build and push Engine image
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25  # v5
         with:
           context: .

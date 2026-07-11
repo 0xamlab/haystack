@@ -12,6 +12,7 @@ from __future__ import annotations
 from importlib import import_module
 
 from algenta.runtime_errors import (
+    AlgentaRuntimeError,
     CodnaRuntimeError,
     RuntimeConfigurationError,
     RuntimeValidationError,
@@ -471,6 +472,7 @@ _LAZY_EXPORTS = {
 
 __all__ = [
     "CodnaRuntimeError",
+    "AlgentaRuntimeError",
     "RuntimeConfigurationError",
     "RuntimeValidationError",
     *list(_LAZY_EXPORTS),

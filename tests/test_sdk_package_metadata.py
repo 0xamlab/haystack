@@ -88,10 +88,13 @@ def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
     docs = (_REPO_ROOT / ".github" / "workflows" / "docs-audit.yml").read_text("utf-8")
 
     assert 'PYTHON_VERSION: "3.14"' in ci
-    assert 'python-version: ["3.12", "3.14"]' in ci
+    assert 'python-version: ["3.14"]' in ci
     assert 'python-version: ["3.10", "3.12", "3.14"]' in ci
     assert 'PYTHON_VERSION: "3.14"' in release
     assert 'python-version: "3.14"' in docs
+
+    pixi = (_REPO_ROOT / "mojo_env" / "pixi.toml").read_text(encoding="utf-8")
+    assert 'python = ">=3.14,<3.15"' in pixi
 
 
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:

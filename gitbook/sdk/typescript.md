@@ -73,10 +73,6 @@ const client = new AlgentaClient({
 Methods are camelCase, but request bodies and query parameters stay snake_case. You call `getDatasetSummary(...)`, `queryWithMetadata(...)`, and `querySqlReport(...)`, and the payloads you pass and receive use fields like `dataset_id`, `source_name`, `metric_column`, and `max_rows`. This mirrors the HTTP contract exactly.
 {% endhint %}
 
-{% expandable title="Compatibility names for older integrations" %}
-`AlgentaClient` is the canonical export. The same class is also exported as `DecisionEngineClient` and `CodnaClient` (with matching `AlgentaClientConfig` / `DecisionEngineClientConfig` / `CodnaClientConfig` types) so older integrations keep working. All three are the same constructor.
-{% endexpandable %}
-
 ## Exports
 
 ```ts
@@ -94,7 +90,7 @@ The barrel exports the client and runtime classes, their error types, and the ge
 
 | Export | What it is |
 | --- | --- |
-| `AlgentaClient`, `DecisionEngineClient`, `CodnaClient` | The HTTP client class (same constructor). |
+| `AlgentaClient` | The HTTP client class. |
 | `Runtime`, `RuntimeError`, `RuntimeConfigurationError`, `RuntimeValidationError` | Runtime class for local / self-hosted use. |
 | `MojoRuntime`, `libraries` | Runtime-library entrypoint and catalog. |
 | `DecisionEngineError`, `AuthenticationError`, `RateLimitError`, `ValidationError`, `NotFoundError`, `ServerError` | Client error hierarchy. |

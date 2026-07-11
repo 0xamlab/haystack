@@ -33,6 +33,11 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     assert report["agent_readability"]["codex_ready"] is True
     assert report["agent_readability"]["google_ai_ready"] is True
     assert report["snippets"]["static_or_guarded_commands"] > 0
+    assert report["summary"]["source_inventory_percent"] == 100.0
+    assert report["summary"]["shell_syntax_validation_percent"] == 100.0
+    assert report["summary"]["command_execution_percent"] == 0.0
+    assert report["openapi_identity"]["algenta_title"] is True
+    assert report["openapi_identity"]["cross_product_mentions"] == 0
 
     totals = report["totals"]
     summary = report["summary"]
@@ -44,6 +49,12 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     assert totals["static_or_guarded_commands"] == report["snippets"]["static_or_guarded_commands"]
     assert totals["claim_mentions"] == summary["claim_mentions"]
     assert totals["claim_mentions"] == sum(totals["product_claims"].values())
+    assert totals["endpoint_mentions"] == len(report["evidence"]["endpoint_mentions"])
+    assert totals["shell_commands"] == len(report["evidence"]["shell_commands"])
+    assert totals["source_items_inventoried"] == sum(
+        len(rows) for rows in report["evidence"].values()
+    )
+    assert totals["shell_syntax_validated_commands"] == totals["shell_commands"]
     assert totals["failures"] == summary["failures"] == 0
     assert totals["warnings"] == summary["warnings"] == 0
     assert totals["fixes"] == summary["fixes"] == 0
@@ -94,6 +105,16 @@ def test_secret_scanner_allows_redacted_algenta_placeholders(tmp_path: Path) -> 
     assert issues == []
 
 
+def test_internal_product_identity_is_rejected_from_public_docs(tmp_path: Path) -> None:
+    audit = _load_module()
+    path = tmp_path / "page.md"
+
+    issues = audit._find_secret_issues(path, "page.md", "Internal product: Codna\n")
+
+    assert [issue.code for issue in issues] == ["private_or_internal_leak"]
+    assert issues[0].line == 1
+
+
 def test_public_package_scanner_rejects_wrong_scoped_typescript_sdk(tmp_path: Path) -> None:
     audit = _load_module()
     path = tmp_path / "page.md"
@@ -122,6 +143,47 @@ def test_machine_snippet_validator_rejects_malformed_json(tmp_path: Path) -> Non
     issues = audit._validate_machine_snippet(fence)
     assert [issue.code for issue in issues] == ["invalid_json_snippet"]
     assert issues[0].line == 12
+
+
+def test_shell_inventory_keeps_multiline_payload_and_loop_as_single_commands() -> None:
+    audit = _load_module()
+    body = """curl -sS https://api.example/v1/items \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "name": "example"
+  }'
+for item in one two \\
+  three; do
+  echo "$item"
+done
+{"status": "response, not a command"}
+"""
+
+    commands = audit._logical_shell_commands(body, start_line=10)
+
+    assert len(commands) == 2
+    assert [command.line for command in commands] == [10, 15]
+    assert commands[0].command.startswith("curl -sS")
+    assert commands[1].command.startswith("for item")
+    assert all(audit._validate_shell_command("page.md", command) is None for command in commands)
+
+
+def test_endpoint_inventory_scopes_external_urls_and_route_families() -> None:
+    audit = _load_module()
+    text = """POST /v1/repositories/{repository_id}/triage
+All routes live under /v1/repositories.
+External URL: https://metrics.example.com/v1/series
+"""
+
+    mentions = audit._extract_endpoint_mentions(text)
+
+    assert [(item.path, item.scope) for item in mentions] == [
+        ("/v1/repositories/{}/triage", "algenta"),
+        ("/v1/repositories", "algenta"),
+        ("/v1/series", "external"),
+    ]
+    operations = {"/v1/repositories/{}/triage": {"POST"}}
+    assert audit._validate_endpoint_mentions("page.md", mentions, operations) == []
 
 
 def test_sitemap_url_to_markdown_route_maps_gitbook_urls() -> None:
@@ -316,8 +378,6 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
             return 200, b"# Algenta\nhttps://docs.algenta.ai\n", "text/markdown"
         if url.endswith("/llms-full.txt"):
             return 200, b"# Algenta\nUsing these docs with AI\n", "text/markdown"
-        if url.endswith("/~gitbook/mcp"):
-            return 405, b'{"jsonrpc":"2.0","error":{"code":-32000}}', "application/json"
         if (
             url.endswith("/.md")
             or url.endswith("/sdks/mcp.md")
@@ -328,6 +388,41 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
 
     monkeypatch.setattr(audit, "_fetch", fake_fetch)
 
+    def fake_post_jsonrpc(url: str, payload: dict, **kwargs):
+        del url, kwargs
+        request_id = payload["id"]
+        method = payload["method"]
+        if method == "initialize":
+            result = {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {"tools": {"listChanged": True}},
+            }
+        elif method == "tools/list":
+            result = {
+                "tools": [
+                    _docs_mcp_tool("searchDocumentation", "query"),
+                    _docs_mcp_tool("getPage", "url"),
+                ]
+            }
+        elif payload["params"]["name"] == "searchDocumentation":
+            result = {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Install Algenta with algenta-mcp and configure Codex.",
+                    }
+                ]
+            }
+        else:
+            result = {
+                "content": [
+                    {"type": "text", "text": "# MCP server\nInstall algenta-mcp for Cursor."}
+                ]
+            }
+        return 200, {"jsonrpc": "2.0", "id": request_id, "result": result}, {}
+
+    monkeypatch.setattr(audit, "_post_jsonrpc", fake_post_jsonrpc)
+
     issues, report = audit._audit_live("https://docs.example", public_page_count=3, source=tmp_path)
 
     assert issues == []
@@ -335,6 +430,65 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
     assert report["source_navigation_urls"] == 3
     assert report["sitemap_matches_source_navigation"] is True
     assert report["markdown_pages_checked"] == 3
+    assert report["docs_mcp"] == {
+        "initialize_status": 200,
+        "protocol_version": "2025-03-26",
+        "tools_status": 200,
+        "tools": ["getPage", "searchDocumentation"],
+        "search_status": 200,
+        "page_status": 200,
+    }
     assert "https://docs.example/.md" in fetched_urls
     assert "https://docs.example/sdks/mcp.md" in fetched_urls
     assert "https://docs.example/help/ai-access.md" in fetched_urls
+
+
+def _docs_mcp_tool(name: str, required_input: str) -> dict:
+    return {
+        "name": name,
+        "inputSchema": {
+            "type": "object",
+            "properties": {required_input: {"type": "string"}},
+            "required": [required_input],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": True, "destructiveHint": False},
+    }
+
+
+def test_parse_jsonrpc_body_accepts_sse_and_json() -> None:
+    audit = _load_module()
+    payload = {"jsonrpc": "2.0", "id": 7, "result": {"ok": True}}
+
+    assert audit._parse_jsonrpc_body(
+        b'event: message\ndata: {"jsonrpc":"2.0","id":7,"result":{"ok":true}}\n\n',
+        "text/event-stream; charset=utf-8",
+    ) == payload
+    assert audit._parse_jsonrpc_body(json.dumps(payload).encode(), "application/json") == payload
+
+
+def test_validate_docs_mcp_tools_rejects_mutating_or_untyped_contracts() -> None:
+    audit = _load_module()
+    search = _docs_mcp_tool("searchDocumentation", "query")
+    page = _docs_mcp_tool("getPage", "url")
+    search["annotations"]["destructiveHint"] = True
+    page["inputSchema"]["properties"]["url"]["type"] = "integer"
+
+    issues, names = audit._validate_docs_mcp_tools([search, page])
+
+    assert names == ["getPage", "searchDocumentation"]
+    assert [issue.code for issue in issues] == [
+        "docs_mcp_tool_contract_invalid",
+        "docs_mcp_tool_contract_invalid",
+    ]
+
+
+def test_validate_docs_mcp_tools_reports_noncanonical_description_url() -> None:
+    audit = _load_module()
+    search = _docs_mcp_tool("searchDocumentation", "query")
+    page = _docs_mcp_tool("getPage", "url")
+    page["description"] = "Example: https://docs.algenta.ai//getting-started"
+
+    issues, _ = audit._validate_docs_mcp_tools([search, page])
+
+    assert [issue.code for issue in issues] == ["docs_mcp_noncanonical_tool_url"]

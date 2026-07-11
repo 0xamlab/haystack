@@ -70,7 +70,7 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | **Self-hosted** | You run the full stack (API + worker + engine + Postgres + Redis + object storage) on your own infrastructure. See [Self-hosting](../self-hosting.md). |
 | **Air-gapped** | A self-hosted profile with zero outbound network — licensing and execution are fully local. |
 | **Control plane** | The hosted, engine-free surface (auth, accounts, teams, billing, licensing). A deployment runs `full` or `control_plane` via `ALGENTA_SERVICE_ROLE`. |
-| **Edition** | A product surface over the one engine (Codna, Cohenta, Decimas, Escrypto), selected with `ALGENTA_PRODUCT`. |
+| **Edition** | A licensed product surface over the engine, selected with `ALGENTA_PRODUCT`. |
 | **Metering / Credits / Quota** | How usage is counted (metering), topped up (credits), and capped per plan (quota). See [Plans, billing & credits](../billing.md). |
 | **Egress / Privacy report** | Outbound-network policy and the operator proof (`GET /v1/admin/privacy-report`) that a deployment is cloud-free. |
 | **Fallback mode** | Whether the API may fall back from the Mojo pool to a slower path. `RUNTIME_FALLBACK_MODE` = `deny` \| `allow` \| `auto`. |

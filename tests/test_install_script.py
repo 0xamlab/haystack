@@ -134,7 +134,7 @@ def _make_stub_binaries(bin_dir: Path) -> None:
               exit 0
             fi
 
-            if [[ "$url" == https://api.github.com/repos/algenta/decision-engine/commits/main ]]; then
+            if [[ "$url" == https://api.github.com/repos/thyn-ai/algenta/commits/main ]]; then
               if [ -n "${ALGENTA_TEST_COMMIT_SHA:-}" ]; then
                 printf '{"sha":"%s"}\n' "${ALGENTA_TEST_COMMIT_SHA}"
                 exit 0
@@ -145,9 +145,9 @@ def _make_stub_binaries(bin_dir: Path) -> None:
             if [[ "$url" == https://raw.githubusercontent.com/*/infra/docker/docker-compose.selfhosted.yml ]]; then
               compose_text='services:
               api:
-                image: ghcr.io/algenta/decision-engine/api:test
-              worker:
-                image: ghcr.io/algenta/decision-engine/worker:test'
+                image: ghcr.io/thyn-ai/algenta/api:test
+              engine:
+                image: ghcr.io/thyn-ai/algenta/engine:test'
               if [ -n "$output_path" ]; then
                 printf '%s\\n' "$compose_text" > "$output_path"
               else
@@ -160,8 +160,8 @@ def _make_stub_binaries(bin_dir: Path) -> None:
               compose_text='services:
               api:
                 image: algenta-selfhost/api:smoke
-              worker:
-                image: algenta-selfhost/worker:smoke'
+              engine:
+                image: algenta-selfhost/engine:smoke'
               if [ -n "$output_path" ]; then
                 printf '%s\\n' "$compose_text" > "$output_path"
               else
@@ -279,7 +279,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     compose_text = (install_dir / "docker-compose.yml").read_text(encoding="utf-8")
     assert "ALGENTA_IMAGE_TAG=git-test123" in env_text
     assert "DATABASE_URL_SYNC=postgresql://algenta:algenta_secret@postgres:5432/algenta" in env_text
-    assert "RUNTIME_FALLBACK_MODE=allow" in env_text
+    assert "RUNTIME_FALLBACK_MODE=deny" in env_text
     assert "ALGENTA_DEPLOYMENT_MODE=self_hosted" in env_text
     assert "ALGENTA_DISABLE_CLOUD=1" in env_text
     assert "ALGENTA_DISABLE_TELEMETRY=1" in env_text
@@ -290,7 +290,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     assert "ALGENTA_API_PUBLIC_BASE_URL=http://localhost:8000" in env_text
     assert "ALGENTA_APP_BASE_URL=" in env_text
     assert "RESULT_STORAGE_ENABLED=true" in env_text
-    assert "ghcr.io/algenta/decision-engine/api:test" in compose_text
+    assert "ghcr.io/thyn-ai/algenta/api:test" in compose_text
 
     # ── Restart-durability fixes ────────────────────────────────────────────────
     # The engine-callback key is wired into .env (persists across restart) but never printed.
@@ -304,7 +304,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
         if line.startswith("ALGENTA_CONFIG_ENCRYPTION_KEY=")
     )
     assert len(kek) == 64 and all(c in "0123456789abcdef" for c in kek)
-    # A generated sidecar service token + enforced auth (no more open-by-default, shell-only token).
+    # A generated bundled-engine service token with enforced auth.
     agent_token = next(
         line.split("=", 1)[1]
         for line in env_text.splitlines()
@@ -312,7 +312,7 @@ def test_install_script_runs_service_first_happy_path_and_prints_key_once(tmp_pa
     )
     assert len(agent_token) >= 24
     assert "AGENT_CORE_REQUIRE_AUTH=1" in env_text
-    assert "ALGENTA_AGENT_CORE_URL=http://sidecar:8787" in env_text
+    assert "ALGENTA_AGENT_CORE_URL=http://engine:8787" in env_text
     # The engine-callback key is only consumed when ALGENTA_ENGINE_URL is set (docker-network DNS).
     assert "ALGENTA_ENGINE_URL=http://api:8000" in env_text
     assert "ANTHROPIC_API_KEY=" in env_text

@@ -16,7 +16,7 @@ docker compose -f infra/docker/docker-compose.selfhosted.yml ps
 Expected output:
 
 - `api` is `running` or `healthy`
-- `worker` is `running`
+- `engine` is `running` or `healthy`
 - `postgres`, `redis`, and `minio` are `running`
 
 Failure meaning:
@@ -25,7 +25,7 @@ Failure meaning:
 
 Next action:
 
-- inspect the API and worker logs
+- inspect the API and engine logs
 
 ## API logs
 
@@ -46,10 +46,10 @@ Next action:
 
 - fix the reported error, then restart the stack
 
-## Worker logs
+## Engine logs
 
 ```bash
-docker compose -f infra/docker/docker-compose.selfhosted.yml logs -f worker
+docker compose -f infra/docker/docker-compose.selfhosted.yml logs -f engine
 ```
 
 Expected output:
@@ -63,7 +63,7 @@ Failure meaning:
 
 Next action:
 
-- verify Redis connectivity and restart the worker
+- verify Redis connectivity and restart the engine
 
 ## Health endpoint
 

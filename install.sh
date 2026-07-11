@@ -1,15 +1,15 @@
 #!/bin/bash
-# Algenta Decision Engine — one-line self-hosted installer
+# Algenta — one-line self-hosted installer
 # Usage: curl -fsSL https://algenta.ai/install.sh | bash
-# Or:    curl -fsSL https://raw.githubusercontent.com/algenta/decision-engine/main/install.sh | bash
+# Or:    curl -fsSL https://raw.githubusercontent.com/thyn-ai/algenta/main/install.sh | bash
 
 set -euo pipefail
 
-REPO="algenta/decision-engine"
+REPO="thyn-ai/algenta"
 INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
 API_PORT="${ALGENTA_API_PORT:-8000}"
 DOCS_URL="${ALGENTA_DOCS_URL:-https://docs.algenta.ai/self-hosting}"
-IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/algenta/decision-engine}"
+IMAGE_REGISTRY="${ALGENTA_IMAGE_REGISTRY:-ghcr.io/thyn-ai/algenta}"
 RELEASE_REF="${ALGENTA_VERSION:-}"
 IMAGE_TAG="${ALGENTA_IMAGE_TAG:-}"
 COMPOSE_BUNDLE_URL="${ALGENTA_COMPOSE_URL:-}"
@@ -33,7 +33,7 @@ print_logo() {
   echo '/_/ \_\|_| \__, |\___||_| \_,_|'
   echo '           |___/               '
   echo -e "${NC}"
-  echo -e "${BOLD}Algenta Decision Engine — Self-Hosted Service Installer${NC}"
+  echo -e "${BOLD}Algenta — Self-Hosted Service Installer${NC}"
   echo ""
 }
 
@@ -161,7 +161,7 @@ resolve_release_ref() {
 }
 
 download_release() {
-  echo -e "${BLUE}Downloading Algenta Decision Engine...${NC}"
+  echo -e "${BLUE}Downloading Algenta...${NC}"
 
   mkdir -p "$INSTALL_DIR"
   cd "$INSTALL_DIR"
@@ -183,8 +183,7 @@ generate_env() {
   # (not the operator's shell), so anything not persisted here is lost on the next `compose up`.
   #  - ALGENTA_CONFIG_ENCRYPTION_KEY (64-hex) encrypts per-tenant provider keys at rest; rotating or
   #    losing it makes every stored tenant key undecryptable (silent fail-closed) — generate once, keep it.
-  #  - AGENT_CORE_AUTH_TOKEN is the shared api/worker -> sidecar bearer; without it the sidecar's
-  #    inbound auth is open by default.
+  #  - AGENT_CORE_AUTH_TOKEN protects the API-to-engine runtime seam and is generated automatically.
   # openssl is primary (clean + present on essentially every docker host); the fallback reads a FINITE
   # byte count from /dev/urandom so it can't SIGPIPE-trip `set -o pipefail` and abort the install.
   local config_encryption_key agent_core_token
@@ -197,7 +196,7 @@ generate_env() {
     WEBHOOK_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32 2>/dev/null || openssl rand -hex 16)
 
     cat > .env << EOF
-# Algenta Decision Engine — Self-Hosted Configuration
+# Algenta — Self-Hosted Configuration
 # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
 # ── Application ──────────────────────────────────────────────────────────────
@@ -224,11 +223,11 @@ API_KEY_TEST_PREFIX=de_test_
 
 # ── Agent runtime + per-tenant key encryption ────────────────────────────────
 # Generated once; keep STABLE across restarts. Rotating/losing ALGENTA_CONFIG_ENCRYPTION_KEY makes
-# every stored per-tenant provider key undecryptable. AGENT_CORE_AUTH_TOKEN gates api/worker → sidecar.
+# every stored per-tenant provider key undecryptable. AGENT_CORE_AUTH_TOKEN gates the bundled engine.
 ALGENTA_CONFIG_ENCRYPTION_KEY=${config_encryption_key}
 AGENT_CORE_AUTH_TOKEN=${agent_core_token}
 AGENT_CORE_REQUIRE_AUTH=1
-ALGENTA_AGENT_CORE_URL=http://sidecar:8787
+ALGENTA_AGENT_CORE_URL=http://engine:8787
 # Loopback URL the agent head dials to call back into /v1 (docker-network DNS, NOT localhost). Set
 # (non-empty) so the engine-callback block is actually attached to the agent task spec.
 ALGENTA_ENGINE_URL=http://api:8000
@@ -251,7 +250,7 @@ MINIO_CONSOLE_HOST_PORT=${MINIO_CONSOLE_HOST_PORT:-9001}
 MOJO_BINARY_PATH=/app/mojo_build/simulate
 MOJO_TIMEOUT_SECONDS=30
 MOJO_MAX_CONCURRENT=4
-RUNTIME_FALLBACK_MODE=allow
+RUNTIME_FALLBACK_MODE=deny
 ALGENTA_SOURCES_DIR=/home/app/.algenta/sources
 
 # ── Privacy / Deployment ────────────────────────────────────────────────────
@@ -321,16 +320,26 @@ EOF
   ensure_env_default "ALGENTA_ALLOW_OUTBOUND_NETWORK" "0"
   ensure_env_default "ALGENTA_EGRESS_ALLOWLIST" "minio:9000"
   ensure_env_default "ALGENTA_LOCAL_LICENSE_PUBLIC_KEY_FILE" ""
-  # Agent runtime + per-tenant key encryption — backfilled for installs upgrading from an older
-  # .env (so they too get a stable KEK + sidecar token + the engine-callback/provider slots).
+  # Agent runtime + per-tenant key encryption, backfilled for installs upgrading from an older .env.
   ensure_env_default "ALGENTA_CONFIG_ENCRYPTION_KEY" "$config_encryption_key"
   ensure_env_default "AGENT_CORE_AUTH_TOKEN" "$agent_core_token"
   ensure_env_default "AGENT_CORE_REQUIRE_AUTH" "1"
-  ensure_env_default "ALGENTA_AGENT_CORE_URL" "http://sidecar:8787"
+  ensure_env_default "ALGENTA_AGENT_CORE_URL" "http://engine:8787"
   ensure_env_default "ALGENTA_ENGINE_URL" "http://api:8000"
   ensure_env_default "ALGENTA_ENGINE_API_KEY" ""
   ensure_env_default "ALGENTA_API_KEY" ""
   ensure_env_default "ANTHROPIC_API_KEY" ""
+
+  # Migrate only obsolete installer defaults; preserve every operator-supplied override.
+  if grep -q '^ALGENTA_AGENT_CORE_URL=http://sidecar:8787$' .env; then
+    set_env_value "ALGENTA_AGENT_CORE_URL" "http://engine:8787"
+  fi
+  if grep -q '^ALGENTA_IMAGE_REGISTRY=ghcr.io/algenta/decision-engine$' .env; then
+    set_env_value "ALGENTA_IMAGE_REGISTRY" "ghcr.io/thyn-ai/algenta"
+  fi
+  if grep -q '^RUNTIME_FALLBACK_MODE=allow$' .env; then
+    set_env_value "RUNTIME_FALLBACK_MODE" "deny"
+  fi
 
   echo -e "${YELLOW}  Review .env before production use — especially CORS_ORIGINS, TLS, and SMTP settings${NC}"
 }
@@ -361,7 +370,7 @@ set_env_value() {
 }
 
 start_services() {
-  echo -e "${BLUE}Starting Algenta Decision Engine...${NC}"
+  echo -e "${BLUE}Starting Algenta...${NC}"
   if ! is_truthy "$SKIP_IMAGE_PULL"; then
     if ! compose pull --quiet; then
       echo -e "${RED}Failed to pull images for tag ${IMAGE_TAG}.${NC}"
@@ -436,7 +445,7 @@ seed_initial_user() {
   # returns a value ONLY on the run that mints it (no prior ACTIVE key); when it does, that key is
   # authoritative, so overwrite any stale/revoked .env value. On re-installs where the key already
   # exists it returns empty and we preserve the persisted .env value. Re-up so the already-running
-  # api/worker pick it up (compose recreates only services whose env changed).
+  # API and engine pick it up (Compose recreates only services whose env changed).
   if [ -n "$engine_api_key" ]; then
     set_env_value "ALGENTA_ENGINE_API_KEY" "$engine_api_key"
     echo -e "${GREEN}✓ Engine-callback key wired into .env (agentic repository flow enabled)${NC}"
@@ -518,7 +527,7 @@ print_next_steps() {
   echo -e "${BOLD}Useful commands:${NC}"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} ps"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f api"
-  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f worker"
+  echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f engine"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} stop"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} pull && ${COMPOSE_DISPLAY} up -d"
   echo ""

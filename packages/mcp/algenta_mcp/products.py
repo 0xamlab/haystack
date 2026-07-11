@@ -65,6 +65,7 @@ DECIMAS_TRADING_TOOLS: frozenset[str] = frozenset()
 ESCRYPTO_GOVERNANCE_TOOLS: frozenset[str] = frozenset()
 
 PRODUCT_EDITIONS: dict[str, frozenset[str]] = {
+    "algenta": CODNA_CODING_TOOLS,
     "codna": CODNA_CODING_TOOLS,
     "cohenta": COHENTA_MARKETING_TOOLS,
     "decimas": DECIMAS_TRADING_TOOLS,
@@ -112,8 +113,14 @@ _CODNA_FEATURE_TOOLS: dict[str, frozenset[str]] = {
     "apply": frozenset({"apply_repository"}),
 }
 
-PRODUCT_BASE_TOOLS: dict[str, frozenset[str]] = {"codna": _CODNA_BASE_TOOLS}
-PRODUCT_FEATURE_TOOLS: dict[str, dict[str, frozenset[str]]] = {"codna": _CODNA_FEATURE_TOOLS}
+PRODUCT_BASE_TOOLS: dict[str, frozenset[str]] = {
+    "algenta": _CODNA_BASE_TOOLS,
+    "codna": _CODNA_BASE_TOOLS,
+}
+PRODUCT_FEATURE_TOOLS: dict[str, dict[str, frozenset[str]]] = {
+    "algenta": _CODNA_FEATURE_TOOLS,
+    "codna": _CODNA_FEATURE_TOOLS,
+}
 
 
 def product_allowlist(product: str | None) -> frozenset[str] | None:
