@@ -52,9 +52,11 @@ from apps.api_server.schemas.tenant_keys import (
     SetProviderKeyRequest,
 )
 from apps.api_server.services import tenant_key_management as tk_mgmt
+from apps.api_server.services.byok_org_resolver import ensure_identity_link
 from apps.api_server.services.supabase_auth import (
     SERVICE_ERROR_CODES,
     SupabaseAuthError,
+    extract_identity,
     verify_supabase_jwt,
 )
 from apps.api_server.services.user_service import activate_product_free_tier
@@ -679,6 +681,18 @@ async def _do_product_onboard(
     name = payload.name or meta.get("full_name") or meta.get("name") or meta.get("user_name")
 
     org, user = await activate_product_free_tier(db, product=cfg.id, email=email, name=name)
+
+    # Bind this Supabase identity to the onboarded org so the website (accounts.thyn.ai)
+    # billing/portal — which resolves PROVIDER-AGNOSTICALLY by the Supabase uid, not by email —
+    # converges on this SAME org. Without the link a google/apple/microsoft user who onboards via
+    # `<product> login` (email-keyed org) would resolve to a DIFFERENT org (a duplicate
+    # auto-provisioned `sb-user-{uid}` org, or a no_org 403), splitting devices/keys from the
+    # subscription. Best-effort; never blocks onboarding.
+    try:
+        uid = extract_identity(claims)["supabase_uid"]
+        await ensure_identity_link(db, supabase_uid=uid, org_id=org.id)
+    except (SupabaseAuthError, KeyError) as exc:  # blank/missing sub — link is best-effort
+        logger.warning("product_onboard_identity_link_skipped", product=cfg.id, error=str(exc))
 
     raw_key, key_prefix, hashed_key = generate_api_key()
     api_key = APIKey(

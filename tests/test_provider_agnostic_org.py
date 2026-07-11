@@ -172,3 +172,32 @@ async def test_github_org_adopted_then_other_provider_resolves_same_org() -> Non
             await s.execute(select(Organization).where(Organization.slug == f"sb-user-{uid}"))
         ).scalar_one_or_none()
     assert sb_org is None
+
+
+# ── CLI onboard (`<product> login`, email-keyed org) writes the identity link → website checkout
+#    converges on the SAME org (no split-brain, no duplicate) for a non-github provider ─────────────
+@pytest.mark.anyio
+async def test_cli_onboard_links_org_so_website_resolve_converges() -> None:
+    from apps.api_server.services.user_service import activate_product_free_tier
+
+    uid = f"sb-{uuid.uuid4().hex}"
+    email = f"conv-{uuid.uuid4().hex}@gmail.com"
+    # `algenta login`: activate the free tier (org resolved/created BY EMAIL) + bind the supabase uid —
+    # exactly what the onboarding router now does after activate_product_free_tier.
+    async with AsyncSessionLocal() as s:
+        org, _user = await activate_product_free_tier(s, product="algenta", email=email)
+        onboarded_id = org.id
+        await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=onboarded_id)
+        await s.commit()
+    # Website billing resolves PROVIDER-AGNOSTICALLY by the supabase uid. Even with auto_provision ON it
+    # must return the SAME onboarded org via the link — never mint a second `sb-user-{uid}` org.
+    async with AsyncSessionLocal() as s:
+        resolved = await byok_org_resolver.resolve_org_for_supabase_user(
+            s, supabase_uid=uid, email=email, auto_provision=True
+        )
+    assert resolved.id == onboarded_id
+    async with AsyncSessionLocal() as s:
+        dup = (
+            await s.execute(select(Organization).where(Organization.slug == f"sb-user-{uid}"))
+        ).scalar_one_or_none()
+    assert dup is None, "auto_provision minted a duplicate org despite an existing identity link"

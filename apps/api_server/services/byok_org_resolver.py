@@ -232,10 +232,17 @@ async def _org_for_identity_link(db: AsyncSession, supabase_uid: str) -> Organiz
     return await _org_by_id(db, link.org_id)
 
 
-async def _ensure_identity_link(db: AsyncSession, *, supabase_uid: str, org_id: uuid.UUID) -> None:
-    """Point this Supabase identity at ``org_id`` (adopt-legacy / first-provision). Idempotent + race
-    safe: no-op if a link already exists; a concurrent insert rolls back only the SAVEPOINT (never the
-    outer transaction), so the winner's row stands. Best-effort — a link failure never blocks resolution."""
+async def ensure_identity_link(db: AsyncSession, *, supabase_uid: str, org_id: uuid.UUID) -> None:
+    """Point this Supabase identity at ``org_id`` (adopt-legacy / first-provision / CLI-onboard).
+
+    Idempotent + race safe: no-op if a link already exists; a concurrent insert rolls back only the
+    SAVEPOINT (never the outer transaction), so the winner's row stands. Best-effort — a link failure
+    never blocks resolution.
+
+    PUBLIC so the self-serve onboarding path (``<product> login``) can bind the just-created email-keyed
+    org to the caller's Supabase uid — without it a non-GitHub (google/apple/microsoft) user who onboards
+    via the CLI then upgrades on the website would resolve to a DIFFERENT org (an auto-provisioned
+    duplicate, or a no_org 403)."""
     from apps.api_server.models.identity_org_link import IdentityOrgLink
 
     existing = (
@@ -282,7 +289,7 @@ async def resolve_org_for_supabase_user(
             redis=redis,
             selected_org_id=selected_org_id,
         )
-        await _ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+        await ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
         return org
 
     linked = await _org_for_identity_link(db, supabase_uid)
@@ -291,7 +298,7 @@ async def resolve_org_for_supabase_user(
 
     if auto_provision:
         org = await provision_org_for_supabase_uid(db, supabase_uid=supabase_uid, email=email)
-        await _ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
+        await ensure_identity_link(db, supabase_uid=supabase_uid, org_id=org.id)
         return org
 
     raise OrgResolutionError(
