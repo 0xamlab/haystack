@@ -273,7 +273,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 
 | Method | Path | Summary |
 | --- | --- | --- |
-| `POST` | `/v1/credits/refresh` | Issue a new execution credit batch for a local runtime device |
+| `POST` | `/v1/credits/refresh` | Issue an execution credit batch to the bundled runtime |
 
 ## devices
 
@@ -288,4 +288,4 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 
 | Method | Path | Summary |
 | --- | --- | --- |
-| `POST` | `/v1/metering` | Ingest local runtime execution analytics |
+| `POST` | `/v1/metering` | Ingest bundled runtime execution analytics |

@@ -2969,10 +2969,10 @@ paths:
     post:
       tags:
       - credits
-      summary: Issue a new execution credit batch for a local runtime device
-      description: Called automatically by the local runtime daemon when its credit
-        pool drops below 10%.  Returns the number of credits granted and the expiry
-        timestamp.  Denied (HTTP 429) when the org's monthly quota is exhausted.
+      summary: Issue an execution credit batch to the bundled runtime
+      description: The bundled runtime calls this endpoint automatically when its credit
+        pool drops below 10%. Returns the number of credits granted and the expiry
+        timestamp. Denied (HTTP 429) when the organization's monthly quota is exhausted.
       operationId: refresh_credits_v1_credits_refresh_post
       requestBody:
         content:
@@ -2999,9 +2999,9 @@ paths:
     post:
       tags:
       - metering
-      summary: Ingest local runtime execution analytics
-      description: "Called by the local runtime daemon to flush buffered execution\
-        \ events. Analytics only \u2014 quota enforcement is handled by the credit\
+      summary: Ingest bundled runtime execution analytics
+      description: "The bundled runtime calls this endpoint automatically to flush buffered\
+        \ execution events. Analytics only \u2014 quota enforcement is handled by the credit\
         \ bucket. Events are structured-logged for the analytics pipeline."
       operationId: ingest_metering_events_v1_metering_post
       requestBody:

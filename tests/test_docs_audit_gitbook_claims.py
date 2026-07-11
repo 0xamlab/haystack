@@ -38,6 +38,7 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     assert report["summary"]["command_execution_percent"] == 0.0
     assert report["openapi_identity"]["algenta_title"] is True
     assert report["openapi_identity"]["cross_product_mentions"] == 0
+    assert report["openapi_identity"]["runtime_encapsulation_mentions"] == 0
 
     totals = report["totals"]
     summary = report["summary"]
@@ -60,6 +61,32 @@ def test_gitbook_a_z_source_audit_passes_without_live_network(tmp_path: Path) ->
     assert totals["fixes"] == summary["fixes"] == 0
     assert totals["skips"] == summary["skips"]
     assert totals["blockers"] == summary["blockers"] == 0
+
+
+def test_openapi_audit_rejects_user_managed_runtime_lifecycle_terms(
+    monkeypatch, tmp_path: Path
+) -> None:
+    audit = _load_module()
+    schema_dir = tmp_path / "schemas" / "openapi"
+    schema_dir.mkdir(parents=True)
+    (schema_dir / "openapi.yaml").write_text(
+        """openapi: 3.1.0
+info:
+  title: Algenta API
+  version: 1.0.0
+paths:
+  /v1/metering:
+    post:
+      description: Called by the local runtime daemon.
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(audit, "ROOT", tmp_path)
+
+    issues, report = audit._audit_openapi_public_identity()
+
+    assert [issue.code for issue in issues] == ["openapi_runtime_encapsulation_leak"]
+    assert report["runtime_encapsulation_mentions"] == 1
 
 
 def test_secret_scanner_rejects_concrete_bearer_tokens(tmp_path: Path) -> None:
