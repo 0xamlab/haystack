@@ -132,6 +132,40 @@ def test_app_only_token_yields_app_principal(_patch) -> None:
     assert principal.roles == ("Decision.Analyst",)
 
 
+def test_app_only_aud_is_bare_client_id_accepted_against_uri_config(_patch) -> None:
+    # Verified against a REAL Entra token: an app-only (client-credentials) token's `aud` is the bare
+    # client-id GUID, NOT the App ID URI. With ALGENTA_ENTRA_AUDIENCE="api://<id>" the gateway must
+    # STILL accept it — otherwise every service / managed-identity caller (a Foundry agent, scheduled
+    # eval, automated refresh) is rejected with wrong_audience.
+    bare = AUDIENCE[len("api://") :]  # "algenta-gateway"
+    principal = _verify(_token(aud=bare, scp=None, roles=["Decisions.Service"], idtyp="app"))
+    assert principal.principal_type == "app"
+    assert principal.roles == ("Decisions.Service",)
+
+
+def test_delegated_uri_aud_accepted_against_bare_client_id_config(_patch) -> None:
+    # Symmetric: configured with the bare client id, a delegated token carrying the App ID URI aud
+    # (api://<id>) is accepted too. One ALGENTA_ENTRA_AUDIENCE serves both identity shapes.
+    _patch.entra_audience = AUDIENCE[len("api://") :]  # configure the bare client id
+    principal = _verify(_token(aud=AUDIENCE))  # token aud = "api://algenta-gateway"
+    assert principal.tenant_id == TENANT
+
+
+def test_accepted_audiences_expands_uri_and_bare_both_directions(_patch) -> None:
+    from apps.api_server.services.entra_auth import _accepted_audiences
+
+    assert _accepted_audiences(_patch) == ["api://algenta-gateway", "algenta-gateway"]
+    _patch.entra_audience = "algenta-gateway"
+    assert _accepted_audiences(_patch) == ["algenta-gateway", "api://algenta-gateway"]
+
+
+def test_unrelated_audience_still_rejected(_patch) -> None:
+    # The URI<->bare expansion must NOT broaden acceptance to any OTHER audience.
+    with pytest.raises(EntraAuthError) as e:
+        _verify(_token(aud="api://some-other-api"))
+    assert e.value.code == "wrong_audience"
+
+
 def test_delegated_user_with_app_roles_but_no_scp_stays_user(_patch) -> None:
     # #321 review (HIGH): a delegated USER token under an app-role assignment carries roles +
     # no scp + no idtyp. It must classify as "user" (NOT "app") — the resolver would otherwise

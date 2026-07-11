@@ -139,6 +139,32 @@ def _allowed_client_apps(settings: Any) -> frozenset[str]:
     return frozenset(a.strip().lower() for a in raw.split(",") if a.strip())
 
 
+def _accepted_audiences(settings: Any) -> list[str]:
+    """Every audience string the Decision API accepts, from ``ALGENTA_ENTRA_AUDIENCE`` (comma-sep).
+
+    Entra issues DIFFERENT ``aud`` forms for the two identity shapes this service is built for:
+    a **delegated** (employee) token carries the App ID URI ``api://{client_id}``, while an
+    **app-only** (service / managed-identity, e.g. a Foundry agent) client-credentials token carries
+    the bare ``{client_id}`` GUID. Configuring only one would silently reject the other. So each
+    configured value is auto-expanded across that pair — set ``ALGENTA_ENTRA_AUDIENCE="api://{id}"``
+    (or the GUID) and BOTH shapes are accepted. Exact-match still holds; nothing else broadens."""
+    raw = (getattr(settings, "entra_audience", None) or "").strip()
+    out: list[str] = []
+    for a in (v.strip() for v in raw.split(",")):
+        if not a or a in out:
+            continue
+        out.append(a)
+        if a.lower().startswith("api://"):
+            bare = a[len("api://"):]
+            if bare and bare not in out:
+                out.append(bare)  # app-only client-credentials aud = the bare client id
+        else:
+            uri = f"api://{a}"
+            if uri not in out:
+                out.append(uri)  # delegated aud = the App ID URI form
+    return out
+
+
 async def _fetch_jwks(tenant_id: str, *, force: bool = False) -> PyJWKSet:
     if not force:
         cached = _jwks_cache.get(tenant_id)
@@ -213,8 +239,8 @@ async def verify_entra_token(token: str) -> EntraPrincipal:
 
     settings = get_settings()
     tenant = (getattr(settings, "entra_tenant_id", None) or "").strip()
-    audience = (getattr(settings, "entra_audience", None) or "").strip()
-    if not tenant or not audience:
+    audiences = _accepted_audiences(settings)  # App ID URI + bare client-id (both aud shapes)
+    if not tenant or not audiences:
         raise EntraAuthError("not_configured", "Entra identity is not configured on this gateway.")
 
     token = (token or "").strip()
@@ -242,7 +268,7 @@ async def verify_entra_token(token: str) -> EntraPrincipal:
             token,
             key,
             algorithms=["RS256"],  # Entra signs v2 access tokens with RS256; nothing else accepted
-            audience=audience,
+            audience=audiences,  # PyJWT accepts if aud matches ANY (URI or bare client id)
             issuer=issuer,
             options={"require": ["exp", "iss", "aud", "sub"]},
             leeway=_CLOCK_SKEW_S,
