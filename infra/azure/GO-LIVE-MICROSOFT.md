@@ -49,6 +49,20 @@ CONSENT=1 infra/azure/entra/configure-decision-api-app.sh        # also grant te
 by the engine's `verify_entra_token` (roles `Decisions.Service`, real tenant JWKS). The engine accepts
 both `aud` shapes — App ID URI (delegated) and bare client id (app-only) — see PR #356.
 
+## 1b. Onboard Entra principals (REQUIRED before any Entra caller works)
+
+A verified Entra token with no `active` mapping gets `403 principal_not_mapped` (fail-closed) — so
+every employee / Foundry managed-identity must be provisioned once. Run on the host (or with the
+gateway's DATABASE_URL), same as bootstrap:
+
+```bash
+python scripts/provision_entra_principal.py \
+  --tenant 7a0cd533-4d98-450c-bc3a-93cee1495e06 --oid <user-or-SP-objectId> \
+  --org-slug self-hosted-org --role admin --type app --display-name "Foundry agent"
+```
+`--oid` is the token's `oid` claim (an employee's user object id, or a Foundry/managed-identity's
+service-principal object id). Idempotent on (tenant, oid); `--status revoked` cuts access.
+
 ## 2. Gateway — turn Entra auth on (currently DARK)
 
 Set both on the `algenta-api` Container App, then it enforces audience + issuer + tenant on the
