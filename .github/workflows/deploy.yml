@@ -72,6 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           docker pull  "$SRC/api:$TAG"
+          bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push  "registry.fly.io/codna-api:$TAG"
           flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"

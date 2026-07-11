@@ -206,6 +206,34 @@ jobs:
       - name: Pack + fresh-project install + CJS/ESM/gRPC/strict-types smoke
         run: node scripts/verify_ts_sdk_artifact_install.mjs
 
+  # PR-safe production-image proof: build the API image without pushing or deploying, then prove
+  # the bundled Mojo worker supports the long-lived server mode the Fly API startup requires.
+  # The push-to-main deploy repeats the same smoke against the pushed GHCR image before Fly rollout.
+  api-image-mojo-smoke:
+    name: API image Mojo runtime smoke
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build API image locally
+        run: docker build --pull -f infra/docker/Dockerfile.api.prod -t algenta-api-smoke:pr .
+
+      - name: Verify bundled Mojo server mode
+        run: bash scripts/verify_api_image_mojo_server_mode.sh algenta-api-smoke:pr
+
   # ── Build Docker image ────────────────────────────────────────────────────
   build:
     name: Build & Push Docker
@@ -330,6 +358,9 @@ jobs:
       SRC: ghcr.io/${{ github.repository }}
       TAG: latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Install flyctl
         run: |
           curl -fsSL https://fly.io/install.sh | sh
@@ -349,6 +380,7 @@ jobs:
         run: |
           set -euo pipefail
           docker pull "$SRC/api:$TAG"
+          bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push "registry.fly.io/codna-api:$TAG"
           flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"

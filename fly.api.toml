@@ -20,6 +20,7 @@ primary_region = "iad"
   LOG_LEVEL = "info"
   RUNTIME_FALLBACK_MODE = "deny"
   MOJO_BINARY_PATH = "/app/mojo_build/simulate"
+  MOJO_ALLOW_SUBPROCESS_FALLBACK = "false"
   RESULT_STORAGE_ENABLED = "true"
   # Durable artifacts + cross-replica reads via Tigris (S3 API). Creds are secrets (S3_*).
   ALGENTA_RI_OBJECT_STORE = "s3"

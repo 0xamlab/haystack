@@ -17,7 +17,7 @@
 ARG SIDECAR_IMAGE=ghcr.io/thyn-ai/codna/sidecar@sha256:4a7e873277e3c805e2744cba0dc3e0f192dea5944c2389570361c2dc8a9bca0b
 # The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
 # linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
-ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-4b360dd
+ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-53359d3
 FROM ${SIDECAR_IMAGE} AS sidecar
 FROM ${MOJO_IMAGE} AS mojo
 
@@ -60,7 +60,10 @@ COPY --from=builder /build/context/build/llm_rollout_proof_bundle.json \
 # RUNTIME_FALLBACK_MODE=deny relies on this being a working binary (no Python fallback).
 COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
 COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
-RUN chmod +x /app/mojo_build/simulate
+# Mojo embeds its build-time Python prefix for stdlib bootstrap. Preserve that
+# path as a read-only symlink instead of setting PYTHONHOME globally, which
+# would corrupt the worker's Python 3.14 runtime.
+RUN mkdir -p /build && ln -s /app/mojo_env /build/mojo_env && chmod +x /app/mojo_build/simulate
 
 # Bun runtime + the prebuilt agent-core sidecar from the codna image
 COPY --from=sidecar /usr/local/bin/bun /usr/local/bin/bun
@@ -72,6 +75,8 @@ RUN chmod +x /usr/local/bin/engine-entrypoint.sh
 RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
 ENV HOME=/home/app \
     MOJO_BINARY_PATH=/app/mojo_build/simulate \
+    RUNTIME_FALLBACK_MODE=deny \
+    MOJO_ALLOW_SUBPROCESS_FALLBACK=false \
     AGENT_CORE_HOST=0.0.0.0 \
     AGENT_CORE_PORT=8787
 USER app

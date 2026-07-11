@@ -1,6 +1,6 @@
 # The real Mojo engine binary, built by build-mojo.yml on linux/amd64 (core-filtered dispatch,
 # linked against the bundled GNU libstdc++). Pinned by tag; bump when the kernel is rebuilt.
-ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-4b360dd
+ARG MOJO_IMAGE=ghcr.io/thyn-ai/algenta/mojo:git-53359d3
 FROM ${MOJO_IMAGE} AS mojo
 
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
@@ -61,14 +61,18 @@ COPY --from=builder /build/context/build/llm_rollout_proof_bundle.json \
 COPY --from=mojo /app/mojo_build/simulate /app/mojo_build/simulate
 COPY --from=mojo /app/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
 
-# Ensure the Mojo binary stays executable.
-RUN chmod +x /app/mojo_build/simulate
+# Mojo embeds its build-time Python prefix for stdlib bootstrap. Preserve that
+# path as a read-only symlink instead of setting PYTHONHOME globally, which
+# would corrupt the API's Python 3.14 runtime.
+RUN mkdir -p /build && ln -s /app/mojo_env /build/mojo_env && chmod +x /app/mojo_build/simulate
 
 # Set ownership
 RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
 
 ENV HOME=/home/app \
-    MOJO_BINARY_PATH=/app/mojo_build/simulate
+    MOJO_BINARY_PATH=/app/mojo_build/simulate \
+    RUNTIME_FALLBACK_MODE=deny \
+    MOJO_ALLOW_SUBPROCESS_FALLBACK=false
 
 USER app
 
