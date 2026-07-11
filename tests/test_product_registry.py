@@ -49,7 +49,7 @@ def test_rs256_products_set():
 def test_product_flags_default_safe():
     assert pr.product_flag("telys", "device_login") is True
     assert pr.product_flag("codna", "device_login") is False
-    assert pr.product_flag("algenta", "billing") is False  # ships dark
+    assert pr.product_flag("algenta", "billing") is True  # live (credential gate is the real switch)
     assert pr.product_flag("algenta", "device_login") is True
     # unknown product / unknown flag → the supplied default, never a crash
     assert pr.product_flag("ghost", "device_login") is False
@@ -120,12 +120,14 @@ def test_every_paid_plan_is_dormant_exempt():
 
 def test_every_team_tier_is_multi_seat():
     # A *_team tier that isn't multi-seat caps the org at the owner alone — the paid team plan can't add
-    # teammates. Every team-shaped plan (name == 'team' or endswith '_team') must be multi-seat.
-    from apps.api_server.services.team_seats import _MULTI_SEAT_PLANS
+    # teammates. Every team-shaped plan (name == 'team' or endswith '_team') must be multi-seat. Uses the
+    # public is_multi_seat() so per-DEVICE team plans (algenta_team: fixed 15-seat bundle, billed by
+    # device not seat) still count — they're multi-member even though not in the per-seat _MULTI_SEAT set.
+    from apps.api_server.services.team_seats import is_multi_seat
 
     for name in plan_limits._PLANS:
         if name == "team" or name.endswith("_team"):
-            assert name in _MULTI_SEAT_PLANS, f"team plan {name!r} not multi-seat → owner can't add teammates"
+            assert is_multi_seat(name), f"team plan {name!r} not multi-seat → owner can't add teammates"
 
 
 def test_platform_license_constants_shared_across_brands():

@@ -126,12 +126,13 @@ class TestAlgentaPriceResolution:
         assert PLAN_PRICE_IDS["algenta_free"] is None
 
 
-# ── product-scoped billing gate: algenta ships DARK; codna/telys are live ───────────────────────
+# ── product-scoped billing gate: ALL brands billing-on; the credential gate is the real dark switch ─
 class TestBillingGate:
-    def test_algenta_billing_is_gated_off(self):
-        # The checkout handlers refuse a plan whose product's `billing` flag is off. Algenta is dark.
-        assert product_flag(product_for_plan("algenta_pro"), "billing", default=True) is False
-        assert product_flag(product_for_plan("algenta_team"), "billing", default=True) is False
+    def test_algenta_billing_flag_is_on(self):
+        # Algenta billing is now live at the product level (per-device Pro/Team are in Stripe). The
+        # effective dark switch is credential-based: billing_configured() gates on a real Stripe key.
+        assert product_flag(product_for_plan("algenta_pro"), "billing", default=True) is True
+        assert product_flag(product_for_plan("algenta_team"), "billing", default=True) is True
 
     def test_codna_and_telys_billing_are_live(self):
         assert product_flag(product_for_plan("pro"), "billing", default=True) is True

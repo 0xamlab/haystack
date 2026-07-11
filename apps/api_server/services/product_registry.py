@@ -108,9 +108,11 @@ _PRODUCTS: dict[str, ProductConfig] = {
         rs256_license=True,
         feature_flags={"billing": True, "device_login": True},
     ),
-    # Algenta — the engine itself, going live as a first-class product. Bundled in-process native runtime,
-    # RS256 platform license, device-login, self-serve free tier. Billing ships dark (Stripe test-mode
-    # first) via the ``billing`` flag; OEM minting is separate infra (not a product flag).
+    # Algenta — the engine itself, live as a first-class product. Bundled in-process native runtime,
+    # RS256 platform license, device-login, self-serve free tier. Billing is ON (per-device Pro/Team are
+    # live in Stripe); the effective dark switch is now credential-based — billing_configured() gates on
+    # a real (non-placeholder) Stripe key, so a deploy without real keys still refuses checkout. OEM
+    # minting is separate infra (not a product flag).
     "algenta": ProductConfig(
         id="algenta",
         display_name="Algenta",
@@ -122,7 +124,7 @@ _PRODUCTS: dict[str, ProductConfig] = {
         mcp_server_name="io.github.thyn-ai/algenta",
         public_api_base="https://api.algenta.ai",
         rs256_license=True,
-        feature_flags={"billing": False, "device_login": True},
+        feature_flags={"billing": True, "device_login": True},
     ),
 }
 
