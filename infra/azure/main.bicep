@@ -21,6 +21,12 @@
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
+@description('Location for PostgreSQL Flexible Server. Defaults to `location`; override when the subscription is offer-restricted for Postgres in the primary region (LocationIsOfferRestricted).')
+param postgresLocation string = location
+
+@description('Optional extra suffix for the PostgreSQL server name — use to sidestep the global (DNS) name reservation Azure holds after a failed/deleted flexible server.')
+param pgNameSuffix string = ''
+
 @description('Short prefix for resource names (3-12 lowercase alphanumerics).')
 @minLength(3)
 @maxLength(12)
@@ -62,7 +68,7 @@ param acrLoginServer string = ''
 var suffix = uniqueString(resourceGroup().id)
 var kvName = take('${namePrefix}kv${suffix}', 24)
 var saName = take('${namePrefix}sa${suffix}', 24)
-var pgName = '${namePrefix}-pg-${suffix}'
+var pgName = '${namePrefix}-pg-${suffix}${pgNameSuffix}'
 var dbName = 'decision_engine'
 var blobContainer = 'artifacts'
 
@@ -191,7 +197,7 @@ resource storageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
   name: pgName
-  location: location
+  location: postgresLocation
   sku: { name: 'Standard_B1ms', tier: 'Burstable' }
   properties: {
     version: '16'
