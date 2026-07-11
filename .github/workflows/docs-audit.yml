@@ -56,5 +56,6 @@ jobs:
           python3 scripts/docs/audit_gitbook_claims.py
           --source gitbook
           --skip-live
+          --execute-safe-commands
           --strict
           --json-report build/docs-audit/gitbook-a-z-source.json

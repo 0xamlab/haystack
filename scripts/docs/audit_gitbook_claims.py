@@ -23,13 +23,14 @@ import hashlib
 import json
 import re
 import subprocess
+import tempfile
 import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -461,13 +462,77 @@ def _logical_shell_commands(body: str, *, start_line: int = 1) -> list[ShellComm
     return commands
 
 
+def _is_safe_relative_output_path(value: str) -> bool:
+    path = PurePosixPath(value)
+    return bool(value) and not path.is_absolute() and ".." not in path.parts
+
+
+def _is_provably_safe_static_shell_command(command: str) -> bool:
+    stripped = command.strip()
+    if stripped.startswith("export "):
+        if "$" in stripped or "`" in stripped:
+            return False
+        return bool(
+            re.fullmatch(
+                r"export\s+[A-Za-z_][A-Za-z0-9_]*="
+                r'(?:"[^"\n]*"|\'[^\'\n]*\'|[^\s;&|<>]+)(?:\s+#.*)?',
+                stripped,
+            )
+        )
+
+    if stripped.startswith("echo "):
+        match = re.fullmatch(
+            r"echo\s+"
+            r"(?P<payload>'[^'\n]*'|\"[^\"\n]*\"|[A-Za-z0-9_.,:/@%+=-]+)"
+            r"(?:\s+>>?\s+(?P<output>[A-Za-z0-9._/-]+))?",
+            stripped,
+        )
+        if not match or "$" in stripped or "`" in stripped or "\\" in stripped:
+            return False
+        output = match.group("output")
+        return output is None or _is_safe_relative_output_path(output)
+
+    if stripped.startswith("cat "):
+        lines = stripped.splitlines()
+        if len(lines) < 3 or "`" in stripped:
+            return False
+        header = re.fullmatch(
+            r"cat\s+>\s+([A-Za-z0-9._/-]+)\s+<<'([A-Za-z0-9_]+)'",
+            lines[0].strip(),
+        )
+        return bool(
+            header
+            and _is_safe_relative_output_path(header.group(1))
+            and lines[-1].strip() == header.group(2)
+            and sum(line.strip() == header.group(2) for line in lines[1:]) == 1
+        )
+
+    return False
+
+
 def _classify_shell_command(command: str) -> str:
     lowered = command.lower()
-    if any(token in lowered for token in (" rm ", " rm -", " delete ", " revoke ", "destroy")):
+    destructive_verb = re.search(
+        r"(?:^|[\s;&|()])(?:sudo\s+)?rm(?:\s|$)|\b(?:delete|destroy|drop|revoke|truncate|unlink)\b",
+        lowered,
+    )
+    if destructive_verb:
         return "destructive_mutation"
-    if re.search(r"\bcurl\b", lowered) and re.search(
-        r"\b(-x|--request)\s+(post|put|patch|delete)\b", lowered
-    ):
+    curl_mutation = re.search(r"\bcurl\b", lowered) and (
+        re.search(
+            r"(?:^|\s)(?:-x|--request)\s+(?:post|put|patch|delete)\b", lowered
+        )
+        or re.search(
+            r"(?:^|\s)(?:-d|--data(?:-[a-z-]+)?|--json|--form|--upload-file)(?:\s|=)",
+            lowered,
+        )
+        or re.search(r"(?:^|\s)(?:-F|-T)(?:\s|=)", command)
+    )
+    cli_mutation = lowered.startswith("de ") and re.search(
+        r"\b(?:approve|cancel|connect|create|disconnect|execute|fire|login|logout|pause|refresh|resume|set-key|submit|update)\b",
+        lowered,
+    )
+    if curl_mutation or cli_mutation:
         return "external_or_mutating"
     if any(
         token in lowered
@@ -481,8 +546,12 @@ def _classify_shell_command(command: str) -> str:
         )
     ):
         return "environment_mutating"
-    if lowered.startswith("export ") or lowered.startswith("echo ") or lowered.startswith("cat "):
-        return "safe_static"
+    if lowered.startswith(("export ", "echo ", "cat ")):
+        if _is_provably_safe_static_shell_command(command):
+            return "safe_static"
+        if "$" in command or "`" in command:
+            return "requires_environment"
+        return "static_only"
     if lowered.startswith(
         ("curl ", "python3 ", "python ", "de ", "algenta ", "codex ", "claude ", "npx ")
     ):
@@ -508,6 +577,102 @@ def _validate_shell_command(rel_path: str, command: ShellCommand) -> Issue | Non
         command.line,
         {"stderr": result.stderr.strip()[:300]},
     )
+
+
+def _execute_safe_shell_command(
+    command: str, rel_path: str, line: int
+) -> tuple[Issue | None, dict[str, Any]]:
+    if not _is_provably_safe_static_shell_command(command):
+        return (
+            Issue(
+                "ERROR",
+                "unsafe_command_execution_refused",
+                "Command classified for execution did not satisfy the safe-static contract.",
+                rel_path,
+                line,
+            ),
+            {"execution_attempted": False, "executed": False, "execution_status": "refused"},
+        )
+
+    with tempfile.TemporaryDirectory(prefix="algenta-docs-command-") as temp_dir:
+        root = Path(temp_dir)
+        env = {
+            "BASH_ENV": "/dev/null",
+            "ENV": "/dev/null",
+            "HOME": str(root),
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/bin:/bin",
+            "TMPDIR": str(root),
+        }
+        try:
+            result = subprocess.run(  # noqa: S603 - strict allowlist and isolated environment.
+                [
+                    "/bin/bash",
+                    "--noprofile",
+                    "--norc",
+                    "-e",
+                    "-u",
+                    "-o",
+                    "pipefail",
+                    "-c",
+                    f"umask 077\n{command}",
+                ],
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return (
+                Issue(
+                    "ERROR",
+                    "safe_command_execution_timeout",
+                    "Safe-static command exceeded the five-second execution limit.",
+                    rel_path,
+                    line,
+                ),
+                {
+                    "execution_attempted": True,
+                    "executed": False,
+                    "execution_status": "timeout",
+                },
+            )
+
+        created_files = []
+        for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+            data = path.read_bytes()
+            created_files.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "bytes": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                }
+            )
+        execution = {
+            "execution_attempted": True,
+            "executed": result.returncode == 0,
+            "execution_status": "pass" if result.returncode == 0 else "fail",
+            "execution_exit_code": result.returncode,
+            "stdout_bytes": len(result.stdout.encode("utf-8")),
+            "stdout_sha256": hashlib.sha256(result.stdout.encode("utf-8")).hexdigest(),
+            "files_created": created_files,
+        }
+        if result.returncode == 0:
+            return None, execution
+        return (
+            Issue(
+                "ERROR",
+                "safe_command_execution_failed",
+                "Safe-static command failed in its isolated execution environment.",
+                rel_path,
+                line,
+                {"exit_code": result.returncode},
+            ),
+            execution,
+        )
 
 
 def _is_placeholder_secret(value: str) -> bool:
@@ -1876,7 +2041,12 @@ def _audit_live(
     return issues, result
 
 
-def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, Any]:
+def run_audit(
+    source: Path,
+    live_url: str | None,
+    skip_live: bool,
+    execute_safe_commands: bool = False,
+) -> dict[str, Any]:
     source = source.resolve()
     pages = _markdown_pages(source)
     all_pages = {page.resolve() for page in pages}
@@ -1931,6 +2101,20 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
         for product, value in page_report["product_claims"].items():
             totals["product_claims"][product] += value
 
+    executed_commands = 0
+    if execute_safe_commands:
+        for row in evidence["shell_commands"]:
+            if row["classification"] != "safe_static" or not row["syntax_valid"]:
+                continue
+            execution_issue, execution = _execute_safe_shell_command(
+                row["command"], row["path"], row["line"]
+            )
+            row.update(execution)
+            if execution_issue:
+                issues.append(execution_issue)
+            elif execution["executed"]:
+                executed_commands += 1
+
     agent_issues, agent_report = _audit_agent_readability(source, pages)
     issues.extend(agent_issues)
     source_claim_issues, source_claim_report = _audit_source_claims(source, pages)
@@ -1965,13 +2149,20 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
     shell_syntax_validated_commands = sum(
         1 for row in evidence["shell_commands"] if row["syntax_valid"]
     )
+    runnable_commands = int(totals["safe_static_commands"])
+    command_execution_percent = (
+        round(executed_commands * 100 / runnable_commands, 4)
+        if runnable_commands
+        else (100.0 if execute_safe_commands else 0.0)
+    )
     totals.update(
         {
             "claim_mentions": claim_mentions,
-            "runnable_commands": totals["safe_static_commands"],
+            "runnable_commands": runnable_commands,
             "static_or_guarded_commands": static_only,
             "guarded_commands": static_only,
-            "executed_commands": 0,
+            "executed_commands": executed_commands,
+            "unexecuted_runnable_commands": runnable_commands - executed_commands,
             "command_classification_percent": 100.0 if totals["shell_commands"] else 100.0,
             "shell_syntax_validated_commands": shell_syntax_validated_commands,
             "shell_syntax_validation_percent": (
@@ -1979,7 +2170,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
                 if totals["shell_commands"]
                 else 100.0
             ),
-            "command_execution_percent": 0.0,
+            "command_execution_percent": command_execution_percent,
             "source_items_inventoried": source_items_inventoried,
             "source_inventory_percent": 100.0,
             "unique_endpoint_operations": len(unique_endpoint_operations),
@@ -2000,6 +2191,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
             "shell_commands": totals["shell_commands"],
             "runnable_safe_commands": totals["safe_static_commands"],
             "static_or_guarded_commands": static_only,
+            "executed_safe_commands": totals["executed_commands"],
         },
         "agent_readability": agent_report,
         "source_claims": source_claim_report,
@@ -2022,6 +2214,8 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
             "links_checked": totals["links"],
             "snippets_checked": totals["code_fences"],
             "commands_classified": totals["shell_commands"],
+            "commands_executed": totals["executed_commands"],
+            "commands_unexecuted": totals["unexecuted_runnable_commands"],
             "blockers": totals["blockers"],
             "claim_mentions": claim_mentions,
             "endpoint_mentions": totals["endpoint_mentions"],
@@ -2045,6 +2239,11 @@ def main() -> int:
     )
     parser.add_argument("--skip-live", action="store_true", help="Disable network checks.")
     parser.add_argument(
+        "--execute-safe-commands",
+        action="store_true",
+        help="Execute only provably safe literal shell commands in isolated temporary directories.",
+    )
+    parser.add_argument(
         "--strict", action="store_true", help="Exit non-zero when any ERROR is found."
     )
     parser.add_argument(
@@ -2052,7 +2251,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    report = run_audit(Path(args.source), args.live.strip() or None, args.skip_live)
+    report = run_audit(
+        Path(args.source),
+        args.live.strip() or None,
+        args.skip_live,
+        execute_safe_commands=args.execute_safe_commands,
+    )
     if args.json_report:
         out_path = Path(args.json_report)
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2066,6 +2270,7 @@ def main() -> int:
         f"links={summary['links_checked']} "
         f"snippets={summary['snippets_checked']} "
         f"commands={summary['commands_classified']} "
+        f"executed={summary['commands_executed']} "
         f"claims={summary['claim_mentions']} "
         f"failures={summary['failures']} "
         f"warnings={summary['warnings']} "

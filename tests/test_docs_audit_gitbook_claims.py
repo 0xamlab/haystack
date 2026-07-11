@@ -227,6 +227,73 @@ done
     assert all(audit._validate_shell_command("page.md", command) is None for command in commands)
 
 
+def test_shell_classifier_guards_environment_references_and_command_substitutions() -> None:
+    audit = _load_module()
+    cases = {
+        'export ALGENTA_BASE_URL="https://api.algenta.ai"': "safe_static",
+        "echo '{\"org_name\": \"Acme\"}' > rename.json": "safe_static",
+        "echo 'safe & literal' > safe.txt": "safe_static",
+        "cat > request.json <<'JSON'\n{\"ok\": true}\nJSON": "safe_static",
+        'export ALGENTA_API_KEY="$ALGENTA_API_KEY"': "requires_environment",
+        'echo "confidence=$confidence"': "requires_environment",
+        'export GATEWAY_URL="$(az deployment group show)"': "requires_environment",
+        'export KEY="$(openssl rand -hex 32)"': "requires_environment",
+        "echo unsafe > /tmp/out": "static_only",
+        "echo unsafe & touch escaped": "static_only",
+        "echo unsafe > >(touch escaped)": "static_only",
+        "cat > ../out <<'TXT'\nunsafe\nTXT": "static_only",
+        (
+            "cat > out.json <<'JSON'\n{}\nJSON\n"
+            "echo escaped > escaped.txt\nJSON"
+        ): "static_only",
+        "curl -X POST https://api.example/v1/items": "external_or_mutating",
+        "curl https://api.example/v1/items --json '{}'": "external_or_mutating",
+        "curl https://api.example/v1/items -d '{}'": "external_or_mutating",
+        "de keys create CI": "external_or_mutating",
+        "de data refresh dataset_123": "external_or_mutating",
+        "rm -rf build": "destructive_mutation",
+        "sudo rm -rf build": "destructive_mutation",
+    }
+
+    assert {command: audit._classify_shell_command(command) for command in cases} == cases
+
+
+def test_safe_shell_executor_isolated_file_generation() -> None:
+    audit = _load_module()
+    command = "cat > request.json <<'JSON'\n{\"ok\": true}\nJSON"
+
+    issue, execution = audit._execute_safe_shell_command(command, "page.md", 12)
+
+    assert issue is None
+    assert execution["execution_attempted"] is True
+    assert execution["executed"] is True
+    assert execution["execution_status"] == "pass"
+    assert execution["execution_exit_code"] == 0
+    assert execution["files_created"] == [
+        {
+            "path": "request.json",
+            "bytes": 13,
+            "sha256": "55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3",
+        }
+    ]
+
+
+def test_safe_shell_executor_refuses_environment_dependent_command() -> None:
+    audit = _load_module()
+
+    issue, execution = audit._execute_safe_shell_command(
+        'export ALGENTA_API_KEY="$ALGENTA_API_KEY"', "page.md", 12
+    )
+
+    assert issue is not None
+    assert issue.code == "unsafe_command_execution_refused"
+    assert execution == {
+        "execution_attempted": False,
+        "executed": False,
+        "execution_status": "refused",
+    }
+
+
 def test_endpoint_inventory_scopes_external_urls_and_route_families() -> None:
     audit = _load_module()
     text = """POST /v1/repositories/{repository_id}/triage
