@@ -17,7 +17,7 @@ Two altitudes are available. `simulate`, `recommend`, `score`, `batch`, and `com
 
 | Tool | What it does | Key inputs |
 |------|--------------|------------|
-| `simulate` | Run a Monte Carlo simulation and return a structured recommendation. | `variables` (required; each `name`, `low`, `high`, optional `mode`); `mode` (`auto`\|`expert`), `objective` (`maximize`\|`minimize`\|`maximize_net_value`), `n_simulations` (default 10000) |
+| `simulate` | Run a Monte Carlo simulation and return a structured recommendation. | `variables` (required; each `name`, `low`, `high`, optional `mode`); `mode` (`auto`\|`expert`), `objective` (`maximize_net_value`\|`maximize_revenue`\|`minimize_cost`\|`minimize_risk`\|`maximize_score`) for `auto`, `objective_function` for `expert`, `n_simulations` (default 10000) |
 | `recommend` | Compare named options and return a ranked recommendation. | `actions` (required; min 2; `name`, `variables`, `objective`); `n_simulations` |
 | `score` | Score one simulation request with explicit weights, returning the envelope plus a score breakdown. | `request` (required); `scoring_weights` |
 | `batch` | Run multiple simulation requests in one call with per-item success/failure. | `items` (required; min 1) |
@@ -94,8 +94,10 @@ In `auto` mode, `simulate` needs only your `variables` (each a triangular range)
 curl -sS "$ALGENTA_BASE_URL/v1/simulate" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "mode": "auto", "n_simulations": 10000, "scenario": { "variables": { "revenue": { "low": 80000, "high": 200000 } }, "objective": "maximize_net_value" } }'
+  -d '{ "mode": "auto", "runs": 10000, "scenario": { "variables": { "revenue": { "low": 80000, "high": 200000 }, "cost": { "low": 40000, "high": 90000 } }, "objective": "maximize_net_value" } }'
 ```
+
+For `expert` mode, pass an explicit `objective_function` expression and include `mode` on each variable so the MCP server can send a valid triangular distribution to `/v1/simulate`.
 
 ### Forecast a metric with the product helper
 

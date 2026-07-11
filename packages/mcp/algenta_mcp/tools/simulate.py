@@ -25,13 +25,30 @@ SPEC: dict[str, Any] = {
             },
             "objective": {
                 "type": "string",
-                "enum": ["maximize", "minimize", "maximize_net_value"],
-                "default": "maximize",
+                "enum": [
+                    "maximize_net_value",
+                    "maximize_revenue",
+                    "minimize_cost",
+                    "minimize_risk",
+                    "maximize_score",
+                ],
+                "default": "maximize_net_value",
+                "description": "Auto-mode objective. For expert mode, use objective_function.",
+            },
+            "objective_function": {
+                "type": "string",
+                "description": (
+                    "Expert-mode expression, for example 'revenue - cost'. "
+                    "Required when mode='expert'."
+                ),
             },
             "n_simulations": {
                 "type": "integer",
                 "default": 10000,
-                "description": "Monte Carlo iteration count (1,000–1,000,000)",
+                "description": (
+                    "Monte Carlo iteration count. Auto mode accepts 100–100,000; "
+                    "expert mode accepts 100–1,000,000."
+                ),
             },
             "variables": {
                 "type": "array",
@@ -55,19 +72,52 @@ SPEC: dict[str, Any] = {
 }
 
 
+def _error(code: str, message: str) -> str:
+    return json.dumps({"error": {"code": code, "message": message}})
+
+
+def _number(value: Any, *, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise ValueError(f"{field} must be a number")
+    return float(value)
+
+
+def _name(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("variable name must be a non-empty string")
+    return value.strip()
+
+
+_AUTO_OBJECTIVES = {
+    "maximize_net_value",
+    "maximize_revenue",
+    "minimize_cost",
+    "minimize_risk",
+    "maximize_score",
+}
+
+
 async def handler(arguments: dict[str, Any]) -> str:
     variables_raw = arguments.get("variables", [])
-    variables = (
-        [item for item in variables_raw if isinstance(item, dict)]
-        if isinstance(variables_raw, list)
-        else []
-    )
+    if not isinstance(variables_raw, list) or not all(
+        isinstance(item, dict) for item in variables_raw
+    ):
+        return _error("invalid_argument", "variables must be an array of objects")
+    variables = variables_raw
     mode = arguments.get("mode", "auto")
-    objective = arguments.get("objective", "maximize")
-    n_sims = int(arguments.get("n_simulations", 10000))
+    objective = arguments.get("objective", "maximize_net_value")
+    try:
+        n_sims = int(arguments.get("n_simulations", 10000))
+    except (TypeError, ValueError):
+        return _error("invalid_argument", "n_simulations must be an integer")
+
+    if mode not in {"auto", "expert"}:
+        return _error("invalid_argument", "mode must be 'auto' or 'expert'")
+    if mode == "auto" and (not isinstance(objective, str) or objective not in _AUTO_OBJECTIVES):
+        return _error("invalid_argument", "objective must be a supported auto-mode objective")
 
     if not variables:
-        return json.dumps({"error": "variables is required"})
+        return _error("invalid_argument", "variables is required")
 
     payload: dict[str, Any] = {
         "mode": mode,
@@ -76,13 +126,39 @@ async def handler(arguments: dict[str, Any]) -> str:
 
     if mode == "auto":
         var_dict: dict[str, dict[str, Any]] = {}
-        for v in variables:
-            var_dict[v["name"]] = {"low": v["low"], "high": v["high"]}
+        try:
+            for v in variables:
+                var_dict[_name(v.get("name"))] = {
+                    "low": _number(v.get("low"), field="variable.low"),
+                    "high": _number(v.get("high"), field="variable.high"),
+                }
+        except ValueError as exc:
+            return _error("invalid_argument", str(exc))
         payload["scenario"] = {"variables": var_dict, "objective": objective}
     else:
-        # Expert mode — pass through as-is
-        payload["variables"] = variables
-        payload["objective_function"] = objective
+        objective_function = arguments.get("objective_function")
+        if not isinstance(objective_function, str) or not objective_function.strip():
+            return _error("invalid_argument", "expert mode requires objective_function")
+        expert_variables: list[dict[str, Any]] = []
+        try:
+            for v in variables:
+                expert_variables.append(
+                    {
+                        "name": _name(v.get("name")),
+                        "distribution": "triangular",
+                        "params": {
+                            "low": _number(v.get("low"), field="variable.low"),
+                            "mode": _number(v.get("mode"), field="variable.mode"),
+                            "high": _number(v.get("high"), field="variable.high"),
+                        },
+                    }
+                )
+        except ValueError as exc:
+            return _error("invalid_argument", str(exc))
+        payload["simulation"] = {
+            "variables": expert_variables,
+            "objective_function": objective_function.strip(),
+        }
 
     result = await api("POST", "/v1/simulate", json=payload)
 
