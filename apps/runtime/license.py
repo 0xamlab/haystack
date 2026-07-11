@@ -458,6 +458,41 @@ def _make_invalid_license(message: str, *, api_key: str = "") -> DeviceLicense:
     )
 
 
+def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLicense:
+    """Free-forever Community fallback for a lapsed/expired PAID license.
+
+    A connected (non-air-gapped) deployment whose paid license hard-expires and cannot renew
+    DOWNGRADES to Community rather than hard-blocking: the engine keeps running on the user's
+    hardware at Community limits (1 device, 1 worker, non-commercial); paid caps/features and
+    updates/support resume only when the license renews. Enterprise air-gapped deployments
+    (``_local_license_required``) have no connected renewal path and still hard-block.
+    """
+    from apps.runtime.device import get_device_id
+
+    prefix = api_key[:12] if api_key else ""
+    return DeviceLicense(
+        valid=True,
+        plan="algenta_free",
+        device_id=get_device_id(),
+        device_limit=1,
+        permitted_modules=["*"],
+        expires_at=0,  # free-forever — never expires
+        key_expires_at=0,
+        grace_days=_DEFAULT_GRACE_DAYS,
+        api_key_prefix=prefix,
+        issued_at=int(time.time()),
+        message=(reason or "Paid license expired — running on Community (free-forever). Renew to restore your plan."),
+        source="community-fallback",
+        deployment_class="desktop",
+        named_seat_limit=1,
+        active_node_limit=1,
+        concurrent_worker_limit=1,  # Community per-device worker cap
+        device_allowance_per_seat=1,
+        commercial_use=False,  # Community is non-commercial
+        offline_grace_days=30,
+    )
+
+
 def _issue_dev_jwt(device_id: str, api_key: str = "") -> str:
     """Issue a self-signed dev JWT for local storage."""
     payload = {
@@ -1081,9 +1116,26 @@ def load_license(api_key: str = "") -> DeviceLicense:
                         if fresh and not fresh.is_hard_expired():
                             logger.info("license_auto_renewed", device_id=fresh.device_id[:8])
                             return _deny_if_revoked(fresh) or fresh
-                parsed.valid = False
-                parsed.message = "License expired — run `algenta login` to renew."
-                return parsed
+                # Renewal unavailable (offline / unbound / server unreachable). Enterprise air-gapped
+                # deployments have no connected renewal path and MUST hold a valid local license —
+                # hard-block. Everyone else DOWNGRADES to Community (free-forever): the engine keeps
+                # running at Community limits; paid caps/features + updates/support resume on renewal.
+                if _local_license_required():
+                    parsed.valid = False
+                    parsed.message = "Local license expired — provision a fresh signed license before startup."
+                    return parsed
+                logger.info(
+                    "license_downgraded_to_community",
+                    prev_plan=parsed.plan,
+                    device_id=parsed.device_id[:8],
+                )
+                return _make_community_license(
+                    api_key,
+                    reason=(
+                        f"Your {parsed.plan} license expired — running on Community (free-forever). "
+                        f"Renew to restore {parsed.plan}."
+                    ),
+                )
             # Revocation (P3b-D2): dormant for v1 (current); v2 → CRL-checked, fail-open.
             denied = _deny_if_revoked(parsed)
             if denied:

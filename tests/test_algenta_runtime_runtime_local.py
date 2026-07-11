@@ -446,13 +446,19 @@ def test_runtime_local_hosted_limits_recheck_offline_license_with_monotonic_time
         license_mod,
         "_exchange_api_key_for_license",
         side_effect=AssertionError("stored offline license must not hit control plane"),
-    ):
+    ), patch.object(license_mod, "renew_license", lambda *a, **k: None):  # renewal unreachable offline
         first = runtime.query(plan)
+        assert first.row_count > 0
+        # NEW model: past hard-expiry with no reachable renewal, the offline license DOWNGRADES to
+        # Community (free-forever) rather than hard-blocking. Verify at the license layer — the engine
+        # keeps a valid license and serves at Community limits; paid caps/features resume on renewal.
+        # (Enterprise air-gapped — _local_license_required — still hard-blocks, covered elsewhere.)
         monotonic_now = 10.0 + (14 * 86_400) + 5.0
-        with pytest.raises(RuntimeConfigurationError, match="renew"):
-            runtime.query(plan)
+        downgraded = license_mod.load_license("de_live_test_key")
 
-    assert first.row_count > 0
+    assert downgraded.valid is True
+    assert downgraded.plan == "algenta_free"
+    assert downgraded.source == "community-fallback"
     get_settings.cache_clear()
 
 
