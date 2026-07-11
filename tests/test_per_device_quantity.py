@@ -329,3 +329,118 @@ async def test_register_falls_back_to_static_cap_when_unsynced() -> None:
         async with AsyncSessionLocal() as s:
             await register_device(key_raw, _dev_info(99), s)
             await s.commit()
+
+
+# ── B2: subscription resolves the org by metadata org_id when stripe_customer_id isn't set yet ──────
+@pytest.mark.anyio
+async def test_subscription_resolves_org_by_metadata_when_customer_unset(monkeypatch) -> None:
+    # subscription.created can fire BEFORE checkout.session.completed persists stripe_customer_id
+    # (Stripe gives no ordering guarantee). The handler must resolve the org via the subscription's
+    # stamped metadata org_id, sync licensed_devices, and backfill the customer id — else a buyer of
+    # N > plan-default devices is silently capped at the default.
+    monkeypatch.setattr(
+        billing, "_get_settings",
+        lambda: types.SimpleNamespace(stripe_price_algenta_pro="price_ap"),
+    )
+    _raw, key_id = await _seed_api_key(
+        label=f"pd-nocus-{uuid.uuid4().hex[:6]}",
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+        plan=OrgPlan.ALGENTA_PRO,
+    )
+    async with AsyncSessionLocal() as s:
+        ak = (await s.execute(select(APIKey).where(APIKey.id == uuid.UUID(key_id)))).scalar_one()
+        org_id = str(ak.org_id)  # NOTE: this org has NO stripe_customer_id yet
+    cus = f"cus_{uuid.uuid4().hex}"  # a customer id not on any org
+    await _process(
+        _event(
+            "customer.subscription.created", cus, status="active",
+            items={"data": [{"price": {"id": "price_ap"}, "quantity": 7}]},
+            metadata={"org_id": org_id, "plan": "algenta_pro"},
+        )
+    )
+    org = await _org(org_id)
+    assert org.licensed_devices == 7          # synced via the metadata fallback
+    assert org.stripe_customer_id == cus      # backfilled for future customer-id lookups
+
+
+# ── B4: the org-wide count honors the active-node-cap window (a stale node frees its org slot) ──────
+@pytest.mark.anyio
+async def test_active_org_device_count_honors_active_window(monkeypatch) -> None:
+    from apps.api_server.services import device_service as ds
+
+    _raw, key_id = await _seed_api_key(
+        label=f"pd-win-{uuid.uuid4().hex[:6]}",
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+        plan=OrgPlan.ALGENTA_PRO,
+    )
+    async with AsyncSessionLocal() as s:
+        ak = (await s.execute(select(APIKey).where(APIKey.id == uuid.UUID(key_id)))).scalar_one()
+        org_id, akid = ak.org_id, ak.id
+        # one FRESH device + one STALE device (heartbeat well outside the active window)
+        s.add(DeviceRegistration(
+            id=uuid.uuid4(), org_id=org_id, api_key_id=akid, device_id="fresh-" + uuid.uuid4().hex,
+            platform="linux", status=DeviceStatus.ACTIVE, last_heartbeat_at=datetime.now(UTC), heartbeat_count=1,
+        ))
+        s.add(DeviceRegistration(
+            id=uuid.uuid4(), org_id=org_id, api_key_id=akid, device_id="stale-" + uuid.uuid4().hex,
+            platform="linux", status=DeviceStatus.ACTIVE,
+            last_heartbeat_at=datetime.now(UTC) - timedelta(days=30), heartbeat_count=1,
+        ))
+        await s.commit()
+    # enforcement OFF → counts both non-revoked (legacy)
+    monkeypatch.delenv("ALGENTA_ENFORCE_ACTIVE_NODE_CAP", raising=False)
+    async with AsyncSessionLocal() as s:
+        assert await ds._active_org_device_count(org_id, s) == 2
+    # enforcement ON → the stale node no longer counts (its org slot is freed)
+    monkeypatch.setenv("ALGENTA_ENFORCE_ACTIVE_NODE_CAP", "1")
+    async with AsyncSessionLocal() as s:
+        assert await ds._active_org_device_count(org_id, s) == 1
+
+
+# ── B1: hosted-API device binding enforces the ORG-WIDE licensed ceiling across MULTIPLE keys ───────
+@pytest.mark.anyio
+async def test_hosted_bind_enforces_org_wide_ceiling_across_keys() -> None:
+    from starlette.requests import Request
+
+    from apps.api_server.services import device_service as ds
+
+    def _bind_req(device_id: str) -> Request:
+        return Request({
+            "type": "http", "method": "GET", "path": "/v1/simulate", "query_string": b"",
+            "headers": [(ds.HOSTED_DEVICE_ID_HEADER.lower().encode(), device_id.encode()),
+                        (b"x-algenta-platform", b"linux"),
+                        (b"x-algenta-hostname-hash", b"h" * 16)],
+        })
+
+    async def _bind(key_id, device_id):
+        auth = {"key_id": key_id, "device_limit_configured": True, "device_limit": 5}
+        async with AsyncSessionLocal() as s:
+            res = await ds.bind_hosted_api_device(_bind_req(device_id), auth, s)
+            await s.commit()
+            return res
+
+    # org licensed for 2 devices, TWO api keys (each per-key limit 5 — so per-key never trips first)
+    _raw1, key1 = await _seed_api_key(
+        label=f"pd-b1-{uuid.uuid4().hex[:6]}",
+        expires_at=datetime.now(UTC) + timedelta(days=30), plan=OrgPlan.ALGENTA_PRO,
+    )
+    async with AsyncSessionLocal() as s:
+        ak = (await s.execute(select(APIKey).where(APIKey.id == uuid.UUID(key1)))).scalar_one()
+        org_id = str(ak.org_id)
+        ak.device_limit = 5
+        await s.commit()
+    await _set_licensed_devices(org_id, 2)
+    raw2 = await _add_api_key(org_id)
+    async with AsyncSessionLocal() as s:
+        ak2 = (await s.execute(select(APIKey).where(APIKey.key_prefix == raw2[:12]))).scalar_one()
+        ak2.device_limit = 5  # per-key cap high so the ORG ceiling (2) is what trips, not the per-key
+        key2 = str(ak2.id)
+        await s.commit()
+
+    # device 1 via key1, device 2 via key2 → both OK (org count 0→1→2)
+    assert (await _bind(uuid.UUID(key1), "dev-one-" + uuid.uuid4().hex))["binding_token"]
+    assert (await _bind(uuid.UUID(key2), "dev-two-" + uuid.uuid4().hex))["binding_token"]
+    # device 3 via key1 → org ceiling (2) hit, though key1's per-key count (1) is under its limit (5)
+    with pytest.raises(ds.DeviceBindingError) as exc:
+        await _bind(uuid.UUID(key1), "dev-three-" + uuid.uuid4().hex)
+    assert exc.value.code == "licensed_device_limit_reached"

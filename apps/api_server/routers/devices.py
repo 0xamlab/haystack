@@ -42,6 +42,7 @@ from apps.api_server.services.device_service import (
     _device_identity_mismatched_fields,
     _org_device_ceiling,
     _plan_name,
+    acquire_org_device_lock,
     active_node_cap_enforced,
     effective_node_count,
     installs_per_hour,
@@ -263,6 +264,10 @@ async def device_register(
         # until that syncs, the static plan cap — so it always applies (no multi-key sprawl window).
         org_ceiling = _org_device_ceiling(api_key_row.organization, plan)
         if org_ceiling:
+            # Serialize the org-wide check: the per-key row lock above does NOT serialize concurrent
+            # registrations under DIFFERENT keys of the same org, so without this they could both read
+            # count = ceiling-1 and both insert, overshooting the licensed ceiling by up to N-1.
+            await acquire_org_device_lock(db, api_key_row.org_id)
             org_count = await _active_org_device_count(api_key_row.org_id, db)
             if org_count >= org_ceiling:
                 raise HTTPException(

@@ -332,11 +332,24 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> str 
         # Get plan from subscription metadata or items
         plan_name = _plan_from_subscription(obj)
 
-        # Find org by customer_id
+        # Find org by customer_id, falling back to the subscription's stamped org_id metadata — the
+        # fallback survives the ordering race where this event precedes checkout.session.completed
+        # persisting stripe_customer_id (Stripe gives no ordering guarantee), which would otherwise
+        # drop the per-device quantity sync and cap a customer who paid for N>plan-default at the default.
         org_result = await db.execute(
             select(Organization).where(Organization.stripe_customer_id == customer_id)
         )
         org = org_result.scalar_one_or_none()
+        if org is None:
+            meta_org_id = (obj.get("metadata") or {}).get("org_id")
+            if meta_org_id:
+                org = (
+                    await db.execute(
+                        select(Organization).where(Organization.id == meta_org_id)
+                    )
+                ).scalar_one_or_none()
+        if org is not None and customer_id and not org.stripe_customer_id:
+            org.stripe_customer_id = customer_id  # backfill so later customer-id lookups match
         if org:
             affected_org_id = str(org.id)
             # Dunning exhausted (unpaid / canceled / incomplete_expired) → the customer stopped

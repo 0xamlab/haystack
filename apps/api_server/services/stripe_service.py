@@ -249,6 +249,11 @@ async def create_checkout_session(
                 "customer_email": org_email,
                 "metadata[org_id]": org_id,
                 "metadata[plan]": plan,
+                # Stamp the SUBSCRIPTION too, so subscription.created/updated can resolve the org by
+                # org_id even if it fires before checkout.session.completed persists stripe_customer_id
+                # (Stripe gives no ordering guarantee) — otherwise the per-device quantity never syncs.
+                "subscription_data[metadata][org_id]": org_id,
+                "subscription_data[metadata][plan]": plan,
                 # Let buyers self-select the quantity for both per-seat (team) and per-device
                 # (algenta_pro/algenta_team) plans.
                 **(

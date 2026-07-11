@@ -182,16 +182,55 @@ def _org_device_ceiling(org: object, plan: str) -> int | None:
 
 
 async def _active_org_device_count(org_id: uuid.UUID, db: AsyncSession) -> int:
-    """Count non-revoked devices across the WHOLE org (all its API keys). The per-device licensed
-    ceiling is enforced against this so an org can't exceed its paid device count by spreading
-    devices across multiple API keys."""
-    result = await db.execute(
-        select(func.count()).where(
-            DeviceRegistration.org_id == org_id,
-            DeviceRegistration.status != DeviceStatus.REVOKED,
-        )
-    )
+    """Count the org's devices for the per-device licensed ceiling (across ALL its API keys) so an org
+    can't exceed its paid device count by spreading devices over multiple keys.
+
+    Honors the SAME active-node semantics as the per-key gate (``effective_node_count``): when
+    active-node-cap enforcement is on, count only devices heartbeated within the active window — so a
+    decommissioned / scaled-down node frees its org slot too (else a legit fleet swap is blocked). When
+    enforcement is off, all non-revoked (legacy)."""
+    conditions = [
+        DeviceRegistration.org_id == org_id,
+        DeviceRegistration.status != DeviceStatus.REVOKED,
+    ]
+    if active_node_cap_enforced():
+        cutoff = datetime.now(UTC) - timedelta(seconds=active_node_window_seconds())
+        conditions.append(DeviceRegistration.last_heartbeat_at.is_not(None))
+        conditions.append(DeviceRegistration.last_heartbeat_at >= cutoff)
+    result = await db.execute(select(func.count()).where(*conditions))
     return result.scalar_one() or 0
+
+
+async def acquire_org_device_lock(db: AsyncSession, org_id: uuid.UUID) -> None:
+    """Serialize org-wide device admissions so concurrent registrations across DIFFERENT API keys of the
+    same org can't both pass the licensed-ceiling check and overshoot it. The per-key row lock
+    (``_load_api_key_with_org(lock=True)``) locks different rows for different keys, so it does NOT
+    serialize cross-key — this transaction-scoped Postgres advisory lock does (released at commit)."""
+    from sqlalchemy import text
+
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext('algenta_org_device'), hashtext(:oid))"),
+        {"oid": str(org_id)},
+    )
+
+
+def _licensed_device_limit_error(
+    *, org_ceiling: int, org_count: int, plan: str
+) -> DeviceBindingError:
+    return DeviceBindingError(
+        status_code=402,
+        code="licensed_device_limit_reached",
+        message=(
+            f"Your subscription covers {org_ceiling} device(s) and {org_count} are active. "
+            "Add devices to your subscription or revoke one."
+        ),
+        details={
+            "device_count": org_count,
+            "device_limit": org_ceiling,
+            "plan": plan,
+            "upgrade_url": "https://algenta.io/pricing",
+        },
+    )
 
 
 def _get_license_secret() -> str:
@@ -1219,9 +1258,21 @@ async def bind_hosted_api_device(
     existing_row = existing.scalar_one_or_none()
     now = datetime.now(UTC)
     if existing_row is None:
-        # New device binding on the live hosted-API path. Count via the shared chokepoint so this
-        # plane honors the same active-node semantics as register/heartbeat (a freed slot is freed
-        # here too when enforcement is on; all-non-revoked when off).
+        # New device binding on the live hosted-API path. Serialize org-wide admissions, then enforce
+        # the ORG-WIDE licensed ceiling (across ALL the org's keys) BEFORE the per-key cap — otherwise
+        # hosted-API traffic spread over multiple keys sprawls past the paid device count (this bind
+        # path was the one device-creation surface that omitted the org-wide gate that register/
+        # register_device already have).
+        await acquire_org_device_lock(db, api_key_row.org_id)
+        org_ceiling = _org_device_ceiling(api_key_row.organization, plan)
+        if org_ceiling:
+            org_count = await _active_org_device_count(api_key_row.org_id, db)
+            if org_count >= org_ceiling:
+                raise _licensed_device_limit_error(
+                    org_ceiling=org_ceiling, org_count=org_count, plan=plan
+                )
+        # Count via the shared chokepoint so this plane honors the same active-node semantics as
+        # register/heartbeat (a freed slot is freed here too when enforcement is on; all-non-revoked off).
         current_count = await effective_node_count(api_key_row.id, db)
         if current_count >= device_limit:
             raise _device_limit_error(
