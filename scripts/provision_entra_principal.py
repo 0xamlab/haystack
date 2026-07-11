@@ -20,13 +20,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
+from pathlib import Path
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+# Make `apps` importable when run as `python scripts/provision_entra_principal.py` (only the script's
+# own dir is on sys.path otherwise). Mirrors scripts/bootstrap_self_host.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from apps.api_server.config import get_settings
-from apps.api_server.models.entra_principal import EntraPrincipalMapping
-from apps.api_server.models.organization import Organization, OrgPlan, OrgStatus
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from apps.api_server.config import get_settings  # noqa: E402
+from apps.api_server.models.entra_principal import EntraPrincipalMapping  # noqa: E402
+from apps.api_server.models.organization import Organization, OrgPlan, OrgStatus  # noqa: E402
 
 settings = get_settings()
 VALID_ROLES = ("owner", "admin", "member", "viewer")
