@@ -163,15 +163,21 @@ async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
 
 
 async def activate_product_free_tier(
-    db: AsyncSession, *, product: str, email: str, name: str | None = None
+    db: AsyncSession, *, product: str, email: str, name: str | None = None,
+    supabase_uid: str | None = None,
 ) -> tuple[Organization, User]:
-    """Self-service onboarding for ANY product: resolve-or-create the caller's org (by Supabase email) and
-    ensure it carries that product's free entitlement (so the issued device license has ``products.<id>``).
+    """Self-service onboarding for ANY product: resolve-or-create the caller's org and ensure it carries
+    that product's free entitlement (so the issued device license has ``products.<id>``).
 
-    The product AND its free tier come from the product registry — never a caller-supplied string. Idempotent
-    by email. NEVER downgrades a paid plan — it only lifts a brand-new/``free`` org onto the product's default
-    free tier; a caller who already holds a plan without this product keeps it (that cross-product upgrade is
-    a separate billing concern). Returns ``(org, user)``; minting the API key is the caller's job.
+    Resolution is **link-first** when ``supabase_uid`` is given: a stable Supabase uid that already has an
+    ``identity_org_links`` row reuses that org — because email is NOT a safe key (Apple private-relay
+    rotates, GitHub noreply), so keying on it would mint a duplicate org for the same person and strand
+    their API key on it. Only when the uid has no link (or none is supplied) does it fall back to the
+    email-keyed org.
+
+    The product AND its free tier come from the product registry — never a caller-supplied string.
+    Idempotent. NEVER downgrades a paid plan — it only lifts a brand-new/``free`` org onto the product's
+    default free tier. Returns ``(org, user)``; minting the API key is the caller's job.
     """
     from apps.api_server.services.entitlement_service import resolve_entitlement
     from apps.api_server.services.product_registry import get_product
@@ -180,6 +186,46 @@ async def activate_product_free_tier(
     if cfg is None:
         raise HTTPException(status_code=404, detail=f"unknown product {product!r}")
     free_plan = OrgPlan(cfg.default_free_tier)  # the enum value must exist (plan_limits + 0049 migration)
+
+    async def _grant_free_tier(org: Organization) -> None:
+        # Grant the free tier only if the org has NO entitlement for THIS product AND is on the free plan
+        # — never clobber a paid plan (of any brand).
+        has_product = cfg.id in getattr(resolve_entitlement(org.plan.value), "products", {})
+        if not has_product and org.plan == OrgPlan.FREE:
+            org.plan = free_plan
+            await db.flush()
+
+    # ── link-first: the stable uid wins over the (possibly-rotating) email ──────────────────────────
+    if supabase_uid:
+        from apps.api_server.services.byok_org_resolver import _org_for_identity_link
+
+        linked = await _org_for_identity_link(db, supabase_uid)
+        if linked is not None:
+            await _grant_free_tier(linked)
+            owner = (
+                await db.execute(
+                    select(User)
+                    .where(User.org_id == linked.id)
+                    .order_by(User.created_at)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if owner is None:  # linked org with no user (edge) — create the owner
+                import secrets as _secrets
+
+                owner = User(
+                    org_id=linked.id,
+                    email=(email or "").strip().lower() or f"{supabase_uid}@users.noreply.thyn.ai",
+                    password_hash=hash_password(_secrets.token_urlsafe(32)),
+                    name=name or "Owner",
+                    role=UserRole.OWNER,
+                    status=UserStatus.ACTIVE,
+                    email_verified=bool((email or "").strip()),
+                )
+                db.add(owner)
+                await db.flush()
+            logger.info("product_free_tier_activated_via_link", product=cfg.id, org_id=str(linked.id))
+            return linked, owner
 
     email = (email or "").strip().lower()
     if not email:
@@ -192,18 +238,7 @@ async def activate_product_free_tier(
         org = (
             await db.execute(select(Organization).where(Organization.id == existing.org_id))
         ).scalar_one()
-        # Grant the free tier only if the org has NO entitlement for THIS product AND is on the free plan —
-        # never clobber a paid plan (of any brand).
-        has_product = cfg.id in getattr(resolve_entitlement(org.plan.value), "products", {})
-        if not has_product and org.plan == OrgPlan.FREE:
-            org.plan = free_plan
-            await db.flush()
-            logger.info(
-                "product_free_tier_activated_existing_org",
-                product=cfg.id,
-                org_id=str(org.id),
-                email=email,
-            )
+        await _grant_free_tier(org)
         return org, existing
 
     # Brand-new identity → create an org on the product's free tier + an owner user (OAuth: no usable password).

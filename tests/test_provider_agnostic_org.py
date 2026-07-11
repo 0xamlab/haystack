@@ -201,3 +201,113 @@ async def test_cli_onboard_links_org_so_website_resolve_converges() -> None:
             await s.execute(select(Organization).where(Organization.slug == f"sb-user-{uid}"))
         ).scalar_one_or_none()
     assert dup is None, "auto_provision minted a duplicate org despite an existing identity link"
+
+
+# ── A1 (BLOCKER): the identity link is authoritative — a github-linked uid that already has a link
+#    resolves to the LINKED org, never hijacked onto its gh-user install org (nor locked out) ────────
+@pytest.mark.anyio
+async def test_github_identity_with_existing_link_resolves_link_not_install() -> None:
+    from apps.api_server.services.user_service import activate_product_free_tier
+
+    gh_id = 800000 + uuid.uuid4().int % 90000
+    uid = f"sb-{uuid.uuid4().hex}"
+    # A gh-user install org (org B) exists for this github id.
+    async with AsyncSessionLocal() as s:
+        gh_org = await provision_or_lookup_org_for_installation(
+            s, account_id=gh_id, account_login="octo", account_type="user"
+        )
+        await s.commit()
+        gh_org_id = gh_org.id
+    # CLI `<product> login` created an email-keyed org A + link uid->A (link-first: no link yet -> email).
+    async with AsyncSessionLocal() as s:
+        org_a, _ = await activate_product_free_tier(
+            s, product="algenta", email=f"a-{uuid.uuid4().hex}@gmail.com", supabase_uid=uid
+        )
+        await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=org_a.id)
+        await s.commit()
+        org_a_id = org_a.id
+    assert org_a_id != gh_org_id
+    # Resolving as the GITHUB identity (github_user_id set) must return org A via the link — NOT org B.
+    async with AsyncSessionLocal() as s:
+        resolved = await byok_org_resolver.resolve_org_for_supabase_user(
+            s, supabase_uid=uid, email="x@example.com", github_user_id=gh_id, github_login="octo"
+        )
+    assert resolved.id == org_a_id
+
+
+@pytest.mark.anyio
+async def test_github_identity_with_link_but_no_install_is_not_locked_out() -> None:
+    # A1: github_user_id present + a link + NO install must return the linked org, not no_org 403.
+    from apps.api_server.services.user_service import activate_product_free_tier
+
+    uid = f"sb-{uuid.uuid4().hex}"
+    gh_id = 700000 + uuid.uuid4().int % 90000
+    async with AsyncSessionLocal() as s:
+        org, _ = await activate_product_free_tier(
+            s, product="algenta", email=f"b-{uuid.uuid4().hex}@gmail.com", supabase_uid=uid
+        )
+        await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=org.id)
+        await s.commit()
+        org_id = org.id
+    async with AsyncSessionLocal() as s:
+        resolved = await byok_org_resolver.resolve_org_for_supabase_user(
+            s, supabase_uid=uid, github_user_id=gh_id, github_login="ghost"
+        )
+    assert resolved.id == org_id
+
+
+# ── A2: ensure_identity_link returns the WINNER on conflict (caller must not strand a duplicate) ────
+@pytest.mark.anyio
+async def test_ensure_identity_link_returns_existing_winner() -> None:
+    uid = f"sb-{uuid.uuid4().hex}"
+    async with AsyncSessionLocal() as s:
+        a = await provision_org_for_supabase_uid(s, supabase_uid=uid + "-a", email="a@gmail.com")
+        b = await provision_org_for_supabase_uid(s, supabase_uid=uid + "-b", email="b@gmail.com")
+        await s.commit()
+        a_id, b_id = a.id, b.id
+    async with AsyncSessionLocal() as s:
+        first = await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=a_id)
+        assert first == a_id
+        # A later call with a DIFFERENT org returns the existing winner (A), never re-points to B.
+        second = await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=b_id)
+        assert second == a_id
+
+
+# ── A3: CLI onboard is link-first — a rotated email (Apple relay) reuses the org, no duplicate ──────
+@pytest.mark.anyio
+async def test_cli_onboard_link_first_ignores_rotated_email() -> None:
+    from apps.api_server.services.user_service import activate_product_free_tier
+
+    uid = f"sb-{uuid.uuid4().hex}"
+    async with AsyncSessionLocal() as s:
+        org1, _ = await activate_product_free_tier(
+            s, product="algenta", email="relay1@privaterelay.appleid.com", supabase_uid=uid
+        )
+        await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=org1.id)
+        await s.commit()
+        org1_id = org1.id
+    # Apple rotates the relay address; the SAME uid onboards again with a DIFFERENT email.
+    async with AsyncSessionLocal() as s:
+        org2, _ = await activate_product_free_tier(
+            s, product="algenta", email="relay2@privaterelay.appleid.com", supabase_uid=uid
+        )
+        await s.commit()
+    assert org2.id == org1_id  # reused via the uid link — not a new email-keyed duplicate
+
+
+# ── selected_org_id (org picker) still switches + persists via repoint ───────────────────────────────
+@pytest.mark.anyio
+async def test_repoint_identity_link_moves_link() -> None:
+    uid = f"sb-{uuid.uuid4().hex}"
+    async with AsyncSessionLocal() as s:
+        a = await provision_org_for_supabase_uid(s, supabase_uid=uid + "-a", email="a@gmail.com")
+        b = await provision_org_for_supabase_uid(s, supabase_uid=uid + "-b", email="b@gmail.com")
+        await s.commit()
+        a_id, b_id = a.id, b.id
+    async with AsyncSessionLocal() as s:
+        await byok_org_resolver.ensure_identity_link(s, supabase_uid=uid, org_id=a_id)
+        await byok_org_resolver.repoint_identity_link(s, supabase_uid=uid, org_id=b_id)
+        await s.commit()
+    async with AsyncSessionLocal() as s:
+        linked = await byok_org_resolver._org_for_identity_link(s, uid)
+    assert linked is not None and linked.id == b_id

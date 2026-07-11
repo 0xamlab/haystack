@@ -27,7 +27,6 @@ from apps.api_server.db.session import get_db
 from apps.api_server.error_payloads import access_scope_denied_error
 from apps.api_server.middleware.auth import get_current_org, get_redis
 from apps.api_server.middleware.rbac import require_role
-from apps.api_server.services.quota_service import check_named_rate_limit
 from apps.api_server.models.api_key import APIKey, APIKeyStatus
 from apps.api_server.models.organization import Organization
 from apps.api_server.models.usage_record import UsageRecord
@@ -52,7 +51,21 @@ from apps.api_server.schemas.tenant_keys import (
     SetProviderKeyRequest,
 )
 from apps.api_server.services import tenant_key_management as tk_mgmt
+from apps.api_server.services.auth_service import (
+    AuthContext,
+    generate_api_key,
+    invalidate_api_key_cache,
+    is_api_key_expired,
+)
 from apps.api_server.services.byok_org_resolver import ensure_identity_link
+from apps.api_server.services.plan_limits import (
+    effective_device_limit,
+    validate_api_key_device_limit,
+)
+from apps.api_server.services.plan_limits import (
+    get as get_plan_config,
+)
+from apps.api_server.services.quota_service import check_named_rate_limit
 from apps.api_server.services.supabase_auth import (
     SERVICE_ERROR_CODES,
     SupabaseAuthError,
@@ -61,18 +74,7 @@ from apps.api_server.services.supabase_auth import (
 )
 from apps.api_server.services.user_service import activate_product_free_tier
 from apps.api_server.services.website_identity import bearer_token, error_body
-from apps.api_server.services.auth_service import (
-    AuthContext,
-    generate_api_key,
-    invalidate_api_key_cache,
-    is_api_key_expired,
-)
 from apps.api_server.services.workspace_scope import workspace_scope_clauses
-from apps.api_server.services.plan_limits import (
-    effective_device_limit,
-    get as get_plan_config,
-    validate_api_key_device_limit,
-)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Account"])
@@ -680,19 +682,26 @@ async def _do_product_onboard(
         )
     name = payload.name or meta.get("full_name") or meta.get("name") or meta.get("user_name")
 
-    org, user = await activate_product_free_tier(db, product=cfg.id, email=email, name=name)
-
-    # Bind this Supabase identity to the onboarded org so the website (accounts.thyn.ai)
-    # billing/portal — which resolves PROVIDER-AGNOSTICALLY by the Supabase uid, not by email —
-    # converges on this SAME org. Without the link a google/apple/microsoft user who onboards via
-    # `<product> login` (email-keyed org) would resolve to a DIFFERENT org (a duplicate
-    # auto-provisioned `sb-user-{uid}` org, or a no_org 403), splitting devices/keys from the
-    # subscription. Best-effort; never blocks onboarding.
+    # Resolve the caller's stable Supabase uid up front so onboarding is LINK-FIRST: activate reuses the
+    # uid's existing org (any provider / prior onboard) instead of minting a duplicate keyed on a
+    # rotating email (Apple relay / github noreply). See activate_product_free_tier + byok_org_resolver.
     try:
-        uid = extract_identity(claims)["supabase_uid"]
-        await ensure_identity_link(db, supabase_uid=uid, org_id=org.id)
-    except (SupabaseAuthError, KeyError) as exc:  # blank/missing sub — link is best-effort
-        logger.warning("product_onboard_identity_link_skipped", product=cfg.id, error=str(exc))
+        uid: str | None = extract_identity(claims)["supabase_uid"]
+    except (SupabaseAuthError, KeyError):
+        uid = None
+
+    org, user = await activate_product_free_tier(
+        db, product=cfg.id, email=email, name=name, supabase_uid=uid
+    )
+
+    # Bind this Supabase identity to the onboarded org so the website (accounts.thyn.ai) billing/portal
+    # — which resolves PROVIDER-AGNOSTICALLY by the uid, not by email — converges on this SAME org.
+    # Idempotent + best-effort (no-op when activate already resolved via the link); never blocks onboard.
+    if uid:
+        try:
+            await ensure_identity_link(db, supabase_uid=uid, org_id=org.id)
+        except Exception as exc:  # noqa: BLE001 — link is best-effort, onboarding proceeds
+            logger.warning("product_onboard_identity_link_skipped", product=cfg.id, error=str(exc))
 
     raw_key, key_prefix, hashed_key = generate_api_key()
     api_key = APIKey(
