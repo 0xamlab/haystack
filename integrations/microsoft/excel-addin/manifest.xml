@@ -1,29 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Algenta Decisions — Excel task-pane Add-in (Build order 8).
-
-  A native Excel modelling surface over the customer-hosted Decision API: select ranges as a
-  Decision Pack's assumptions, run the governed analysis in the customer's Azure, and write
-  results (recommendation, sensitivity, evidence) back to NEW sheets after a preview. Entra SSO
-  via <WebApplicationInfo> yields a token whose audience is the gateway API (the same audience
-  services/entra_auth.py validates).
-
-  OWNER go-live: host the static files (SourceLocation host), fill the Entra client id + api://
-  audience below, then sideload/publish. See README.md.
--->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
            xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
            xsi:type="TaskPaneApp">
-  <Id>7f3a1c2e-0000-4a00-9d00-algentadecide01</Id>
-  <Version>0.1.0</Version>
+  <Id>f445f3f1-20ef-469a-a532-056b3f1ab393</Id>
+  <Version>1.0.0.0</Version>
   <ProviderName>Algenta</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Algenta Decisions" />
   <Description DefaultValue="Turn workbook assumptions + approved enterprise data into governed decisions, computed in your Azure." />
-  <IconUrl DefaultValue="https://YOUR-ADDIN-HOST/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://YOUR-ADDIN-HOST/assets/icon-80.png" />
+  <IconUrl DefaultValue="https://addin.algenta.ai/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://addin.algenta.ai/assets/icon-64.png" />
   <SupportUrl DefaultValue="https://docs.algenta.ai/integrations/microsoft/excel" />
   <Hosts>
     <Host Name="Workbook" />
@@ -34,7 +22,7 @@
     </Sets>
   </Requirements>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://YOUR-ADDIN-HOST/taskpane.html" />
+    <SourceLocation DefaultValue="https://addin.algenta.ai/taskpane.html" />
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -50,6 +38,11 @@
             <OfficeTab id="TabHome">
               <Group id="Algenta.Group">
                 <Label resid="Algenta.Group.Label" />
+                <Icon>
+                  <bt:Image size="16" resid="Algenta.Icon16" />
+                  <bt:Image size="32" resid="Algenta.Icon32" />
+                  <bt:Image size="80" resid="Algenta.Icon80" />
+                </Icon>
                 <Control xsi:type="Button" id="Algenta.OpenPane">
                   <Label resid="Algenta.OpenPane.Label" />
                   <Supertip>
@@ -74,12 +67,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Algenta.Icon16" DefaultValue="https://YOUR-ADDIN-HOST/assets/icon-16.png" />
-        <bt:Image id="Algenta.Icon32" DefaultValue="https://YOUR-ADDIN-HOST/assets/icon-32.png" />
-        <bt:Image id="Algenta.Icon80" DefaultValue="https://YOUR-ADDIN-HOST/assets/icon-80.png" />
+        <bt:Image id="Algenta.Icon16" DefaultValue="https://addin.algenta.ai/assets/icon-16.png" />
+        <bt:Image id="Algenta.Icon32" DefaultValue="https://addin.algenta.ai/assets/icon-32.png" />
+        <bt:Image id="Algenta.Icon80" DefaultValue="https://addin.algenta.ai/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR-ADDIN-HOST/taskpane.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://addin.algenta.ai/taskpane.html" />
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://docs.algenta.ai/integrations/microsoft/excel" />
       </bt:Urls>
       <bt:ShortStrings>
@@ -93,10 +86,11 @@
       </bt:LongStrings>
     </Resources>
     <WebApplicationInfo>
-      <!-- OWNER: the gateway app registration's client id + api:// audience (== ALGENTA_ENTRA_AUDIENCE). -->
-      <Id>REPLACE_WITH_ENTRA_CLIENT_ID</Id>
-      <Resource>api://REPLACE_WITH_GATEWAY_AUDIENCE</Resource>
+      <Id>3983990d-e9b5-4866-9a43-d52d6e0c20c3</Id>
+      <Resource>api://3983990d-e9b5-4866-9a43-d52d6e0c20c3</Resource>
       <Scopes>
+        <Scope>openid</Scope>
+        <Scope>profile</Scope>
         <Scope>access_as_user</Scope>
       </Scopes>
     </WebApplicationInfo>

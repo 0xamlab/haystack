@@ -1,17 +1,9 @@
 {
-  "$comment": "Azure AI Foundry agent definition for the Algenta Decision Agent. Register in a Foundry project; it calls the customer-hosted Decision API through the OpenAPI tool. Validate field names against your Foundry project's current agent schema before deploying.",
-  "name": "algenta-decision-agent",
-  "description": "Frames enterprise decisions and runs Algenta's governed analysis in the customer's Azure decision plane.",
+  "$comment": "Azure AI Foundry declarative agent (PromptAgentDefinition). 'model' is the NAME of a model deployment in your Foundry project (deployment-specific). The managed identity that calls the Decision API is the Foundry account's SYSTEM-ASSIGNED identity plus the tool's auth.security_scheme.audience; there is NO agent-level identity field. At deploy, replace the tool $ref with the inline object from tool-definition/decision-tool.deploy.json (build_tool.py) — Foundry create_version requires inline tools.",
+  "kind": "prompt",
+  "model": "$AZURE_OPENAI_DEPLOYMENT",
   "instructions": "You turn a business question into a GOVERNED decision by calling the Algenta Decision API. Frame the decision, run the analysis, then explain the recommendation and cite its evidence. NEVER invent numbers — every figure comes from the engine result; if a value is not in the result, do not state it. State outcomes as model-estimated under the stated assumptions (for example 'met the target in N of the tested scenarios'), never as a probability, and never as a promised dollar amount. You cannot approve or execute a plan — those are separate, credentialed human actions; if asked, explain that a person approves the plan by its hash in Teams or Excel. If a run returns no feasible solution, say so and explain why; never fabricate a recommendation.",
-  "model": {
-    "$comment": "A model deployment in the customer's Azure AI project (Azure OpenAI or another Foundry-catalog model).",
-    "deployment": "$AZURE_OPENAI_DEPLOYMENT"
-  },
   "tools": [
-    { "type": "openapi", "ref": "../tool-definition/decision-tool.json" }
-  ],
-  "identity": {
-    "$comment": "Foundry service/managed identity, mapped by the gateway to a restricted workspace + app-role. Delegated employee identity is used for user-initiated decisions where Foundry propagates it.",
-    "type": "managed_identity"
-  }
+    { "$ref": "../tool-definition/decision-tool.deploy.json" }
+  ]
 }

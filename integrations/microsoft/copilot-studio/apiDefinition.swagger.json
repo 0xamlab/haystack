@@ -1,0 +1,433 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Algenta Decision Agent",
+    "description": "Coarse, governed decision operations for AI agents (Azure AI Foundry, Microsoft 365 Copilot). Prefer run_decision_analysis \u2014 it internally runs evidence gathering, scenarios, simulation, optimization and sensitivity, and produces a recommendation with its explanation. Approval and execution are NOT available here: they are separate, credentialed human actions.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Algenta",
+      "url": "https://algenta.ai"
+    }
+  },
+  "host": "gateway.algenta.ai",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "oauth2-auth": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      "scopes": {
+        "api://3983990d-e9b5-4866-9a43-d52d6e0c20c3/access_as_user": "Access the Algenta Decision API as the signed-in user"
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2-auth": [
+        "api://3983990d-e9b5-4866-9a43-d52d6e0c20c3/access_as_user"
+      ]
+    }
+  ],
+  "paths": {
+    "/v1/decision-cases": {
+      "post": {
+        "operationId": "create_or_update_decision",
+        "summary": "Frame a decision (create a case + immutable revision 1)",
+        "description": "Frame a decision (create a case + immutable revision 1)",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}": {
+      "put": {
+        "operationId": "reframe_decision",
+        "summary": "Re-frame a decision (material change \u2192 new immutable revision)",
+        "description": "Re-frame a decision (material change \u2192 new immutable revision)",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_decision_case",
+        "summary": "Get a decision case",
+        "description": "Get a decision case",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/analysis-runs": {
+      "post": {
+        "operationId": "run_decision_analysis",
+        "summary": "Run the governed analysis (async: poll for the result)",
+        "description": "Run the governed analysis (async: poll for the result)",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/refresh": {
+      "post": {
+        "operationId": "refresh_decision",
+        "summary": "Manually refresh: re-run the current revision with fresh evidence",
+        "description": "Manually refresh: re-run the current revision with fresh evidence",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}": {
+      "get": {
+        "operationId": "get_decision_run_status",
+        "summary": "Poll an analysis run",
+        "description": "Poll an analysis run",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/result": {
+      "get": {
+        "operationId": "get_decision_result",
+        "summary": "Fetch the analysis result (host-independent object)",
+        "description": "Fetch the analysis result (host-independent object)",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/evidence": {
+      "get": {
+        "operationId": "inspect_decision_evidence",
+        "summary": "Inspect evidence + provenance (what was accessed, under which retention mode)",
+        "description": "Inspect evidence + provenance (what was accessed, under which retention mode)",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/action-plans": {
+      "post": {
+        "operationId": "propose_action_plan",
+        "summary": "Propose a safe execution plan (returns the plan_hash + single-use approval nonce)",
+        "description": "Propose a safe execution plan (returns the plan_hash + single-use approval nonce)",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/outcomes": {
+      "post": {
+        "operationId": "record_decision_outcome",
+        "summary": "Record what actually happened (closes the learning loop)",
+        "description": "Record what actually happened (closes the learning loop)",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -14,18 +14,23 @@ Decision API; only the host wrapper differs.
   `api://3983990d-e9b5-4866-9a43-d52d6e0c20c3` (the Decision API audience). Fill
   `clientId` with the connector's own Entra app registration (a client, distinct from the Decision API
   app). `tenantId` is `common` for a multi-tenant connector; pin it to a single tenant for first-party.
-- `apiDefinition.swagger.json` — **generate from the live gateway** (below). A custom connector is
-  Swagger 2.0; the Decision Agent spec is served as OpenAPI 3.0, so it is converted rather than
-  hand-maintained (keeps it drift-free against the gateway).
+- `apiDefinition.swagger.json` — the **Swagger 2.0** connector definition (committed here). A custom
+  connector must be OpenAPI 2.0, `< 1 MB`, and use an `https` host — Power Platform does **not** accept
+  OpenAPI 3.x. The gateway serves the reduced agent spec as **OpenAPI 3.1.0** over `http://`, so this
+  file is derived (not raw-imported): the `http` server becomes `host: gateway.algenta.ai` +
+  `schemes: [https]`, `anyOf`/nullable/`components` are flattened to 2.0 `definitions`, and every
+  operation carries a certification-clean `summary` (<=80 chars, alphanumeric/parentheses only),
+  a full-sentence `description`, and `x-ms-visibility`.
 
-## Generate the connector definition
+## Regenerate / refresh against the gateway
 ```bash
-# 1. Pull the reduced agent spec (OpenAPI 3.0) from the live gateway:
-curl -s https://gateway.algenta.ai/openapi/decision-agent.json -o /tmp/decision-agent.oas3.json
+# 1. Pull the reduced agent spec from the live gateway (currently OpenAPI 3.1.0):
+curl -s https://gateway.algenta.ai/openapi/decision-agent.json -o /tmp/decision-agent.oas.json
 
-# 2. Convert 3.0 -> Swagger 2.0 (custom connectors are 2.0 only):
-npx api-spec-converter --from=openapi_3 --to=swagger_2 /tmp/decision-agent.oas3.json \
-  > apiDefinition.swagger.json
+# NOTE: api-spec-converter only supports 3.0 -> 2.0, not 3.1. Do not blindly overwrite
+# apiDefinition.swagger.json with its output — it drops paths on 3.1 input and re-introduces the
+# http:// host, anyOf, and colon/arrow summaries that fail Microsoft certification. Diff any
+# regenerated file against the committed one and re-apply the 2.0 fixups above.
 ```
 
 ## Import

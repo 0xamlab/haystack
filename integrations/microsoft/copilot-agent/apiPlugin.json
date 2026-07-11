@@ -1,6 +1,6 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.2/schema.json",
-  "schema_version": "v2.2",
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.4/schema.json",
+  "schema_version": "v2.4",
   "name_for_human": "Algenta Decision API",
   "description_for_human": "Frame, run, inspect, and propose governed decisions on the customer-hosted Algenta gateway.",
   "description_for_model": "Coarse decision operations. Prefer run_decision_analysis (it internally runs scenarios, simulation, optimization, sensitivity and produces a recommendation). Approval and execution are intentionally NOT exposed here — they are separate credentialed human actions.",
@@ -17,10 +17,10 @@
       "type": "OpenApi",
       "auth": {
         "type": "OAuthPluginVault",
-        "reference_id": "REPLACE_WITH_ENTRA_OAUTH_REGISTRATION_ID"
+        "reference_id": "${{OAUTH2_REGISTRATION_ID}}"
       },
       "spec": {
-        "url": "https://YOUR-GATEWAY/openapi/decision-agent.json",
+        "url": "https://gateway.algenta.ai/openapi/decision-agent.json",
         "progress_style": "ShowUsageWithInputAndOutput"
       },
       "run_for_functions": [

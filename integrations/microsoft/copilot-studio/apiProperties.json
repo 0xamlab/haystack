@@ -2,15 +2,15 @@
   "properties": {
     "connectionParameters": {
       "token": {
-        "type": "oauthSetting",
+        "type": "oAuthSetting",
         "oAuthSettings": {
           "identityProvider": "aad",
           "clientId": "REPLACE_WITH_CONNECTOR_CLIENT_APP_ID",
           "scopes": [],
           "redirectMode": "Global",
+          "redirectUrl": "https://global.consent.azure-apim.net/redirect",
           "properties": {
-            "IsFirstParty": "False",
-            "AzureActiveDirectoryResourceId": "api://3983990d-e9b5-4866-9a43-d52d6e0c20c3"
+            "IsFirstParty": "False"
           },
           "customParameters": {
             "loginUri": { "value": "https://login.microsoftonline.com" },

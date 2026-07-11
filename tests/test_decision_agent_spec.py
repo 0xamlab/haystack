@@ -115,3 +115,28 @@ def test_versioned_and_server_pinned() -> None:
     assert spec["info"]["version"] == AGENT_SPEC_VERSION
     assert spec["servers"] == [{"url": "https://gw.example.com"}]
     assert spec["openapi"].startswith("3.")
+
+
+def _req(headers: dict, scheme: str = "http", host: str = "gateway.algenta.ai"):
+    from starlette.requests import Request
+
+    hdrs = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+    return Request({
+        "type": "http", "method": "GET", "path": "/openapi/decision-agent.json",
+        "query_string": b"", "headers": hdrs, "scheme": scheme,
+        "server": (host, 443 if scheme == "https" else 80), "client": ("1.2.3.4", 0),
+    })
+
+
+def test_public_base_url_honors_forwarded_proto_and_never_downgrades() -> None:
+    # The served spec's `servers` URL must be https so Foundry/Copilot/the connector don't call http.
+    from apps.api_server.routers.decision_agent_spec import _public_base_url
+
+    # Behind a TLS-terminating proxy: internal http + x-forwarded-proto=https -> https.
+    assert _public_base_url(_req({"host": "gateway.algenta.ai", "x-forwarded-proto": "https"})) == "https://gateway.algenta.ai"
+    # No forwarded header but a public host on http -> upgraded to https (never advertise cleartext).
+    assert _public_base_url(_req({"host": "gateway.algenta.ai"})) == "https://gateway.algenta.ai"
+    # x-forwarded-host is honored.
+    assert _public_base_url(_req({"host": "internal:8000", "x-forwarded-proto": "https", "x-forwarded-host": "gateway.algenta.ai"})) == "https://gateway.algenta.ai"
+    # Localhost dev stays http.
+    assert _public_base_url(_req({"host": "localhost:8000"})) == "http://localhost:8000"

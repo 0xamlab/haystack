@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
   "manifestVersion": "1.19",
   "version": "0.1.0",
-  "id": "REPLACE_WITH_TEAMS_APP_ID_GUID",
+  "id": "5a3209f0-79c2-4f05-ab1f-f0d42449dff8",
   "developer": {
     "name": "Algenta",
     "websiteUrl": "https://algenta.ai",
@@ -31,5 +31,5 @@
     ]
   },
   "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["YOUR-GATEWAY"]
+  "validDomains": ["gateway.algenta.ai"]
 }

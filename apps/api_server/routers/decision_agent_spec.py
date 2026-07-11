@@ -123,9 +123,25 @@ def build_decision_agent_spec(full: dict[str, Any], base_url: str) -> dict[str, 
     return spec
 
 
+def _public_base_url(request: Request) -> str:
+    """The PUBLIC base URL clients should call — honoring the TLS-terminating proxy.
+
+    Behind Azure Container Apps / APIM / any reverse proxy, ``request.base_url`` reports the internal
+    ``http`` scheme, which would advertise a cleartext ``servers`` URL that Foundry / Copilot / the
+    connector then call over HTTP. Prefer the standard forwarded headers the proxy sets, and never
+    downgrade a public host to http."""
+    fwd_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    fwd_host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    scheme = fwd_proto or request.url.scheme
+    host = fwd_host or request.url.netloc
+    # A public (non-loopback) host is always https in practice — the proxy terminates TLS.
+    if scheme == "http" and host and not host.startswith(("localhost", "127.0.0.1", "[::1]")):
+        scheme = "https"
+    return f"{scheme}://{host}".rstrip("/")
+
+
 @router.get("/openapi/decision-agent.json", include_in_schema=False)
 async def decision_agent_openapi(request: Request) -> JSONResponse:
     """Serve the reduced agent-facing Decision API spec (Foundry / Copilot register here)."""
     full = request.app.openapi()
-    base_url = str(request.base_url).rstrip("/")
-    return JSONResponse(build_decision_agent_spec(full, base_url))
+    return JSONResponse(build_decision_agent_spec(full, _public_base_url(request)))

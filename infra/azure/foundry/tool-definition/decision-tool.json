@@ -1,12 +1,13 @@
 {
-  "$comment": "Azure AI Foundry OpenAPI tool for the Algenta Decision API. Points at the gateway's REDUCED, versioned agent spec (coarse ops only — approval mutation, execution, admin and workspace selection are structurally absent). Validate field names against your Foundry project's current tool schema before registering.",
+  "$comment": "Azure AI Foundry OpenAPI tool for the Algenta Decision API, in the CURRENT Foundry OpenApiFunctionDefinition shape (type + openapi{name,description,spec,auth}). Foundry has NO spec_url field: run build_tool.py to fetch the gateway's reduced spec, force HTTPS, drop the API-key scheme, and emit decision-tool.deploy.json with openapi.spec inlined. Audience is the gateway app-registration Application ID URI.",
   "type": "openapi",
-  "name": "algenta_decision_api",
-  "description": "Coarse governed-decision operations: frame a decision, run the analysis (async), read the result, inspect evidence, propose a plan, record an outcome. Approval and execution are NOT available here — they are separate, credentialed human actions.",
-  "spec_url": "https://$GATEWAY_HOST/openapi/decision-agent.json",
-  "auth": {
-    "type": "managed_identity",
-    "audience": "api://$GATEWAY_AUDIENCE",
-    "$comment": "A Foundry service/managed identity token, audience-scoped to the Decision API. The gateway maps the identity to a restricted workspace + app-role; a Graph or ARM token is rejected."
+  "openapi": {
+    "name": "algenta_decision_api",
+    "description": "Coarse governed-decision operations: frame a decision, run the analysis (async), read the result, inspect evidence, propose a plan, record an outcome. Approval and execution are NOT available here — they are separate, credentialed human actions.",
+    "spec": { "$build": "inlined from https://gateway.algenta.ai/openapi/decision-agent.json by build_tool.py" },
+    "auth": {
+      "type": "managed_identity",
+      "security_scheme": { "audience": "api://3983990d-e9b5-4866-9a43-d52d6e0c20c3" }
+    }
   }
 }
