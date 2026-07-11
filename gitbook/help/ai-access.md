@@ -48,7 +48,7 @@ Add it to an MCP client the same way you would any other server. For example, in
 }
 ```
 
-Once connected, the assistant can answer "how do I run the Mojo engine?" or "what is `device_identity_mismatch`?" by reading the actual pages instead of relying on its training data.
+Once connected, the assistant can answer "how do I verify the bundled engine?" or "what is `device_identity_mismatch`?" by reading the actual pages instead of relying on its training data.
 
 {% hint style="warning" %}
 The docs MCP server is distinct from Algenta's own [MCP server](../sdk/mcp.md), which exposes the *engine* (run simulations, query data) rather than the documentation. Use the docs MCP for questions about Algenta; use the product MCP to actually call the engine.

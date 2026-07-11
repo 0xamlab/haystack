@@ -158,6 +158,30 @@
         "validation": "command_inventory"
       },
       {
+        "bytes": 85,
+        "language": "bash",
+        "line": 17,
+        "path": "api/rate-limits.md",
+        "sha256": "cb9d83233bb6a107cb2caf2c4906e83163bb263b4568b005f6f42b1439e24185",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 49,
+        "language": "text",
+        "line": 52,
+        "path": "api/rate-limits.md",
+        "sha256": "2c33cc279906fc96eb1a3229b29429c5eff8a86bc9677c2ebe901b4450a7b28b",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 63,
+        "language": "text",
+        "line": 59,
+        "path": "api/rate-limits.md",
+        "sha256": "9c5bb4d5a6c7e0855d0ef72ea732347d15b3872f173537d73f69af102946d0ae",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 458,
         "language": "bash",
         "line": 41,
@@ -806,17 +830,9 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 357,
-        "language": "bash",
-        "line": 624,
-        "path": "cli.md",
-        "sha256": "1cbb2bf78308997765acf326b6caa0c18b9122cb0c3ec162c52dd000007e2581",
-        "validation": "command_inventory"
-      },
-      {
         "bytes": 165,
         "language": "bash",
-        "line": 652,
+        "line": 618,
         "path": "cli.md",
         "sha256": "bf8de315dca65d1d81d8d9616239153f92b23874ca97383cc7295ad255737cc8",
         "validation": "command_inventory"
@@ -824,7 +840,7 @@
       {
         "bytes": 127,
         "language": "bash",
-        "line": 671,
+        "line": 637,
         "path": "cli.md",
         "sha256": "96b09c44a56695552f819aad413a60188ccc4b761d364e5659faa84d3717741e",
         "validation": "command_inventory"
@@ -832,7 +848,7 @@
       {
         "bytes": 86,
         "language": "bash",
-        "line": 688,
+        "line": 654,
         "path": "cli.md",
         "sha256": "02072e95f4a581ca6d427c66953760604916720618275e4f350ac17f0d738179",
         "validation": "command_inventory"
@@ -840,7 +856,7 @@
       {
         "bytes": 423,
         "language": "bash",
-        "line": 700,
+        "line": 666,
         "path": "cli.md",
         "sha256": "0b5c3c2cfde213dae5223abee50c9dc81cb07a16043f113033bb5533a4844705",
         "validation": "command_inventory"
@@ -848,7 +864,7 @@
       {
         "bytes": 86,
         "language": "bash",
-        "line": 715,
+        "line": 681,
         "path": "cli.md",
         "sha256": "cf2a28ba855f6ff6402e5296aa0cdc3ae4516cfe2a6141e17eeaaade2af75609",
         "validation": "command_inventory"
@@ -888,7 +904,7 @@
       {
         "bytes": 265,
         "language": "bash",
-        "line": 27,
+        "line": 26,
         "path": "concepts/deployment-modes.md",
         "sha256": "c1945b1c6163f0be14369c0846bcd22e9a6cb10798e7ca7ece22beb889619d02",
         "validation": "command_inventory"
@@ -896,7 +912,7 @@
       {
         "bytes": 210,
         "language": "bash",
-        "line": 36,
+        "line": 35,
         "path": "concepts/deployment-modes.md",
         "sha256": "27780c546da7df6d2b185d38dc4b0ee26ede1a704505c982d4735de6b7c3a2e7",
         "validation": "command_inventory"
@@ -948,238 +964,6 @@
         "path": "concepts/simulation-models.md",
         "sha256": "db43bfcdb4ec4e69c520eb4b4a08db7c458bba497e61d102aea86870dc810404",
         "validation": "parsed"
-      },
-      {
-        "bytes": 70,
-        "language": "python",
-        "line": 22,
-        "path": "concepts.md",
-        "sha256": "38eadfffca4c7f14ebf67d4775b89c89f1964faf1a9680c2da5252fb1409e9d9",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 92,
-        "language": "typescript",
-        "line": 30,
-        "path": "concepts.md",
-        "sha256": "c19bf2b5565f7df749e9528d3f4308f601afc74c9994f7fd2bc0db81423312f8",
-        "validation": "static_inventory"
-      },
-      {
-        "bytes": 182,
-        "language": "python",
-        "line": 54,
-        "path": "concepts.md",
-        "sha256": "6cc270a9b8707aeca6caea1d32047232dc831a595f0921dc7cf4bfe2e5f43545",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 122,
-        "language": "python",
-        "line": 65,
-        "path": "concepts.md",
-        "sha256": "37ac4161809e84e54e83c5e0ab68291c0ad68d020cde905addaf36c1f6727806",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 182,
-        "language": "text",
-        "line": 75,
-        "path": "concepts.md",
-        "sha256": "df8d6edb0b62accc7eb81d58998e6dae37f65d1b552460f8436264f6b517c833",
-        "validation": "static_inventory"
-      },
-      {
-        "bytes": 103,
-        "language": "python",
-        "line": 89,
-        "path": "concepts.md",
-        "sha256": "8dff70923d19ab08ec696329f86ae01cb8c13246b3aee82674a9cdc4127ba748",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 54,
-        "language": "bash",
-        "line": 97,
-        "path": "concepts.md",
-        "sha256": "e2b4a3bd58b7b9c58ea636174ce5965dc4e008bc66f970be26cd456ab077d745",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 159,
-        "language": "python",
-        "line": 109,
-        "path": "concepts.md",
-        "sha256": "ab8e2f2840003f583fbc755a58717777b1230d7bbcb5c686460c8a7d7b961364",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 166,
-        "language": "typescript",
-        "line": 122,
-        "path": "concepts.md",
-        "sha256": "267e6667b72f38161d4264cdb97510bccd2b34db6038f1e486f5ae96f843f893",
-        "validation": "static_inventory"
-      },
-      {
-        "bytes": 132,
-        "language": "python",
-        "line": 159,
-        "path": "concepts.md",
-        "sha256": "eefa7cfa4b05f7db4b3e1e63bd8c9a68acd81789186ab1eee4bb7a854188df54",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 105,
-        "language": "python",
-        "line": 170,
-        "path": "concepts.md",
-        "sha256": "2ddaac442082cb3d58263761e789c3fd0a31379aa6d9c81dd052db51849c7383",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 121,
-        "language": "python",
-        "line": 183,
-        "path": "concepts.md",
-        "sha256": "a1b267a470b3391047037b8e514f4aae63e765c214978daf5407cecafa0a3d92",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 106,
-        "language": "text",
-        "line": 203,
-        "path": "concepts.md",
-        "sha256": "70cbc2b6c520a42d106a05f171da0718b170fb1f8dfe84ff1b39409977355195",
-        "validation": "static_inventory"
-      },
-      {
-        "bytes": 90,
-        "language": "python",
-        "line": 210,
-        "path": "concepts.md",
-        "sha256": "e50d24fb52910fa99553bc6265faa8711f3b6399848c52ef4c846e7cf1f25e55",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 143,
-        "language": "python",
-        "line": 232,
-        "path": "concepts.md",
-        "sha256": "f496965ea1febb33551d7da212a45dd50905eb601064f36c976768b6f95440b0",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 109,
-        "language": "python",
-        "line": 246,
-        "path": "concepts.md",
-        "sha256": "70c4d4fb9c842dbb56acceda2cf3dcaddcd8272fc145ce1d8323569c4e3c1414",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 23,
-        "language": "python",
-        "line": 260,
-        "path": "concepts.md",
-        "sha256": "5ede22662405fed588b304f72184fb715d4cbd41b59ab6bf7c6f182693f641df",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 408,
-        "language": "python",
-        "line": 270,
-        "path": "concepts.md",
-        "sha256": "a71e816a269ce4298bc11a502f226407470afa8d6d12b22032ae778ba1b42fd6",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 602,
-        "language": "python",
-        "line": 305,
-        "path": "concepts.md",
-        "sha256": "7652fbb368100c4648049c2b3592df8ba84f9e35102542ad51e3f18af9caac3e",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 159,
-        "language": "python",
-        "line": 340,
-        "path": "concepts.md",
-        "sha256": "31876f6ba8dea410ce4db7a7c61b0e3f64294d3009edd5ac2e181634a286716c",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 88,
-        "language": "python",
-        "line": 352,
-        "path": "concepts.md",
-        "sha256": "0514932deb55674eead2a5829d2049951658a8436bb099e484e855da0500bb0b",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 116,
-        "language": "python",
-        "line": 358,
-        "path": "concepts.md",
-        "sha256": "e3a709f5715a302755b6b67bfd36c5a9bcf4b63b7bec375edddafa9a85cc9382",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 236,
-        "language": "python",
-        "line": 369,
-        "path": "concepts.md",
-        "sha256": "5e2dddf5fdfacb1fd69144dc74f2ea9a5fda8946be2d0eaccd07e2bbcdd13094",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 250,
-        "language": "python",
-        "line": 379,
-        "path": "concepts.md",
-        "sha256": "c8da7537546a32f392b76a592c29ae34863bf39d0979d52cd47f1d6983d0c9bf",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 243,
-        "language": "bash",
-        "line": 400,
-        "path": "concepts.md",
-        "sha256": "a835b812d0c00c236dde13c3868e48e5e35933885ad2facb9daf225ab00048b3",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 65,
-        "language": "python",
-        "line": 410,
-        "path": "concepts.md",
-        "sha256": "e990a804f02fc009b5e90a4b091ef8b4b4894fb3b65817e743a108e6ed3ea830",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 424,
-        "language": "python",
-        "line": 419,
-        "path": "concepts.md",
-        "sha256": "9a5a99e330859b41cb5483e830685e7a004abbb3e58f8cfc01deb497ff3dfd47",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 61,
-        "language": "bash",
-        "line": 435,
-        "path": "concepts.md",
-        "sha256": "af11b8ed715c9f01f083d4c961c9355e3da224414f00ec22278056a211c653c8",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 82,
-        "language": "bash",
-        "line": 441,
-        "path": "concepts.md",
-        "sha256": "18f13d7daebde0a119cafa864fd19f07e45ceff2309853935cf315c105d5d011",
-        "validation": "command_inventory"
       },
       {
         "bytes": 164,
@@ -2942,6 +2726,38 @@
         "validation": "parsed"
       },
       {
+        "bytes": 46,
+        "language": "bash",
+        "line": 24,
+        "path": "engine/bundled-runtime.md",
+        "sha256": "02e7ff6f1a44cc0cae26f1699273d353f4a8d62b3bde6c5b0e9d60cf04777039",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 37,
+        "language": "bash",
+        "line": 34,
+        "path": "engine/bundled-runtime.md",
+        "sha256": "7c0c1a851f11fd0ab2d9c5a14f9de6c2530725f207c0c0eabf506d7597c5fe14",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 93,
+        "language": "bash",
+        "line": 40,
+        "path": "engine/bundled-runtime.md",
+        "sha256": "0e47e084f8852af49ba359e1865d59611c47aebedee7c14703831803deabbd1a",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 267,
+        "language": "bash",
+        "line": 57,
+        "path": "engine/bundled-runtime.md",
+        "sha256": "066fca3719c2324446a1ecc55f9b4a2dae13743c44cd632e713bef9e88e73d7d",
+        "validation": "command_inventory"
+      },
+      {
         "bytes": 96,
         "language": "bash",
         "line": 84,
@@ -2998,107 +2814,19 @@
         "validation": "parsed"
       },
       {
-        "bytes": 157,
+        "bytes": 93,
         "language": "bash",
-        "line": 28,
-        "path": "engine/filtered-install.md",
-        "sha256": "9dfd0fbb04095554a4919a22234fb297d8ee01c6d6479056bbd9c96d6d57d2a9",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 78,
-        "language": "bash",
-        "line": 35,
-        "path": "engine/filtered-install.md",
-        "sha256": "639b02f9c96d591d84bb5a807e472861db6649c69a5b4a337f9f8fc4717c8708",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 71,
-        "language": "bash",
-        "line": 47,
-        "path": "engine/filtered-install.md",
-        "sha256": "61c30b70be6caa0dfdf9b6dc928157f7375d3e031fbafdc6e62ec9e5e4913a0d",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 160,
-        "language": "bash",
-        "line": 62,
-        "path": "engine/filtered-install.md",
-        "sha256": "915713408971ebb4027f98ee8d03e4ccd267eafcd32a981dcb7309ceddcad1ac",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 87,
-        "language": "bash",
-        "line": 31,
+        "line": 22,
         "path": "engine/health.md",
-        "sha256": "b749efd3a8ca729494d1da2c0db3edca7cfc584dba6850c218d18188c24989b5",
+        "sha256": "0e47e084f8852af49ba359e1865d59611c47aebedee7c14703831803deabbd1a",
         "validation": "command_inventory"
       },
       {
-        "bytes": 159,
+        "bytes": 268,
         "language": "bash",
-        "line": 38,
+        "line": 41,
         "path": "engine/health.md",
-        "sha256": "7606b41f088d1c121e82fa8744f6a93ba0fcc43afa58ff9bc96ee5f6863c2c9e",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 120,
-        "language": "bash",
-        "line": 25,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "5c5ee4699d9f26c26b5eea7bbecc6bb66b02a7c763abf9381a4827b4df87f457",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 232,
-        "language": "bash",
-        "line": 36,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "60899c777a8f1c37c2c8c9d479aa86dcea6b10c1d6ec6cc6f06cf34e871c591d",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 133,
-        "language": "bash",
-        "line": 44,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "34f1b367b0d52fbb7ec4746ccc803dfcbd336798e771dcaefc2fd86558282e63",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 44,
-        "language": "bash",
-        "line": 59,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "173fdc8aaffa5268fff39aa62ac315ae91e28c1aaf8b5ed6e5dceb35c276779c",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 266,
-        "language": "bash",
-        "line": 69,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "5addbed2886425f6ce6f4442361d48f9467f41ea505dc39a989f36c0e954881d",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 122,
-        "language": "bash",
-        "line": 96,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "b247670522b6780035c0c9502bd9d2601496795cb9bd3cab041907df75c3c8ca",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 41,
-        "language": "bash",
-        "line": 112,
-        "path": "engine/mojo-sidecar.md",
-        "sha256": "03760158f392c00356edd886c8c0331990e84c99a11951b8730f6787dde33848",
+        "sha256": "18f2b6e0871f491eaaf6bd6d231625ca19bc9bb31c3a3e026a44127d5e87e66c",
         "validation": "command_inventory"
       },
       {
@@ -3156,14 +2884,6 @@
         "path": "engine/runtime-libraries.md",
         "sha256": "7ca6ed009d9b40fe91333e4e2d14d9c67d382da6a248796e455db6d783672f1b",
         "validation": "parsed"
-      },
-      {
-        "bytes": 109,
-        "language": "bash",
-        "line": 156,
-        "path": "engine/runtime-libraries.md",
-        "sha256": "f425b445e23cda5ad310da3f1e4f91633b51fc95a063255134540e1bef6f7b3e",
-        "validation": "command_inventory"
       },
       {
         "bytes": 89,
@@ -3294,33 +3014,25 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 44,
+        "bytes": 96,
         "language": "bash",
         "line": 129,
         "path": "guides/air-gapped.md",
-        "sha256": "173fdc8aaffa5268fff39aa62ac315ae91e28c1aaf8b5ed6e5dceb35c276779c",
+        "sha256": "bc9ea14ae65117bc6de96a80ffb5738f5e0a500009c223d8b94329c0c0815f65",
         "validation": "command_inventory"
       },
       {
         "bytes": 100,
         "language": "bash",
-        "line": 141,
+        "line": 142,
         "path": "guides/air-gapped.md",
         "sha256": "f4f9421d8b8d5b4e7a1f095f5e1b5d994a9acf0869afadc4d8d379131c3195bc",
         "validation": "command_inventory"
       },
       {
-        "bytes": 105,
-        "language": "bash",
-        "line": 162,
-        "path": "guides/air-gapped.md",
-        "sha256": "659303d6d51833e35a6834530f724454b4ac2c08bbbba6a58a957c971300d13e",
-        "validation": "command_inventory"
-      },
-      {
         "bytes": 190,
         "language": "bash",
-        "line": 175,
+        "line": 162,
         "path": "guides/air-gapped.md",
         "sha256": "45f4d8b6edb7efb4f3f6295429238f413baf4c42b33a44cb04038b0d264ab7b8",
         "validation": "command_inventory"
@@ -4526,14 +4238,6 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 450,
-        "language": "bash",
-        "line": 199,
-        "path": "guides/instant-map.md",
-        "sha256": "fce921aee063678b40446aa377506bf9166796cd090713eb51aece9ee2c74463",
-        "validation": "command_inventory"
-      },
-      {
         "bytes": 646,
         "language": "bash",
         "line": 27,
@@ -5192,7 +4896,7 @@
       {
         "bytes": 46,
         "language": "bash",
-        "line": 40,
+        "line": 39,
         "path": "install.md",
         "sha256": "02e7ff6f1a44cc0cae26f1699273d353f4a8d62b3bde6c5b0e9d60cf04777039",
         "validation": "command_inventory"
@@ -5200,7 +4904,7 @@
       {
         "bytes": 36,
         "language": "bash",
-        "line": 68,
+        "line": 67,
         "path": "install.md",
         "sha256": "7b2b6d0a981f9c6cde15566d79b137823512402887e4b40d96b10b9b4f5463f6",
         "validation": "command_inventory"
@@ -5208,7 +4912,7 @@
       {
         "bytes": 55,
         "language": "json",
-        "line": 72,
+        "line": 71,
         "path": "install.md",
         "sha256": "18ff48e36c3acbcef8ac946f5f3c7c101de03d31c32c272a2e109a9b3599335e",
         "validation": "parsed"
@@ -5216,7 +4920,7 @@
       {
         "bytes": 453,
         "language": "bash",
-        "line": 78,
+        "line": 77,
         "path": "install.md",
         "sha256": "24033591457a1e0c18b71b55ed231fbe863f35f72c095b8b6346928857cbc465",
         "validation": "command_inventory"
@@ -5224,7 +4928,7 @@
       {
         "bytes": 134,
         "language": "bash",
-        "line": 118,
+        "line": 117,
         "path": "install.md",
         "sha256": "f93a4c500a51bc65304b2cabb4c16273a7832fccba41f7043ea9e61d49d5eeab",
         "validation": "command_inventory"
@@ -5232,55 +4936,15 @@
       {
         "bytes": 188,
         "language": "bash",
-        "line": 134,
+        "line": 133,
         "path": "install.md",
         "sha256": "4f3bdffc1716117378880d7d154a953ca06f737da8fba08170659d629ea6967a",
         "validation": "command_inventory"
       },
       {
-        "bytes": 102,
-        "language": "bash",
-        "line": 151,
-        "path": "install.md",
-        "sha256": "bde12604142f18d855c5a1d13b1094bcc4c46b99bd46327938a02a0a048e0cb9",
-        "validation": "command_inventory"
-      },
-      {
         "bytes": 23,
         "language": "bash",
-        "line": 163,
-        "path": "install.md",
-        "sha256": "f171d23473b82e0eb1bc67d81d79f64863079a3d2095c451543440e9ba037670",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 15,
-        "language": "bash",
-        "line": 173,
-        "path": "install.md",
-        "sha256": "327975d994aa98333b0a6a6a8075c0c3fbef068ccec260224554e50950ac8301",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 12,
-        "language": "bash",
-        "line": 179,
-        "path": "install.md",
-        "sha256": "bcc01f25938a3162846413f72032a2b1ad20cbf0924d6101f4e711182c041560",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 220,
-        "language": "python",
-        "line": 185,
-        "path": "install.md",
-        "sha256": "6b2c0b655dd1bdd8d8bf995320e38b0728b9d2f6787c66d2228169ab54caa0c6",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 23,
-        "language": "bash",
-        "line": 202,
+        "line": 148,
         "path": "install.md",
         "sha256": "f171d23473b82e0eb1bc67d81d79f64863079a3d2095c451543440e9ba037670",
         "validation": "command_inventory"
@@ -5288,7 +4952,7 @@
       {
         "bytes": 588,
         "language": "python",
-        "line": 210,
+        "line": 156,
         "path": "install.md",
         "sha256": "dca92c89dbe63d009bc455b1427c0177729ae2712e4d034cbfa49961dfc1be20",
         "validation": "parsed"
@@ -5296,7 +4960,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 243,
+        "line": 189,
         "path": "install.md",
         "sha256": "cdfd8d1968b3b085a9de6ebafb891acad93ea0650aa23c7c9440607dd3890866",
         "validation": "command_inventory"
@@ -5304,7 +4968,7 @@
       {
         "bytes": 600,
         "language": "typescript",
-        "line": 253,
+        "line": 199,
         "path": "install.md",
         "sha256": "cb65c059af8a21061008acf0aec2022b5200505afe2c3db9a9af5e33487cf681",
         "validation": "static_inventory"
@@ -5312,7 +4976,7 @@
       {
         "bytes": 24,
         "language": "bash",
-        "line": 292,
+        "line": 238,
         "path": "install.md",
         "sha256": "07b5c9e3ac9fce5a5eaeb1e67f1cc29adddff5ab66dfc70c55da9af3ea5a2d1b",
         "validation": "command_inventory"
@@ -5320,7 +4984,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 297,
+        "line": 243,
         "path": "install.md",
         "sha256": "63bfd02bc040d323ebc282cf8aab0b27ae45d83d08e39c9d7125cd9bfa34e661",
         "validation": "command_inventory"
@@ -5328,7 +4992,7 @@
       {
         "bytes": 35,
         "language": "bash",
-        "line": 308,
+        "line": 254,
         "path": "install.md",
         "sha256": "8882c8fb8908d387e338622f3242e9a8119b0c0f8cd270e051a7734c9c399b13",
         "validation": "command_inventory"
@@ -5336,7 +5000,7 @@
       {
         "bytes": 226,
         "language": "json",
-        "line": 318,
+        "line": 264,
         "path": "install.md",
         "sha256": "177b471f60091df57103bdb3a1d196299bc34247fcdc9b54cbb725c732fa7ae1",
         "validation": "parsed"
@@ -5803,38 +5467,6 @@
         "line": 233,
         "path": "llm/models.md",
         "sha256": "627ba046badb74cca35cca6fccf922500092891bcebfab2369db208b6fd23754",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 118,
-        "language": "bash",
-        "line": 21,
-        "path": "login.md",
-        "sha256": "a05b268e0274863fdccc2470b585ab677f25c77769802e8c9f404941bc01e49e",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 13,
-        "language": "bash",
-        "line": 40,
-        "path": "login.md",
-        "sha256": "e667730e5252e8d0d8997ed084f52fc0d9eddac1ab398e9b35c2c876f1c90b68",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 26,
-        "language": "bash",
-        "line": 46,
-        "path": "login.md",
-        "sha256": "c8ae5f2f5faeb7730fb4837f650e33df23e479bd29e466334430a70ecad5bc7a",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 14,
-        "language": "bash",
-        "line": 72,
-        "path": "login.md",
-        "sha256": "08bcf7952466ceb3a924e03bbb1078ff77763c2b2fe076d95a40f55461a7cb87",
         "validation": "command_inventory"
       },
       {
@@ -6486,46 +6118,6 @@
         "validation": "parsed"
       },
       {
-        "bytes": 34,
-        "language": "json",
-        "line": 29,
-        "path": "mcp-tools/runtime-libraries.md",
-        "sha256": "c94e04e2741c0fcd36375d1d2bfb4b62439551adba479e8900e163f7e322f16d",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 172,
-        "language": "json",
-        "line": 33,
-        "path": "mcp-tools/runtime-libraries.md",
-        "sha256": "0057d9cb86111f73f2a67f29f814f6e35605fb2cbbacb6c8678a8cd274100947",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 120,
-        "language": "json",
-        "line": 59,
-        "path": "mcp-tools/runtime-libraries.md",
-        "sha256": "4659b837052dad5ead665ca827d7c28f8f5a10b752373415ee4ff6b46f8323a2",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 200,
-        "language": "json",
-        "line": 68,
-        "path": "mcp-tools/runtime-libraries.md",
-        "sha256": "3aeefa918c71599621a71e03a58678150b454b3fb42bea3dbe2cc50602646bb8",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 108,
-        "language": "json",
-        "line": 84,
-        "path": "mcp-tools/runtime-libraries.md",
-        "sha256": "5c70dd874c0b6f1080ff5a8e86312e18474d2f9b4815d1a5fa6f0137e4c96950",
-        "validation": "parsed"
-      },
-      {
         "bytes": 20,
         "language": "bash",
         "line": 45,
@@ -6682,7 +6274,7 @@
         "language": "text",
         "line": 88,
         "path": "operate/device-key-store.md",
-        "sha256": "d72047b11379a275aa71fe1ff72261e7db192c544104cbad18ee28c5af66d5fb",
+        "sha256": "c3f503d8845da1382b2e9315fec9c4f5b4e07d47b6a46ef12383534094ad2367",
         "validation": "static_inventory"
       },
       {
@@ -6718,17 +6310,17 @@
         "validation": "static_inventory"
       },
       {
-        "bytes": 303,
+        "bytes": 253,
         "language": "yaml",
         "line": 78,
         "path": "operate/monitoring.md",
-        "sha256": "be2bb9acfe0153045b7eea39d0c0f5676b72e91412de02d794b68b2cd808c362",
+        "sha256": "a216fd40229069aea44c56c8611a16cd6eed9b3b2399318a4830d1c1f0fe2145",
         "validation": "parsed"
       },
       {
         "bytes": 273,
         "language": "text",
-        "line": 113,
+        "line": 112,
         "path": "operate/monitoring.md",
         "sha256": "3b33b2f92dcc10db210292a62942005b81451fd18efd2f46ebdec73548b851e4",
         "validation": "static_inventory"
@@ -6736,23 +6328,23 @@
       {
         "bytes": 97,
         "language": "bash",
-        "line": 132,
+        "line": 131,
         "path": "operate/monitoring.md",
         "sha256": "22c1451891554b5b51a368104317b590ab2bf2a450de6d272169a8ac8001c44f",
         "validation": "command_inventory"
       },
       {
-        "bytes": 306,
+        "bytes": 386,
         "language": "json",
-        "line": 138,
+        "line": 137,
         "path": "operate/monitoring.md",
-        "sha256": "4debb7bccaf36ad14b228b1121b754dcdcd663dd85b37b2a055292073996ead0",
+        "sha256": "007a898efc818dad3415f768a8dfd23f09debdbaa3c4b82859e794f43c68b1eb",
         "validation": "parsed"
       },
       {
         "bytes": 185,
         "language": "bash",
-        "line": 162,
+        "line": 166,
         "path": "operate/monitoring.md",
         "sha256": "5b8252840a50cf2d69d20a67b8fa0c2025c9535f02ee241e5c2c96e7aed644be",
         "validation": "command_inventory"
@@ -6760,7 +6352,7 @@
       {
         "bytes": 119,
         "language": "bash",
-        "line": 175,
+        "line": 179,
         "path": "operate/monitoring.md",
         "sha256": "0f4057752e683690f107fe3c61a2141d9d56461a40d2c2fe6232ca3759d4610c",
         "validation": "command_inventory"
@@ -7020,110 +6612,6 @@
         "path": "quickstart.md",
         "sha256": "5944cc81958dd72c7c6aa915d9fe11f10182ee755050c7c3dc7724cd20e40fed",
         "validation": "parsed"
-      },
-      {
-        "bytes": 115,
-        "language": "bash",
-        "line": 211,
-        "path": "quickstart.md",
-        "sha256": "1083221e21971d12e323e13a26998cc239d874490f0f1fd568f6bbcaf8bf1662",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 47,
-        "language": "bash",
-        "line": 229,
-        "path": "quickstart.md",
-        "sha256": "d128a0a1155769f4aad9a81df355be22990e53b5764805e6c5bf2031eeae32af",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 39,
-        "language": "bash",
-        "line": 235,
-        "path": "quickstart.md",
-        "sha256": "3ca9818e81480a7b4d97640d65b9b962f3b9e6821e9cc11ae98c4d6533953d3b",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 173,
-        "language": "python",
-        "line": 242,
-        "path": "quickstart.md",
-        "sha256": "a0cb36f19a87832df7fc84ea651de829b7d35b507db0029f1ae145504fa9bec9",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 51,
-        "language": "bash",
-        "line": 253,
-        "path": "quickstart.md",
-        "sha256": "130a8105524a9f8e0928070b28cbe114799ca5c41517a902c20618cc16312a82",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 118,
-        "language": "bash",
-        "line": 25,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "a05b268e0274863fdccc2470b585ab677f25c77769802e8c9f404941bc01e49e",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 258,
-        "language": "bash",
-        "line": 58,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "c80f642390b1ba9817fc027037312f1ee6fe134b4c2b808c414a614984225400",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 91,
-        "language": "bash",
-        "line": 71,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "c109a876b0ebedb1114c07d5da0e666ee2b33bdd0dca31b26e22035d0fd534df",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 32,
-        "language": "bash",
-        "line": 80,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "f7d65eb7f45926f569f4fb389becf2afabe85ada1cb8f3cda4edc1ff771f8359",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 102,
-        "language": "bash",
-        "line": 92,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "77908a745ad17f85ee6a5ee55e9a09b7b350f0b9b7da100c0b1fbc0bd631914b",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 145,
-        "language": "bash",
-        "line": 101,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "cd01834dfa174a2d6509f13235561eaa92cbf33b2692c9f14eed3c21ff39fe78",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 15,
-        "language": "bash",
-        "line": 112,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "ea46c2cbd51a047f7fb8799ce3f4e7e360593e275b9bf71e0c430375d46adf56",
-        "validation": "command_inventory"
-      },
-      {
-        "bytes": 55,
-        "language": "bash",
-        "line": 130,
-        "path": "sdk/algenta-cli.md",
-        "sha256": "27d5a132946c6004a68c3cd27738e0bfa788c900849dd6f537a7cc35ce3d4cd2",
-        "validation": "command_inventory"
       },
       {
         "bytes": 57,
@@ -7694,73 +7182,9 @@
         "validation": "parsed"
       },
       {
-        "bytes": 283,
-        "language": "python",
-        "line": 401,
-        "path": "sdk/python.md",
-        "sha256": "ab12dcc764b4bf6b4013dae0a090482491846c1b115bbc64356c61ba3f8355b2",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 118,
-        "language": "python",
-        "line": 415,
-        "path": "sdk/python.md",
-        "sha256": "07d83052d8dfa48cf128f82cad212de2b999574a3d85cd407bcf01e12e24d479",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 85,
-        "language": "python",
-        "line": 422,
-        "path": "sdk/python.md",
-        "sha256": "e67d2063fdaedd7f70c7cb2b8e23219388f2ef8073cab1d482ceed34b0ce3d56",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 162,
-        "language": "python",
-        "line": 429,
-        "path": "sdk/python.md",
-        "sha256": "2f695b7e1b389c957a900b370d0eeb8b31950e818f5bafb85c507216e11d28bd",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 674,
-        "language": "python",
-        "line": 463,
-        "path": "sdk/python.md",
-        "sha256": "edfa1d65130b7754ebddd380b6d10f67cc0d00c0685366ca149dd1b9cf882662",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 296,
-        "language": "python",
-        "line": 498,
-        "path": "sdk/python.md",
-        "sha256": "4fb1d7397d64b10e6a792f1072ab61dc243ed13c085283fdd12a660ef7fdfe1c",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 592,
-        "language": "python",
-        "line": 514,
-        "path": "sdk/python.md",
-        "sha256": "539bdf8bad881e89e7fb119f3ec44b73efed9e5717775ddb5b17298b14af9347",
-        "validation": "parsed"
-      },
-      {
-        "bytes": 159,
-        "language": "bash",
-        "line": 549,
-        "path": "sdk/python.md",
-        "sha256": "6281992951fa24e0fb96d7ae9993bfa629d59e22f14409a69c245dacc6763d40",
-        "validation": "command_inventory"
-      },
-      {
         "bytes": 378,
         "language": "python",
-        "line": 560,
+        "line": 401,
         "path": "sdk/python.md",
         "sha256": "bf9c7912bba080ac59b9d992770f38ecba7bcb04180130d4af20f2f351fa3e90",
         "validation": "parsed"
@@ -11443,6 +10867,33 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/limits",
+        "line": 15,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/rate-limits.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/limits",
+        "line": 18,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/rate-limits.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/limits",
+        "line": 46,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/rate-limits.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/me",
         "line": 18,
         "match_kind": "exact",
@@ -13918,44 +13369,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
-        "line": 615,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/runtime/validation",
-        "line": 616,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/runtime/modules",
-        "line": 617,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/runtime/benchmarks",
-        "line": 618,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "cli.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/deployments/regions",
-        "line": 646,
+        "line": 612,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13964,7 +13379,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployments",
-        "line": 647,
+        "line": 613,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13973,7 +13388,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployments",
-        "line": 648,
+        "line": 614,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -13982,7 +13397,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployments/{}/cost",
-        "line": 649,
+        "line": 615,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -13991,7 +13406,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/deployments/{}",
-        "line": 650,
+        "line": 616,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "cli.md",
@@ -14000,7 +13415,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 664,
+        "line": 630,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -14009,7 +13424,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 665,
+        "line": 631,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -14018,7 +13433,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/version",
-        "line": 666,
+        "line": 632,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -14027,7 +13442,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 668,
+        "line": 634,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -14036,7 +13451,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/recommend",
-        "line": 669,
+        "line": 635,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -14045,7 +13460,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/templates",
-        "line": 684,
+        "line": 650,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -14054,7 +13469,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/templates/{}/run",
-        "line": 685,
+        "line": 651,
         "match_kind": "exact",
         "method": "POST",
         "path": "cli.md",
@@ -14063,7 +13478,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/templates/{}",
-        "line": 686,
+        "line": 652,
         "match_kind": "exact",
         "method": "GET",
         "path": "cli.md",
@@ -14072,7 +13487,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/me",
-        "line": 716,
+        "line": 682,
         "match_kind": "exact",
         "method": null,
         "path": "cli.md",
@@ -14242,6 +13657,15 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/infrastructure",
+        "line": 30,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "concepts/engine.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/capabilities/execute",
         "line": 14,
         "match_kind": "exact",
@@ -14350,19 +13774,10 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/meta/contract",
-        "line": 402,
+        "endpoint": "/v1/infrastructure",
+        "line": 73,
         "match_kind": "exact",
-        "method": null,
-        "path": "concepts.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
-        "line": 405,
-        "match_kind": "exact",
-        "method": null,
+        "method": "GET",
         "path": "concepts.md",
         "scope": "algenta"
       },
@@ -16942,6 +16357,33 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/health",
+        "line": 35,
+        "match_kind": "exact",
+        "method": null,
+        "path": "engine/bundled-runtime.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/infrastructure",
+        "line": 41,
+        "match_kind": "exact",
+        "method": null,
+        "path": "engine/bundled-runtime.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate",
+        "line": 58,
+        "match_kind": "exact",
+        "method": null,
+        "path": "engine/bundled-runtime.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/engines",
         "line": 18,
         "match_kind": "exact",
@@ -17167,33 +16609,6 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
-        "line": 36,
-        "match_kind": "exact",
-        "method": null,
-        "path": "engine/filtered-install.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/libraries*",
-        "line": 60,
-        "match_kind": "wildcard_family",
-        "method": null,
-        "path": "engine/filtered-install.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/libraries*",
-        "line": 64,
-        "match_kind": "wildcard_family",
-        "method": null,
-        "path": "engine/filtered-install.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/health",
         "line": 14,
         "match_kind": "exact",
@@ -17203,7 +16618,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/infrastructure",
+        "endpoint": "/v1/health/ready",
         "line": 15,
         "match_kind": "exact",
         "method": "GET",
@@ -17212,7 +16627,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
+        "endpoint": "/v1/infrastructure",
         "line": 16,
         "match_kind": "exact",
         "method": "GET",
@@ -17221,7 +16636,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/libraries/health",
+        "endpoint": "/v1/runtime/manifest",
         "line": 17,
         "match_kind": "exact",
         "method": "GET",
@@ -17230,8 +16645,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/infrastructure",
-        "line": 21,
+        "endpoint": "/v1/libraries/health",
+        "line": 18,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/health.md",
@@ -17240,55 +16655,19 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 39,
+        "line": 23,
         "match_kind": "exact",
         "method": null,
         "path": "engine/health.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
-        "line": 40,
-        "match_kind": "exact",
-        "method": null,
-        "path": "engine/health.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/infrastructure",
-        "line": 60,
-        "match_kind": "exact",
-        "method": null,
-        "path": "engine/mojo-sidecar.md",
         "scope": "algenta"
       },
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 70,
+        "line": 42,
         "match_kind": "exact",
         "method": null,
-        "path": "engine/mojo-sidecar.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/infrastructure",
-        "line": 81,
-        "match_kind": "exact",
-        "method": null,
-        "path": "engine/mojo-sidecar.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
-        "line": 126,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "engine/mojo-sidecar.md",
+        "path": "engine/health.md",
         "scope": "algenta"
       },
       {
@@ -20777,7 +20156,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 35,
+        "line": 34,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/glossary.md",
@@ -20786,7 +20165,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate/what-if",
-        "line": 41,
+        "line": 40,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/glossary.md",
@@ -20795,7 +20174,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 51,
+        "line": 50,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/glossary.md",
@@ -20804,7 +20183,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs",
-        "line": 62,
+        "line": 61,
         "match_kind": "exact",
         "method": null,
         "path": "help/glossary.md",
@@ -20813,7 +20192,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/privacy-report",
-        "line": 75,
+        "line": 74,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/glossary.md",
@@ -20822,7 +20201,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 25,
+        "line": 24,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20831,7 +20210,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 27,
+        "line": 26,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20840,7 +20219,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/recommend",
-        "line": 28,
+        "line": 27,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20849,7 +20228,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 29,
+        "line": 28,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20858,7 +20237,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/data",
-        "line": 30,
+        "line": 29,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20867,7 +20246,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/data/{}/summary",
-        "line": 30,
+        "line": 29,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20876,7 +20255,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/connectors",
-        "line": 31,
+        "line": 30,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20885,7 +20264,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions",
-        "line": 32,
+        "line": 31,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20894,7 +20273,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions/{}/outcome",
-        "line": 32,
+        "line": 31,
         "match_kind": "exact",
         "method": "PATCH",
         "path": "help/quick-reference.md",
@@ -20903,7 +20282,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/run",
-        "line": 33,
+        "line": 32,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20912,7 +20291,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs",
-        "line": 34,
+        "line": 33,
         "match_kind": "exact",
         "method": "POST",
         "path": "help/quick-reference.md",
@@ -20921,7 +20300,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}/result",
-        "line": 34,
+        "line": 33,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20930,7 +20309,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/usage",
-        "line": 35,
+        "line": 34,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20939,7 +20318,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/limits",
-        "line": 35,
+        "line": 34,
         "match_kind": "exact",
         "method": "GET",
         "path": "help/quick-reference.md",
@@ -20948,7 +20327,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 49,
+        "line": 47,
         "match_kind": "exact",
         "method": null,
         "path": "help/quick-reference.md",
@@ -20957,7 +20336,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 69,
+        "line": 68,
         "match_kind": "exact",
         "method": null,
         "path": "install.md",
@@ -20966,7 +20345,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 81,
+        "line": 80,
         "match_kind": "exact",
         "method": null,
         "path": "install.md",
@@ -20975,7 +20354,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 343,
+        "line": 289,
         "match_kind": "exact",
         "method": "POST",
         "path": "install.md",
@@ -21510,15 +20889,6 @@
         "match_kind": "exact",
         "method": "GET",
         "path": "llm/models.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/api-keys",
-        "line": 91,
-        "match_kind": "exact",
-        "method": "POST",
-        "path": "login.md",
         "scope": "algenta"
       },
       {
@@ -23432,7 +22802,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 130,
+        "line": 129,
         "match_kind": "exact",
         "method": "GET",
         "path": "operate/monitoring.md",
@@ -23441,7 +22811,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/infrastructure",
-        "line": 135,
+        "line": 134,
         "match_kind": "exact",
         "method": null,
         "path": "operate/monitoring.md",
@@ -23450,25 +22820,25 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 163,
-        "match_kind": "exact",
-        "method": null,
-        "path": "operate/monitoring.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/health/ready",
-        "line": 164,
-        "match_kind": "exact",
-        "method": null,
-        "path": "operate/monitoring.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/health/ready",
         "line": 167,
+        "match_kind": "exact",
+        "method": null,
+        "path": "operate/monitoring.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/health/ready",
+        "line": 168,
+        "match_kind": "exact",
+        "method": null,
+        "path": "operate/monitoring.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/health/ready",
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "operate/monitoring.md",
@@ -23846,7 +23216,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 266,
+        "line": 208,
         "match_kind": "exact",
         "method": "GET",
         "path": "quickstart.md",
@@ -23855,7 +23225,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/{}",
-        "line": 266,
+        "line": 208,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "quickstart.md",
@@ -27762,499 +27132,481 @@
       },
       {
         "kind": "internal",
-        "line": 12,
+        "line": 15,
         "path": "SUMMARY.md",
-        "target": "login.md"
+        "target": "engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
         "line": 16,
         "path": "SUMMARY.md",
-        "target": "engine/mojo-sidecar.md"
+        "target": "engine/health.md"
       },
       {
         "kind": "internal",
         "line": 17,
         "path": "SUMMARY.md",
-        "target": "engine/filtered-install.md"
+        "target": "engine/catalog.md"
       },
       {
         "kind": "internal",
         "line": 18,
         "path": "SUMMARY.md",
-        "target": "engine/health.md"
+        "target": "engine/runtime-libraries.md"
       },
       {
         "kind": "internal",
         "line": 19,
         "path": "SUMMARY.md",
-        "target": "engine/catalog.md"
+        "target": "engine/runtime-library-catalog.md"
       },
       {
         "kind": "internal",
         "line": 20,
         "path": "SUMMARY.md",
-        "target": "engine/runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 21,
-        "path": "SUMMARY.md",
-        "target": "engine/runtime-library-catalog.md"
-      },
-      {
-        "kind": "internal",
-        "line": 22,
-        "path": "SUMMARY.md",
         "target": "concepts/engine.md"
       },
       {
         "kind": "internal",
-        "line": 26,
+        "line": 24,
         "path": "SUMMARY.md",
         "target": "concepts/decision-service.md"
       },
       {
         "kind": "internal",
-        "line": 27,
+        "line": 25,
         "path": "SUMMARY.md",
         "target": "concepts/governed-data.md"
       },
       {
         "kind": "internal",
-        "line": 28,
+        "line": 26,
         "path": "SUMMARY.md",
         "target": "concepts/capability-plane.md"
       },
       {
         "kind": "internal",
-        "line": 29,
+        "line": 27,
         "path": "SUMMARY.md",
         "target": "concepts/simulation-models.md"
       },
       {
         "kind": "internal",
-        "line": 30,
+        "line": 28,
         "path": "SUMMARY.md",
         "target": "concepts/decision-memory.md"
       },
       {
         "kind": "internal",
-        "line": 31,
+        "line": 29,
         "path": "SUMMARY.md",
         "target": "concepts/execution-ownership.md"
       },
       {
         "kind": "internal",
-        "line": 32,
+        "line": 30,
         "path": "SUMMARY.md",
         "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
-        "line": 36,
+        "line": 34,
         "path": "SUMMARY.md",
         "target": "guides/first-query.md"
       },
       {
         "kind": "internal",
-        "line": 37,
+        "line": 35,
         "path": "SUMMARY.md",
         "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
-        "line": 38,
+        "line": 36,
         "path": "SUMMARY.md",
         "target": "guides/governed-decisions.md"
       },
       {
         "kind": "internal",
-        "line": 39,
+        "line": 37,
         "path": "SUMMARY.md",
         "target": "guides/renewal-capacity-allocation.md"
       },
       {
         "kind": "internal",
-        "line": 40,
+        "line": 38,
         "path": "SUMMARY.md",
         "target": "guides/simulate.md"
       },
       {
         "kind": "internal",
-        "line": 41,
+        "line": 39,
         "path": "SUMMARY.md",
         "target": "guides/what-if.md"
       },
       {
         "kind": "internal",
-        "line": 42,
+        "line": 40,
         "path": "SUMMARY.md",
         "target": "guides/recommend-and-score.md"
       },
       {
         "kind": "internal",
-        "line": 43,
+        "line": 41,
         "path": "SUMMARY.md",
         "target": "guides/governed-query.md"
       },
       {
         "kind": "internal",
-        "line": 44,
+        "line": 42,
         "path": "SUMMARY.md",
         "target": "guides/decision-memory.md"
       },
       {
         "kind": "internal",
-        "line": 45,
+        "line": 43,
         "path": "SUMMARY.md",
         "target": "guides/decision-memory-api.md"
       },
       {
         "kind": "internal",
-        "line": 46,
+        "line": 44,
         "path": "SUMMARY.md",
         "target": "guides/execution-policy.md"
       },
       {
         "kind": "internal",
-        "line": 47,
+        "line": 45,
         "path": "SUMMARY.md",
         "target": "guides/connect-data.md"
       },
       {
         "kind": "internal",
-        "line": 48,
+        "line": 46,
         "path": "SUMMARY.md",
         "target": "guides/instant-map.md"
       },
       {
         "kind": "internal",
-        "line": 49,
+        "line": 47,
         "path": "SUMMARY.md",
         "target": "guides/capabilities.md"
       },
       {
         "kind": "internal",
-        "line": 50,
+        "line": 48,
         "path": "SUMMARY.md",
         "target": "guides/capability-bindings.md"
       },
       {
         "kind": "internal",
-        "line": 51,
+        "line": 49,
         "path": "SUMMARY.md",
         "target": "guides/external-mcp.md"
       },
       {
         "kind": "internal",
-        "line": 52,
+        "line": 50,
         "path": "SUMMARY.md",
         "target": "guides/agent-runs.md"
       },
       {
         "kind": "internal",
-        "line": 53,
+        "line": 51,
         "path": "SUMMARY.md",
         "target": "guides/async-jobs.md"
       },
       {
         "kind": "internal",
-        "line": 54,
+        "line": 52,
         "path": "SUMMARY.md",
         "target": "guides/repository-intelligence.md"
       },
       {
         "kind": "internal",
-        "line": 55,
+        "line": 53,
         "path": "SUMMARY.md",
         "target": "guides/repository-fix.md"
       },
       {
         "kind": "internal",
-        "line": 56,
+        "line": 54,
         "path": "SUMMARY.md",
         "target": "guides/security-analysis.md"
       },
       {
         "kind": "internal",
-        "line": 57,
+        "line": 55,
         "path": "SUMMARY.md",
         "target": "guides/triggers.md"
       },
       {
         "kind": "internal",
-        "line": 58,
+        "line": 56,
         "path": "SUMMARY.md",
         "target": "guides/webhooks.md"
       },
       {
         "kind": "internal",
-        "line": 59,
+        "line": 57,
         "path": "SUMMARY.md",
         "target": "guides/byok.md"
       },
       {
         "kind": "internal",
-        "line": 60,
+        "line": 58,
         "path": "SUMMARY.md",
         "target": "guides/device-binding.md"
       },
       {
         "kind": "internal",
-        "line": 61,
+        "line": 59,
         "path": "SUMMARY.md",
         "target": "guides/air-gapped.md"
       },
       {
         "kind": "internal",
-        "line": 62,
+        "line": 60,
         "path": "SUMMARY.md",
         "target": "guides/ci-cd.md"
       },
       {
         "kind": "internal",
-        "line": 66,
+        "line": 64,
         "path": "SUMMARY.md",
         "target": "llm/models.md"
       },
       {
         "kind": "internal",
-        "line": 67,
+        "line": 65,
         "path": "SUMMARY.md",
         "target": "llm/completions.md"
       },
       {
         "kind": "internal",
-        "line": 68,
+        "line": 66,
         "path": "SUMMARY.md",
         "target": "llm/embeddings.md"
       },
       {
         "kind": "internal",
-        "line": 72,
+        "line": 70,
         "path": "SUMMARY.md",
         "target": "sdk/python.md"
       },
       {
         "kind": "internal",
-        "line": 73,
+        "line": 71,
         "path": "SUMMARY.md",
         "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
-        "line": 74,
+        "line": 72,
         "path": "SUMMARY.md",
         "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
-        "line": 75,
+        "line": 73,
         "path": "SUMMARY.md",
         "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
-        "line": 76,
+        "line": 74,
         "path": "SUMMARY.md",
         "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
-        "line": 77,
+        "line": 75,
         "path": "SUMMARY.md",
         "target": "sdk/python/repositories.md"
       },
       {
         "kind": "internal",
-        "line": 78,
+        "line": 76,
         "path": "SUMMARY.md",
         "target": "sdk/python/llm.md"
       },
       {
         "kind": "internal",
-        "line": 79,
+        "line": 77,
         "path": "SUMMARY.md",
         "target": "sdk/python/agent-runs.md"
       },
       {
         "kind": "internal",
-        "line": 80,
+        "line": 78,
         "path": "SUMMARY.md",
         "target": "sdk/python/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
-        "line": 81,
+        "line": 79,
         "path": "SUMMARY.md",
         "target": "sdk/python/account-and-control-plane.md"
       },
       {
         "kind": "internal",
-        "line": 82,
+        "line": 80,
         "path": "SUMMARY.md",
         "target": "sdk/typescript.md"
       },
       {
         "kind": "internal",
-        "line": 83,
+        "line": 81,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/overview.md"
       },
       {
         "kind": "internal",
-        "line": 84,
+        "line": 82,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/simulations-and-queries.md"
       },
       {
         "kind": "internal",
-        "line": 85,
+        "line": 83,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/decisions-and-products.md"
       },
       {
         "kind": "internal",
-        "line": 86,
+        "line": 84,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
-        "line": 87,
+        "line": 85,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
-        "line": 88,
+        "line": 86,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
-        "line": 89,
+        "line": 87,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
-        "line": 90,
+        "line": 88,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
-        "line": 91,
+        "line": 89,
         "path": "SUMMARY.md",
         "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
-        "line": 92,
+        "line": 90,
         "path": "SUMMARY.md",
         "target": "sdk/mcp.md"
       },
       {
         "kind": "internal",
-        "line": 93,
+        "line": 91,
         "path": "SUMMARY.md",
         "target": "sdk/mcp-registry.md"
       },
       {
         "kind": "internal",
-        "line": 94,
+        "line": 92,
         "path": "SUMMARY.md",
         "target": "sdk/tool-discovery.md"
       },
       {
         "kind": "internal",
-        "line": 95,
+        "line": 93,
         "path": "SUMMARY.md",
         "target": "sdk/testing.md"
       },
       {
         "kind": "internal",
-        "line": 96,
+        "line": 94,
         "path": "SUMMARY.md",
         "target": "cli.md"
       },
       {
         "kind": "internal",
-        "line": 97,
-        "path": "SUMMARY.md",
-        "target": "sdk/algenta-cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 101,
+        "line": 98,
         "path": "SUMMARY.md",
         "target": "mcp-tools/overview.md"
       },
       {
         "kind": "internal",
-        "line": 102,
+        "line": 99,
         "path": "SUMMARY.md",
         "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
-        "line": 103,
+        "line": 100,
         "path": "SUMMARY.md",
         "target": "mcp-tools/connectors.md"
       },
       {
         "kind": "internal",
-        "line": 104,
+        "line": 101,
         "path": "SUMMARY.md",
         "target": "mcp-tools/query.md"
       },
       {
         "kind": "internal",
-        "line": 105,
+        "line": 102,
         "path": "SUMMARY.md",
         "target": "mcp-tools/repository-intelligence.md"
       },
       {
         "kind": "internal",
-        "line": 106,
+        "line": 103,
         "path": "SUMMARY.md",
         "target": "mcp-tools/llm.md"
       },
       {
         "kind": "internal",
-        "line": 107,
+        "line": 104,
         "path": "SUMMARY.md",
         "target": "mcp-tools/capability-plane.md"
       },
       {
         "kind": "internal",
-        "line": 108,
+        "line": 105,
         "path": "SUMMARY.md",
         "target": "mcp-tools/decisions.md"
       },
       {
         "kind": "internal",
-        "line": 109,
+        "line": 106,
         "path": "SUMMARY.md",
         "target": "mcp-tools/jobs-and-triggers.md"
       },
       {
         "kind": "internal",
-        "line": 110,
+        "line": 107,
         "path": "SUMMARY.md",
         "target": "mcp-tools/agent-runs.md"
       },
       {
         "kind": "internal",
-        "line": 111,
+        "line": 108,
         "path": "SUMMARY.md",
         "target": "mcp-tools/control-plane.md"
       },
       {
         "kind": "internal",
-        "line": 112,
+        "line": 109,
         "path": "SUMMARY.md",
         "target": "mcp-tools/account-and-meta.md"
       },
@@ -28262,287 +27614,281 @@
         "kind": "internal",
         "line": 113,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 117,
-        "path": "SUMMARY.md",
         "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
-        "line": 118,
+        "line": 114,
         "path": "SUMMARY.md",
         "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
-        "line": 119,
+        "line": 115,
         "path": "SUMMARY.md",
         "target": "integrations/microsoft/excel.md"
       },
       {
         "kind": "internal",
-        "line": 120,
+        "line": 116,
         "path": "SUMMARY.md",
         "target": "integrations/microsoft/entra-sso.md"
       },
       {
         "kind": "internal",
-        "line": 121,
+        "line": 117,
         "path": "SUMMARY.md",
         "target": "integrations/azure/gateway.md"
       },
       {
         "kind": "internal",
-        "line": 125,
+        "line": 121,
         "path": "SUMMARY.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 126,
+        "line": 122,
         "path": "SUMMARY.md",
         "target": "configuration.md"
       },
       {
         "kind": "internal",
-        "line": 127,
+        "line": 123,
         "path": "SUMMARY.md",
         "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
-        "line": 128,
+        "line": 124,
         "path": "SUMMARY.md",
         "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
-        "line": 129,
+        "line": 125,
         "path": "SUMMARY.md",
         "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
-        "line": 130,
+        "line": 126,
         "path": "SUMMARY.md",
         "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
-        "line": 131,
+        "line": 127,
         "path": "SUMMARY.md",
         "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
-        "line": 132,
+        "line": 128,
         "path": "SUMMARY.md",
         "target": "operate/deployments-and-nodes.md"
       },
       {
         "kind": "internal",
-        "line": 133,
+        "line": 129,
         "path": "SUMMARY.md",
         "target": "licensing.md"
       },
       {
         "kind": "internal",
-        "line": 134,
+        "line": 130,
         "path": "SUMMARY.md",
         "target": "billing.md"
       },
       {
         "kind": "internal",
-        "line": 138,
+        "line": 134,
         "path": "SUMMARY.md",
         "target": "api/overview.md"
       },
       {
         "kind": "internal",
-        "line": 139,
+        "line": 135,
         "path": "SUMMARY.md",
         "target": "api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 140,
+        "line": 136,
         "path": "SUMMARY.md",
         "target": "api/streaming.md"
       },
       {
         "kind": "internal",
-        "line": 141,
+        "line": 137,
         "path": "SUMMARY.md",
         "target": "api/explorer.md"
       },
       {
         "kind": "internal",
-        "line": 142,
+        "line": 138,
         "path": "SUMMARY.md",
         "target": "api/errors.md"
       },
       {
         "kind": "internal",
-        "line": 143,
+        "line": 139,
         "path": "SUMMARY.md",
         "target": "api/rate-limits.md"
       },
       {
         "kind": "internal",
-        "line": 147,
+        "line": 143,
         "path": "SUMMARY.md",
         "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
-        "line": 148,
+        "line": 144,
         "path": "SUMMARY.md",
         "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
-        "line": 149,
+        "line": 145,
         "path": "SUMMARY.md",
         "target": "connectors/reference.md"
       },
       {
         "kind": "internal",
-        "line": 150,
+        "line": 146,
         "path": "SUMMARY.md",
         "target": "connectors/snowflake.md"
       },
       {
         "kind": "internal",
-        "line": 151,
+        "line": 147,
         "path": "SUMMARY.md",
         "target": "connectors/bigquery.md"
       },
       {
         "kind": "internal",
-        "line": 152,
+        "line": 148,
         "path": "SUMMARY.md",
         "target": "connectors/clickhouse.md"
       },
       {
         "kind": "internal",
-        "line": 153,
+        "line": 149,
         "path": "SUMMARY.md",
         "target": "connectors/postgres.md"
       },
       {
         "kind": "internal",
-        "line": 154,
+        "line": 150,
         "path": "SUMMARY.md",
         "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
-        "line": 155,
+        "line": 151,
         "path": "SUMMARY.md",
         "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
-        "line": 156,
+        "line": 152,
         "path": "SUMMARY.md",
         "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
-        "line": 157,
+        "line": 153,
         "path": "SUMMARY.md",
         "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
-        "line": 158,
+        "line": 154,
         "path": "SUMMARY.md",
         "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
-        "line": 159,
+        "line": 155,
         "path": "SUMMARY.md",
         "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
-        "line": 160,
+        "line": 156,
         "path": "SUMMARY.md",
         "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
-        "line": 161,
+        "line": 157,
         "path": "SUMMARY.md",
         "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
-        "line": 162,
+        "line": 158,
         "path": "SUMMARY.md",
         "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
-        "line": 163,
+        "line": 159,
         "path": "SUMMARY.md",
         "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
-        "line": 164,
+        "line": 160,
         "path": "SUMMARY.md",
         "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
-        "line": 165,
+        "line": 161,
         "path": "SUMMARY.md",
         "target": "connectors/files.md"
       },
       {
         "kind": "internal",
-        "line": 166,
+        "line": 162,
         "path": "SUMMARY.md",
         "target": "connectors/code-repositories.md"
       },
       {
         "kind": "internal",
-        "line": 167,
+        "line": 163,
         "path": "SUMMARY.md",
         "target": "connectors/rest-api.md"
       },
       {
         "kind": "internal",
-        "line": 171,
+        "line": 167,
         "path": "SUMMARY.md",
         "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
-        "line": 172,
+        "line": 168,
         "path": "SUMMARY.md",
         "target": "help/glossary.md"
       },
       {
         "kind": "internal",
-        "line": 173,
+        "line": 169,
         "path": "SUMMARY.md",
         "target": "help/quick-reference.md"
       },
       {
         "kind": "internal",
-        "line": 174,
+        "line": 170,
         "path": "SUMMARY.md",
         "target": "help/ai-access.md"
       },
       {
         "kind": "internal",
-        "line": 175,
+        "line": 171,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -28620,21 +27966,21 @@
       },
       {
         "kind": "internal",
-        "line": 8,
+        "line": 31,
         "path": "api/rate-limits.md",
         "target": "../billing.md"
       },
       {
         "kind": "internal",
-        "line": 42,
+        "line": 76,
+        "path": "api/rate-limits.md",
+        "target": "../billing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 80,
         "path": "api/rate-limits.md",
         "target": "errors.md"
-      },
-      {
-        "kind": "internal",
-        "line": 48,
-        "path": "api/rate-limits.md",
-        "target": "../billing.md"
       },
       {
         "kind": "internal",
@@ -28896,31 +28242,19 @@
       },
       {
         "kind": "internal",
-        "line": 32,
-        "path": "cli.md",
-        "target": "sdk/algenta-cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 725,
+        "line": 691,
         "path": "cli.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 729,
-        "path": "cli.md",
-        "target": "sdk/algenta-cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 733,
+        "line": 695,
         "path": "cli.md",
         "target": "api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 737,
+        "line": 699,
         "path": "cli.md",
         "target": "troubleshooting.md"
       },
@@ -28968,31 +28302,25 @@
       },
       {
         "kind": "internal",
-        "line": 57,
+        "line": 56,
         "path": "concepts/deployment-modes.md",
         "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 61,
+        "line": 60,
         "path": "concepts/deployment-modes.md",
         "target": "execution-ownership.md"
       },
       {
         "kind": "internal",
-        "line": 8,
+        "line": 43,
         "path": "concepts/engine.md",
-        "target": "../engine/mojo-sidecar.md"
+        "target": "../engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 44,
-        "path": "concepts/engine.md",
-        "target": "../engine/mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 48,
+        "line": 47,
         "path": "concepts/engine.md",
         "target": "../engine/health.md"
       },
@@ -29051,38 +28379,32 @@
         "target": "../api/reference.md"
       },
       {
-        "kind": "anchor",
-        "line": 13,
+        "kind": "internal",
+        "line": 84,
         "path": "concepts.md",
-        "target": "#execution-ownership-the-fail-closed-rule"
+        "target": "guides/connect-data.md"
       },
       {
         "kind": "internal",
-        "line": 457,
+        "line": 88,
         "path": "concepts.md",
-        "target": "sdk/python.md"
+        "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
-        "line": 461,
+        "line": 92,
         "path": "concepts.md",
-        "target": "cli.md"
+        "target": "engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 465,
+        "line": 96,
         "path": "concepts.md",
-        "target": "api/reference.md"
+        "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
-        "line": 469,
-        "path": "concepts.md",
-        "target": "self-hosting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 131,
+        "line": 110,
         "path": "configuration.md",
         "target": "self-hosting.md"
       },
@@ -30210,6 +29532,18 @@
       },
       {
         "kind": "internal",
+        "line": 69,
+        "path": "engine/bundled-runtime.md",
+        "target": "health.md"
+      },
+      {
+        "kind": "internal",
+        "line": 73,
+        "path": "engine/bundled-runtime.md",
+        "target": "../self-hosting.md"
+      },
+      {
+        "kind": "internal",
         "line": 180,
         "path": "engine/catalog.md",
         "target": "../api/overview.md"
@@ -30228,69 +29562,15 @@
       },
       {
         "kind": "internal",
-        "line": 74,
-        "path": "engine/filtered-install.md",
-        "target": "mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 78,
-        "path": "engine/filtered-install.md",
-        "target": "../self-hosting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 8,
+        "line": 64,
         "path": "engine/health.md",
-        "target": "mojo-sidecar.md"
+        "target": "bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 80,
+        "line": 68,
         "path": "engine/health.md",
-        "target": "mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 84,
-        "path": "engine/health.md",
-        "target": "../troubleshooting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 11,
-        "path": "engine/mojo-sidecar.md",
-        "target": "filtered-install.md"
-      },
-      {
-        "kind": "internal",
-        "line": 16,
-        "path": "engine/mojo-sidecar.md",
-        "target": "../self-hosting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 81,
-        "path": "engine/mojo-sidecar.md",
-        "target": "health.md"
-      },
-      {
-        "kind": "internal",
-        "line": 132,
-        "path": "engine/mojo-sidecar.md",
-        "target": "health.md"
-      },
-      {
-        "kind": "internal",
-        "line": 136,
-        "path": "engine/mojo-sidecar.md",
-        "target": "filtered-install.md"
-      },
-      {
-        "kind": "internal",
-        "line": 140,
-        "path": "engine/mojo-sidecar.md",
-        "target": "../concepts/engine.md"
+        "target": "../operate/monitoring.md"
       },
       {
         "kind": "internal",
@@ -30306,31 +29586,25 @@
       },
       {
         "kind": "internal",
-        "line": 171,
-        "path": "engine/runtime-libraries.md",
-        "target": "mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 175,
+        "line": 147,
         "path": "engine/runtime-libraries.md",
         "target": "../configuration.md"
       },
       {
         "kind": "internal",
-        "line": 176,
+        "line": 148,
         "path": "engine/runtime-libraries.md",
-        "target": "mojo-sidecar.md"
+        "target": "bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 177,
+        "line": 149,
         "path": "engine/runtime-libraries.md",
         "target": "catalog.md"
       },
       {
         "kind": "internal",
-        "line": 178,
+        "line": 150,
         "path": "engine/runtime-libraries.md",
         "target": "../sdk/mcp.md"
       },
@@ -30422,7 +29696,7 @@
         "kind": "internal",
         "line": 23,
         "path": "guides/air-gapped.md",
-        "target": "../engine/mojo-sidecar.md"
+        "target": "../engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
@@ -30432,25 +29706,25 @@
       },
       {
         "kind": "internal",
-        "line": 189,
+        "line": 176,
         "path": "guides/air-gapped.md",
         "target": "device-binding.md"
       },
       {
         "kind": "internal",
-        "line": 193,
+        "line": 180,
         "path": "guides/air-gapped.md",
-        "target": "../engine/mojo-sidecar.md"
+        "target": "../engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 197,
+        "line": 184,
         "path": "guides/air-gapped.md",
         "target": "../concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
-        "line": 201,
+        "line": 188,
         "path": "guides/air-gapped.md",
         "target": "../self-hosting.md"
       },
@@ -31056,19 +30330,19 @@
       },
       {
         "kind": "internal",
-        "line": 224,
+        "line": 199,
         "path": "guides/instant-map.md",
         "target": "governed-query.md"
       },
       {
         "kind": "internal",
-        "line": 225,
+        "line": 200,
         "path": "guides/instant-map.md",
         "target": "connect-data.md"
       },
       {
         "kind": "internal",
-        "line": 226,
+        "line": 201,
         "path": "guides/instant-map.md",
         "target": "recommend-and-score.md"
       },
@@ -31512,49 +30786,49 @@
       },
       {
         "kind": "internal",
-        "line": 28,
+        "line": 27,
         "path": "help/glossary.md",
         "target": "../sdk/mcp.md"
       },
       {
         "kind": "internal",
-        "line": 29,
+        "line": 28,
         "path": "help/glossary.md",
         "target": "../cli.md"
       },
       {
         "kind": "internal",
-        "line": 70,
+        "line": 69,
         "path": "help/glossary.md",
         "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 74,
+        "line": 73,
         "path": "help/glossary.md",
         "target": "../billing.md"
       },
       {
         "kind": "internal",
-        "line": 82,
+        "line": 80,
         "path": "help/glossary.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 84,
+        "line": 82,
         "path": "help/glossary.md",
         "target": "../licensing.md"
       },
       {
         "kind": "internal",
-        "line": 92,
+        "line": 90,
         "path": "help/glossary.md",
         "target": "../concepts.md"
       },
       {
         "kind": "internal",
-        "line": 96,
+        "line": 94,
         "path": "help/glossary.md",
         "target": "../overview.md"
       },
@@ -31586,29 +30860,23 @@
         "kind": "internal",
         "line": 17,
         "path": "help/quick-reference.md",
-        "target": "../quickstart.md"
+        "target": "../sdk/mcp.md"
       },
       {
         "kind": "internal",
         "line": 18,
         "path": "help/quick-reference.md",
-        "target": "../sdk/mcp.md"
-      },
-      {
-        "kind": "internal",
-        "line": 19,
-        "path": "help/quick-reference.md",
         "target": "../cli.md"
       },
       {
         "kind": "internal",
-        "line": 49,
+        "line": 47,
         "path": "help/quick-reference.md",
         "target": "../troubleshooting.md"
       },
       {
         "kind": "internal",
-        "line": 49,
+        "line": 47,
         "path": "help/quick-reference.md",
         "target": "glossary.md"
       },
@@ -31622,59 +30890,53 @@
         "kind": "anchor",
         "line": 19,
         "path": "install.md",
-        "target": "#local-runtime-package"
+        "target": "#python-sdk"
       },
       {
         "kind": "anchor",
         "line": 20,
         "path": "install.md",
-        "target": "#python-sdk"
+        "target": "#typescript-sdk"
       },
       {
         "kind": "anchor",
         "line": 21,
         "path": "install.md",
-        "target": "#typescript-sdk"
-      },
-      {
-        "kind": "anchor",
-        "line": 22,
-        "path": "install.md",
         "target": "#mcp-server"
       },
       {
         "kind": "internal",
-        "line": 29,
+        "line": 28,
         "path": "install.md",
-        "target": "engine/mojo-sidecar.md"
+        "target": "engine/bundled-runtime.md"
       },
       {
         "kind": "anchor",
-        "line": 59,
+        "line": 58,
         "path": "install.md",
         "target": "#next-steps"
       },
       {
         "kind": "internal",
-        "line": 346,
+        "line": 292,
         "path": "install.md",
         "target": "quickstart.md"
       },
       {
         "kind": "internal",
-        "line": 350,
+        "line": 296,
         "path": "install.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 354,
+        "line": 300,
         "path": "install.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 358,
+        "line": 304,
         "path": "install.md",
         "target": "sdk/python.md"
       },
@@ -32016,60 +31278,6 @@
       },
       {
         "kind": "internal",
-        "line": 10,
-        "path": "login.md",
-        "target": "authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 13,
-        "path": "login.md",
-        "target": "authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 29,
-        "path": "login.md",
-        "target": "authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 91,
-        "path": "login.md",
-        "target": "authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 91,
-        "path": "login.md",
-        "target": "guides/device-binding.md"
-      },
-      {
-        "kind": "internal",
-        "line": 111,
-        "path": "login.md",
-        "target": "guides/air-gapped.md"
-      },
-      {
-        "kind": "internal",
-        "line": 118,
-        "path": "login.md",
-        "target": "authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 119,
-        "path": "login.md",
-        "target": "sdk/algenta-cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 120,
-        "path": "login.md",
-        "target": "cli.md"
-      },
-      {
-        "kind": "internal",
         "line": 164,
         "path": "mcp-tools/account-and-meta.md",
         "target": "../authentication.md"
@@ -32388,24 +31596,6 @@
       },
       {
         "kind": "internal",
-        "line": 11,
-        "path": "mcp-tools/runtime-libraries.md",
-        "target": "../engine/mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 95,
-        "path": "mcp-tools/runtime-libraries.md",
-        "target": "../engine/mojo-sidecar.md"
-      },
-      {
-        "kind": "internal",
-        "line": 99,
-        "path": "mcp-tools/runtime-libraries.md",
-        "target": "../sdk/mcp.md"
-      },
-      {
-        "kind": "internal",
         "line": 10,
         "path": "operate/byok-kms.md",
         "target": "../self-hosting.md"
@@ -32504,59 +31694,59 @@
         "kind": "internal",
         "line": 10,
         "path": "operate/monitoring.md",
-        "target": "../engine/mojo-sidecar.md"
+        "target": "../engine/health.md"
       },
       {
         "kind": "internal",
-        "line": 10,
+        "line": 124,
         "path": "operate/monitoring.md",
         "target": "../engine/health.md"
       },
       {
         "kind": "internal",
-        "line": 125,
+        "line": 124,
+        "path": "operate/monitoring.md",
+        "target": "../billing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 160,
         "path": "operate/monitoring.md",
         "target": "../engine/health.md"
-      },
-      {
-        "kind": "internal",
-        "line": 158,
-        "path": "operate/monitoring.md",
-        "target": "../engine/health.md"
-      },
-      {
-        "kind": "internal",
-        "line": 190,
-        "path": "operate/monitoring.md",
-        "target": "../configuration.md"
-      },
-      {
-        "kind": "internal",
-        "line": 190,
-        "path": "operate/monitoring.md",
-        "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 194,
         "path": "operate/monitoring.md",
+        "target": "../configuration.md"
+      },
+      {
+        "kind": "internal",
+        "line": 194,
+        "path": "operate/monitoring.md",
+        "target": "../self-hosting.md"
+      },
+      {
+        "kind": "internal",
+        "line": 198,
+        "path": "operate/monitoring.md",
         "target": "../engine/health.md"
       },
       {
         "kind": "internal",
-        "line": 195,
+        "line": 199,
         "path": "operate/monitoring.md",
-        "target": "../engine/mojo-sidecar.md"
+        "target": "../engine/bundled-runtime.md"
       },
       {
         "kind": "internal",
-        "line": 196,
+        "line": 200,
         "path": "operate/monitoring.md",
         "target": "../configuration.md"
       },
       {
         "kind": "internal",
-        "line": 197,
+        "line": 201,
         "path": "operate/monitoring.md",
         "target": "../self-hosting.md"
       },
@@ -32654,7 +31844,7 @@
         "kind": "internal",
         "line": 54,
         "path": "overview.md",
-        "target": "login.md"
+        "target": "authentication.md"
       },
       {
         "kind": "internal",
@@ -32718,87 +31908,27 @@
       },
       {
         "kind": "internal",
-        "line": 202,
-        "path": "quickstart.md",
-        "target": "sdk/python.md"
-      },
-      {
-        "kind": "internal",
-        "line": 202,
-        "path": "quickstart.md",
-        "target": "sdk/algenta-cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 269,
+        "line": 211,
         "path": "quickstart.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 273,
+        "line": 215,
         "path": "quickstart.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 277,
+        "line": 219,
         "path": "quickstart.md",
         "target": "sdk/python.md"
       },
       {
         "kind": "internal",
-        "line": 281,
+        "line": 223,
         "path": "quickstart.md",
         "target": "api/reference.md"
-      },
-      {
-        "kind": "internal",
-        "line": 8,
-        "path": "sdk/algenta-cli.md",
-        "target": "../cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 119,
-        "path": "sdk/algenta-cli.md",
-        "target": "../cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 119,
-        "path": "sdk/algenta-cli.md",
-        "target": "../authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 137,
-        "path": "sdk/algenta-cli.md",
-        "target": "../login.md"
-      },
-      {
-        "kind": "internal",
-        "line": 137,
-        "path": "sdk/algenta-cli.md",
-        "target": "mcp-registry.md"
-      },
-      {
-        "kind": "internal",
-        "line": 142,
-        "path": "sdk/algenta-cli.md",
-        "target": "../cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 146,
-        "path": "sdk/algenta-cli.md",
-        "target": "../login.md"
-      },
-      {
-        "kind": "internal",
-        "line": 150,
-        "path": "sdk/algenta-cli.md",
-        "target": "mcp-registry.md"
       },
       {
         "kind": "internal",
@@ -32817,12 +31947,6 @@
         "line": 14,
         "path": "sdk/mcp-registry.md",
         "target": "../authentication.md"
-      },
-      {
-        "kind": "internal",
-        "line": 14,
-        "path": "sdk/mcp-registry.md",
-        "target": "../login.md"
       },
       {
         "kind": "external",
@@ -33138,25 +32262,25 @@
       },
       {
         "kind": "internal",
-        "line": 587,
+        "line": 424,
         "path": "sdk/python.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 591,
+        "line": 428,
         "path": "sdk/python.md",
         "target": "../cli.md"
       },
       {
         "kind": "internal",
-        "line": 595,
+        "line": 432,
         "path": "sdk/python.md",
         "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 599,
+        "line": 436,
         "path": "sdk/python.md",
         "target": "../api/reference.md"
       },
@@ -33582,22 +32706,17 @@
         "term": "algenta"
       },
       {
-        "line": 62,
+        "line": 60,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 95,
+        "line": 93,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 97,
-        "path": "SUMMARY.md",
-        "term": "algenta"
-      },
-      {
-        "line": 117,
+        "line": 113,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -33678,6 +32797,26 @@
       },
       {
         "line": 8,
+        "path": "api/rate-limits.md",
+        "term": "algenta"
+      },
+      {
+        "line": 22,
+        "path": "api/rate-limits.md",
+        "term": "algenta"
+      },
+      {
+        "line": 50,
+        "path": "api/rate-limits.md",
+        "term": "algenta"
+      },
+      {
+        "line": 67,
+        "path": "api/rate-limits.md",
+        "term": "algenta"
+      },
+      {
+        "line": 71,
         "path": "api/rate-limits.md",
         "term": "algenta"
       },
@@ -33922,36 +33061,6 @@
         "term": "algenta"
       },
       {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "cli.md",
-        "term": "algenta"
-      },
-      {
         "line": 48,
         "path": "cli.md",
         "term": "algenta"
@@ -34092,7 +33201,7 @@
         "term": "algenta"
       },
       {
-        "line": 48,
+        "line": 47,
         "path": "concepts/deployment-modes.md",
         "term": "algenta"
       },
@@ -34108,6 +33217,21 @@
       },
       {
         "line": 12,
+        "path": "concepts/engine.md",
+        "term": "algenta"
+      },
+      {
+        "line": 18,
+        "path": "concepts/engine.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "concepts/engine.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
         "path": "concepts/engine.md",
         "term": "algenta"
       },
@@ -34162,17 +33286,47 @@
         "term": "algenta"
       },
       {
-        "line": 10,
+        "line": 12,
         "path": "concepts.md",
         "term": "algenta"
       },
       {
-        "line": 23,
+        "line": 16,
         "path": "concepts.md",
         "term": "algenta"
       },
       {
-        "line": 38,
+        "line": 16,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 16,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 17,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 22,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 46,
+        "path": "concepts.md",
+        "term": "algenta"
+      },
+      {
+        "line": 52,
         "path": "concepts.md",
         "term": "algenta"
       },
@@ -34182,67 +33336,7 @@
         "term": "algenta"
       },
       {
-        "line": 85,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 85,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 90,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 105,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 111,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 142,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 233,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 271,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 334,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 353,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 396,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 420,
-        "path": "concepts.md",
-        "term": "algenta"
-      },
-      {
-        "line": 431,
+        "line": 71,
         "path": "concepts.md",
         "term": "algenta"
       },
@@ -34277,12 +33371,12 @@
         "term": "algenta"
       },
       {
-        "line": 92,
+        "line": 81,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 92,
+        "line": 81,
         "path": "configuration.md",
         "term": "algenta"
       },
@@ -34793,77 +33887,92 @@
       },
       {
         "line": 3,
-        "path": "engine/catalog.md",
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
         "line": 8,
-        "path": "engine/catalog.md",
-        "term": "algenta"
-      },
-      {
-        "line": 14,
-        "path": "engine/catalog.md",
-        "term": "algenta"
-      },
-      {
-        "line": 14,
-        "path": "engine/catalog.md",
-        "term": "algenta"
-      },
-      {
-        "line": 3,
-        "path": "engine/filtered-install.md",
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
         "line": 8,
-        "path": "engine/filtered-install.md",
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
-        "line": 14,
-        "path": "engine/filtered-install.md",
+        "line": 8,
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
-        "line": 15,
-        "path": "engine/filtered-install.md",
+        "line": 11,
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
         "line": 18,
-        "path": "engine/filtered-install.md",
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
-        "line": 45,
-        "path": "engine/filtered-install.md",
+        "line": 18,
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
-        "line": 48,
-        "path": "engine/filtered-install.md",
+        "line": 19,
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
-        "line": 48,
-        "path": "engine/filtered-install.md",
+        "line": 20,
+        "path": "engine/bundled-runtime.md",
+        "term": "algenta"
+      },
+      {
+        "line": 25,
+        "path": "engine/bundled-runtime.md",
+        "term": "algenta"
+      },
+      {
+        "line": 50,
+        "path": "engine/bundled-runtime.md",
         "term": "algenta"
       },
       {
         "line": 3,
-        "path": "engine/health.md",
+        "path": "engine/catalog.md",
         "term": "algenta"
       },
       {
         "line": 8,
-        "path": "engine/mojo-sidecar.md",
+        "path": "engine/catalog.md",
         "term": "algenta"
       },
       {
-        "line": 27,
-        "path": "engine/mojo-sidecar.md",
+        "line": 14,
+        "path": "engine/catalog.md",
+        "term": "algenta"
+      },
+      {
+        "line": 14,
+        "path": "engine/catalog.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "engine/health.md",
+        "term": "algenta"
+      },
+      {
+        "line": 54,
+        "path": "engine/health.md",
+        "term": "algenta"
+      },
+      {
+        "line": 59,
+        "path": "engine/health.md",
         "term": "algenta"
       },
       {
@@ -34872,7 +33981,17 @@
         "term": "algenta"
       },
       {
+        "line": 10,
+        "path": "engine/runtime-libraries.md",
+        "term": "algenta"
+      },
+      {
         "line": 18,
+        "path": "engine/runtime-libraries.md",
+        "term": "algenta"
+      },
+      {
+        "line": 82,
         "path": "engine/runtime-libraries.md",
         "term": "algenta"
       },
@@ -34932,6 +34051,11 @@
         "term": "algenta"
       },
       {
+        "line": 23,
+        "path": "guides/air-gapped.md",
+        "term": "algenta"
+      },
+      {
         "line": 24,
         "path": "guides/air-gapped.md",
         "term": "algenta"
@@ -34977,7 +34101,12 @@
         "term": "algenta"
       },
       {
-        "line": 183,
+        "line": 155,
+        "path": "guides/air-gapped.md",
+        "term": "algenta"
+      },
+      {
+        "line": 170,
         "path": "guides/air-gapped.md",
         "term": "algenta"
       },
@@ -35582,56 +34711,6 @@
         "term": "algenta"
       },
       {
-        "line": 197,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 200,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 201,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 202,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 205,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 208,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 211,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 214,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 214,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
-        "line": 217,
-        "path": "guides/instant-map.md",
-        "term": "algenta"
-      },
-      {
         "line": 28,
         "path": "guides/recommend-and-score.md",
         "term": "algenta"
@@ -36072,17 +35151,22 @@
         "term": "algenta"
       },
       {
+        "line": 16,
+        "path": "help/glossary.md",
+        "term": "algenta"
+      },
+      {
+        "line": 17,
+        "path": "help/glossary.md",
+        "term": "algenta"
+      },
+      {
         "line": 19,
         "path": "help/glossary.md",
         "term": "algenta"
       },
       {
-        "line": 27,
-        "path": "help/glossary.md",
-        "term": "algenta"
-      },
-      {
-        "line": 29,
+        "line": 28,
         "path": "help/glossary.md",
         "term": "algenta"
       },
@@ -36092,32 +35176,22 @@
         "term": "algenta"
       },
       {
-        "line": 17,
-        "path": "help/quick-reference.md",
-        "term": "algenta"
-      },
-      {
-        "line": 44,
+        "line": 43,
         "path": "help/quick-reference.md",
         "term": "algenta"
       },
       {
         "line": 3,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
         "path": "install.md",
         "term": "algenta"
       },
       {
         "line": 18,
+        "path": "install.md",
+        "term": "algenta"
+      },
+      {
+        "line": 19,
         "path": "install.md",
         "term": "algenta"
       },
@@ -36132,47 +35206,52 @@
         "term": "algenta"
       },
       {
-        "line": 22,
+        "line": 25,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 26,
+        "line": 28,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 41,
+        "line": 40,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 47,
+        "line": 46,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 49,
+        "line": 48,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 49,
+        "line": 48,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 110,
+        "line": 109,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 114,
+        "line": 113,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 122,
+        "line": 121,
+        "path": "install.md",
+        "term": "algenta"
+      },
+      {
+        "line": 134,
         "path": "install.md",
         "term": "algenta"
       },
@@ -36192,67 +35271,22 @@
         "term": "algenta"
       },
       {
-        "line": 138,
+        "line": 146,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 147,
+        "line": 230,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 152,
+        "line": 267,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 153,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 154,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 171,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 174,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 180,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 187,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 200,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 284,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 321,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 342,
+        "line": 288,
         "path": "install.md",
         "term": "algenta"
       },
@@ -36512,126 +35546,6 @@
         "term": "algenta"
       },
       {
-        "line": 3,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 13,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 13,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 18,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 19,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 22,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 23,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 24,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 25,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 29,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 38,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 41,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 47,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 73,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 81,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 84,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 85,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 91,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 99,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 105,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
-        "line": 119,
-        "path": "login.md",
-        "term": "algenta"
-      },
-      {
         "line": 8,
         "path": "mcp-tools/account-and-meta.md",
         "term": "algenta"
@@ -36797,26 +35711,6 @@
         "term": "algenta"
       },
       {
-        "line": 8,
-        "path": "mcp-tools/runtime-libraries.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "mcp-tools/runtime-libraries.md",
-        "term": "algenta"
-      },
-      {
-        "line": 11,
-        "path": "mcp-tools/runtime-libraries.md",
-        "term": "algenta"
-      },
-      {
-        "line": 85,
-        "path": "mcp-tools/runtime-libraries.md",
-        "term": "algenta"
-      },
-      {
         "line": 3,
         "path": "operate/byok-kms.md",
         "term": "algenta"
@@ -36942,6 +35836,16 @@
         "term": "algenta"
       },
       {
+        "line": 78,
+        "path": "operate/device-key-store.md",
+        "term": "algenta"
+      },
+      {
+        "line": 80,
+        "path": "operate/device-key-store.md",
+        "term": "algenta"
+      },
+      {
         "line": 82,
         "path": "operate/device-key-store.md",
         "term": "algenta"
@@ -36977,6 +35881,11 @@
         "term": "algenta"
       },
       {
+        "line": 10,
+        "path": "operate/monitoring.md",
+        "term": "algenta"
+      },
+      {
         "line": 80,
         "path": "operate/monitoring.md",
         "term": "algenta"
@@ -36987,22 +35896,27 @@
         "term": "algenta"
       },
       {
-        "line": 99,
+        "line": 98,
         "path": "operate/monitoring.md",
         "term": "algenta"
       },
       {
-        "line": 171,
+        "line": 160,
         "path": "operate/monitoring.md",
         "term": "algenta"
       },
       {
-        "line": 184,
+        "line": 175,
         "path": "operate/monitoring.md",
         "term": "algenta"
       },
       {
         "line": 188,
+        "path": "operate/monitoring.md",
+        "term": "algenta"
+      },
+      {
+        "line": 192,
         "path": "operate/monitoring.md",
         "term": "algenta"
       },
@@ -37167,7 +36081,12 @@
         "term": "algenta"
       },
       {
-        "line": 8,
+        "line": 13,
+        "path": "quickstart.md",
+        "term": "algenta"
+      },
+      {
+        "line": 13,
         "path": "quickstart.md",
         "term": "algenta"
       },
@@ -37187,361 +36106,6 @@
         "term": "algenta"
       },
       {
-        "line": 202,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 209,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 212,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 213,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 214,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 215,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 218,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 222,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 223,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 224,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 225,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 230,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 236,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 243,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 254,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 259,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 259,
-        "path": "quickstart.md",
-        "term": "algenta"
-      },
-      {
-        "line": 3,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 6,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 8,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 11,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 11,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 14,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 16,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 20,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 26,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 27,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 28,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 29,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 32,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 40,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 41,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 42,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 43,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 44,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 45,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 46,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 47,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 48,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 49,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 50,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 51,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 53,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 59,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 60,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 61,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 62,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 66,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 72,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 73,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 77,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 81,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 87,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 93,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 94,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 98,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 98,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 102,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 103,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 107,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 113,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 123,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 124,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 125,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 126,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 127,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 127,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 131,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 132,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
-        "line": 133,
-        "path": "sdk/algenta-cli.md",
-        "term": "algenta"
-      },
-      {
         "line": 3,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
@@ -37563,11 +36127,6 @@
       },
       {
         "line": 8,
-        "path": "sdk/mcp-registry.md",
-        "term": "algenta"
-      },
-      {
-        "line": 14,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
@@ -37902,11 +36461,6 @@
         "term": "algenta"
       },
       {
-        "line": 26,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
         "line": 57,
         "path": "sdk/python.md",
         "term": "algenta"
@@ -37928,66 +36482,6 @@
       },
       {
         "line": 236,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 397,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 402,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 423,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 443,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 443,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 454,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 547,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 550,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 551,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 552,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 553,
-        "path": "sdk/python.md",
-        "term": "algenta"
-      },
-      {
-        "line": 581,
         "path": "sdk/python.md",
         "term": "algenta"
       },
@@ -38482,6 +36976,14 @@
         "executed": false,
         "line": 318,
         "path": "api/overview.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS \"$ALGENTA_API_URL/v1/limits\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
+        "executed": false,
+        "line": 18,
+        "path": "api/rate-limits.md",
         "syntax_valid": true
       },
       {
@@ -39774,73 +38276,9 @@
       },
       {
         "classification": "requires_environment",
-        "command": "de runtime start",
-        "executed": false,
-        "line": 625,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime status",
-        "executed": false,
-        "line": 626,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime modules --format json",
-        "executed": false,
-        "line": 627,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime functions text.tokenizer --format json",
-        "executed": false,
-        "line": 628,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime execute text.tokenizer tokenize --args-json '{\"input\": \"hello world\"}'",
-        "executed": false,
-        "line": 631,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime execute monte_carlo simulate --args-file sim_args.json",
-        "executed": false,
-        "line": 632,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime history --limit 20",
-        "executed": false,
-        "line": 634,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime stop",
-        "executed": false,
-        "line": 635,
-        "path": "cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
         "command": "de deployments regions --format json",
         "executed": false,
-        "line": 653,
+        "line": 619,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39848,7 +38286,7 @@
         "classification": "requires_environment",
         "command": "de deployments create deployment.json",
         "executed": false,
-        "line": 654,
+        "line": 620,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39856,7 +38294,7 @@
         "classification": "requires_environment",
         "command": "de deployments get",
         "executed": false,
-        "line": 655,
+        "line": 621,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39864,7 +38302,7 @@
         "classification": "requires_environment",
         "command": "de deployments cost $DEPLOYMENT_ID",
         "executed": false,
-        "line": 656,
+        "line": 622,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39872,7 +38310,7 @@
         "classification": "destructive_mutation",
         "command": "de deployments delete $DEPLOYMENT_ID",
         "executed": false,
-        "line": 657,
+        "line": 623,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39880,7 +38318,7 @@
         "classification": "requires_environment",
         "command": "de health",
         "executed": false,
-        "line": 672,
+        "line": 638,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39888,7 +38326,7 @@
         "classification": "requires_environment",
         "command": "de contract --format json",
         "executed": false,
-        "line": 673,
+        "line": 639,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39896,7 +38334,7 @@
         "classification": "requires_environment",
         "command": "de version",
         "executed": false,
-        "line": 674,
+        "line": 640,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39904,7 +38342,7 @@
         "classification": "requires_environment",
         "command": "de benchmark",
         "executed": false,
-        "line": 675,
+        "line": 641,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39912,7 +38350,7 @@
         "classification": "requires_environment",
         "command": "de simulate examples/sample.json",
         "executed": false,
-        "line": 676,
+        "line": 642,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39920,7 +38358,7 @@
         "classification": "requires_environment",
         "command": "de recommend examples/compare.json",
         "executed": false,
-        "line": 677,
+        "line": 643,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39928,7 +38366,7 @@
         "classification": "requires_environment",
         "command": "de template list",
         "executed": false,
-        "line": 689,
+        "line": 655,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39936,7 +38374,7 @@
         "classification": "requires_environment",
         "command": "de template run finance_npv --runs 100000",
         "executed": false,
-        "line": 690,
+        "line": 656,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39944,7 +38382,7 @@
         "classification": "requires_environment",
         "command": "de template get finance_npv",
         "executed": false,
-        "line": 691,
+        "line": 657,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39952,7 +38390,7 @@
         "classification": "static_only",
         "command": "PREFIX=$(de keys create \"Batch worker\" --format json | jq -r '.key_prefix')",
         "executed": false,
-        "line": 702,
+        "line": 668,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39960,7 +38398,7 @@
         "classification": "static_only",
         "command": "JOB=$(de job submit large.json --format json | jq -r '.job_id')",
         "executed": false,
-        "line": 705,
+        "line": 671,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39968,7 +38406,7 @@
         "classification": "requires_environment",
         "command": "de job wait \"$JOB\" --timeout 900",
         "executed": false,
-        "line": 706,
+        "line": 672,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39976,7 +38414,7 @@
         "classification": "requires_environment",
         "command": "de job result \"$JOB\" --format json > result.json",
         "executed": false,
-        "line": 707,
+        "line": 673,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39984,7 +38422,7 @@
         "classification": "requires_environment",
         "command": "de health --format json | jq -e '.status == \"ok\"' > /dev/null",
         "executed": false,
-        "line": 710,
+        "line": 676,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -39992,7 +38430,7 @@
         "classification": "requires_environment",
         "command": "curl -s \"$ALGENTA_BASE_URL/v1/me\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" | jq",
         "executed": false,
-        "line": 716,
+        "line": 682,
         "path": "cli.md",
         "syntax_valid": true
       },
@@ -40032,7 +38470,7 @@
         "classification": "safe_static",
         "command": "export ALGENTA_DEPLOYMENT_MODE=air_gapped",
         "executed": false,
-        "line": 28,
+        "line": 27,
         "path": "concepts/deployment-modes.md",
         "syntax_valid": true
       },
@@ -40040,7 +38478,7 @@
         "classification": "safe_static",
         "command": "export ALGENTA_TELEMETRY_MODE=control_plane_sync   # raises air_gapped_control_plane_sync_forbidden",
         "executed": false,
-        "line": 31,
+        "line": 30,
         "path": "concepts/deployment-modes.md",
         "syntax_valid": true
       },
@@ -40048,7 +38486,7 @@
         "classification": "safe_static",
         "command": "export ALGENTA_DEPLOYMENT_MODE=self_hosted",
         "executed": false,
-        "line": 37,
+        "line": 36,
         "path": "concepts/deployment-modes.md",
         "syntax_valid": true
       },
@@ -40056,56 +38494,8 @@
         "classification": "safe_static",
         "command": "export ALGENTA_EGRESS_ALLOWLIST=\"warehouse.internal,*.db.example.com,minio.local:9000\"",
         "executed": false,
-        "line": 39,
+        "line": 38,
         "path": "concepts/deployment-modes.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "safe_static",
-        "command": "export ALGENTA_API_KEY=\"de_live_...\"   # or DE_API_KEY",
-        "executed": false,
-        "line": 98,
-        "path": "concepts.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/meta/contract",
-        "executed": false,
-        "line": 402,
-        "path": "concepts.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/runtime/manifest",
-        "executed": false,
-        "line": 405,
-        "path": "concepts.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "safe_static",
-        "command": "export ALGENTA_DEPLOYMENT_MODE=self_hosted   # or: air_gapped",
-        "executed": false,
-        "line": 436,
-        "path": "concepts.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "safe_static",
-        "command": "export ALGENTA_TELEMETRY_MODE=local_audit",
-        "executed": false,
-        "line": 442,
-        "path": "concepts.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "safe_static",
-        "command": "export ALGENTA_METERING_MODE=local_audit",
-        "executed": false,
-        "line": 443,
-        "path": "concepts.md",
         "syntax_valid": true
       },
       {
@@ -42422,6 +40812,38 @@
       },
       {
         "classification": "requires_environment",
+        "command": "curl -sSL https://algenta.ai/install.sh | bash",
+        "executed": false,
+        "line": 25,
+        "path": "engine/bundled-runtime.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS \"$ALGENTA_API_URL/v1/health\"",
+        "executed": false,
+        "line": 35,
+        "path": "engine/bundled-runtime.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS \"$ALGENTA_API_URL/v1/infrastructure\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
+        "executed": false,
+        "line": 41,
+        "path": "engine/bundled-runtime.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/simulate\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"mode\":\"auto\",\"scenario\":{\"variables\":{\"x\":{\"low\":50,\"high\":150}},\"objective\":\"maximize_net_value\"},\"runs\":100,\"seed\":42}'",
+        "executed": false,
+        "line": 58,
+        "path": "engine/bundled-runtime.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_BASE_URL/v1/engines?limit=50\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
         "line": 85,
@@ -42445,163 +40867,19 @@
         "syntax_valid": true
       },
       {
-        "classification": "static_only",
-        "command": "MOJO_RUNTIME_MODULE_FILTER=\"monte_carlo,distributions,optimization_constrained\" make build-mojo",
-        "executed": false,
-        "line": 30,
-        "path": "engine/filtered-install.md",
-        "syntax_valid": true
-      },
-      {
         "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/runtime/manifest    # lists the compiled modules",
+        "command": "curl -sS \"$ALGENTA_API_URL/v1/infrastructure\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 36,
-        "path": "engine/filtered-install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "ALGENTA_PRODUCT=algenta   # only the licensed Algenta tools are visible",
-        "executed": false,
-        "line": 48,
-        "path": "engine/filtered-install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "ALGENTA_SERVICE_ROLE=control_plane            # engine-free control plane",
-        "executed": false,
-        "line": 63,
-        "path": "engine/filtered-install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED=1    # expose /v1/libraries* (off by default)",
-        "executed": false,
-        "line": 64,
-        "path": "engine/filtered-install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "make test-mojo",
-        "executed": false,
-        "line": 32,
+        "line": 23,
         "path": "engine/health.md",
         "syntax_valid": true
       },
       {
         "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/infrastructure        # expect engine_mode: pool",
+        "command": "curl -sS -X POST \"$ALGENTA_API_URL/v1/simulate\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"mode\":\"auto\",\"scenario\":{\"variables\":{\"demand\":{\"low\":80,\"high\":120}},\"objective\":\"maximize_margin\"},\"runs\":100,\"seed\":7}'",
         "executed": false,
-        "line": 39,
+        "line": 42,
         "path": "engine/health.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/runtime/manifest      # expect your modules listed",
-        "executed": false,
-        "line": 40,
-        "path": "engine/health.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl -sSL https://algenta.ai/install.sh | bash",
-        "executed": false,
-        "line": 27,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "make setup-mojo     # one-time: install the Mojo toolchain (pixi) into mojo_env/",
-        "executed": false,
-        "line": 37,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "make build-mojo     # compile mojo/engine \u2192 mojo_build/simulate",
-        "executed": false,
-        "line": 38,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "make test-mojo      # smoke test: runs a simulation, prints engine=<ver> mean=<value>",
-        "executed": false,
-        "line": 39,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "safe_static",
-        "command": "export MOJO_BINARY_PATH=\"$PWD/mojo_build/simulate\"",
-        "executed": false,
-        "line": 45,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/infrastructure",
-        "executed": false,
-        "line": 60,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "curl -X POST http://localhost:8000/v1/simulate \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"mode\":\"auto\",\"scenario\":{\"variables\":{\"x\":{\"low\":50,\"high\":150}},\"objective\":\"maximize_net_value\"},\"runs\":100,\"seed\":42}'",
-        "executed": false,
-        "line": 70,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "RUNTIME_FALLBACK_MODE=deny",
-        "executed": false,
-        "line": 97,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_ALLOW_SUBPROCESS_FALLBACK=false",
-        "executed": false,
-        "line": 98,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_BINARY_PATH=/app/mojo_build/simulate",
-        "executed": false,
-        "line": 99,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_POOL_SIZE=4",
-        "executed": false,
-        "line": 100,
-        "path": "engine/mojo-sidecar.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_BUILD_MCPU=x86-64-v3 make build-mojo",
-        "executed": false,
-        "line": 113,
-        "path": "engine/mojo-sidecar.md",
         "syntax_valid": true
       },
       {
@@ -42625,14 +40903,6 @@
         "command": "curl -sS -X POST \"$ALGENTA_BASE_URL/v1/libraries/execute\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"module\": \"ab_testing\",\n\"function\": \"sample_size\",\n\"args\": { \"baseline_rate\": 0.1, \"mde\": 0.02, \"power\": 0.8 }\n}'",
         "executed": false,
         "line": 97,
-        "path": "engine/runtime-libraries.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "de runtime execute ab_testing sample_size \\\n--args-json '{\"baseline_rate\": 0.1, \"mde\": 0.02, \"power\": 0.8}'",
-        "executed": false,
-        "line": 157,
         "path": "engine/runtime-libraries.md",
         "syntax_valid": true
       },
@@ -42830,7 +41100,7 @@
       },
       {
         "classification": "requires_environment",
-        "command": "curl http://localhost:8000/v1/infrastructure",
+        "command": "curl -sS http://localhost:8000/v1/infrastructure \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
         "line": 130,
         "path": "guides/air-gapped.md",
@@ -42840,31 +41110,7 @@
         "classification": "static_only",
         "command": "ss -tup state established",
         "executed": false,
-        "line": 143,
-        "path": "guides/air-gapped.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "RUNTIME_FALLBACK_MODE=deny",
-        "executed": false,
-        "line": 163,
-        "path": "guides/air-gapped.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_ALLOW_SUBPROCESS_FALLBACK=false",
-        "executed": false,
-        "line": 164,
-        "path": "guides/air-gapped.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "MOJO_BINARY_PATH=/app/mojo_build/simulate",
-        "executed": false,
-        "line": 165,
+        "line": 144,
         "path": "guides/air-gapped.md",
         "syntax_valid": true
       },
@@ -42872,7 +41118,7 @@
         "classification": "static_only",
         "command": "ANTHROPIC_API_KEY=sk-ant-...",
         "executed": false,
-        "line": 177,
+        "line": 164,
         "path": "guides/air-gapped.md",
         "syntax_valid": true
       },
@@ -42880,7 +41126,7 @@
         "classification": "static_only",
         "command": "ALGENTA_CONFIG_ENCRYPTION_KEY=\"<64-hex-kek>\"",
         "executed": false,
-        "line": 178,
+        "line": 165,
         "path": "guides/air-gapped.md",
         "syntax_valid": true
       },
@@ -42888,7 +41134,7 @@
         "classification": "static_only",
         "command": "ALGENTA_EGRESS_ALLOWLIST=\"llm-gateway.internal:443\"",
         "executed": false,
-        "line": 179,
+        "line": 166,
         "path": "guides/air-gapped.md",
         "syntax_valid": true
       },
@@ -43853,54 +42099,6 @@
         "syntax_valid": true
       },
       {
-        "classification": "static_only",
-        "command": "git clone https://github.com/thyn-ai/algenta.git",
-        "executed": false,
-        "line": 200,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "cd algenta",
-        "executed": false,
-        "line": 201,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "python3 -m pip install -e packages/algenta",
-        "executed": false,
-        "line": 202,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta map sales.csv orders.csv",
-        "executed": false,
-        "line": 205,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import orders.csv --name orders",
-        "executed": false,
-        "line": 208,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta query \"total revenue by customer\" sales.csv",
-        "executed": false,
-        "line": 211,
-        "path": "guides/instant-map.md",
-        "syntax_valid": true
-      },
-      {
         "classification": "requires_environment",
         "command": "curl -sS -X POST \"https://api.algenta.ai/v1/recommend\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"actions\": [\n{\"name\": \"launch_now\", \"request\": {\"mode\": \"auto\", \"scenario\": {\n\"variables\": {\"revenue\": {\"low\": 80000, \"high\": 200000}, \"cost\": {\"low\": 40000, \"high\": 90000}},\n\"objective\": \"maximize_net_value\"}}},\n{\"name\": \"wait_a_quarter\", \"request\": {\"mode\": \"auto\", \"scenario\": {\n\"variables\": {\"revenue\": {\"low\": 60000, \"high\": 240000}, \"cost\": {\"low\": 35000, \"high\": 70000}},\n\"objective\": \"maximize_net_value\"}}}\n],\n\"runs\": 10000\n}'",
         "executed": false,
@@ -44192,7 +42390,7 @@
         "classification": "requires_environment",
         "command": "curl -sSL https://algenta.ai/install.sh | bash",
         "executed": false,
-        "line": 41,
+        "line": 40,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44200,7 +42398,7 @@
         "classification": "requires_environment",
         "command": "curl http://localhost:8000/v1/health",
         "executed": false,
-        "line": 69,
+        "line": 68,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44208,7 +42406,7 @@
         "classification": "safe_static",
         "command": "export ALGENTA_API_KEY='<paste the bootstrap key>'",
         "executed": false,
-        "line": 79,
+        "line": 78,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44216,7 +42414,7 @@
         "classification": "requires_environment",
         "command": "curl -X POST http://localhost:8000/v1/simulate \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"mode\": \"auto\",\n\"scenario\": {\n\"variables\": {\n\"revenue\": { \"low\": 80000, \"high\": 200000 },\n\"cost\": { \"low\": 30000, \"high\": 90000 }\n},\n\"objective\": \"maximize_net_value\"\n},\n\"runs\": 10000,\n\"seed\": 42\n}'",
         "executed": false,
-        "line": 81,
+        "line": 80,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44224,7 +42422,7 @@
         "classification": "static_only",
         "command": "ALGENTA_VERSION=v1.0.0 \\\nALGENTA_IMAGE_TAG=v1.0.0 \\\nALGENTA_API_PORT=8080 \\\nbash -c \"curl -sSL https://algenta.ai/install.sh | bash\"",
         "executed": false,
-        "line": 119,
+        "line": 118,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44232,7 +42430,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose ps",
         "executed": false,
-        "line": 135,
+        "line": 134,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44240,7 +42438,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose logs -f api",
         "executed": false,
-        "line": 136,
+        "line": 135,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44248,7 +42446,7 @@
         "classification": "environment_mutating",
         "command": "cd ~/.algenta && docker compose pull && docker compose up -d   # upgrade",
         "executed": false,
-        "line": 137,
+        "line": 136,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44256,31 +42454,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose stop",
         "executed": false,
-        "line": 138,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "git clone https://github.com/thyn-ai/algenta.git",
-        "executed": false,
-        "line": 152,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "cd algenta",
-        "executed": false,
-        "line": 153,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "python3 -m pip install -e packages/algenta",
-        "executed": false,
-        "line": 154,
+        "line": 137,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44288,31 +42462,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta-sdk",
         "executed": false,
-        "line": 164,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta version",
-        "executed": false,
-        "line": 174,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo",
-        "executed": false,
-        "line": 180,
-        "path": "install.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "pip install algenta-sdk",
-        "executed": false,
-        "line": 203,
+        "line": 149,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44320,7 +42470,7 @@
         "classification": "environment_mutating",
         "command": "npm install algenta-sdk",
         "executed": false,
-        "line": 244,
+        "line": 190,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44328,7 +42478,7 @@
         "classification": "environment_mutating",
         "command": "pipx install algenta-mcp",
         "executed": false,
-        "line": 293,
+        "line": 239,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44336,7 +42486,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta-mcp",
         "executed": false,
-        "line": 298,
+        "line": 244,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44344,7 +42494,7 @@
         "classification": "static_only",
         "command": "algenta-mcp --mode http --port 8001",
         "executed": false,
-        "line": 309,
+        "line": 255,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -44698,62 +42848,6 @@
         "executed": false,
         "line": 234,
         "path": "llm/models.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "git clone https://github.com/thyn-ai/algenta.git",
-        "executed": false,
-        "line": 22,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "cd algenta",
-        "executed": false,
-        "line": 23,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "python3 -m pip install -e packages/algenta",
-        "executed": false,
-        "line": 24,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta version",
-        "executed": false,
-        "line": 25,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta login",
-        "executed": false,
-        "line": 41,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta login --no-browser",
-        "executed": false,
-        "line": 47,
-        "path": "login.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta whoami",
-        "executed": false,
-        "line": 73,
-        "path": "login.md",
         "syntax_valid": true
       },
       {
@@ -45224,7 +43318,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n\"$ALGENTA_API_URL/v1/infrastructure\"",
         "executed": false,
-        "line": 133,
+        "line": 132,
         "path": "operate/monitoring.md",
         "syntax_valid": true
       },
@@ -45232,7 +43326,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_API_URL/v1/health\"        # {\"status\":\"ok\",\"timestamp\":\"\u2026\"} \u2014 process is up",
         "executed": false,
-        "line": 163,
+        "line": 167,
         "path": "operate/monitoring.md",
         "syntax_valid": true
       },
@@ -45240,7 +43334,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_API_URL/v1/health/ready\"  # 200 when DB is reachable, 503 otherwise",
         "executed": false,
-        "line": 164,
+        "line": 168,
         "path": "operate/monitoring.md",
         "syntax_valid": true
       },
@@ -45248,7 +43342,7 @@
         "classification": "static_only",
         "command": "docker logs -f algenta-api 2>&1 | jq -c 'select(.level == \"error\")'",
         "executed": false,
-        "line": 177,
+        "line": 181,
         "path": "operate/monitoring.md",
         "syntax_valid": true
       },
@@ -45437,214 +43531,6 @@
         "syntax_valid": true
       },
       {
-        "classification": "static_only",
-        "command": "git clone https://github.com/thyn-ai/algenta.git",
-        "executed": false,
-        "line": 212,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "cd algenta",
-        "executed": false,
-        "line": 213,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "python3 -m pip install -e packages/algenta",
-        "executed": false,
-        "line": 214,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo",
-        "executed": false,
-        "line": 215,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo --scenario region --no-interactive",
-        "executed": false,
-        "line": 230,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import orders.csv --name orders",
-        "executed": false,
-        "line": 236,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import orders.csv financial.csv ratings.csv",
-        "executed": false,
-        "line": 254,
-        "path": "quickstart.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "git clone https://github.com/thyn-ai/algenta.git",
-        "executed": false,
-        "line": 26,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "static_only",
-        "command": "cd algenta",
-        "executed": false,
-        "line": 27,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "environment_mutating",
-        "command": "python3 -m pip install -e packages/algenta",
-        "executed": false,
-        "line": 28,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta version",
-        "executed": false,
-        "line": 29,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo                                  # interactive picker (in a TTY)",
-        "executed": false,
-        "line": 59,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo --list                           # list scenarios and exit",
-        "executed": false,
-        "line": 60,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo --scenario region --no-interactive",
-        "executed": false,
-        "line": 61,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta demo --all --no-interactive           # run them all",
-        "executed": false,
-        "line": 62,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import orders.csv --name orders",
-        "executed": false,
-        "line": 72,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import orders.csv financial.csv ratings.csv",
-        "executed": false,
-        "line": 73,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta map sales.csv orders.csv",
-        "executed": false,
-        "line": 81,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta query \"total revenue by customer\" sales.csv",
-        "executed": false,
-        "line": 93,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta query \"top 10 orders by amount\" orders.csv",
-        "executed": false,
-        "line": 94,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta simulate     # quick local simulation (revenue=100,000 cost=70,000 runs=10,000)",
-        "executed": false,
-        "line": 102,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta benchmark    # local speedup vs a Python baseline",
-        "executed": false,
-        "line": 103,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta upgrade",
-        "executed": false,
-        "line": 113,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta login",
-        "executed": false,
-        "line": 131,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta login --no-browser",
-        "executed": false,
-        "line": 132,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta whoami",
-        "executed": false,
-        "line": 133,
-        "path": "sdk/algenta-cli.md",
-        "syntax_valid": true
-      },
-      {
         "classification": "environment_mutating",
         "command": "pipx install algenta-mcp    # or: pip install algenta-mcp",
         "executed": false,
@@ -45825,38 +43711,6 @@
         "command": "curl -sS https://api.algenta.ai/v1/query \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"dataset_id\": \"ds_orders\",\n\"metric\": {\"hint\": \"revenue\"},\n\"aggregation\": \"sum\",\n\"filters\": {\"conditions\": [{\"field\": \"status\", \"operator\": \"eq\", \"value\": \"completed\"}]}\n}'",
         "executed": false,
         "line": 236,
-        "path": "sdk/python.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta version",
-        "executed": false,
-        "line": 550,
-        "path": "sdk/python.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta query orders.csv --metric revenue --group-by product_line",
-        "executed": false,
-        "line": 551,
-        "path": "sdk/python.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta import ./data",
-        "executed": false,
-        "line": 552,
-        "path": "sdk/python.md",
-        "syntax_valid": true
-      },
-      {
-        "classification": "requires_environment",
-        "command": "algenta simulate            # quick built-in simulation",
-        "executed": false,
-        "line": 553,
         "path": "sdk/python.md",
         "syntax_valid": true
       },
@@ -46306,7 +44160,7 @@
   "live": {
     "skipped": true
   },
-  "live_url": "https://docs.algenta.ai",
+  "live_url": "",
   "openapi_identity": {
     "algenta_title": true,
     "cross_product_mentions": 0,
@@ -46329,11 +44183,11 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 137,
-      "links": 137,
+      "internal_links": 133,
+      "links": 133,
       "path": "SUMMARY.md",
       "product_claims": {
-        "algenta": 5,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46418,29 +44272,29 @@
       "shell_commands": 12
     },
     {
-      "code_fences": 0,
+      "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
         "external_or_mutating": 0,
-        "requires_environment": 0,
+        "requires_environment": 1,
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 0,
+      "endpoint_mentions": 3,
       "external_links": 0,
       "internal_links": 3,
       "links": 3,
       "path": "api/rate-limits.md",
       "product_claims": {
-        "algenta": 2,
+        "algenta": 6,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 0
+      "shell_commands": 1
     },
     {
       "code_fences": 0,
@@ -46568,29 +44422,29 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 41,
+      "code_fences": 40,
       "command_counts": {
         "destructive_mutation": 6,
         "environment_mutating": 1,
         "external_or_mutating": 0,
-        "requires_environment": 130,
+        "requires_environment": 122,
         "safe_static": 5,
         "static_only": 3
       },
-      "endpoint_mentions": 116,
+      "endpoint_mentions": 112,
       "external_links": 0,
-      "internal_links": 5,
-      "links": 5,
+      "internal_links": 3,
+      "links": 3,
       "path": "cli.md",
       "product_claims": {
-        "algenta": 13,
+        "algenta": 7,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 2
       },
-      "shell_commands": 145
+      "shell_commands": 137
     },
     {
       "code_fences": 2,
@@ -46702,13 +44556,13 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 0,
+      "endpoint_mentions": 1,
       "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
+      "internal_links": 2,
+      "links": 2,
       "path": "concepts/engine.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 6,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46793,29 +44647,29 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 29,
+      "code_fences": 0,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
         "external_or_mutating": 0,
-        "requires_environment": 2,
-        "safe_static": 4,
+        "requires_environment": 0,
+        "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 2,
+      "endpoint_mentions": 1,
       "external_links": 0,
       "internal_links": 4,
-      "links": 5,
+      "links": 4,
       "path": "concepts.md",
       "product_claims": {
-        "algenta": 19,
+        "algenta": 13,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 6
+      "shell_commands": 0
     },
     {
       "code_fences": 0,
@@ -47368,6 +45222,31 @@
       "shell_commands": 16
     },
     {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 4,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 3,
+      "external_links": 0,
+      "internal_links": 2,
+      "links": 2,
+      "path": "engine/bundled-runtime.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 4
+    },
+    {
       "code_fences": 7,
       "command_counts": {
         "destructive_mutation": 0,
@@ -47393,31 +45272,6 @@
       "shell_commands": 3
     },
     {
-      "code_fences": 4,
-      "command_counts": {
-        "destructive_mutation": 0,
-        "environment_mutating": 0,
-        "external_or_mutating": 0,
-        "requires_environment": 1,
-        "safe_static": 0,
-        "static_only": 4
-      },
-      "endpoint_mentions": 3,
-      "external_links": 0,
-      "internal_links": 2,
-      "links": 2,
-      "path": "engine/filtered-install.md",
-      "product_claims": {
-        "algenta": 8,
-        "codna": 0,
-        "cohenta": 0,
-        "decimas": 0,
-        "escrypto": 0,
-        "mission": 0
-      },
-      "shell_commands": 5
-    },
-    {
       "code_fences": 2,
       "command_counts": {
         "destructive_mutation": 0,
@@ -47425,22 +45279,22 @@
         "external_or_mutating": 0,
         "requires_environment": 2,
         "safe_static": 0,
-        "static_only": 1
+        "static_only": 0
       },
       "endpoint_mentions": 7,
       "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
+      "internal_links": 2,
+      "links": 2,
       "path": "engine/health.md",
       "product_claims": {
-        "algenta": 1,
+        "algenta": 3,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 3
+      "shell_commands": 2
     },
     {
       "code_fences": 7,
@@ -47449,48 +45303,23 @@
         "environment_mutating": 0,
         "external_or_mutating": 0,
         "requires_environment": 3,
-        "safe_static": 1,
-        "static_only": 8
-      },
-      "endpoint_mentions": 4,
-      "external_links": 0,
-      "internal_links": 6,
-      "links": 6,
-      "path": "engine/mojo-sidecar.md",
-      "product_claims": {
-        "algenta": 2,
-        "codna": 0,
-        "cohenta": 0,
-        "decimas": 0,
-        "escrypto": 0,
-        "mission": 0
-      },
-      "shell_commands": 12
-    },
-    {
-      "code_fences": 8,
-      "command_counts": {
-        "destructive_mutation": 0,
-        "environment_mutating": 0,
-        "external_or_mutating": 0,
-        "requires_environment": 4,
         "safe_static": 0,
         "static_only": 0
       },
       "endpoint_mentions": 11,
       "external_links": 0,
-      "internal_links": 7,
-      "links": 7,
+      "internal_links": 6,
+      "links": 6,
       "path": "engine/runtime-libraries.md",
       "product_claims": {
-        "algenta": 2,
+        "algenta": 4,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 4
+      "shell_commands": 3
     },
     {
       "code_fences": 0,
@@ -47543,14 +45372,14 @@
       "shell_commands": 15
     },
     {
-      "code_fences": 9,
+      "code_fences": 8,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
         "external_or_mutating": 0,
         "requires_environment": 3,
         "safe_static": 4,
-        "static_only": 10
+        "static_only": 7
       },
       "endpoint_mentions": 1,
       "external_links": 0,
@@ -47558,14 +45387,14 @@
       "links": 8,
       "path": "guides/air-gapped.md",
       "product_claims": {
-        "algenta": 13,
+        "algenta": 15,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 17
+      "shell_commands": 14
     },
     {
       "code_fences": 14,
@@ -47918,14 +45747,14 @@
       "shell_commands": 1
     },
     {
-      "code_fences": 7,
+      "code_fences": 6,
       "command_counts": {
         "destructive_mutation": 0,
-        "environment_mutating": 1,
+        "environment_mutating": 0,
         "external_or_mutating": 0,
-        "requires_environment": 6,
+        "requires_environment": 3,
         "safe_static": 0,
-        "static_only": 2
+        "static_only": 0
       },
       "endpoint_mentions": 17,
       "external_links": 0,
@@ -47933,14 +45762,14 @@
       "links": 4,
       "path": "guides/instant-map.md",
       "product_claims": {
-        "algenta": 15,
+        "algenta": 5,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 9
+      "shell_commands": 3
     },
     {
       "code_fences": 10,
@@ -48233,7 +46062,7 @@
       "links": 11,
       "path": "help/glossary.md",
       "product_claims": {
-        "algenta": 7,
+        "algenta": 8,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48254,11 +46083,11 @@
       },
       "endpoint_mentions": 15,
       "external_links": 0,
-      "internal_links": 9,
-      "links": 9,
+      "internal_links": 8,
+      "links": 8,
       "path": "help/quick-reference.md",
       "product_claims": {
-        "algenta": 3,
+        "algenta": 2,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48268,29 +46097,29 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 19,
+      "code_fences": 14,
       "command_counts": {
         "destructive_mutation": 0,
-        "environment_mutating": 7,
+        "environment_mutating": 5,
         "external_or_mutating": 0,
-        "requires_environment": 5,
+        "requires_environment": 3,
         "safe_static": 1,
-        "static_only": 7
+        "static_only": 5
       },
       "endpoint_mentions": 3,
       "external_links": 0,
       "internal_links": 5,
-      "links": 11,
+      "links": 10,
       "path": "install.md",
       "product_claims": {
-        "algenta": 31,
+        "algenta": 22,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 20
+      "shell_commands": 14
     },
     {
       "code_fences": 8,
@@ -48516,31 +46345,6 @@
         "mission": 0
       },
       "shell_commands": 6
-    },
-    {
-      "code_fences": 4,
-      "command_counts": {
-        "destructive_mutation": 0,
-        "environment_mutating": 1,
-        "external_or_mutating": 0,
-        "requires_environment": 4,
-        "safe_static": 0,
-        "static_only": 2
-      },
-      "endpoint_mentions": 1,
-      "external_links": 0,
-      "internal_links": 9,
-      "links": 9,
-      "path": "login.md",
-      "product_claims": {
-        "algenta": 24,
-        "codna": 0,
-        "cohenta": 0,
-        "decimas": 0,
-        "escrypto": 0,
-        "mission": 0
-      },
-      "shell_commands": 7
     },
     {
       "code_fences": 8,
@@ -48843,31 +46647,6 @@
       "shell_commands": 1
     },
     {
-      "code_fences": 5,
-      "command_counts": {
-        "destructive_mutation": 0,
-        "environment_mutating": 0,
-        "external_or_mutating": 0,
-        "requires_environment": 0,
-        "safe_static": 0,
-        "static_only": 0
-      },
-      "endpoint_mentions": 0,
-      "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
-      "path": "mcp-tools/runtime-libraries.md",
-      "product_claims": {
-        "algenta": 4,
-        "codna": 0,
-        "cohenta": 0,
-        "decimas": 0,
-        "escrypto": 0,
-        "mission": 0
-      },
-      "shell_commands": 0
-    },
-    {
       "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
@@ -48933,7 +46712,7 @@
       "links": 5,
       "path": "operate/device-key-store.md",
       "product_claims": {
-        "algenta": 9,
+        "algenta": 11,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48958,7 +46737,7 @@
       "links": 10,
       "path": "operate/monitoring.md",
       "product_claims": {
-        "algenta": 8,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -49068,54 +46847,29 @@
       "shell_commands": 4
     },
     {
-      "code_fences": 17,
-      "command_counts": {
-        "destructive_mutation": 0,
-        "environment_mutating": 2,
-        "external_or_mutating": 0,
-        "requires_environment": 8,
-        "safe_static": 2,
-        "static_only": 2
-      },
-      "endpoint_mentions": 9,
-      "external_links": 0,
-      "internal_links": 6,
-      "links": 6,
-      "path": "quickstart.md",
-      "product_claims": {
-        "algenta": 23,
-        "codna": 0,
-        "cohenta": 0,
-        "decimas": 0,
-        "escrypto": 0,
-        "mission": 0
-      },
-      "shell_commands": 14
-    },
-    {
-      "code_fences": 8,
+      "code_fences": 12,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 1,
         "external_or_mutating": 0,
-        "requires_environment": 16,
-        "safe_static": 0,
-        "static_only": 2
+        "requires_environment": 4,
+        "safe_static": 2,
+        "static_only": 0
       },
-      "endpoint_mentions": 0,
+      "endpoint_mentions": 9,
       "external_links": 0,
-      "internal_links": 8,
-      "links": 8,
-      "path": "sdk/algenta-cli.md",
+      "internal_links": 4,
+      "links": 4,
+      "path": "quickstart.md",
       "product_claims": {
-        "algenta": 54,
+        "algenta": 7,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 19
+      "shell_commands": 7
     },
     {
       "code_fences": 7,
@@ -49129,11 +46883,11 @@
       },
       "endpoint_mentions": 0,
       "external_links": 1,
-      "internal_links": 8,
-      "links": 9,
+      "internal_links": 7,
+      "links": 8,
       "path": "sdk/mcp-registry.md",
       "product_claims": {
-        "algenta": 27,
+        "algenta": 26,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -49393,12 +47147,12 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 29,
+      "code_fences": 21,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 1,
         "external_or_mutating": 0,
-        "requires_environment": 6,
+        "requires_environment": 2,
         "safe_static": 2,
         "static_only": 0
       },
@@ -49408,14 +47162,14 @@
       "links": 4,
       "path": "sdk/python.md",
       "product_claims": {
-        "algenta": 23,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
         "escrypto": 0,
         "mission": 0
       },
-      "shell_commands": 9
+      "shell_commands": 5
     },
     {
       "code_fences": 8,
@@ -49777,10 +47531,10 @@
     "source_paths": 218
   },
   "snippets": {
-    "code_fences": 1084,
-    "runnable_safe_commands": 206,
-    "shell_commands": 989,
-    "static_or_guarded_commands": 783
+    "code_fences": 1012,
+    "runnable_safe_commands": 201,
+    "shell_commands": 909,
+    "static_or_guarded_commands": 708
   },
   "source": "gitbook",
   "source_claims": {
@@ -49790,59 +47544,59 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 962,
+    "claim_mentions": 836,
     "command_execution_percent": 0.0,
-    "commands_classified": 989,
-    "endpoint_mentions": 2115,
+    "commands_classified": 909,
+    "endpoint_mentions": 2109,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 975,
-    "pages_checked": 138,
+    "links_checked": 934,
+    "pages_checked": 134,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 784,
-    "snippets_checked": 1084,
+    "skips": 709,
+    "snippets_checked": 1012,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6125,
+    "source_items_inventoried": 5800,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 962,
-    "code_fences": 1084,
+    "claim_mentions": 836,
+    "code_fences": 1012,
     "command_classification_percent": 100.0,
     "command_execution_percent": 0.0,
     "destructive_mutation_commands": 23,
-    "endpoint_mentions": 2115,
-    "environment_mutating_commands": 25,
+    "endpoint_mentions": 2109,
+    "environment_mutating_commands": 19,
     "executed_commands": 0,
     "external_links": 3,
     "external_or_mutating_commands": 0,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 783,
-    "internal_links": 959,
-    "links": 975,
-    "pages": 138,
+    "guarded_commands": 708,
+    "internal_links": 920,
+    "links": 934,
+    "pages": 134,
     "product_claims": {
-      "algenta": 951,
+      "algenta": 825,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 11
     },
-    "public_pages": 137,
-    "requires_environment_commands": 648,
-    "runnable_commands": 206,
-    "safe_static_commands": 206,
-    "shell_commands": 989,
-    "shell_syntax_validated_commands": 989,
+    "public_pages": 133,
+    "requires_environment_commands": 605,
+    "runnable_commands": 201,
+    "safe_static_commands": 201,
+    "shell_commands": 909,
+    "shell_syntax_validated_commands": 909,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 784,
+    "skips": 709,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6125,
-    "static_only_commands": 87,
-    "static_or_guarded_commands": 783,
+    "source_items_inventoried": 5800,
+    "static_only_commands": 61,
+    "static_or_guarded_commands": 708,
     "unique_endpoint_operations": 411,
     "warnings": 0
   }

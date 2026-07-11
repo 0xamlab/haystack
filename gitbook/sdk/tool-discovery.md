@@ -23,7 +23,7 @@ An MCP client sees the live surface as a flat tool list; the groups below are ho
 | Repository intelligence | `triage_repository`, `create_repository_snapshot`, `query_repository_graph`, `run_repository_fix`, `apply_repository` |
 | Query & ingest | `query_data`, `query_batch`, `query_sql_report`, `ingest_data` |
 | LLM utilities | `list_models`, `tokenize`, `count_tokens`, `chat_completions`, `responses`, `embeddings`, `rerank` |
-| Runtime libraries | `list_runtime_libraries`, `execute_runtime_library` |
+| Runtime metadata | `get_runtime_manifest`, `get_runtime_modules`, `get_runtime_benchmarks`, `get_runtime_release_validation` |
 | Decisions | `simulate`, `recommend`, `score`, `plan_decision`, `submit_job`, `poll_job`, the product helpers |
 | Agent runtime | `create_agent_run`, `get_agent_run`, `get_agent_run_events`, `resume_agent_run`, `cancel_agent_run` |
 | Capability plane | `list_capability_providers`, `route_capability`, `execute_capability`, `list_skills`, `create_skill` |

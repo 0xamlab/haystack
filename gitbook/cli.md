@@ -5,7 +5,7 @@ description: The complete de CLI reference — every command group, subcommand, 
 
 # CLI reference
 
-The `de` CLI puts the entire Algenta platform behind one verb. From a terminal you register a device, manage API keys and execution policy, connect data and run governed queries, route capabilities, score decisions, drive agent runs and async jobs, triage and fix repositories, manage billing and your team, and control the local Mojo runtime. Every command is a thin, faithful wrapper over the same `/v1` HTTP surface the SDKs use — anything you do here you can reproduce with `curl` or the Python/TypeScript clients. This page is the complete reference: every subcommand, the endpoint it calls, and a titled example.
+The `de` CLI puts the Algenta HTTP platform behind one verb. From a terminal you register a device, manage API keys and execution policy, connect data and run governed queries, route capabilities, score decisions, drive agent runs and async jobs, triage and fix repositories, and manage billing and your team. Commands wrap the same `/v1` HTTP surface the SDKs use, so anything here can be reproduced with `curl` or a published client.
 
 {% hint style="info" %}
 Every command maps one-to-one to a `/v1` endpoint. If you can do it in the CLI, you can do it from any SDK or from raw `curl` — the CLI invents no behavior of its own.
@@ -29,7 +29,7 @@ The TypeScript SDK is available as `algenta-sdk` on npm for JavaScript and TypeS
 Running `de` with no arguments prints the full usage banner.
 
 {% hint style="info" %}
-`de` is the full control-plane CLI documented here. The separate, local-first `algenta` command (`algenta demo`, `algenta import`, `algenta map`, `algenta query`, …) runs offline previews and the runtime demo with no key — see the [algenta CLI reference](sdk/algenta-cli.md). The two do not overlap.
+`de` is the supported control-plane CLI documented here.
 {% endhint %}
 
 ## Configuration and environment
@@ -605,40 +605,6 @@ de team audit-artifacts --resource-type api_key
 
 ## Runtime, deployments, and meta
 
-### `runtime` — local Mojo daemon
-
-| Command | Endpoint / action |
-| --- | --- |
-| `de runtime start` | start the local daemon in the background |
-| `de runtime stop` | stop the daemon |
-| `de runtime status` | daemon status |
-| `de runtime manifest` | `GET /v1/runtime/manifest` |
-| `de runtime validate` | `GET /v1/admin/runtime/validation` |
-| `de runtime admin-modules` | `GET /v1/admin/runtime/modules` |
-| `de runtime admin-benchmarks` | `GET /v1/admin/runtime/benchmarks` |
-| `de runtime modules` | list loaded modules (daemon) |
-| `de runtime functions <module>` | list functions for a module |
-| `de runtime execute <module> <function>` | execute a runtime-library function |
-| `de runtime history` | local runtime ledger (`--limit`) |
-
-```bash title="de-runtime.sh"
-de runtime start
-de runtime status
-de runtime modules --format json
-de runtime functions text.tokenizer --format json
-
-# Execute a runtime function with JSON args
-de runtime execute text.tokenizer tokenize --args-json '{"input": "hello world"}'
-de runtime execute monte_carlo simulate --args-file sim_args.json
-
-de runtime history --limit 20
-de runtime stop
-```
-
-{% hint style="warning" %}
-Provide exactly one of `--args-json` or `--args-file` to `runtime execute`; passing both is an error.
-{% endhint %}
-
 ### `deployments` — managed regions and provisioning
 
 | Command | Endpoint |
@@ -723,10 +689,6 @@ curl -s "$ALGENTA_BASE_URL/v1/me" \
 
 {% content-ref url="authentication.md" %}
 [authentication.md](authentication.md)
-{% endcontent-ref %}
-
-{% content-ref url="sdk/algenta-cli.md" %}
-[sdk/algenta-cli.md](sdk/algenta-cli.md)
 {% endcontent-ref %}
 
 {% content-ref url="api/reference.md" %}

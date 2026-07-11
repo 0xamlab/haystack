@@ -20,7 +20,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_APP_BASE_URL` | — | `APP_BASE_URL`, `DE_APP_BASE_URL` | Dashboard / console base URL for self-hosted links. |
 | `ALGENTA_BASE_URL` | — | `DE_BASE_URL`, `ALGENTA_API_URL` | Engine URL for self-hosted clients (absolute, e.g. http://localhost:8000). |
 | `ALGENTA_CONTROL_PLANE_URL` | — | — | Control-plane endpoint for satellite deployments. |
-| `ALGENTA_DEPLOYMENT_MODE` | `saas` | — | Privacy/egress profile: saas \| vpc \| self_hosted \| air_gapped \| hybrid_provider \| local_dev_daemon. |
+| `ALGENTA_DEPLOYMENT_MODE` | `saas` | — | Privacy/egress profile: saas \| vpc \| self_hosted \| air_gapped \| hybrid_provider. |
 | `ALGENTA_DISABLE_CLOUD` | — | — | Opt out of any cloud integration (self-hosted). |
 | `ALGENTA_DISABLE_TELEMETRY` | — | — | Disable all outbound/vendor telemetry; keep local audit. |
 | `ALGENTA_EGRESS_ALLOWLIST` | — | — | Comma-separated allowlist of permitted egress destinations. |
@@ -62,16 +62,9 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `GCP_PROJECT_ID` | — | — | GCP project ID |
 | `GCP_REGION` | `us-central1` | — | — |
 | `GCP_SERVICE_ACCOUNT_JSON` | — | — | GCP service account JSON (base64-encoded) |
-| `GITHUB_APP_CLIENT_ID` | — | — | — |
-| `GITHUB_APP_CLIENT_SECRET` | — | — | — |
-| `GITHUB_APP_ID` | — | — | — |
-| `GITHUB_APP_PRIVATE_KEY` | — | — | — |
-| `GITHUB_APP_SLUG` | — | — | — |
-| `GITHUB_APP_WEBHOOK_SECRET` | — | — | — |
 | `JWT_ALGORITHM` | `HS256` | — | — |
 | `JWT_EXPIRE_MINUTES` | `10080` | — | — |
 | `JWT_SECRET` | `change-me-in-production-use-256-bit-r...` | — | Signing secret for session JWTs. |
-| `LICENSE_V2_ISSUANCE` | `False` | — | — |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | — | — |
 | `LOG_LEVEL` | `info` | — | — |
 | `MAX_BATCH_ITEMS_FREE` | `10` | — | — |
@@ -79,10 +72,6 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `MAX_PAYLOAD_SIZE_BYTES` | `1048576` | — | — |
 | `MAX_SYNC_RUNS` | `100000` | — | — |
 | `METRICS_SECRET` | — | — | Bearer secret guarding the /metrics endpoint. |
-| `MOJO_BINARY_PATH` | `./mojo_build/simulate` | — | Path to the compiled Mojo engine binary. |
-| `MOJO_MAX_CONCURRENT` | `4` | — | Max concurrent Mojo workers. |
-| `MOJO_PROFILING_POLICY` | `optional` | — | Mojo profiling policy: optional disables profiling explicitly on errors, disabled never invokes profiling, required fail-closes profiling errors. |
-| `MOJO_TIMEOUT_SECONDS` | `30` | — | Max execution time for a Mojo computation. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | — | — |
 | `QUOTA_DEVELOPER_SIMULATIONS_MONTH` | `10000` | — | — |
 | `QUOTA_FREE_SIMULATIONS_MONTH` | `500` | — | — |
@@ -92,7 +81,6 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `RESEND_FROM_EMAIL` | `Algenta <noreply@algenta.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
 | `RS256_LICENSE_PRODUCTS` | — | — | — |
-| `RUNTIME_FALLBACK_MODE` | `auto` | — | Engine fallback policy: deny (prod) \| allow \| auto (dev only). |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
 | `S3_BUCKET_NAME` | `algenta-results` | — | — |
 | `S3_ENDPOINT_URL` | — | — | — |
@@ -105,15 +93,6 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `SMTP_PASSWORD` | — | — | — |
 | `SMTP_PORT` | `1025` | — | — |
 | `SMTP_USERNAME` | — | — | — |
-| `STRIPE_PRICE_ALGENTA_PRO` | `price_algenta_pro_replace_me` | — | — |
-| `STRIPE_PRICE_ALGENTA_TEAM` | `price_algenta_team_replace_me` | — | — |
-| `STRIPE_PRICE_DEVELOPER` | `price_developer_replace_me` | — | — |
-| `STRIPE_PRICE_PRO` | `price_pro_replace_me` | — | — |
-| `STRIPE_PRICE_PROPLUS` | `price_proplus_replace_me` | — | — |
-| `STRIPE_PRICE_TEAM` | `price_team_replace_me` | — | — |
-| `STRIPE_PRICE_TELYS_PRO` | `price_telys_pro_replace_me` | — | — |
-| `STRIPE_PRICE_TELYS_TEAM` | `price_telys_team_replace_me` | — | — |
-| `STRIPE_PRICE_ULTRA` | `price_ultra_replace_me` | — | — |
 | `STRIPE_PUBLISHABLE_KEY` | `stripe_publishable_key_replace_me` | — | — |
 | `STRIPE_SECRET_KEY` | `stripe_secret_key_replace_me` | — | Stripe API secret key (billing). |
 | `STRIPE_WEBHOOK_SECRET` | `stripe_webhook_secret_replace_me` | — | Stripe webhook signing secret. |

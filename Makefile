@@ -593,10 +593,14 @@ typecheck:
 ## Generate and validate OpenAPI spec from running API
 openapi:
 	@echo "Generating OpenAPI spec..."
-	@PY_BIN="$$(if [ -x ./.venv/bin/python ]; then echo ./.venv/bin/python; else echo python3; fi)"; \
+	@set -e; \
 	mkdir -p schemas/openapi; \
-	curl -fsS http://localhost:8000/openapi.json | "$$PY_BIN" -c 'import json, sys, yaml; yaml.safe_dump(json.load(sys.stdin), sys.stdout, sort_keys=False)' > schemas/openapi/openapi.yaml; \
-	"$$PY_BIN" -c 'from pathlib import Path; import yaml; from openapi_spec_validator import validate_spec; spec = yaml.safe_load(Path("schemas/openapi/openapi.yaml").read_text()); validate_spec(spec)'; \
+	tmp="$$(mktemp schemas/openapi/openapi.yaml.XXXXXX)"; \
+	trap 'rm -f "$$tmp"' EXIT; \
+	curl -fsS http://localhost:8000/openapi.json | $(REPO_PYTHON) -c 'import json, sys, yaml; yaml.safe_dump(json.load(sys.stdin), sys.stdout, sort_keys=False)' > "$$tmp"; \
+	$(REPO_PYTHON) -c 'from pathlib import Path; import sys, yaml; from openapi_spec_validator import validate_spec; validate_spec(yaml.safe_load(Path(sys.argv[1]).read_text()))' "$$tmp"; \
+	mv "$$tmp" schemas/openapi/openapi.yaml; \
+	trap - EXIT; \
 	echo "✅ OpenAPI spec generated and validated: schemas/openapi/openapi.yaml"
 
 # ─── Build ─────────────────────────────────────────────────────────────────────

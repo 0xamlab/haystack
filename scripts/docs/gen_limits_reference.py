@@ -1,134 +1,189 @@
 #!/usr/bin/env python3
-"""Generate gitbook/api/rate-limits.md — rate limits & quotas — from the server settings model
-(apps/api_server/config.py) so the numbers are authoritative, never a hand-maintained policy page.
+"""Generate the public rate-limit page from the exact enforcement sources."""
 
-    python3 scripts/docs/gen_limits_reference.py            # write the page
-    python3 scripts/docs/gen_limits_reference.py --check     # CI: fail if stale
-"""
 from __future__ import annotations
 
-import os
 import sys
-from collections import Counter
+from pathlib import Path
+from typing import Any
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT)
-OUT = os.path.join(ROOT, "gitbook", "api", "rate-limits.md")
-FLOOR = 6
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+OUT = ROOT / "gitbook" / "api" / "rate-limits.md"
 
-# A config field is a "limit/quota" if its env name contains one of these tokens.
-TOKENS = ("QUOTA", "RATE_LIMIT", "MAX_", "PER_MINUTE", "PER_DAY", "_LIMIT", "PAYLOAD")
-
-MEANINGS = {
-    "QUOTA_FREE_SIMULATIONS_MONTH": "Monthly simulations on the Free plan.",
-    "QUOTA_DEVELOPER_SIMULATIONS_MONTH": "Monthly simulations on the Developer plan.",
-    "QUOTA_PRO_SIMULATIONS_MONTH": "Monthly simulations on the Pro plan.",
-    "SIGNUP_RATE_LIMIT_PER_MINUTE": "Sign-up attempts per minute (abuse protection).",
-    "SIGNUP_MAX_PER_DAY_PER_EMAIL": "Sign-ups per day per email.",
-    "LOGIN_RATE_LIMIT_PER_MINUTE": "Login attempts per minute.",
-    "API_KEY_CREATE_RATE_LIMIT_PER_MINUTE": "API-key creations per minute.",
-    "MAX_PAYLOAD_SIZE_BYTES": "Maximum request body size.",
-    "MAX_SYNC_RUNS": "Maximum simulation runs in a synchronous request.",
-    "MAX_BATCH_ITEMS_FREE": "Maximum batch items on the Free plan.",
-    "MAX_BATCH_ITEMS_PRO": "Maximum batch items on the Pro plan.",
-}
+PUBLIC_PLANS = (
+    ("Community", "algenta_free"),
+    ("Pro", "algenta_pro"),
+    ("Team", "algenta_team"),
+    ("Enterprise", "enterprise"),
+)
+ABUSE_FIELDS = (
+    ("Create an API key", "organization", "api_key_create_rate_limit_per_minute", "/minute"),
+    ("Login", "email + client IP", "login_rate_limit_per_minute", "/minute"),
+    ("Signup", "client IP", "signup_rate_limit_per_minute", "/minute"),
+    ("Create organizations by signup", "email", "signup_max_per_day_per_email", "/day"),
+)
 
 
-def _primary(name, info):
-    alias = getattr(info, "validation_alias", None)
-    if alias is not None and getattr(alias, "choices", None):
-        return str(alias.choices[0])
-    if alias is not None:
-        return str(alias)
-    return name.upper()
-
-
-def extract():
-    from apps.api_server.config import Settings
+def _setting_default(field_name: str) -> int:
     from pydantic_core import PydanticUndefined
 
-    rows = []
-    for name, info in Settings.model_fields.items():
-        env = _primary(name, info)
-        if not any(tok in env for tok in TOKENS):
-            continue
-        default = info.default
-        dflt = "" if default is PydanticUndefined or default is None else str(default)
-        rows.append((env, dflt))
-    rows.sort(key=lambda r: r[0])
-    return rows
+    from apps.api_server.config import Settings
+
+    value = Settings.model_fields[field_name].default
+    if value is PydanticUndefined or isinstance(value, bool) or not isinstance(value, int):
+        raise AssertionError(f"{field_name} must have an integer default")
+    return value
 
 
-def _worker_caps():
-    """Per-device worker concurrency by tier, sourced from plan_limits (the single source of
-    truth used by the runtime worker broker) so the doc can never drift from the enforced caps."""
+def extract() -> dict[str, list[dict[str, Any]]]:
     from apps.api_server.services import plan_limits
+    from apps.api_server.services.quota_service import get_plan_quota
 
-    def cap(plan: str) -> str:
-        n = plan_limits.worker_limit(plan)
-        return "Unlimited (negotiated)" if n <= 0 else str(n)
-
-    return [
-        ("Community (free)", cap("free")),
-        ("Pro", cap("algenta_pro")),
-        ("Team", cap("algenta_team")),
-        ("Enterprise", cap("enterprise")),
+    plans: list[dict[str, Any]] = []
+    for edition, plan in PUBLIC_PLANS:
+        quota = get_plan_quota(plan)
+        config = plan_limits.get(plan)
+        plans.append(
+            {
+                "edition": edition,
+                "rate": int(quota["rate_per_minute"]),
+                "monthly": int(quota["simulations_month"]),
+                "runs": int(quota["max_runs"]),
+                "batch": int(quota["max_batch"]),
+                "async_jobs": bool(quota["async_jobs"]),
+                "concurrent_jobs": config.concurrent_jobs,
+                "workers": plan_limits.worker_limit(plan),
+            }
+        )
+    abuse = [
+        {
+            "operation": operation,
+            "scope": scope,
+            "default": _setting_default(field_name),
+            "period": period,
+        }
+        for operation, scope, field_name, period in ABUSE_FIELDS
     ]
+    return {"plans": plans, "abuse": abuse}
 
 
-def render(rows):
+def _number(value: int, *, zero: str = "unlimited") -> str:
+    return zero if value == 0 else f"{value:,}"
+
+
+def render(data: dict[str, list[dict[str, Any]]]) -> str:
     out = [
         "---",
         "icon: gauge-high",
-        "description: Algenta rate limits and plan quotas — the authoritative numbers the engine "
-        "enforces, with how to handle 429 and quota errors.",
+        "description: The Algenta request-rate, execution-governance, batch, and worker limits "
+        "enforced for each edition.",
         "---",
         "",
-        "# Rate limits & quotas",
+        "# Rate limits & governance limits",
         "",
-        "Algenta enforces three things: per-plan **quotas** (monthly usage), per-endpoint **rate "
-        "limits** (abuse protection), and a **per-device worker concurrency cap** (how many jobs one "
-        "machine runs in parallel). The values below are the authoritative numbers the engine "
-        "enforces. Plan tiers are on [Plans, billing & credits](../billing.md).",
+        "Algenta uses four separate controls. They are not interchangeable:",
         "",
-        "| Setting | Default | What it limits |",
-        "| --- | --- | --- |",
+        "1. **Request rate** bounds selected compute and mutation routes per organization and UTC "
+        "minute.",
+        "2. **Monthly execution governance** bounds hosted control-plane execution. It is a safety "
+        "limit, not usage-based billing.",
+        "3. **Request shape limits** bound runs per call and batch size.",
+        "4. **Worker concurrency** bounds simultaneous bundled-runtime work per licensed device.",
+        "",
+        "`GET /v1/limits` is the authoritative response for the authenticated organization. It is "
+        "generated from the same plan table used by enforcement.",
+        "",
+        "```bash",
+        'curl -sS "$ALGENTA_API_URL/v1/limits" \\',
+        '  -H "Authorization: Bearer $ALGENTA_API_KEY"',
+        "```",
+        "",
+        "## Algenta edition defaults",
+        "",
+        "| Edition | Requests/minute | Monthly execution governance | "
+        "Runs/call | Batch items | Async jobs | Concurrent jobs | Workers/device |",
+        "| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |",
     ]
-    for env, dflt in rows:
-        dv = f"`{dflt}`" if dflt != "" else "—"
-        out.append(f"| `{env}` | {dv} | {MEANINGS.get(env, '—')} |")
+    for row in data["plans"]:
+        out.append(
+            f"| {row['edition']} | {_number(row['rate'])} | "
+            f"{_number(row['monthly'])} | {_number(row['runs'])} | {_number(row['batch'])} | "
+            f"{'yes' if row['async_jobs'] else 'no'} | {_number(row['concurrent_jobs'])} | "
+            f"{_number(row['workers'], zero='negotiated')} |"
+        )
     out += [
         "",
-        "## Per-device worker concurrency",
+        "The monthly value applies to centrally governed execution. A licensed local runtime does "
+        "not create a usage invoice; see [Usage & limits](../billing.md). Worker concurrency is "
+        "enforced by the bundled runtime from the signed license and changes on license renewal.",
         "",
-        "The self-hosted engine caps **concurrent workers per device** — how many "
-        "simulations/analyses a single machine runs in parallel. This is enforced locally by the "
-        "runtime worker broker (offline-capable, no network call), and the cap comes from your "
-        "license tier:",
+        "## Which requests use the plan rate",
         "",
-        "| Tier | Workers per device |",
-        "| --- | --- |",
+        "The plan request rate is applied to compute-bearing route families, including "
+        "simulations, "
+        "decision generation, agent execution, repository analysis, LLM operations, and "
+        "runtime-library execution. Read-only account and discovery routes are not automatically "
+        "charged against this counter merely because they use the API.",
+        "",
+        "Separate abuse controls protect authentication and key-management routes. Their "
+        "deployment "
+        "defaults are:",
+        "",
+        "| Operation | Scope | Default |",
+        "| --- | --- | ---: |",
     ]
-    for tier, workers in _worker_caps():
-        out.append(f"| {tier} | {workers} |")
+    for row in data["abuse"]:
+        out.append(f"| {row['operation']} | {row['scope']} | {row['default']}{row['period']} |")
     out += [
         "",
-        "Work beyond the cap queues until a slot frees (or is rejected immediately on a "
-        "non-blocking request). Upgrading your plan raises the cap on the **next license renewal** "
-        "— no redeploy needed.",
+        "Self-hosted operators can lower or raise these abuse-control defaults in deployment "
+        "configuration. The authenticated `GET /v1/limits` response remains the source for plan "
+        "execution limits.",
         "",
-        "## Handling limits",
+        "## Window and headers",
         "",
-        "{% hint style=\"info\" %}",
-        "A quota or rate-limit rejection returns the standard error envelope (for example "
-        "`quota_exceeded` or a `429`). Back off and retry with jitter on `429`; for `quota_exceeded`, "
-        "upgrade the plan or wait for the monthly reset. See [Error codes](errors.md).",
-        "{% endhint %}",
+        "Plan request limits use a Redis counter for the current UTC minute. On applicable "
+        "successful responses, Algenta returns:",
+        "",
+        "```text",
+        "X-RateLimit-Limit: 300",
+        "X-RateLimit-Remaining: 299",
+        "```",
+        "",
+        "When the counter is exceeded, the response is HTTP `429` with error code "
+        "`rate_limit_exceeded` and:",
+        "",
+        "```text",
+        "Retry-After: 60",
+        "X-RateLimit-Limit: 300",
+        "X-RateLimit-Remaining: 0",
+        "```",
+        "",
+        "The `Retry-After` value is a conservative upper bound. Retry only idempotent operations "
+        "automatically, use jitter, and honor the header rather than hard-coding a shorter delay.",
+        "",
+        "If the rate-limit backend is unavailable under the production fail-closed policy, Algenta "
+        "returns HTTP `503` with `rate_limit_backend_unavailable` and `Retry-After: 30`. It does "
+        "not "
+        "silently pretend the limiter succeeded.",
+        "",
+        "## Monthly governance rejection",
+        "",
+        "When centrally governed execution reaches its monthly ceiling, Algenta returns HTTP `429` "
+        "with error code `quota_exceeded`, plus `used`, `limit`, and `billing_period`. This is not "
+        "a short rate window: retrying seconds later will not help. Wait for the next period or "
+        "change "
+        "the organization policy or edition.",
         "",
         "## Related",
         "",
-        "{% content-ref url=\"../billing.md\" %}",
+        '{% content-ref url="../billing.md" %}',
         "[billing.md](../billing.md)",
+        "{% endcontent-ref %}",
+        "",
+        '{% content-ref url="errors.md" %}',
+        "[errors.md](errors.md)",
         "{% endcontent-ref %}",
         "",
     ]
@@ -136,21 +191,24 @@ def render(rows):
 
 
 def main() -> int:
-    rows = extract()
-    names = [r[0] for r in rows]
-    dupes = [k for k, c in Counter(names).items() if c > 1]
-    assert not dupes, f"duplicate limit settings: {dupes}"
-    assert len(names) >= FLOOR, f"only {len(names)} limit settings (< floor {FLOOR}) — parse broke"
-    md = render(rows)
+    data = extract()
+    assert len(data["plans"]) == len(PUBLIC_PLANS)
+    assert len(data["abuse"]) == len(ABUSE_FIELDS)
+    markdown = render(data)
     if "--check" in sys.argv:
-        current = open(OUT).read() if os.path.exists(OUT) else ""
-        if current != md:
-            print("DRIFT: gitbook/api/rate-limits.md is stale vs config.py — run `make docs-gen`")
+        current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
+        if current != markdown:
+            print("DRIFT: gitbook/api/rate-limits.md is stale vs enforcement sources")
             return 1
-        print(f"rate-limits.md OK ({len(names)} settings)")
+        print(
+            f"rate-limits.md OK ({len(data['plans'])} plans, {len(data['abuse'])} abuse controls)"
+        )
         return 0
-    open(OUT, "w").write(md)
-    print(f"wrote gitbook/api/rate-limits.md ({len(names)} settings)")
+    OUT.write_text(markdown, encoding="utf-8")
+    print(
+        f"wrote gitbook/api/rate-limits.md ({len(data['plans'])} plans, "
+        f"{len(data['abuse'])} abuse controls)"
+    )
     return 0
 
 

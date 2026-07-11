@@ -64,7 +64,7 @@ echo "$ALGENTA_BASE_URL"                 # default: http://localhost:8000
 curl http://localhost:8000/v1/health     # expect {"status":"ok", ...}
 ```
 
-A `200` with `status: ok` means the engine is reachable. Anything else: start the engine (see **Self-hosting**) or point at your hosted URL, then retry.
+A `200` with `status: ok` means the API is reachable. Anything else means the integrated deployment is unhealthy or the base URL is wrong; verify the self-hosted stack or point the client at the hosted URL, then retry.
 
 </details>
 

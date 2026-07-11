@@ -192,31 +192,6 @@ Once a source is connected, these routes list, inspect, refresh, and disconnect 
 | `POST /v1/data/{dataset_id}/refresh` | Re-pull the dataset from its saved origin. |
 | `DELETE /v1/data/{dataset_id}` | Disconnect the dataset (and its connector when nothing else uses it). |
 
-## Map locally with the CLI
-
-The source-built `algenta` CLI runs the same mapping on your machine — no server, no key, no network. Use it to preview data before you send anything to the engine. The local runtime package is not a public PyPI install yet.
-
-```bash title="local-map.sh"
-git clone https://github.com/thyn-ai/algenta.git
-cd algenta
-python3 -m pip install -e packages/algenta
-
-# Map one or more files and see cross-table field matches + join keys
-algenta map sales.csv orders.csv
-
-# Import preview: validates local registration + schema discovery, prints the Runtime snippet
-algenta import orders.csv --name orders
-
-# Deterministic natural-language query over local files
-algenta query "total revenue by customer" sales.csv
-```
-
-`algenta map` prints the mapping table, detected join keys, and whether the schema is simulation-ready. `algenta import` ends with a copy-pasteable `Runtime` snippet so you can continue in Python.
-
-{% hint style="info" %}
-The CLI runs entirely locally and fails closed — it never silently falls back to the cloud. Run `algenta upgrade` when you are ready to point the same code at your engine over the API.
-{% endhint %}
-
 ## Next steps
 
 <table data-view="cards"><thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>

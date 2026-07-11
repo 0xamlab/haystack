@@ -11,6 +11,7 @@ The --check mode regenerates in memory and byte-compares to the committed file (
 or duplicated variable changes the output → fails). It also asserts the SOURCE inventory has no
 duplicate names and meets a regression floor.
 """
+
 from __future__ import annotations
 
 import os
@@ -30,33 +31,40 @@ DESCRIPTIONS = {
     "ALGENTA_BASE_URL": "Engine URL for self-hosted clients (absolute, e.g. http://localhost:8000).",
     "ALGENTA_API_PUBLIC_BASE_URL": "Public-facing API base URL (cloud).",
     "ALGENTA_APP_BASE_URL": "Dashboard / console base URL for self-hosted links.",
-    "ALGENTA_DEPLOYMENT_MODE": "Privacy/egress profile: saas | vpc | self_hosted | air_gapped | hybrid_provider | local_dev_daemon.",
+    "ALGENTA_DEPLOYMENT_MODE": (
+        "Privacy/egress profile: saas | vpc | self_hosted | air_gapped | hybrid_provider."
+    ),
     "ALGENTA_DISABLE_CLOUD": "Opt out of any cloud integration (self-hosted).",
     "ALGENTA_DISABLE_TELEMETRY": "Disable all outbound/vendor telemetry; keep local audit.",
     "ALGENTA_TELEMETRY_MODE": "Telemetry destination: disabled | local_audit | control_plane_sync.",
     "ALGENTA_METERING_MODE": "Metering destination: disabled | local_audit | control_plane_sync.",
-    "ALGENTA_SERVICE_ROLE": "Deployment role: full (default, with engine) | control_plane (engine-free).",
-    "ALGENTA_ENFORCE_LICENSE_VALIDATION": "Enable fail-closed license validation on self-hosted deployments.",
-    "ALGENTA_REQUIRE_LOCAL_LICENSE": "Require a valid local signed license; disable hosted/dev fallback.",
+    "ALGENTA_SERVICE_ROLE": (
+        "Deployment role: full (default, with engine) | control_plane (engine-free)."
+    ),
+    "ALGENTA_ENFORCE_LICENSE_VALIDATION": (
+        "Enable fail-closed license validation on self-hosted deployments."
+    ),
+    "ALGENTA_REQUIRE_LOCAL_LICENSE": (
+        "Require a valid local signed license; disable hosted/dev fallback."
+    ),
     "ALGENTA_CONTROL_PLANE_URL": "Control-plane endpoint for satellite deployments.",
     "ALGENTA_ALLOW_OUTBOUND_NETWORK": "Permit egress (default false in air-gapped).",
     "ALGENTA_EGRESS_ALLOWLIST": "Comma-separated allowlist of permitted egress destinations.",
     "ALGENTA_AGENT_CORE_URL": "Optional bundled agent-runtime endpoint.",
     "ALGENTA_MANAGED_LLM": "Enable the pooled managed-LLM provider key (multi-tenant SaaS).",
     "ALGENTA_ENFORCE_STORAGE_CAP": "Enforce the per-org free-tier storage_gb quota (opt-in).",
-    "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": "Expose the /v1/libraries* runtime-library routes (off by default).",
-    "ALGENTA_SIMULATION_PERSIST_TRANSPORT": "Result persistence backend: auto | celery | in_process.",
-    "ALGENTA_CONFIG_ENCRYPTION_KEY": "Encrypts per-tenant provider keys at rest — durable secret, never rotate without re-encrypting.",
+    "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": (
+        "Expose the /v1/libraries* runtime-library routes (off by default)."
+    ),
+    "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
+        "Result persistence backend: auto | celery | in_process."
+    ),
+    "ALGENTA_CONFIG_ENCRYPTION_KEY": (
+        "Encrypts per-tenant provider keys at rest — durable secret, never rotate without "
+        "re-encrypting."
+    ),
     "ALGENTA_PRODUCT": "Edition surface to expose (e.g. algenta); filters the tool set.",
     "ALGENTA_DEVICE_ID": "Pin a stable device identity for a device-capped key (16-64 chars).",
-    "RUNTIME_FALLBACK_MODE": "Engine fallback policy: deny (prod) | allow | auto (dev only).",
-    "MOJO_BINARY_PATH": "Path to the compiled Mojo engine binary.",
-    "MOJO_POOL_SIZE": "Number of warm Mojo worker processes (default cpu_count - 1).",
-    "MOJO_BUILD_MCPU": "Target CPU ISA for the build (e.g. x86-64-v3) — portable binaries, avoids SIGILL.",
-    "MOJO_RUNTIME_MODULE_FILTER": "Comma-separated runtime modules to compile in (filtered, smaller build).",
-    "MOJO_ALLOW_SUBPROCESS_FALLBACK": "Permit the per-request subprocess path; set false in production.",
-    "MOJO_TIMEOUT_SECONDS": "Max execution time for a Mojo computation.",
-    "MOJO_MAX_CONCURRENT": "Max concurrent Mojo workers.",
     "DATABASE_URL": "Async PostgreSQL connection string.",
     "DATABASE_URL_SYNC": "Sync PostgreSQL connection string (migrations).",
     "REDIS_URL": "Redis connection (cache / queue / coordination).",
@@ -73,8 +81,18 @@ def _cell(value: str) -> str:
 
 
 # External docs are for customers, not internal devs: drop description sentences that reference
-# internal source files, tests, or roadmap status (these leak implementation detail to a public site).
-_INTERNAL_MARKERS = ("test_", "apps/", "packages/", "scripts/", "no longer floats", "enforced by", "/ dark", "dark)")
+# internal source files, tests, or roadmap status. These leak implementation detail to a public
+# site.
+_INTERNAL_MARKERS = (
+    "test_",
+    "apps/",
+    "packages/",
+    "scripts/",
+    "no longer floats",
+    "enforced by",
+    "/ dark",
+    "dark)",
+)
 
 
 def _sanitize(desc: str) -> str:
@@ -85,10 +103,22 @@ def _sanitize(desc: str) -> str:
     return " ".join(kept).strip()
 
 
-# Internal-only, signer-side (license minting) settings — a customer never sets these, so they are
-# excluded from the public configuration reference. Match by field-name prefix to be exhaustive.
+_INTERNAL_FIELDS = frozenset(
+    {
+        "license_v2_issuance",
+        "mojo_binary_path",
+        "mojo_max_concurrent",
+        "mojo_profiling_policy",
+        "mojo_timeout_seconds",
+        "runtime_fallback_mode",
+    }
+)
+_INTERNAL_PREFIXES = ("github_app", "license_signing", "license_signer", "stripe_price_")
+
+
+# Internal implementation and hosted-operator settings are excluded from customer documentation.
 def _is_internal(field_name: str) -> bool:
-    return field_name.startswith(("license_signing", "license_signer"))
+    return field_name in _INTERNAL_FIELDS or field_name.startswith(_INTERNAL_PREFIXES)
 
 
 def extract() -> list[tuple[str, str, str, str]]:
@@ -125,17 +155,20 @@ def render(rows: list[tuple[str, str, str, str]]) -> str:
     out = [
         "---",
         "icon: gear",
-        "description: Every Algenta configuration environment variable in one place, with its default "
+        "description: Every Algenta configuration environment variable in one place, with its "
+        "default "
         "and any aliases — complete and current.",
         "---",
         "",
         "# Configuration reference",
         "",
-        "Every environment variable Algenta reads, with its default and any accepted aliases. Set these "
+        "Every environment variable Algenta reads, with its default and any accepted aliases. Set "
+        "these "
         "in your shell, your `.env`, or your orchestrator. Names are case-insensitive.",
         "",
-        "{% hint style=\"info\" %}",
-        "Where a variable has accepted aliases (for example a legacy `DE_` name), they appear in the "
+        '{% hint style="info" %}',
+        "Where a variable has accepted aliases (for example a legacy `DE_` name), they appear in "
+        "the "
         "Aliases column.",
         "{% endhint %}",
         "",
@@ -149,7 +182,7 @@ def render(rows: list[tuple[str, str, str, str]]) -> str:
         "",
         "## Related",
         "",
-        "{% content-ref url=\"self-hosting.md\" %}",
+        '{% content-ref url="self-hosting.md" %}',
         "[self-hosting.md](self-hosting.md)",
         "{% endcontent-ref %}",
         "",
@@ -162,7 +195,9 @@ def main() -> int:
     names = [r[0] for r in rows]
     dupes = [k for k, c in Counter(names).items() if c > 1]
     assert not dupes, f"duplicate config variables in source: {dupes}"
-    assert len(names) >= FLOOR, f"only {len(names)} config vars (< floor {FLOOR}) — source parse broke"
+    assert len(names) >= FLOOR, (
+        f"only {len(names)} config vars (< floor {FLOOR}) — source parse broke"
+    )
     md = render(rows)
     if "--check" in sys.argv:
         current = open(OUT).read() if os.path.exists(OUT) else ""

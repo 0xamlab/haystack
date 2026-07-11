@@ -7,7 +7,7 @@ description: Choose where Algenta stores the per-device private key — Apple Se
 
 Every machine that runs the Algenta runtime holds a per-device signing key. It is the machine's cryptographic identity: the license records the key's public thumbprint, and renewal proves possession by signing a server nonce. The **private key never leaves the machine**. Where that private key is stored is selectable, so you can pin it to hardware on a laptop and to a deterministic encrypted file on a headless server.
 
-You pick the store with a single runtime environment variable, `ALGENTA_DEVICE_KEY_STORE`, then restart the runtime and confirm it is healthy with `algenta runtime doctor`.
+You pick the store with `ALGENTA_DEVICE_KEY_STORE`, then restart the Algenta deployment and confirm the integrated runtime is healthy.
 
 {% hint style="info" %}
 These are **runtime-side** settings — environment variables set on the machine that runs the engine, not values sent over the API. Set them in that host's shell, `.env`, or orchestrator before the runtime starts. See [Configuration reference](../configuration.md).
@@ -75,9 +75,9 @@ Writes an encrypted `device_key.enc` (mode `0600`) under the runtime directory. 
 {% endstep %}
 
 {% step %}
-### Restart and confirm the runtime
+### Restart Algenta and confirm the runtime
 
-Restart the runtime so it reads the new environment, then run the doctor. The runtime generates and persists the device key in the selected backend on first use, and the doctor confirms the runtime is loaded, verified, and licensed.
+Restart the Algenta deployment so it reads the new environment, then run the bundled doctor in that deployment. The runtime generates and persists the device key in the selected backend on first use, and the doctor confirms the runtime is loaded, verified, and licensed.
 
 ```bash title="algenta runtime doctor"
 algenta runtime doctor
@@ -87,7 +87,7 @@ It reports the runtime source and mode, whether the native runtime is `loaded` a
 
 ```text
 algenta runtime doctor
-  runtime source:  bundled sidecar
+  runtime source:  bundled runtime
   mode:            resident-worker
   path:            /opt/algenta/runtime/algenta_runtime_worker
   platform tag:    manylinux_2_28_x86_64

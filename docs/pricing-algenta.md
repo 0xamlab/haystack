@@ -1,3 +1,8 @@
+---
+icon: tags
+description: Internal pricing and enforcement reference for Algenta device-based licensing.
+---
+
 # Algenta pricing — self-hosted, licensed per device
 
 Engineering reference for how Algenta's paid tiers are priced and enforced. External/marketing copy lives
@@ -145,3 +150,7 @@ units for different products, so a direct seat-to-seat comparison doesn't apply.
 (`llm_spend_cap=0`, customer pays providers directly) whereas Codna bundles managed-LLM spend
 (`llm_spend_cap` $50–$2,000/mo); a per-device Algenta license serves many users on one machine, so the
 per-device price sits well above any single hosted seat by design.
+
+## Next step
+
+Reconcile any pricing change with the entitlement schema, Stripe products, and [go-live gates](go-live-algenta.md) before publication.

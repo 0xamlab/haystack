@@ -93,7 +93,7 @@ def test_node_info_schema():
 
 
 def test_infrastructure_response_schema():
-    """InfrastructureResponse must have all required fields."""
+    """InfrastructureResponse accepts measured and historical fields."""
     from datetime import datetime
 
     from apps.api_server.routers.infrastructure import InfrastructureResponse
@@ -103,6 +103,7 @@ def test_infrastructure_response_schema():
         engine_version="0.3.1",
         api_version="1.0.0",
         nodes=[],
+        probe_latency_ms=8.1,
         uptime_30d_pct=99.97,
         avg_latency_ms=8.4,
         p95_latency_ms=24.1,
@@ -110,8 +111,35 @@ def test_infrastructure_response_schema():
         last_health_check=datetime.now(tz=UTC),
     )
     assert resp.deployment_mode == "saas"
+    assert resp.probe_latency_ms == 8.1
     assert resp.uptime_30d_pct == 99.97
     assert resp.nodes == []
+
+
+@pytest.mark.anyio
+async def test_infrastructure_route_does_not_invent_historical_metrics(monkeypatch):
+    """One live probe cannot truthfully produce 30-day or percentile aggregates."""
+    from types import SimpleNamespace
+
+    from apps.api_server.routers import infrastructure
+
+    async def probe():
+        return "live", 4.25, "1.2.3", "binary"
+
+    settings = SimpleNamespace(
+        is_development=True,
+        privacy_policy=SimpleNamespace(deployment_mode="self_hosted"),
+    )
+    monkeypatch.setattr(infrastructure, "_check_engine_health", probe)
+    monkeypatch.setattr(infrastructure, "get_settings", lambda: settings)
+
+    response = await infrastructure.get_infrastructure({"org_id": uuid4()})  # type: ignore[arg-type]
+
+    assert response.probe_latency_ms == 4.25
+    assert response.uptime_30d_pct is None
+    assert response.avg_latency_ms is None
+    assert response.p95_latency_ms is None
+    assert response.throughput_rpm is None
 
 
 def test_infrastructure_response_rejects_non_contract_deployment_mode():
@@ -136,15 +164,11 @@ def test_infrastructure_response_rejects_non_contract_deployment_mode():
         )
 
 
-def test_demo_nodes_are_valid():
-    """Demo nodes in infrastructure module must all be valid NodeInfo instances."""
-    from apps.api_server.routers.infrastructure import _DEMO_NODES, NodeInfo
+def test_infrastructure_has_no_fabricated_demo_nodes():
+    """The public infrastructure response must contain only observed or registered nodes."""
+    from apps.api_server.routers import infrastructure
 
-    assert len(_DEMO_NODES) == 3
-    for node in _DEMO_NODES:
-        assert isinstance(node, NodeInfo)
-        assert node.engine_version.startswith("0.")
-        assert node.region != ""
+    assert not hasattr(infrastructure, "_DEMO_NODES")
 
 
 # ── /v1/team ─────────────────────────────────────────────────────────────────

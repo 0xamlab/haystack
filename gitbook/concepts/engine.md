@@ -1,47 +1,46 @@
 ---
 icon: gears
-description: How the Algenta engine works — the compiled Mojo binary, the warm worker pool (sidecar), the dispatch and fallback chain, and why it's built for low-latency, deterministic compute.
+description: How Algenta integrates deterministic compiled compute, validates every request, and fails closed without exposing runtime lifecycle to users.
 ---
 
 # How the engine works
 
-The engine is the part of Algenta that actually computes — simulations, decisions, and the math/operational library. Understanding its shape explains the operational knobs in [Run the Mojo engine](../engine/mojo-sidecar.md) and why production deployments fail-closed instead of degrading silently.
+Algenta combines a Python and TypeScript control plane with a compiled Mojo compute runtime. The control plane owns validation, authorization, persistence, and orchestration. The compiled runtime owns deterministic numerical kernels. They ship and operate as one product boundary.
 
-## The binary
+## Integrated compiled compute
 
-Algenta's compute is a **compiled Mojo binary** (`mojo_build/simulate`), not interpreted Python. That's what makes large Monte Carlo runs fast and **deterministic** — the same inputs and `seed` always produce the same result. The Python API server never does the heavy math itself; it hands work to this binary.
+The runtime is included in the Algenta deployment and supervised with the API. Hosted users, SDK users, and self-hosted operators do not install or start a separate compute service. A request crosses a typed internal interface, executes in the bundled runtime, and returns a schema-validated result.
 
-## The warm worker pool (sidecar)
+This boundary keeps business logic out of Mojo while preserving low-latency numerical execution:
 
-Spawning a process per request is slow (fork/exec ~tens of ms). Instead the API keeps a **pool of long-lived Mojo workers** running in server mode and talks to them over **Unix domain sockets** using a small framed-JSON protocol (a 4-byte length prefix + a JSON payload). A request acquires a free worker, exchanges one round trip (~sub-millisecond IPC), and releases it. The pool self-heals — a crashed worker is detected and restarted.
+1. The API parses and validates the external request.
+2. Authorization and governance checks run before compute.
+3. Algenta dispatches the typed payload to the bundled compiled runtime.
+4. The runtime returns deterministic output for the same input and seed.
+5. The API validates, records, and returns the public response.
 
-This is the "sidecar engine": the same machine, a separate set of warm processes beside the API.
+## Warm execution
 
-## Dispatch and the fallback chain
+Algenta keeps licensed compute workers warm inside the deployment so repeated calls avoid process-creation overhead. Worker lifecycle, integrity verification, and replacement are implementation responsibilities of Algenta, not user setup steps. Edition limits determine worker concurrency per device.
 
-When a request needs compute, the API tries, in order:
+## Fail-closed behavior
 
-1. **The Mojo worker pool** — the fast path (`engine_mode: pool`).
-2. **A subprocess** of the same binary — slower, per-request, only if `MOJO_ALLOW_SUBPROCESS_FALLBACK` permits it (`engine_mode: subprocess_fallback`).
-3. **Nothing** — if fallback is denied, the request fails (`engine_mode: unavailable`).
+Production execution does not silently switch to an interpreted Python implementation when compiled compute is unavailable. A missing or unhealthy runtime surfaces as an explicit deployment or compute error. This makes a latency regression visible instead of masking it behind a slower implementation.
 
-Whether steps 2–3 are even allowed is set by `RUNTIME_FALLBACK_MODE` (`deny` in production). The point of `deny` is honesty: a misbuilt engine should surface at startup, not quietly serve a slow path.
+`GET /v1/infrastructure` reports `engine_mode: "binary"` when the compiled runtime artifact exists and a primary node `status: "live"` when the compute probe succeeds. Treat `missing` or `error` as deployment failures.
 
-## The server-mode probe
+## Why this matters
 
-At startup the pool doesn't just check that a worker opened a socket — it sends a **known payload and verifies the answer is correct** (a non-zero, expected mean). This catches the subtle failure where a binary launches but computes garbage (a stale or partial build). Only after the probe passes does the API log `mojo_runtime_mode="pool"` and serve from the pool.
+* **Determinism** — identical validated inputs and seed produce identical compute outputs.
+* **Performance** — warm compiled workers serve the numerical hot path.
+* **Security** — external inputs are validated by the control plane before they reach compute.
+* **Operability** — one deployment owns startup, health, and recovery.
+* **Auditability** — the API records the request and result contract around each execution.
 
-## Use this model when
+## Related
 
-* **Deciding fallback policy** — production wants `deny` + no subprocess fallback so a broken build can't masquerade as a healthy-but-slow one.
-* **Sizing a host** — the pool is `cpu_count - 1` by default; more workers = more concurrency, more memory.
-* **Building a custom binary** — only the modules you compile in (via `MOJO_RUNTIME_MODULE_FILTER`) are dispatchable; everything else returns "module not registered".
-* **Debugging latency** — if calls are slow, check `engine_mode`; `subprocess_fallback` means you're off the warm path.
-
-## Next
-
-{% content-ref url="../engine/mojo-sidecar.md" %}
-[mojo-sidecar.md](../engine/mojo-sidecar.md)
+{% content-ref url="../engine/bundled-runtime.md" %}
+[bundled-runtime.md](../engine/bundled-runtime.md)
 {% endcontent-ref %}
 
 {% content-ref url="../engine/health.md" %}

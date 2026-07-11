@@ -84,23 +84,36 @@ PRIVATE_LEAK_PATTERNS = (
     re.compile(r"\bangel@[A-Za-z0-9_.-]+\b", re.IGNORECASE),
     re.compile(r"\bglobet\.io\b", re.IGNORECASE),
     re.compile(r"\b(private repo|internal-only|do not publish)\b", re.IGNORECASE),
+    re.compile(r"\binternal plan\b", re.IGNORECASE),
     re.compile(r"\bcodna(?:\.ai)?\b", re.IGNORECASE),
+)
+
+RUNTIME_ENCAPSULATION_PATTERNS = (
+    re.compile(r"\brun the mojo engine\b", re.IGNORECASE),
+    re.compile(r"\b(?:local\s+)?(?:algenta\s+)?runtime daemon\b", re.IGNORECASE),
+    re.compile(r"\b(?:mojo|native|bundled|runtime) sidecar\b", re.IGNORECASE),
+    re.compile(r"\bsidecar engine\b", re.IGNORECASE),
+    re.compile(r"\bde runtime (?:start|stop)\b", re.IGNORECASE),
+    re.compile(r"\bstart the runtime worker\b", re.IGNORECASE),
+    re.compile(r"\bmake (?:setup-mojo|build-mojo|test-mojo)\b", re.IGNORECASE),
+    re.compile(r"\b(?:RUNTIME_FALLBACK_MODE|MOJO_BINARY_PATH|MOJO_ALLOW_SUBPROCESS_FALLBACK)\b"),
+    re.compile(r"\b(?:subprocess_fallback|local_dev_daemon)\b"),
+    re.compile(r"\bmojo_build/simulate\b"),
+    re.compile(r"\bsource[- ]built\b", re.IGNORECASE),
+    re.compile(r"\bpixi\b", re.IGNORECASE),
 )
 
 DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
     (
         re.compile(r"@algenta/sdk"),
         "wrong_typescript_sdk_package",
-        (
-            "Docs reference @algenta/sdk, but the published TypeScript package name is "
-            "algenta-sdk."
-        ),
+        ("Docs reference @algenta/sdk, but the published TypeScript package name is algenta-sdk."),
     ),
 )
 
 SUMMARY_HEADING_ROUTE_SLUGS = {
     "Getting Started": "getting-started",
-    "Run the engine": "run-the-engine",
+    "Engine runtime": "engine-runtime",
     "Concepts": "concepts",
     "Guides": "guides",
     "LLM API": "llm-api",
@@ -234,7 +247,11 @@ def _route_tail_for_summary_target(section_slug: str, target: str) -> str:
     for prefix in SUMMARY_ROUTE_PREFIX_STRIPS.get(section_slug, ()):  # deterministic order
         if tail.startswith(prefix):
             return tail[len(prefix) :]
-    path_tail_sections = {"microsoft-and-azure", "deploy-and-operate", "run-the-engine"}
+    path_tail_sections = {
+        "microsoft-and-azure",
+        "deploy-and-operate",
+        "engine-runtime",
+    }
     if "/" in tail and section_slug in path_tail_sections:
         return tail.rsplit("/", 1)[-1]
     if "/" in tail and section_slug in {"getting-started", "help"}:
@@ -569,6 +586,25 @@ def _find_public_package_issues(path: Path, rel_path: str, text: str) -> list[Is
     return issues
 
 
+def _find_runtime_encapsulation_issues(rel_path: str, text: str) -> list[Issue]:
+    issues: list[Issue] = []
+    for regex in RUNTIME_ENCAPSULATION_PATTERNS:
+        for match in regex.finditer(text):
+            issues.append(
+                Issue(
+                    severity="ERROR",
+                    code="public_runtime_encapsulation_violation",
+                    message=(
+                        "Public docs expose separate runtime setup or internal runtime controls."
+                    ),
+                    path=rel_path,
+                    line=_line_for_offset(text, match.start()),
+                    details={"match": match.group(0)[:80]},
+                )
+            )
+    return issues
+
+
 def _validate_machine_snippet(fence: CodeFence) -> list[Issue]:
     issues: list[Issue] = []
     lang = fence.language
@@ -878,6 +914,7 @@ def _audit_page(
 
     issues.extend(_find_secret_issues(path, rel_path, text))
     issues.extend(_find_public_package_issues(path, rel_path, text))
+    issues.extend(_find_runtime_encapsulation_issues(rel_path, text))
     for link in links:
         internal_issue = _validate_internal_link(source, link, all_pages)
         if internal_issue:
@@ -953,9 +990,7 @@ def _audit_page(
     issues.extend(_validate_endpoint_mentions(rel_path, endpoint_mentions, openapi_operations))
     endpoint_evidence: list[dict[str, Any]] = []
     for mention in endpoint_mentions:
-        matched_methods, match_kind = _matching_endpoint_methods(
-            mention.path, openapi_operations
-        )
+        matched_methods, match_kind = _matching_endpoint_methods(mention.path, openapi_operations)
         endpoint_evidence.append(
             {
                 "path": rel_path,
@@ -1233,7 +1268,9 @@ def _mcp_text_content(result: dict[str, Any] | None) -> str:
     return "\n".join(
         item["text"]
         for item in content
-        if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str)
+        if isinstance(item, dict)
+        and item.get("type") == "text"
+        and isinstance(item.get("text"), str)
     )
 
 
@@ -1309,7 +1346,11 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
     result = _jsonrpc_result(payload, 1)
     report["initialize_status"] = status
     report["protocol_version"] = result.get("protocolVersion") if result else None
-    if status != 200 or result is None or not isinstance(result.get("capabilities", {}).get("tools"), dict):
+    if (
+        status != 200
+        or result is None
+        or not isinstance(result.get("capabilities", {}).get("tools"), dict)
+    ):
         issues.append(
             Issue(
                 "ERROR",
@@ -1351,7 +1392,9 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
     status, payload, _ = _post_jsonrpc(endpoint, search_request)
     search_text = _mcp_text_content(_jsonrpc_result(payload, 3))
     report["search_status"] = status
-    if status != 200 or not all(term in search_text for term in ("Algenta", "algenta-mcp", "Codex")):
+    if status != 200 or not all(
+        term in search_text for term in ("Algenta", "algenta-mcp", "Codex")
+    ):
         issues.append(
             Issue(
                 "ERROR",
@@ -1370,7 +1413,9 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
     status, payload, _ = _post_jsonrpc(endpoint, page_request)
     page_text = _mcp_text_content(_jsonrpc_result(payload, 4))
     report["page_status"] = status
-    if status != 200 or not all(term in page_text for term in ("# MCP server", "algenta-mcp", "Cursor")):
+    if status != 200 or not all(
+        term in page_text for term in ("# MCP server", "algenta-mcp", "Cursor")
+    ):
         issues.append(
             Issue(
                 "ERROR",
@@ -1383,6 +1428,7 @@ def _audit_live_docs_mcp(base: str) -> tuple[list[Issue], dict[str, Any]]:
     for label, text in (("searchDocumentation", search_text), ("getPage", page_text)):
         issues.extend(_find_secret_issues(Path(label), f"live:mcp:{label}", text))
         issues.extend(_find_public_package_issues(Path(label), f"live:mcp:{label}", text))
+        issues.extend(_find_runtime_encapsulation_issues(f"live:mcp:{label}", text))
     return issues, report
 
 
@@ -1493,6 +1539,129 @@ def _sitemap_url_to_markdown_route(base_url: str, page_url: str) -> str | None:
     return f"{path.rstrip('/')}.md"
 
 
+_LLMS_FULL_NEXT_PAGE_RE = re.compile(r"\[Next Page\]\(([^)\s]+)\)")
+_LLMS_FULL_PAGE_PATH_RE = re.compile(r"^/llms-full\.txt/\d+$")
+_LLMS_FULL_MAX_PAGES = 32
+_LLMS_FULL_MAX_PAGE_BYTES = 3_000_000
+
+
+def _fetch_llms_full_pages(
+    base: str,
+) -> tuple[list[Issue], list[tuple[str, str]], dict[str, Any]]:
+    """Fetch GitBook's bounded llms-full.txt pagination chain."""
+    issues: list[Issue] = []
+    pages: list[tuple[str, str]] = []
+    routes: list[str] = []
+    visited: set[str] = set()
+    route = "/llms-full.txt"
+    root_status: int | None = None
+    total_bytes = 0
+    complete = False
+
+    for _ in range(_LLMS_FULL_MAX_PAGES):
+        if route in visited:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "llms_full_pagination_cycle",
+                    "llms-full.txt pagination contains a cycle.",
+                    details={"route": route},
+                )
+            )
+            break
+        visited.add(route)
+
+        status, body, content_type = _fetch(f"{base}{route}", max_bytes=_LLMS_FULL_MAX_PAGE_BYTES)
+        if root_status is None:
+            root_status = status
+        routes.append(route)
+        total_bytes += len(body)
+        if len(body) > _LLMS_FULL_MAX_PAGE_BYTES:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "llms_full_page_too_large",
+                    "A page in the llms-full.txt pagination chain exceeds the byte limit.",
+                    details={"route": route, "max_bytes": _LLMS_FULL_MAX_PAGE_BYTES},
+                )
+            )
+            break
+        text = body.decode("utf-8", "replace")
+        if (
+            status != 200
+            or "<!doctype html" in text[:500].lower()
+            or (content_type and "text" not in content_type.lower())
+        ):
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "llms_full_page_unavailable",
+                    "A page in the llms-full.txt pagination chain is unavailable or malformed.",
+                    details={
+                        "route": route,
+                        "status": status,
+                        "content_type": content_type,
+                    },
+                )
+            )
+            break
+        pages.append((route, text))
+
+        next_links = set(_LLMS_FULL_NEXT_PAGE_RE.findall(text))
+        if not next_links:
+            complete = True
+            break
+        if len(next_links) != 1:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "llms_full_pagination_ambiguous",
+                    "llms-full.txt contains multiple distinct next-page links.",
+                    details={"route": route, "next_links": sorted(next_links)},
+                )
+            )
+            break
+
+        next_url = urllib.parse.urljoin(f"{base}{route}", next_links.pop())
+        parsed_base = urllib.parse.urlparse(base)
+        parsed_next = urllib.parse.urlparse(next_url)
+        if (
+            parsed_next.scheme != parsed_base.scheme
+            or parsed_next.netloc != parsed_base.netloc
+            or not _LLMS_FULL_PAGE_PATH_RE.fullmatch(parsed_next.path)
+            or parsed_next.query
+            or parsed_next.fragment
+        ):
+            issues.append(
+                Issue(
+                    "ERROR",
+                    "llms_full_pagination_invalid",
+                    "llms-full.txt contains an invalid next-page URL.",
+                    details={"route": route},
+                )
+            )
+            break
+        route = parsed_next.path
+    else:
+        issues.append(
+            Issue(
+                "ERROR",
+                "llms_full_pagination_limit",
+                "llms-full.txt exceeded the bounded pagination limit.",
+                details={"max_pages": _LLMS_FULL_MAX_PAGES},
+            )
+        )
+
+    report = {
+        "root_status": root_status,
+        "pages": len(pages),
+        "bytes": total_bytes,
+        "routes": routes,
+        "complete": complete,
+    }
+    return issues, pages, report
+
+
 def _audit_live(
     live_url: str, public_page_count: int, source: Path
 ) -> tuple[list[Issue], dict[str, Any]]:
@@ -1505,6 +1674,9 @@ def _audit_live(
         "robots_status": None,
         "llms_txt_status": None,
         "llms_full_status": None,
+        "llms_full_pages": 0,
+        "llms_full_bytes": 0,
+        "llms_full_complete": False,
         "markdown_pages_checked": 0,
         "source_navigation_urls": 0,
         "sitemap_matches_source_navigation": False,
@@ -1615,20 +1787,30 @@ def _audit_live(
         )
     issues.extend(_find_secret_issues(Path("llms.txt"), "live:llms.txt", llms_text))
     issues.extend(_find_public_package_issues(Path("llms.txt"), "live:llms.txt", llms_text))
+    issues.extend(_find_runtime_encapsulation_issues("live:llms.txt", llms_text))
 
-    llms_full_status, llms_full_body, _ = _fetch(f"{base}/llms-full.txt", max_bytes=3_000_000)
-    result["llms_full_status"] = llms_full_status
-    llms_full_text = llms_full_body.decode("utf-8", "replace")
-    if llms_full_status != 200 or "Using these docs with AI" not in llms_full_text:
+    llms_full_issues, llms_full_pages, llms_full_report = _fetch_llms_full_pages(base)
+    issues.extend(llms_full_issues)
+    result["llms_full_status"] = llms_full_report["root_status"]
+    result["llms_full_pages"] = llms_full_report["pages"]
+    result["llms_full_bytes"] = llms_full_report["bytes"]
+    result["llms_full_complete"] = llms_full_report["complete"]
+    llms_full_text = "\n".join(text for _route, text in llms_full_pages)
+    if (
+        llms_full_report["root_status"] != 200
+        or not llms_full_report["complete"]
+        or "Using these docs with AI" not in llms_full_text
+    ):
         issues.append(
             Issue(
                 "ERROR", "llms_full_invalid", "llms-full.txt is missing the AI access page content."
             )
         )
-    issues.extend(_find_secret_issues(Path("llms-full.txt"), "live:llms-full.txt", llms_full_text))
-    issues.extend(
-        _find_public_package_issues(Path("llms-full.txt"), "live:llms-full.txt", llms_full_text)
-    )
+    for route, text in llms_full_pages:
+        rel_path = f"live:{route.lstrip('/')}"
+        issues.extend(_find_secret_issues(Path(route.lstrip("/")), rel_path, text))
+        issues.extend(_find_public_package_issues(Path(route.lstrip("/")), rel_path, text))
+        issues.extend(_find_runtime_encapsulation_issues(rel_path, text))
 
     markdown_routes = [
         route
@@ -1657,6 +1839,7 @@ def _audit_live(
         route_issues.extend(
             _find_public_package_issues(Path(route.lstrip("/")), f"live:{route}", text)
         )
+        route_issues.extend(_find_runtime_encapsulation_issues(f"live:{route}", text))
         return route_issues
 
     if markdown_routes:
@@ -1824,9 +2007,7 @@ def run_audit(source: Path, live_url: str | None, skip_live: bool) -> dict[str, 
             "endpoint_mentions": totals["endpoint_mentions"],
             "source_items_inventoried": source_items_inventoried,
             "source_inventory_percent": totals["source_inventory_percent"],
-            "shell_syntax_validation_percent": totals[
-                "shell_syntax_validation_percent"
-            ],
+            "shell_syntax_validation_percent": totals["shell_syntax_validation_percent"],
             "command_execution_percent": totals["command_execution_percent"],
             "fixes": totals["fixes"],
             "skips": totals["skips"],

@@ -1,3 +1,8 @@
+---
+icon: chart-line
+description: Internal Codna product strategy, packaging, and go-to-market reference.
+---
+
 # Codna — Business Model
 
 ## What We Are
@@ -209,3 +214,7 @@ Marketplace, managed deployments, cloud-native integrations, vertical templates.
 - Not a no-code tool (developers first, low-code is a channel not the product)
 - Not a data warehouse (we process, not store)
 - Not a monitoring platform (observability is a feature, not the product)
+
+## Next step
+
+Validate any packaging or go-to-market change against the current product registry and entitlement contracts before changing public copy.

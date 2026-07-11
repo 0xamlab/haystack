@@ -11,7 +11,7 @@ This page connects it to the most common clients. For the tool catalog and trans
 
 ## Before you start
 
-- An Algenta API key exported as `ALGENTA_API_KEY`. Get one from [Authentication & API keys](../authentication.md) or run [`algenta login`](../login.md).
+- An Algenta API key exported as `ALGENTA_API_KEY`. Get one from [Authentication & API keys](../authentication.md).
 - Your base URL: `https://api.algenta.ai` (hosted) or `http://localhost:8000` (self-hosted). Set it as `ALGENTA_BASE_URL`.
 - The server package on your PATH:
 

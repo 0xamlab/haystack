@@ -1,3 +1,8 @@
+---
+icon: rocket
+description: Owner-only sequencing, launch gates, and credential-safe steps for taking Algenta live.
+---
+
 # Taking Algenta live — owner runbook
 
 Internal engineering runbook (NOT for gitbook/ — it names dark flags, license minting, and secrets). It
@@ -55,7 +60,7 @@ CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain +
 
 ### 5. OEM licenses (Phase 6 — protect the current setup)
 - With `dist-keys/platform_license_priv.pem` (the shared platform key), mint 100-year OEM licenses for the sub-brands — dry-run first, then real behind an allowlist:
-  ```
+  ```bash
   python scripts/issue_oem_license.py --product codna  --customer codna  --tier team --exp-years 100 --out dist/oem/codna-license.jwt
   python scripts/issue_oem_license.py --product telys  --customer telys  --tier team --exp-years 100 --out dist/oem/telys-license.jwt
   # ... cohenta / decimas / escrypto / mission as needed
@@ -72,7 +77,7 @@ CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain +
 6. Stripe checkout upgrades only the intended Algenta org/product (isolation tests in #289); a codna/telys webhook can't mutate algenta.
 7. `algenta-mcp` appears in Cursor / Codex / Claude (stdio) after `publish-mcp.yml`.
 8. pip-installed `algenta` uses the bundled in-process sidecar runtime (`algenta runtime doctor` → source `bundled sidecar`, mode `in-process`).
-9. `lsof -p <pid>` shows no local TCP listeners for the CLI runtime path (doctor: `tcp listeners: none`).
+9. `lsof -p "$ALGENTA_PID"` shows no local TCP listeners for the CLI runtime path (doctor: `tcp listeners: none`).
 10. **Existing codna/telys licenses still verify** after deploy (OEM golden tests, one shared verifier).
 11. New 100y OEM license verifies across old + new verifiers.
 12. Wrong-product / wrong-audience / wrong-issuer / expired license + cross-product billing all rejected (golden + Stripe isolation tests).
@@ -81,3 +86,7 @@ CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain +
 15. `algenta-mcp` starts + lists tools without importing/loading the native runtime (thin-bridge boundary test).
 16. On an unsupported platform, `pip install algenta` fails at pip resolution (no matching `algenta-runtime-native` wheel) — never a broken install that later asks for Mojo.
 17. The clean-machine contract CI job (in `build-runtime.yml`) passes.
+
+## Next step
+
+Execute every launch gate in order and attach the command output to the release record; any failed gate blocks publication.

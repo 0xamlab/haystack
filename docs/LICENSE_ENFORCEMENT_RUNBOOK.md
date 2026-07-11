@@ -1,3 +1,8 @@
+---
+icon: shield-check
+description: Owner-only rollout procedure for fail-closed Algenta license enforcement.
+---
+
 # License enforcement — fail-closed rollout runbook (P5)
 
 > **Audience:** the Algenta owner/operator. This is the irreversible part of the licensing
@@ -91,7 +96,7 @@ removing `~/.algenta/runtime/license.jwt`.
 
 ## Gate
 
-```
+```text
 ✅ Cloudflare Worker deployed, JWKS reachable (P4b)
 ✅ All internal deployments: scripts/license_status.py → OK (P5.1)
 ↓ only then
@@ -134,3 +139,7 @@ disable enforcement. Roll back the *source* before cutting a new release if a st
 3. Non-v2 token (`ver` < 2) → rejected (v1 removed; the parser requires `ver` >= 2).
 4. HS256 / `alg=none` / bad `kid` / bad `aud` → rejected; valid RS256 + `kid` + `aud` offline → accepted.
 5. `scripts/self_host_smoke.sh` / `self_host_persistence_proof.sh` pass with a license, fail-closed without.
+
+## Next step
+
+Run `scripts/license_status.py` on every target deployment and retain the successful outputs before enabling the next enforcement stage.

@@ -158,7 +158,7 @@ curl -s "$ALGENTA_API_URL/v1/agent/runs/$RUN_ID/checkpoints" \
   -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 
-Each checkpoint carries `checkpoint_id`, `checkpoint_index`, `parent_checkpoint_id`, the event window (`event_start_index`, `event_end_index`), and the verifiable hashes `request_hash`, `decision_hash`, and `content_hash`, alongside the same snapshot ids as the run. The proof artifacts a checkpoint produced are listed in its `artifact_refs` (also surfaced on the run resource). The runtime writes each checkpoint a JSON state snapshot plus a Parquet sidecar, so the run's evidence is durable and content-addressed.
+Each checkpoint carries `checkpoint_id`, `checkpoint_index`, `parent_checkpoint_id`, the event window (`event_start_index`, `event_end_index`), and the verifiable hashes `request_hash`, `decision_hash`, and `content_hash`, alongside the same snapshot ids as the run. The proof artifacts a checkpoint produced are listed in its `artifact_refs` (also surfaced on the run resource). The runtime writes each checkpoint a JSON state snapshot plus a companion Parquet artifact, so the run's evidence is durable and content-addressed.
 
 {% hint style="info" %}
 On a hosted, multi-replica deployment with the durable object store enabled, the engine mirrors a run's proof bundle and any generated patch `.diff` to a tenant-scoped object store under the run id, so a run's evidence and applied patch survive the loss of the node that produced it and are recoverable from any replica. In local mode the artifacts already live on the node's disk and the mirror is a no-op. Proof mirroring is best-effort and never fails an otherwise-successful run.

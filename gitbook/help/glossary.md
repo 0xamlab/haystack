@@ -12,9 +12,9 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | Term | Meaning |
 | --- | --- |
 | **Engine** | The Algenta core — a deterministic computational-intelligence runtime (math/operational libraries, simulation, decision planning, governed query, agent runtime). You deploy it; you don't adopt it as a finished app. |
-| **Runtime** | The source-built `algenta` object (`Runtime`) that reaches the engine in one of three modes — `local`, `api`, or `self_hosted`. |
-| **Mojo engine** | The compiled, high-performance simulation binary (`mojo_build/simulate`) the API server calls to run simulations. |
-| **Worker pool / sidecar** | A set of long-lived Mojo worker processes the API talks to over local sockets, instead of forking a process per request. The "sidecar engine." |
+| **Runtime** | The compiled compute capability integrated into an Algenta deployment. |
+| **Mojo engine** | Algenta's compiled, high-performance numerical runtime. |
+| **Bundled runtime** | The signed compiled compute component included with Algenta and supervised as part of the service. Users do not install or manage it separately. |
 | **Decision envelope** | The structured result of a simulation or decision — expected value, confidence, percentiles, and a recommended action. |
 | **Determinism** | The same inputs + `seed` always produce the same result. Algenta computation is reproducible by design. |
 
@@ -24,9 +24,8 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | --- | --- |
 | **HTTP API** | The versioned REST surface under `/v1`. The default integration path; no SDK required. See [API overview](../api/overview.md). |
 | **SDK** (`algenta-sdk`) | The published Python HTTP client (`decision_engine.AlgentaClient`) and TypeScript/JavaScript client (`AlgentaClient`) for the API. See [Python SDK](../sdk/python.md) and [TypeScript SDK](../sdk/typescript.md). |
-| **`algenta` runtime package** | The local-first Python runtime source package — run flows in-process (`mode="local"`) or drive a remote engine through one `Runtime` object. Its public PyPI runtime release is not live yet. |
 | **MCP server** (`algenta-mcp`) | A Model Context Protocol bridge that exposes the engine as tools for Cursor, Claude Desktop, and other AI clients. See [MCP server](../sdk/mcp.md). |
-| **CLI** | The terminal clients: `de` (full API surface) and `algenta` (local-runtime demo + inspection). See [CLI reference](../cli.md). |
+| **CLI** | The `de` terminal client for the Algenta HTTP API. See [CLI reference](../cli.md). |
 
 ## Decisioning
 
@@ -66,14 +65,13 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 
 | Term | Meaning |
 | --- | --- |
-| **Deployment mode** | The privacy/egress profile: `saas`, `vpc`, `self_hosted`, `air_gapped`, `hybrid_provider`, or `local_dev_daemon`. Set with `ALGENTA_DEPLOYMENT_MODE`. |
+| **Deployment mode** | The privacy/egress profile: `saas`, `vpc`, `self_hosted`, `air_gapped`, or `hybrid_provider`. Set with `ALGENTA_DEPLOYMENT_MODE`. |
 | **Self-hosted** | You run the full stack (API + worker + engine + Postgres + Redis + object storage) on your own infrastructure. See [Self-hosting](../self-hosting.md). |
 | **Air-gapped** | A self-hosted profile with zero outbound network — licensing and execution are fully local. |
 | **Control plane** | The hosted, engine-free surface (auth, accounts, teams, billing, licensing). A deployment runs `full` or `control_plane` via `ALGENTA_SERVICE_ROLE`. |
 | **Edition** | A licensed product surface over the engine, selected with `ALGENTA_PRODUCT`. |
 | **Metering / Credits / Quota** | How usage is counted (metering), topped up (credits), and capped per plan (quota). See [Plans, billing & credits](../billing.md). |
 | **Egress / Privacy report** | Outbound-network policy and the operator proof (`GET /v1/admin/privacy-report`) that a deployment is cloud-free. |
-| **Fallback mode** | Whether the API may fall back from the Mojo pool to a slower path. `RUNTIME_FALLBACK_MODE` = `deny` \| `allow` \| `auto`. |
 
 ## Security & licensing
 

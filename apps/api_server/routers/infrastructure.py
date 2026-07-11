@@ -44,49 +44,15 @@ class InfrastructureResponse(BaseModel):
     engine_version: str
     api_version: str
     nodes: list[NodeInfo]
-    uptime_30d_pct: float
-    avg_latency_ms: float
-    p95_latency_ms: float
-    throughput_rpm: float
+    probe_latency_ms: float | None = None
+    uptime_30d_pct: float | None = None
+    avg_latency_ms: float | None = None
+    p95_latency_ms: float | None = None
+    throughput_rpm: float | None = None
     last_health_check: datetime
     engine_mode: str = (
         "binary"  # "binary" (compiled mojo_build/simulate) | "missing" (not built yet)
     )
-
-
-_DEMO_NOW = datetime.now(tz=UTC)
-_DEMO_NODES: list[NodeInfo] = [
-    NodeInfo(
-        node_id="algenta-us-east-1a",
-        status="live",
-        engine_version="0.3.1",
-        cpu_pct=18.4,
-        memory_gb=3.2,
-        jobs_per_sec=284.0,
-        region="us-east-1",
-        last_heartbeat=_DEMO_NOW,
-    ),
-    NodeInfo(
-        node_id="algenta-us-west-2b",
-        status="idle",
-        engine_version="0.3.1",
-        cpu_pct=9.7,
-        memory_gb=2.8,
-        jobs_per_sec=121.0,
-        region="us-west-2",
-        last_heartbeat=_DEMO_NOW,
-    ),
-    NodeInfo(
-        node_id="algenta-eu-west-1a",
-        status="live",
-        engine_version="0.3.1",
-        cpu_pct=24.1,
-        memory_gb=3.5,
-        jobs_per_sec=251.0,
-        region="eu-west-1",
-        last_heartbeat=_DEMO_NOW,
-    ),
-]
 
 
 async def _check_engine_health() -> tuple[str, float, str, str]:
@@ -151,17 +117,17 @@ async def get_infrastructure(
     ]
     nodes = [primary] + registered
 
-    throughput_rpm = round(60000 / max(latency_ms, 1), 0) if latency_ms > 0 else 0.0
-
     return InfrastructureResponse(
         deployment_mode=settings.privacy_policy.deployment_mode,
         engine_version=engine_version,
         api_version="1.0.0",
         nodes=nodes,
-        uptime_30d_pct=99.9 if status == "live" else 0.0,
-        avg_latency_ms=latency_ms,
-        p95_latency_ms=latency_ms * 2.5,
-        throughput_rpm=throughput_rpm,
+        probe_latency_ms=latency_ms if status == "live" else None,
+        # Historical aggregates require a metrics backend. Never synthesize them from one probe.
+        uptime_30d_pct=None,
+        avg_latency_ms=None,
+        p95_latency_ms=None,
+        throughput_rpm=None,
         last_health_check=now,
         engine_mode=engine_mode,
     )

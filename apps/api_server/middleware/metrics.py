@@ -97,5 +97,9 @@ def record_quota_check(source: str, duration_s: float) -> None:
     QUOTA_CHECK_LATENCY.labels(source=source).observe(duration_s)
 
 
+def record_mojo_pool_wait(duration_s: float) -> None:
+    MOJO_POOL_WAIT.observe(duration_s)
+
+
 def record_worker_restart() -> None:
     MOJO_WORKER_RESTARTS.inc()

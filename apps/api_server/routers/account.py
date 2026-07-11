@@ -65,7 +65,7 @@ from apps.api_server.services.plan_limits import (
 from apps.api_server.services.plan_limits import (
     get as get_plan_config,
 )
-from apps.api_server.services.quota_service import check_named_rate_limit
+from apps.api_server.services.quota_service import check_named_rate_limit, get_plan_quota
 from apps.api_server.services.supabase_auth import (
     SERVICE_ERROR_CODES,
     SupabaseAuthError,
@@ -118,43 +118,6 @@ class APIKeyListResponse(BaseModel):
     page: int
     limit: int
     pages: int
-
-
-# Plan → quota mapping
-_PLAN_QUOTAS: dict[str, dict[str, int | bool]] = {
-    "free": {
-        "simulations": 500,
-        "max_runs": 10_000,
-        "max_batch": 10,
-        "rate": 60,
-        "async": False,
-        "webhooks": False,
-    },
-    "developer": {
-        "simulations": 10_000,
-        "max_runs": 100_000,
-        "max_batch": 10,
-        "rate": 300,
-        "async": True,
-        "webhooks": True,
-    },
-    "pro": {
-        "simulations": 100_000,
-        "max_runs": 1_000_000,
-        "max_batch": 100,
-        "rate": 1_000,
-        "async": True,
-        "webhooks": True,
-    },
-    "enterprise": {
-        "simulations": 0,
-        "max_runs": 1_000_000,
-        "max_batch": 100,
-        "rate": 10_000,
-        "async": True,
-        "webhooks": True,
-    },
-}
 
 
 @router.get("/v1/me", response_model=MeResponse, summary="Get current user and org info")
@@ -298,8 +261,8 @@ async def usage(
     sim_count = count_result.scalar_one() or 0
 
     plan = auth["plan"]
-    quota = _PLAN_QUOTAS.get(plan, _PLAN_QUOTAS["free"])
-    limit = quota["simulations"]
+    quota = get_plan_quota(plan)
+    limit = int(quota["simulations_month"])
     used_pct = round((sim_count / limit * 100), 1) if limit > 0 else 0.0
 
     # Managed-LLM pass-through spend this period (D3). Org-scoped (managed billing is per-org); BYOK
@@ -340,15 +303,15 @@ async def usage(
 )
 async def limits(auth: AuthContext = Depends(get_current_org)) -> LimitsResponse:
     plan = auth["plan"]
-    quota = _PLAN_QUOTAS.get(plan, _PLAN_QUOTAS["free"])
+    quota = get_plan_quota(plan)
     cfg = get_plan_config(plan)  # canonical caps (PlanConfig), incl. the Wave-2 cost caps
     return LimitsResponse(
         plan=plan,
-        max_simulations_per_month=int(quota["simulations"]),
+        max_simulations_per_month=int(quota["simulations_month"]),
         max_runs_per_simulation=int(quota["max_runs"]),
         max_batch_items=int(quota["max_batch"]),
-        rate_limit_per_minute=int(quota["rate"]),
-        async_jobs_enabled=bool(quota["async"]),
+        rate_limit_per_minute=int(quota["rate_per_minute"]),
+        async_jobs_enabled=bool(quota["async_jobs"]),
         webhooks_enabled=bool(quota["webhooks"]),
         concurrent_jobs=cfg.concurrent_jobs,
         storage_gb=cfg.storage_gb,
@@ -855,7 +818,9 @@ async def list_provider_keys(
 ) -> ProviderKeyListResponse:
     rows = await tk_mgmt.list_org_key_backends(db, org_id=auth["org_id"])
     return ProviderKeyListResponse(
-        keys=[ProviderKeyInfo(backend=backend, updated_at=updated_at) for backend, updated_at in rows]
+        keys=[
+            ProviderKeyInfo(backend=backend, updated_at=updated_at) for backend, updated_at in rows
+        ]
     )
 
 
@@ -907,6 +872,9 @@ async def delete_provider_key(
         raise HTTPException(
             status_code=404,
             detail={
-                "error": {"code": "provider_key_not_found", "message": f"no key for backend '{backend}'"}
+                "error": {
+                    "code": "provider_key_not_found",
+                    "message": f"no key for backend '{backend}'",
+                }
             },
         )

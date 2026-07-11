@@ -7,7 +7,7 @@ description: Monitor a self-hosted Algenta deployment — scrape the protected /
 
 Algenta exposes everything you need to watch a self-hosted deployment — Prometheus metrics, engine health endpoints, and structured JSON logs — and it keeps all of it inside your network. There is no Sentry, Datadog, PostHog, or OpenTelemetry exporter wired in: observability is self-hosted by design.
 
-This guide assumes the engine is already running. If it is not, start with [Run the Mojo engine](../engine/mojo-sidecar.md) and [Engine health & verification](../engine/health.md).
+The Algenta deployment starts and supervises its bundled compute runtime with the API. There is no separate runtime service to install or start. Use [Engine health & verification](../engine/health.md) when a compute probe is unhealthy.
 
 ## What you can observe
 
@@ -23,7 +23,7 @@ This guide assumes the engine is already running. If it is not, start with [Run 
 
 The `/metrics` endpoint serves Prometheus exposition text via `prometheus_client`. It is **protected**, with two access paths:
 
-- **Loopback is always allowed.** Requests from `127.0.0.1`, `::1`, or `localhost` are served without a secret — convenient for a sidecar scraper on the same host.
+- **Loopback is always allowed.** Requests from `127.0.0.1`, `::1`, or `localhost` are served without a secret — convenient for a scraper on the same host.
 - **Remote requests require a secret.** Any non-loopback client must send the header `X-Metrics-Secret` matching the configured secret. If no secret is configured, or the header is missing or wrong, the endpoint returns `403 Forbidden`.
 
 Set the secret via the `METRICS_SECRET` environment variable (settings field `metrics_secret`, default unset). Leaving it unset means the endpoint is loopback-only — no remote scraping is possible.
@@ -82,14 +82,13 @@ scrape_configs:
     scheme: https
     static_configs:
       - targets: ["algenta.internal:8000"]
-    authorization:
-      type: ""
-    # the secret is a custom header, not Bearer auth:
-    # use a relabel or http_headers config in your Prometheus version
+    http_headers:
+      X-Metrics-Secret:
+        files: ["/etc/prometheus/secrets/algenta_metrics_secret"]
 ```
 
 {% hint style="info" %}
-`/metrics` uses the `X-Metrics-Secret` header, not `Authorization: Bearer`. If your Prometheus version cannot set arbitrary scrape headers, run a same-host scraper that hits `127.0.0.1` (loopback, no secret needed) and forwards to your central Prometheus.
+`/metrics` uses the `X-Metrics-Secret` header, not `Authorization: Bearer`. Put only the secret value in the referenced file and restrict its filesystem permissions. Prometheus versions without custom `http_headers` support must scrape through a same-host collector that reaches the API over loopback.
 {% endhint %}
 {% endstep %}
 {% endstepper %}
@@ -122,7 +121,7 @@ increase(mojo_worker_restarts_total[1h])
 ```
 
 {% hint style="info" %}
-`mojo_pool_wait_seconds` climbing while `mojo_compute_duration_seconds` stays low means requests are queuing for workers — increase the pool size. See [Engine health & verification](../engine/health.md) for the pool tuning knobs.
+`mojo_pool_wait_seconds` climbing while `mojo_compute_duration_seconds` stays low means requests are queuing for licensed workers. Check capacity and edition limits in [Engine health & verification](../engine/health.md) and [Usage & limits](../billing.md).
 {% endhint %}
 
 ## Check engine health
@@ -141,8 +140,11 @@ curl -sS \
   "engine_version": "0.3.1",
   "api_version": "1.0.0",
   "nodes": [{ "node_id": "algenta-primary", "status": "live", "region": "us-east-1" }],
-  "avg_latency_ms": 8.2,
-  "p95_latency_ms": 20.5,
+  "probe_latency_ms": 8.2,
+  "uptime_30d_pct": null,
+  "avg_latency_ms": null,
+  "p95_latency_ms": null,
+  "throughput_rpm": null,
   "engine_mode": "binary",
   "last_health_check": "2026-06-21T12:00:00Z"
 }
@@ -153,9 +155,11 @@ The `engine_mode` field on this endpoint takes one of two values:
 | `engine_mode` | Meaning |
 | --- | --- |
 | `binary` | The compiled Mojo engine binary is present and was probed. |
-| `missing` | The binary was not found — the engine has not been built yet. |
+| `missing` | The required runtime artifact is absent from the deployment. |
 
-A primary node `status` of `error` (with `engine_mode: binary`) means the binary exists but the probe simulation failed — inspect the logs. For the deeper engine signals (the warm-pool `engine_mode`, the smoke test, the manifest), see [Engine health & verification](../engine/health.md).
+A primary node `status` of `error` with `engine_mode: binary` means the bundled runtime exists but the probe simulation failed. Inspect the API logs and redeploy a verified Algenta artifact. `engine_mode: missing` means the deployment artifact is incomplete; do not install a second runtime service. See [Engine health & verification](../engine/health.md).
+
+`probe_latency_ms` is the duration of this request's compute probe. The endpoint returns `null` for 30-day uptime, average latency, p95 latency, and throughput because it has no historical metrics store and does not invent aggregates from one sample. Derive those values from Prometheus over the observation window you need.
 
 For liveness and readiness probes (Kubernetes, Fly, load balancers):
 
@@ -191,7 +195,7 @@ You own the entire observability pipeline. See [Configuration](../configuration.
 
 ## Next steps
 
-- [Engine health & verification](../engine/health.md) — the warm-pool `engine_mode`, the smoke test, and pool tuning knobs.
-- [Run the Mojo engine](../engine/mojo-sidecar.md) — bring the engine up so the metrics and probes have something to report.
+- [Engine health & verification](../engine/health.md) — supported probes for the bundled runtime.
+- [Verify the bundled engine](../engine/bundled-runtime.md) — installation contract and deterministic compute check.
 - [Configuration](../configuration.md) — `METRICS_SECRET`, `log_level`, and the rest of the observability settings.
 - [Self-hosting](../self-hosting.md) — the deployment topology your monitoring stack runs alongside.

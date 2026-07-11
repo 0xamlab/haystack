@@ -16,6 +16,7 @@ Rate limiting (per-minute) is enforced via Redis INCR + EXPIRE.
 Monthly quota is enforced by counting usage_records rows.
 """
 
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -27,6 +28,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api_server.config import SettingsProxy
+from apps.api_server.middleware.metrics import record_quota_check
 from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
 from apps.api_server.services.egress_guard import EgressAuditContext
 
@@ -118,6 +120,11 @@ def _quota_cfg(plan: str) -> QuotaConfig:
     return PLAN_QUOTAS.get(plan, PLAN_QUOTAS["free"])
 
 
+def get_plan_quota(plan: str) -> QuotaConfig:
+    """Return a defensive copy of the exact quota configuration enforcement uses."""
+    return dict(_quota_cfg(plan))
+
+
 def _coerce_counter_value(value: object | None) -> int | None:
     if value is None:
         return None
@@ -193,7 +200,7 @@ async def check_monthly_quota(
         )
 
 
-# ─── Rate limit check (Redis sliding window) ──────────────────────────────────
+# ─── Rate limit check (Redis fixed UTC-minute window) ─────────────────────────
 
 
 async def check_rate_limit(
@@ -203,7 +210,7 @@ async def check_rate_limit(
     request_state: Any | None = None,
 ) -> None:
     """
-    Per-minute sliding window rate limit enforced in Redis.
+    Per-minute fixed UTC-window rate limit enforced in Redis.
     Key: ratelimit:{org_id}:{YYYY-MM-DDTHH:MM}
     TTL: 70 seconds (covers the full minute + buffer)
 
@@ -528,6 +535,8 @@ async def check_quota_redis(
 
     period = _current_billing_period()
     key = _quota_redis_key(org_id, period)
+    started = time.perf_counter()
+    metric_source = "redis"
 
     try:
         r = cast(_QuotaRedisClientProtocol, redis_client)
@@ -592,8 +601,14 @@ async def check_quota_redis(
         )
         from apps.api_server.db.session import AsyncSessionLocal
 
+        metric_source = "db"
         async with AsyncSessionLocal() as db:
             await check_monthly_quota(org_id, plan, db)
+    finally:
+        try:
+            record_quota_check(metric_source, time.perf_counter() - started)
+        except Exception as exc:  # Metrics must not alter quota enforcement.
+            logger.warning("quota_metrics_recording_failed", error=str(exc), source=metric_source)
 
 
 async def incr_quota_counter(

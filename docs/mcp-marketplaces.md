@@ -1,3 +1,8 @@
+---
+icon: plug
+description: Internal distribution checklist for publishing Algenta MCP to public registries and marketplaces.
+---
+
 # Distributing the Algenta MCP server to public marketplaces
 
 Goal: `algenta-mcp` discoverable + one-click installable everywhere — Cursor, Claude, Codex, and every public
@@ -31,7 +36,7 @@ Glama, PulseMCP, mcp.so, the Cursor directory and others **mirror/crawl the offi
 | **Awesome MCP Servers** (punkpeye/awesome-mcp-servers) | curated GitHub list | open a PR adding Algenta under "Developer Tools" |
 | **mcp-get / mcpservers.org** | registries | optional submit |
 
-## Owner steps
+## Next steps
 1. Publish `algenta-mcp` (+ `algenta-sdk` it depends on) to PyPI.
 2. Dispatch `publish-mcp.yml` (Actions → publish-mcp → Run) once the PyPI version resolves.
 3. One-time marketplace connects: Smithery (connect repo), and an Awesome-MCP-Servers PR. The rest auto-index

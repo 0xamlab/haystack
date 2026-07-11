@@ -1,16 +1,16 @@
 ---
 icon: bolt
-description: Run Algenta end to end in minutes — start the engine, mint an API key, and make your first decision call.
+description: Run Algenta end to end in minutes — install the integrated service, mint an API key, and make your first decision call.
 ---
 
 # Quickstart
 
-This page takes you from nothing to a working Algenta engine in about two minutes. You will run the one-line installer, confirm the engine is healthy, mint a bounded API key to replace the bootstrap key, and make your first decision call. The public clean-machine path today is the self-hosted engine plus `algenta-sdk`; the local `algenta` runtime package is source-build only until its PyPI release is published.
+This page takes you from nothing to a working Algenta engine in about two minutes. You will run the one-line installer, confirm the integrated service is healthy, mint a bounded API key to replace the bootstrap key, and make your first decision call.
 
-There are two ways to start, and they are complementary:
+There are two supported execution targets, and both use the same HTTP contract:
 
 - **Self-hosted engine** — a real HTTP service on `localhost:8000` with Postgres, Redis, and object storage, driven over `/v1`. Use this when you want the full decision engine, API keys, and the agentic flows.
-- **Local runtime (`algenta`)** — a source-build, in-process library and CLI for register, resolve, and query against your own files. No server, no key, no network, but not a public PyPI install yet.
+- **Algenta cloud** — use `https://api.algenta.ai` with an API key; Algenta operates the integrated runtime.
 
 {% hint style="info" %}
 The engine reads your key from `ALGENTA_API_KEY` (or the legacy `DE_API_KEY`). Export one of them once and every example below works unchanged.
@@ -198,66 +198,8 @@ query_result = client.query_with_metadata({
 })
 ```
 
-{% hint style="info" %}
-The source-built local `Runtime` uses the same concepts (`connect`, `resolve`, `query`), but it is not the public clean-machine install path yet. Use [Python SDK](sdk/python.md) for the live package and [algenta CLI reference](sdk/algenta-cli.md) for the rollout status.
-{% endhint %}
 {% endstep %}
 {% endstepper %}
-
-## Source-checkout demo (no server, no key)
-
-If you are developing from a source checkout, the `algenta` CLI runs a fully local, deterministic demo against a bundled dataset. This is not a public PyPI install path yet.
-
-```bash title="source-demo.sh"
-git clone https://github.com/thyn-ai/algenta.git
-cd algenta
-python3 -m pip install -e packages/algenta
-algenta demo
-```
-
-`algenta demo` walks the local path: register, resolve, verify, query. In a terminal it is interactive; pass flags to script it.
-
-| Command | What it does |
-| --- | --- |
-| `algenta demo` | Interactive local runtime demo (picker in a TTY). |
-| `algenta demo --list` | List the selectable demo scenarios and exit. |
-| `algenta demo --scenario region` | Run one named scenario and exit. |
-| `algenta demo --all --no-interactive` | Run every scenario in sequence, no prompts. |
-
-The built-in scenario keys are `product_line`, `region`, `canada_filter`, and `guardrail`. Run a non-interactive single scenario like this:
-
-```bash
-algenta demo --scenario region --no-interactive
-```
-
-To preview your own data, import a CSV. This validates local registration and schema discovery, then prints the exact `Runtime` snippet to continue in Python.
-
-```bash
-algenta import orders.csv --name orders
-```
-
-{% expandable title="Importing several sources at once" %}
-The import preview ends with copy-pasteable code that mirrors the code step above:
-
-```python title="import_preview.py"
-from algenta import Runtime
-
-rt = Runtime()
-rt.connect("orders.csv", name="orders")
-plan = rt.resolve({"source_name": "orders", "metric": "revenue"})
-result = rt.query(plan)
-```
-
-You can import several sources at once to discover cross-table relationships:
-
-```bash
-algenta import orders.csv financial.csv ratings.csv
-```
-{% endexpandable %}
-
-{% hint style="warning" %}
-The demo and `import` run entirely on your machine. Private profiles fail closed: Algenta does not silently fall back to the cloud. To connect the CLI or SDK to your engine later, run `algenta upgrade` for the exact `ALGENTA_BASE_URL` and key steps.
-{% endhint %}
 
 ## Where to go next
 

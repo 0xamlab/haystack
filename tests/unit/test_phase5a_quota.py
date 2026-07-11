@@ -17,6 +17,7 @@ from apps.api_server.services.quota_service import (
     check_named_rate_limit,
     check_rate_limit,
     get_monthly_usage_count,
+    get_plan_quota,
     record_usage,
 )
 
@@ -88,6 +89,28 @@ class TestPlanQuotas:
 
     def test_enterprise_has_webhooks(self):
         assert PLAN_QUOTAS["enterprise"]["webhooks"] is True
+
+    def test_algenta_plan_quotas_match_enforcement_contract(self):
+        expected = {
+            "algenta_free": (10_000, 60, 10_000, 10),
+            "algenta_pro": (500_000, 300, 1_000_000, 100),
+            "algenta_team": (500_000, 1_000, 1_000_000, 100),
+            "enterprise": (0, 10_000, 1_000_000, 100),
+        }
+        for plan, values in expected.items():
+            quota = get_plan_quota(plan)
+            assert (
+                quota["simulations_month"],
+                quota["rate_per_minute"],
+                quota["max_runs"],
+                quota["max_batch"],
+            ) == values
+
+    def test_get_plan_quota_returns_defensive_copy(self):
+        quota = get_plan_quota("algenta_free")
+        quota["rate_per_minute"] = 1
+
+        assert get_plan_quota("algenta_free")["rate_per_minute"] == 60
 
 
 # ─── _current_billing_period ──────────────────────────────────────────────────
@@ -293,6 +316,25 @@ class TestCheckRateLimit:
         assert detail["error"]["message"] == "Inline connector previews are rate limited."
         assert state.rate_limit_limit == 20
         assert state.rate_limit_remaining == 0
+
+
+class TestQuotaMetrics:
+    @pytest.mark.anyio
+    async def test_redis_quota_check_records_real_duration(self, monkeypatch):
+        recorded: list[tuple[str, float]] = []
+        monkeypatch.setattr(
+            quota_service,
+            "record_quota_check",
+            lambda source, duration: recorded.append((source, duration)),
+        )
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=b"0")
+
+        await quota_service.check_quota_redis(uuid.uuid4(), "algenta_free", redis)
+
+        assert len(recorded) == 1
+        assert recorded[0][0] == "redis"
+        assert recorded[0][1] >= 0
 
 
 # ─── record_usage ─────────────────────────────────────────────────────────────

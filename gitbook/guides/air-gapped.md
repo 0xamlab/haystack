@@ -10,7 +10,7 @@ This guide takes a self-hosted Algenta deployment fully offline: **no phone home
 Air-gapped operation rests on three independent facts about the engine:
 
 * **Offline license verification.** The runtime validates an RS256-signed JWT locally on every startup using a public key you provide — there is no network round-trip to authorize execution. (Hosted deployments exchange an API key for a license once, then run offline; an air-gapped box skips even that by being pre-provisioned with a signed file.)
-* **A self-hosted engine.** The Mojo sidecar and the API run entirely on your host. Computation never depends on a remote service.
+* **A self-hosted engine.** The API and its bundled compute runtime run entirely on your host. Computation never depends on a remote service.
 * **No telemetry egress.** In a private profile, vendor telemetry and Algenta-cloud destinations are disabled by construction, and every outbound request is classified and denied unless explicitly allowlisted.
 
 {% hint style="info" %}
@@ -20,7 +20,7 @@ The `air_gapped` mode is the strict sibling of `self_hosted`. Both disable cloud
 ## Prerequisites
 
 * A working self-hosted install on the isolated host (see [Self-hosting](../self-hosting.md)).
-* The Mojo engine pool running locally (see [Run the Mojo engine](../engine/mojo-sidecar.md)).
+* A healthy self-hosted Algenta deployment. The bundled runtime starts with the service; verify it on [Verify the bundled engine](../engine/bundled-runtime.md).
 * An offline license **issued by Algenta** for this host, plus the matching **public key** that verifies it. Only the signed license file and the public key cross the air gap. (Community Use needs no license — see [Licensing](../licensing.md).)
 
 ## Install the offline license
@@ -127,10 +127,11 @@ You verify "no phone home" at two layers — the policy and the wire.
 The engine's infrastructure surface reports the active deployment mode and engine state. Confirm the mode is `air_gapped` and the engine is local.
 
 ```bash
-curl http://localhost:8000/v1/infrastructure
+curl -sS http://localhost:8000/v1/infrastructure \
+  -H "Authorization: Bearer $ALGENTA_API_KEY"
 ```
 
-Expect `engine_mode: pool` (the local Mojo sidecar is serving) and a deployment profile that reflects the air-gapped, cloud-disabled configuration.
+Expect `engine_mode: binary`, a primary node with `status: live`, and a deployment profile that reflects the air-gapped, cloud-disabled configuration.
 {% endstep %}
 
 {% step %}
@@ -143,7 +144,7 @@ Because the policy fails closed, there should be **zero** outbound connections b
 ss -tup state established
 ```
 
-The only established connections should be loopback (the API to its local Mojo sidecar) and any host you placed in `ALGENTA_EGRESS_ALLOWLIST`. The strongest proof is operational: run the box on a network segment with no egress route and confirm requests still succeed.
+The only established connections should be local deployment traffic and any host you placed in `ALGENTA_EGRESS_ALLOWLIST`. The strongest proof is operational: run the box on a network segment with no egress route and confirm requests still succeed.
 {% endstep %}
 {% endstepper %}
 
@@ -151,21 +152,7 @@ The only established connections should be loopback (the API to its local Mojo s
 
 Two decisions shape how the engine behaves once it cannot reach anything.
 
-**Fallback policy — fail fast.** `RUNTIME_FALLBACK_MODE` governs whether the API may leave the warm Mojo pool. In an air-gapped production deployment, set it to `deny` so a misbuilt or missing engine surfaces at startup instead of silently serving a degraded path. Pair it with `MOJO_ALLOW_SUBPROCESS_FALLBACK=false` to also forbid the per-request subprocess path.
-
-| `RUNTIME_FALLBACK_MODE` | Behavior |
-| --- | --- |
-| `deny` | Hard-fail at startup if the pool can't start — never silently degrade (production) |
-| `allow` | Permit the slower subprocess path when the pool is unavailable |
-| `auto` | Fallback allowed only in development |
-
-```bash
-RUNTIME_FALLBACK_MODE=deny
-MOJO_ALLOW_SUBPROCESS_FALLBACK=false
-MOJO_BINARY_PATH=/app/mojo_build/simulate
-```
-
-`deny` also forbids spilling tenant artifacts to ephemeral storage: if the runtime directory is not writable, the engine raises `repository_runtime_unwritable` rather than falling back to `/tmp`. Point `ALGENTA_RUNTIME_DIR` at a writable, durable, mounted path.
+**Compute policy — fail closed.** The production image requires its bundled compiled runtime. A missing or invalid artifact fails startup or compute explicitly; it does not route work to a hidden Python implementation. If the runtime directory is not writable, Algenta raises `repository_runtime_unwritable` rather than spilling tenant artifacts to ephemeral storage. Point `ALGENTA_RUNTIME_DIR` at a writable, durable, mounted path.
 
 **LLM work — no LLM vs. BYOK.** The deterministic decision and simulation engine needs no model and runs fully offline. Only the agentic repository / GitHub flow needs an LLM, and air-gapped means you cannot use managed billing.
 
@@ -189,8 +176,8 @@ Managed LLM pass-through (where Algenta supplies the model key and meters spend)
 [device-binding.md](device-binding.md)
 {% endcontent-ref %}
 
-{% content-ref url="../engine/mojo-sidecar.md" %}
-[mojo-sidecar.md](../engine/mojo-sidecar.md)
+{% content-ref url="../engine/bundled-runtime.md" %}
+[bundled-runtime.md](../engine/bundled-runtime.md)
 {% endcontent-ref %}
 
 {% content-ref url="../concepts/deployment-modes.md" %}

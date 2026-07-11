@@ -54,7 +54,7 @@ async def simulate(
 ) -> JSONResponse:
     t_start = time.perf_counter()
 
-    # ── 1. Rate limit (Redis sliding window, ~1ms) ────────────────────────
+    # ── 1. Rate limit (Redis fixed UTC-minute window, ~1ms) ───────────────
     await check_rate_limit(
         auth["org_id"],
         auth["plan"],
@@ -200,9 +200,7 @@ def _dispatch_persist(
             client_ip=client_ip,
         )
     except Exception as exc:
-        fallback_allowed = (
-            settings.allow_runtime_fallbacks and persist_transport == "auto"
-        )
+        fallback_allowed = settings.allow_runtime_fallbacks and persist_transport == "auto"
         if persist_transport == "celery" or not fallback_allowed:
             logger.error(
                 "persistence_backend_unavailable",

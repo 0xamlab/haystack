@@ -194,6 +194,8 @@ def test_makefile_openapi_target_uses_repo_python_and_validates_generated_spec()
     assert "curl -fsS http://localhost:8000/openapi.json" in makefile_text
     assert "yaml.safe_dump" in makefile_text
     assert "from openapi_spec_validator import validate_spec" in makefile_text
+    assert "tmp=\"$$(mktemp schemas/openapi/openapi.yaml.XXXXXX)\"" in makefile_text
+    assert 'mv "$$tmp" schemas/openapi/openapi.yaml' in makefile_text
     assert "scripts/convert_openapi.py" not in makefile_text
 
 
@@ -747,4 +749,3 @@ def test_core_query_docs_cover_discovery_first_and_adjacent_surfaces() -> None:
     assert "record-filter contract" in query_doc
     assert "connector exposes deterministic records" in query_doc
     assert "Do not use `query()` as a planning shortcut" in query_doc
-

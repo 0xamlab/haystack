@@ -115,6 +115,15 @@ def test_internal_product_identity_is_rejected_from_public_docs(tmp_path: Path) 
     assert issues[0].line == 1
 
 
+def test_internal_plan_identifiers_are_rejected_from_public_docs(tmp_path: Path) -> None:
+    audit = _load_module()
+    path = tmp_path / "page.md"
+
+    issues = audit._find_secret_issues(path, "page.md", "| Edition | Internal plan |\n")
+
+    assert [issue.code for issue in issues] == ["private_or_internal_leak"]
+
+
 def test_public_package_scanner_rejects_wrong_scoped_typescript_sdk(tmp_path: Path) -> None:
     audit = _load_module()
     path = tmp_path / "page.md"
@@ -127,6 +136,29 @@ def test_public_package_scanner_rejects_wrong_scoped_typescript_sdk(tmp_path: Pa
 
     assert [issue.code for issue in issues] == ["wrong_typescript_sdk_package"]
     assert issues[0].line == 1
+
+
+def test_runtime_encapsulation_scanner_rejects_separate_setup_and_internal_controls() -> None:
+    audit = _load_module()
+    text = """Run the Mojo engine with de runtime start.
+Set MOJO_BINARY_PATH and RUNTIME_FALLBACK_MODE after make build-mojo.
+"""
+
+    issues = audit._find_runtime_encapsulation_issues("page.md", text)
+
+    assert len(issues) == 5
+    assert {issue.code for issue in issues} == {"public_runtime_encapsulation_violation"}
+
+
+def test_runtime_encapsulation_scanner_allows_integrated_runtime_language() -> None:
+    audit = _load_module()
+
+    issues = audit._find_runtime_encapsulation_issues(
+        "page.md",
+        "The signed bundled runtime starts with Algenta and needs no separate setup.",
+    )
+
+    assert issues == []
 
 
 def test_machine_snippet_validator_rejects_malformed_json(tmp_path: Path) -> None:
@@ -226,9 +258,9 @@ def test_summary_expected_sitemap_urls_maps_gitbook_navigation(tmp_path: Path) -
 
 * [Install](install.md)
 
-## Run the engine
+## Engine runtime
 
-* [Run the Mojo engine](engine/mojo-sidecar.md)
+* [Verify the bundled engine](engine/bundled-runtime.md)
 * [How the engine works](concepts/engine.md)
 
 ## SDKs
@@ -251,8 +283,8 @@ def test_summary_expected_sitemap_urls_maps_gitbook_navigation(tmp_path: Path) -
     assert audit._summary_expected_sitemap_urls(tmp_path, "https://docs.example/") == [
         "https://docs.example",
         "https://docs.example/getting-started/install",
-        "https://docs.example/run-the-engine/mojo-sidecar",
-        "https://docs.example/run-the-engine/engine",
+        "https://docs.example/engine-runtime/bundled-runtime",
+        "https://docs.example/engine-runtime/engine",
         "https://docs.example/sdks/typescript/overview",
         "https://docs.example/sdks/mcp",
         "https://docs.example/microsoft-and-azure/overview",
@@ -304,7 +336,11 @@ def test_package_registry_audit_rejects_public_runtime_install_before_pypi_live(
                 return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
             return 404, None
         if url == "https://registry.npmjs.org/algenta-sdk/latest":
-            return 200, {"version": "1.0.2", "description": "TypeScript SDK", "license": "Apache-2.0"}
+            return 200, {
+                "version": "1.0.2",
+                "description": "TypeScript SDK",
+                "license": "Apache-2.0",
+            }
         return 500, None
 
     monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
@@ -328,7 +364,11 @@ def test_package_registry_audit_rejects_stale_runtime_caveat_after_pypi_live(
                 return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
             return 404, None
         if url == "https://registry.npmjs.org/algenta-sdk/latest":
-            return 200, {"version": "1.0.2", "description": "TypeScript SDK", "license": "Apache-2.0"}
+            return 200, {
+                "version": "1.0.2",
+                "description": "TypeScript SDK",
+                "license": "Apache-2.0",
+            }
         return 500, None
 
     monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
@@ -430,6 +470,8 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
     assert report["source_navigation_urls"] == 3
     assert report["sitemap_matches_source_navigation"] is True
     assert report["markdown_pages_checked"] == 3
+    assert report["llms_full_pages"] == 1
+    assert report["llms_full_complete"] is True
     assert report["docs_mcp"] == {
         "initialize_status": 200,
         "protocol_version": "2025-03-26",
@@ -460,10 +502,13 @@ def test_parse_jsonrpc_body_accepts_sse_and_json() -> None:
     audit = _load_module()
     payload = {"jsonrpc": "2.0", "id": 7, "result": {"ok": True}}
 
-    assert audit._parse_jsonrpc_body(
-        b'event: message\ndata: {"jsonrpc":"2.0","id":7,"result":{"ok":true}}\n\n',
-        "text/event-stream; charset=utf-8",
-    ) == payload
+    assert (
+        audit._parse_jsonrpc_body(
+            b'event: message\ndata: {"jsonrpc":"2.0","id":7,"result":{"ok":true}}\n\n',
+            "text/event-stream; charset=utf-8",
+        )
+        == payload
+    )
     assert audit._parse_jsonrpc_body(json.dumps(payload).encode(), "application/json") == payload
 
 
@@ -492,3 +537,80 @@ def test_validate_docs_mcp_tools_reports_noncanonical_description_url() -> None:
     issues, _ = audit._validate_docs_mcp_tools([search, page])
 
     assert [issue.code for issue in issues] == ["docs_mcp_noncanonical_tool_url"]
+
+
+def test_fetch_llms_full_pages_follows_bounded_pagination(monkeypatch) -> None:
+    audit = _load_module()
+    fetched_urls: list[str] = []
+
+    def fake_fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0):
+        del max_bytes, timeout
+        fetched_urls.append(url)
+        if url.endswith("/llms-full.txt"):
+            return (
+                200,
+                b"# Algenta\nUsing these docs with AI\n\n[Next Page](/llms-full.txt/1)\n",
+                "text/plain; charset=utf-8",
+            )
+        if url.endswith("/llms-full.txt/1"):
+            return 200, b"# Oracle Database\nBundled Thin mode.\n", "text/plain"
+        return 404, b"not found", "text/plain"
+
+    monkeypatch.setattr(audit, "_fetch", fake_fetch)
+
+    issues, pages, report = audit._fetch_llms_full_pages("https://docs.example")
+
+    assert issues == []
+    assert pages == [
+        (
+            "/llms-full.txt",
+            "# Algenta\nUsing these docs with AI\n\n[Next Page](/llms-full.txt/1)\n",
+        ),
+        ("/llms-full.txt/1", "# Oracle Database\nBundled Thin mode.\n"),
+    ]
+    assert report == {
+        "root_status": 200,
+        "pages": 2,
+        "bytes": 103,
+        "routes": ["/llms-full.txt", "/llms-full.txt/1"],
+        "complete": True,
+    }
+    assert fetched_urls == [
+        "https://docs.example/llms-full.txt",
+        "https://docs.example/llms-full.txt/1",
+    ]
+
+
+def test_fetch_llms_full_pages_rejects_pagination_cycle(monkeypatch) -> None:
+    audit = _load_module()
+
+    def fake_fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0):
+        del max_bytes, timeout
+        if url.endswith("/llms-full.txt"):
+            return 200, b"[Next Page](/llms-full.txt/1)\n", "text/plain"
+        return 200, b"[Next Page](/llms-full.txt/1)\n", "text/plain"
+
+    monkeypatch.setattr(audit, "_fetch", fake_fetch)
+
+    issues, pages, report = audit._fetch_llms_full_pages("https://docs.example")
+
+    assert len(pages) == 2
+    assert [issue.code for issue in issues] == ["llms_full_pagination_cycle"]
+    assert report["complete"] is False
+
+
+def test_fetch_llms_full_pages_rejects_oversized_page(monkeypatch) -> None:
+    audit = _load_module()
+    monkeypatch.setattr(audit, "_LLMS_FULL_MAX_PAGE_BYTES", 10)
+
+    def fake_fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0):
+        del url, max_bytes, timeout
+        return 200, b"x" * 11, "text/plain"
+
+    monkeypatch.setattr(audit, "_fetch", fake_fetch)
+
+    issues, pages, report = audit._fetch_llms_full_pages("https://docs.example")
+
+    assert pages == []
+    assert [issue.code for issue in issues] == ["llms_full_page_too_large"]
+    assert report["complete"] is False

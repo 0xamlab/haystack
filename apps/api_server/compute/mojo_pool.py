@@ -38,6 +38,7 @@ from typing import Any
 import structlog
 
 from apps.api_server.compute.mojo_errors import MojoEngineError
+from apps.api_server.middleware.metrics import record_mojo_pool_wait, record_worker_restart
 from apps.runtime.native_worker import resolve_native_worker
 
 logger = structlog.get_logger(__name__)
@@ -571,6 +572,7 @@ class MojoWorkerPool:
                 stage="pool_dispatch",
             )
 
+        acquire_started = time.perf_counter()
         try:
             worker = await asyncio.wait_for(self._queue.get(), timeout=ACQUIRE_TIMEOUT_S)
         except TimeoutError as exc:
@@ -582,6 +584,11 @@ class MojoWorkerPool:
                 engine_type=str(payload.get("engine_type") or "unknown"),
                 stage="pool_acquire",
             ) from exc
+
+        try:
+            record_mojo_pool_wait(time.perf_counter() - acquire_started)
+        except Exception as exc:
+            logger.warning("mojo_pool_wait_metric_failed", error=str(exc))
 
         try:
             result = await worker.invoke(payload, timeout=timeout)
@@ -613,7 +620,12 @@ class MojoWorkerPool:
             pass
         await dead_worker.stop()
         await asyncio.sleep(0.1)
-        await self._spawn_worker(dead_worker.id)
+        replaced = await self._spawn_worker(dead_worker.id)
+        if replaced:
+            try:
+                record_worker_restart()
+            except Exception as exc:
+                logger.warning("mojo_worker_restart_metric_failed", error=str(exc))
 
     async def _health_monitor(self) -> None:
         """Periodically check workers, replace crashed ones."""

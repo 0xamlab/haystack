@@ -10,9 +10,13 @@ Everything is self-hosted and licensed PER DEVICE (Stripe usage=licensed, quanti
 There is NO separate self-host plan — the old `algenta_selfhost` ($199/node) tier was removed;
 Pro/Team ARE the per-device self-host tiers.
 """
+
 from __future__ import annotations
 
+import pytest
+
 from apps.api_server.models.organization import OrgPlan
+from apps.api_server.routers.account import limits
 from apps.api_server.services import plan_limits
 from apps.api_server.services.dormant_accounts import PAID_PLANS
 from apps.api_server.services.entitlement_service import resolve_entitlement
@@ -23,7 +27,7 @@ from apps.api_server.services.team_seats import seat_limit
 # ── prices match the live pricing card + the Stripe monthly prices ──────────────────
 def test_prices_match_the_card() -> None:
     assert plan_limits.get("algenta_free").price_usd_month == 0
-    assert plan_limits.get("algenta_pro").price_usd_month == 99    # $99/device/mo
+    assert plan_limits.get("algenta_pro").price_usd_month == 99  # $99/device/mo
     assert plan_limits.get("algenta_team").price_usd_month == 499  # $499/device/mo
 
 
@@ -33,6 +37,25 @@ def test_worker_caps_per_device() -> None:
     assert plan_limits.worker_limit("algenta_pro") == 5
     assert plan_limits.worker_limit("algenta_team") == 20
     assert plan_limits.worker_limit("enterprise") == 0  # negotiated / unlimited
+
+
+@pytest.mark.anyio
+async def test_limits_endpoint_matches_algenta_enforcement() -> None:
+    expected = {
+        "algenta_free": (10_000, 60, 10_000, 10, 1),
+        "algenta_pro": (500_000, 300, 1_000_000, 100, 4),
+        "algenta_team": (500_000, 1_000, 1_000_000, 100, 8),
+        "enterprise": (0, 10_000, 1_000_000, 100, 0),
+    }
+    for plan, values in expected.items():
+        response = await limits({"plan": plan})  # type: ignore[arg-type]
+        assert (
+            response.max_simulations_per_month,
+            response.rate_limit_per_minute,
+            response.max_runs_per_simulation,
+            response.max_batch_items,
+            response.concurrent_jobs,
+        ) == values
 
 
 # ── seats: Community 1 · Pro 1 · Team 15 (fixed bundle; devices are the billing unit) ─

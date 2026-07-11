@@ -163,7 +163,7 @@ Self-hosting is governed by the Algenta Community License (ACL) 1.0, in `LICENSE
 
 - **Community Use is free** — non-commercial use, personal projects, research, education, open-source work, and internal business operations at organizations with **fewer than 50 employees AND under $5,000,000 USD annual gross revenue**.
 - **Commercial Self-Hosting** — deploying Algenta inside a product or service offered to external customers, or use by organizations above those thresholds — requires a paid commercial license.
-- The framework, integrations, portal, and SDKs are source-available; the compiled Mojo engine binary (`mojo_build/simulate`) ships under a separate binary license and may be redistributed for Community Use only.
+- The framework, integrations, portal, and SDKs are source-available; the bundled compiled runtime ships under a separate binary license and may be redistributed for Community Use only.
 
 The signed license described on this page is the per-machine, offline mechanism that backs the commercial terms.
 

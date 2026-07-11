@@ -5,10 +5,10 @@ description: Use Algenta from Python — install algenta-sdk, authenticate, and 
 
 # Python SDK
 
-This page is the reference for the live Python package Algenta ships today: `algenta-sdk` (imported as `decision_engine`), a thin typed HTTP client for the Algenta API. The source tree also contains the local `algenta` runtime package, but that runtime distribution is not public on PyPI yet. Use the client when you want direct, typed access to a running hosted or self-hosted API.
+This page is the reference for the live Python package Algenta ships today: `algenta-sdk` (imported as `decision_engine`), a thin typed HTTP client for the Algenta API. Use it for direct, typed access to hosted or self-hosted Algenta.
 
 {% hint style="info" %}
-Public registry status: `algenta-sdk` is the live PyPI package. The local `algenta` runtime is source-build / rollout-only until the runtime package and native sidecar are published.
+`algenta-sdk` is the live PyPI package. It needs no Mojo, worker, or runtime-service setup: the client connects to an Algenta deployment whose compute runtime is already integrated.
 {% endhint %}
 
 ## Install
@@ -23,7 +23,7 @@ pip install algenta-sdk
 The package requires Python 3.10 or newer. CI verifies fresh wheel installs on Python 3.10, 3.12, and 3.14. It depends on `httpx>=0.28` and `pydantic>=2.7`.
 
 {% hint style="warning" %}
-The import name is `decision_engine`, not `algenta_sdk`. This is the historical module name and is stable. The runtime package imports as `algenta`.
+The import name is `decision_engine`, not `algenta_sdk`. This historical module name is stable.
 {% endhint %}
 
 ## Authentication and configuration
@@ -394,165 +394,6 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-## The source-built Runtime (`algenta`)
-
-`Runtime` is the runtime-first object in the source package. It connects to sources, resolves a request into an executable plan, and runs the query. This section documents the implemented surface for source builds and future runtime releases; it is not a public PyPI install path today.
-
-```python title="runtime_local.py"
-from algenta import Runtime
-
-# Local: execute against connected files / in-memory data. No network.
-rt = Runtime()                          # mode="local" by default
-rt.connect("orders.csv")
-plan = rt.resolve({"metric": "revenue", "group_by": "product_line"})
-result = rt.query(plan)
-```
-
-### Modes
-
-{% tabs %}
-{% tab title="Local" %}
-```python title="mode_local.py"
-# In-process, against connected sources. No network.
-rt = Runtime()                          # mode="local" by default
-```
-{% endtab %}
-
-{% tab title="Cloud Managed" %}
-```python title="mode_api.py"
-# Delegate to the hosted Algenta API.
-rt = Runtime(mode="api", api_key="de_live_...")
-```
-{% endtab %}
-
-{% tab title="Self-hosted" %}
-```python title="mode_self_hosted.py"
-# Delegate to your own engine. base_url is REQUIRED here.
-rt = Runtime(
-    mode="self_hosted",
-    api_key="de_live_...",
-    base_url="http://localhost:8000",
-)
-```
-{% endtab %}
-{% endtabs %}
-
-| `mode` | Execution | `base_url` | `api_key` |
-| --- | --- | --- | --- |
-| `local` (default) | In-process, against connected sources | Unused | Optional |
-| `api` | Hosted Algenta API | Defaults to `https://api.algenta.ai` | Required |
-| `self_hosted` | Your engine | **Required** (e.g. `http://localhost:8000`) | Required |
-
-| Constructor argument | Type | Default |
-| --- | --- | --- |
-| `mode` | `str` | `"local"` |
-| `api_key` | `str \| None` | `None` (falls back to `ALGENTA_API_KEY` / `DE_API_KEY`) |
-| `base_url` | `str \| None` | `None` |
-| `enforce_limits` | `bool \| None` | `None` (auto) |
-
-{% hint style="warning" %}
-Private profiles fail closed. `Runtime(mode="self_hosted")` raises `RuntimeConfigurationError` if `base_url` is missing, and never silently falls back to Algenta cloud.
-{% endhint %}
-
-{% hint style="info" %}
-Passing an invalid `mode` raises `ValueError`. `Runtime(mode="api")` requires the `algenta-sdk` client.
-{% endhint %}
-
-### connect, resolve, query
-
-```python title="connect_resolve_query.py"
-rt = Runtime()
-
-# Connect by file path (CSV, TSV, JSON, Excel, Parquet are recognized).
-orders = rt.connect("orders.csv", name="orders")
-
-# Resolve a request into a plan, then run it.
-plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-result = rt.query(plan)
-
-# Or run a request directly without holding the plan.
-result = rt.query({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-
-# Metadata-rich and batch variants mirror the client.
-detailed = rt.query_with_metadata({"source_name": "orders", "metric": "revenue"})
-batched = rt.query_batch({"queries": [{"source_name": "orders", "metric": "orders"}]})
-```
-
-`connect` is also available as `register_source`. It accepts a positional source plus keyword options:
-
-| Argument | Notes |
-| --- | --- |
-| `source` | A file path, inline records, or a structured connector descriptor. |
-| `name` | Logical source name used later as `source_name`. |
-| `connector` | A structured connector descriptor (see below). |
-| `selection` | Table / sheet / object selection within the connector. |
-| `dataset_name` | Persisted dataset name (API and self-hosted modes). |
-| `persist` | Persist the connection rather than treating it as ephemeral. |
-
-### Structured connector descriptors
-
-Local mode accepts local files and SQLite. The other SQL providers (Postgres, MySQL, and so on) require `mode="api"` or `mode="self_hosted"`. Descriptors use a canonical envelope with `type`, `location`, and `auth` sections.
-
-{% tabs %}
-{% tab title="SQLite (local)" %}
-```python title="connector_sqlite.py"
-rt = Runtime()
-rt.connect(
-    connector={
-        "type": "sqlite",
-        "location": {"path": "/data/shop.db"},
-    },
-    selection={"table": "orders"},
-    name="orders",
-)
-plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-result = rt.query(plan)
-```
-{% endtab %}
-
-{% tab title="Postgres (self-hosted)" %}
-```python title="connector_postgres.py"
-rt = Runtime(mode="self_hosted", api_key="de_live_...", base_url="http://localhost:8000")
-rt.connect(
-    connector={
-        "type": "postgres",
-        "location": {
-            "host": "db.internal",
-            "port": 5432,
-            "database": "analytics",
-        },
-        "auth": {
-            "username": "reader",
-            "password": "...",
-        },
-    },
-    selection={"schema": "public", "table": "orders"},
-    dataset_name="orders",
-    persist=True,
-    name="orders",
-)
-result = rt.query({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-```
-{% endtab %}
-{% endtabs %}
-
-The engine builds the connection string from the structured `location` and `auth` fields. You may instead supply a ready `connection_string` inside the descriptor; for non-SQLite providers a structured `host`/`database` descriptor or an explicit `connection_string` is required.
-
-{% hint style="info" %}
-A descriptor is recognized as canonical when it carries any of `location`, `auth`, or `options`. The `type` is required and is lower-cased; `postgres` and `postgresql` are equivalent.
-{% endhint %}
-
-## CLI
-
-The source runtime package installs the `algenta` console command for quick checks without writing code.
-
-```bash title="cli.sh"
-algenta version
-algenta query orders.csv --metric revenue --group-by product_line
-algenta import ./data
-algenta simulate            # quick built-in simulation
-```
-
 ## Errors
 
 The client raises typed exceptions, all subclasses of `DecisionEngineError`.
@@ -576,10 +417,6 @@ except RateLimitError:
 except DecisionEngineError as exc:
     print(exc)
 ```
-
-{% hint style="info" %}
-The runtime raises `AlgentaRuntimeError`, `RuntimeConfigurationError`, and `RuntimeValidationError` (all importable from `algenta`) for local-execution and descriptor problems.
-{% endhint %}
 
 ## Related pages
 

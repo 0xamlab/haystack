@@ -5,7 +5,7 @@ description: Install the published Algenta clients or run the self-hosted engine
 
 # Install
 
-This page gets Algenta onto your machine. It covers the public install paths that are live today: the self-hosted service, the Python HTTP SDK, the TypeScript SDK, and the MCP server for agent tools. The local `algenta` runtime package is implemented in this repository but is not a public registry install yet; its section is labeled source-build until the release is published. Pick the path that matches what you are building; you do not need all of them.
+This page covers the supported public install paths: the self-hosted service, Python HTTP SDK, TypeScript SDK, and MCP server. Pick the path that matches what you are building; you do not need all of them.
 
 {% hint style="info" %}
 To make a first call against the self-hosted service, you do not need to install any SDK or Python package. The installer prints a ready-to-run `curl` command. Reach for an SDK only when you want typed responses and retries inside your application code.
@@ -16,7 +16,6 @@ To make a first call against the self-hosted service, you do not need to install
 | You want to... | Install | Section |
 | --- | --- | --- |
 | Run the full Algenta service (API, worker, database, storage) locally or on a server | `curl ... install.sh \| bash` | [Self-hosted service](#self-hosted-service) |
-| Embed the deterministic runtime in a Python process | Source checkout only; public PyPI package is not live yet | [Local runtime package](#local-runtime-package) |
 | Call a running Algenta API from Python | `pip install algenta-sdk` | [Python SDK](#python-sdk) |
 | Call a running Algenta API from TypeScript or JavaScript | `npm install algenta-sdk` | [TypeScript SDK](#typescript-sdk) |
 | Expose Algenta as MCP tools to Cursor or Claude Desktop | `pipx install algenta-mcp` | [MCP server](#mcp-server) |
@@ -26,7 +25,7 @@ To make a first call against the self-hosted service, you do not need to install
 The self-hosted service is the complete Algenta deployment: the API, the worker, Postgres, Redis, and MinIO object storage, wired together with Docker Compose. One command installs and starts everything.
 
 {% hint style="info" %}
-The compiled **Mojo engine ships inside the image** — the installer brings it up automatically. To confirm it's running on the fast worker pool (and to fix the build/startup issues you're most likely to hit), see [Run the Mojo engine](engine/mojo-sidecar.md).
+The compiled **Mojo engine ships inside the image** and its lifecycle is part of Algenta. To confirm the integrated runtime is healthy, see [Verify the bundled engine](engine/bundled-runtime.md).
 {% endhint %}
 
 {% hint style="info" %}
@@ -140,59 +139,6 @@ cd ~/.algenta && docker compose stop
 
 {% hint style="info" %}
 If you are on the standalone binary, substitute `docker-compose` for `docker compose`.
-{% endhint %}
-
-## Local runtime package
-
-The local `algenta` runtime is implemented in the source tree, but the public PyPI runtime distribution is not live yet. Use the self-hosted service plus `algenta-sdk` for production installs today. Use the source-build path only when you are developing from the repository.
-
-{% tabs %}
-{% tab title="Source checkout" %}
-```bash
-git clone https://github.com/thyn-ai/algenta.git
-cd algenta
-python3 -m pip install -e packages/algenta
-```
-
-This installs the local runtime package from the checkout you are editing. It is not the same as a public PyPI install, and it does not prove the bundled native sidecar is available on a clean machine.
-{% endtab %}
-
-{% tab title="API-backed" %}
-For API-backed code, install the published HTTP SDK directly:
-
-```bash
-pip install algenta-sdk
-```
-{% endtab %}
-{% endtabs %}
-
-### Verify the runtime package
-
-The source checkout exposes the `algenta` CLI. Confirm the editable install and inspect capabilities:
-
-```bash
-algenta version
-```
-
-Run the built-in demo:
-
-```bash
-algenta demo
-```
-
-Drive a remote engine from Python:
-
-```python title="remote_runtime.py"
-import os
-from algenta import Runtime
-
-rt = Runtime(mode="api", api_key=os.environ["ALGENTA_API_KEY"])
-plan = rt.resolve({"source_name": "orders", "metric": "revenue", "group_by": "product_line"})
-result = rt.query(plan)
-```
-
-{% hint style="info" %}
-Use Cloud Managed base URLs only with `Runtime(mode="api")`. For self-hosted deployments use `Runtime(mode="self_hosted")` with an explicit `base_url` and the API key your operator provisioned.
 {% endhint %}
 
 ## Python SDK

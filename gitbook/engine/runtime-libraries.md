@@ -7,10 +7,10 @@ description: The runtime library surface — list, health-check, and execute ind
 
 Beyond the high-level engines, Algenta can expose its individual **runtime libraries** — the compiled functions that the engines are built from — so you can call one directly. This is the low-level compute surface: you name a `module` and a `function`, pass JSON args, and get the result plus its latency. It is distinct from the governed data and query APIs; nothing here touches a dataset. For the complete list of modules grouped by domain (vision, LLM, ML, statistics, signal, crypto, and more), see the [Runtime library catalog](runtime-library-catalog.md).
 
-There are three ways to reach it: the HTTP routes, the `de` CLI, and the MCP tools. All three run against a live runtime and return the same results.
+The supported public surface is the authenticated HTTP API below. It executes inside the selected Algenta deployment and returns the same structured contract as other `/v1` operations.
 
 {% hint style="warning" %}
-The HTTP routes (`/v1/libraries*`) are **off by default**. A self-host operator turns them on by setting `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED=true` in the deployment configuration. If they are disabled, the routes return `404`; use the CLI or MCP tools instead, or ask your operator to enable the HTTP surface. See the [configuration reference](../configuration.md).
+The HTTP routes (`/v1/libraries*`) are **off by default**. A self-host operator turns them on by setting `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED=true` in deployment configuration. If they are disabled, the routes return `404`. See the [configuration reference](../configuration.md).
 {% endhint %}
 
 ## HTTP surface
@@ -79,7 +79,7 @@ curl -sS "$ALGENTA_BASE_URL/v1/libraries/health" \
 }
 ```
 
-When the runtime is not running you get `status: "unavailable"`, `engine: "unavailable"`, and `runtime_available: false`. Execute calls will then fail with a runtime error (see below).
+If the bundled runtime is unhealthy, the response has `status: "unavailable"`, `engine: "unavailable"`, and `runtime_available: false`. This is a deployment health failure, not a prompt to start another service; verify or redeploy Algenta.
 
 ### Execute a function
 
@@ -127,7 +127,7 @@ Execution failures use the standard error envelope, with the HTTP status mapped 
 | 404 | `module_not_registered` | No such module. Check `GET /v1/libraries`. |
 | 404 | `function_not_registered` | The module has no such function. |
 | 422 | `invalid_arguments` | The `args` shape did not match the function signature. |
-| 503 | `compute_runtime_unavailable` | The runtime is not executing; start the runtime worker. |
+| 503 | `compute_runtime_unavailable` | The bundled runtime is unhealthy or missing; verify the deployment artifact. |
 | 504 | `mojo_library_timeout` | The function ran past its time budget. |
 | 502 | (other) | Unexpected runtime error. |
 
@@ -142,37 +142,9 @@ Execution failures use the standard error envelope, with the HTTP status mapped 
 }
 ```
 
-## The `de` CLI
-
-The CLI mirrors the same surface for interactive use. It runs against the local runtime.
-
-| Command | Does |
-| --- | --- |
-| `de runtime modules` | List available runtime modules. |
-| `de runtime functions <module>` | List a module's exported functions. |
-| `de runtime execute <module> <function> --args-json '<json>'` | Execute one function. |
-
-{% code title="Execute via the CLI" %}
-```bash
-de runtime execute ab_testing sample_size \
-  --args-json '{"baseline_rate": 0.1, "mde": 0.02, "power": 0.8}'
-```
-{% endcode %}
-
-## MCP tools
-
-MCP hosts (Claude Desktop, Codex, and other MCP clients) get two matching tools. Both are local/runtime-backed and require the local runtime daemon to be running.
-
-| Tool | Input | Does |
-| --- | --- | --- |
-| `list_runtime_libraries` | `search` (optional), `limit` (optional) | List runtime modules and their functions. |
-| `execute_runtime_library` | `module`, `function`, `args` (optional), `request_id` (optional) | Execute one function. |
-
-`execute_runtime_library` accepts `args` as an object, array, scalar, or `null`, exactly like the HTTP route. If the local runtime daemon is not running, the tool returns an error telling you to start it first — see [Run the Mojo engine](mojo-sidecar.md).
-
 ## Related references
 
 - [Configuration reference](../configuration.md) — the toggle that exposes the HTTP routes.
-- [Run the Mojo engine](mojo-sidecar.md) — start the runtime that backs these calls.
+- [Verify the bundled engine](bundled-runtime.md) — confirm the integrated runtime is healthy.
 - [Engine catalog](catalog.md) — the higher-level engines these libraries compose into.
 - [MCP server](../sdk/mcp.md) — connect an MCP host to this instance.

@@ -7045,17 +7045,30 @@ components:
             $ref: '#/components/schemas/NodeInfo'
           type: array
           title: Nodes
+        probe_latency_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Probe Latency Ms
         uptime_30d_pct:
-          type: number
+          anyOf:
+          - type: number
+          - type: 'null'
           title: Uptime 30D Pct
         avg_latency_ms:
-          type: number
+          anyOf:
+          - type: number
+          - type: 'null'
           title: Avg Latency Ms
         p95_latency_ms:
-          type: number
+          anyOf:
+          - type: number
+          - type: 'null'
           title: P95 Latency Ms
         throughput_rpm:
-          type: number
+          anyOf:
+          - type: number
+          - type: 'null'
           title: Throughput Rpm
         last_health_check:
           type: string
@@ -7071,10 +7084,6 @@ components:
       - engine_version
       - api_version
       - nodes
-      - uptime_30d_pct
-      - avg_latency_ms
-      - p95_latency_ms
-      - throughput_rpm
       - last_health_check
       title: InfrastructureResponse
     IngestRequest:

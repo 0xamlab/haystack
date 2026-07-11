@@ -5,7 +5,7 @@ description: How ALGENTA_DEPLOYMENT_MODE selects a privacy profile — cloud, te
 
 # Deployment modes & privacy
 
-A **deployment mode** is a single setting — `ALGENTA_DEPLOYMENT_MODE` — that selects a privacy profile for the engine: whether it may reach Algenta Cloud, whether it emits vendor telemetry, how it meters usage, and which outbound destinations are allowed. One value derives a coherent set of defaults so that "private" deployments are private by construction rather than by a checklist of individual flags. The valid modes are `saas`, `vpc`, `self_hosted`, `air_gapped`, `hybrid_provider`, and `local_dev_daemon`.
+A **deployment mode** is a single setting — `ALGENTA_DEPLOYMENT_MODE` — that selects a privacy profile for the engine: whether it may reach Algenta Cloud, whether it emits vendor telemetry, how it meters usage, and which outbound destinations are allowed. One value derives a coherent set of defaults so that "private" deployments are private by construction rather than by a checklist of individual flags. The public modes are `saas`, `vpc`, `self_hosted`, `air_gapped`, and `hybrid_provider`.
 
 ## Why it exists
 
@@ -20,7 +20,6 @@ The privacy profile is derived from the mode. The two private modes set `private
 | `saas` | enabled | `control_plane_sync` | `control_plane_sync` | allowed | not required |
 | `vpc` | enabled | `control_plane_sync` | `control_plane_sync` | allowed | not required |
 | `hybrid_provider` | enabled | `control_plane_sync` | `control_plane_sync` | allowed | not required |
-| `local_dev_daemon` | enabled | `control_plane_sync` | `control_plane_sync` | allowed | not required |
 | `self_hosted` | disabled | `local_audit` | `local_audit` | denied | not required |
 | `air_gapped` | disabled | `local_audit` | `local_audit` | denied | required |
 
@@ -47,7 +46,7 @@ The telemetry and metering modes share the same three values: `disabled`, `local
 
 - You are choosing how a deployment talks to the network: pick `saas`/`vpc` to use Algenta Cloud, `self_hosted` for an on-prem stack, or `air_gapped` for a fully isolated install.
 - You need a private install to be private by default — `self_hosted` and `air_gapped` disable cloud and telemetry and refuse outbound network without per-flag configuration.
-- A private connector, warehouse, or sidecar is being denied (`destination_not_allowlisted`) and you need to permit exactly that host via `ALGENTA_EGRESS_ALLOWLIST`.
+- A private connector, warehouse, or operator service is being denied (`destination_not_allowlisted`) and you need to permit exactly that host via `ALGENTA_EGRESS_ALLOWLIST`.
 - You are deciding how usage is recorded: `disabled`, `local_audit` on the box, or `control_plane_sync` back to the control plane via `ALGENTA_TELEMETRY_MODE` and `ALGENTA_METERING_MODE`.
 - You need operator proof that a deployment is cloud-free for an audit or compliance review.
 

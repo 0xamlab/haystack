@@ -9,12 +9,10 @@
 * [Try it without a key](playground.md)
 * [Core concepts](concepts.md)
 * [Authentication & API keys](authentication.md)
-* [Log in from the terminal](login.md)
 
-## Run the engine
+## Engine runtime
 
-* [Run the Mojo engine](engine/mojo-sidecar.md)
-* [Filtered & selective install](engine/filtered-install.md)
+* [Verify the bundled engine](engine/bundled-runtime.md)
 * [Engine health & verification](engine/health.md)
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
@@ -94,7 +92,6 @@
 * [Tool discovery](sdk/tool-discovery.md)
 * [Testing with Algenta](sdk/testing.md)
 * [CLI reference](cli.md)
-* [algenta CLI (local)](sdk/algenta-cli.md)
 
 ## MCP tools
 
@@ -110,7 +107,6 @@
 * [Agent run tools](mcp-tools/agent-runs.md)
 * [Control plane tools](mcp-tools/control-plane.md)
 * [Account & meta tools](mcp-tools/account-and-meta.md)
-* [Runtime library tools](mcp-tools/runtime-libraries.md)
 
 ## Microsoft & Azure
 

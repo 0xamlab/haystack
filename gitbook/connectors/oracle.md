@@ -5,7 +5,7 @@ description: Connect Oracle Database or Autonomous Database with Algenta's bundl
 
 # Connect Oracle Database
 
-Algenta connects to Oracle Database and Oracle Autonomous Database with the bundled `python-oracledb` Thin-mode driver. You do not install Oracle Instant Client, manage a separate sidecar, or add a Python package to the Algenta service. Algenta owns the driver, bounded connection pool, credential verification, schema browse, and Arrow-batch fetch path.
+Algenta connects to Oracle Database and Oracle Autonomous Database with the bundled `python-oracledb` Thin-mode driver. You do not install Oracle Instant Client, manage an additional runtime process, or add a Python package to the Algenta service. Algenta owns the driver, bounded connection pool, credential verification, schema browse, and Arrow-batch fetch path.
 
 Use either:
 
