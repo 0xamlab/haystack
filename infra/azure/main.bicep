@@ -247,7 +247,34 @@ resource caeEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 
 var pgFqdn = postgres.properties.fullyQualifiedDomainName
 var databaseUrl = 'postgresql+asyncpg://${postgresAdminLogin}:${postgresAdminPassword}@${pgFqdn}:5432/${dbName}?ssl=require'
-var databaseUrlSync = 'postgresql+psycopg://${postgresAdminLogin}:${postgresAdminPassword}@${pgFqdn}:5432/${dbName}?sslmode=require'
+// Sync URL for Alembic. Bare postgresql:// => psycopg2, the sync driver shipped in the image (matches
+// the Fly control-plane). NOT postgresql+psycopg (v3) — that driver isn't installed, so migrations
+// fail with "No module named 'psycopg'".
+var databaseUrlSync = 'postgresql://${postgresAdminLogin}:${postgresAdminPassword}@${pgFqdn}:5432/${dbName}?sslmode=require'
+
+// Shared by the app container AND the migration init container, so migrations run with the exact same
+// config the app imports (avoids import-time env drift).
+var apiEnv = [
+  { name: 'DATABASE_URL', secretRef: 'database-url' }
+  { name: 'DATABASE_URL_SYNC', secretRef: 'database-url-sync' }
+  { name: 'ALGENTA_CONFIG_ENCRYPTION_KEY', secretRef: 'config-encryption-key' }
+  { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
+  // Private profile — no phone-home; customer keeps the data plane.
+  { name: 'ALGENTA_DEPLOYMENT_MODE', value: 'self_hosted' }
+  { name: 'DISABLE_CLOUD', value: '1' }
+  { name: 'DISABLE_TELEMETRY', value: '1' }
+  { name: 'CONTROL_PLANE_URL', value: '' }
+  // Native Azure Blob artifact store via the container's managed identity.
+  { name: 'ALGENTA_RI_OBJECT_STORE', value: 'azure_blob' }
+  { name: 'AZURE_BLOB_CONTAINER', value: blobContainer }
+  { name: 'AZURE_STORAGE_ACCOUNT_URL', value: storage.properties.primaryEndpoints.blob }
+  { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+  // Entra identity (inert unless both are set). When set, the app auto-allowlists the Entra JWKS
+  // host for egress (build_privacy_policy), so no manual ALGENTA_EGRESS_ALLOWLIST is needed.
+  { name: 'ALGENTA_ENTRA_TENANT_ID', value: entraTenantId }
+  { name: 'ALGENTA_ENTRA_AUDIENCE', value: entraAudience }
+]
 
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: '${namePrefix}-api'
@@ -283,31 +310,25 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
     template: {
+      // Run Alembic to head BEFORE the app starts. The gateway has no other migration runner (unlike
+      // the Fly control-plane's release_command), so without this its DB drifts behind the image and
+      // routes 500 on missing tables. Init containers run to completion before the app container.
+      initContainers: [
+        {
+          name: 'migrate'
+          image: apiImage
+          resources: { cpu: json('0.5'), memory: '1Gi' }
+          command: [ 'python' ]
+          args: [ '-m', 'alembic', '-c', 'apps/api_server/alembic.ini', 'upgrade', 'head' ]
+          env: apiEnv
+        }
+      ]
       containers: [
         {
           name: 'api'
           image: apiImage
           resources: { cpu: json('1.0'), memory: '2Gi' }
-          env: [
-            { name: 'DATABASE_URL', secretRef: 'database-url' }
-            { name: 'DATABASE_URL_SYNC', secretRef: 'database-url-sync' }
-            { name: 'ALGENTA_CONFIG_ENCRYPTION_KEY', secretRef: 'config-encryption-key' }
-            { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
-            // Private profile — no phone-home; customer keeps the data plane.
-            { name: 'ALGENTA_DEPLOYMENT_MODE', value: 'self_hosted' }
-            { name: 'DISABLE_CLOUD', value: '1' }
-            { name: 'DISABLE_TELEMETRY', value: '1' }
-            { name: 'CONTROL_PLANE_URL', value: '' }
-            // Native Azure Blob artifact store via the container's managed identity.
-            { name: 'ALGENTA_RI_OBJECT_STORE', value: 'azure_blob' }
-            { name: 'AZURE_BLOB_CONTAINER', value: blobContainer }
-            { name: 'AZURE_STORAGE_ACCOUNT_URL', value: storage.properties.primaryEndpoints.blob }
-            { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
-            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-            // Entra identity (inert unless both are set).
-            { name: 'ALGENTA_ENTRA_TENANT_ID', value: entraTenantId }
-            { name: 'ALGENTA_ENTRA_AUDIENCE', value: entraAudience }
-          ]
+          env: apiEnv
         }
       ]
       scale: { minReplicas: 1, maxReplicas: 3 }
