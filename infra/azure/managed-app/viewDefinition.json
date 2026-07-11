@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/viewdefinition/0.0.1-preview/ViewDefinition.json#",
+  "contentVersion": "0.0.0.1",
+  "views": [
+    {
+      "kind": "Overview",
+      "properties": {
+        "header": "Algenta Decision Service",
+        "description": "A governed decision runtime that runs in your own Azure. Frame a decision, build scenarios, simulate and optimize with enforced constraints, recommend an option with trade-offs, approve a plan, and record the outcome — exposed as one versioned Decision API to Microsoft 365 Copilot, Teams, Excel, and Azure AI Foundry. Your data and decision state stay in this subscription.",
+        "commands": [
+          {
+            "displayName": "Open gateway health",
+            "path": "/v1/health",
+            "icon": "Info"
+          }
+        ],
+        "outputs": {
+          "gatewayUrl": "gatewayUrl",
+          "decisionAgentSpec": "decisionAgentSpecUrl"
+        }
+      }
+    }
+  ]
+}
