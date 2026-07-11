@@ -52,6 +52,12 @@ class Organization(UUIDMixin, TimestampMixin, Base):
     # Seats purchased on the Team (per-seat) subscription — synced from the Stripe
     # subscription item quantity by the webhook; drives the team seat cap. 1 for solo plans.
     seats: Mapped[int] = mapped_column(Integer(), nullable=False, default=1, server_default="1")
+    # Licensed DEVICE count for per-device plans (algenta_pro/algenta_team) — synced from the Stripe
+    # subscription item quantity (usage=licensed → quantity = # devices). Distinct from `seats` (people).
+    # 0 = not synced yet → enforcement falls back to the static plan device cap (never a lockout).
+    licensed_devices: Mapped[int] = mapped_column(
+        Integer(), nullable=False, default=0, server_default="0"
+    )
 
     # ── Managed-LLM pass-through (D3) ─────────────────────────────────────────
     # When the deployment runs in managed-LLM mode (ALGENTA_MANAGED_LLM=1, hosted), an org may use

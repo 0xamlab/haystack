@@ -325,13 +325,14 @@ async def test_past_due_keeps_plan_and_does_not_downgrade(monkeypatch) -> None:
         lambda: types.SimpleNamespace(stripe_price_algenta_pro="price_algenta_pro_test"),
     )
     cus = f"cus_{uuid.uuid4().hex}"
-    org_id, _ = await _seed(OrgPlan.ALGENTA_PRO, cus, [1, 2])  # within cap 3
+    org_id, _ = await _seed(OrgPlan.ALGENTA_PRO, cus, [1, 2])
+    # per-device plan: quantity=3 licensed devices → the 2 active devices stay within the cap.
     await _process(
         _event(
             "customer.subscription.updated",
             cus,
             status="past_due",
-            items={"data": [{"price": {"id": "price_algenta_pro_test"}}]},
+            items={"data": [{"price": {"id": "price_algenta_pro_test"}, "quantity": 3}]},
         )
     )
     assert await _org_plan(org_id) == OrgPlan.ALGENTA_PRO  # kept — past_due is not terminal

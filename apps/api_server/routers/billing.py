@@ -33,6 +33,7 @@ from apps.api_server.services.device_service import (
 from apps.api_server.services.egress_guard import audit_context_from_auth
 from apps.api_server.services.entitlement_service import entitlement_for_org
 from apps.api_server.services.plan_limits import device_limit as _plan_device_limit
+from apps.api_server.services.plan_limits import is_per_device_plan
 from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
 from apps.api_server.services.product_registry import get_product, product_for_plan
 from apps.api_server.services.public_url_policy import (
@@ -102,6 +103,10 @@ async def checkout(
         seats = max(1, int(body.get("seats", 1)))
     except (TypeError, ValueError):
         seats = 1
+    try:
+        devices = max(1, int(body.get("devices", 1)))
+    except (TypeError, ValueError):
+        devices = 1
     if plan not in (
         "developer", "pro", "proplus", "ultra", "team",
         "telys_pro", "telys_team",
@@ -148,7 +153,13 @@ async def checkout(
         str(auth["org_id"]),
         email,
         plan,
-        quantity=seats if plan in ("team", "telys_team", "algenta_team") else 1,
+        quantity=(
+            devices
+            if is_per_device_plan(plan)
+            else seats
+            if plan in ("team", "telys_team")
+            else 1
+        ),
         success_url=redirect_urls.success_url,
         cancel_url=redirect_urls.cancel_url,
         audit_context=audit_context_from_auth(
@@ -235,7 +246,7 @@ async def stripe_webhook(
     # Process + commit atomically with the event-id record. On ANY failure, roll back and return 5xx
     # so Stripe retries — and because the event-id record is rolled back too, the retry reprocesses.
     try:
-        await _process_stripe_event(db, event)
+        affected_org_id = await _process_stripe_event(db, event)
         await db.commit()
     except Exception as exc:  # noqa: BLE001 — any processing/DB error must trigger a Stripe retry
         await db.rollback()
@@ -249,17 +260,29 @@ async def stripe_webhook(
                 }
             },
         )
+
+    # Bust the org's cached AuthContexts AFTER commit so a plan / device-cap change (worker caps,
+    # licensed_devices) takes effect immediately instead of lagging the per-key cache TTL (~5 min).
+    # Best-effort: invalidate_org_api_key_caches never raises (a Redis hiccup falls back to TTL).
+    if affected_org_id:
+        from apps.api_server.services.auth_service import invalidate_org_api_key_caches
+
+        redis_client = getattr(request.app.state, "redis", None)
+        await invalidate_org_api_key_caches(db, affected_org_id, redis_client)
     return JSONResponse(content={"received": True})
 
 
-async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None:
+async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> str | None:
     """Apply the billing state change for a verified Stripe event.
 
     Raises on DB failure (the caller rolls back + returns 5xx so Stripe retries). Does NOT commit —
-    the caller commits atomically with the exactly-once event-id ledger row.
+    the caller commits atomically with the exactly-once event-id ledger row. Returns the id of the
+    org whose plan/caps changed (or ``None``) so the caller can bust its cached AuthContexts AFTER
+    commit — otherwise a plan/device-cap change lags up to the per-key cache TTL.
     """
     event_type = event.get("type", "")
     obj = event.get("data", {}).get("object", {})
+    affected_org_id: str | None = None
 
     # ── Checkout completed ────────────────────────────────────────────────────
     if event_type == "checkout.session.completed":
@@ -278,6 +301,7 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
             org_result = await db.execute(select(Organization).where(Organization.id == org_id))
             org = org_result.scalar_one_or_none()
             if org:
+                affected_org_id = str(org.id)
                 org.plan = plan_enum
                 if customer_id:
                     org.stripe_customer_id = customer_id
@@ -314,6 +338,7 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
+            affected_org_id = str(org.id)
             # Dunning exhausted (unpaid / canceled / incomplete_expired) → the customer stopped
             # paying and Stripe gave up retrying. Downgrade to Community NOW, before the eventual
             # delete, so a delinquent monthly subscriber loses paid entitlement within ~one cycle
@@ -337,7 +362,7 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                     event_id=event.get("id"),
                     subscription_resource_id=subscription_id,
                 )
-                return
+                return affected_org_id
             # An ACTIVE subscription should map to a KNOWN paid price. plan_name=='free' here means
             # an unknown/misconfigured price_id (see _plan_from_subscription's fallback) — do NOT
             # downgrade-and-de-entitle a paying customer on a parse failure. A genuine cancellation
@@ -359,6 +384,14 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
                     pass
             # Per-seat Team billing: sync purchased seats from the subscription item quantity.
             org.seats = _seats_from_subscription(obj)
+            # Per-DEVICE billing (algenta_pro/algenta_team): the subscription-item quantity IS the
+            # licensed device count — store it so enforcement uses the paid count, not the static
+            # plan constant. Update ONLY on a real, positive quantity: a quantity-less/malformed
+            # event must NOT collapse the count (which would then revoke paid devices). None for
+            # per-seat plans (their device cap stays the static one).
+            _dev_qty = _subscription_quantity(obj) if is_per_device_plan(plan_name) else None
+            if _dev_qty is not None:
+                org.licensed_devices = _dev_qty
             await db.flush()
             await _upsert_subscription(
                 db,
@@ -372,14 +405,20 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
             )
             logger.info("subscription_updated", org_id=str(org.id), plan=plan_name, status=status)
             await _audit_entitlement_recompute(db, org, event_type, event.get("id"))
-            # Conservative downgrade enforcement: on `updated` we ONLY revoke devices BEYOND the
-            # new finite cap of a still-runtime paid plan. We never full-revoke here — a
-            # misconfigured price_id falls back to 'free' (see _plan_from_subscription), and a
-            # genuine cancellation always arrives as `customer.subscription.deleted` (below).
-            if _plan_local_runtime(plan_name) and _plan_device_limit(plan_name) > 0:
-                revoked = await revoke_excess_org_devices(
-                    org.id, _plan_device_limit(plan_name), db
-                )
+            # Conservative downgrade enforcement: revoke devices BEYOND the new finite cap of a
+            # still-runtime paid plan. We never full-revoke here — a misconfigured price_id falls
+            # back to 'free' (see _plan_from_subscription), and a genuine cancellation arrives as
+            # `customer.subscription.deleted` (below). Per-seat/other plans re-cap to the static plan
+            # cap (idempotent). Per-device plans re-cap to the licensed count ONLY when THIS event
+            # carried a real quantity (_dev_qty) — never on a quantity-less/metadata update, so a
+            # malformed payload can't collapse the cap and revoke paid devices. (New over-cap devices
+            # are always blocked by the org-wide registration gate regardless.)
+            if is_per_device_plan(plan_name):
+                _keep_cap = _dev_qty or 0  # None/absent → 0 → skip revoke, don't touch devices
+            else:
+                _keep_cap = _plan_device_limit(plan_name)
+            if _plan_local_runtime(plan_name) and _keep_cap > 0:
+                revoked = await revoke_excess_org_devices(org.id, _keep_cap, db)
                 if revoked:
                     logger.info(
                         "subscription_downgrade_excess_revoked",
@@ -436,6 +475,7 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
         )
         org = org_result.scalar_one_or_none()
         if org:
+            affected_org_id = str(org.id)
             # Cancellation is unambiguous → drop to the product's Community tier (algenta_free keeps
             # the free-forever device re-capped to 1; cloud-only free revokes all devices).
             await _downgrade_to_community(
@@ -468,6 +508,8 @@ async def _process_stripe_event(db: AsyncSession, event: dict[str, Any]) -> None
             )
             # Keep current month's records; the new period will start fresh
             logger.info("invoice_paid_usage_reset_noted", org_id=str(org.id), period=prev_period)
+
+    return affected_org_id
 
 
 def _org_plan_name(org: Organization) -> str:
@@ -612,6 +654,23 @@ def _seats_from_subscription(sub_obj: dict[str, Any]) -> int:
         return max(1, int(qty)) if qty else 1
     except (KeyError, IndexError, TypeError, ValueError):
         return 1
+
+
+def _subscription_quantity(sub_obj: dict[str, Any]) -> int | None:
+    """The subscription item quantity as a POSITIVE int, or None when it is absent / zero / not
+    parseable. Unlike ``_seats_from_subscription`` (which floors to 1), per-device licensing must NOT
+    treat a missing quantity as 1 — a quantity-less or malformed event would otherwise collapse
+    ``licensed_devices`` to 1 and revoke devices the customer still pays for. Callers update the
+    licensed count / re-cap ONLY when this returns a real quantity."""
+    try:
+        items = sub_obj.get("items", {}).get("data", [])
+        qty = items[0].get("quantity") if items else None
+        if qty is None:
+            return None
+        qty = int(qty)
+        return qty if qty > 0 else None
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
 
 
 def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:

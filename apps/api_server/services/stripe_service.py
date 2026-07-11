@@ -241,19 +241,22 @@ async def create_checkout_session(
             data={
                 "mode": "subscription",
                 "line_items[0][price]": price_id,
-                # per-seat plans (team) bill by quantity; solo plans stay at 1
+                # Quantity axis is caller-decided: per-seat plans (team/telys_team) bill by seats,
+                # per-device plans (algenta_pro/algenta_team) bill by devices; solo plans stay at 1.
                 "line_items[0][quantity]": str(max(1, quantity)),
                 "success_url": resolved_success_url,
                 "cancel_url": resolved_cancel_url,
                 "customer_email": org_email,
                 "metadata[org_id]": org_id,
                 "metadata[plan]": plan,
+                # Let buyers self-select the quantity for both per-seat (team) and per-device
+                # (algenta_pro/algenta_team) plans.
                 **(
                     {
                         "line_items[0][adjustable_quantity][enabled]": "true",
                         "line_items[0][adjustable_quantity][minimum]": "1",
                     }
-                    if plan in ("team", "telys_team", "algenta_team")
+                    if plan in ("team", "telys_team", "algenta_pro", "algenta_team")
                     else {}
                 ),
             },

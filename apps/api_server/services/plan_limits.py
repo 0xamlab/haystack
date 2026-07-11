@@ -262,33 +262,52 @@ def device_limit(plan: str) -> int:
     return get(plan).devices
 
 
-def effective_device_limit(plan: str, api_key_device_limit: int | None) -> int:
+# Plans billed PER DEVICE: the Stripe subscription quantity IS the licensed device count (stored on
+# ``Organization.licensed_devices``), so the org ceiling — not the static PlanConfig.devices — bounds
+# how many devices they can register. Per-seat plans (codna ``team`` / ``telys_team``) are NOT here.
+PER_DEVICE_PLANS = frozenset({"algenta_pro", "algenta_team"})
+
+
+def is_per_device_plan(plan: str) -> bool:
+    """True if the plan is billed per device (Stripe quantity = licensed device count)."""
+    return (plan or "").strip().lower() in PER_DEVICE_PLANS
+
+
+def effective_device_limit(
+    plan: str, api_key_device_limit: int | None, org_ceiling: int | None = None
+) -> int:
     """
     Resolve the enforced per-key device limit under the current plan.
 
-    The plan remains the outer ceiling. A key may narrow that ceiling further.
-    `0` always means unlimited, but only plans with unlimited devices may honor it.
+    The OUTER ceiling is the org's licensed device count (``org_ceiling``, from the Stripe quantity)
+    for per-device plans when set (>0); otherwise the static plan cap. A key may narrow that ceiling
+    further. ``0`` always means unlimited, but only plans with unlimited devices may honor it. A
+    missing/zero ``org_ceiling`` falls back to the plan cap — never a lockout.
     """
     if not local_runtime_allowed(plan):
         return 0
 
-    plan_cap = device_limit(plan)
+    outer = org_ceiling if (org_ceiling is not None and org_ceiling > 0) else device_limit(plan)
     if api_key_device_limit is None:
-        return plan_cap
+        return outer
     if api_key_device_limit < 0:
         raise ValueError("api_key_device_limit must be greater than or equal to 0.")
-    if plan_cap == 0:
+    if outer == 0:
         return api_key_device_limit
     if api_key_device_limit == 0:
-        return plan_cap
-    return min(api_key_device_limit, plan_cap)
+        return outer
+    return min(api_key_device_limit, outer)
 
 
-def validate_api_key_device_limit(plan: str, requested_device_limit: int | None) -> int | None:
+def validate_api_key_device_limit(
+    plan: str, requested_device_limit: int | None, org_ceiling: int | None = None
+) -> int | None:
     """
-    Validate a configured per-key device cap against the current plan.
+    Validate a configured per-key device cap against the current plan / org ceiling.
 
-    Returns the stored override value. `None` means inherit the plan default.
+    For per-device plans the ceiling is the org's licensed device count (``org_ceiling``) when set;
+    otherwise the static plan cap. A per-key override is a WITHIN-org sub-allocation, so it may be up
+    to the ceiling. Returns the stored override value. ``None`` means inherit the ceiling default.
     """
     if requested_device_limit is None:
         return None
@@ -300,15 +319,15 @@ def validate_api_key_device_limit(plan: str, requested_device_limit: int | None)
             "so it cannot set a per-key device limit."
         )
 
-    plan_cap = device_limit(plan)
-    if plan_cap == 0:
+    cap = org_ceiling if (org_ceiling is not None and org_ceiling > 0) else device_limit(plan)
+    if cap == 0:
         return requested_device_limit
     if requested_device_limit == 0:
         raise ValueError(
-            f"Plan '{plan}' does not support unlimited devices per key. Maximum is {plan_cap}."
+            f"Plan '{plan}' does not support unlimited devices per key. Maximum is {cap}."
         )
-    if requested_device_limit > plan_cap:
-        raise ValueError(f"Plan '{plan}' allows at most {plan_cap} device(s) per key.")
+    if requested_device_limit > cap:
+        raise ValueError(f"Plan '{plan}' allows at most {cap} device(s) per key.")
     return requested_device_limit
 
 

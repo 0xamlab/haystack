@@ -60,7 +60,9 @@ from apps.api_server.models.device import (
     DeviceStatus,
 )
 from apps.api_server.services.auth_service import AuthContext, is_api_key_expired
+from apps.api_server.services.plan_limits import device_limit as _plan_static_device_limit
 from apps.api_server.services.plan_limits import effective_device_limit as _effective_device_limit
+from apps.api_server.services.plan_limits import is_per_device_plan
 from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
 
 logger = structlog.get_logger(__name__)
@@ -156,8 +158,40 @@ def _plan_name(plan: object) -> str:
     return getattr(plan, "value", str(plan))
 
 
-def _api_key_effective_device_limit(api_key_row: APIKey, plan: str) -> int:
-    return _effective_device_limit(plan, getattr(api_key_row, "device_limit", None))
+def _api_key_effective_device_limit(
+    api_key_row: APIKey, plan: str, org_ceiling: int | None = None
+) -> int:
+    # For per-device plans the org's licensed device count is the outer ceiling. Derive it from the
+    # (eager-loaded) org when the caller didn't pass it, so every issuance site is org-aware.
+    if org_ceiling is None:
+        org_ceiling = _org_device_ceiling(getattr(api_key_row, "organization", None), plan)
+    return _effective_device_limit(plan, getattr(api_key_row, "device_limit", None), org_ceiling)
+
+
+def _org_device_ceiling(org: object, plan: str) -> int | None:
+    """The org-wide device ceiling for per-device plans, or None for non-per-device plans (which keep
+    the per-key static behavior). For a per-device plan it is the org's licensed device count (Stripe
+    quantity) when synced, else the static plan cap as a fallback — NEVER None and never 0. This means
+    the org-wide gate ALWAYS applies to per-device plans (closing the multi-key bypass even before the
+    quantity webhook lands), while an unsynced org is bounded org-wide at the base plan cap (no lockout,
+    no per-key×keys sprawl)."""
+    if not is_per_device_plan(plan):
+        return None
+    licensed = int(getattr(org, "licensed_devices", 0) or 0)
+    return licensed if licensed > 0 else _plan_static_device_limit(plan)
+
+
+async def _active_org_device_count(org_id: uuid.UUID, db: AsyncSession) -> int:
+    """Count non-revoked devices across the WHOLE org (all its API keys). The per-device licensed
+    ceiling is enforced against this so an org can't exceed its paid device count by spreading
+    devices across multiple API keys."""
+    result = await db.execute(
+        select(func.count()).where(
+            DeviceRegistration.org_id == org_id,
+            DeviceRegistration.status != DeviceStatus.REVOKED,
+        )
+    )
+    return result.scalar_one() or 0
 
 
 def _get_license_secret() -> str:
@@ -818,6 +852,7 @@ def _issue_license_jwt(
     org_id: str,
     api_key_expires_at: datetime | None = None,
     device_pubkey_thumbprint: str = "",
+    org_node_ceiling: int | None = None,
 ) -> str:
     now = int(time.time())
     # Online licenses are capped to a SHORT rolling window so the node must renew (and renewal
@@ -875,9 +910,20 @@ def _issue_license_jwt(
 
     settings = get_settings()
     if _plan_needs_products_map(plan) or settings.license_v2_issuance:
-        from apps.api_server.services.entitlement_service import resolve_entitlement, to_license_claims
+        from apps.api_server.services.entitlement_service import (
+            resolve_entitlement,
+            to_license_claims,
+        )
 
-        payload.update(to_license_claims(resolve_entitlement(plan)))
+        # Per-device plans: the license's active_node_limit (the offline node_broker L2 census cap)
+        # must reflect the org's PURCHASED device count, not the static tier default — otherwise a
+        # customer who licenses N devices is offline-capped at the tier's base. Override it inline.
+        _record = (
+            resolve_entitlement(plan, overrides={"active_node_limit": org_node_ceiling})
+            if org_node_ceiling
+            else resolve_entitlement(plan)
+        )
+        payload.update(to_license_claims(_record))
 
     # PER-PRODUCT signing. Externally-consumed products whose runtime verifies RS256 OFFLINE (Telys now, Algenta
     # external next) are signed by the shared cf_worker (license.algenta.ai); everyone else is signed with an
@@ -934,7 +980,10 @@ async def register_device(
             "Upgrade to PRO or higher to register devices and use the local runtime."
         )
 
-    device_limit_val = _api_key_effective_device_limit(api_key_row, plan)
+    # Per-device plans (algenta_pro/algenta_team): the org's licensed device count (Stripe quantity)
+    # is the outer ceiling; per-seat/other plans use the static plan cap (org_ceiling=None).
+    org_ceiling = _org_device_ceiling(api_key_row.organization, plan)
+    device_limit_val = _api_key_effective_device_limit(api_key_row, plan, org_ceiling)
 
     # Check for existing registration of this exact device_id
     existing = await db.execute(
@@ -946,7 +995,7 @@ async def register_device(
     existing_row = existing.scalar_one_or_none()
 
     if existing_row is None:
-        # New device — check limit
+        # New device — per-key sub-allocation check.
         current_count = await _active_device_count(api_key_row.id, db)
         if device_limit_val > 0 and current_count >= device_limit_val:
             raise ValueError(
@@ -954,6 +1003,16 @@ async def register_device(
                 f"You have {current_count} registered. "
                 f"Revoke an existing device or upgrade your plan."
             )
+        # Per-device plans: the ORG-WIDE licensed count is the true ceiling — an org can't exceed the
+        # devices it pays for by spreading them across multiple API keys.
+        if org_ceiling:
+            org_count = await _active_org_device_count(api_key_row.org_id, db)
+            if org_count >= org_ceiling:
+                raise ValueError(
+                    f"Licensed device limit reached: your subscription covers {org_ceiling} "
+                    f"device(s) and {org_count} are active. Add devices to your subscription "
+                    f"or revoke one."
+                )
         row = DeviceRegistration(
             id=uuid.uuid4(),
             org_id=api_key_row.org_id,
@@ -1029,6 +1088,7 @@ async def register_device(
         org_id=str(api_key_row.org_id),
         api_key_expires_at=api_key_row.expires_at,
         device_pubkey_thumbprint=_device_info_value(device_info, "device_pubkey_thumbprint"),
+        org_node_ceiling=org_ceiling,
     )
     logger.info(
         "device_registered",

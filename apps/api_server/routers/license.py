@@ -35,6 +35,7 @@ from apps.api_server.services.device_service import (
     _api_key_effective_device_limit,
     _issue_license_jwt,
     _load_api_key_with_org,
+    _org_device_ceiling,
     _plan_name,
     build_revocation_payload,
     effective_node_count,
@@ -308,6 +309,7 @@ async def license_renew(
         org_id=str(api_key_row.org_id),
         api_key_expires_at=api_key_row.expires_at,
         device_pubkey_thumbprint=row.device_pubkey_thumbprint,
+        org_node_ceiling=_org_device_ceiling(api_key_row.organization, plan),
     )
     device_count = await effective_node_count(api_key_row.id, db)
     logger.info("license_renewed", device_id=body.device_id[:8], org_id=str(api_key_row.org_id))

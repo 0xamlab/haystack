@@ -35,10 +35,12 @@ from apps.api_server.models.device import (
 from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.device_service import (
+    _active_org_device_count,
     _api_key_effective_device_limit,
     _check_device_key_binding,
     _device_identity_mismatch_error,
     _device_identity_mismatched_fields,
+    _org_device_ceiling,
     _plan_name,
     active_node_cap_enforced,
     effective_node_count,
@@ -255,6 +257,28 @@ async def device_register(
                     "upgrade_url": "https://algenta.io/pricing",
                 },
             )
+        # Per-device plans: enforce the ORG-WIDE licensed ceiling (across ALL the org's API keys),
+        # not just the per-key count above — otherwise an org bypasses its paid device count by
+        # spreading devices over multiple keys. The ceiling is licensed_devices (Stripe quantity) or,
+        # until that syncs, the static plan cap — so it always applies (no multi-key sprawl window).
+        org_ceiling = _org_device_ceiling(api_key_row.organization, plan)
+        if org_ceiling:
+            org_count = await _active_org_device_count(api_key_row.org_id, db)
+            if org_count >= org_ceiling:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "licensed_device_limit_reached",
+                        "message": (
+                            f"Your subscription covers {org_ceiling} device(s) and {org_count} "
+                            "are active. Add devices to your subscription or revoke one."
+                        ),
+                        "device_count": org_count,
+                        "device_limit": org_ceiling,
+                        "plan": plan,
+                        "upgrade_url": "https://algenta.io/pricing",
+                    },
+                )
         row = DeviceRegistration(
             id=uuid.uuid4(),
             org_id=api_key_row.org_id,
@@ -390,6 +414,7 @@ async def device_register(
         org_id=str(api_key_row.org_id),
         api_key_expires_at=api_key_row.expires_at,
         device_pubkey_thumbprint=bound_thumbprint,
+        org_node_ceiling=_org_device_ceiling(api_key_row.organization, plan),
     )
 
     # ── Issue initial credit batch ─────────────────────────────────────────
