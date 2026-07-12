@@ -17,10 +17,10 @@
       "type": "OpenApi",
       "auth": {
         "type": "OAuthPluginVault",
-        "reference_id": "${{OAUTH2_REGISTRATION_ID}}"
+        "reference_id": "N2EwY2Q1MzMtNGQ5OC00NTBjLWJjM2EtOTNjZWUxNDk1ZTA2IyNiNWExYzkyNC1kOGMwLTQ0NTYtOWU5Yy02M2IxY2ZlZjRkOTk="
       },
       "spec": {
-        "url": "https://gateway.algenta.ai/openapi/decision-agent.json",
+        "url": "decision-agent-openapi.json",
         "progress_style": "ShowUsageWithInputAndOutput"
       },
       "run_for_functions": [

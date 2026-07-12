@@ -1,0 +1,1033 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Algenta Decision Agent API",
+    "description": "Coarse, governed decision operations for AI agents (Azure AI Foundry, Microsoft 365 Copilot). Prefer run_decision_analysis \u2014 it internally runs evidence gathering, scenarios, simulation, optimization and sensitivity, and produces a recommendation with its explanation. Approval and execution are NOT available here: they are separate, credentialed human actions.",
+    "version": "2024-11-01"
+  },
+  "servers": [
+    {
+      "url": "https://gateway.algenta.ai"
+    }
+  ],
+  "paths": {
+    "/v1/decision-cases": {
+      "post": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Frame a decision (create a case + immutable revision 1)",
+        "operationId": "create_or_update_decision",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDecisionCaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ]
+      }
+    },
+    "/v1/decision-cases/{case_id}": {
+      "put": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Re-frame a decision (material change \u2192 new immutable revision)",
+        "operationId": "reframe_decision",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDecisionCaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Get a decision case",
+        "operationId": "get_decision_case",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/analysis-runs": {
+      "post": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Run the governed analysis (async: poll for the result)",
+        "operationId": "run_decision_analysis",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload",
+                "nullable": true,
+                "$ref": "#/components/schemas/StartAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/refresh": {
+      "post": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Manually refresh: re-run the current revision with fresh evidence",
+        "operationId": "refresh_decision",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Payload",
+                "nullable": true,
+                "$ref": "#/components/schemas/StartAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRunAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}": {
+      "get": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Poll an analysis run",
+        "operationId": "get_decision_run_status",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRunStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/result": {
+      "get": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Fetch the analysis result (host-independent object)",
+        "operationId": "get_decision_result",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResultResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/evidence": {
+      "get": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Inspect evidence + provenance (what was accessed, under which retention mode)",
+        "operationId": "inspect_decision_evidence",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analysis-runs/{run_id}/action-plans": {
+      "post": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Propose a safe execution plan (returns the plan_hash + single-use approval nonce)",
+        "operationId": "propose_action_plan",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionPlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/decision-cases/{case_id}/outcomes": {
+      "post": {
+        "tags": [
+          "Decision Workflow"
+        ],
+        "summary": "Record what actually happened (closes the learning loop)",
+        "operationId": "record_decision_outcome",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "LegacyApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/apps__api_server__schemas__decision_workflow__RecordOutcomeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalysisResultResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reproducibility_id": {
+            "title": "Reproducibility Id",
+            "nullable": true,
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "nullable": true,
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "error": {
+            "title": "Error",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AnalysisResultResponse"
+      },
+      "AnalysisRunAccepted": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "case_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Case Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "poll_url": {
+            "type": "string",
+            "title": "Poll Url"
+          },
+          "result_url": {
+            "type": "string",
+            "title": "Result Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "case_id",
+          "status",
+          "poll_url",
+          "result_url"
+        ],
+        "title": "AnalysisRunAccepted"
+      },
+      "AnalysisRunStatusResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "case_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Case Id"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revision Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "nullable": true,
+            "type": "string"
+          },
+          "reproducibility_id": {
+            "title": "Reproducibility Id",
+            "nullable": true,
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "title": "Finished At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "title": "Error",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "case_id",
+          "revision_id",
+          "status"
+        ],
+        "title": "AnalysisRunStatusResponse"
+      },
+      "CreateDecisionCaseRequest": {
+        "properties": {
+          "pack_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pack Id",
+            "example": "renewal_capacity_allocation"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "pack_input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Pack Input",
+            "description": "The pack's contract input (validated)"
+          },
+          "owner": {
+            "title": "Owner",
+            "nullable": true,
+            "type": "string",
+            "maxLength": 200
+          },
+          "objective": {
+            "title": "Objective",
+            "nullable": true,
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "nullable": true,
+            "type": "integer",
+            "maximum": 730.0,
+            "minimum": 1.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "pack_id",
+          "title",
+          "pack_input"
+        ],
+        "title": "CreateDecisionCaseRequest"
+      },
+      "DecisionCaseResponse": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Case Id"
+          },
+          "pack_id": {
+            "type": "string",
+            "title": "Pack Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "owner": {
+            "title": "Owner",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "current_revision_id": {
+            "title": "Current Revision Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "current_revision_number": {
+            "type": "integer",
+            "title": "Current Revision Number"
+          },
+          "inputs_hash": {
+            "title": "Inputs Hash",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "pack_id",
+          "title",
+          "owner",
+          "status",
+          "current_revision_id",
+          "current_revision_number"
+        ],
+        "title": "DecisionCaseResponse"
+      },
+      "EvidenceResponse": {
+        "properties": {
+          "evidence": {
+            "title": "Evidence",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provenance": {
+            "title": "Provenance",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "reproducibility_id": {
+            "title": "Reproducibility Id",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence",
+          "provenance",
+          "reproducibility_id"
+        ],
+        "title": "EvidenceResponse"
+      },
+      "ExecutionPlanResponse": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plan Id"
+          },
+          "case_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Case Id"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "lifecycle_state": {
+            "type": "string",
+            "title": "Lifecycle State"
+          },
+          "plan_hash": {
+            "title": "Plan Hash",
+            "nullable": true,
+            "type": "string"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "description": "Single-use approval challenge (present only at propose time)",
+            "nullable": true,
+            "type": "string"
+          },
+          "actions": {
+            "title": "Actions",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "receipt": {
+            "title": "Receipt",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_id",
+          "case_id",
+          "run_id",
+          "lifecycle_state",
+          "plan_hash",
+          "actions"
+        ],
+        "title": "ExecutionPlanResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "OutcomeResponse": {
+        "properties": {
+          "outcome_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Outcome Id"
+          },
+          "case_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Case Id"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "actual_metrics": {
+            "title": "Actual Metrics",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "delta": {
+            "title": "Delta",
+            "nullable": true,
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome_id",
+          "case_id",
+          "run_id",
+          "actual_metrics",
+          "delta",
+          "recorded_at"
+        ],
+        "title": "OutcomeResponse"
+      },
+      "StartAnalysisRequest": {
+        "properties": {
+          "retention_mode": {
+            "type": "string",
+            "pattern": "^(exploratory|governed)$",
+            "title": "Retention Mode",
+            "description": "exploratory = refs + hashes only; governed = retain inputs for reproduction",
+            "default": "exploratory"
+          }
+        },
+        "type": "object",
+        "title": "StartAnalysisRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "apps__api_server__schemas__decision_workflow__RecordOutcomeRequest": {
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "nullable": true,
+            "type": "string",
+            "format": "uuid"
+          },
+          "actual_metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Actual Metrics",
+            "description": "e.g. {'retained_arr': 400000}"
+          },
+          "notes": {
+            "title": "Notes",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actual_metrics"
+        ],
+        "title": "RecordOutcomeRequest"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "APIKey",
+        "description": "Canonical v1 authentication. Use Authorization: Bearer <api_key>."
+      },
+      "LegacyApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Legacy compatibility header for existing v1 clients."
+      }
+    }
+  }
+}
