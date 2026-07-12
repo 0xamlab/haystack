@@ -235,6 +235,13 @@ def test_runtime_native_build_hook_packages_every_signed_artifact(
     assert build_data["pure_python"] is False
     assert build_data["infer_tag"] is False
 
+    monkeypatch.setattr(
+        module,
+        "sys_tags",
+        lambda: iter([types.SimpleNamespace(platform="manylinux_2_35_x86_64")]),
+    )
+    assert module._platform_wheel_tag() == "py3-none-manylinux_2_35_x86_64"
+
 
 def test_package_loader_executes_verified_bundled_worker(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

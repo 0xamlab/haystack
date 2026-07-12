@@ -17,11 +17,7 @@ from packaging.tags import sys_tags
 
 
 def _platform_wheel_tag() -> str:
-    platform_tag = next(
-        tag.platform
-        for tag in sys_tags()
-        if "manylinux" not in tag.platform and "musllinux" not in tag.platform
-    )
+    platform_tag = next(tag.platform for tag in sys_tags())
     return f"py3-none-{platform_tag}"
 
 
