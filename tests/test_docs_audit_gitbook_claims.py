@@ -589,6 +589,7 @@ def test_package_registry_audit_rejects_stale_runtime_caveat_after_pypi_live(
 def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: Path) -> None:
     audit = _load_module()
     fetched_urls: list[str] = []
+    markdown_max_bytes: list[int] = []
     (tmp_path / "SUMMARY.md").write_text(
         """# Table of contents
 
@@ -620,7 +621,7 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
 """
 
     def fake_fetch(url: str, *, max_bytes: int = 2_000_000, timeout: float = 30.0):
-        del max_bytes, timeout
+        del timeout
         fetched_urls.append(url)
         if url.endswith("/sitemap-pages.xml"):
             return 200, sitemap.encode(), "application/xml"
@@ -635,6 +636,7 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
             or url.endswith("/sdks/mcp.md")
             or url.endswith("/help/ai-access.md")
         ):
+            markdown_max_bytes.append(max_bytes)
             return (
                 200,
                 b"# Algenta page\n\nInstall Algenta from the public package.\n",
@@ -707,6 +709,8 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
     assert "https://docs.example/.md" in fetched_urls
     assert "https://docs.example/sdks/mcp.md" in fetched_urls
     assert "https://docs.example/help/ai-access.md" in fetched_urls
+    assert markdown_max_bytes == [audit._LIVE_MARKDOWN_MAX_PAGE_BYTES] * 3
+    assert audit._LIVE_MARKDOWN_MAX_PAGE_BYTES >= 3_000_000
 
 
 def _docs_mcp_tool(name: str, required_input: str) -> dict:

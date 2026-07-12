@@ -1999,6 +1999,7 @@ _LLMS_FULL_NEXT_PAGE_RE = re.compile(r"\[Next Page\]\(([^)\s]+)\)")
 _LLMS_FULL_PAGE_PATH_RE = re.compile(r"^/llms-full\.txt/\d+$")
 _LLMS_FULL_MAX_PAGES = 32
 _LLMS_FULL_MAX_PAGE_BYTES = 3_000_000
+_LIVE_MARKDOWN_MAX_PAGE_BYTES = 3_000_000
 
 
 def _fetch_llms_full_pages(
@@ -2286,7 +2287,9 @@ def _audit_live(
         route_and_source: tuple[str, Path | None],
     ) -> tuple[list[Issue], int, int, bool]:
         route, source_path = route_and_source
-        status, body, content_type = _fetch(f"{base}{route}", max_bytes=500_000)
+        status, body, content_type = _fetch(
+            f"{base}{route}", max_bytes=_LIVE_MARKDOWN_MAX_PAGE_BYTES
+        )
         text = body.decode("utf-8", "replace")
         route_issues: list[Issue] = []
         if (
