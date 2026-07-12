@@ -141,6 +141,16 @@ def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
     assert 'python = ">=3.14,<3.15"' in pixi
 
 
+def test_sdk_release_workflow_is_idempotent() -> None:
+    release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text(
+        "utf-8"
+    )
+
+    assert release.count("skip-existing: true") == 6
+    assert 'npm view "algenta-sdk@$VERSION" version' in release
+    assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
+
+
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:
     # The npm "files" allowlist is the ONLY thing that lands in the published tarball (no
     # .npmignore). dist/ holds the compiled JS+types; proto/ is loaded at runtime by the gRPC

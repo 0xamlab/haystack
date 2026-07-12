@@ -146,16 +146,19 @@ jobs:
         with:
           packages-dir: packages/python-sdk/dist
           password: ${{ secrets.PYPI_TOKEN }}
+          skip-existing: true
       - name: Publish algenta-core (shim)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/algenta-core/dist
           password: ${{ secrets.PYPI_TOKEN }}
+          skip-existing: true
       - name: Publish algenta-mcp
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/mcp/dist
           password: ${{ secrets.PYPI_TOKEN }}
+          skip-existing: true
 
   publish-npm:
     name: publish to npm (provenance, manual approval)
@@ -182,6 +185,12 @@ jobs:
           # still runs on publish and builds dist/.
           npm ci --ignore-scripts
           npm run build
-          npm publish --provenance --access public
+          VERSION="$(node -p "require('./package.json').version")"
+          PUBLISHED_VERSION="$(npm view "algenta-sdk@$VERSION" version 2>/dev/null || true)"
+          if [ "$PUBLISHED_VERSION" = "$VERSION" ]; then
+            echo "algenta-sdk@$VERSION is already published; skipping."
+          else
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
