@@ -7,17 +7,13 @@ name = "algenta-core"
 version = "1.0.3"
 description = "DEPRECATED — algenta-core graduated into the `algenta` distribution. This is a compatibility shim that just installs `algenta` (same import name, same `algenta` command)."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14,<3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = ["algenta", "deprecated", "shim"]
 classifiers = [
     "Development Status :: 7 - Inactive",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
 # The whole point of the shim: pull in the graduated distribution. Pinned == so an upgrade lands the matching
