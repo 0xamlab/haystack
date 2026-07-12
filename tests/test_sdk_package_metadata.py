@@ -27,12 +27,19 @@ _EXPECTED_LICENSE = "Apache-2.0"
 # intentionally NOT in this Apache/version guard.
 _PYPROJECT_PKGS = ("python-sdk", "algenta", "algenta-core", "mcp")
 _TS_PKG = "ts-sdk"
-_SUPPORTED_PYTHON_CLASSIFIERS = {
+_SDK_PYTHON_CLASSIFIERS = {
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+}
+_RUNTIME_PYTHON_CLASSIFIERS = {"Programming Language :: Python :: 3.14"}
+_PYTHON_CONTRACTS = {
+    "python-sdk": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
+    "algenta": (">=3.14,<3.15", _RUNTIME_PYTHON_CLASSIFIERS),
+    "algenta-core": (">=3.14,<3.15", _RUNTIME_PYTHON_CLASSIFIERS),
+    "mcp": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
 }
 _TRUST_ANCHOR_DER_SHA256 = {
     "algenta_release_pub.pem": "576e8a02b410ec113c2d10dbe68009799958f5d3c1315db4dae93b7d7d9117a2",
@@ -105,11 +112,18 @@ def test_pyproject_declares_license_files() -> None:
         assert "LICENSE" in _py_meta(pkg).get("license-files", []), pkg
 
 
-def test_public_python_packages_declare_current_supported_python_versions() -> None:
-    for pkg in _PYPROJECT_PKGS:
-        classifiers = set(_py_meta(pkg).get("classifiers", []))
-        missing = sorted(_SUPPORTED_PYTHON_CLASSIFIERS - classifiers)
-        assert not missing, f"{pkg} missing Python support classifiers: {missing}"
+@pytest.mark.parametrize("pkg", _PYPROJECT_PKGS)
+def test_public_python_packages_declare_current_supported_python_versions(pkg: str) -> None:
+    expected_requires_python, expected_classifiers = _PYTHON_CONTRACTS[pkg]
+    metadata = _py_meta(pkg)
+    assert metadata["requires-python"] == expected_requires_python, pkg
+
+    classifiers = set(metadata.get("classifiers", []))
+    missing = sorted(expected_classifiers - classifiers)
+    assert not missing, f"{pkg} missing Python support classifiers: {missing}"
+    if pkg in {"algenta", "algenta-core"}:
+        unsupported = sorted(classifiers & (_SDK_PYTHON_CLASSIFIERS - expected_classifiers))
+        assert not unsupported, f"{pkg} advertises unsupported Python classifiers: {unsupported}"
 
 
 def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
