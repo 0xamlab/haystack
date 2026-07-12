@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -205,3 +206,21 @@ async def test_local_connector_probe_persists_final_status(
     assert outcome == (True, "Oracle Database connection successful.", 41)
     assert restored.status == ConnectorStatus.LIVE
     assert restored.last_tested_at is not None
+
+
+def test_local_connector_store_rejects_non_uuid_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from apps.api_server.services import local_connector_store
+
+    monkeypatch.setattr(local_connector_store, "_DIR", tmp_path / "connectors")
+    outside = tmp_path / "outside.json"
+    outside.write_text('{"secret": true}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="valid UUID"):
+        local_connector_store.get_connector("../../outside")
+    with pytest.raises(ValueError, match="valid UUID"):
+        local_connector_store.save_connector({"id": "../../outside"})
+
+    assert json.loads(outside.read_text(encoding="utf-8")) == {"secret": True}

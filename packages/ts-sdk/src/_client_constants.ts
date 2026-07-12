@@ -273,7 +273,7 @@ export const DEFAULT_TIMEOUT = 120_000;
 export const DEFAULT_MAX_RETRIES = 3;
 export const DEFAULT_JOIN_PATH_HOPS = 4;
 export const MAX_JOIN_PATH_HOPS = 6;
-export const SDK_USER_AGENT = "algenta-ts/1.0.2";
+export const SDK_USER_AGENT = "algenta-ts/1.0.3";
 
 export const RUNTIME_MATURITY_VALUES = [
   "experimental",
@@ -302,7 +302,7 @@ export const RUNTIME_SUPPORTED_CHANNEL_VALUES = [
   "cli",
   "mcp",
 ] as const;
-export const RUNTIME_AUXILIARY_CHANNEL_VALUES = ["daemon_client", "runtime_local"] as const;
+export const RUNTIME_AUXILIARY_CHANNEL_VALUES = ["bundled_worker", "runtime_local"] as const;
 export const RUNTIME_FEATURE_FLAG_CHANNEL_VALUES = ["http_api_feature_flag"] as const;
 export const RUNTIME_DEPLOYMENT_MODE_VALUES = [
   "saas",
@@ -923,4 +923,3 @@ export function endpointSuffix(endpoint: string): string {
 export function rebaseEndpoint(baseUrl: string, endpoint: string): string {
   return `${baseUrl.replace(/\/$/, "")}${endpointSuffix(endpoint)}`;
 }
-

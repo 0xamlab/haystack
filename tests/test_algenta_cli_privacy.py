@@ -23,21 +23,40 @@ def _capture_stdout(fn, *args):  # type: ignore[no-untyped-def]
     return buffer.getvalue()
 
 
-def test_algenta_cmd_benchmark_private_profile_uses_self_hosted_guidance(monkeypatch) -> None:
-    monkeypatch.setattr(algenta_cli, "_bench_normal", lambda n=100_000: 10.0)
-    monkeypatch.setattr(algenta_cli, "_bench_simulate", lambda n=100_000: 1.0)
-    monkeypatch.setattr(algenta_cli, "private_profile_enabled", lambda: True)
-    monkeypatch.setattr(
-        algenta_cli,
-        "resolve_dashboard_url",
-        lambda *, component: "http://localhost:8000/dashboard",
-    )
+def test_algenta_cmd_benchmark_uses_only_bundled_runtime(monkeypatch) -> None:
+    calls: list[int] = []
+
+    def _execute(*, runs: int) -> dict[str, object]:
+        calls.append(runs)
+        return {}
+
+    monkeypatch.setattr(algenta_cli, "_execute_native_simulation_or_exit", _execute)
 
     output = _capture_stdout(algenta_cli.cmd_benchmark)
 
-    assert "http://localhost:8000/dashboard" in output
-    assert "free tier: 500 simulations/month" not in output.lower()
-    assert "algenta.ai/dashboard" not in output
+    assert calls == [10_000] * 11
+    assert "bundled native runtime" in output
+    assert "Python fallback:    disabled" in output
+    assert "free tier" not in output.lower()
+    assert "speedup" not in output.lower()
+
+
+def test_algenta_cmd_simulate_uses_bundled_runtime(monkeypatch) -> None:
+    monkeypatch.setattr(
+        algenta_cli,
+        "_execute_native_simulation_or_exit",
+        lambda *, runs: {
+            "summary": {"mean": 30_000.0},
+            "risk": {"probability_of_loss": 0.05},
+            "percentiles": {"p5": 100.0, "p95": 59_000.0},
+            "scenarios_run": runs,
+        },
+    )
+
+    output = _capture_stdout(algenta_cli.cmd_simulate_quick)
+
+    assert "bundled native runtime" in output
+    assert "Python fallback:    disabled" in output
 
 
 def test_algenta_cmd_upgrade_private_profile_uses_self_hosted_guidance(monkeypatch) -> None:
@@ -49,7 +68,7 @@ def test_algenta_cmd_upgrade_private_profile_uses_self_hosted_guidance(monkeypat
     )
     monkeypatch.setattr(
         algenta_cli,
-        "api_key_help_text",
+        "credential_setup_help_text",
         lambda *, component, fallback_base_url=None: (
             "Create a key from your self-hosted admin surface or API base URL: http://localhost:8000"
         ),

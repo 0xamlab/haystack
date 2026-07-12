@@ -1,20 +1,21 @@
 {
-  "api_key_configured": true,
   "artifact": "llm_rollout_live_summary",
-  "base_url": "http://127.0.0.1:59063",
+  "base_url": "http://127.0.0.1:53559",
   "channels": [
-    "daemon_client",
+    "bundled_worker",
     "runtime_local",
     "cli",
     "mcp"
   ],
-  "elapsed_seconds": 4.709,
+  "elapsed_seconds": 0.414,
   "failed": 0,
-  "generated_at": "2026-07-11T06:19:00Z",
+  "generated_at": "2026-07-12T02:52:07Z",
   "minimum_passed": 11,
   "name": "local_runtime_cli_mcp_matrix",
   "passed": 11,
   "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
+  "separate_daemon_required": false,
   "skipped": 0,
-  "status": "passed"
+  "status": "passed",
+  "warm_latency_gate_ms": 15.0
 }

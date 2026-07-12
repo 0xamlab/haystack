@@ -9,8 +9,8 @@ The manifest format matches ``packages/algenta/algenta/native/verify.py`` and
 server code may not have the ``algenta`` package installed.
 
 Release public keys resolve from ``ALGENTA_RELEASE_PUBKEY``, then
-``ALGENTA_RELEASE_PUBKEY_FILE``, then ``algenta_release_pub.pem`` beside the
-artifact, then the installed ``algenta`` package if importable.
+``ALGENTA_RELEASE_PUBKEY_FILE``, then the installed ``algenta`` package. The
+artifact cannot introduce its own trust root.
 """
 
 from __future__ import annotations
@@ -33,29 +33,25 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
-def _load_release_pubkey(artifact_dir: str | None):
+def _load_release_pubkey():
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
 
     pem: bytes | str | None = os.environ.get("ALGENTA_RELEASE_PUBKEY")
     if not pem:
         path = os.environ.get("ALGENTA_RELEASE_PUBKEY_FILE")
-        if not path and artifact_dir:
-            cand = os.path.join(artifact_dir, "algenta_release_pub.pem")
-            path = cand if os.path.exists(cand) else None
         if path and os.path.exists(path):
             with open(path, "rb") as fh:
                 pem = fh.read()
     if not pem:
-        # last resort: the algenta package's embedded release key (present on a pip-installed host)
         try:
             from algenta.native.verify import release_public_key  # type: ignore[import-not-found]
 
             return release_public_key()
         except Exception as exc:  # noqa: BLE001
             raise NativeVerificationError(
-                "no Algenta release public key found (set ALGENTA_RELEASE_PUBKEY / _FILE, ship "
-                "algenta_release_pub.pem next to the artifact, or install the algenta package)"
+                "no trusted Algenta release public key found (set ALGENTA_RELEASE_PUBKEY / "
+                "_FILE or install the algenta package)"
             ) from exc
     try:
         key = serialization.load_pem_public_key(pem.encode() if isinstance(pem, str) else pem)
@@ -108,7 +104,7 @@ def verify_bundled_artifact(
         manifest_bytes = fh.read()
     with open(sig_path, "rb") as fh:
         signature = fh.read()
-    pubkey = _load_release_pubkey(os.path.dirname(artifact_path))
+    pubkey = _load_release_pubkey()
     manifest = verify_manifest(manifest_bytes, signature, pubkey)
     artifact_dir = os.path.dirname(artifact_path)
     seen_expected = False

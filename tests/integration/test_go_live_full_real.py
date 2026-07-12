@@ -268,6 +268,7 @@ def _runtime_worker_env(worker_path: Path) -> dict[str, str]:
         "ALGENTA_RUNTIME_WORKER": resolved,
         "ALGENTA_MOJO_BINARY": resolved,
         "MOJO_BINARY_PATH": resolved,
+        "ALGENTA_RUNTIME_FALLBACK_MODE": "allow",
     }
 
 
@@ -533,9 +534,11 @@ def _fresh_live_suite_env(
         "ALGENTA_API_KEY": api_key,
         "ALGENTA_TEST_IGNORE_HOSTED_LIVE_CREDENTIALS": "0",
         "ALGENTA_RUNTIME_DIR": str(runtime_dir),
+        "ALGENTA_DEVICE_KEY_STORE": "file",
         "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
             LOCAL_LIVE_SIMULATION_PERSIST_TRANSPORT
         ),
+        "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": "1",
     }
 
 
@@ -675,7 +678,7 @@ def _rollout_live_suite_summary(
         },
         "tests/integration/test_cli_mcp_runtime_libraries_live.py": {
             "name": "local_runtime_cli_mcp_matrix",
-            "channels": ["daemon_client", "runtime_local", "cli", "mcp"],
+            "channels": ["bundled_worker", "runtime_local", "cli", "mcp"],
             "minimum_passed": 11,
         },
         "tests/integration/test_runtime_libraries_http_live.py": {

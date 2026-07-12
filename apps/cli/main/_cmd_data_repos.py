@@ -877,12 +877,16 @@ def cmd_repositories_apply(repository_id: str, request_path: str, format: str = 
 
 def cmd_config_set_key(api_key: str, base_url: str | None = None) -> None:
     config = load_config()
-    _store_api_key_secure(config, api_key)
+    try:
+        _store_api_key_secure(config, api_key)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     if base_url:
         config["base_url"] = base_url
     save_config(config)
-    print(f"✅ API key saved to {CONFIG_FILE}")
-    print(f"   Key prefix: {api_key[:12]}...")
+    print("API key saved to the operating-system credential store.")
+    print(f"Non-secret CLI settings: {CONFIG_FILE}")
 
 
 def cmd_simulate(

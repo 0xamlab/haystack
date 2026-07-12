@@ -384,7 +384,7 @@ To enable the agentic repository / GitHub flow, set an LLM provider key in `.env
 
 ```bash title=".env"
 # in ~/.algenta/.env
-ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_KEY="replace-with-your-anthropic-api-key"
 ```
 
 ```bash title="reup.sh"

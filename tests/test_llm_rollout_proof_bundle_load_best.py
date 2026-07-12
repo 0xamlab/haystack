@@ -167,7 +167,7 @@ def test_load_best_cached_live_suite_results_uses_standalone_live_artifacts(
                 "name": "local_runtime_cli_mcp_matrix",
                 "status": "passed",
                 "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
-                "channels": ["daemon_client", "runtime_local", "cli", "mcp"],
+                "channels": ["bundled_worker", "runtime_local", "cli", "mcp"],
                 "minimum_passed": 11,
                 "passed": 11,
                 "failed": 0,
@@ -308,7 +308,7 @@ def test_load_best_cached_live_suite_results_prefers_artifacts_on_equal_score(
                 "name": "local_runtime_cli_mcp_matrix",
                 "status": "passed",
                 "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
-                "channels": ["daemon_client", "runtime_local", "cli", "mcp"],
+                "channels": ["bundled_worker", "runtime_local", "cli", "mcp"],
                 "minimum_passed": 11,
                 "passed": 11,
                 "failed": 0,
@@ -349,5 +349,4 @@ def test_load_best_cached_live_suite_results_prefers_artifacts_on_equal_score(
     assert live_suites[1]["passed"] == 2
     assert live_suites[1]["skipped"] == 2
     assert http_flag_live_suites[0]["passed"] == 4
-
 

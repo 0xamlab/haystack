@@ -7,7 +7,7 @@
     "selected_connectors": [],
     "selected_tiers": [],
     "skip_external_validation": false,
-    "skipped": 11,
+    "skipped": 13,
     "skipped_checks": [
       {
         "name": "dlt GitHub issues example source registration",
@@ -34,6 +34,10 @@
         "reason": "required env not provided: DE_TEST_AZURE_BLOB_URL or (DE_TEST_AZURE_CONNECTION_STRING or DE_TEST_AZURE_ACCOUNT_URL) + DE_TEST_AZURE_CONTAINER + DE_TEST_AZURE_BLOB"
       },
       {
+        "name": "Redis connector /test",
+        "reason": "required env not provided: DE_TEST_REDIS_URL"
+      },
+      {
         "name": "ClickHouse connector /test",
         "reason": "required env not provided: DE_TEST_CLICKHOUSE_URL, DE_TEST_CLICKHOUSE_USER, DE_TEST_CLICKHOUSE_PASSWORD"
       },
@@ -46,6 +50,10 @@
         "reason": "required env not provided: DE_TEST_NEO4J_URI, DE_TEST_NEO4J_USERNAME, DE_TEST_NEO4J_PASSWORD"
       },
       {
+        "name": "Oracle Database connector /test",
+        "reason": "required env not provided: DE_TEST_ORACLE_USER, DE_TEST_ORACLE_PASSWORD, DE_TEST_ORACLE_DSN"
+      },
+      {
         "name": "Snowflake connector /test",
         "reason": "required env not provided: DE_TEST_SNOWFLAKE_ACCOUNT, DE_TEST_SNOWFLAKE_USER, DE_TEST_SNOWFLAKE_PASSWORD, DE_TEST_SNOWFLAKE_WAREHOUSE"
       },
@@ -55,12 +63,12 @@
       }
     ]
   },
-  "elapsed_seconds": 19.204,
+  "elapsed_seconds": 15.514,
   "failed": 0,
-  "generated_at": "2026-07-11T06:16:30.891012Z",
+  "generated_at": "2026-07-12T02:50:24.258394Z",
   "name": "go_live_connectivity_real",
-  "passed": 67,
+  "passed": 65,
   "script": "tests/integration/test_go_live_connectivity_real.py",
-  "skipped": 11,
+  "skipped": 13,
   "total": 78
 }

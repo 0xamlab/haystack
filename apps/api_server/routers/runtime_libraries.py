@@ -10,11 +10,11 @@ from apps.api_server.pagination import paginate_sequence
 from apps.api_server.services.auth_service import AuthContext
 from apps.api_server.services.quota_service import check_rate_limit
 from apps.api_server.services.runtime_library_service import (
+    RuntimeLibraryServiceError,
     execute_public_runtime_library,
     get_public_runtime_library_health,
     list_public_runtime_library_descriptors,
 )
-from apps.runtime.mojo_library_runner import MojoLibraryError
 
 router = APIRouter(tags=["Runtime Libraries"], dependencies=[Depends(require_verified_email)])
 
@@ -77,7 +77,9 @@ async def _enforce_runtime_library_rate_limit(
     )
 
 
-def _mojo_library_http_exception(exc: MojoLibraryError, request: Request) -> HTTPException:
+def _runtime_library_http_exception(
+    exc: RuntimeLibraryServiceError, request: Request
+) -> HTTPException:
     if exc.code in {"module_not_registered", "function_not_registered"}:
         status_code = 404
     elif exc.code == "invalid_arguments":
@@ -189,8 +191,8 @@ async def execute_runtime_library(
             args=payload.args,
             request_id=effective_request_id,
         )
-    except MojoLibraryError as exc:
-        raise _mojo_library_http_exception(exc, request) from exc
+    except RuntimeLibraryServiceError as exc:
+        raise _runtime_library_http_exception(exc, request) from exc
     return RuntimeLibraryExecuteResponse(
         module=execution.module,
         function=execution.function,

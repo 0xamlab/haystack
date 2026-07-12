@@ -244,11 +244,12 @@ de keys revoke $OLD_KEY_ID
 
 ## CLI authentication
 
-The CLI is invoked as `de`. It stores credentials locally and sends them on every call. The CLI ships with the SDK.
+The self-hosted control-plane CLI is invoked as `de`. It reads `ALGENTA_API_KEY` first and otherwise uses the operating-system credential store. Non-secret settings remain in `~/.de/config.json`; API keys are never written there. The self-hosted installer creates the wrapper; `algenta-sdk` does not install it.
 
 ```bash
-# Install the SDK (ships the CLI)
-pip install algenta-sdk
+# The self-hosted installer creates $HOME/.local/bin/de.
+curl -sSL https://algenta.ai/install.sh | bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ### Log in (register this machine)
@@ -269,7 +270,7 @@ de logout                                # removes the stored device license
 
 ### Save a key without registering a device
 
-`de config set-key` writes the key (and optionally a base URL) to the CLI config. Use it for plain API access when you do not need a local device license.
+`de config set-key` writes the key to the operating-system credential store and writes only an optional base URL to the CLI config. If the host has no secure credential backend, the command fails closed; use `ALGENTA_API_KEY` in the process environment. Use this command for plain API access when you do not need a local device license.
 
 ```bash
 de config set-key $ALGENTA_API_KEY
@@ -465,10 +466,10 @@ Setting or rotating a provider key requires the engine to be configured with `AL
 curl -X POST https://api.algenta.ai/v1/provider-keys \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "backend": "anthropic",
-    "api_key": "sk-ant-..."
-  }'
+  -d "{
+    \"backend\": \"anthropic\",
+    \"api_key\": \"$ANTHROPIC_API_KEY\"
+  }"
 ```
 
 | Field | Type | Notes |

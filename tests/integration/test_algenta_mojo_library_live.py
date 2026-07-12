@@ -2,7 +2,7 @@
 Live Python Mojo library integration through the published Algenta package surface.
 
 This verifies the API-key-backed local package path:
-  1. Start a temporary runtime daemon with the compiled Mojo binary.
+  1. Use the automatically resolved compiled worker with no user-managed daemon.
   2. Use `algenta.MojoRuntime(mode="local", api_key=...)` for direct execution.
   3. Use `algenta.libraries(mode="local", api_key=...)` for catalog-backed library execution.
 
@@ -21,11 +21,9 @@ if __name__ != "__main__":
         allow_module_level=True,
     )
 
-import asyncio
 import importlib
 import os
 import shutil
-import socket
 import sys
 import tempfile
 import time
@@ -94,21 +92,8 @@ def check(name: str, fn) -> Any:
         return None
 
 
-def _free_tcp_port() -> str:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return f"127.0.0.1:{sock.getsockname()[1]}"
-
-
 def _reload_runtime_modules() -> None:
     modules = [
-        "apps.runtime.license",
-        "apps.runtime.credits",
-        "apps.runtime.metering",
-        "apps.runtime.entitlement",
-        "apps.runtime.client",
-        "apps.runtime.daemon",
-        "apps.runtime.sdk",
         "algenta",
         "algenta.mojo_runtime",
         "algenta.mojo_entrypoints",
@@ -125,52 +110,12 @@ def _preflight() -> None:
     assert response.status_code == 200, f"/v1/health returned {response.status_code}"
 
 
-def _license_verification_env() -> dict[str, str]:
-    explicit = {
-        "ALGENTA_LICENSE_SIGNING_SECRET": os.environ.get("ALGENTA_LICENSE_SIGNING_SECRET", ""),
-        "LICENSE_SIGNING_SECRET": os.environ.get("LICENSE_SIGNING_SECRET", ""),
-        "ALGENTA_JWT_SECRET": os.environ.get("ALGENTA_JWT_SECRET", ""),
-        "JWT_SECRET": os.environ.get("JWT_SECRET", ""),
-    }
-    if any(value for value in explicit.values()):
-        return {}
-
-    try:
-        from apps.api_server.config import get_settings
-    except Exception:
-        return {}
-
-    settings = get_settings()
-    if settings.license_signing_secret:
-        return {"ALGENTA_LICENSE_SIGNING_SECRET": settings.license_signing_secret}
-    if settings.jwt_secret:
-        return {"ALGENTA_JWT_SECRET": settings.jwt_secret}
-    return {}
-
-
-async def _wait_for_runtime_ready(timeout_seconds: float = 10.0) -> dict[str, Any] | None:
-    from apps.runtime.client import DaemonClient
-
-    client = DaemonClient(timeout=20.0)
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        health = await client.health()
-        if health.get("status") == "ok":
-            return health
-        await asyncio.sleep(0.1)
-    return None
-
-
 @contextmanager
-def local_runtime_daemon() -> dict[str, str]:
+def local_bundled_runtime() -> dict[str, str]:
     runtime_dir = Path(tempfile.mkdtemp(prefix="algenta-python-mojo-live-"))
-    daemon_sock = runtime_dir / "daemon.sock"
-    mojo_sock = runtime_dir / "mojo.sock"
     env_updates = {
         "ALGENTA_RUNTIME_DIR": str(runtime_dir),
-        "ALGENTA_DAEMON_SOCK": str(daemon_sock),
-        "ALGENTA_DAEMON_TCP": _free_tcp_port(),
-        "ALGENTA_MOJO_SOCK": str(mojo_sock),
+        "ALGENTA_DEVICE_KEY_STORE": "file",
         "ALGENTA_CONTROL_PLANE_URL": BASE_URL,
         "ALGENTA_BASE_URL": BASE_URL,
         "DE_BASE_URL": BASE_URL,
@@ -181,35 +126,19 @@ def local_runtime_daemon() -> dict[str, str]:
             "change-me-in-production-use-256-bit-random-value",
         ),
     }
-    if not API_KEY:
-        env_updates["ALGENTA_RUNTIME_DEV_MODE"] = "1"
-    env_updates.update(_license_verification_env())
     old_env = {key: os.environ.get(key) for key in env_updates}
     os.environ.update(env_updates)
     _reload_runtime_modules()
-
-    from apps.runtime.daemon import cmd_start, cmd_stop, is_running
-
     try:
-        if is_running():
-            cmd_stop()
-        cmd_start(foreground=False)
-        health = asyncio.run(_wait_for_runtime_ready())
-        if not health:
-            raise RuntimeError("runtime daemon did not become healthy")
         yield env_updates
     finally:
-        try:
-            if is_running():
-                cmd_stop()
-        finally:
-            for key, old_value in old_env.items():
-                if old_value is None:
-                    os.environ.pop(key, None)
-                else:
-                    os.environ[key] = old_value
-            _reload_runtime_modules()
-            shutil.rmtree(runtime_dir, ignore_errors=True)
+        for key, old_value in old_env.items():
+            if old_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old_value
+        _reload_runtime_modules()
+        shutil.rmtree(runtime_dir, ignore_errors=True)
 
 
 def main() -> int:
@@ -220,7 +149,7 @@ def main() -> int:
 
     _preflight()
 
-    with local_runtime_daemon():
+    with local_bundled_runtime():
         import algenta
 
         runtime = algenta.MojoRuntime(
@@ -238,15 +167,19 @@ def main() -> int:
 
         def test_runtime_health() -> None:
             health = runtime.health()
-            assert health["status"] == "ok"
-            assert health["engine"] == "mojo"
-            assert health["mojo_available"] is True
+            assert health == {
+                "status": "ok",
+                "mode": "bundled-worker",
+                "fallback": "denied",
+                "tcp_listeners": [],
+            }
 
         check("MojoRuntime.health() reports mojo availability", test_runtime_health)
 
         def test_catalog_inventory() -> None:
             modules = catalog.list_modules()
-            assert len(modules) >= 400
+            expected_modules = set(LLM_ROLLOUT_MODULE_NAMES) | {"ab_testing", "elevator"}
+            assert {module.name for module in modules} == expected_modules
             assert modules[0].functions
             assert "sample_size_proportion" in catalog.list_functions("ab_testing")
 

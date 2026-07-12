@@ -145,7 +145,16 @@ describe("public Algenta SDK aliases", () => {
     expect(LEGACY_HEADERS).toEqual(["X-API-Key"]);
     expect(DEPRECATION_WINDOW_DAYS).toBe(90);
     expect(READ_ONLY_DEFAULT).toBe(true);
-    expect(PLAN_LIMITS.enterprise.simulations_per_month).toBe("unlimited");
+    expect(Object.keys(PLAN_LIMITS).sort()).toEqual([
+      "algenta_free",
+      "algenta_pro",
+      "algenta_team",
+      "enterprise",
+    ]);
+    for (const limits of Object.values(PLAN_LIMITS)) {
+      expect(limits.requests_per_minute).toBe(0);
+      expect(limits.simulations_per_month).toBe(0);
+    }
     expectManifestBackedIntegrationsEqual(INTEGRATIONS, INTEGRATIONS);
     expect(PRIMARY_DATA_QUERY_CONTRACT.api.contract_endpoint).toBe("/v1/meta/contract");
     expect(PRIMARY_DATA_QUERY_CONTRACT.api.discovery_endpoint).toBe("/v1/data");

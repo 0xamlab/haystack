@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import stat
 import urllib.error
 
 import pytest
@@ -37,6 +38,86 @@ class _FakeJsonResponse:
 
     def read(self) -> bytes:
         return self._body
+
+
+class _MemoryKeyring:
+    def __init__(self) -> None:
+        self.values: dict[tuple[str, str], str] = {}
+
+    def set_password(self, service: str, account: str, value: str) -> None:
+        self.values[(service, account)] = value
+
+    def get_password(self, service: str, account: str) -> str | None:
+        return self.values.get((service, account))
+
+
+def test_api_key_storage_uses_only_verified_os_keyring(monkeypatch, tmp_path) -> None:
+    keyring = _MemoryKeyring()
+    config = {"api_key": "legacy", "api_key_encryption_key": "legacy-key"}
+    config_dir = tmp_path / "config"
+    secret_file = config_dir / "secrets.bin"
+    config_file = config_dir / "config.json"
+    config_dir.mkdir()
+    secret_file.write_bytes(b"legacy")
+    monkeypatch.setattr(support, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(support, "CONFIG_FILE", config_file)
+    monkeypatch.setattr(support, "SECRET_FILE", secret_file)
+    monkeypatch.setattr(support, "_keyring_module", lambda: keyring)
+
+    support.store_api_key_secure(config, " de_live_secret ")
+    support.save_config(config)
+
+    assert keyring.get_password(support.SECRET_SERVICE, "api_key") == "de_live_secret"
+    assert config == {"api_key_backend": "keyring"}
+    assert json.loads(config_file.read_text(encoding="utf-8")) == config
+    assert stat.S_IMODE(config_file.stat().st_mode) == 0o600
+    assert not secret_file.exists()
+
+
+def test_api_key_storage_fails_closed_without_secure_backend(monkeypatch) -> None:
+    class _UnavailableKeyring:
+        def set_password(self, service: str, account: str, value: str) -> None:
+            raise RuntimeError("unavailable")
+
+    config: dict[str, str] = {}
+    monkeypatch.setattr(support, "_keyring_module", lambda: _UnavailableKeyring())
+
+    with pytest.raises(support.CredentialStoreError, match="No secure operating-system"):
+        support.store_api_key_secure(config, "de_live_secret")
+
+    assert config == {}
+
+
+def test_api_key_load_reports_unavailable_secure_backend(monkeypatch, capsys) -> None:
+    class _UnavailableKeyring:
+        def get_password(self, service: str, account: str) -> str | None:
+            raise RuntimeError("unavailable")
+
+    monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
+    monkeypatch.delenv("DE_API_KEY", raising=False)
+    monkeypatch.setattr(support, "load_config", lambda: {"api_key_backend": "keyring"})
+    monkeypatch.setattr(support, "_keyring_module", lambda: _UnavailableKeyring())
+
+    with pytest.raises(SystemExit) as exc_info:
+        support.get_api_key()
+
+    assert exc_info.value.code == 1
+    assert "Credential store error" in capsys.readouterr().err
+
+
+def test_config_rejects_secret_fields_and_legacy_plaintext_is_not_loaded(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(support, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(support, "CONFIG_FILE", tmp_path / "config.json")
+
+    with pytest.raises(ValueError, match="unsupported keys"):
+        support.save_config({"api_key": "de_live_secret"})
+
+    assert support.load_api_key_from_storage(
+        {"api_key_backend": "config", "api_key": "de_live_secret"}
+    ) == ""
 
 
 def test_get_base_url_private_profile_requires_explicit_origin(monkeypatch) -> None:

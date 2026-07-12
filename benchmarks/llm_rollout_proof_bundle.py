@@ -42,7 +42,7 @@ PUBLIC_SUPPORTED_CHANNELS = (
     "mcp",
 )
 UNDERLYING_VALIDATED_LANES = (
-    "daemon_client",
+    "bundled_worker",
     "runtime_local",
 )
 PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV = "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED"
@@ -74,7 +74,7 @@ LIVE_SUITES = (
         "name": "local_runtime_cli_mcp_matrix",
         "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
         "timeout_seconds": 900,
-        "channels": ("daemon_client", "runtime_local", "cli", "mcp"),
+        "channels": ("bundled_worker", "runtime_local", "cli", "mcp"),
         "minimum_passed": 11,
     },
 )
@@ -164,7 +164,7 @@ SERVING_EXTENSION_CHANNEL_SUITES = (
         "feature_flag": False,
     },
     {
-        "channel": "daemon_client",
+        "channel": "bundled_worker",
         "suite_name": "local_runtime_cli_mcp_matrix",
         "feature_flag": False,
     },
@@ -252,7 +252,7 @@ def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
         ),
         (
             "| Serving extension channel coverage | "
-            "python_sdk, typescript_sdk, cli, mcp, daemon_client, runtime_local, "
+            "python_sdk, typescript_sdk, cli, mcp, bundled_worker, runtime_local, "
             "and http_api_feature_flag all passed via the full 209-function live suites "
             f"for the {serving_extension_channel_coverage['module_count']}-module / "
             f"{serving_extension_channel_coverage['function_count']}-function serving subset | "
@@ -263,7 +263,7 @@ def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
             "| Supported channel coverage | "
             f"Python SDK {live_by_name['python_sdk_local_runtime']['passed']}/"
             f"{live_by_name['python_sdk_local_runtime']['minimum_passed']} passed, "
-            'CLI + DaemonClient + `Runtime(mode="local")` + MCP '
+            'CLI + bundled worker + `Runtime(mode="local")` + MCP '
             f"{live_by_name['local_runtime_cli_mcp_matrix']['passed']}/"
             f"{live_by_name['local_runtime_cli_mcp_matrix']['minimum_passed']} passed, "
             "TypeScript SDK "
@@ -307,8 +307,8 @@ def render_rollout_scorecard_section(bundle: dict[str, Any]) -> str:
         ),
         (
             "| Public HTTP API flag readiness | "
-            "`/v1/libraries*` routes are feature-flag ready via "
-            f"`{PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV}` and remain disabled by default | "
+            "`/v1/libraries*` routes are enabled by default and can be disabled via "
+            f"`{PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV}` | "
             "`tests/test_runtime_libraries_api.py`, `apps/api_server/main.py`, "
             "`apps/api_server/config.py` | Green |"
         ),
@@ -599,6 +599,21 @@ def _parse_test_runner_summary(output: str) -> dict[str, int]:
     return parsed
 
 
+def _public_command(command: tuple[str, ...] | list[str]) -> list[str]:
+    """Return a reproducible command without serializing a workstation path."""
+    public_command = list(command)
+    if public_command and Path(public_command[0]).is_absolute():
+        executable_name = Path(public_command[0]).name
+        if executable_name.startswith("python"):
+            public_command[0] = "python3"
+        else:
+            raise ValueError(
+                "Proof commands must not serialize absolute executable paths: "
+                f"{public_command[0]}"
+            )
+    return public_command
+
+
 def _run_live_suite(script_path: str, timeout_seconds: int) -> tuple[int, float, str]:
     started = time.perf_counter()
     env = dict(os.environ)
@@ -793,7 +808,7 @@ def _collect_sdk_contract_suite_results() -> list[dict[str, Any]]:
         results.append(
             {
                 "name": suite["name"],
-                "command": list(suite["command"]),
+                "command": _public_command(suite["command"]),
                 "channels": list(suite["channels"]),
                 "minimum_passed": suite["minimum_passed"],
                 "evidence_paths": list(suite["evidence_paths"]),
@@ -829,7 +844,7 @@ def _collect_http_flag_contract_suite_results() -> list[dict[str, Any]]:
         results.append(
             {
                 "name": suite["name"],
-                "command": list(suite["command"]),
+                "command": _public_command(suite["command"]),
                 "minimum_passed": suite["minimum_passed"],
                 "evidence_paths": list(suite["evidence_paths"]),
                 "status": "passed",
@@ -1109,7 +1124,7 @@ def build_proof_bundle(
         "expected_functions": len(LLM_ROLLOUT_FUNCTION_CASES),
         "public_supported_channels": list(PUBLIC_SUPPORTED_CHANNELS),
         "underlying_validated_lanes": list(UNDERLYING_VALIDATED_LANES),
-        "public_http_library_routes_supported": False,
+        "public_http_library_routes_supported": True,
         "public_http_library_routes_feature_flag_ready": True,
         "public_http_library_routes_enable_env": PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV,
         "parity_artifact": {

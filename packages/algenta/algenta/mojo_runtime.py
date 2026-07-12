@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
+from time import perf_counter
 from typing import Any
 
 from algenta.mojo_errors import (
@@ -14,27 +15,100 @@ from algenta.mojo_errors import (
 
 
 def _load_runtime_class():
-    try:
-        from apps.runtime.sdk import Runtime as RuntimeSDK
-    except ImportError as exc:  # pragma: no cover - exercised in packaged environments
-        raise MojoRuntimeConfigurationError(
-            "compute_runtime_unavailable",
-            "The bundled local runtime SDK is unavailable. Install a supported "
-            "algenta package/runtime build before accessing local runtime libraries.",
-        ) from exc
-    return RuntimeSDK
+    return _BundledRuntime
 
 
 def _load_runtime_inventory():
-    try:
-        from apps.runtime.mojo_inventory import discover_runtime_library_modules
-    except ImportError as exc:  # pragma: no cover - exercised in packaged environments
-        raise MojoRuntimeConfigurationError(
-            "compute_runtime_unavailable",
-            "The bundled local runtime inventory is unavailable. Install a supported "
-            "algenta package/runtime build before accessing local runtime libraries.",
-        ) from exc
-    return lambda: discover_runtime_library_modules(executable_only=True)
+    from algenta.native import worker
+    from algenta.runtime_library_contract import filtered_runtime_modules
+
+    return lambda: filtered_runtime_modules(worker.runtime_module_filter())
+
+
+class _BundledRuntime:
+    def __init__(
+        self,
+        *,
+        mode: str,
+        api_key: str,
+        timeout: float,
+        auto_start_daemon: bool,
+        base_url: str,
+    ) -> None:
+        del api_key, auto_start_daemon, base_url
+        if mode != "local":
+            raise ValueError("The bundled runtime supports local mode only")
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than zero")
+        self._timeout = timeout
+
+    @staticmethod
+    def _require_verified_runtime() -> bool:
+        from algenta.native.loader import _fallback_mode
+
+        return _fallback_mode() != "allow"
+
+    def execute(self, module: str, function: str, args: Any = None) -> dict[str, Any]:
+        from algenta.native import worker
+        from algenta.runtime_library_contract import RuntimeLibraryContractError
+        from algenta.runtime_library_transport import build_worker_request, parse_worker_response
+
+        started = perf_counter()
+        try:
+            module_spec, function_spec, request = build_worker_request(module, function, args)
+            response = worker.execute(
+                request,
+                timeout=self._timeout,
+                require_verified=self._require_verified_runtime(),
+            )
+            result = parse_worker_response(module_spec, function_spec, response)
+        except RuntimeLibraryContractError as exc:
+            return {
+                "result": None,
+                "latency_ms": round((perf_counter() - started) * 1000, 3),
+                "engine_used": "none",
+                "success": False,
+                "error": str(exc),
+                "error_code": exc.code,
+            }
+        except worker.NativeWorkerUnavailable as exc:
+            return {
+                "result": None,
+                "latency_ms": round((perf_counter() - started) * 1000, 3),
+                "engine_used": "none",
+                "success": False,
+                "error": str(exc),
+                "error_code": "compute_runtime_unavailable",
+            }
+        return {
+            "result": result,
+            "latency_ms": round((perf_counter() - started) * 1000, 3),
+            "engine_used": "mojo",
+            "success": True,
+            "error": "",
+        }
+
+    def health(self) -> dict[str, Any]:
+        from algenta.native import worker
+
+        try:
+            worker.ensure_ready(
+                timeout=self._timeout,
+                require_verified=self._require_verified_runtime(),
+            )
+        except worker.NativeWorkerUnavailable as exc:
+            return {
+                "status": "error",
+                "mode": "bundled-worker",
+                "fallback": "denied",
+                "error": str(exc),
+            }
+        return {
+            "status": "ok",
+            "mode": "bundled-worker",
+            "fallback": "denied",
+            "tcp_listeners": [],
+        }
 
 
 @dataclass(frozen=True)
@@ -222,9 +296,11 @@ class LibraryModuleProxy:
             result = self._runtime.execute(self._descriptor.name, function_name, payload)
             if not result.get("success", False):
                 error_message = str(result.get("error", "Runtime execution failed."))
-                error_code = "python_fallback_disabled"
+                error_code = str(result.get("error_code") or "mojo_execution_failed")
                 engine_used = result.get("engine_used")
-                if engine_used != "python-fallback":
+                if engine_used == "python-fallback":
+                    error_code = "python_fallback_disabled"
+                elif not result.get("error_code"):
                     error_code = (
                         "compute_runtime_unavailable"
                         if engine_used in {None, "", "none"}
@@ -331,7 +407,7 @@ class LibraryCatalog:
 
 
 class MojoRuntime:
-    """Thin package-level facade over the local decision-engine runtime SDK."""
+    """In-process facade over the automatically installed bundled runtime."""
 
     def __init__(
         self,

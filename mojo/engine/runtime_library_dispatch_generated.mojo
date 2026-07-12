@@ -4763,10 +4763,6 @@ from rubber import (
     heat_buildup as _rubber__heat_buildup,
 )
 
-from runtime_library_dispatch_generated import (
-    dispatch_runtime_library as _runtime_library_dispatch_generated__dispatch_runtime_library,
-)
-
 from sampling import (
     halton_sequence as _sampling__halton_sequence,
     halton_2d as _sampling__halton_2d,
@@ -76359,29 +76355,6 @@ fn _dispatch_rubber(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module rubber."
     )
 
-fn _dispatch_runtime_library_dispatch_generated(function_name: String, args_array: String) raises -> String:
-    var arg_count = json_array_len(args_array)
-    if function_name == "dispatch_runtime_library":
-        if arg_count == 1:
-            try:
-                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
-                var result = _runtime_library_dispatch_generated__dispatch_runtime_library(arg_0)
-                var result_json = _to_json_string(result)
-                return _success_json(result_json)
-            except:
-                return _error_json(
-                    "mojo_library_execution_failed",
-                    "Mojo library execution failed for runtime_library_dispatch_generated.dispatch_runtime_library."
-                )
-        return _error_json(
-            "invalid_arguments",
-            "Function runtime_library_dispatch_generated.dispatch_runtime_library expected 1 arguments, received " + String(arg_count) + "."
-        )
-    return _error_json(
-        "function_not_registered",
-        "Function '" + function_name + "' is not registered for module runtime_library_dispatch_generated."
-    )
-
 fn _dispatch_sampling(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "halton_sequence":
@@ -97193,8 +97166,6 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_root_finding(function_name, args_array)
     if module_name == "rubber":
         return _dispatch_rubber(function_name, args_array)
-    if module_name == "runtime_library_dispatch_generated":
-        return _dispatch_runtime_library_dispatch_generated(function_name, args_array)
     if module_name == "sampling":
         return _dispatch_sampling(function_name, args_array)
     if module_name == "scheduler_ops":

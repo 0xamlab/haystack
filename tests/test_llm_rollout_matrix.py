@@ -85,10 +85,10 @@ def test_llm_rollout_proof_bundle_artifact_matches_rollout_contract() -> None:
         "mcp",
     ]
     assert payload["underlying_validated_lanes"] == [
-        "daemon_client",
+        "bundled_worker",
         "runtime_local",
     ]
-    assert payload["public_http_library_routes_supported"] is False
+    assert payload["public_http_library_routes_supported"] is True
     assert payload["public_http_library_routes_feature_flag_ready"] is True
     assert payload["public_http_library_routes_enable_env"] == (
         "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED"
@@ -240,7 +240,7 @@ def test_llm_rollout_proof_bundle_artifact_matches_rollout_contract() -> None:
     assert list(channel_entries) == [
         "python_sdk",
         "typescript_sdk",
-        "daemon_client",
+        "bundled_worker",
         "runtime_local",
         "cli",
         "mcp",

@@ -94,7 +94,7 @@ def test_runtime_api_mode_get_runtime_manifest_uses_typed_output(
     assert manifest.modules[0].public_supported_channels[0] is RuntimeSupportedChannel.python_sdk
     assert (
         manifest.modules[0].validated_auxiliary_channels[0]
-        is RuntimeAuxiliaryChannel.daemon_client
+        is RuntimeAuxiliaryChannel.bundled_worker
     )
     assert (
         manifest.modules[0].feature_flag_channels[0]
@@ -156,7 +156,7 @@ def test_runtime_api_mode_get_runtime_manifest_uses_typed_output(
     assert manifest.proof_matrix[0].obligations[0] is RuntimeProofObligation.numerical_parity
     assert manifest.maturity[RuntimeModuleId.bpe_tokenizer] is RuntimeMaturity.channel_covered
     assert manifest.supported_channels[0] is RuntimeSupportedChannel.python_sdk
-    assert manifest.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannel.daemon_client
+    assert manifest.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannel.bundled_worker
     assert (
         manifest.feature_flag_channels[0]
         is RuntimeFeatureFlagChannel.http_api_feature_flag

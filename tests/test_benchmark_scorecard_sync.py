@@ -402,7 +402,7 @@ def test_sync_shared_benchmark_scorecard_rewrites_dynamic_rows(tmp_path: Path) -
                         {"channel": "typescript_sdk"},
                         {"channel": "cli"},
                         {"channel": "mcp"},
-                        {"channel": "daemon_client"},
+                        {"channel": "bundled_worker"},
                         {"channel": "runtime_local"},
                         {"channel": "http_api_feature_flag"},
                     ],
@@ -805,8 +805,8 @@ def test_sync_shared_benchmark_scorecard_rewrites_dynamic_rows(tmp_path: Path) -
         "`tests/test_llm_rollout_proof_bundle.py` | Green |"
     ) in text
     assert (
-        "| Public HTTP API flag readiness | `/v1/libraries*` routes are feature-flag ready via "
-        "`ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` and remain disabled by default | "
+        "| Public HTTP API flag readiness | `/v1/libraries*` routes are enabled by default "
+        "and can be disabled via `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` | "
         "`tests/test_runtime_libraries_api.py`, `apps/api_server/main.py`, "
         "`apps/api_server/config.py` | Green |"
     ) in text

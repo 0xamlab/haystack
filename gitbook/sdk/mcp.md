@@ -252,6 +252,16 @@ The server exposes one MCP tool per capability. Tool names, descriptions, and in
 | `embedding_similarity` | Score caller-supplied vectors with a supported similarity model. |
 | `rerank` | Rank caller-supplied document embeddings deterministically. |
 
+### Runtime libraries
+
+| Tool | Description |
+|------|-------------|
+| `list_runtime_libraries` | List the live compiled runtime modules and their public functions. |
+| `execute_runtime_library` | Execute one named runtime function through the deployment's warm worker. |
+
+These tools call the authenticated `/v1/libraries` API surface. MCP users do
+not launch or configure a separate local runtime.
+
 ### Simplified product helpers
 
 | Tool | Description |

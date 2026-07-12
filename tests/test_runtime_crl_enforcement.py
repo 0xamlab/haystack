@@ -49,6 +49,14 @@ def test_v2_without_activation_id_never_revoked(monkeypatch) -> None:
     assert rt._is_license_revoked(_license(version=2, activation_id="")) is False
 
 
+def test_oem_license_never_fetches_control_plane_crl(monkeypatch) -> None:
+    license = _license(version=2, activation_id="act-OEM")
+    license.deployment_class = "oem"
+    monkeypatch.setattr(rt, "_fetch_revocation_list", lambda: pytest.fail("must not fetch"))
+
+    assert rt._is_license_revoked(license) is False
+
+
 # ── v2 revocation decision ─────────────────────────────────────────────────────
 
 

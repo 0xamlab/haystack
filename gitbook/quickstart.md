@@ -203,7 +203,7 @@ query_result = client.query_with_metadata({
 
 ## Where to go next
 
-- Run the engine in production: see the self-hosting guide for TLS, secrets, and the `.env` reference written by the installer.
+- Deploy Algenta in production: see the self-hosting guide for TLS, secrets, and the `.env` reference written by the installer.
 - Call `/v1` directly without the SDK: the engine exposes the full surface at `http://localhost:8000/docs`.
 - Manage keys: list with `GET /v1/api-keys`, revoke with `DELETE /v1/api-keys/{id}`.
 

@@ -4,13 +4,13 @@ Algenta Python SDK.
 Usage:
     import os
 
-    from decision_engine import CodnaClient
+    from decision_engine import AlgentaClient
 
     api_key = os.environ.get("ALGENTA_API_KEY") or os.environ.get("DE_API_KEY")
     if not api_key:
         raise RuntimeError("Set ALGENTA_API_KEY or DE_API_KEY before running this example.")
 
-    client = CodnaClient(api_key=api_key)
+    client = AlgentaClient(api_key=api_key)
     datasets = client.list_datasets(search="orders", compact=True)
     summary = client.get_dataset_summary(datasets.datasets[0].dataset_id)
     result = client.query_with_metadata(
@@ -32,18 +32,17 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 _LAZY_EXPORTS = {
+    "AlgentaClient": ("decision_engine.client_facade", "AlgentaClient"),
+    "AsyncAlgentaClient": (
+        "decision_engine.async_client_facade",
+        "AsyncAlgentaClient",
+    ),
+    # Backward-compatible aliases for integrations that used the former name.
     "CodnaClient": ("decision_engine.client_facade", "CodnaClient"),
     "AsyncCodnaClient": (
-        "decision_engine.async_client_facade",
-        "AsyncCodnaClient",
-    ),
-    # Back-compat: the client was historically exported as AlgentaClient. Keep the
-    # old names working so existing integrations don't break on the codna rename.
-    "AlgentaClient": ("decision_engine.client_facade", "CodnaClient"),
-    "AsyncAlgentaClient": (
         "decision_engine.async_client_facade",
         "AsyncCodnaClient",
     ),

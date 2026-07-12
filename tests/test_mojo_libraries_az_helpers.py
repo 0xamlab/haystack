@@ -41,7 +41,8 @@ def test_native_mojo_build_helper_uses_object_then_runtime_link() -> None:
     assert '"${PIXI_BIN_RESOLVED}" run mojo build' in helper_text
     assert '-I "${ENGINE_INCLUDE_DIR}"' in helper_text
     assert 'PYTHON_RUNTIME_STEM' in helper_text
-    assert '-l"${PYTHON_RUNTIME_STEM}"' in helper_text
+    assert '"${PYTHON_RUNTIME_LIB}"' in helper_text
+    assert '-l"${PYTHON_RUNTIME_STEM}"' not in helper_text
 
 
 def test_mojo_run_command_prefers_direct_binary_when_present(monkeypatch, tmp_path) -> None:

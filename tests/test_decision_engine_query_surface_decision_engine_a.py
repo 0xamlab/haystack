@@ -421,7 +421,7 @@ def test_decision_engine_client_get_runtime_manifest_returns_typed_result(monkey
     assert manifest.modules[0].public_supported_channels[0] is RuntimeSupportedChannelResult.python_sdk
     assert (
         manifest.modules[0].validated_auxiliary_channels[0]
-        is RuntimeAuxiliaryChannelResult.daemon_client
+        is RuntimeAuxiliaryChannelResult.bundled_worker
     )
     assert (
         manifest.modules[0].feature_flag_channels[0]
@@ -502,7 +502,7 @@ def test_decision_engine_client_get_runtime_manifest_returns_typed_result(monkey
         is RuntimeMaturityResult.channel_covered
     )
     assert manifest.supported_channels[0] is RuntimeSupportedChannelResult.python_sdk
-    assert manifest.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannelResult.daemon_client
+    assert manifest.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannelResult.bundled_worker
     assert (
         manifest.feature_flag_channels[0]
         is RuntimeFeatureFlagChannelResult.http_api_feature_flag

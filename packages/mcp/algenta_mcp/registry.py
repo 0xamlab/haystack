@@ -71,6 +71,7 @@ from algenta_mcp.tools import (
     recommend,
     repositories,
     runs,
+    runtime_libraries,
     simulate,
     sources,
     triggers,
@@ -224,8 +225,16 @@ TOOLS: dict[str, ToolEntry] = {
         "handler": llm.embedding_similarity_handler,
     },
     "rerank": {"spec": llm.RERANK_SPEC, "handler": llm.rerank_handler},
-    # Runtime-libraries tools require a LOCAL runtime daemon; omitted from the standalone
-    # algenta-mcp package (v1), which is a remote/self-hosted API proxy.
+    # Runtime libraries remain API-backed in the standalone package; the Algenta deployment
+    # owns the bundled compute lifecycle.
+    "list_runtime_libraries": {
+        "spec": runtime_libraries.LIST_RUNTIME_LIBRARIES_SPEC,
+        "handler": runtime_libraries.list_runtime_libraries_handler,
+    },
+    "execute_runtime_library": {
+        "spec": runtime_libraries.EXECUTE_RUNTIME_LIBRARY_SPEC,
+        "handler": runtime_libraries.execute_runtime_library_handler,
+    },
     # ── Capability plane — unified provider, binding, routing, and skill surfaces ──
     "list_capability_providers": {
         "spec": capability_plane.LIST_CAPABILITY_PROVIDERS_SPEC,

@@ -1,9 +1,8 @@
-"""Algenta product editions — the single source of truth for the curated tool
-subset each vertical product exposes.
+"""Algenta product editions and their curated MCP tool subsets.
 
-Algenta is the engine; each product (Codna=coding, Cohenta=marketing,
-Decimas=trading, Escrypto=crypto governance) is a curated *edition* over the same
-MCP/API core. ``X-Algenta-Product`` / ``ALGENTA_PRODUCT`` selects an edition.
+``X-Algenta-Product`` / ``ALGENTA_PRODUCT`` selects an edition. Compatibility
+aliases remain accepted for existing integrations but are not documentation
+surfaces for separate products.
 
 SECURITY MODEL — the product selector is a ROUTING HINT, not authorization:
 
@@ -22,8 +21,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-# ── Codna — coding edition (the first shipped vertical) ──────────────────────
-CODNA_CODING_TOOLS: frozenset[str] = frozenset(
+# Public Algenta coding and repository-intelligence edition.
+ALGENTA_CODING_TOOLS: frozenset[str] = frozenset(
     {
         # repository intelligence (the headline flow)
         "get_repository_intelligence_capabilities",
@@ -58,31 +57,22 @@ CODNA_CODING_TOOLS: frozenset[str] = frozenset(
     }
 )
 
-# Forward-looking verticals — intentionally EMPTY until each product ships, so
-# selecting them fails closed (no tools) rather than exposing the full registry.
-COHENTA_MARKETING_TOOLS: frozenset[str] = frozenset()
-DECIMAS_TRADING_TOOLS: frozenset[str] = frozenset()
-ESCRYPTO_GOVERNANCE_TOOLS: frozenset[str] = frozenset()
-
 PRODUCT_EDITIONS: dict[str, frozenset[str]] = {
-    "algenta": CODNA_CODING_TOOLS,
-    "codna": CODNA_CODING_TOOLS,
-    "cohenta": COHENTA_MARKETING_TOOLS,
-    "decimas": DECIMAS_TRADING_TOOLS,
-    "escrypto": ESCRYPTO_GOVERNANCE_TOOLS,
+    "algenta": ALGENTA_CODING_TOOLS,
+    "codna": ALGENTA_CODING_TOOLS,
 }
 
 # ── Feature → tool map ───────────────────────────────────────────────────────
 # A v2 license grants per-product *features*; this maps each granted feature to the
 # concrete tools it unlocks. The local engine intersects this with the product
 # allowlist: available_tools = installed ∩ product_allowlist ∩ license_feature_tools.
-# Every codna tool is reachable via exactly one base/feature bucket (invariant-tested:
-# base ∪ all-feature-tools == CODNA_CODING_TOOLS), so a fully-featured license == the
+# Every Algenta tool is reachable via a base/feature bucket (invariant-tested:
+# base plus all feature tools equals ALGENTA_CODING_TOOLS), so a fully-featured license exposes the
 # full edition.
-_CODNA_BASE_TOOLS: frozenset[str] = frozenset(
+_ALGENTA_BASE_TOOLS: frozenset[str] = frozenset(
     {"get_me", "get_limits", "get_usage", "get_repository_intelligence_capabilities"}
 )
-_CODNA_FEATURE_TOOLS: dict[str, frozenset[str]] = {
+_ALGENTA_FEATURE_TOOLS: dict[str, frozenset[str]] = {
     "repo_graph": frozenset(
         {"query_repository_graph", "create_repository_snapshot", "get_repository_snapshot"}
     ),
@@ -114,12 +104,12 @@ _CODNA_FEATURE_TOOLS: dict[str, frozenset[str]] = {
 }
 
 PRODUCT_BASE_TOOLS: dict[str, frozenset[str]] = {
-    "algenta": _CODNA_BASE_TOOLS,
-    "codna": _CODNA_BASE_TOOLS,
+    "algenta": _ALGENTA_BASE_TOOLS,
+    "codna": _ALGENTA_BASE_TOOLS,
 }
 PRODUCT_FEATURE_TOOLS: dict[str, dict[str, frozenset[str]]] = {
-    "algenta": _CODNA_FEATURE_TOOLS,
-    "codna": _CODNA_FEATURE_TOOLS,
+    "algenta": _ALGENTA_FEATURE_TOOLS,
+    "codna": _ALGENTA_FEATURE_TOOLS,
 }
 
 

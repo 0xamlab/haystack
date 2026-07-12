@@ -57,7 +57,7 @@ Send a `POST` with the `backend` and the `api_key`. The same call sets a new key
 curl -sS -X POST "$ALGENTA_API_URL/v1/provider-keys" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"backend": "anthropic", "api_key": "sk-ant-your-provider-key"}'
+  -d "{\"backend\": \"anthropic\", \"api_key\": \"$ANTHROPIC_API_KEY\"}"
 ```
 {% endtab %}
 
@@ -139,7 +139,7 @@ The server responds `204 No Content` on success. If no key exists for that backe
 
 ## Set a key from the website
 
-An org admin can also set a provider key from the website's `/byok` front door instead of the API. That page is authenticated by your Supabase (GitHub sign-in) session: it maps your GitHub identity to your Algenta org, confirms you are an org admin, and writes to the same encrypted tenant-key store. The site posts a payload of the shape `{"provider": "anthropic", "key": "sk-ant-..."}`.
+An org admin can also set a provider key from the website's `/byok` front door instead of the API. That page is authenticated by your Supabase (GitHub sign-in) session: it maps your GitHub identity to your Algenta org, confirms you are an org admin, and writes to the same encrypted tenant-key store. The site posts a payload of the shape `{"provider": "anthropic", "key": "<write-only provider key>"}`.
 
 {% hint style="info" %}
 The website front door manages your own LLM **provider** key only. The reserved `engine` key cannot be managed from the website; it can only be set through the admin-authenticated `/v1/provider-keys` API.

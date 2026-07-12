@@ -95,13 +95,9 @@ def llm_backends() -> set[str]:
 
 
 def runtime_library_modules() -> set[str]:
-    """Every runtime-library module the engine dispatches (``as _<module>__<function>``)."""
-    text = _read(ROOT / "mojo/engine/runtime_library_dispatch_generated.mojo")
-    mods: set[str] = set()
-    for alias in re.findall(r"as _(\w+)", text):
-        if "__" in alias:
-            mods.add(alias.split("__", 1)[0])
-    return mods
+    """Every module in the packaged public runtime contract."""
+    payload = json.loads(_read(ROOT / "packages/algenta/algenta/runtime_library_contract.json"))
+    return {module["name"] for module in payload["modules"]}
 
 
 def openapi_paths() -> set[str]:

@@ -200,7 +200,7 @@ case "$(uname -s)" in
             -lAsyncRTRuntimeGlobals \
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
-            -l"${PYTHON_RUNTIME_STEM}" \
+            "${PYTHON_RUNTIME_LIB}" \
             -lc++
         ;;
     Linux)
@@ -230,7 +230,7 @@ case "$(uname -s)" in
             -lAsyncRTRuntimeGlobals \
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
-            -l"${PYTHON_RUNTIME_STEM}" \
+            "${PYTHON_RUNTIME_LIB}" \
             -lstdc++ \
             -ldl \
             -lpthread \
@@ -302,7 +302,11 @@ payload = {
     "schema_version": 1,
     "build_mode": "filtered" if module_filter else "full",
     "module_filter": list(module_filter),
-    "binary_path": _relative(binary_path, repo_root),
+    "binary_path": (
+        _relative(binary_path, repo_root)
+        if binary_path.is_relative_to(repo_root)
+        else binary_path.name
+    ),
     "binary_sha256": _sha256_file(binary_path),
     "source_paths": list(source_hashes),
     "source_sha256": source_hashes,

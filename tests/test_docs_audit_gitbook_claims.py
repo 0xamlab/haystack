@@ -165,6 +165,22 @@ def test_public_package_scanner_rejects_wrong_scoped_typescript_sdk(tmp_path: Pa
     assert issues[0].line == 1
 
 
+def test_public_package_scanner_rejects_insecure_cli_secret_fallback(tmp_path: Path) -> None:
+    audit = _load_module()
+    path = tmp_path / "page.md"
+
+    issues = audit._find_public_package_issues(
+        path,
+        "page.md",
+        "The CLI falls back to a Fernet-encrypted file and stores plaintext only as a last resort.\n",
+    )
+
+    assert [issue.code for issue in issues] == [
+        "insecure_cli_secret_storage_claim",
+        "insecure_cli_secret_storage_claim",
+    ]
+
+
 def test_runtime_encapsulation_scanner_rejects_separate_setup_and_internal_controls() -> None:
     audit = _load_module()
     text = """Run the Mojo engine with de runtime start.

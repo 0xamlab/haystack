@@ -1,6 +1,6 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-07-11T06:21:09Z",
+  "generated_at": "2026-07-12T02:59:00Z",
   "expected_modules": 22,
   "expected_functions": 209,
   "public_supported_channels": [
@@ -10,20 +10,20 @@
     "mcp"
   ],
   "underlying_validated_lanes": [
-    "daemon_client",
+    "bundled_worker",
     "runtime_local"
   ],
-  "public_http_library_routes_supported": false,
+  "public_http_library_routes_supported": true,
   "public_http_library_routes_feature_flag_ready": true,
   "public_http_library_routes_enable_env": "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED",
   "parity_artifact": {
     "path": "build/llm_rollout_parity_benchmark.json",
     "library_count": 22,
     "function_count": 209,
-    "median_speedup_x": 113.31,
-    "mean_speedup_x": 105.47,
-    "max_speedup_x": 301.24,
-    "timestamp": "2026-07-11T02:20:06"
+    "median_speedup_x": 100.83,
+    "mean_speedup_x": 91.41,
+    "max_speedup_x": 243.42,
+    "timestamp": "2026-07-11T22:53:14"
   },
   "compiled_runtime_artifact": {
     "path": "build/llm_compiled_runtime_benchmark.json",
@@ -32,17 +32,17 @@
     "failed_function_count": 0,
     "transport": "compiled_worker",
     "max_cold_ms": {
-      "value": 190.29045797651634,
+      "value": 93.87633297592402,
       "module": "bpe_tokenizer",
       "function": "bpe_merge_score"
     },
     "max_warm_ms": {
-      "value": 0.9117500158026814,
+      "value": 0.7344589685089886,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     },
     "max_hot_ms": {
-      "value": 0.9341455297544599,
+      "value": 0.7692500075791031,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     }
@@ -2148,7 +2148,7 @@
     {
       "name": "python_sdk_package_contract",
       "command": [
-        "/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python",
+        "python3",
         "-m",
         "pytest",
         "-q",
@@ -2164,7 +2164,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 1.077,
+      "elapsed_seconds": 1.287,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -2190,7 +2190,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 0.693,
+      "elapsed_seconds": 1.336,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -2200,7 +2200,7 @@
     {
       "name": "public_http_library_routes_feature_flag",
       "command": [
-        "/private/tmp/algenta-gitbook-audit-clone.m4FiBv/mojo_env/.pixi/envs/default/bin/python",
+        "python3",
         "-m",
         "pytest",
         "-q",
@@ -2213,7 +2213,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 5.161,
+      "elapsed_seconds": 8.378,
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -2234,7 +2234,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 4.274,
+      "elapsed_seconds": 9.291,
       "passed": 4,
       "failed": 0,
       "skipped": 0
@@ -2246,142 +2246,142 @@
     "functions_compared": 60,
     "all_modules_fully_compared": true,
     "all_compiled_engine_used_mojo": true,
-    "min_speedup_x": 64.1,
-    "max_speedup_x": 119.31,
+    "min_speedup_x": 91.96,
+    "max_speedup_x": 127.96,
     "max_cold_ms": {
-      "value": 0.5412079626694322,
-      "module": "inference_engine",
-      "function": "latency_percentile_estimate"
+      "value": 0.5184590118005872,
+      "module": "generation_loop",
+      "function": "top_p_cumulative_accept"
     },
     "max_warm_ms": {
-      "value": 0.37591601721942425,
-      "module": "continuous_batching",
-      "function": "streaming_first_token_latency"
+      "value": 0.4540829686447978,
+      "module": "generation_loop",
+      "function": "top_p_cumulative_accept"
     },
     "max_hot_ms": {
-      "value": 0.34702051198109984,
-      "module": "speculative_decoding",
-      "function": "draft_model_speedup"
+      "value": 0.42202099575661123,
+      "module": "generation_loop",
+      "function": "temperature_logit_scale"
     },
     "modules": [
       {
         "name": "kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 100.55,
+        "parity_speedup_x": 98.74,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.37037505535408854,
-          "function": "incremental_decode_kv_append"
+          "value": 0.3500829916447401,
+          "function": "kv_cache_memory_per_layer"
         },
         "max_warm_ms": {
-          "value": 0.31579198548570275,
-          "function": "prefix_cache_hit_bytes"
+          "value": 0.3171669668518007,
+          "function": "kv_cache_memory_per_layer"
         },
         "max_hot_ms": {
-          "value": 0.3103335329797119,
-          "function": "radix_cache_shared_prefix_len"
+          "value": 0.2895414945669472,
+          "function": "kv_cache_memory_per_layer"
         }
       },
       {
         "name": "paged_kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 116.15,
+        "parity_speedup_x": 127.96,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3655829932540655,
-          "function": "cache_eviction_lru_score"
-        },
-        "max_warm_ms": {
-          "value": 0.33674994483590126,
+          "value": 0.37050002720206976,
           "function": "cache_hit_latency_saving"
         },
+        "max_warm_ms": {
+          "value": 0.3209169954061508,
+          "function": "cache_eviction_beladys_score"
+        },
         "max_hot_ms": {
-          "value": 0.32070852466858923,
-          "function": "cache_eviction_lru_score"
+          "value": 0.3021034935954958,
+          "function": "cache_compaction_gain"
         }
       },
       {
         "name": "continuous_batching",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 106.98,
+        "parity_speedup_x": 100.83,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3967920201830566,
-          "function": "decode_throughput_tokens"
+          "value": 0.33466698369011283,
+          "function": "sequence_completion_fraction"
         },
         "max_warm_ms": {
-          "value": 0.37591601721942425,
-          "function": "streaming_first_token_latency"
+          "value": 0.3812920185737312,
+          "function": "decode_throughput_tokens"
         },
         "max_hot_ms": {
-          "value": 0.3279169904999435,
-          "function": "admission_control_accept"
+          "value": 0.3445209877099842,
+          "function": "streaming_first_token_latency"
         }
       },
       {
         "name": "inference_engine",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 119.31,
+        "parity_speedup_x": 118.25,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.5412079626694322,
-          "function": "latency_percentile_estimate"
+          "value": 0.3442909801378846,
+          "function": "batch_padding_mask"
         },
         "max_warm_ms": {
-          "value": 0.33000000985339284,
-          "function": "latency_percentile_estimate"
+          "value": 0.3434589598327875,
+          "function": "batch_padding_mask"
         },
         "max_hot_ms": {
-          "value": 0.3343124990351498,
-          "function": "dynamic_batching_priority"
+          "value": 0.30060450080782175,
+          "function": "batch_padding_mask"
         }
       },
       {
         "name": "speculative_decoding",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 112.6,
+        "parity_speedup_x": 102.67,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3676670021377504,
-          "function": "constrained_beam_score"
+          "value": 0.3878750139847398,
+          "function": "medusa_head_acceptance"
         },
         "max_warm_ms": {
-          "value": 0.36258395994082093,
-          "function": "structured_repair_score"
+          "value": 0.3470410010777414,
+          "function": "medusa_head_acceptance"
         },
         "max_hot_ms": {
-          "value": 0.34702051198109984,
-          "function": "draft_model_speedup"
+          "value": 0.3803744912147522,
+          "function": "token_healing_overlap"
         }
       },
       {
         "name": "generation_loop",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 64.1,
+        "parity_speedup_x": 91.96,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.32991700572893023,
-          "function": "frequency_penalty_logit"
+          "value": 0.5184590118005872,
+          "function": "top_p_cumulative_accept"
         },
         "max_warm_ms": {
-          "value": 0.3326660371385515,
-          "function": "eos_stop_score"
+          "value": 0.4540829686447978,
+          "function": "top_p_cumulative_accept"
         },
         "max_hot_ms": {
-          "value": 0.3325834986753762,
-          "function": "eta_sampling_accept"
+          "value": 0.42202099575661123,
+          "function": "temperature_logit_scale"
         }
       }
     ]
@@ -2424,7 +2424,7 @@
         "covers_all_serving_extension_functions": true
       },
       {
-        "channel": "daemon_client",
+        "channel": "bundled_worker",
         "suite_name": "local_runtime_cli_mcp_matrix",
         "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
         "status": "passed",
@@ -2504,7 +2504,7 @@
       ],
       "minimum_passed": 7,
       "status": "passed",
-      "elapsed_seconds": 2.914,
+      "elapsed_seconds": 0.234,
       "passed": 7,
       "failed": 0,
       "skipped": 0
@@ -2517,7 +2517,7 @@
       ],
       "minimum_passed": 2,
       "status": "passed",
-      "elapsed_seconds": 17.199,
+      "elapsed_seconds": 16.169,
       "passed": 15,
       "failed": 0,
       "skipped": 0
@@ -2526,14 +2526,14 @@
       "name": "local_runtime_cli_mcp_matrix",
       "script": "tests/integration/test_cli_mcp_runtime_libraries_live.py",
       "channels": [
-        "daemon_client",
+        "bundled_worker",
         "runtime_local",
         "cli",
         "mcp"
       ],
       "minimum_passed": 11,
       "status": "passed",
-      "elapsed_seconds": 5.218,
+      "elapsed_seconds": 0.414,
       "passed": 11,
       "failed": 0,
       "skipped": 0

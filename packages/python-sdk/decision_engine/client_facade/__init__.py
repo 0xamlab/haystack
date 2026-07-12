@@ -171,8 +171,8 @@ if TYPE_CHECKING:
     )
 
 _httpx: Any | None = None
-_SDK_USER_AGENT = "algenta-python/1.0.2"
-_SDK_VERSION = "algenta-python/1.0.2"
+_SDK_USER_AGENT = "algenta-python/1.0.3"
+_SDK_VERSION = "algenta-python/1.0.3"
 
 
 def _get_httpx() -> Any:
@@ -404,6 +404,5 @@ class AlgentaClient(DecisionEngineClient):
     """Preferred public sync client name for the Algenta API."""
 
 
-# Back-compat: the client was historically exported as CodnaClient (the #157 rename).
-# Algenta is the engine/SDK; Algenta is a consumer. Keep the old name working.
+# Backward-compatible alias for integrations that used the former client name.
 CodnaClient = AlgentaClient

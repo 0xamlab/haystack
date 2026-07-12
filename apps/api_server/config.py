@@ -47,14 +47,14 @@ class Settings(BaseSettings):
         ),
     )
     runtime_library_http_api_enabled: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices(
             "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED",
             "RUNTIME_LIBRARY_HTTP_API_ENABLED",
         ),
         description=(
             "Expose /v1/libraries, /v1/libraries/health, and /v1/libraries/execute "
-            "on the hosted/public HTTP API surface. Disabled by default."
+            "on the hosted/public HTTP API surface. Enabled by default; set false to disable."
         ),
     )
     algenta_deployment_mode: str = Field(

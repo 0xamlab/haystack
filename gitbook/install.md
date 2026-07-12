@@ -16,6 +16,8 @@ To make a first call against the self-hosted service, you do not need to install
 | You want to... | Install | Section |
 | --- | --- | --- |
 | Run the full Algenta service (API, worker, database, storage) locally or on a server | `curl ... install.sh \| bash` | [Self-hosted service](#self-hosted-service) |
+| Use the self-hosted control-plane CLI | Installed automatically with the service | [Control-plane CLI](#control-plane-cli) |
+| Run the bundled native runtime from Python or a terminal | `pip install algenta` | [Local native runtime](#local-native-runtime) |
 | Call a running Algenta API from Python | `pip install algenta-sdk` | [Python SDK](#python-sdk) |
 | Call a running Algenta API from TypeScript or JavaScript | `npm install algenta-sdk` | [TypeScript SDK](#typescript-sdk) |
 | Expose Algenta as MCP tools to Cursor or Claude Desktop | `pipx install algenta-mcp` | [MCP server](#mcp-server) |
@@ -140,6 +142,41 @@ cd ~/.algenta && docker compose stop
 {% hint style="info" %}
 If you are on the standalone binary, substitute `docker-compose` for `docker compose`.
 {% endhint %}
+
+## Control-plane CLI
+
+The self-hosted installer creates `$HOME/.algenta/bin/de` and links it at
+`$HOME/.local/bin/de`. It forwards your API key into the existing API container;
+there is no second Python or engine installation.
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+export ALGENTA_API_KEY='<your key>'
+de health
+de account me --format json
+```
+
+`algenta-sdk` does not install `de`. See [Command-line interfaces](cli.md) for
+the exact ownership boundary.
+
+## Local native runtime
+
+The `algenta` package installs the matching native runtime automatically on a
+supported platform. Do not install `algenta-runtime-native` directly.
+
+```bash
+python3.14 -m venv .venv
+source .venv/bin/activate
+pip install algenta
+
+algenta runtime doctor
+algenta simulate
+algenta benchmark
+```
+
+The first execution includes process startup. Subsequent executions reuse one
+private Unix-domain worker; no TCP service or separately managed daemon is
+required.
 
 ## Python SDK
 

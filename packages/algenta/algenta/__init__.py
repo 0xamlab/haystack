@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 _LAZY_EXPORTS = {
     "Runtime": ("algenta.runtime_facade", "Runtime"),
@@ -80,8 +80,8 @@ _LAZY_EXPORTS = {
     "ImportPreview": ("algenta.runtime_model_import_preview", "ImportPreview"),
     "ImportBundlePreview": ("algenta.runtime_model_import_preview", "ImportBundlePreview"),
     "ImportFailure": ("algenta.runtime_model_import_preview", "ImportFailure"),
-    "CodnaRuntimeError": ("algenta.runtime_errors", "CodnaRuntimeError"),
     "AlgentaRuntimeError": ("algenta.runtime_errors", "AlgentaRuntimeError"),
+    "CodnaRuntimeError": ("algenta.runtime_errors", "CodnaRuntimeError"),
     "RuntimeConfigurationError": ("algenta.runtime_errors", "RuntimeConfigurationError"),
     "RuntimeValidationError": ("algenta.runtime_errors", "RuntimeValidationError"),
     "ConnectorMetadata": ("algenta.runtime_connector_model_metadata", "ConnectorMetadata"),
@@ -525,7 +525,7 @@ _LAZY_EXPORTS = {
     ),
     "MojoExecutionError": ("algenta.mojo_errors", "MojoExecutionError"),
     "AlgentaClient": ("algenta.client", "AlgentaClient"),
-    # Back-compat: historically exported as CodnaClient (#157 rename); Algenta is the engine.
+    # Backward-compatible alias for integrations that used the former client name.
     "CodnaClient": ("algenta.client", "CodnaClient"),
     "Result": ("algenta.simple", "Result"),
     "decision": ("algenta.simple", "decision"),

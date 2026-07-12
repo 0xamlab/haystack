@@ -515,20 +515,23 @@ async def test_async_decision_engine_client_get_runtime_modules_returns_typed_re
 async def test_async_decision_engine_client_get_runtime_benchmarks_returns_typed_result(
     monkeypatch,
 ) -> None:
-    from apps.runtime_manifest import get_runtime_admin_benchmarks
     from apps import runtime_manifest as _runtime_manifest_module
+    from apps.runtime_manifest import (
+        _builders as _runtime_manifest_builders,
+    )
+    from apps.runtime_manifest import (
+        get_runtime_admin_benchmarks,
+    )
 
-    # The compiled_mojo_binary artifact entry is only emitted when
-    # mojo_build/simulate exists on disk. In CI the binary is not built,
-    # so materialize a stub at the expected path so the entry is emitted
-    # and the typed client can deserialize the kind. No-op locally where
-    # a real binary already exists. Also clear the @lru_cache on
-    # load_runtime_manifest so an earlier test that ran before the stub
-    # existed doesn't return a stale cached result.
-    binary_path = _runtime_manifest_module._MOJO_BINARY_PATH
-    if not binary_path.exists():
-        binary_path.parent.mkdir(parents=True, exist_ok=True)
-        binary_path.write_bytes(b"#!/bin/sh\nexit 0\n")
+    # The compiled_mojo_binary entry is emitted only when the builder sees an
+    # in-repository artifact. Use this existing file as a non-executable
+    # presence sentinel so the fixture never depends on local build output.
+    artifact_sentinel = (
+        _runtime_manifest_builders._ROOT
+        / "tests"
+        / "test_decision_engine_query_surface_async_decision_a.py"
+    )
+    monkeypatch.setattr(_runtime_manifest_builders, "_MOJO_BINARY_PATH", artifact_sentinel)
     _runtime_manifest_module.load_runtime_manifest.cache_clear()
 
     client = AsyncDecisionEngineClient(api_key="de_test", base_url="http://localhost:8000")
@@ -799,5 +802,3 @@ async def test_async_decision_engine_client_get_runtime_modules_rejects_duplicat
     assert exc_info.value.validation_errors[0]["path"] == "proof_matrix"
 
     await client.aclose()
-
-

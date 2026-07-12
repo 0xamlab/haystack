@@ -13,6 +13,10 @@ Usage:
   algenta simulate               # run a quick local simulation
   algenta version                # show version and capabilities
   algenta upgrade                # show how to switch to cloud API
+  algenta runtime doctor         # verify the bundled runtime
+  algenta runtime modules        # list bundled runtime libraries
+  algenta runtime functions NAME # list functions for one library
+  algenta runtime execute NAME FUNCTION --args-json '{}'
 
 Cloud Managed path: `algenta upgrade` shows the hosted console flow. In
 `self_hosted` and `air_gapped`, use the API key provisioned by your
@@ -22,48 +26,17 @@ not silently fall back to Algenta cloud.
 
 from __future__ import annotations
 
-import math
-import random
+import json
 import sys
 import time
+from statistics import median
 
 from algenta.branding import runtime_banner
 from algenta.privacy_profile import (
-    api_key_help_text,
+    credential_setup_help_text,
     private_profile_enabled,
     resolve_console_base_url,
-    resolve_dashboard_url,
 )
-
-
-def _print_scale_guidance() -> None:
-    dashboard_url = resolve_dashboard_url(component="algenta CLI")
-    print("  For 100–1000× speedup on large workloads:")
-    print("  → pip install algenta-sdk")
-    if private_profile_enabled():
-        print(f"  → {dashboard_url}")
-        return
-    print(f"  → {dashboard_url} (free tier: 500 simulations/month)")
-
-
-def _bench_normal(n: int = 100_000) -> float:
-    """Baseline Python: Box-Muller normal sampling."""
-    t0 = time.perf_counter()
-    for _ in range(n):
-        u1 = random.random()  # noqa: S311 - benchmark intentionally measures fast local PRNG
-        u2 = random.random()  # noqa: S311 - benchmark intentionally measures fast local PRNG
-        math.sqrt(-2 * math.log(u1 + 1e-15)) * math.cos(2 * math.pi * u2)
-    return (time.perf_counter() - t0) * 1000
-
-
-def _bench_simulate(n: int = 100_000) -> float:
-    """algenta.simulate local engine."""
-    from algenta.simulate import _box_muller
-
-    t0 = time.perf_counter()
-    for _ in range(n):
-        _box_muller(100000, 15000)
-    return (time.perf_counter() - t0) * 1000
 
 
 def _format_ms(ms: float) -> str:
@@ -72,47 +45,96 @@ def _format_ms(ms: float) -> str:
     return f"{ms:.1f}ms"
 
 
+def _native_simulation_request(*, runs: int) -> dict[str, object]:
+    return {
+        "engine_type": "monte_carlo",
+        "runs": runs,
+        "seed": 42,
+        "variables": [
+            {
+                "name": "revenue",
+                "distribution": "normal",
+                "params": {"mean": 100000, "std": 15000},
+            },
+            {
+                "name": "cost",
+                "distribution": "normal",
+                "params": {"mean": 70000, "std": 10000},
+            },
+        ],
+        "objective_function": "revenue - cost",
+    }
+
+
+def _execute_native_simulation(*, runs: int) -> dict[str, object]:
+    from algenta.native import loader
+
+    result = loader.execute(_native_simulation_request(runs=runs))
+    if not isinstance(result, dict):
+        raise RuntimeError("The bundled runtime returned a malformed simulation result.")
+    required = {"summary", "percentiles", "risk", "scenarios_run", "engine_version"}
+    missing = sorted(required - set(result))
+    if missing:
+        raise RuntimeError(
+            "The bundled runtime simulation result is incomplete: " + ", ".join(missing)
+        )
+    return result
+
+
+def _execute_native_simulation_or_exit(*, runs: int) -> dict[str, object]:
+    try:
+        return _execute_native_simulation(runs=runs)
+    except Exception as exc:  # noqa: BLE001 - command emits a stable public failure
+        print(f"runtime execution failed: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def cmd_benchmark() -> None:
-    n_samples = 50_000
+    runs = 10_000
+    measurements = 10
     print("\n" + "─" * 58)
-    print("  Algenta — Local Benchmark")
+    print("  Algenta - Bundled Runtime Benchmark")
     print("─" * 58)
-    print(f"  Sampling {n_samples:,} normal variates\n")
+    print(f"  Workload: {runs:,}-scenario native Monte Carlo\n")
 
-    python_ms = _bench_normal(n_samples)
-    algenta_ms = _bench_simulate(n_samples)
-    ratio = python_ms / (algenta_ms + 1e-9)
+    started = time.perf_counter()
+    _execute_native_simulation_or_exit(runs=runs)
+    cold_ms = (time.perf_counter() - started) * 1000
+    warm_ms: list[float] = []
+    for _ in range(measurements):
+        started = time.perf_counter()
+        _execute_native_simulation_or_exit(runs=runs)
+        warm_ms.append((time.perf_counter() - started) * 1000)
+    ordered = sorted(warm_ms)
+    p95_index = min(len(ordered) - 1, int(len(ordered) * 0.95))
 
-    print(f"  Python baseline:    {_format_ms(python_ms)}")
-    print(f"  algenta:            {_format_ms(algenta_ms)}")
-    print(f"\n  Speedup:            {ratio:.1f}×")
-    print()
-
-    if ratio >= 2:
-        print(f"  algenta is {ratio:.1f}× faster than raw Python.")
-    else:
-        print("  Performance is similar — algenta advantage scales with")
-        print("  problem size and when the Mojo backend is available.")
-
-    print()
-    _print_scale_guidance()
+    print(f"  Cold start:         {_format_ms(cold_ms)}")
+    print(f"  Warm p50:           {_format_ms(median(ordered))}")
+    print(f"  Warm p95:           {_format_ms(ordered[p95_index])}")
+    print(f"  Warm max:           {_format_ms(max(ordered))}")
+    print("  Engine:             bundled native runtime")
+    print("  Python fallback:    disabled")
     print("─" * 58 + "\n")
 
 
 def cmd_simulate_quick() -> None:
-    from algenta.simulate import risk
-
     print("\nRunning quick simulation: revenue=100,000 cost=70,000 runs=10,000\n")
     t0 = time.perf_counter()
-    result = risk(revenue=100000, cost=70000, runs=10000)
+    result = _execute_native_simulation_or_exit(runs=10_000)
     ms = (time.perf_counter() - t0) * 1000
-    print(f"  Expected outcome:   {result.expected_value:,.0f}")
-    print(f"  Prob. of loss:      {result.probability_of_loss:.1%}")
-    print(f"  Downside (p5):      {result.percentile_5:,.0f}")
-    print(f"  Upside (p95):       {result.percentile_95:,.0f}")
-    print(f"  Completed in:       {ms:.0f}ms  ({result.runs:,} scenarios)\n")
-    print("  Scale to 1M+ scenarios: pip install algenta-sdk")
-    print("  → client.simulate.risk(revenue=100000, cost=70000, runs=1_000_000)\n")
+    summary = result["summary"]
+    risk = result["risk"]
+    percentiles = result["percentiles"]
+    assert isinstance(summary, dict)
+    assert isinstance(risk, dict)
+    assert isinstance(percentiles, dict)
+    print(f"  Expected outcome:   {float(summary['mean']):,.0f}")
+    print(f"  Prob. of loss:      {float(risk['probability_of_loss']):.1%}")
+    print(f"  Downside (p5):      {float(percentiles['p5']):,.0f}")
+    print(f"  Upside (p95):       {float(percentiles['p95']):,.0f}")
+    print(f"  Completed in:       {ms:.1f}ms  ({int(result['scenarios_run']):,} scenarios)")
+    print("  Engine:             bundled native runtime")
+    print("  Python fallback:    disabled\n")
 
 
 def cmd_demo(args: list[str]) -> None:
@@ -174,7 +196,7 @@ def _parse_import_args(args: list[str]) -> tuple[list[str], str | None]:
 def cmd_import(args: list[str]) -> None:
     from pathlib import Path
 
-    from algenta import CodnaRuntimeError, Runtime
+    from algenta import AlgentaRuntimeError, Runtime
 
     source_paths, source_name = _parse_import_args(args)
     paths = [Path(source_path).expanduser() for source_path in source_paths]
@@ -189,7 +211,7 @@ def cmd_import(args: list[str]) -> None:
         path = paths[0]
         try:
             imported = runtime.import_preview(path, name=source_name, source_ref=str(path))
-        except CodnaRuntimeError as exc:
+        except AlgentaRuntimeError as exc:
             print()
             print(
                 runtime_banner(
@@ -367,7 +389,7 @@ def cmd_query(args: list[str]) -> None:
 def cmd_upgrade() -> None:
     if private_profile_enabled():
         console_base_url = resolve_console_base_url(component="algenta upgrade")
-        key_help = api_key_help_text(
+        credential_help = credential_setup_help_text(
             component="algenta upgrade",
             fallback_base_url=console_base_url,
         )
@@ -383,7 +405,7 @@ def cmd_upgrade() -> None:
        # or
        export ALGENTA_API_URL="{console_base_url}"
 
-  2. {key_help}
+  2. {credential_help}
 
   3. Install the SDK:
        pip install algenta-sdk
@@ -419,7 +441,7 @@ def cmd_upgrade() -> None:
   Upgrade to Algenta Cloud
   ─────────────────────────
 
-  1. {api_key_help_text(component="algenta upgrade")}
+  1. {credential_setup_help_text(component="algenta upgrade")}
 
   2. Install the SDK:
        pip install algenta-sdk
@@ -460,30 +482,73 @@ def cmd_login(args: list[str]) -> None:
     except _login.LoginError as exc:
         print(f"login failed: {exc}")
         sys.exit(1)
-    print(f"  device: {summary['device_id']}   key: {summary['api_key_prefix']}")
-    print(f"  license: {summary['license_path']}")
+    print(f"  credentials: {summary['credential_storage']}")
+
+
+def _runtime_option(args: list[str], name: str) -> str | None:
+    for index, value in enumerate(args):
+        if value == name:
+            if index + 1 >= len(args):
+                raise ValueError(f"{name} requires a value")
+            return args[index + 1]
+        if value.startswith(f"{name}="):
+            return value.split("=", 1)[1]
+    return None
 
 
 def cmd_runtime(args: list[str]) -> None:
-    """`algenta runtime doctor` — diagnose the bundled in-process native runtime (lazy-imports the loader)."""
+    """Inspect and execute the automatically managed bundled runtime."""
     sub = args[0] if args else ""
     if sub == "doctor":
         from algenta.native import doctor
 
         sys.exit(doctor.run())
-    print("usage: algenta runtime doctor")
+    from algenta import MojoRuntime
+
+    runtime = MojoRuntime(mode="local")
+    if sub == "modules":
+        print(json.dumps({"modules": runtime.list_modules()}, separators=(",", ":")))
+        return
+    if sub == "functions" and len(args) >= 2:
+        module_name = args[1]
+        print(
+            json.dumps(
+                {"module": module_name, "functions": runtime.list_functions(module_name)},
+                separators=(",", ":"),
+            )
+        )
+        return
+    if sub == "execute" and len(args) >= 3:
+        try:
+            raw_args = _runtime_option(args[3:], "--args-json")
+            payload = None if raw_args is None else json.loads(raw_args)
+        except (ValueError, json.JSONDecodeError) as exc:
+            print(f"invalid runtime arguments: {exc}", file=sys.stderr)
+            sys.exit(2)
+        result = runtime.execute(args[1], args[2], payload)
+        print(json.dumps(result, separators=(",", ":"), default=str))
+        if not result.get("success"):
+            sys.exit(1)
+        return
+    print(
+        "usage: algenta runtime "
+        "[doctor|modules|functions <module>|execute <module> <function> [--args-json JSON]]"
+    )
     sys.exit(2)
 
 
 def cmd_whoami() -> None:
     from algenta import auth
 
-    key = auth.read_api_key()
+    try:
+        key = auth.read_api_key()
+    except auth.CredentialStoreError as exc:
+        print(f"not logged in: {exc}")
+        sys.exit(1)
     if not key:
         print("not logged in — run `algenta login`")
         sys.exit(1)
-    prefix = (key.split("_", 1)[0] + "_…") if "_" in key else key[:6] + "…"
-    print(f"logged in (key {prefix})")
+    print("logged in")
 
 
 def cmd_mcp(args: list[str]) -> None:
@@ -507,8 +572,11 @@ def main() -> None:
         _warn = _algenta.check_migration()
         if _warn:
             print(_warn, file=sys.stderr)
-    except Exception:  # noqa: BLE001 — a migration check must never break the CLI
-        pass
+    except Exception as exc:  # noqa: BLE001 — migration diagnostics are non-fatal
+        print(
+            f"warning: package migration check unavailable ({type(exc).__name__})",
+            file=sys.stderr,
+        )
 
     if cmd == "demo":
         cmd_demo(args[1:])

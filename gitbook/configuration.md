@@ -34,7 +34,7 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
 | `ALGENTA_METERING_MODE` | — | — | Execution-record destination. Self-hosted Algenta defaults to local_audit; control_plane_sync is for explicitly configured managed deployments. |
 | `ALGENTA_REQUIRE_LOCAL_LICENSE` | — | — | Require a valid local signed license; disable hosted/dev fallback. |
-| `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` | `False` | `RUNTIME_LIBRARY_HTTP_API_ENABLED` | Expose the /v1/libraries* runtime-library routes (off by default). |
+| `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` | `True` | `RUNTIME_LIBRARY_HTTP_API_ENABLED` | Expose the /v1/libraries* runtime-library routes (on by default). |
 | `ALGENTA_SERVICE_ROLE` | `full` | — | Deployment role: full (default, with engine) \| control_plane (engine-free). |
 | `ALGENTA_SIMULATION_PERSIST_TRANSPORT` | `auto` | `SIMULATION_PERSIST_TRANSPORT` | Result persistence backend: auto \| celery \| in_process. |
 | `ALGENTA_TELEMETRY_MODE` | — | — | Telemetry destination. Self-hosted Algenta defaults to local_audit with no outbound sync. |
@@ -80,7 +80,6 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `RESEND_API_KEY` | — | — | — |
 | `RESEND_FROM_EMAIL` | `Algenta <noreply@algenta.ai>` | — | — |
 | `RESULT_STORAGE_ENABLED` | `False` | — | — |
-| `RS256_LICENSE_PRODUCTS` | — | — | — |
 | `S3_ACCESS_KEY_ID` | `minioadmin` | — | — |
 | `S3_BUCKET_NAME` | `algenta-results` | — | — |
 | `S3_ENDPOINT_URL` | — | — | — |

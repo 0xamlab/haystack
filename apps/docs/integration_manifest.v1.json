@@ -1,5 +1,5 @@
 {
-  "contract_version": "v1.3",
+  "contract_version": "v1.4",
   "brand": "Algenta",
   "api_base_url": "https://api.algenta.ai",
   "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
@@ -56,21 +56,21 @@
     "read_only_default": true,
     "write_confirmation_required": true,
     "plan_limits": {
-      "free": {
-        "requests_per_minute": 60,
-        "simulations_per_month": 500
+      "algenta_free": {
+        "requests_per_minute": 0,
+        "simulations_per_month": 0
       },
-      "developer": {
-        "requests_per_minute": 300,
-        "simulations_per_month": 10000
+      "algenta_pro": {
+        "requests_per_minute": 0,
+        "simulations_per_month": 0
       },
-      "pro": {
-        "requests_per_minute": 1000,
-        "simulations_per_month": 100000
+      "algenta_team": {
+        "requests_per_minute": 0,
+        "simulations_per_month": 0
       },
       "enterprise": {
-        "requests_per_minute": 10000,
-        "simulations_per_month": "unlimited"
+        "requests_per_minute": 0,
+        "simulations_per_month": 0
       }
     }
   },

@@ -53,7 +53,7 @@ class RuntimeSupportedChannel(str, Enum):
 
 
 class RuntimeAuxiliaryChannel(str, Enum):
-    daemon_client = "daemon_client"
+    bundled_worker = "bundled_worker"
     runtime_local = "runtime_local"
 
 
@@ -542,4 +542,3 @@ class RuntimeSignatureScope(str, Enum):
 
 
 EnumT = TypeVar("EnumT", bound=Enum)
-

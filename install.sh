@@ -16,6 +16,7 @@ COMPOSE_BUNDLE_URL="${ALGENTA_COMPOSE_URL:-}"
 SKIP_IMAGE_PULL="${ALGENTA_SKIP_IMAGE_PULL:-0}"
 COMPOSE_CMD=()
 COMPOSE_DISPLAY=""
+CLI_BIN_DIR="${ALGENTA_BIN_DIR:-$HOME/.local/bin}"
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -174,6 +175,55 @@ download_release() {
   fi
 
   echo -e "${GREEN}✓ Downloaded${NC}"
+}
+
+install_cli_wrapper() {
+  echo -e "${BLUE}Installing the Algenta control-plane CLI wrapper...${NC}"
+  mkdir -p "$INSTALL_DIR/bin" "$CLI_BIN_DIR"
+  cat > "$INSTALL_DIR/bin/de" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+INSTALL_DIR="${ALGENTA_DIR:-$HOME/.algenta}"
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE=(docker-compose)
+else
+  echo "de: Docker Compose is required for the self-hosted control-plane CLI." >&2
+  exit 1
+fi
+
+if [ ! -f "$INSTALL_DIR/docker-compose.yml" ]; then
+  echo "de: no Algenta install found at $INSTALL_DIR" >&2
+  exit 1
+fi
+
+export ALGENTA_API_KEY="${ALGENTA_API_KEY:-${DE_API_KEY:-}}"
+export ALGENTA_BASE_URL="http://127.0.0.1:8000"
+TTY_ARGS=()
+if [ ! -t 0 ]; then
+  TTY_ARGS=(-T)
+fi
+exec "${COMPOSE[@]}" --project-directory "$INSTALL_DIR" \
+  -f "$INSTALL_DIR/docker-compose.yml" exec "${TTY_ARGS[@]}" \
+  -e ALGENTA_API_KEY -e ALGENTA_BASE_URL \
+  api python -m apps.cli.main "$@"
+EOF
+  chmod 755 "$INSTALL_DIR/bin/de"
+
+  local cli_link="$CLI_BIN_DIR/de"
+  if [ -e "$cli_link" ] && [ ! -L "$cli_link" ]; then
+    echo -e "${YELLOW}⚠ ${cli_link} already exists and was not replaced.${NC}"
+    echo -e "${YELLOW}  Use ${INSTALL_DIR}/bin/de or set ALGENTA_BIN_DIR before reinstalling.${NC}"
+    return
+  fi
+  ln -sfn "$INSTALL_DIR/bin/de" "$cli_link"
+  echo -e "${GREEN}✓ Installed ${cli_link}${NC}"
+  case ":$PATH:" in
+    *":$CLI_BIN_DIR:"*) ;;
+    *) echo -e "${YELLOW}  Add to PATH: export PATH=\"${CLI_BIN_DIR}:\$PATH\"${NC}" ;;
+  esac
 }
 
 generate_env() {
@@ -525,6 +575,7 @@ print_next_steps() {
   echo "  5. Read the self-hosted docs: ${DOCS_URL}"
   echo ""
   echo -e "${BOLD}Useful commands:${NC}"
+  echo "  ${CLI_BIN_DIR}/de health"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} ps"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f api"
   echo "  cd ${INSTALL_DIR} && ${COMPOSE_DISPLAY} logs -f engine"
@@ -540,6 +591,7 @@ main() {
   check_requirements
   resolve_release_ref
   download_release
+  install_cli_wrapper
   generate_env
   start_services
   if ! wait_healthy; then

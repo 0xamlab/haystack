@@ -16,7 +16,7 @@ DEFAULT_BENCHMARK_MOJO_DIR = _PROJECT_ROOT / "benchmarks" / "mojo_benchmarks"
 DEFAULT_RUNTIME_LIBRARY_CACHE = (
     _PROJECT_ROOT / ".cache" / "algenta" / "runtime_library_inventory.json"
 )
-_RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION = 6
+_RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION = 7
 
 _IMPORT_RE = re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+", re.MULTILINE)
 _FUNCTION_RE = re.compile(r"^\s*(?:fn|def)\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
@@ -36,6 +36,7 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
     "output",
     "python_bridge",
     "request_parser",
+    "runtime_library_dispatch_generated",
     "sha256",
     "time_series",
     "types",
@@ -82,7 +83,6 @@ _STRING_RETURN_RUNTIME_IMPORT_PATHS = {
     "crypto.base64",
     "crypto.uuid",
     "json.writer",
-    "runtime_library_dispatch_generated",
     "text.tokenizer",
     "vector_kernels.ranker",
     "vector_kernels.repo_ranker",
@@ -417,7 +417,7 @@ def parse_runtime_struct_specs(path: Path) -> dict[str, RuntimeStructSpec]:
             if stripped_line and current_indent <= struct_indent:
                 break
             field_match = re.match(r"^\s*var\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$", raw_line)
-            if field_match is not None:
+            if field_match is not None and current_indent == struct_indent + 4:
                 fields.append(
                     RuntimeStructFieldSpec(
                         name=field_match.group(1),

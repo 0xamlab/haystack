@@ -8,6 +8,8 @@ checks; this also gates them in CI so a drift can't reach a tag.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import re
 import tomllib
@@ -31,6 +33,10 @@ _SUPPORTED_PYTHON_CLASSIFIERS = {
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+}
+_TRUST_ANCHOR_DER_SHA256 = {
+    "algenta_release_pub.pem": "576e8a02b410ec113c2d10dbe68009799958f5d3c1315db4dae93b7d7d9117a2",
+    "algenta_license_pub.pem": "73a5ccb64e12aef2581fed60010f1648d60da0fd833897802b2ad8b7eea3de6b",
 }
 
 
@@ -59,6 +65,30 @@ def test_public_sdk_versions_are_aligned() -> None:
     versions = {pkg: _py_meta(pkg)["version"] for pkg in _PYPROJECT_PKGS}
     versions[_TS_PKG] = _ts_meta()["version"]
     assert len(set(versions.values())) == 1, f"SDK versions diverge: {versions}"
+
+
+def test_mcp_registry_manifest_matches_packaged_version() -> None:
+    manifest = json.loads((_REPO_ROOT / "server.json").read_text("utf-8"))
+    package_version = _py_meta("mcp")["version"]
+
+    assert manifest["version"] == package_version
+    packages = manifest.get("packages")
+    assert isinstance(packages, list) and len(packages) == 1
+    assert packages[0]["registryType"] == "pypi"
+    assert packages[0]["identifier"] == "algenta-mcp"
+    assert packages[0]["version"] == package_version
+
+
+def test_algenta_package_embeds_pinned_public_trust_anchors() -> None:
+    key_dir = _PACKAGES / "algenta" / "algenta" / "_keys"
+    for filename, expected_sha256 in _TRUST_ANCHOR_DER_SHA256.items():
+        pem = (key_dir / filename).read_text("ascii")
+        assert "PRIVATE KEY" not in pem
+        assert pem.startswith("-----BEGIN PUBLIC KEY-----\n")
+        assert pem.endswith("-----END PUBLIC KEY-----\n")
+        payload = "".join(line for line in pem.splitlines() if not line.startswith("-----"))
+        der = base64.b64decode(payload, validate=True)
+        assert hashlib.sha256(der).hexdigest() == expected_sha256
 
 
 @pytest.mark.parametrize("pkg", (*_PYPROJECT_PKGS, _TS_PKG))

@@ -60,7 +60,7 @@ class RuntimeSupportedChannelResult(str, Enum):
 
 
 class RuntimeAuxiliaryChannelResult(str, Enum):
-    daemon_client = "daemon_client"
+    bundled_worker = "bundled_worker"
     runtime_local = "runtime_local"
 
 
@@ -579,5 +579,4 @@ def _count_runtime_values(values: list[Any]) -> dict[Any, int]:
     for value in values:
         counts[value] = counts.get(value, 0) + 1
     return counts
-
 

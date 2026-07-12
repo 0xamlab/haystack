@@ -8,6 +8,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / ".github" / "workflows" / "codeql.yml"
 CONFIG_PATH = ROOT / ".github" / "codeql" / "codeql-config.yml"
+TPM_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "tpm.yml"
+RUNTIME_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "build-runtime.yml"
 ACTION_SHA = "7211b7c8077ea37d8641b6271f6a365a22a5fbfa"
 
 
@@ -71,3 +73,55 @@ def test_codeql_scope_excludes_only_noncanonical_duplicate_trees() -> None:
         assert production_path not in config["paths-ignore"]
     assert "pull_request_target" not in workflow_text
     assert "paths:" not in config_text
+
+
+def test_tpm_workflow_is_read_scoped_and_uses_immutable_actions() -> None:
+    workflow = _load_yaml(TPM_WORKFLOW_PATH)
+
+    assert workflow["permissions"] == {"contents": "read"}
+    action_uses = [step["uses"] for step in workflow["jobs"]["tpm-roundtrip"]["steps"] if "uses" in step]
+    assert action_uses
+    assert all(re.fullmatch(r"[^@]+@[0-9a-f]{40}", value) for value in action_uses)
+
+
+def test_runtime_publish_requires_persistent_signing_key() -> None:
+    workflow = _load_yaml(RUNTIME_WORKFLOW_PATH)
+    steps = workflow["jobs"]["build"]["steps"]
+    release_expression = "${{ github.event_name == 'push' || inputs.publish == 'true' }}"
+    guarded_steps = {
+        step["name"]: step
+        for step in steps
+        if step.get("name") in {
+            "Build + sign runtime manifest",
+            "Build + sign Secure Enclave helper (macOS)",
+        }
+    }
+
+    assert set(guarded_steps) == {
+        "Build + sign runtime manifest",
+        "Build + sign Secure Enclave helper (macOS)",
+    }
+    for step in guarded_steps.values():
+        assert step["env"]["RUNTIME_RELEASE_PUBLISH"] == release_expression
+        assert '[[ "${RUNTIME_RELEASE_PUBLISH:-false}" == "true" ]]' in step["run"]
+        assert "exit 1" in step["run"]
+
+    manifest_run = guarded_steps["Build + sign runtime manifest"]["run"]
+    assert "ephemeral CI-only signing key" in manifest_run
+    assert "non-publishing build" in manifest_run
+    assert "packages/algenta/algenta/_keys/algenta_release_pub.pem" in manifest_run
+    assert "does not match the embedded runtime release trust anchor" in manifest_run
+
+
+def test_runtime_clean_machine_pairs_downloaded_release_key() -> None:
+    workflow = _load_yaml(RUNTIME_WORKFLOW_PATH)
+    steps = workflow["jobs"]["clean-machine-contract"]["steps"]
+    pairing_step = next(
+        step for step in steps if step.get("name") == "Pair runtime and Algenta trust anchor"
+    )
+    pairing_run = pairing_step["run"]
+
+    assert 'Path("dist-runtime").glob("*.whl")' in pairing_run
+    assert "algenta_runtime_native/algenta_release_pub.pem" in pairing_run
+    assert '"packages/algenta/algenta/_keys/algenta_release_pub.pem"' in pairing_run
+    assert "-----BEGIN PUBLIC KEY-----" in pairing_run

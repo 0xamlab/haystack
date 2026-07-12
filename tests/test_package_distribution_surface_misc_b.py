@@ -297,7 +297,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert 'export type RuntimeRiskLevel = "low" | "medium" | "high" | "critical";' in shared_types
     assert 'export type RuntimeReplayability = "deterministic" | "artifact_backed" | "non_replayable";' in shared_types
     assert 'export type RuntimeSupportedChannel = "python_sdk" | "typescript_sdk" | "cli" | "mcp";' in shared_types
-    assert 'export type RuntimeAuxiliaryChannel = "daemon_client" | "runtime_local";' in shared_types
+    assert 'export type RuntimeAuxiliaryChannel = "bundled_worker" | "runtime_local";' in shared_types
     assert 'export type RuntimeFeatureFlagChannel = "http_api_feature_flag";' in shared_types
     assert "export type RuntimeBenchmarkClassCode =" in shared_types
     assert '"B1"' in shared_types

@@ -73,7 +73,7 @@ class RuntimeSupportedChannel(str, Enum):
 
 
 class RuntimeAuxiliaryChannel(str, Enum):
-    daemon_client = "daemon_client"
+    bundled_worker = "bundled_worker"
     runtime_local = "runtime_local"
 
 
@@ -559,5 +559,4 @@ class RuntimeSignatureAlgorithm(str, Enum):
 
 class RuntimeSignatureScope(str, Enum):
     control_plane_hmac_v1 = "control_plane_hmac_v1"
-
 

@@ -148,6 +148,33 @@ def test_mojo_server_dispatches_runtime_library_execute_requests() -> None:
         _stop_test_server(proc, socket_path)
 
 
+def test_mojo_server_dispatches_vector_dot_runtime_library_request() -> None:
+    proc, socket_path = _start_test_server()
+    try:
+        left = [1.0, 2.0, 3.0] + [0.0] * 61
+        right = [3.0, 2.0, 2.0] + [0.0] * 61
+        _, payload = build_runtime_library_worker_request(
+            "vector_kernels.dot",
+            "dot64_f32",
+            [left, right],
+        )
+
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(str(socket_path))
+            assert _recv_frame(sock) == {"status": "ready"}
+
+            response = _send_frame(sock, payload)
+            assert "error" not in response
+            assert response.get("result") == pytest.approx(13.0)
+
+            assert _send_frame(sock, {"type": "shutdown"}) == {"status": "bye"}
+
+        proc.wait(timeout=5.0)
+        assert proc.returncode == 0
+    finally:
+        _stop_test_server(proc, socket_path)
+
+
 LLM_ROLLOUT_FIXTURE = (
     '{"query":{"name":"unit_price","role_hint":"unit_measure","source":"POS"},'
     '"candidates":[{"source":"POS","name":"unit_price"}],"top_k":1}'

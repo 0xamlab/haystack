@@ -36,6 +36,7 @@ def _reset_loader(monkeypatch, tmp_path):
     monkeypatch.setenv("ALGENTA_HOME", str(tmp_path))
     monkeypatch.setenv("ALGENTA_RUNTIME_FALLBACK_MODE", "deny")
     monkeypatch.delenv("ALGENTA_NATIVE_KERNEL", raising=False)
+    monkeypatch.setenv("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
     _loader._LIB = None
     _loader._LIB_PATH = None
     _loader._HANDLE = None
@@ -46,7 +47,7 @@ def _reset_loader(monkeypatch, tmp_path):
 
 def test_import_algenta_is_lazy_no_native():
     # importing algenta must not have loaded the native lib / ctypes handle.
-    assert algenta.__version__ == "1.0.0"
+    assert algenta.__version__ == "1.0.3"
     assert _loader._LIB is None
 
 
@@ -155,7 +156,7 @@ def test_cli_version_and_whoami(capsys, monkeypatch, tmp_path):
     monkeypatch.delenv("ALGENTA_API_KEY", raising=False)
     monkeypatch.setattr(sys, "argv", ["algenta", "version"])
     cli.main()
-    assert "algenta 1.0.0" in capsys.readouterr().out
+    assert "algenta 1.0.3" in capsys.readouterr().out
     # whoami with no login → exit 1
     monkeypatch.setattr(sys, "argv", ["algenta", "whoami"])
     with pytest.raises(SystemExit) as e:

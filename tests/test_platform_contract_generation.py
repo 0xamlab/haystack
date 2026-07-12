@@ -30,7 +30,15 @@ def _import_from_path(package_root: Path, module_name: str):
 
 def test_generated_python_contract_matches_manifest() -> None:
     contract = load_platform_contract()
+    unlimited_algenta_plans = {
+        "algenta_free": {"requests_per_minute": 0, "simulations_per_month": 0},
+        "algenta_pro": {"requests_per_minute": 0, "simulations_per_month": 0},
+        "algenta_team": {"requests_per_minute": 0, "simulations_per_month": 0},
+        "enterprise": {"requests_per_minute": 0, "simulations_per_month": 0},
+    }
 
+    assert contract.contract_version == "v1.4"
+    assert contract.plan_limits == unlimited_algenta_plans
     assert generated_contract.CONTRACT_VERSION == contract.contract_version
     assert generated_contract.BRAND == contract.brand
     assert generated_contract.API_BASE_URL == contract.api_base_url

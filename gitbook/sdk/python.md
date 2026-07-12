@@ -86,7 +86,7 @@ The package re-exports the platform contract so you can read endpoint paths and 
 ```python title="contract_constants.py"
 from decision_engine import (
     DEFAULT_BASE_URL,             # "https://api.algenta.ai"
-    CONTRACT_VERSION,             # "v1.3"
+    CONTRACT_VERSION,             # "v1.4"
     PRIMARY_DATA_QUERY_CONTRACT,  # dict: endpoints + query shape
     AUTH_SCHEME,                  # "bearer_api_key"
     API_KEY_PREFIX_LIVE,          # "de_live_"

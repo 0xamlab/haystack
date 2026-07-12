@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **473 modules** and **4760+ functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **472 modules** and **4757 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -48,21 +48,21 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `paged_kv_cache` | 10 |
 | `propensity` | 9 |
 | `sparse_attention` | 10 |
-| `text_tokenizer` | 10 |
+| `text.tokenizer` | 10 |
 | `token_bucket` | 11 |
 | `transformer_attention` | 11 |
 | `transformer_blocks` | 10 |
 
 ## Machine learning
 
-28 modules.
+21 modules.
 
 | Module | Functions |
 | --- | --- |
 | `activations` | 10 |
 | `bayesian_inference` | 10 |
-| `config_toml_parser` | 5 |
-| `config_yaml_parser` | 5 |
+| `config.toml_parser` | 5 |
+| `config.yaml_parser` | 5 |
 | `constraint` | 8 |
 | `decision_ml_fusion` | 10 |
 | `gradient_descent` | 10 |
@@ -71,14 +71,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `inference_security` | 10 |
 | `latency_optimizer` | 10 |
 | `loss_functions` | 11 |
-| `ml_classifiers` | 7 |
-| `ml_clustering` | 4 |
-| `ml_knn` | 10 |
-| `ml_metrics` | 7 |
 | `ml_metrics_extended` | 10 |
-| `ml_naive_bayes` | 8 |
-| `ml_preprocessing` | 6 |
-| `ml_random_forest` | 8 |
 | `nn_layers` | 11 |
 | `normalization_layers` | 10 |
 | `optimization_constrained` | 8 |
@@ -102,16 +95,16 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `tensor` | 29 |
 | `tensor_ops` | 10 |
 | `time_series_decompose` | 9 |
-| `vector_kernels_batch_ranker` | 1 |
-| `vector_kernels_dot` | 4 |
-| `vector_kernels_ranker` | 1 |
-| `vector_kernels_repo_ranker` | 1 |
-| `vector_kernels_table` | 4 |
-| `vector_kernels_test_table` | 1 |
+| `vector_kernels.batch_ranker` | 1 |
+| `vector_kernels.dot` | 4 |
+| `vector_kernels.ranker` | 1 |
+| `vector_kernels.repo_ranker` | 1 |
+| `vector_kernels.table` | 4 |
+| `vector_kernels.test_table` | 1 |
 
 ## Statistics & probability
 
-18 modules.
+19 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -122,6 +115,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `electrostatics` | 10 |
 | `hypothesis` | 6 |
 | `interval` | 13 |
+| `ml.naive_bayes` | 8 |
 | `probability` | 11 |
 | `real_estate` | 12 |
 | `regression` | 8 |
@@ -144,8 +138,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `audio` | 10 |
 | `fft` | 7 |
 | `psychoacoustics` | 10 |
-| `signal_dsp` | 10 |
-| `signal_filter` | 11 |
+| `signal.dsp` | 10 |
+| `signal.filter` | 11 |
 | `signal_processing` | 10 |
 | `spectral` | 10 |
 | `spectroscopy` | 12 |
@@ -158,14 +152,14 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 | Module | Functions |
 | --- | --- |
-| `crypto_aes_sbox` | 8 |
-| `crypto_base64` | 4 |
-| `crypto_chacha20` | 8 |
-| `crypto_crc32` | 3 |
-| `crypto_hash_chain` | 9 |
-| `crypto_hmac` | 2 |
-| `crypto_pbkdf2` | 7 |
-| `crypto_uuid` | 2 |
+| `crypto.aes_sbox` | 8 |
+| `crypto.base64` | 4 |
+| `crypto.chacha20` | 8 |
+| `crypto.crc32` | 3 |
+| `crypto.hash_chain` | 9 |
+| `crypto.hmac` | 2 |
+| `crypto.pbkdf2` | 7 |
+| `crypto.uuid` | 2 |
 | `perceptual_hash` | 8 |
 
 ## Text & language
@@ -175,15 +169,15 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | Module | Functions |
 | --- | --- |
 | `string_distance` | 10 |
-| `text_column_scorer` | 4 |
-| `text_fuzzy` | 7 |
-| `text_regex` | 7 |
-| `text_string_utils` | 16 |
+| `text.column_scorer` | 4 |
+| `text.fuzzy` | 7 |
+| `text.regex` | 7 |
+| `text.string_utils` | 16 |
 | `textile` | 12 |
 
 ## Graph & automata
 
-16 modules.
+17 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -193,10 +187,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `chromatography` | 10 |
 | `crystallography` | 12 |
 | `demographics` | 12 |
-| `graph_algorithms` | 18 |
+| `graph.algorithms` | 8 |
+| `graph.weighted` | 9 |
+| `graph_algorithms` | 10 |
 | `graph_compiler` | 10 |
 | `graph_decision` | 10 |
-| `graph_weighted` | 9 |
 | `heap` | 13 |
 | `oceanography` | 10 |
 | `rag_retrieval` | 10 |
@@ -206,26 +201,25 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Serialization & data
 
-12 modules.
+11 modules.
 
 | Module | Functions |
 | --- | --- |
-| `compression_delta` | 11 |
-| `compression_huffman` | 7 |
-| `compression_lz77` | 6 |
-| `compression_rle` | 5 |
-| `data_csv_parser` | 4 |
-| `data_dataframe` | 1 |
+| `compression.delta` | 11 |
+| `compression.huffman` | 7 |
+| `compression.lz77` | 6 |
+| `compression.rle` | 5 |
+| `data.csv_parser` | 4 |
 | `data_feedback_loop` | 10 |
 | `data_pipeline` | 10 |
-| `json_parser` | 15 |
-| `json_writer` | 12 |
+| `json.parser` | 15 |
+| `json.writer` | 12 |
 | `model_serialization` | 10 |
-| `serialization_msgpack` | 10 |
+| `serialization.msgpack` | 10 |
 
 ## Bits, numbers & time
 
-7 modules.
+6 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -233,7 +227,6 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `bitops` | 13 |
 | `datetime` | 14 |
 | `number_theory` | 12 |
-| `runtime_library_dispatch_generated` | 1 |
 | `sentiment` | 10 |
 | `time_zone` | 10 |
 
@@ -263,7 +256,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `kinetics` | 10 |
 | `magnetism` | 10 |
 | `memory_system` | 10 |
-| `net_url` | 7 |
+| `net.url` | 7 |
 | `network_analysis` | 11 |
 | `network_protocol` | 11 |
 | `paleomagnetism` | 13 |
@@ -285,11 +278,10 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-303 modules.
+309 modules.
 
 | Module | Functions |
 | --- | --- |
-| `Vec64` | 2 |
 | `actuarial` | 12 |
 | `adhesives` | 12 |
 | `aerospace` | 12 |
@@ -351,6 +343,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `currency` | 12 |
 | `cytology` | 10 |
 | `cytometry` | 10 |
+| `data.dataframe` | 1 |
 | `database` | 9 |
 | `decision_analysis` | 10 |
 | `dendrochronology` | 10 |
@@ -388,7 +381,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `feature_engineering` | 10 |
 | `feature_selection` | 9 |
 | `fermentation` | 10 |
-| `filepath_pathlib` | 8 |
+| `filepath.pathlib` | 8 |
 | `fire_safety` | 12 |
 | `fisheries` | 12 |
 | `fluid` | 12 |
@@ -425,7 +418,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `limnology` | 10 |
 | `linear_programming` | 8 |
 | `linguistics` | 12 |
-| `logging_logger` | 1 |
+| `logging.logger` | 1 |
 | `logic_circuit` | 13 |
 | `logistics` | 12 |
 | `lora_adapters` | 10 |
@@ -440,6 +433,12 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `mineralogy` | 10 |
 | `mining` | 12 |
 | `mixture_of_experts` | 10 |
+| `ml.classifiers` | 7 |
+| `ml.clustering` | 4 |
+| `ml.knn` | 10 |
+| `ml.metrics` | 7 |
+| `ml.preprocessing` | 6 |
+| `ml.random_forest` | 8 |
 | `model_abi` | 10 |
 | `model_interop` | 10 |
 | `model_parallel` | 10 |
@@ -549,7 +548,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `speleology` | 10 |
 | `sports_analytics` | 12 |
 | `stochastic` | 10 |
-| `structs_containers` | 2 |
+| `structs.containers` | 2 |
 | `structural` | 12 |
 | `structured_output` | 10 |
 | `supply_chain` | 12 |

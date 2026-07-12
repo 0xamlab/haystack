@@ -178,7 +178,7 @@ def resolve_api_keys_url(
     )
 
 
-def api_key_help_text(
+def credential_setup_help_text(
     *,
     component: str,
     env: Mapping[str, str] | None = None,
@@ -198,4 +198,18 @@ def api_key_help_text(
     return (
         "Get a key at: "
         f"{resolve_api_keys_url(component=component, env=mapping, fallback_base_url=fallback_base_url)}"
+    )
+
+
+def api_key_help_text(
+    *,
+    component: str,
+    env: Mapping[str, str] | None = None,
+    fallback_base_url: str | None = None,
+) -> str:
+    """Backward-compatible alias for the non-secret credential setup guidance."""
+    return credential_setup_help_text(
+        component=component,
+        env=env,
+        fallback_base_url=fallback_base_url,
     )

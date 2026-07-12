@@ -161,7 +161,7 @@ Two decisions shape how the engine behaves once it cannot reach anything.
 
 ```bash
 # BYOK against an in-perimeter, OpenAI-compatible model gateway.
-ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_KEY="replace-with-your-in-perimeter-provider-key"
 ALGENTA_CONFIG_ENCRYPTION_KEY="<64-hex-kek>"
 ALGENTA_EGRESS_ALLOWLIST="llm-gateway.internal:443"
 ```

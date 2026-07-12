@@ -24,7 +24,7 @@ import urllib.error
 import urllib.request
 import uuid
 
-from algenta import paths
+from algenta import auth, paths
 
 _CLIENT_ID = "algenta-cli"
 _MAX_RESP_BYTES = 1 << 20  # control-plane JSON is tiny; cap defensively
@@ -43,7 +43,7 @@ def device_id() -> str:
         if existing:
             return existing
     value = uuid.uuid4().hex
-    _cache(p, value)
+    _cache_device_id(p, value)
     return value
 
 
@@ -82,7 +82,7 @@ def _hostname_hash() -> str:
     return hashlib.sha256(socket.gethostname().encode("utf-8")).hexdigest()
 
 
-def _cache(path: str, value: str) -> None:
+def _cache_device_id(path: str, value: str) -> None:
     os.makedirs(paths.algenta_home(), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(value.strip() + "\n")
@@ -192,19 +192,20 @@ def login(*, access_token: str | None = None, open_browser: bool = True) -> dict
     else:
         print(f"authenticating via {accounts} …")
         token = device_authorize(accounts=accounts, open_browser=open_browser)
-    _cache(paths.token_path(), token)
-
     print("creating your Algenta API key …")
     api_key = create_api_key(api=api, access_token=token)
-    _cache(paths.api_key_path(), api_key)
 
     print("registering this device …")
     license_token = register_device(api=api, api_key=api_key)
-    _cache(paths.license_path(), license_token)
+    try:
+        auth.store_login_credentials(api_key, license_token)
+    except auth.CredentialStoreError as exc:
+        raise LoginError(str(exc)) from exc
 
-    print("\n  ✓ algenta login complete — Algenta now runs fully offline (no network at run time).\n")
+    print(
+        "\n  ✓ algenta login complete — Algenta now runs fully offline "
+        "(no network at run time).\n"
+    )
     return {
-        "device_id": device_id(),
-        "api_key_prefix": (api_key.split("_", 1)[0] + "_…") if "_" in api_key else api_key[:6] + "…",
-        "license_path": paths.license_path(),
+        "credential_storage": "operating-system keyring",
     }

@@ -552,7 +552,7 @@ export type RuntimeSupportedChannel =
   | "cli"
   | "mcp";
 
-export type RuntimeAuxiliaryChannel = "daemon_client" | "runtime_local";
+export type RuntimeAuxiliaryChannel = "bundled_worker" | "runtime_local";
 
 export type RuntimeFeatureFlagChannel = "http_api_feature_flag";
 

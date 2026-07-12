@@ -169,7 +169,7 @@ describe("DecisionEngineClient — loads_b", () => {
                   layer: "mojo_llm_runtime_core",
                   maturity: "channel_covered",
                   public_supported_channels: ["python_sdk", "typescript_sdk", "cli", "mcp"],
-                  validated_auxiliary_channels: ["daemon_client", "runtime_local"],
+                  validated_auxiliary_channels: ["bundled_worker", "runtime_local"],
                   feature_flag_channels: ["http_api_feature_flag"],
                   proof_obligations: ["numerical parity"],
                   proof_artifacts: ["build/proof.json"],

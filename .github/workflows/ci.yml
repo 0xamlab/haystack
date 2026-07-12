@@ -63,9 +63,9 @@ jobs:
       # (user: angel, db: decision_engine) and other real services that don't
       # exist in CI. Honored by package.json's test:formal-runtime-foundation.
       DE_SKIP_GO_LIVE_VERIFY: "1"
-      # Integration scripts that need a compiled Mojo binary (mojo_build/simulate)
-      # or developer-local DBs. Each script checks its env var at the top and
-      # exits 0 if set, keeping package.json's check graph unchanged.
+      # Integration scripts that need the full compiled Mojo catalog or
+      # developer-local DBs. The filtered CI worker has its own native smoke
+      # below and is deliberately isolated from the full-catalog test graph.
       ALGENTA_SKIP_CSV_PIPELINE: "1"
       ALGENTA_SKIP_RUNTIME_LIBRARIES_HTTP: "1"
       ALGENTA_SKIP_MOJO_RUNTIME: "1"
@@ -104,8 +104,34 @@ jobs:
       - name: Install Mojo/Pixi environment
         run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
+      - name: Build compiled Mojo simulation runtime
+        env:
+          PIXI_HOME: ${{ github.workspace }}/.pixi
+          RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
+          MOJO_BUILD_MCPU: x86-64-v3
+          MOJO_RUNTIME_MODULE_FILTER: vector_kernels.dot
+          MOJO_SRC: ${{ runner.temp }}/algenta-ci-runtime/main.mojo
+          DISPATCH_OUTPUT_PATH: ${{ runner.temp }}/algenta-ci-runtime/runtime_library_dispatch_generated.mojo
+          BINARY_PATH: ${{ runner.temp }}/algenta-ci-runtime/simulate
+          OBJECT_PATH: ${{ runner.temp }}/algenta-ci-runtime/simulate.o
+          TEMP_OBJECT_PATH: ${{ runner.temp }}/algenta-ci-runtime/simulate.o.tmp
+          TEMP_BINARY_PATH: ${{ runner.temp }}/algenta-ci-runtime/simulate.tmp
+        run: |
+          mkdir -p "$RUNNER_TEMP/algenta-ci-runtime"
+          cp mojo/engine/main.mojo "$MOJO_SRC"
+          bash scripts/build_mojo_binary.sh
+
       - name: Install JavaScript workspace dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify filtered compiled Mojo worker
+        env:
+          DE_TEST_MOJO_BINARY: ${{ runner.temp }}/algenta-ci-runtime/simulate
+          DE_TEST_MOJO_SOURCES: ${{ runner.temp }}/algenta-ci-runtime/main.mojo:${{ runner.temp }}/algenta-ci-runtime/runtime_library_dispatch_generated.mojo
+        run: >-
+          ./scripts/run_repo_python.sh -m pytest -q
+          tests/test_mojo_library_dispatch_server.py
+          -k vector_dot_runtime_library_request
 
       - name: Run linting (Ruff)
         run: ./scripts/run_repo_python.sh -m ruff check apps/ --ignore E501 || true

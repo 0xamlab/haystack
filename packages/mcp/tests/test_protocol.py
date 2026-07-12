@@ -2,7 +2,7 @@
 
 In-process tests against a respx-mocked upstream API (no network, no running server). They lock
 the contract that matters for a Cursor/Claude-Desktop install:
-  - the tool catalog is decoupled: daemon tools dropped; repo fix/pipeline kept;
+  - the tool catalog exposes API-backed runtime libraries without a local daemon;
   - call-tool dispatches + forwards the caller's API key as `Authorization: Bearer …`;
   - request_overrides swaps the forwarded key per request;
   - errors (401 / 5xx / timeout) never leak the API key into the surfaced message;
@@ -43,12 +43,83 @@ def test_list_tools_is_the_decoupled_catalog() -> None:
     assert {"get_contract", "query_data", "simulate"} <= names, names
     # the valuable repository fix/pipeline tools were KEPT (vendored channel_envelope)
     assert "run_repository_fix" in names
-    # the local-daemon runtime-libraries tools were DROPPED for the standalone proxy
-    assert "list_runtime_libraries" not in names
-    assert "execute_runtime_library" not in names
+    assert {"list_runtime_libraries", "execute_runtime_library"} <= names
     # every spec is well-formed for MCP list-tools
     for spec in specs:
         assert spec.get("name") and isinstance(spec.get("inputSchema"), dict), spec
+
+
+def test_runtime_library_list_proxies_query_and_auth() -> None:
+    with respx.mock as router:
+        route = router.get(f"{_BASE}/v1/libraries").mock(
+            return_value=httpx.Response(200, json={"items": [], "total": 0})
+        )
+
+        out = asyncio.run(
+            registry.call_tool("list_runtime_libraries", {"q": "statistics", "limit": 25})
+        )
+
+        assert route.called
+        request = route.calls.last.request
+        assert request.headers["authorization"] == f"Bearer {_KEY}"
+        assert dict(request.url.params) == {"limit": "25", "q": "statistics"}
+        assert json.loads(out) == {"items": [], "total": 0}
+
+
+def test_runtime_library_execute_proxies_exact_payload() -> None:
+    with respx.mock as router:
+        route = router.post(f"{_BASE}/v1/libraries/execute").mock(
+            return_value=httpx.Response(200, json={"success": True, "result": 3.0})
+        )
+        arguments = {
+            "module": "statistics.descriptive",
+            "function": "mean",
+            "args": {"values": [1.0, 2.0, 6.0]},
+            "request_id": "req_runtime_1",
+        }
+
+        out = asyncio.run(registry.call_tool("execute_runtime_library", arguments))
+
+        assert route.called
+        request = route.calls.last.request
+        assert request.headers["authorization"] == f"Bearer {_KEY}"
+        assert json.loads(request.read()) == arguments
+        assert json.loads(out) == {"success": True, "result": 3.0}
+
+
+def test_runtime_library_list_paginates_to_requested_limit() -> None:
+    def _page_response(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params.get("page", "1"))
+        modules = (
+            [
+                {"name": "alpha", "engine": "mojo", "functions": ["a"]},
+                {"name": "beta", "engine": "mojo", "functions": ["b"]},
+            ]
+            if page == 1
+            else [{"name": "gamma", "engine": "mojo", "functions": ["g"]}]
+        )
+        return httpx.Response(
+            200,
+            json={
+                "modules": modules,
+                "count": len(modules),
+                "total": 3,
+                "page": page,
+                "limit": 3,
+                "pages": 2,
+            },
+        )
+
+    with respx.mock as router:
+        route = router.get(f"{_BASE}/v1/libraries").mock(side_effect=_page_response)
+
+        payload = json.loads(
+            asyncio.run(registry.call_tool("list_runtime_libraries", {"limit": 3}))
+        )
+
+        assert route.call_count == 2
+        assert [module["name"] for module in payload["modules"]] == ["alpha", "beta", "gamma"]
+        assert payload["count"] == 3
 
 
 def test_call_tool_forwards_bearer_auth_to_configured_base_url() -> None:

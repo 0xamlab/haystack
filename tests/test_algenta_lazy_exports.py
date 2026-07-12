@@ -196,7 +196,7 @@ def test_algenta_root_uses_lazy_exports_for_heavy_surfaces() -> None:
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetName"
         assert runtime_error_cls is algenta.CodnaRuntimeError
         assert callable(map_data_fn)
-        assert contract_version == "v1.3"
+        assert contract_version == "v1.4"
         assert brand == "Algenta"
         assert default_base_url == "https://api.algenta.ai"
         assert mcp_endpoint == "https://api.algenta.ai/mcp/sse"

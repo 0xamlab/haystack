@@ -88,15 +88,17 @@ def test_live_runtime_library_scripts_self_bootstrap_repo_imports() -> None:
     assert "python3 tests/integration/test_cli_mcp_runtime_libraries_live.py" in cli_mcp_live
     assert "PYTHONPATH=. python3 tests/integration/test_cli_mcp_runtime_libraries_live.py" not in cli_mcp_live
     assert "ROOT = Path(__file__).resolve().parents[2]" in cli_mcp_live
-    assert "sys.path.insert(0, str(ROOT))" in cli_mcp_live
-    assert 'def _format_elapsed_seconds(started_at: float) -> str:' in cli_mcp_live
+    assert 'ROOT / "packages" / "algenta"' in cli_mcp_live
+    assert 'ROOT / "packages" / "mcp"' in cli_mcp_live
+    assert "sys.path.insert(0, resolved_root)" in cli_mcp_live
     assert '_emit(f"  ... {name}")' in cli_mcp_live
-    assert "def _resolve_base_url() -> str:" in cli_mcp_live
-    assert "def _endpoint_serves_canonical_runtime_contract(base_url: str) -> bool:" in cli_mcp_live
-    assert "async def _wait_for_runtime_entitlement_ready(timeout_seconds: float = 10.0)" in cli_mcp_live
-    assert "runtime daemon entitlement did not become ready" in cli_mcp_live
-    assert '"apps.api_server.main:app"' in cli_mcp_live
-    assert "atexit.register(_cleanup_runtime)" in cli_mcp_live
+    assert "def _preflight_api() -> None:" in cli_mcp_live
+    assert 'runtime = MojoRuntime(mode="local", timeout=30.0)' in cli_mcp_live
+    assert 'bundled_worker.info()["warm_session"] is True' in cli_mcp_live
+    assert '"separate_daemon_required": False' in cli_mcp_live
+    assert "mcp_registry.call_tool" in cli_mcp_live
+    assert "DaemonClient" not in cli_mcp_live
+    assert "apps.runtime.daemon" not in cli_mcp_live
 
 
 def test_typescript_sdk_package_exports_point_to_real_build_outputs() -> None:
@@ -786,4 +788,3 @@ def test_root_test_graph_includes_formal_runtime_foundation_proof_bundle() -> No
         "pnpm test:hardening",
     ):
         assert required_stage in check_graph, f"check graph is missing required stage: {required_stage}"
-

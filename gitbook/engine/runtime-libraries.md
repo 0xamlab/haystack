@@ -10,7 +10,7 @@ Beyond the high-level engines, Algenta can expose its individual **runtime libra
 The supported public surface is the authenticated HTTP API below. It executes inside the selected Algenta deployment and returns the same structured contract as other `/v1` operations.
 
 {% hint style="warning" %}
-The HTTP routes (`/v1/libraries*`) are **off by default**. A self-host operator turns them on by setting `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED=true` in deployment configuration. If they are disabled, the routes return `404`. See the [configuration reference](../configuration.md).
+The authenticated HTTP routes (`/v1/libraries*`) are enabled by default so SDK and MCP clients can discover them without operator setup. A self-host operator can set `ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED=false` to remove the routes; disabled routes return `404`. See the [configuration reference](../configuration.md).
 {% endhint %}
 
 ## HTTP surface

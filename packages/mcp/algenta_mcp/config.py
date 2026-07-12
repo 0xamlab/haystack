@@ -8,7 +8,7 @@ from typing import Final
 # Egress/privacy reused from the published SDK (single source of truth — no vendored logic).
 from decision_engine.privacy_profile import cloud_disabled
 
-VERSION: Final[str] = "1.0.2"
+VERSION: Final[str] = "1.0.3"
 # Public default API base URL (same value the SDK uses); only used when nothing is configured and
 # cloud is not disabled.
 _DEFAULT_API_BASE_URL: Final[str] = "https://api.algenta.ai"

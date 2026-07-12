@@ -110,6 +110,17 @@ DISALLOWED_PUBLIC_PACKAGE_PATTERNS = (
         "wrong_typescript_sdk_package",
         ("Docs reference @algenta/sdk, but the published TypeScript package name is algenta-sdk."),
     ),
+    (
+        re.compile(
+            r"(?:falls? back to (?:a )?Fernet-encrypted file|stores? plaintext .*last resort)",
+            re.IGNORECASE,
+        ),
+        "insecure_cli_secret_storage_claim",
+        (
+            "Public docs must not describe plaintext or locally decryptable credential fallback; "
+            "credential persistence must fail closed when the OS keyring is unavailable."
+        ),
+    ),
 )
 
 SUMMARY_HEADING_ROUTE_SLUGS = {

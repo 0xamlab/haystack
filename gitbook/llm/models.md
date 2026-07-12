@@ -234,7 +234,7 @@ On a multi-tenant deployment, an org admin stores one key per backend through `P
 curl -sS -X POST "$ALGENTA_API_URL/v1/provider-keys" \
   -H "Authorization: Bearer $ALGENTA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"backend": "anthropic", "api_key": "sk-ant-your-provider-key"}'
+  -d "{\"backend\": \"anthropic\", \"api_key\": \"$ANTHROPIC_API_KEY\"}"
 ```
 
 There is one key per `(organization, backend)`. See the [BYOK guide](../guides/byok.md) for the full lifecycle.

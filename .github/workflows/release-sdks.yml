@@ -6,8 +6,9 @@
 # PyPI publishing uses an API TOKEN (secret PYPI_TOKEN); npm uses provenance.
 #
 # PREREQUISITES:
-#   - Repo secret `PYPI_TOKEN` = a PyPI API token with upload rights for algenta-sdk / algenta /
-#     algenta-core (+ algenta-mcp). The real-publish job reads it via `secrets.PYPI_TOKEN`. For the
+#   - Repo secret `PYPI_TOKEN` = a PyPI API token with upload rights for algenta-sdk,
+#     algenta-core, and algenta-mcp. The `algenta` + native pair is published only by
+#     build-runtime.yml. The real-publish job reads this token via `secrets.PYPI_TOKEN`. For the
 #     optional TestPyPI rehearsal, add a separate `TEST_PYPI_TOKEN` (a test.pypi.org token).
 #   - The GitHub `release` environment (the manual-approval gate) must exist with REQUIRED REVIEWERS —
 #     publish jobs (including the TestPyPI rehearsal) block until a reviewer approves.
@@ -68,8 +69,8 @@ jobs:
         run: |
           python -m pip install --upgrade build twine
           # `algenta` = the graduated CLI+SDK (owns the `algenta` import/command); `algenta-core` = the
-          # compatibility shim; `mcp` builds `algenta-mcp`. The proprietary `algenta-runtime-native` sidecar
-          # is built by build-runtime.yml.
+          # compatibility shim; `mcp` builds `algenta-mcp`. The proprietary runtime dependency
+          # and `algenta` are released together by build-runtime.yml.
           for pkg in python-sdk algenta algenta-core mcp; do
             python -m build "packages/$pkg"
             twine check "packages/$pkg"/dist/*
@@ -109,13 +110,6 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           password: ${{ secrets.TEST_PYPI_TOKEN }}
           skip-existing: true # re-runs of the same version no-op instead of erroring
-      - name: Publish algenta to TestPyPI
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/algenta/dist
-          repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
-          skip-existing: true
       - name: Publish algenta-core (shim) to TestPyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
@@ -151,11 +145,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: packages/python-sdk/dist
-          password: ${{ secrets.PYPI_TOKEN }}
-      - name: Publish algenta
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: packages/algenta/dist
           password: ${{ secrets.PYPI_TOKEN }}
       - name: Publish algenta-core (shim)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

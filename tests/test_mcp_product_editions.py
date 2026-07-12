@@ -8,6 +8,7 @@ visibility filter on ``get_tool_specs`` / ``call_tool``.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -15,20 +16,20 @@ from apps.mcp_server import products
 from apps.mcp_server.registry import TOOLS, call_tool, get_tool_specs
 
 
-def test_product_registry_has_all_verticals() -> None:
-    assert set(products.PRODUCT_EDITIONS) == {
-        "algenta",
-        "codna",
-        "cohenta",
-        "decimas",
-        "escrypto",
-    }
-    # Algenta is the only edition populated so far; the rest fail closed (empty) until shipped.
+_PUBLIC_PRODUCT_SOURCE = Path("packages/mcp/algenta_mcp/products.py")
+_INTERNAL_PRODUCT_NAMES = ("cohenta", "decimas", "escrypto")
+
+
+def test_product_registry_exposes_only_shipped_editions() -> None:
+    assert set(products.PRODUCT_EDITIONS) == {"algenta", "codna"}
     assert products.PRODUCT_EDITIONS["algenta"]
     assert products.PRODUCT_EDITIONS["codna"]
-    assert products.PRODUCT_EDITIONS["cohenta"] == frozenset()
-    assert products.PRODUCT_EDITIONS["decimas"] == frozenset()
-    assert products.PRODUCT_EDITIONS["escrypto"] == frozenset()
+
+
+def test_public_product_module_does_not_enumerate_unshipped_sister_brands() -> None:
+    source = _PUBLIC_PRODUCT_SOURCE.read_text(encoding="utf-8").lower()
+    for product_name in _INTERNAL_PRODUCT_NAMES:
+        assert product_name not in source
 
 
 def test_codna_allowlist_is_subset_of_live_registry() -> None:
@@ -51,7 +52,7 @@ def test_product_allowlist_fails_closed() -> None:
     assert products.product_allowlist(None) is None  # unscoped → full registry
     assert products.product_allowlist("codna") == products.PRODUCT_EDITIONS["codna"]
     assert products.product_allowlist("unknown") == frozenset()  # fail closed
-    assert products.product_allowlist("cohenta") == frozenset()  # not-yet-shipped → fail closed
+    assert products.product_allowlist("unshipped") == frozenset()
 
 
 def test_resolve_visible_tools_intersects_and_fails_closed() -> None:
@@ -111,8 +112,10 @@ def test_mcp_tools_route_filters_by_product_header() -> None:
     # unknown / not-yet-shipped product → empty (fail closed, never full registry)
     unknown = client.get("/mcp/tools", headers={"X-Algenta-Product": "nope"}).json()["tools"]
     assert unknown == []
-    cohenta = client.get("/mcp/tools", headers={"X-Algenta-Product": "cohenta"}).json()["tools"]
-    assert cohenta == []
+    unshipped = client.get(
+        "/mcp/tools", headers={"X-Algenta-Product": "unshipped"}
+    ).json()["tools"]
+    assert unshipped == []
 
 
 def test_call_tool_rejects_out_of_edition() -> None:
@@ -155,7 +158,7 @@ def test_feature_tool_constraint_full_features_equals_edition() -> None:
 def test_feature_tool_constraint_none_when_no_narrowing() -> None:
     assert products.feature_tool_constraint("codna", []) is None  # product, no feature list
     assert products.feature_tool_constraint("codna", None) is None
-    assert products.feature_tool_constraint("cohenta", ["x"]) is None  # no feature map
+    assert products.feature_tool_constraint("unshipped", ["x"]) is None
     assert products.feature_tool_constraint(None, ["repo_graph"]) is None
 
 

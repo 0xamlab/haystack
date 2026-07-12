@@ -233,7 +233,7 @@ def test_decision_engine_root_uses_lazy_exports_for_clients_and_models() -> None
         )
         assert runtime_slo_budget_name_enum.__name__ == "RuntimeSLOBudgetNameResult"
         assert validation_error_cls.__name__ == "ValidationError"
-        assert contract_version == "v1.3"
+        assert contract_version == "v1.4"
         assert brand == "Algenta"
         assert default_base_url == "https://api.algenta.ai"
         assert mcp_endpoint == "https://api.algenta.ai/mcp/sse"

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "algenta-core"
-version = "1.0.2"
+version = "1.0.3"
 description = "DEPRECATED — algenta-core graduated into the `algenta` distribution. This is a compatibility shim that just installs `algenta` (same import name, same `algenta` command)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,7 +22,7 @@ classifiers = [
 ]
 # The whole point of the shim: pull in the graduated distribution. Pinned == so an upgrade lands the matching
 # `algenta`. algenta now OWNS the `algenta` import + the `algenta` command; this ships NO package files.
-dependencies = ["algenta==1.0.2"]
+dependencies = ["algenta==1.0.3"]
 
 [project.urls]
 Homepage = "https://algenta.ai"

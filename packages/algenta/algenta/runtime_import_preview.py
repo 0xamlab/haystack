@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from algenta.branding import source_bundle_banner, source_import_banner
-from algenta.runtime_errors import CodnaRuntimeError, RuntimeValidationError
+from algenta.runtime_errors import AlgentaRuntimeError, RuntimeValidationError
 from algenta.runtime_model_import_preview import (
     ImportBundlePreview,
     ImportFailure,
@@ -91,7 +91,7 @@ def build_import_bundle_preview(
         )
         try:
             registrations.append(connect(source, name=source_name, description=description))
-        except CodnaRuntimeError as exc:
+        except AlgentaRuntimeError as exc:
             failures.append(
                 ImportFailure(
                     source_ref=resolved_source_ref,

@@ -8,10 +8,21 @@ not install or configure it directly.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+from packaging.tags import sys_tags
+
+
+def _platform_wheel_tag() -> str:
+    platform_tag = next(
+        tag.platform
+        for tag in sys_tags()
+        if "manylinux" not in tag.platform and "musllinux" not in tag.platform
+    )
+    return f"py3-none-{platform_tag}"
 
 
 class CustomBuildHook(BuildHookInterface):
@@ -38,6 +49,7 @@ class CustomBuildHook(BuildHookInterface):
         )
         required = (
             os.path.join(src_dir, worker_name),
+            os.path.join(src_dir, "runtime-shards.json"),
             os.path.join(src_dir, "manifest.json"),
             os.path.join(src_dir, "manifest.sig"),
             os.path.join(src_dir, "algenta_release_pub.pem"),
@@ -51,20 +63,26 @@ class CustomBuildHook(BuildHookInterface):
                 )
 
         force_include = build_data.setdefault("force_include", {})
-        force_include[required[0]] = f"algenta_runtime_native/{worker_name}"
-        force_include[required[1]] = "algenta_runtime_native/manifest.json"
-        force_include[required[2]] = "algenta_runtime_native/manifest.sig"
-        force_include[required[3]] = "algenta_runtime_native/algenta_release_pub.pem"
-
-        stem = "libalgenta_runtime"
-        ext = (
-            "dylib"
-            if sys.platform == "darwin"
-            else ("dll" if sys.platform.startswith("win") else "so")
-        )
-        lib = os.path.join(src_dir, f"{stem}.{ext}")
-        if os.path.exists(lib):
-            force_include[lib] = f"algenta_runtime_native/{stem}.{ext}"
+        with open(required[2], encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        artifacts = manifest.get("artifacts")
+        if not isinstance(artifacts, list):
+            raise RuntimeError("runtime manifest has no artifact list")
+        artifact_names: set[str] = set()
+        for entry in artifacts:
+            name = entry.get("name") if isinstance(entry, dict) else None
+            if not isinstance(name, str) or not name or os.path.basename(name) != name:
+                raise RuntimeError(f"runtime manifest contains an unsafe artifact name: {name!r}")
+            source = os.path.join(src_dir, name)
+            if not os.path.isfile(source):
+                raise FileNotFoundError(f"runtime manifest artifact is missing: {source}")
+            artifact_names.add(name)
+            force_include[source] = f"algenta_runtime_native/{name}"
+        if worker_name not in artifact_names or "runtime-shards.json" not in artifact_names:
+            raise RuntimeError("runtime manifest does not include the worker and shard map")
+        force_include[required[2]] = "algenta_runtime_native/manifest.json"
+        force_include[required[3]] = "algenta_runtime_native/manifest.sig"
+        force_include[required[4]] = "algenta_runtime_native/algenta_release_pub.pem"
 
         if sys.platform == "darwin":
             se_dir = os.path.join(src_dir, "se")
@@ -83,4 +101,5 @@ class CustomBuildHook(BuildHookInterface):
                 )
 
         build_data["pure_python"] = False
-        build_data["infer_tag"] = True
+        build_data["infer_tag"] = False
+        build_data["tag"] = _platform_wheel_tag()

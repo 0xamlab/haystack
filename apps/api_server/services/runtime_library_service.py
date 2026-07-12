@@ -40,6 +40,16 @@ class RuntimeLibraryExecutionResult:
     request_id: str | None
 
 
+@dataclass
+class RuntimeLibraryServiceError(Exception):
+    code: str
+    message: str
+    details: dict[str, Any] | None = None
+
+    def __str__(self) -> str:
+        return self.message
+
+
 def _runtime_engine() -> str:
     return "mojo" if _runtime_worker_available() else "unavailable"
 
@@ -101,11 +111,11 @@ async def execute_public_runtime_library(
     request_id: str | None = None,
 ) -> RuntimeLibraryExecutionResult:
     started = time.monotonic()
-    function_spec, payload = build_runtime_library_worker_request(module, function, args)
     try:
+        function_spec, payload = build_runtime_library_worker_request(module, function, args)
         raw = await invoke_via_pool(payload)
     except MojoEngineError as exc:
-        raise MojoLibraryError(
+        raise RuntimeLibraryServiceError(
             "compute_runtime_unavailable",
             (
                 f"Compiled Mojo worker execution is unavailable for {module}.{function}. "
@@ -113,12 +123,17 @@ async def execute_public_runtime_library(
             ),
             {"module": module, "function": function, "cause": exc.code},
         ) from exc
-    result = parse_runtime_library_worker_response(
-        module,
-        function,
-        raw,
-        function_spec=function_spec,
-    )
+    except MojoLibraryError as exc:
+        raise RuntimeLibraryServiceError(exc.code, exc.message, exc.details) from exc
+    try:
+        result = parse_runtime_library_worker_response(
+            module,
+            function,
+            raw,
+            function_spec=function_spec,
+        )
+    except MojoLibraryError as exc:
+        raise RuntimeLibraryServiceError(exc.code, exc.message, exc.details) from exc
     latency_ms = round((time.monotonic() - started) * 1000, 2)
     return RuntimeLibraryExecutionResult(
         module=module,

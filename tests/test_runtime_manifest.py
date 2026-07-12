@@ -75,7 +75,7 @@ def test_runtime_manifest_route_matches_current_llm_rollout_contract() -> None:
         "mcp",
     ]
     assert payload["validated_auxiliary_channels"] == [
-        "daemon_client",
+        "bundled_worker",
         "runtime_local",
     ]
     assert payload["feature_flag_channels"] == ["http_api_feature_flag"]
@@ -428,7 +428,7 @@ def test_runtime_manifest_signature_release_theorem_and_openapi_route_are_stable
     assert manifest_a.deployment_modes.current is RuntimeDeploymentMode.local_dev_daemon
     assert manifest_a.deployment_modes.supported_modes[0] is RuntimeDeploymentMode.saas
     assert manifest_a.supported_channels[0] is RuntimeSupportedChannel.python_sdk
-    assert manifest_a.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannel.daemon_client
+    assert manifest_a.validated_auxiliary_channels[0] is RuntimeAuxiliaryChannel.bundled_worker
     assert (
         manifest_a.feature_flag_channels[0]
         is RuntimeFeatureFlagChannel.http_api_feature_flag

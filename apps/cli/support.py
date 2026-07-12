@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import getpass
 import json
-import logging
 import os
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -18,8 +18,6 @@ from apps.operator_http.privacy import (
     resolve_operator_dashboard_url,
 )
 
-logger = logging.getLogger(__name__)
-
 CONFIG_DIR = Path(os.environ.get("DE_CONFIG_DIR", Path.home() / ".de"))
 CONFIG_FILE = CONFIG_DIR / "config.json"
 SECRET_FILE = CONFIG_DIR / "secrets.bin"
@@ -27,74 +25,88 @@ SECRET_SERVICE = "decision-engine-cli"  # noqa: S105
 API_KEY_ENV_VARS = ("ALGENTA_API_KEY", "DE_API_KEY")
 BASE_URL_ENV_VARS = ("ALGENTA_BASE_URL", "DE_BASE_URL", "ALGENTA_API_URL")
 APP_BASE_URL_ENV_VARS = ("ALGENTA_APP_BASE_URL", "APP_BASE_URL", "DE_APP_BASE_URL")
+_PERSISTED_CONFIG_KEYS = frozenset({"api_key_backend", "base_url"})
+_LEGACY_SECRET_CONFIG_KEYS = frozenset({"api_key", "api_key_encryption_key"})
+
+
+class CredentialStoreError(RuntimeError):
+    """The CLI could not access a secure operating-system credential store."""
+
+
+def _keyring_module():
+    import keyring  # type: ignore[import]
+
+    return keyring
 
 
 def load_config() -> dict[str, str]:
-    if CONFIG_FILE.exists():
-        try:
-            return json.loads(CONFIG_FILE.read_text())
-        except Exception:
-            return {}
-    return {}
+    if not CONFIG_FILE.exists():
+        return {}
+    try:
+        payload = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"CLI config is unreadable or malformed: {CONFIG_FILE}") from exc
+    if not isinstance(payload, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str) for key, value in payload.items()
+    ):
+        raise ValueError(f"CLI config must be a string-to-string JSON object: {CONFIG_FILE}")
+    return payload
 
 
 def save_config(config: dict[str, str]) -> None:
+    unexpected = set(config) - _PERSISTED_CONFIG_KEYS
+    if unexpected:
+        raise ValueError(f"CLI config contains unsupported keys: {', '.join(sorted(unexpected))}")
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(json.dumps(config, indent=2))
+    CONFIG_DIR.chmod(0o700)
+    fd, temporary_path = tempfile.mkstemp(dir=CONFIG_DIR, prefix=".config.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(config, handle, indent=2)
+            handle.write("\n")
+        os.chmod(temporary_path, 0o600)
+        os.replace(temporary_path, CONFIG_FILE)
+    finally:
+        Path(temporary_path).unlink(missing_ok=True)
 
 
 def store_api_key_secure(config: dict[str, str], api_key: str) -> None:
+    normalized = api_key.strip()
+    if not normalized:
+        raise CredentialStoreError("Refusing to store an empty API key.")
     try:
-        import keyring  # type: ignore[import]
-
-        keyring.set_password(SECRET_SERVICE, "api_key", api_key)
-        config.pop("api_key", None)
-        config["api_key_backend"] = "keyring"
-        return
+        keyring = _keyring_module()
+        keyring.set_password(SECRET_SERVICE, "api_key", normalized)
+        if keyring.get_password(SECRET_SERVICE, "api_key") != normalized:
+            raise CredentialStoreError(
+                "The operating-system credential store did not verify the saved key."
+            )
     except Exception as exc:
-        logger.debug("keyring_store_failed", exc_info=exc)
+        if isinstance(exc, CredentialStoreError):
+            raise
+        raise CredentialStoreError(
+            "No secure operating-system credential store is available. "
+            "Set ALGENTA_API_KEY or DE_API_KEY in the environment instead."
+        ) from exc
 
-    try:
-        from cryptography.fernet import Fernet  # type: ignore[import]
-
-        key = config.get("api_key_encryption_key")
-        if not key:
-            key = Fernet.generate_key().decode()
-            config["api_key_encryption_key"] = key
-        token = Fernet(key.encode()).encrypt(api_key.encode())
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SECRET_FILE.write_bytes(token)
-        config.pop("api_key", None)
-        config["api_key_backend"] = "encrypted_file"
-        return
-    except Exception as exc:
-        logger.debug("encrypted_file_store_failed", exc_info=exc)
-
-    config["api_key"] = api_key
-    config["api_key_backend"] = "config"
+    for key in _LEGACY_SECRET_CONFIG_KEYS:
+        config.pop(key, None)
+    SECRET_FILE.unlink(missing_ok=True)
+    config["api_key_backend"] = "keyring"
 
 
 def load_api_key_from_storage(config: dict[str, str]) -> str:
     backend = config.get("api_key_backend", "")
-    if backend == "keyring":
-        try:
-            import keyring  # type: ignore[import]
-
-            secret = keyring.get_password(SECRET_SERVICE, "api_key")
-            if secret:
-                return secret
-        except Exception as exc:
-            logger.debug("keyring_load_failed", exc_info=exc)
-    elif backend == "encrypted_file":
-        try:
-            from cryptography.fernet import Fernet  # type: ignore[import]
-
-            key = config.get("api_key_encryption_key", "")
-            if key and SECRET_FILE.exists():
-                return Fernet(key.encode()).decrypt(SECRET_FILE.read_bytes()).decode()
-        except Exception as exc:
-            logger.debug("encrypted_file_load_failed", exc_info=exc)
-    return config.get("api_key", "")
+    if backend != "keyring":
+        return ""
+    try:
+        secret = _keyring_module().get_password(SECRET_SERVICE, "api_key")
+        return secret.strip() if secret else ""
+    except Exception as exc:
+        raise CredentialStoreError(
+            "The operating-system credential store is unavailable. "
+            "Set ALGENTA_API_KEY or DE_API_KEY in the environment instead."
+        ) from exc
 
 
 def load_env_api_key() -> str:
@@ -109,7 +121,11 @@ def get_api_key() -> str:
     key = load_env_api_key()
     if not key:
         config = load_config()
-        key = load_api_key_from_storage(config)
+        try:
+            key = load_api_key_from_storage(config)
+        except CredentialStoreError as exc:
+            print(f"Credential store error: {exc}", file=sys.stderr)
+            sys.exit(1)
     if not key:
         print("❌ No API key found. Run: de config set-key <your-key>", file=sys.stderr)
         sys.exit(1)

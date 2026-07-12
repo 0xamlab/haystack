@@ -6,10 +6,12 @@ from unittest.mock import ANY
 import pytest
 
 from apps.api_server.services.runtime_library_service import (
+    RuntimeLibraryServiceError,
     execute_public_runtime_library,
     get_public_runtime_library_health,
     list_public_runtime_library_descriptors,
 )
+from apps.runtime.mojo_library_runner import MojoLibraryError
 
 
 def _fake_module(name: str, functions: list[str]) -> SimpleNamespace:
@@ -143,3 +145,32 @@ async def test_execute_public_runtime_library_returns_result_with_latency(
     assert result.engine_used == "mojo"
     assert result.request_id == "req_123"
     assert result.latency_ms >= 0
+
+
+@pytest.mark.anyio
+async def test_execute_public_runtime_library_translates_internal_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _reject_request(module: str, function: str, args: object) -> None:
+        del module, function, args
+        raise MojoLibraryError(
+            "invalid_arguments",
+            "Runtime arguments do not match the function contract.",
+            {"field": "values"},
+        )
+
+    monkeypatch.setattr(
+        "apps.api_server.services.runtime_library_service.build_runtime_library_worker_request",
+        _reject_request,
+    )
+
+    with pytest.raises(RuntimeLibraryServiceError) as excinfo:
+        await execute_public_runtime_library(
+            module="vector_kernels.dot",
+            function="dot64_f32",
+            args={"values": "invalid"},
+        )
+
+    assert excinfo.value.code == "invalid_arguments"
+    assert excinfo.value.details == {"field": "values"}
+    assert "function contract" in excinfo.value.message

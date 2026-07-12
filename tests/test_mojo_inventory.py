@@ -395,7 +395,7 @@ def test_llm_rollout_modules_are_runtime_executable() -> None:
         "json_add_raw",
         "json_build_object",
     )
-    assert modules["runtime_library_dispatch_generated"] == ("dispatch_runtime_library",)
+    assert "runtime_library_dispatch_generated" not in modules
     assert modules["rerank_eval"] == (
         "precision_at_k",
         "recall_at_k",
@@ -449,6 +449,32 @@ def test_runtime_executable_function_supports_struct_transport(tmp_path: Path) -
         functions[0],
         import_path="cache",
         struct_specs=struct_specs,
+    )
+
+
+def test_struct_parser_excludes_method_local_variables(tmp_path: Path) -> None:
+    module_path = tmp_path / "table.mojo"
+    _write(
+        module_path,
+        "\n".join(
+            [
+                "struct Table(Copyable, Movable):",
+                "    var rows: List[Int]",
+                "    var count: Int",
+                "",
+                "    fn total(self) -> Int:",
+                "        var count: Int = 0",
+                "        var local_total: Int = 0",
+                "        return local_total",
+            ]
+        ),
+    )
+
+    specs = mojo_inventory.parse_runtime_struct_specs(module_path)
+
+    assert tuple((field.name, field.typ) for field in specs["Table"].fields) == (
+        ("rows", "List[Int]"),
+        ("count", "Int"),
     )
 
 

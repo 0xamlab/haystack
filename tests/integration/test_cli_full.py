@@ -49,7 +49,7 @@ API_KEY = resolve_local_live_api_key()
 API_KEY_CONFIGURED = has_configured_local_live_api_key()
 SKIP_API = os.environ.get("DE_SKIP_API", "0") == "1"
 
-CLI = [sys.executable, str(_ROOT / "apps" / "cli" / "main.py")]
+CLI = [sys.executable, "-m", "apps.cli.main"]
 ENV = {**os.environ, "DE_API_KEY": API_KEY, "DE_BASE_URL": BASE_URL, "DE_NO_COLOR": "1"}
 
 PASS = "✅"
@@ -173,7 +173,11 @@ def test_runtime_help():
 
 def test_config_set_key():
     with tempfile.TemporaryDirectory() as tmpdir:
-        cfg_env = {**ENV, "DE_CONFIG_DIR": tmpdir}
+        cfg_env = {
+            **ENV,
+            "DE_CONFIG_DIR": tmpdir,
+            "PYTHON_KEYRING_BACKEND": "tests.in_memory_keyring.MemoryKeyring",
+        }
         r = subprocess.run(
             CLI + ["config", "set-key", API_KEY],
             capture_output=True,

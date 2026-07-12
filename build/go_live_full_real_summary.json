@@ -8,52 +8,52 @@
     "local_suite_count": 8,
     "slowest_suites": [
       {
-        "elapsed_seconds": 48.505,
+        "elapsed_seconds": 70.448,
         "name": "Mojo libraries A-Z",
         "ok": true
       },
       {
-        "elapsed_seconds": 27.051,
+        "elapsed_seconds": 22.662,
         "name": "Source matrix runtime benchmark",
         "ok": true
       },
       {
-        "elapsed_seconds": 25.486,
-        "name": "Live Python Runtime integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 25.409,
-        "name": "Live AlgentaClient integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 23.857,
-        "name": "Live CLI integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 17.199,
-        "name": "Live TypeScript Runtime integration",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 12.874,
-        "name": "Real-data Mojo engines",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 12.225,
-        "name": "Real local connectivity gate",
-        "ok": true
-      },
-      {
-        "elapsed_seconds": 10.669,
+        "elapsed_seconds": 19.95,
         "name": "Live MCP integration",
         "ok": true
       },
       {
-        "elapsed_seconds": 8.864,
+        "elapsed_seconds": 19.747,
+        "name": "Live CLI integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 19.054,
+        "name": "Live TypeScript Runtime integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 12.7,
+        "name": "Real-data Mojo engines",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 11.237,
+        "name": "Live HTTP runtime library integration",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 9.345,
+        "name": "Real local connectivity gate",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 9.321,
+        "name": "Root JavaScript workspace check",
+        "ok": true
+      },
+      {
+        "elapsed_seconds": 7.746,
         "name": "Uploaded CSV exact benchmark",
         "ok": true
       }
@@ -61,9 +61,9 @@
     "status": "complete",
     "top_level_suite_count": 4
   },
-  "elapsed_seconds": 282.125,
+  "elapsed_seconds": 259.434,
   "failed": 0,
-  "generated_at": "2026-07-11T06:21:58.071293Z",
+  "generated_at": "2026-07-12T02:55:18.969778Z",
   "name": "go_live_full_real",
   "passed": 25,
   "script": "tests/integration/test_go_live_full_real.py",

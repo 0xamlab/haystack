@@ -31,7 +31,7 @@ def test_cmd_contract_prints_machine_readable_contract_summary(monkeypatch) -> N
 
     output = _capture_stdout(cli.cmd_contract, "table")
 
-    assert "Algenta contract: v1.3" in output
+    assert "Algenta contract: v1.4" in output
     assert "/v1/meta/contract" in output
     assert "get_contract() / get_contract()" in output
     assert "getContract() / getContract()" in output
@@ -877,5 +877,4 @@ def test_main_dispatches_runtime_admin_benchmarks(monkeypatch) -> None:
     cli.main()
 
     assert called == {"format": "json"}
-
 

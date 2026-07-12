@@ -8,19 +8,19 @@
     "source": "github"
   },
   "websiteUrl": "https://algenta.ai",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "algenta-mcp",
-      "version": "1.0.0",
+      "version": "1.0.3",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "ALGENTA_API_KEY",
-          "description": "Your Algenta API key (get one with `algenta login`, or from the dashboard). Legacy DE_API_KEY is also accepted.",
+          "description": "Your Algenta API key. Create one in the Algenta dashboard or authenticate with `algenta login`.",
           "isRequired": true,
           "isSecret": true
         },

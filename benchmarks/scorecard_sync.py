@@ -670,7 +670,7 @@ def render_supported_channel_coverage_row(summary: dict[str, Any]) -> str:
     current = (
         f"Python SDK {int(live_by_name['python_sdk_local_runtime']['passed'])}/"
         f"{int(live_by_name['python_sdk_local_runtime']['minimum_passed'])} passed, "
-        "CLI + DaemonClient + `Runtime(mode=\"local\")` + MCP "
+        "CLI + bundled worker + `Runtime(mode=\"local\")` + MCP "
         f"{int(live_by_name['local_runtime_cli_mcp_matrix']['passed'])}/"
         f"{int(live_by_name['local_runtime_cli_mcp_matrix']['minimum_passed'])} passed, "
         "TypeScript SDK "
@@ -738,8 +738,8 @@ def render_http_api_flag_live_coverage_row(summary: dict[str, Any]) -> str:
 
 def render_public_http_api_flag_readiness_row(summary: dict[str, Any]) -> str:
     current = (
-        "`/v1/libraries*` routes are feature-flag ready via "
-        f"`{summary['public_http_library_routes_enable_env']}` and remain disabled by default"
+        "`/v1/libraries*` routes are enabled by default and can be disabled via "
+        f"`{summary['public_http_library_routes_enable_env']}`"
     )
     return (
         "| Public HTTP API flag readiness | "

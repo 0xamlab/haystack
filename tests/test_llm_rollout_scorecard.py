@@ -32,7 +32,7 @@ def test_llm_rollout_scorecard_references_dedicated_artifacts_and_channels() -> 
     assert "tests/test_repository_intelligence_benchmark.py" in text
     assert "Python SDK" in text
     assert "TypeScript SDK" in text
-    assert "CLI + DaemonClient + `Runtime(mode=\"local\")` + MCP" in text
+    assert "CLI + bundled worker + `Runtime(mode=\"local\")` + MCP" in text
     assert "SDK package contract coverage" in text
     assert "HTTP API flag contract coverage" in text
     assert "HTTP API flag live coverage" in text
@@ -66,7 +66,7 @@ def test_llm_rollout_scorecard_matches_current_rollout_artifacts() -> None:
     live_fragment = (
         f"Python SDK {live_by_name['python_sdk_local_runtime']['passed']}/"
         f"{live_by_name['python_sdk_local_runtime']['minimum_passed']} passed, "
-        "CLI + DaemonClient + `Runtime(mode=\"local\")` + MCP "
+        "CLI + bundled worker + `Runtime(mode=\"local\")` + MCP "
         f"{live_by_name['local_runtime_cli_mcp_matrix']['passed']}/"
         f"{live_by_name['local_runtime_cli_mcp_matrix']['minimum_passed']} passed, "
         "TypeScript SDK "
@@ -128,8 +128,8 @@ def test_llm_rollout_scorecard_matches_current_rollout_artifacts() -> None:
         "functions"
     )
     http_flag_fragment = (
-        "`/v1/libraries*` routes are feature-flag ready via "
-        "`ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED` and remain disabled by default"
+        "`/v1/libraries*` routes are enabled by default and can be disabled via "
+        "`ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED`"
     )
 
     assert parity_fragment in text

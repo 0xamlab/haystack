@@ -61,7 +61,7 @@ DESCRIPTIONS = {
         "Enforce a configured organization storage policy (off by default; Algenta editions are uncapped)."
     ),
     "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED": (
-        "Expose the /v1/libraries* runtime-library routes (off by default)."
+        "Expose the /v1/libraries* runtime-library routes (on by default)."
     ),
     "ALGENTA_SIMULATION_PERSIST_TRANSPORT": (
         "Result persistence backend: auto | celery | in_process."
@@ -118,6 +118,7 @@ _INTERNAL_FIELDS = frozenset(
         "mojo_profiling_policy",
         "mojo_timeout_seconds",
         "runtime_fallback_mode",
+        "rs256_license_products",
     }
 )
 _INTERNAL_PREFIXES = ("github_app", "license_signing", "license_signer", "stripe_price_")

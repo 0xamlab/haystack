@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from algenta.runtime_errors import CodnaRuntimeError
+from algenta.runtime_errors import AlgentaRuntimeError
 from algenta.runtime_local_execution import (
     collect_local_plan_errors,
     execute_local_plan,
@@ -81,7 +81,7 @@ def verify_local_request(
     start = time.perf_counter()
     try:
         plan = coerce_plan(request, kwargs)
-    except CodnaRuntimeError as exc:
+    except AlgentaRuntimeError as exc:
         return _invalid_verify_output(
             start,
             errors=[str(exc)],

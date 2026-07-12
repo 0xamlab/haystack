@@ -808,8 +808,11 @@ def _deny_if_revoked(parsed: DeviceLicense) -> DeviceLicense | None:
 def _is_license_revoked(parsed: DeviceLicense) -> bool:
     """True ONLY when a positively-verified CRL explicitly lists this license's activation_id.
 
+    OEM licenses are deliberately non-phone-home and therefore never fetch a control-plane CRL.
     DARK: no activation_id → never revoked. Every uncertainty → False (keep the license).
     """
+    if parsed.deployment_class == "oem":
+        return False
     if not parsed.activation_id:
         return False
     crl = _fetch_revocation_list()

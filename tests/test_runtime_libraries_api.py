@@ -29,14 +29,14 @@ def _reload_api_server_app():
 @pytest.fixture
 def runtime_library_api_app_loader(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[bool], Any]:
+) -> Callable[[bool | None], Any]:
     env_name = "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED"
 
-    def load(enabled: bool):
-        if enabled:
-            monkeypatch.setenv(env_name, "1")
-        else:
+    def load(enabled: bool | None):
+        if enabled is None:
             monkeypatch.delenv(env_name, raising=False)
+        else:
+            monkeypatch.setenv(env_name, "1" if enabled else "0")
         return _reload_api_server_app()
 
     yield load
@@ -46,7 +46,7 @@ def runtime_library_api_app_loader(
 
 
 @pytest.mark.anyio
-async def test_public_api_does_not_expose_runtime_library_routes_by_default(
+async def test_public_api_can_explicitly_disable_runtime_library_routes(
     runtime_library_api_app_loader,
 ) -> None:
     app = runtime_library_api_app_loader(False)
@@ -74,11 +74,11 @@ async def test_public_api_does_not_expose_runtime_library_routes_by_default(
 
 
 @pytest.mark.anyio
-async def test_runtime_library_routes_are_feature_flag_ready_for_http_api(
+async def test_runtime_library_routes_are_enabled_by_default(
     runtime_library_api_app_loader,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = runtime_library_api_app_loader(True)
+    app = runtime_library_api_app_loader(None)
 
     from apps.api_server.routers import runtime_libraries as runtime_libraries_router
 

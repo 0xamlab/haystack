@@ -1,11 +1,17 @@
-"""MCP tools for local runtime-backed Mojo library inventory and execution."""
+"""MCP tools for the API-owned warm runtime-library worker pool."""
 
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Any, TypedDict
 
-from apps.runtime.client import DaemonClient
+from apps.api_server.services.runtime_library_service import (
+    RuntimeLibraryServiceError,
+    execute_public_runtime_library,
+    get_public_runtime_library_health,
+    list_public_runtime_library_descriptors,
+)
 
 
 class RuntimeLibraryInfo(TypedDict):
@@ -71,31 +77,22 @@ EXECUTE_RUNTIME_LIBRARY_SPEC: dict[str, Any] = {
 
 
 async def _list_runtime_modules() -> tuple[dict[str, Any], list[RuntimeLibraryInfo]]:
-    client = DaemonClient(timeout=20.0)
-    health = await client.health()
-    if health.get("status") == "unreachable":
-        raise RuntimeError(
-            "Local Algenta runtime daemon is unavailable. "
-            "Start it before using runtime library MCP tools."
-        )
-    modules = await client.list_modules()
-    if not modules:
+    health = get_public_runtime_library_health()
+    if not health.runtime_available:
+        raise RuntimeError("The encapsulated Algenta runtime is unavailable.")
+    descriptors = list_public_runtime_library_descriptors()
+    if not descriptors:
         raise RuntimeError("Local Algenta runtime returned no executable Mojo libraries.")
-    normalized: list[RuntimeLibraryInfo] = []
-    for module in modules:
-        raw_functions = module.get("functions", [])
-        functions = (
-            [str(function) for function in raw_functions] if isinstance(raw_functions, list) else []
-        )
-        normalized.append(
-            {
-                "name": str(module.get("name", "")),
-                "engine": str(module.get("engine", "")),
-                "functions": functions,
-            }
-        )
+    normalized: list[RuntimeLibraryInfo] = [
+        {
+            "name": descriptor.name,
+            "engine": descriptor.engine,
+            "functions": list(descriptor.functions),
+        }
+        for descriptor in descriptors
+    ]
     normalized.sort(key=lambda module: module["name"])
-    return dict(health), normalized
+    return asdict(health), normalized
 
 
 async def list_runtime_libraries_handler(arguments: dict[str, Any]) -> str:
@@ -134,31 +131,24 @@ async def execute_runtime_library_handler(arguments: dict[str, Any]) -> str:
     if not function_name:
         raise RuntimeError("function is required.")
 
-    client = DaemonClient(timeout=30.0)
-    health = await client.health()
-    if health.get("status") == "unreachable":
-        raise RuntimeError(
-            "Local Algenta runtime daemon is unavailable. "
-            "Start it before using runtime library MCP tools."
+    try:
+        result = await execute_public_runtime_library(
+            module=module_name,
+            function=function_name,
+            args=arguments.get("args"),
+            request_id=str(arguments.get("request_id") or "") or None,
         )
-
-    result = await client.execute(
-        module_name,
-        function_name,
-        arguments.get("args"),
-        request_id=str(arguments.get("request_id") or ""),
-    )
-    if not result.get("success", False):
-        raise RuntimeError(str(result.get("error", "Runtime-backed Mojo execution failed.")))
+    except RuntimeLibraryServiceError as exc:
+        raise RuntimeError(f"{exc.code}: {exc.message}") from exc
 
     return json.dumps(
         {
             "module": module_name,
             "function": function_name,
             "args": arguments.get("args"),
-            "result": result.get("result"),
-            "latency_ms": result.get("latency_ms"),
-            "engine_used": result.get("engine_used"),
+            "result": result.result,
+            "latency_ms": result.latency_ms,
+            "engine_used": result.engine_used,
             "success": True,
         },
         indent=2,

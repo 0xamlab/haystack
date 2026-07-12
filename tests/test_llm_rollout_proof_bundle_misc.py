@@ -6,6 +6,8 @@ Extracted from /Users/angel/Developer/decision-engine/.claude/worktrees/wf_6761d
 
 from __future__ import annotations
 
+import pytest
+
 from tests._test_llm_rollout_proof_bundle_helpers import *  # noqa: F401,F403
 
 
@@ -27,9 +29,20 @@ Tests  1 passed | 8 skipped (9)
     assert _parse_test_runner_summary(output) == {"passed": 1, "failed": 0, "skipped": 8}
 
 
+def test_public_command_removes_local_python_path_and_rejects_other_absolute_paths() -> None:
+    assert proof_bundle._public_command((sys.executable, "-m", "pytest")) == [
+        "python3",
+        "-m",
+        "pytest",
+    ]
+
+    with pytest.raises(ValueError, match="must not serialize absolute executable paths"):
+        proof_bundle._public_command(("/opt/local/bin/custom-runner", "--check"))
+
+
 def test_rollout_proof_bundle_channel_sets_match_supported_surfaces() -> None:
     assert PUBLIC_SUPPORTED_CHANNELS == ("python_sdk", "typescript_sdk", "cli", "mcp")
-    assert UNDERLYING_VALIDATED_LANES == ("daemon_client", "runtime_local")
+    assert UNDERLYING_VALIDATED_LANES == ("bundled_worker", "runtime_local")
     assert PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV == "ALGENTA_RUNTIME_LIBRARY_HTTP_API_ENABLED"
     assert tuple(suite["name"] for suite in SDK_CONTRACT_SUITES) == (
         "python_sdk_package_contract",
@@ -75,7 +88,7 @@ def test_rollout_proof_bundle_channel_sets_match_supported_surfaces() -> None:
     assert tuple(item["channel"] for item in SERVING_EXTENSION_CHANNEL_SUITES) == (
         "python_sdk",
         "typescript_sdk",
-        "daemon_client",
+        "bundled_worker",
         "runtime_local",
         "cli",
         "mcp",
@@ -599,7 +612,7 @@ def test_build_proof_bundle_skip_live_uses_validated_artifact_payloads(monkeypat
     assert bundle["expected_functions"] == 209
     assert bundle["public_supported_channels"] == list(PUBLIC_SUPPORTED_CHANNELS)
     assert bundle["underlying_validated_lanes"] == list(UNDERLYING_VALIDATED_LANES)
-    assert bundle["public_http_library_routes_supported"] is False
+    assert bundle["public_http_library_routes_supported"] is True
     assert bundle["public_http_library_routes_feature_flag_ready"] is True
     assert bundle["public_http_library_routes_enable_env"] == PUBLIC_HTTP_LIBRARY_ROUTES_ENABLE_ENV
 

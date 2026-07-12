@@ -22,17 +22,29 @@ from typing import Any
 _DIR = Path(os.environ.get("CODNA_CONNECTOR_STORE") or (Path.home() / ".codna" / "connectors"))
 
 
+def _connector_path(connector_id: str) -> Path:
+    try:
+        canonical_id = uuid.UUID(str(connector_id))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ValueError("connector_id must be a valid UUID") from exc
+    return _DIR / f"{canonical_id}.json"
+
+
 def save_connector(record: dict[str, Any]) -> None:
     _DIR.mkdir(parents=True, exist_ok=True)
+    target = _connector_path(str(record.get("id", "")))
     fd, tmp = tempfile.mkstemp(dir=str(_DIR), prefix=".conn.", suffix=".tmp")
-    with os.fdopen(fd, "w") as f:
-        json.dump(record, f)
-    os.replace(tmp, _DIR / f"{record['id']}.json")  # atomic
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(record, f)
+        os.replace(tmp, target)
+    finally:
+        Path(tmp).unlink(missing_ok=True)
 
 
 def get_connector(connector_id: str) -> dict[str, Any] | None:
     try:
-        return json.loads((_DIR / f"{connector_id}.json").read_text())
+        return json.loads(_connector_path(connector_id).read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return None
 

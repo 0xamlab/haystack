@@ -334,3 +334,4 @@ def shutdown() -> None:
             except Exception:  # noqa: BLE001, S110
                 pass
         _HANDLE = None
+    worker.shutdown()

@@ -239,6 +239,18 @@ def test_ci_workflow_runs_root_formal_runtime_check_graph() -> None:
     assert 'PIXI_HOME="$GITHUB_WORKSPACE/.pixi"' in text
     assert "Install Mojo/Pixi environment" in text
     assert "pixi install --manifest-path mojo_env/pixi.toml" in text
+    assert "Build compiled Mojo simulation runtime" in text
+    assert "bash scripts/build_mojo_binary.sh" in text
+    assert "MOJO_RUNTIME_MODULE_FILTER: vector_kernels.dot" in text
+    assert "MOJO_SRC: ${{ runner.temp }}/algenta-ci-runtime/main.mojo" in text
+    assert "DISPATCH_OUTPUT_PATH: ${{ runner.temp }}/algenta-ci-runtime/" in text
+    assert "BINARY_PATH: ${{ runner.temp }}/algenta-ci-runtime/simulate" in text
+    assert 'cp mojo/engine/main.mojo "$MOJO_SRC"' in text
+    assert "Verify filtered compiled Mojo worker" in text
+    assert "-k vector_dot_runtime_library_request" in text
+    assert text.index("Build compiled Mojo simulation runtime") < text.index(
+        "Run repo check graph"
+    )
     assert "Install JavaScript workspace dependencies" in text
     assert "pnpm install --frozen-lockfile" in text
     assert "Run repo check graph" in text

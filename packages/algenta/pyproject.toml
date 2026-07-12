@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta"
-version = "1.0.2"
+version = "1.0.3"
 description = "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,8 +34,9 @@ classifiers = [
 # a broken CLI. Pinned == keeps the package/runtime ABI in lockstep.
 # cryptography backs offline manifest/license verification.
 dependencies = [
-    "algenta-runtime-native==1.0.0",
+    "algenta-runtime-native==1.0.3",
     "cryptography>=42",
+    "keyring>=25,<26",
 ]
 
 [project.optional-dependencies]
@@ -59,4 +60,4 @@ exclude = ["build*", "tests*"]
 
 [tool.setuptools.package-data]
 # Force the embedded PUBLIC trust anchors past the repo-wide *.pem gitignore (only *_pub.pem).
-algenta = ["_keys/*_pub.pem"]
+algenta = ["_keys/*_pub.pem", "runtime_library_contract.json"]

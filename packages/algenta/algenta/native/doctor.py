@@ -8,22 +8,22 @@ target of the clean-machine CI contract, which greps this output for the invaria
 """
 from __future__ import annotations
 
-import os
 import time
 
-from algenta import paths
+from algenta import auth
 from algenta.native import loader
 
 
 def _license_state() -> str:
-    lic = paths.license_path()
-    if not os.path.exists(lic):
+    try:
+        token = auth.read_license()
+    except auth.CredentialStoreError as exc:
+        return f"credential store unavailable ({exc})"
+    if not token:
         return "not present (run `algenta login`)"
     try:
         from algenta.runtime import verify
 
-        with open(lic, encoding="utf-8") as fh:
-            token = fh.read().strip()
         claims = verify.verify_license(token, now=int(time.time()))
         prod = (claims.get("products") or {}).get("algenta", {})
         return f"valid (tier={prod.get('tier')}, exp={claims.get('exp')})"

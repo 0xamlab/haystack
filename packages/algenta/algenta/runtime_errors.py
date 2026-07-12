@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-class CodnaRuntimeError(Exception):
+class AlgentaRuntimeError(Exception):
     """Base error for the Runtime facade."""
 
     def __init__(self, code: str, message: str, details: dict[str, Any] | None = None) -> None:
@@ -38,12 +38,13 @@ class CodnaRuntimeError(Exception):
         return self.validation_errors
 
 
-AlgentaRuntimeError = CodnaRuntimeError
+# Backward-compatible alias for integrations that used the former error name.
+CodnaRuntimeError = AlgentaRuntimeError
 
 
-class RuntimeConfigurationError(CodnaRuntimeError):
+class RuntimeConfigurationError(AlgentaRuntimeError):
     """Raised when the runtime is not configured for the requested mode."""
 
 
-class RuntimeValidationError(CodnaRuntimeError):
+class RuntimeValidationError(AlgentaRuntimeError):
     """Raised when the runtime request is invalid or not executable."""

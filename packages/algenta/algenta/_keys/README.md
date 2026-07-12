@@ -4,7 +4,7 @@ This directory holds the **public** RS256 verification keys the offline loader t
 included into the wheel (`pyproject.toml` → `artifacts = ["algenta/_keys/*_pub.pem", …]`) past the repo-wide
 `*.pem` gitignore. Only `*_pub.pem` ever lives here — **never a private key**.
 
-Two keys (must be dropped in by the owner / CI before a public release):
+Two pinned public keys are committed here and packaged into every public release:
 
 - `algenta_release_pub.pem` — verifies the **runtime manifest** signature (the native lib's integrity).
   The matching private key is the CI signing key (`ALGENTA_SIGNING_KEY` in build-runtime.yml).
