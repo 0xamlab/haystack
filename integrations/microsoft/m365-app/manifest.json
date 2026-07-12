@@ -1,0 +1,127 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.24",
+  "version": "0.2.0",
+  "id": "5a3209f0-79c2-4f05-ab1f-f0d42449dff8",
+  "developer": {
+    "name": "Algenta",
+    "websiteUrl": "https://algenta.ai",
+    "privacyUrl": "https://algenta.ai/privacy",
+    "termsOfUseUrl": "https://algenta.ai/terms"
+  },
+  "name": {
+    "short": "Algenta Decisions",
+    "full": "Algenta Decision Agent"
+  },
+  "description": {
+    "short": "Governed decisions inside Microsoft 365 — computed in your Azure.",
+    "full": "Algenta turns enterprise data and operating models into governed decisions across Microsoft 365, powered by a decision runtime deployed in your organization's Azure. Frame a decision, run scenarios and optimization, get a recommendation with evidence, and propose a plan for approval."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0F6CBD",
+  "copilotAgents": {
+    "declarativeAgents": [
+      {
+        "id": "algentaDecisionAgent",
+        "file": "declarativeAgent.json"
+      }
+    ]
+  },
+  "webApplicationInfo": {
+    "id": "3983990d-e9b5-4866-9a43-d52d6e0c20c3",
+    "resource": "api://3983990d-e9b5-4866-9a43-d52d6e0c20c3"
+  },
+  "extensions": [
+    {
+      "requirements": {
+        "scopes": ["workbook"],
+        "capabilities": [
+          { "name": "ExcelApi", "minVersion": "1.3" },
+          { "name": "AddinCommands", "minVersion": "1.1" }
+        ]
+      },
+      "runtimes": [
+        {
+          "id": "TaskPaneRuntime",
+          "type": "general",
+          "code": {
+            "page": "https://addin.algenta.ai/taskpane.html"
+          },
+          "lifetime": "short",
+          "actions": [
+            {
+              "id": "ShowTaskPane",
+              "type": "openPage",
+              "view": "homepage"
+            }
+          ]
+        }
+      ],
+      "ribbons": [
+        {
+          "contexts": ["default"],
+          "tabs": [
+            {
+              "builtInTabId": "TabHome",
+              "groups": [
+                {
+                  "id": "Algenta.Group",
+                  "label": "Algenta",
+                  "icons": [
+                    { "size": 16, "url": "https://addin.algenta.ai/assets/icon-16.png" },
+                    { "size": 32, "url": "https://addin.algenta.ai/assets/icon-32.png" },
+                    { "size": 80, "url": "https://addin.algenta.ai/assets/icon-80.png" }
+                  ],
+                  "controls": [
+                    {
+                      "id": "Algenta.OpenPane",
+                      "type": "button",
+                      "label": "Decisions",
+                      "icons": [
+                        { "size": 16, "url": "https://addin.algenta.ai/assets/icon-16.png" },
+                        { "size": 32, "url": "https://addin.algenta.ai/assets/icon-32.png" },
+                        { "size": 80, "url": "https://addin.algenta.ai/assets/icon-80.png" }
+                      ],
+                      "supertip": {
+                        "title": "Decisions",
+                        "description": "Open the Algenta Decisions pane."
+                      },
+                      "actionId": "ShowTaskPane"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "alternates": [
+        {
+          "requirements": {
+            "scopes": ["workbook"]
+          },
+          "hide": {
+            "customOfficeAddin": {
+              "officeAddinId": "f445f3f1-20ef-469a-a532-056b3f1ab393"
+            }
+          },
+          "alternateIcons": {
+            "icon": {
+              "size": 64,
+              "url": "https://addin.algenta.ai/assets/icon-64.png"
+            },
+            "highResolutionIcon": {
+              "size": 80,
+              "url": "https://addin.algenta.ai/assets/icon-80.png"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["gateway.algenta.ai", "addin.algenta.ai"]
+}

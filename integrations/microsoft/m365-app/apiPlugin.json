@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.4/schema.json",
+  "schema_version": "v2.4",
+  "name_for_human": "Algenta Decision API",
+  "description_for_human": "Frame, run, inspect, and propose governed decisions on the customer-hosted Algenta gateway.",
+  "description_for_model": "Coarse decision operations. Prefer run_decision_analysis (it internally runs scenarios, simulation, optimization, sensitivity and produces a recommendation). Approval and execution are intentionally NOT exposed here — they are separate credentialed human actions.",
+  "namespace": "algenta",
+  "functions": [
+    { "name": "create_or_update_decision", "description": "Frame a decision (create a case + immutable revision) or re-frame an existing case." },
+    { "name": "run_decision_analysis", "description": "Run the governed analysis for a case: evidence -> scenarios -> simulate -> optimize -> sensitivity -> recommendation. Async (202 + poll)." },
+    { "name": "get_decision_result", "description": "Fetch the host-independent result object for an analysis run." },
+    { "name": "inspect_decision_evidence", "description": "Return the evidence + provenance for a run (what was accessed, under which retention mode)." },
+    { "name": "propose_action_plan", "description": "Propose a safe execution plan for a completed run; returns a plan hash for a later human approval." }
+  ],
+  "runtimes": [
+    {
+      "type": "OpenApi",
+      "auth": {
+        "type": "OAuthPluginVault",
+        "reference_id": "${{OAUTH2_REGISTRATION_ID}}"
+      },
+      "spec": {
+        "url": "https://gateway.algenta.ai/openapi/decision-agent.json",
+        "progress_style": "ShowUsageWithInputAndOutput"
+      },
+      "run_for_functions": [
+        "create_or_update_decision",
+        "run_decision_analysis",
+        "get_decision_result",
+        "inspect_decision_evidence",
+        "propose_action_plan"
+      ]
+    }
+  ]
+}

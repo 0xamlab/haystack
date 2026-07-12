@@ -14,6 +14,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1] / "integrations" / "microsoft"
 EXCEL = ROOT / "excel-addin"
 COPILOT = ROOT / "copilot-agent"
+M365 = ROOT / "m365-app"
+
+# The shared Entra app used for SSO by both the Copilot API plugin and the Excel add-in.
+ENTRA_APP_ID = "3983990d-e9b5-4866-9a43-d52d6e0c20c3"
+# The legacy classic-XML Excel add-in id — the unified package must suppress its duplicate button.
+LEGACY_EXCEL_ADDIN_ID = "f445f3f1-20ef-469a-a532-056b3f1ab393"
 
 
 def _load(path: Path) -> dict:
@@ -73,3 +79,62 @@ def test_teams_manifest_embeds_the_declarative_agent() -> None:
     assert any(a.get("file") == "declarativeAgent.json" for a in agents)
     assert m["manifestVersion"]
     assert "validDomains" in m
+
+
+# ---- unified M365 package (the one the deployer publishes by default) --------------------
+def test_unified_manifest_carries_all_three_surfaces() -> None:
+    """The unified package must carry the Copilot agent AND the Excel add-in in one manifest, so a
+    single teamsApps publish distributes Teams + Copilot + Excel."""
+    m = _load(M365 / "manifest.json")
+    # Copilot declarative agent (conversational @Algenta) ...
+    agents = m["copilotAgents"]["declarativeAgents"]
+    assert any(a.get("file") == "declarativeAgent.json" for a in agents)
+    # ... AND the Excel task-pane add-in as an extension, in the SAME manifest.
+    exts = m["extensions"]
+    assert exts and "workbook" in exts[0]["requirements"]["scopes"]
+    assert any(
+        rt["code"]["page"] == "https://addin.algenta.ai/taskpane.html"
+        for rt in exts[0]["runtimes"]
+    )
+
+
+def test_unified_manifest_sso_uses_shared_entra_app() -> None:
+    m = _load(M365 / "manifest.json")
+    wai = m["webApplicationInfo"]
+    assert wai["id"] == ENTRA_APP_ID
+    assert wai["resource"] == f"api://{ENTRA_APP_ID}"
+
+
+def test_unified_manifest_reuses_the_copilot_app_id() -> None:
+    """Same app id as copilot-agent so the deployer's create-or-update updates ONE catalog app
+    in place (not a second, competing app)."""
+    assert _load(M365 / "manifest.json")["id"] == _load(COPILOT / "manifest.json")["id"]
+
+
+def test_unified_ribbon_action_is_wired_and_valid_domains() -> None:
+    m = _load(M365 / "manifest.json")
+    ext = m["extensions"][0]
+    runtime_action_ids = {a["id"] for rt in ext["runtimes"] for a in rt["actions"]}
+    controls = [
+        c
+        for rib in ext["ribbons"]
+        for tab in rib["tabs"]
+        for grp in tab["groups"]
+        for c in grp["controls"]
+    ]
+    assert controls, "unified manifest has no ribbon controls"
+    # every button's actionId must resolve to a declared runtime action
+    for c in controls:
+        assert c["actionId"] in runtime_action_ids, f"dangling actionId {c['actionId']!r}"
+    assert {"gateway.algenta.ai", "addin.algenta.ai"} <= set(m["validDomains"])
+
+
+def test_unified_manifest_suppresses_legacy_xml_duplicate() -> None:
+    """alternates.hide must point at the classic-XML add-in id so users don't get two buttons."""
+    ext = _load(M365 / "manifest.json")["extensions"][0]
+    hidden = [
+        alt["hide"]["customOfficeAddin"]["officeAddinId"]
+        for alt in ext.get("alternates", [])
+        if alt.get("hide", {}).get("customOfficeAddin")
+    ]
+    assert LEGACY_EXCEL_ADDIN_ID in hidden
