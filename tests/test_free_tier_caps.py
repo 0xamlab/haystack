@@ -51,9 +51,12 @@ async def _add_queued_job(org_id):
         await s.commit()
 
 
-async def test_concurrent_jobs_enforced_at_cap():
+async def test_concurrent_jobs_enforced_at_cap(monkeypatch):
     from apps.api_server.db.session import AsyncSessionLocal
 
+    # The concurrent-jobs cap is metering-gated (off by default now, self-host per-device).
+    # Opt in so the plan-tier cap is enforced for this test.
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
     org_id = await _seed_org()
     # 0 in-flight, free cap = 1 → allowed.
     async with AsyncSessionLocal() as s:

@@ -115,58 +115,67 @@ async def persist_simulation_run(
         },
     )
 
-    # ── 3. Usage record ───────────────────────────────────────────────────
-    from apps.api_server.services.quota_service import _current_billing_period
+    # ── 3-5. Usage metering (UsageRecord + quota counter + Stripe) ────────
+    # Metering is OFF for everyone by default (Algenta is self-hosted, per-device
+    # licensed — no usage-metered billing). The SimulationRun (sec 1) + audit
+    # event (sec 2) above are run history/audit and always persist; only the
+    # billing surface is gated. A hosted deployment can re-enable the original
+    # exactly-once metering path with ALGENTA_ENABLE_METERING=true.
+    from apps.api_server.services.quota_service import _metering_disabled
 
-    period = _current_billing_period()
-    # Wave-C exactly-once billing: the UsageRecord is keyed by a logical-run usage_key and guarded by
-    # a PARTIAL-unique index (migration 0034). Insert inside a SAVEPOINT so a duplicate (a retry or a
-    # cross-replica race) raises IntegrityError that rolls back ONLY this insert — never the whole
-    # transaction — and leaves usage_inserted=False. The quota counter AND the (real-money) Stripe
-    # push then fire ONLY on a genuine first insert, so a retry neither under-bills nor double-bills.
-    from sqlalchemy.exc import IntegrityError
+    if not _metering_disabled():
+        from apps.api_server.services.quota_service import _current_billing_period
 
-    usage_inserted = False
-    try:
-        async with db.begin_nested():
-            record = UsageRecord(
-                org_id=org_id,
-                workspace_id=workspace_id,
-                api_key_id=api_key_id,
-                simulation_run_id=run_id,
-                billing_period=period,
-                endpoint=UsageEndpoint.SIMULATE,
-                billing_units=1,
-                scenarios_run=persist_meta["scenarios_run"],
-                usage_key=f"sim:{run_id}",
-            )
-            db.add(record)
-            await db.flush()
-        usage_inserted = True
-    except IntegrityError:
-        # already billed for this logical run (Celery retry / cross-replica race) — not an error.
+        period = _current_billing_period()
+        # Wave-C exactly-once billing: the UsageRecord is keyed by a logical-run usage_key and guarded by
+        # a PARTIAL-unique index (migration 0034). Insert inside a SAVEPOINT so a duplicate (a retry or a
+        # cross-replica race) raises IntegrityError that rolls back ONLY this insert — never the whole
+        # transaction — and leaves usage_inserted=False. The quota counter AND the (real-money) Stripe
+        # push then fire ONLY on a genuine first insert, so a retry neither under-bills nor double-bills.
+        from sqlalchemy.exc import IntegrityError
+
         usage_inserted = False
-        logger.info("usage_record_already_billed", run_id=str(run_id), org_id=str(org_id))
-
-    from apps.api_server.services.plan_limits import is_unmetered_execution_plan
-
-    metered_execution = not is_unmetered_execution_plan(plan)
-
-    # ── 4. Increment Redis quota counter (only for quota-governed plans) ───
-    if usage_inserted and metered_execution and redis_client is not None:
         try:
-            from apps.api_server.services.quota_service import incr_quota_counter
+            async with db.begin_nested():
+                record = UsageRecord(
+                    org_id=org_id,
+                    workspace_id=workspace_id,
+                    api_key_id=api_key_id,
+                    simulation_run_id=run_id,
+                    billing_period=period,
+                    endpoint=UsageEndpoint.SIMULATE,
+                    billing_units=1,
+                    scenarios_run=persist_meta["scenarios_run"],
+                    usage_key=f"sim:{run_id}",
+                )
+                db.add(record)
+                await db.flush()
+            usage_inserted = True
+        except IntegrityError:
+            # already billed for this logical run (Celery retry / cross-replica race) — not an error.
+            usage_inserted = False
+            logger.info("usage_record_already_billed", run_id=str(run_id), org_id=str(org_id))
 
-            await incr_quota_counter(org_id, period, redis_client)
-        except Exception as exc:
-            logger.warning("quota_counter_incr_failed", org_id=str(org_id), error=str(exc))
+        from apps.api_server.services.plan_limits import is_unmetered_execution_plan
 
-    # Algenta licenses are flat per device. Its local usage record supports customer-owned audit,
-    # but execution counts must never leave the deployment as Stripe meter events.
-    if usage_inserted and metered_execution:
-        import asyncio
+        metered_execution = not is_unmetered_execution_plan(plan)
 
-        asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))
+        # ── 4. Increment Redis quota counter (only for quota-governed plans) ───
+        if usage_inserted and metered_execution and redis_client is not None:
+            try:
+                from apps.api_server.services.quota_service import incr_quota_counter
+
+                await incr_quota_counter(org_id, period, redis_client)
+            except Exception as exc:
+                logger.warning("quota_counter_incr_failed", org_id=str(org_id), error=str(exc))
+
+        # Algenta licenses are flat per device. The local usage record supports
+        # customer-owned audit; execution counts must never leave the deployment
+        # as Stripe meter events.
+        if usage_inserted and metered_execution:
+            import asyncio
+
+            asyncio.create_task(_push_stripe_usage(org_id=org_id, billing_units=1, db=db))
 
     # ── 6. Object storage (enterprise — off hot path) ─────────────────────
     logger.info(

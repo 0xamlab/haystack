@@ -540,7 +540,11 @@ async def device_heartbeat(
         executions_since = int(raw_executions_since)
     else:
         executions_since = 0
-    if executions_since > 0:
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    if executions_since > 0 and not _metering_disabled():
+        # metering off for everyone — per-device execution counts are not
+        # reconciled into central billable usage_records.
         from apps.api_server.models.usage_record import UsageEndpoint, UsageRecord
 
         billing_period = datetime.now(UTC).strftime("%Y-%m")

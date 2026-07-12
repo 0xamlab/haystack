@@ -115,8 +115,12 @@ async def refresh_credits(
     batch = _batch_size(plan)
     monthly_max = _monthly_limit(plan)  # 0 = unlimited
 
-    # ── Unlimited plan — grant full batch immediately ──────────────────────
-    if monthly_max == 0:
+    # Metering off for everyone (default, self-hosted per-device) — the offline
+    # daemon is never execution-capped; grant a full batch like an unlimited plan.
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    # ── Unlimited plan (or metering off) — grant full batch immediately ────
+    if monthly_max == 0 or _metering_disabled():
         now = time.time()
         logger.info(
             "credits_granted_unlimited",

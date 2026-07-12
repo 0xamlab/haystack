@@ -409,6 +409,25 @@ except Exception as _mcp_exc:  # pragma: no cover
         hint="pip install mcp to enable MCP AI-agent connectivity",
     )
 
+# ── MCP Streamable HTTP transport — POST /mcp (Microsoft 365 Copilot RemoteMCPServer) ──
+# Independent of the `mcp` package (no starlette conflict): a single JSON-RPC endpoint
+# built on the same tool registry. This is what Copilot's declarative-agent MCP action
+# connects to; the legacy /mcp/sse transport above stays for stdio/SSE clients.
+try:
+    from apps.mcp_server.transports.streamable_http import build_streamable_http_router
+
+    app.include_router(build_streamable_http_router())
+    import structlog as _sl
+
+    _sl.get_logger(__name__).info("mcp_streamable_http_mounted", endpoint="/mcp")
+except Exception as _mcp_sh_exc:  # pragma: no cover
+    import structlog as _sl
+
+    _sl.get_logger(__name__).warning(
+        "mcp_streamable_http_not_loaded",
+        reason=str(_mcp_sh_exc),
+    )
+
 
 def custom_openapi() -> dict[str, Any]:
     if app.openapi_schema:

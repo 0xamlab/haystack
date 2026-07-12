@@ -100,6 +100,9 @@ async def test_retried_persist_bills_exactly_once(session_factory_and_org, monke
         stripe_calls["n"] += 1
 
     monkeypatch.setattr(ph, "_push_stripe_usage", _fake_stripe)
+    # This test asserts the metered billing path (UsageRecord + Stripe). Metering is OFF by
+    # default now (self-host, per-device), so opt in to exercise the exactly-once machinery.
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     # two independent transactions with the SAME run_id (the Celery-retry scenario)
     for _ in range(2):
@@ -126,6 +129,10 @@ async def test_algenta_persist_never_pushes_usage_to_stripe_or_quota_redis(
     push = AsyncMock()
     redis = AsyncMock()
     monkeypatch.setattr(ph, "_push_stripe_usage", push)
+    # Metering is OFF by default now; opt in so the UsageRecord is written (this test asserts
+    # that even with metering on, an Algenta per-device plan writes the local row but never
+    # pushes to Stripe / the quota counter).
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     async with factory() as session:
         await ph.persist_simulation_run(

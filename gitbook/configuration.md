@@ -24,12 +24,14 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `ALGENTA_DISABLE_CLOUD` | — | — | Opt out of any cloud integration (self-hosted). |
 | `ALGENTA_DISABLE_TELEMETRY` | — | — | Disable all outbound/vendor telemetry; keep local audit. |
 | `ALGENTA_EGRESS_ALLOWLIST` | — | — | Comma-separated allowlist of permitted egress destinations. |
+| `ALGENTA_ENABLE_METERING` | `False` | — | — |
 | `ALGENTA_ENFORCE_LICENSE_VALIDATION` | — | — | Enable fail-closed license validation on self-hosted deployments. |
 | `ALGENTA_ENFORCE_STORAGE_CAP` | `False` | — | Enforce a configured organization storage policy (off by default; Algenta editions are uncapped). |
 | `ALGENTA_ENGINE_IMAGE` | — | — | Docker image to deploy on all cloud providers. MUST be a pinned tag or @sha256 digest (e.g. .../api:git-<sha>); never a floating :latest. Empty = unconfigured (provisioning supplies a pinned ref). |
 | `ALGENTA_ENTRA_ALLOWED_CLIENT_APPS` | — | — | — |
 | `ALGENTA_ENTRA_ALLOWED_TENANTS` | — | — | — |
 | `ALGENTA_ENTRA_AUDIENCE` | — | — | — |
+| `ALGENTA_ENTRA_AUTO_PROVISION` | `False` | — | — |
 | `ALGENTA_ENTRA_TENANT_ID` | — | — | — |
 | `ALGENTA_MANAGED_LLM` | `False` | — | Enable the pooled managed-LLM provider key (multi-tenant SaaS). |
 | `ALGENTA_METERING_MODE` | — | — | Execution-record destination. Self-hosted Algenta defaults to local_audit; control_plane_sync is for explicitly configured managed deployments. |

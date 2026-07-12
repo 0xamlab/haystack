@@ -53,6 +53,11 @@ async def _get_run_for_update(run_id: uuid.UUID, db: AsyncSession) -> Simulation
 async def enforce_concurrent_jobs(org_id: uuid.UUID, plan: str, db: AsyncSession) -> None:
     """Reject async job submission when the org is at its plan's concurrent in-flight job cap
     (queued/validating/running). 0 = unlimited. Free-tier cost cap (Wave 2)."""
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    if _metering_disabled():
+        return  # metering off for everyone — no plan-based concurrent-job cost cap
+        # (real concurrency is still bounded by the licensed worker count + Mojo pool)
     from apps.api_server.services import plan_limits
 
     cap = plan_limits.get(plan).concurrent_jobs

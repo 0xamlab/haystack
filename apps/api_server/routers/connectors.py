@@ -132,6 +132,10 @@ async def _check_inline_preview_rate_limit(
     auth: AuthContext,
     redis_client: object,
 ) -> None:
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    if _metering_disabled():
+        return  # metering off for everyone — no per-request usage cap on previews
     await check_named_rate_limit(
         auth["org_id"],
         redis_client,

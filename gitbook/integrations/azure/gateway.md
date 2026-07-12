@@ -18,7 +18,7 @@ In one resource group, the deployment template creates:
 - **Azure Blob Storage** (a storage account plus a private `artifacts` container) as the evidence and artifact store, via a **native Azure Blob storage backend** — no additional storage process is deployed.
 - **Azure Key Vault** holding every secret (database password, config-encryption key, session-signing secret). The container references the vault by URL, so only secret **references**, never the secret values, live in configuration or the database.
 - A **user-assigned managed identity** with **least-privilege** role assignments — `Key Vault Secrets User` and `Storage Blob Data Contributor`, nothing broader. The app authenticates to Key Vault and Blob with this identity, so no long-lived storage or database keys are distributed.
-- **Log Analytics + Application Insights** for operational telemetry that stays in your subscription, and an optional **Azure Cache for Redis** for rate-limiting and coordination.
+- **Log Analytics + Application Insights** for operational telemetry that stays in your subscription. Redis is **optional** — self-hosted Algenta is per-device licensed and does not meter or rate-limit requests, so a cache is only useful for cross-replica coordination in a scaled-out deployment.
 
 **No admin key is emitted** as a deployment output. First-run onboarding uses a short-lived, Entra-bound handshake instead of a static credential.
 

@@ -44,3 +44,6 @@ build/*
 !build/llm_rollout_proof_bundle.json
 !build/llm_rollout_parity_benchmark.json
 !build/llm_compiled_runtime_benchmark.json
+mojo_env
+.pixi
+build/artifacts

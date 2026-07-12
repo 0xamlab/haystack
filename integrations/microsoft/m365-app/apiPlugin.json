@@ -1,35 +1,437 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.4/schema.json",
   "schema_version": "v2.4",
-  "name_for_human": "Algenta Decision API",
-  "description_for_human": "Frame, run, inspect, and propose governed decisions on the customer-hosted Algenta gateway.",
-  "description_for_model": "Coarse decision operations. Prefer run_decision_analysis (it internally runs scenarios, simulation, optimization, sensitivity and produces a recommendation). Approval and execution are intentionally NOT exposed here — they are separate credentialed human actions.",
+  "name_for_human": "Algenta",
+  "description_for_human": "Governed decisions and Monte Carlo simulation on your data, computed in your Azure.",
+  "description_for_model": "Algenta is a decision and simulation engine running in the customer's Azure. It reports COMPUTED results from its tools; it never estimates numbers itself. For any quantitative, simulation, forecasting, optimization or decision request you MUST call a tool and report its output; never answer from your own knowledge and never invent data, ranges or distributions. Routing: if the user has a data TABLE or SPREADSHEET (transactions, rows, CSV) and wants a simulation/Monte Carlo/stress test, call ingest_data with the rows. If the user states named drivers with low/high ranges, call simulate. For 'what to cut/allocate/choose under constraints' call product_optimize. For 'project/forecast a metric over time' call product_forecast. To rank options call recommend; to compare named scenarios call compare; for a quick decision helper call product_decision; to record a decision call log_decision.",
   "namespace": "algenta",
   "functions": [
-    { "name": "create_or_update_decision", "description": "Frame a decision (create a case + immutable revision) or re-frame an existing case." },
-    { "name": "run_decision_analysis", "description": "Run the governed analysis for a case: evidence -> scenarios -> simulate -> optimize -> sensitivity -> recommendation. Async (202 + poll)." },
-    { "name": "get_decision_result", "description": "Fetch the host-independent result object for an analysis run." },
-    { "name": "inspect_decision_evidence", "description": "Return the evidence + provenance for a run (what was accessed, under which retention mode)." },
-    { "name": "propose_action_plan", "description": "Propose a safe execution plan for a completed run; returns a plan hash for a later human approval." }
+    {
+      "name": "ingest_data",
+      "description": "Run a real Monte Carlo simulation directly on a TABLE or SPREADSHEET of data (pass rows as CSV text or JSON records). Auto-detects the variable distributions from the data and returns the computed outcome distribution. Use this whenever the user has actual data/a spreadsheet/transactions and asks to simulate, model, stress-test, or run a Monte Carlo on it."
+    },
+    {
+      "name": "simulate",
+      "description": "Run a Monte Carlo simulation from NAMED variables, each with a low/high range, plus an objective. Use when the user states the drivers and their ranges directly (not when they have a raw data table \u2014 use ingest_data for that). Returns mean, percentiles and risk."
+    },
+    {
+      "name": "product_optimize",
+      "description": "Optimize: given an objective and decision variables with ranges (and optional constraints), compute the best allocation/mix to hit a target. Use for 'what should we cut / allocate / choose / trade off' questions (cost, budget, vendor, resource mix)."
+    },
+    {
+      "name": "product_forecast",
+      "description": "Forecast a metric forward from a history series with a confidence band. Use for 'project / forecast / predict X over the next N periods' (burn, spend, revenue, savings, runway)."
+    },
+    {
+      "name": "recommend",
+      "description": "Rank multiple named candidate actions/options by their simulated outcome and recommend the best one."
+    },
+    {
+      "name": "compare",
+      "description": "Run named scenarios side by side and return the winner plus deltas versus a baseline."
+    },
+    {
+      "name": "product_decision",
+      "description": "Run the product decision helper: given inputs and an objective, return the chosen action plan with rationale."
+    },
+    {
+      "name": "log_decision",
+      "description": "Persist a decision to the Decision Memory audit trail (chosen action, rationale, expected value), optionally linked to a simulation run."
+    }
   ],
   "runtimes": [
     {
-      "type": "OpenApi",
+      "type": "RemoteMCPServer",
       "auth": {
         "type": "OAuthPluginVault",
         "reference_id": "N2EwY2Q1MzMtNGQ5OC00NTBjLWJjM2EtOTNjZWUxNDk1ZTA2IyNiNWExYzkyNC1kOGMwLTQ0NTYtOWU5Yy02M2IxY2ZlZjRkOTk="
       },
-      "spec": {
-        "url": "decision-agent-openapi.json",
-        "progress_style": "ShowUsageWithInputAndOutput"
-      },
       "run_for_functions": [
-        "create_or_update_decision",
-        "run_decision_analysis",
-        "get_decision_result",
-        "inspect_decision_evidence",
-        "propose_action_plan"
-      ]
+        "ingest_data",
+        "simulate",
+        "product_optimize",
+        "product_forecast",
+        "recommend",
+        "compare",
+        "product_decision",
+        "log_decision"
+      ],
+      "spec": {
+        "url": "https://gateway.algenta.ai/mcp",
+        "mcp_tool_description": {
+          "tools": [
+            {
+              "name": "ingest_data",
+              "description": "Run a real Monte Carlo simulation directly on a TABLE or SPREADSHEET of data (pass rows as CSV text or JSON records). Auto-detects the variable distributions from the data and returns the computed outcome distribution. Use this whenever the user has actual data/a spreadsheet/transactions and asks to simulate, model, stress-test, or run a Monte Carlo on it.",
+              "inputSchema": {
+                "type": "object",
+                "required": [
+                  "tables"
+                ],
+                "properties": {
+                  "tables": {
+                    "type": "array",
+                    "description": "One or more data tables. First table is primary.",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "records": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          },
+                          "description": "JSON records."
+                        },
+                        "csv": {
+                          "type": "string",
+                          "description": "Raw CSV text."
+                        }
+                      }
+                    }
+                  },
+                  "run_simulation": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Execute the simulation immediately and return results."
+                  },
+                  "runs": {
+                    "type": "integer",
+                    "default": 10000,
+                    "description": "Scenarios to evaluate (1,000\u20131,000,000)."
+                  },
+                  "domain": {
+                    "type": "string",
+                    "description": "Optional domain hint (finance, supply_chain, hr) for better field mapping."
+                  }
+                }
+              }
+            },
+            {
+              "name": "simulate",
+              "description": "Run a Monte Carlo simulation from NAMED variables, each with a low/high range, plus an objective. Use when the user states the drivers and their ranges directly (not when they have a raw data table \u2014 use ingest_data for that). Returns mean, percentiles and risk.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "expert"
+                    ],
+                    "default": "auto",
+                    "description": "auto = minimal setup; expert = full distribution control"
+                  },
+                  "objective": {
+                    "type": "string",
+                    "enum": [
+                      "maximize_net_value",
+                      "maximize_revenue",
+                      "minimize_cost",
+                      "minimize_risk",
+                      "maximize_score"
+                    ],
+                    "default": "maximize_net_value",
+                    "description": "Auto-mode objective. For expert mode, use objective_function."
+                  },
+                  "objective_function": {
+                    "type": "string",
+                    "description": "Expert-mode expression, for example 'revenue - cost'. Required when mode='expert'."
+                  },
+                  "n_simulations": {
+                    "type": "integer",
+                    "default": 10000,
+                    "description": "Monte Carlo iteration count. Auto mode accepts 100\u2013100,000; expert mode accepts 100\u20131,000,000."
+                  },
+                  "variables": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "low": {
+                          "type": "number"
+                        },
+                        "mode": {
+                          "type": "number"
+                        },
+                        "high": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "low",
+                        "high"
+                      ]
+                    },
+                    "description": "Input variables as triangular distributions (low, most-likely, high)"
+                  }
+                },
+                "required": [
+                  "variables"
+                ]
+              }
+            },
+            {
+              "name": "product_optimize",
+              "description": "Optimize: given an objective and decision variables with ranges (and optional constraints), compute the best allocation/mix to hit a target. Use for 'what should we cut / allocate / choose / trade off' questions (cost, budget, vendor, resource mix).",
+              "inputSchema": {
+                "type": "object",
+                "required": [
+                  "objective",
+                  "variables"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "objective": {
+                    "type": "string"
+                  },
+                  "variables": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "constraints": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "iterations": {
+                    "type": "integer"
+                  },
+                  "engine": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            {
+              "name": "product_forecast",
+              "description": "Forecast a metric forward from a history series with a confidence band. Use for 'project / forecast / predict X over the next N periods' (burn, spend, revenue, savings, runway).",
+              "inputSchema": {
+                "type": "object",
+                "required": [
+                  "metric",
+                  "history"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "metric": {
+                    "type": "string"
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "horizon": {
+                    "type": "integer"
+                  },
+                  "seasonality": {
+                    "type": "boolean"
+                  },
+                  "confidence_level": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            {
+              "name": "recommend",
+              "description": "Rank multiple named candidate actions/options by their simulated outcome and recommend the best one.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "variables": {
+                          "type": "object",
+                          "description": "Variable dict: {name: {low, high}}"
+                        },
+                        "objective": {
+                          "type": "string",
+                          "default": "maximize"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "variables"
+                      ]
+                    },
+                    "description": "List of options to compare (minimum 2)",
+                    "minItems": 2
+                  },
+                  "n_simulations": {
+                    "type": "integer",
+                    "default": 10000
+                  }
+                },
+                "required": [
+                  "actions"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "compare",
+              "description": "Run named scenarios side by side and return the winner plus deltas versus a baseline.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "scenarios": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "request": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "request"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 2,
+                    "description": "Named scenarios forwarded to POST /v1/compare."
+                  },
+                  "runs": {
+                    "type": "integer"
+                  },
+                  "seed": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "scenarios"
+                ],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "product_decision",
+              "description": "Run the product decision helper: given inputs and an objective, return the chosen action plan with rationale.",
+              "inputSchema": {
+                "type": "object",
+                "required": [
+                  "inputs"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "Business inputs with current value and optional low/high bounds."
+                  },
+                  "objective": {
+                    "type": "string"
+                  },
+                  "risk_tolerance": {
+                    "type": "string"
+                  },
+                  "scenarios": {
+                    "type": "integer"
+                  },
+                  "engine": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            {
+              "name": "log_decision",
+              "description": "Persist a decision to the Decision Memory audit trail (chosen action, rationale, expected value), optionally linked to a simulation run.",
+              "inputSchema": {
+                "type": "object",
+                "required": [
+                  "chosen_action"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "chosen_action": {
+                    "type": "string",
+                    "description": "The action that was decided upon."
+                  },
+                  "run_id": {
+                    "type": "string",
+                    "description": "Simulation run_id that produced this decision (from simulate or recommend)."
+                  },
+                  "context": {
+                    "type": "string",
+                    "description": "Business context \u2014 what was the situation when this decision was made?"
+                  },
+                  "options_considered": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "All option names that were evaluated."
+                  },
+                  "expected_value": {
+                    "type": "number",
+                    "description": "Expected outcome value at decision time."
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "description": "Confidence score (0\u20131) from the simulation."
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "description": "Explanation of why this option was chosen."
+                  },
+                  "risk_p5": {
+                    "type": "number",
+                    "description": "5th-percentile downside at decision time."
+                  },
+                  "risk_p95": {
+                    "type": "number",
+                    "description": "95th-percentile upside at decision time."
+                  },
+                  "risk_pol": {
+                    "type": "number",
+                    "description": "Probability of loss (0\u20131) at decision time."
+                  },
+                  "request_hash": {
+                    "type": "string",
+                    "description": "SHA-256 input fingerprint from the simulation."
+                  },
+                  "result_hash": {
+                    "type": "string",
+                    "description": "SHA-256 output fingerprint from the simulation."
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }

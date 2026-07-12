@@ -35,6 +35,23 @@ from apps.api_server.services.egress_guard import EgressAuditContext
 logger = structlog.get_logger(__name__)
 settings = SettingsProxy()
 
+
+def _metering_disabled() -> bool:
+    """Usage metering is OFF for everyone by default.
+
+    Algenta ships self-hosted and per-device licensed: the customer runs the
+    engine on their own Azure. There is no shared multi-tenant surface to
+    rate-limit and no usage-metered billing to enforce, so the SaaS quota +
+    rate-limit machinery (Redis counters, DB COUNT fallbacks) is pure latency
+    with no purpose. It is disabled unconditionally.
+
+    A hosted/SaaS deployment can opt metering back in with
+    ALGENTA_ENABLE_METERING=true (default false). Read live from settings so an
+    operator can toggle via env without a code change.
+    """
+    return not settings.algenta_enable_metering
+
+
 # ─── Plan definitions (derived from plan_limits.py) ──────────────────────────
 # Keep PLAN_QUOTAS as a compatibility shim for code that imports it directly.
 # New code should import from plan_limits instead.
@@ -159,6 +176,8 @@ async def check_monthly_quota(
 
     This is called BEFORE running the simulation so we fail fast.
     """
+    if _metering_disabled():
+        return  # self-hosted / per-device — no monthly execution cap
     limit = int(_quota_cfg(plan)["simulations_month"])
 
     if limit == 0:
@@ -216,6 +235,8 @@ async def check_rate_limit(
 
     Raises HTTP 429 if rate limit exceeded.
     """
+    if _metering_disabled():
+        return  # self-hosted / per-device — no shared surface to rate-limit
     rpm_limit = int(_quota_cfg(plan)["rate_per_minute"])
     if rpm_limit == 0:
         return
@@ -537,6 +558,8 @@ async def check_quota_redis(
 
     Raises HTTP 429 when quota is exhausted.
     """
+    if _metering_disabled():
+        return  # self-hosted / per-device — no monthly execution cap
     limit = int(_quota_cfg(plan)["simulations_month"])
     if limit == 0:
         return  # Unlimited plan
@@ -628,6 +651,8 @@ async def incr_quota_counter(
     Atomically increment the Redis quota counter after a successful simulation.
     Called from the persist task — not the hot path.
     """
+    if _metering_disabled():
+        return  # metering off for everyone — no usage counter to maintain
     key = _quota_redis_key(org_id, period)
     try:
         r = cast(_QuotaRedisClientProtocol, redis_client)

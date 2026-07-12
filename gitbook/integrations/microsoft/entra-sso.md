@@ -87,6 +87,10 @@ Grant tenant-wide admin consent for the scopes and app roles you exposed, and as
 On the gateway, provision a mapping for each identity that may call the API: the tenant id plus the principal's object id, resolved to an organization, a workspace, and a role. Mark inactive mappings as revoked.
 
 Both employee and service principals must be mapped. An unmapped or revoked identity is rejected — and the gateway returns the same error for "unknown" and "revoked" so it never reveals which principals exist.
+
+{% hint style="info" %}
+**Auto-link on first sign-in (optional).** Set `ALGENTA_ENTRA_AUTO_PROVISION=1` and you don't pre-map every employee: a verified first-time identity from an allowed tenant is linked automatically — it **joins your tenant's shared Team or Enterprise subscription** when a seat is free, otherwise it gets its own individual Community org. The Microsoft sign-in becomes both the authentication and the subscription link. A **revoked** mapping is never auto-revived. Leave the flag off to keep the strict admin-provisioned model above.
+{% endhint %}
 {% endstep %}
 {% endstepper %}
 

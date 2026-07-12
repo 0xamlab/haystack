@@ -149,6 +149,26 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("ALGENTA_ENFORCE_STORAGE_CAP"),
     )
+    # Usage metering (execution quotas + per-request API rate limits) is OFF for
+    # everyone by default. Algenta ships self-hosted and per-device licensed —
+    # the customer runs the engine on their own Azure, so there is no shared
+    # multi-tenant surface to rate-limit and no usage-metered billing to enforce.
+    # A hosted/SaaS deployment can opt back in by setting this true. See
+    # quota_service._metering_disabled().
+    algenta_enable_metering: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALGENTA_ENABLE_METERING"),
+    )
+    # Auto-link a verified Microsoft Entra identity to an org on first sign-in, instead of
+    # rejecting anything an admin hasn't pre-mapped. The token is already validated for the
+    # allowed tenant + audience before it reaches the resolver, so a first-time Copilot/Teams
+    # user is transparently given (or joins) their tenant's org — the Microsoft login becomes
+    # the authentication AND the subscription link. One org per Entra tenant (shared). OFF by
+    # default (admin-provisioned model); a hosted/turnkey deployment sets this true.
+    algenta_entra_auto_provision: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ALGENTA_ENTRA_AUTO_PROVISION"),
+    )
 
     @computed_field  # type: ignore[misc]
     @property

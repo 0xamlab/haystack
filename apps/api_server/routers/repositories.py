@@ -189,6 +189,10 @@ async def _meter_repository(
     """
     if _is_offline_auth(auth):
         return  # per-device metering: usage recorded locally on the device, never in Postgres
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    if _metering_disabled():
+        return  # metering off for everyone — no repository usage row / quota counter
     from sqlalchemy.exc import IntegrityError
 
     period = datetime.now(UTC).strftime("%Y-%m")

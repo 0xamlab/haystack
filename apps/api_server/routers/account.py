@@ -275,8 +275,15 @@ async def usage(
 
     plan = auth["plan"]
     quota = get_plan_quota(plan)
-    limit = int(quota["simulations_month"])
-    used_pct = round((sim_count / limit * 100), 1) if limit > 0 else 0.0
+    from apps.api_server.services.quota_service import _metering_disabled
+
+    if _metering_disabled():
+        # metering off for everyone — don't advertise a cap that is never enforced
+        limit = 0  # 0 = unlimited
+        used_pct = 0.0
+    else:
+        limit = int(quota["simulations_month"])
+        used_pct = round((sim_count / limit * 100), 1) if limit > 0 else 0.0
 
     # Managed-LLM pass-through spend this period (D3). Org-scoped (managed billing is per-org); BYOK
     # + self-host rows carry $0 cost, so this is the managed total. cap 0 = unlimited / not managed.

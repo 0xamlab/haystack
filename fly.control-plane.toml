@@ -47,6 +47,10 @@ primary_region = "iad"
   # Multi-replica idempotency/coordination via the shared Redis (REDIS_URL is a secret; degrades
   # to local store if unset). NO engine env (no Mojo / S3 / agent-core / sources / runtime dirs).
   ALGENTA_COORDINATION = "redis"
+  # Microsoft Entra SSO auto-links a verified identity to a subscription on first sign-in
+  # (join the tenant's shared Team/Enterprise org if a seat is free, else an individual
+  # Community org) — mirrors the Supabase org auto-provision. See entra_org_resolver.
+  ALGENTA_ENTRA_AUTO_PROVISION = "1"
   CORS_ORIGINS = "https://app.algenta.ai,https://algenta.ai"
   # Shared Supabase identity project — required to verify the Supabase JWTs forwarded by accounts.thyn.ai /
   # app.algenta.ai (device-grant approve + /v1/telys/onboard). It is a PUBLIC URL (shipped in every browser

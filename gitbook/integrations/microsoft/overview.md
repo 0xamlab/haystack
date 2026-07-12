@@ -17,7 +17,7 @@ The split is deliberate. Microsoft 365 is where people already work, so that is 
 
 The customer-controlled Azure gateway is the trust foundation. Every Microsoft experience is a thin adapter that calls the same governed decision lifecycle running behind that gateway:
 
-- **Copilot & Teams** frame a request in conversation, run the analysis, and cite the evidence — recommendations only. Approving or executing a plan is always a separate, explicitly credentialed human action, never something the agent does on its own.
+- **Copilot & Teams** connect to the engine over the **Model Context Protocol (MCP)**: frame a request in conversation — or drop in a spreadsheet — run the real simulation, optimization, or forecast, and cite the computed numbers. Recommendations only; approving or executing a plan is always a separate, credentialed human action, never something the agent does on its own.
 - **Excel** lets a user select ranges as a decision's assumptions, preview exactly what will be sent, run the analysis in your Azure, and write results to **new** sheets without overwriting the source.
 - **Entra SSO** means there are no separate Algenta credentials — employees authenticate with the Microsoft identity they already have, and admin consent is granted once at the tenant level.
 
