@@ -1,0 +1,9 @@
+name: Algenta production source
+
+# Test, benchmark, and packaged build trees duplicate code that is already
+# covered by CI or by the canonical source paths analyzed here.
+paths-ignore:
+  - benchmarks/**
+  - tests/**
+  - build/**
+  - packages/python-sdk/build/**
