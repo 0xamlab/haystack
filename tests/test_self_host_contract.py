@@ -233,7 +233,7 @@ def test_auth_and_sdk_docs_are_secondary_to_running_service() -> None:
     assert "submit_job" in python_sdk
     assert "[Quickstart](/quickstart)" in python_sdk
     assert "[API Authentication](/api-reference/authentication)" in python_sdk
-    assert "pip install algenta-core" in python_sdk
+    assert "pip install algenta" in python_sdk
     assert "from algenta import Runtime" not in python_sdk
 
     assert "# TypeScript SDK" in ts_sdk

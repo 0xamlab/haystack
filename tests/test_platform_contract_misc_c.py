@@ -45,7 +45,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "client.submit_job(" in python_sdk
     assert "from algenta import Runtime" not in python_sdk
     assert "Use the Python SDK after the service is already running." in python_sdk
-    assert 'pip install "algenta-core[cloud]"' in python_sdk
+    assert 'pip install "algenta[cloud]"' in python_sdk
     assert 'Runtime(mode="api")' in python_sdk
     assert "fail closed" in python_sdk
     assert "artifacts together" in python_sdk
@@ -131,7 +131,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "POST /v1/query/sql-report" in local_runtime
     assert "bounded-lifetime replacement key" in local_runtime
     assert "ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY> python3 scripts/verify_local_api_key_runtime.py" in local_runtime
-    assert 'pip install "algenta-core[cloud]"' in local_runtime
+    assert 'pip install "algenta[cloud]"' in local_runtime
     assert 'Runtime(mode="api")' in local_runtime
     assert "algenta-sdk" in local_runtime
     assert "artifacts together" in local_runtime
@@ -153,7 +153,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "execution-policy snapshots" in trust_model
     assert 'de_live_...' not in trust_model
     assert "Algenta — Local Runtime" in local_runtime_example
-    assert 'pip install "algenta-core[cloud]"' in local_runtime_example
+    assert 'pip install "algenta[cloud]"' in local_runtime_example
     assert 'Runtime(mode="api")' in local_runtime_example
     assert "algenta-sdk" in local_runtime_example
     assert "artifacts together" in local_runtime_example
@@ -339,5 +339,4 @@ def test_readme_documents_self_hosted_saved_connector_and_runtime_library_surfac
     assert "hosted or self-hosted generic Mojo dispatch is not part of this surface" in readme
     assert 'tcpAddress: process.env.ALGENTA_DAEMON_TCP ?? "127.0.0.1:50099"' in readme
     assert "/v1/libraries" not in readme
-
 

@@ -590,10 +590,10 @@ print(PRIMARY_DATA_QUERY_CONTRACT["governed_filter_contract"]["type_behavior"]["
 
 ## Optional local runtime
 
-`algenta-core` remains available for local development, testing, embedded execution, and the optional development CLI:
+`algenta` provides local development, testing, embedded execution, and the CLI:
 
 ```bash
-pip install algenta-core
+pip install algenta
 ```
 
 That is the pure local runtime surface. If you want `algenta.Runtime(mode="api")`
@@ -601,12 +601,12 @@ or `Runtime(mode="self_hosted")` from a published package index, install the
 hosted extra too:
 
 ```bash
-pip install "algenta-core[cloud]"
+pip install "algenta[cloud]"
 ```
 
 Those API-backed runtime modes intentionally fail closed if `algenta-sdk` is
 not installed. For local artifact validation before publish, install the local
-`algenta-sdk` and `algenta-core` artifacts together instead of assuming the
+`algenta-sdk` and `algenta` artifacts together instead of assuming the
 `[cloud]` extra can resolve an unpublished SDK from a package index.
 
 For the unified capability plane, `Runtime(mode="local")` only executes

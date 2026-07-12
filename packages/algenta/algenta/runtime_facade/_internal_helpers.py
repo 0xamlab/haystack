@@ -1,6 +1,6 @@
 """_InternalHelpersMixin for the Runtime class.
 
-Extracted from packages/algenta-core/algenta/runtime_facade.py during modularization.
+Extracted from packages/algenta/algenta/runtime_facade.py during modularization.
 """
 
 from __future__ import annotations

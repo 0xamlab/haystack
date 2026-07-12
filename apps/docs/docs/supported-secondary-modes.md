@@ -19,7 +19,7 @@ Simulation remains fully implemented and tested:
 
 ## Local helper APIs
 
-`algenta-core` still ships:
+`algenta` ships:
 
 - `map_data`
 - `list_datasets`

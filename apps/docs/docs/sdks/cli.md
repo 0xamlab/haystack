@@ -20,7 +20,7 @@ service.
 ## Install
 
 ```bash
-pip install algenta-core
+pip install algenta
 ```
 
 ## Primary command

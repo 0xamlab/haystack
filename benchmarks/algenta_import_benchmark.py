@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ALGENTA_CORE = PROJECT_ROOT / "packages" / "algenta-core"
+ALGENTA_PACKAGE = PROJECT_ROOT / "packages" / "algenta"
 PYTHON_SDK = PROJECT_ROOT / "packages" / "python-sdk"
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "algenta_import_benchmark.json"
 
@@ -94,7 +94,7 @@ print(json.dumps({{
 def _sample_import_ms(*, iterations: int) -> list[float]:
     env = {
         **os.environ,
-        "PYTHONPATH": f"{ALGENTA_CORE}:{PYTHON_SDK}:{PROJECT_ROOT}",
+        "PYTHONPATH": f"{ALGENTA_PACKAGE}:{PYTHON_SDK}:{PROJECT_ROOT}",
     }
     samples: list[float] = []
     for _ in range(iterations):
@@ -111,7 +111,7 @@ def _sample_import_ms(*, iterations: int) -> list[float]:
 def _sample_export_resolution(*, export_name: str, iterations: int) -> list[dict[str, Any]]:
     env = {
         **os.environ,
-        "PYTHONPATH": f"{ALGENTA_CORE}:{PYTHON_SDK}:{PROJECT_ROOT}",
+        "PYTHONPATH": f"{ALGENTA_PACKAGE}:{PYTHON_SDK}:{PROJECT_ROOT}",
     }
     samples: list[dict[str, Any]] = []
     snippet = _EXPORT_SNIPPET_TEMPLATE.format(export_name=export_name)

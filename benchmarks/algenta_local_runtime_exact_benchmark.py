@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ALGENTA_CORE = PROJECT_ROOT / "packages" / "algenta-core"
+ALGENTA_PACKAGE = PROJECT_ROOT / "packages" / "algenta"
 PYTHON_SDK = PROJECT_ROOT / "packages" / "python-sdk"
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "algenta_local_runtime_exact_benchmark.json"
 
 
 def _ensure_package_paths() -> None:
-    for path in (str(ALGENTA_CORE), str(PYTHON_SDK), str(PROJECT_ROOT)):
+    for path in (str(ALGENTA_PACKAGE), str(PYTHON_SDK), str(PROJECT_ROOT)):
         if path not in sys.path:
             sys.path.insert(0, path)
 

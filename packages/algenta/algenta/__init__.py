@@ -597,13 +597,15 @@ def __dir__() -> list[str]:
 
 
 def check_migration() -> str | None:
-    """Detect a stale, file-owning ``algenta-core`` install (pre-graduation) and return a one-line migration
-    warning, or None.
+    """Detect a stale, file-owning ``algenta-core`` install.
 
-    After the graduation, the ``algenta`` distribution owns the ``algenta`` import + the ``algenta`` command;
-    ``algenta-core`` is a thin compatibility shim that ``Requires-Dist: algenta``. A LEGACY algenta-core
-    (which does NOT require ``algenta``) still claims to own the ``algenta/`` files and can shadow this
-    package — so warn. Never raises; kept OUT of import time (the CLI calls it once at startup).
+    Return a one-line migration warning for pre-graduation installations,
+    or None.
+
+    The ``algenta`` distribution owns the ``algenta`` import + the ``algenta`` command. A legacy,
+    file-owning ``algenta-core`` installation can still shadow those files,
+    so warn with an explicit uninstall/migration command. Never raises; kept
+    OUT of import time (the CLI calls it once at startup).
     """
     try:
         from importlib import metadata
@@ -616,8 +618,8 @@ def check_migration() -> str | None:
     )
     if not depends_on_algenta:
         return (
-            "algenta: a legacy `algenta-core` package is installed that predates the `algenta` graduation "
-            "and may shadow this package. Run `pip install --upgrade algenta-core` to get the compatibility "
-            "shim (which just depends on `algenta`)."
+            "algenta: a legacy `algenta-core` package is installed and may "
+            "shadow the supported `algenta` "
+            "distribution. Run `pip uninstall algenta-core && pip install --upgrade algenta`."
         )
     return None

@@ -1,6 +1,6 @@
 """agent_run lifecycle/events/checkpoints/telemetry runtime requests.
 
-Extracted from packages/algenta-core/algenta/runtime_execution_surface.py during modularization.
+Extracted from packages/algenta/algenta/runtime_execution_surface.py during modularization.
 """
 from __future__ import annotations
 

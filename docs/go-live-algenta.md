@@ -23,12 +23,12 @@ product is resolved from the client_id / plan namespace / license claim, consoli
 | thyn-ai/algenta#289 | 3 | Product-scoped Stripe, **gated dark** + cross-brand isolation | **stacked on #288** |
 | thyn-ai/algenta#290 | 4 | `algenta-mcp` → Official MCP Registry (Cursor/Codex/Claude) | base `main` |
 | thyn-ai/algenta#291 | 6 | 100-year OEM minter + golden tests | base `main` |
-| thyn-ai/algenta#292 | 5 | Graduate algenta-core → `algenta` + native sidecar + shim + bundled-runtime CLI | base `main` |
+| thyn-ai/algenta#292 | 5 | Graduate the local runtime into `algenta` with an automatically installed native engine | base `main` |
 
 ### Merge order (avoid stranding the stacked PR)
 1. Merge **#288** (squash).
 2. `git checkout feat/algenta-stripe && git rebase origin/main && git push --force-with-lease` — #289 auto-retargets to `main` and its diff collapses to just Phase 3. Merge **#289**.
-3. Merge **#290**, **#291**, **#292** in any order (all base `main`). #292 + #290 both touch `release-sdks.yml`; resolve the trivial build-loop conflict (the loop should read `python-sdk algenta algenta-core mcp` and publish all four + the shim).
+3. Merge **#290**, **#291**, **#292** in any order (all base `main`). #292 + #290 both touch `release-sdks.yml`; resolve the build-loop conflict using `python-sdk algenta mcp`.
 4. Merge **accounts#31** (independent repo).
 
 CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain + `ALGENTA_SIGNING_KEY`), so it does not gate any PR.
@@ -52,9 +52,9 @@ CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain +
 - Flip billing on: set `algenta.billing → True` in `product_registry.py` (the checkout gate returns `403 billing_not_enabled` until then). Ship that as a one-line PR.
 
 ### 4. SDKs + MCP to PyPI (Phases 4 + 5)
-- Set the repo secret **`PYPI_TOKEN`** = a PyPI API token with upload rights for `algenta`, `algenta-core` (shim), `algenta-runtime-native`, and `algenta-mcp`. (`release-sdks.yml` publishes via token auth — no Trusted Publishing setup.) Optional `TEST_PYPI_TOKEN` for the TestPyPI rehearsal. *(PYPI_TOKEN is already set on the repo.)*
+- Set the repo secret **`PYPI_TOKEN`** = a PyPI API token with upload rights for `algenta-sdk` and `algenta-mcp`. `algenta` and `algenta-runtime-native` are released together by the runtime workflow. Optional `TEST_PYPI_TOKEN` supports the TestPyPI rehearsal.
 - **Native runtime first:** provide the C-ABI Mojo source (`mojo/engine/algenta_runtime.mojo`, exporting `algenta_runtime_{version,platform,init,execute,free,shutdown}` — see `packages/algenta/algenta/native/loader.py`), set the `ALGENTA_SIGNING_KEY` secret that matches the committed `algenta_release_pub.pem`, and verify the committed `algenta_license_pub.pem` still matches the production signer JWKS. Run `build-runtime.yml` (per-platform) → it compiles, signs, and builds the `algenta-runtime-native` wheels; the **clean-machine contract** job must pass.
-- Then `release-sdks.yml` (TestPyPI rehearsal → PyPI) for `python-sdk`/`algenta`/`algenta-core`/`algenta-mcp`.
+- Then `release-sdks.yml` (TestPyPI rehearsal → PyPI) for `algenta-sdk` and `algenta-mcp`.
 - **Do NOT publish a public `algenta` release until a `algenta-runtime-native` wheel for that platform contains the signed native runtime** (else `pip install algenta` fails to resolve the sidecar — which is the intended fail-safe, but confirm the supported platforms are live first).
 - After `algenta-mcp` is live on PyPI, dispatch `publish-mcp.yml` (registers `io.github.thyn-ai/algenta` via OIDC).
 

@@ -42717,17 +42717,7 @@
       }
     ]
   },
-  "issues": [
-    {
-      "code": "pypi_package_unavailable",
-      "details": {
-        "package": "algenta-core",
-        "status": 404
-      },
-      "message": "Docs reference a required public PyPI package that is unavailable.",
-      "severity": "ERROR"
-    }
-  ],
+  "issues": [],
   "live": {
     "base_url": "https://docs.algenta.ai",
     "docs_mcp": {
@@ -42787,11 +42777,6 @@
         "status": 200,
         "summary": "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime.",
         "version": "1.0.3"
-      },
-      "algenta-core": {
-        "status": 404,
-        "summary": "",
-        "version": ""
       },
       "algenta-mcp": {
         "status": 200,
@@ -46183,16 +46168,16 @@
     "hardcoded_mcp_tool_count_claims": 0,
     "mcp_registry_tool_count": 140
   },
-  "status": "fail",
+  "status": "pass",
   "summary": {
-    "blockers": 1,
+    "blockers": 0,
     "claim_mentions": 881,
     "command_execution_percent": 100.0,
     "commands_classified": 808,
     "commands_executed": 67,
     "commands_unexecuted": 0,
     "endpoint_mentions": 1997,
-    "failures": 1,
+    "failures": 0,
     "fixes": 0,
     "links_checked": 934,
     "pages_checked": 134,
@@ -46204,7 +46189,7 @@
     "warnings": 0
   },
   "totals": {
-    "blockers": 1,
+    "blockers": 0,
     "claim_mentions": 881,
     "code_fences": 980,
     "command_classification_percent": 100.0,
@@ -46215,7 +46200,7 @@
     "executed_commands": 67,
     "external_links": 3,
     "external_or_mutating_commands": 268,
-    "failures": 1,
+    "failures": 0,
     "fixes": 0,
     "guarded_commands": 741,
     "internal_links": 918,

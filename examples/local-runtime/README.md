@@ -28,13 +28,13 @@ runtime execution and offline task history.
 Published package install:
 
 ```bash
-pip install "algenta-core[cloud]"
+pip install "algenta[cloud]"
 ```
 
-`algenta-core` alone is the pure local runtime package and intentionally fails
+`algenta` alone is the pure local runtime package and intentionally fails
 closed for `Runtime(mode="api")` if `algenta-sdk` is missing. For local
 artifact validation before publish, install the local `algenta-sdk` and
-`algenta-core` artifacts together instead of relying on the `[cloud]` extra to
+`algenta` artifacts together instead of relying on the `[cloud]` extra to
 resolve an unpublished SDK.
 
 ### First proof

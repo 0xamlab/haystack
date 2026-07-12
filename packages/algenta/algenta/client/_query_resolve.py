@@ -1,6 +1,6 @@
 """_QueryResolveMixin for the AlgentaClient class.
 
-Extracted from packages/algenta-core/algenta/client.py during modularization.
+Extracted from packages/algenta/algenta/client.py during modularization.
 """
 from __future__ import annotations
 

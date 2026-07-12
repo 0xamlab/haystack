@@ -149,6 +149,19 @@ def test_check_migration_none_when_no_legacy_core():
     assert result is None or isinstance(result, str)
 
 
+def test_check_migration_removes_legacy_core_instead_of_reinstalling_it(monkeypatch):
+    from importlib import metadata
+
+    monkeypatch.setattr(metadata, "requires", lambda name: [] if name == "algenta-core" else None)
+
+    warning = algenta.check_migration()
+
+    assert warning is not None
+    assert "pip uninstall algenta-core" in warning
+    assert "pip install --upgrade algenta" in warning
+    assert "pip install --upgrade algenta-core" not in warning
+
+
 def test_cli_version_and_whoami(capsys, monkeypatch, tmp_path):
     from algenta import cli
 

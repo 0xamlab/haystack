@@ -6,7 +6,7 @@ domain-specific experience. Users install the bundle for their use case,
 get drop-in API compatibility, and discover the platform naturally.
 
 Distribution tiers:
-  algenta-core      — local only, no API key, pure Python
+  algenta           — local runtime, no API key, bundled native engine
   algenta-finance   — financial modeling bundle
   algenta-ml        — ML/AI engineering bundle
   algenta-ai        — GenAI + agent bundle
@@ -49,14 +49,14 @@ class Bundle:
 
 BUNDLES: list[Bundle] = [
     Bundle(
-        slug="algenta-core",
-        name="Codna Core",
+        slug="algenta",
+        name="Algenta",
         description=(
             "Local simulation, optimization, and decision-making. "
-            "Zero dependencies. No API key. Works offline. "
-            "The entry point to the Codna ecosystem."
+            "Bundled native runtime. No API key. Works offline. "
+            "The entry point to the Algenta ecosystem."
         ),
-        install="pip install algenta-core",
+        install="pip install algenta",
         engines=["decision", "optimize"],
         mojo_libs=[
             "monte_carlo",

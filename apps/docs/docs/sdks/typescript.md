@@ -761,7 +761,7 @@ source files, but they must run the local Algenta runtime daemon first.
 
 ## Optional local runtime
 
-The local runtime and development CLI remain available through `algenta-core`, but they are secondary to the running service.
+The local runtime and CLI remain available through `algenta`, but they are secondary to the running service.
 
 For the unified capability plane, local runtime execution only supports
 `client_managed` capabilities. `algenta_managed` capabilities remain

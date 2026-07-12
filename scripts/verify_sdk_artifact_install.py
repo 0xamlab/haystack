@@ -37,9 +37,8 @@ _SMOKES: dict[str, str] = {
         "assert DecisionEngineClient and AlgentaClient; "
         "print('python-sdk', m.__version__, 'OK')"
     ),
-    # NB: `algenta` (graduated) is verified by _verify_algenta() below (it hard-deps the
-    # native runtime wheel, so needs a local runtime wheel first). The `algenta-core` shim
-    # ships no importable files, so it has no smoke here.
+    # NB: `algenta` is verified by _verify_algenta() below (it hard-depends on the native
+    # runtime wheel, so it needs a local runtime wheel first).
 }
 
 

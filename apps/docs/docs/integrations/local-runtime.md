@@ -42,13 +42,13 @@ Use this when you need:
 Install shape for this hosted-runtime path:
 
 ```bash
-pip install "algenta-core[cloud]"
+pip install "algenta[cloud]"
 ```
 
-`algenta-core` alone is the pure local runtime package and intentionally fails
+`algenta` alone is the pure local runtime package and intentionally fails
 closed for `Runtime(mode="api")` or `Runtime(mode="self_hosted")` if
 `algenta-sdk` is absent. For local artifact validation before publish, install
-the local `algenta-sdk` and `algenta-core` artifacts together instead of
+the local `algenta-sdk` and `algenta` artifacts together instead of
 assuming the `[cloud]` extra can resolve an unpublished SDK from a package
 index.
 
@@ -316,7 +316,7 @@ de runtime history --limit 20
 
 ## What this page proves
 
-- The simple primary local runtime exists in `algenta-core`
+- The simple primary local runtime exists in `algenta`
 - The more advanced hosted-control-plane local runtime also exists in this repo
 - These are both real, but they are not the same surface
 

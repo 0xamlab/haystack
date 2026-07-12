@@ -1,6 +1,6 @@
 """runtime_api_client + remember/forget/try_exact_api_resolve + local execution paths.
 
-Extracted from packages/algenta-core/algenta/runtime_execution_surface.py during modularization.
+Extracted from packages/algenta/algenta/runtime_execution_surface.py during modularization.
 """
 from __future__ import annotations
 

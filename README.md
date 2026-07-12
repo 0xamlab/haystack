@@ -245,7 +245,7 @@ make repository-intelligence-channel-parity \
 ### 1. Install the local runtime package
 
 ```bash
-pip install algenta-core
+pip install algenta
 ```
 
 ### 2. Run the zero-friction demo
@@ -381,7 +381,7 @@ Local mode:
 API mode uses the direct Algenta API through the lower-level SDK:
 
 ```bash
-pip install "algenta-core[cloud]"
+pip install "algenta[cloud]"
 # or
 pip install algenta-sdk
 ```
@@ -978,7 +978,7 @@ If you want hosted control plane plus local execution, see:
 
 Current package story:
 
-- **`algenta-core`**: local-first package that owns the `algenta` import namespace
+- **`algenta`**: local-first package that owns the `algenta` import namespace and installs its native runtime automatically
 - **`algenta-sdk` (PyPI)**: lower-level Python API SDK, imported as `decision_engine`
 - **`algenta-sdk` (npm)**: TypeScript SDK with a runtime-first facade plus direct API client
 

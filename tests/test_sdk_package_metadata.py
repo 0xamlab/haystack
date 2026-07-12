@@ -22,10 +22,10 @@ _PACKAGES = _REPO_ROOT / "packages"
 
 # The public client SDKs + CLI + MCP server. The engine + server are NOT here and keep the ACL.
 _EXPECTED_LICENSE = "Apache-2.0"
-# `algenta` (graduated CLI+SDK, owns the `algenta` import/command) + `algenta-core` (compatibility shim) are
-# both Apache-2.0. The proprietary native runtime lives in `algenta-runtime-native` (a SEPARATE dist) and is
-# intentionally NOT in this Apache/version guard.
-_PYPROJECT_PKGS = ("python-sdk", "algenta", "algenta-core", "mcp")
+# `algenta` owns the `algenta` import/command. The proprietary native runtime lives in
+# `algenta-runtime-native` (a separate distribution) and is intentionally not in this
+# Apache/version guard.
+_PYPROJECT_PKGS = ("python-sdk", "algenta", "mcp")
 _TS_PKG = "ts-sdk"
 _SDK_PYTHON_CLASSIFIERS = {
     "Programming Language :: Python :: 3.10",
@@ -38,7 +38,6 @@ _RUNTIME_PYTHON_CLASSIFIERS = {"Programming Language :: Python :: 3.14"}
 _PYTHON_CONTRACTS = {
     "python-sdk": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
     "algenta": (">=3.14,<3.15", _RUNTIME_PYTHON_CLASSIFIERS),
-    "algenta-core": (">=3.14,<3.15", _RUNTIME_PYTHON_CLASSIFIERS),
     "mcp": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
 }
 _TRUST_ANCHOR_DER_SHA256 = {
@@ -121,7 +120,7 @@ def test_public_python_packages_declare_current_supported_python_versions(pkg: s
     classifiers = set(metadata.get("classifiers", []))
     missing = sorted(expected_classifiers - classifiers)
     assert not missing, f"{pkg} missing Python support classifiers: {missing}"
-    if pkg in {"algenta", "algenta-core"}:
+    if pkg == "algenta":
         unsupported = sorted(classifiers & (_SDK_PYTHON_CLASSIFIERS - expected_classifiers))
         assert not unsupported, f"{pkg} advertises unsupported Python classifiers: {unsupported}"
 
@@ -146,23 +145,20 @@ def test_sdk_release_workflow_is_idempotent() -> None:
         "utf-8"
     )
 
-    assert release.count("skip-existing: true") == 6
+    assert release.count("skip-existing: true") == 4
     assert 'npm view "algenta-sdk@$VERSION" version' in release
     assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
 
 
-def test_algenta_core_uses_trusted_publishing() -> None:
+def test_sdk_release_workflow_only_targets_existing_pypi_projects() -> None:
     release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text(
         "utf-8"
     )
     production = release.split("\n  publish-pypi:\n", 1)[1].split("\n  publish-npm:\n", 1)[0]
-    core_step = production.split("      - name: Publish algenta-core (shim)\n", 1)[1].split(
-        "\n      - name:", 1
-    )[0]
-
-    assert "id-token: write" in production
-    assert "password:" not in core_step
-    assert "skip-existing: true" in core_step
+    assert "algenta-core" not in release
+    assert not (_PACKAGES / "algenta-core" / "pyproject.toml").exists()
+    assert "id-token: write" not in production
+    assert production.count("password: ${{ secrets.PYPI_TOKEN }}") == 2
 
 
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:
@@ -194,8 +190,7 @@ def test_ts_package_builds_dist_before_publish() -> None:
 _INIT_VERSION_RE = re.compile(r'^__version__\s*=\s*["\']([^"\']+)["\']', re.MULTILINE)
 _RUNTIME_VERSION_INITS = {
     "python-sdk": "decision_engine/__init__.py",
-    # `algenta` now owns the `algenta` import package (graduated from algenta-core). The algenta-core shim
-    # ships NO package files, so it has no __version__ to check here.
+    # `algenta` owns the `algenta` import package.
     "algenta": "algenta/__init__.py",
 }
 
