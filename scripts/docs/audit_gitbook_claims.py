@@ -151,7 +151,7 @@ SUMMARY_ROUTE_PREFIX_STRIPS = {
     "help": ("help/",),
 }
 
-REQUIRED_PYPI_PACKAGES = ("algenta-sdk", "algenta-mcp")
+REQUIRED_PYPI_PACKAGES = ("algenta-sdk", "algenta-mcp", "algenta-core")
 REQUIRED_NPM_PACKAGES = ("algenta-sdk",)
 OPTIONAL_RUNTIME_PYPI_PACKAGES = ("algenta", "algenta-runtime-native")
 

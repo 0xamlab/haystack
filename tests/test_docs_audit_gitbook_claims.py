@@ -442,7 +442,7 @@ def test_package_registry_audit_accepts_current_public_sdk_packages(monkeypatch)
         del timeout
         if url.startswith("https://pypi.org/pypi/"):
             package = url.split("/pypi/", 1)[1].split("/", 1)[0]
-            if package in {"algenta-sdk", "algenta-mcp"}:
+            if package in {"algenta-sdk", "algenta-mcp", "algenta-core"}:
                 return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
             return 404, None
         if url == "https://registry.npmjs.org/algenta-sdk/latest":
@@ -460,9 +460,37 @@ def test_package_registry_audit_accepts_current_public_sdk_packages(monkeypatch)
     assert issues == []
     assert report["pypi"]["algenta-sdk"]["status"] == 200
     assert report["pypi"]["algenta-mcp"]["status"] == 200
+    assert report["pypi"]["algenta-core"]["status"] == 200
     assert report["pypi"]["algenta"]["status"] == 404
     assert report["npm"]["algenta-sdk"]["version"] == "1.0.2"
     assert report["public_runtime_install_claims"] == 0
+
+
+def test_package_registry_audit_rejects_missing_algenta_core(monkeypatch) -> None:
+    audit = _load_module()
+
+    def fake_fetch_json(url: str, *, timeout: float = 20.0):
+        del timeout
+        if url.startswith("https://pypi.org/pypi/"):
+            package = url.split("/pypi/", 1)[1].split("/", 1)[0]
+            if package in {"algenta-sdk", "algenta-mcp"}:
+                return 200, {"info": {"version": "1.0.3", "summary": f"{package} summary"}}
+            return 404, None
+        if url == "https://registry.npmjs.org/algenta-sdk/latest":
+            return 200, {
+                "version": "1.0.3",
+                "description": "TypeScript SDK for Algenta",
+                "license": "Apache-2.0",
+            }
+        return 500, None
+
+    monkeypatch.setattr(audit, "_fetch_json", fake_fetch_json)
+
+    issues, report = audit._audit_package_registries("pip install algenta-sdk")
+
+    assert [issue.code for issue in issues] == ["pypi_package_unavailable"]
+    assert issues[0].details == {"package": "algenta-core", "status": 404}
+    assert report["pypi"]["algenta-core"]["status"] == 404
 
 
 def test_package_registry_audit_rejects_public_runtime_install_before_pypi_live(
@@ -474,7 +502,7 @@ def test_package_registry_audit_rejects_public_runtime_install_before_pypi_live(
         del timeout
         if url.startswith("https://pypi.org/pypi/"):
             package = url.split("/pypi/", 1)[1].split("/", 1)[0]
-            if package in {"algenta-sdk", "algenta-mcp"}:
+            if package in {"algenta-sdk", "algenta-mcp", "algenta-core"}:
                 return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
             return 404, None
         if url == "https://registry.npmjs.org/algenta-sdk/latest":
@@ -502,7 +530,7 @@ def test_package_registry_audit_rejects_stale_runtime_caveat_after_pypi_live(
         del timeout
         if url.startswith("https://pypi.org/pypi/"):
             package = url.split("/pypi/", 1)[1].split("/", 1)[0]
-            if package in {"algenta-sdk", "algenta-mcp", "algenta"}:
+            if package in {"algenta-sdk", "algenta-mcp", "algenta-core", "algenta"}:
                 return 200, {"info": {"version": "1.0.2", "summary": f"{package} summary"}}
             return 404, None
         if url == "https://registry.npmjs.org/algenta-sdk/latest":
