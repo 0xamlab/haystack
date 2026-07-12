@@ -42719,9 +42719,41 @@
   },
   "issues": [],
   "live": {
-    "skipped": true
+    "base_url": "https://docs.algenta.ai",
+    "docs_mcp": {
+      "initialize_status": 200,
+      "page_status": 200,
+      "protocol_version": "2025-03-26",
+      "search_status": 200,
+      "tool_url_aliases": [
+        {
+          "canonical": "https://docs.algenta.ai/getting-started",
+          "canonical_status": 200,
+          "equivalent": true,
+          "example": "https://docs.algenta.ai//getting-started",
+          "redirect_status": 307,
+          "redirect_target": "https://docs.algenta.ai/getting-started",
+          "tool": "getPage"
+        }
+      ],
+      "tools": [
+        "getPage",
+        "searchDocumentation"
+      ],
+      "tools_status": 200
+    },
+    "llms_full_bytes": 1992506,
+    "llms_full_complete": true,
+    "llms_full_pages": 2,
+    "llms_full_status": 200,
+    "llms_txt_status": 200,
+    "markdown_pages_checked": 133,
+    "robots_status": 200,
+    "sitemap_matches_source_navigation": true,
+    "sitemap_urls": 133,
+    "source_navigation_urls": 133
   },
-  "live_url": "",
+  "live_url": "https://docs.algenta.ai",
   "openapi_identity": {
     "algenta_title": true,
     "cross_product_mentions": 0,
@@ -42730,7 +42762,39 @@
     "runtime_encapsulation_mentions": 0
   },
   "package_registries": {
-    "skipped": true
+    "npm": {
+      "algenta-sdk": {
+        "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
+        "license": "Apache-2.0",
+        "status": 200,
+        "version": "1.0.3"
+      }
+    },
+    "public_runtime_install_claims": 2,
+    "public_runtime_native_install_claims": 0,
+    "pypi": {
+      "algenta": {
+        "status": 200,
+        "summary": "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime.",
+        "version": "1.0.3"
+      },
+      "algenta-mcp": {
+        "status": 200,
+        "summary": "Algenta MCP server \u2014 a Model Context Protocol surface for the Algenta API (Cursor, Claude Desktop, \u2026)",
+        "version": "1.0.3"
+      },
+      "algenta-runtime-native": {
+        "status": 200,
+        "summary": "Bundled Algenta runtime artifacts for the algenta package. Installed automatically; not a standalone API.",
+        "version": "1.0.3"
+      },
+      "algenta-sdk": {
+        "status": 200,
+        "summary": "Python SDK for Algenta \u2014 public data, query, and simulation API",
+        "version": "1.0.3"
+      }
+    },
+    "skipped": false
   },
   "pages": [
     {
@@ -46118,7 +46182,7 @@
     "links_checked": 934,
     "pages_checked": 134,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 742,
+    "skips": 741,
     "snippets_checked": 980,
     "source_inventory_percent": 100.0,
     "source_items_inventoried": 5600,
@@ -46157,7 +46221,7 @@
     "shell_commands": 808,
     "shell_syntax_validated_commands": 808,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 742,
+    "skips": 741,
     "source_inventory_percent": 100.0,
     "source_items_inventoried": 5600,
     "static_only_commands": 60,
