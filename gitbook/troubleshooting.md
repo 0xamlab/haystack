@@ -185,7 +185,7 @@ Almost always a missing credential, a missing base_url, or the wrong transport. 
 
 ```bash title="start-mcp-server.sh"
 python -m apps.mcp_server.server                 # stdio (Claude Desktop, Cursor, Zed, …)
-python -m apps.mcp_server.server --mode http     # HTTP/SSE (OpenWebUI, LibreChat, n8n)
+python -m apps.mcp_server.server --mode http     # Streamable HTTP (OpenWebUI, LibreChat, n8n)
 ```
 
 For `stdio`, the key and base_url must live in the **client's** config block, not your shell — set both `ALGENTA_API_KEY` and `ALGENTA_BASE_URL` there, then restart the client. Don't point a desktop app at `--mode http`. Verify the engine first with `curl "$ALGENTA_BASE_URL/v1/health"`. The exact config is on **MCP / IDE**.

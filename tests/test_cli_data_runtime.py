@@ -31,7 +31,7 @@ def test_cmd_contract_prints_machine_readable_contract_summary(monkeypatch) -> N
 
     output = _capture_stdout(cli.cmd_contract, "table")
 
-    assert "Algenta contract: v1.4" in output
+    assert "Algenta contract: v1.5" in output
     assert "/v1/meta/contract" in output
     assert "get_contract() / get_contract()" in output
     assert "getContract() / getContract()" in output
@@ -138,7 +138,7 @@ def test_cmd_contract_json_falls_back_to_openapi_extension(monkeypatch) -> None:
     body = json.loads(output)
 
     assert body["api_base_url"] == "https://example.test/self-host"
-    assert body["mcp_endpoint"] == "https://example.test/self-host/mcp/sse"
+    assert body["mcp_endpoint"] == "https://example.test/self-host/mcp"
     assert body["mcp_tools_endpoint"] == "https://example.test/self-host/mcp/tools"
     assert body["primary_data_query_contract"]["api"]["query_batch_endpoint"] == "/v1/query/batch"
     assert_manifest_backed_integrations(body["integrations"])
@@ -261,7 +261,10 @@ def test_cmd_contract_rejects_invalid_payload(monkeypatch) -> None:
                 "contract_version": "v1.3",
                 "brand": "Algenta",
                 "api_base_url": "https://api.algenta.ai",
-                "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
+                "mcp_endpoint": "https://api.algenta.ai/mcp",
+                "mcp_transport": "streamable_http",
+                "mcp_protocol_version": "2025-11-25",
+                "mcp_legacy_sse_endpoint": "https://api.algenta.ai/mcp/sse",
                 "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
                 "auth_scheme": "bearer_api_key",
                 "api_key_prefixes": {"live": "de_live_"},
@@ -877,4 +880,3 @@ def test_main_dispatches_runtime_admin_benchmarks(monkeypatch) -> None:
     cli.main()
 
     assert called == {"format": "json"}
-

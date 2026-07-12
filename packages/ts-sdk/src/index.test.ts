@@ -141,7 +141,7 @@ describe("public Algenta SDK aliases", () => {
     expect(DEFAULT_BASE_URL).toBe("https://api.algenta.ai");
     expect(AUTH_SCHEME).toBe("bearer_api_key");
     expect(API_KEY_PREFIX_LIVE).toBe("de_live_");
-    expect(MCP_ENDPOINT).toBe("https://api.algenta.ai/mcp/sse");
+    expect(MCP_ENDPOINT).toBe("https://api.algenta.ai/mcp");
     expect(LEGACY_HEADERS).toEqual(["X-API-Key"]);
     expect(DEPRECATION_WINDOW_DAYS).toBe(90);
     expect(READ_ONLY_DEFAULT).toBe(true);

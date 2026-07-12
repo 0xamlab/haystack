@@ -90,7 +90,7 @@ def test_service_first_docs_keep_runtime_and_sdk_surfaces_distinct() -> None:
     assert "`scripts/detach_process.py` so they survive the startup shell itself" in readme
     assert "isolated `uv run`" in readme
     assert "`requirements-mcp.txt`" in readme
-    assert "`/mcp/sse`" in readme
+    assert "`/mcp`" in readme
     assert "fails closed if either the API `/v1/health`" in readme
     assert "Same-port reruns retire the previous API and MCP" in readme
     assert "`build/start-local/*.lease`" in readme

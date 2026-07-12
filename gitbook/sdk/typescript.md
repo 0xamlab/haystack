@@ -200,9 +200,8 @@ const filter: QueryFilterSpec = {
 };
 ```
 
-{% expandable title="Supported filter operators" %}
+### Supported filter operators
 The governed filter contract supports `eq`, `gt`, `gte`, `lt`, `lte`, `in`, `is_null`, and `is_not_null`. Filters apply to normalized rows before aggregation and are valid across SQL and non-SQL backends.
-{% endexpandable %}
 
 ### SQL report
 
@@ -288,9 +287,8 @@ const mcp = await client.listMcpProviders();              // providers where pro
 
 `listMcpProviders()` is a convenience filter over `listCapabilityProviders()`, and `listSkills()` is `listCapabilities({ kinds: ["skill"] })`.
 
-{% expandable title="Binding lifecycle and skill toggle helpers" %}
+### Binding lifecycle and skill toggle helpers
 There are also full binding lifecycle methods (`createCapabilityBinding`, `testCapabilityBinding`, `discoverCapabilityBinding`, `startCapabilityAuthorization`, `completeCapabilityAuthorization`) plus `enableSkill` / `disableSkill` helpers.
-{% endexpandable %}
 
 ## The Runtime class
 
@@ -361,7 +359,7 @@ Every request carries automatic device-binding headers, computed by `resolveClie
 | `X-Algenta-Platform-Version` | Node version, when available. |
 | `X-Algenta-Hostname-Hash` | FNV-1a hash of the hostname seed (never the raw hostname). |
 
-{% expandable title="How the device id is derived and how to override it" %}
+### How the device id is derived and how to override it
 On Node, the device id is derived from the machine id (`/etc/machine-id` on Linux), the hostname, or a persisted install id under `~/.algenta/runtime/install_id`. In the browser it is generated once and stored in `localStorage`. You can override it with the `ALGENTA_DEVICE_ID` (or legacy `DE_DEVICE_ID`) environment variable, or by passing `X-Algenta-Device-Id` in `defaultHeaders`:
 
 ```ts
@@ -370,7 +368,6 @@ const client = new AlgentaClient({
   defaultHeaders: { "X-Algenta-Device-Id": "my-stable-device-id-0001" },
 });
 ```
-{% endexpandable %}
 
 {% hint style="info" %}
 The hostname is never sent in clear text; only a hash is. When the control plane returns a device-binding token, the client persists it and replays it on subsequent requests automatically.

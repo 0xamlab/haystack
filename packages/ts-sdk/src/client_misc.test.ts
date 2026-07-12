@@ -199,7 +199,7 @@ describe("DecisionEngineClient — misc", () => {
             Authorization: "Bearer de_test_123",
             "X-Algenta-Device-Id": "ts-device-00000001",
             [HOSTNAME_HASH_HEADER]: expect.any(String),
-            "X-Algenta-SDK-Version": "algenta-ts/1.0.3",
+            "X-Algenta-SDK-Version": "algenta-ts/1.0.4",
           }),
         }),
       );
@@ -544,7 +544,7 @@ describe("DecisionEngineClient — misc", () => {
       const contract = await client.getContract();
 
       expect(contract.api_base_url).toBe("https://example.test/self-host");
-      expect(contract.mcp_endpoint).toBe("https://example.test/self-host/mcp/sse");
+      expect(contract.mcp_endpoint).toBe("https://example.test/self-host/mcp");
       expect(contract.defaults.read_only_default).toBe(true);
       expectManifestBackedIntegrationsEqual(contract.integrations, INTEGRATIONS);
       expect(contract.primary_data_query_contract.api.query_batch_endpoint).toBe(

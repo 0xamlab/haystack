@@ -5,6 +5,7 @@ import pytest
 from apps.api_server.config import get_settings
 from apps.api_server.main import app
 from apps.api_server.openapi_surface import (
+    apply_openapi_surface,
     openapi_mcp_endpoint,
     openapi_server_url,
     validate_openapi_surface_configuration,
@@ -14,6 +15,25 @@ from apps.api_server.openapi_surface import (
 def _clear_openapi_state() -> None:
     get_settings.cache_clear()
     app.openapi_schema = None
+
+
+def test_openapi_surface_assigns_stable_mcp_operation_ids() -> None:
+    schema = apply_openapi_surface({})
+
+    assert schema["paths"]["/mcp"]["get"]["operationId"] == "stream_mcp_events"
+    assert schema["paths"]["/mcp"]["post"]["operationId"] == "send_mcp_message"
+    assert (
+        schema["paths"]["/mcp"]["delete"]["operationId"]
+        == "terminate_mcp_session"
+    )
+    assert (
+        schema["paths"]["/mcp/sse"]["get"]["operationId"]
+        == "stream_legacy_mcp_events"
+    )
+    assert (
+        schema["paths"]["/mcp/messages"]["post"]["operationId"]
+        == "send_legacy_mcp_message"
+    )
 
 
 def test_openapi_saas_ignores_transport_base_url_without_public_override(
@@ -28,11 +48,11 @@ def test_openapi_saas_ignores_transport_base_url_without_public_override(
 
     try:
         assert openapi_server_url() == "https://api.algenta.ai"
-        assert openapi_mcp_endpoint("https://api.algenta.ai") == "https://api.algenta.ai/mcp/sse"
+        assert openapi_mcp_endpoint("https://api.algenta.ai") == "https://api.algenta.ai/mcp"
 
         schema = app.openapi()
         assert schema["servers"] == [{"url": "https://api.algenta.ai"}]
-        assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp/sse"
+        assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp"
     finally:
         _clear_openapi_state()
 
@@ -50,12 +70,12 @@ def test_openapi_saas_honors_explicit_public_override(
         assert openapi_server_url() == "https://public.customer.example"
         assert (
             openapi_mcp_endpoint("https://public.customer.example")
-            == "https://public.customer.example/mcp/sse"
+            == "https://public.customer.example/mcp"
         )
 
         schema = app.openapi()
         assert schema["servers"] == [{"url": "https://public.customer.example"}]
-        assert schema["x-canonical-mcp-endpoint"] == "https://public.customer.example/mcp/sse"
+        assert schema["x-canonical-mcp-endpoint"] == "https://public.customer.example/mcp"
     finally:
         _clear_openapi_state()
 
@@ -71,11 +91,11 @@ def test_openapi_private_profile_uses_relative_surface_without_explicit_base_url
 
     try:
         assert openapi_server_url() == "/"
-        assert openapi_mcp_endpoint("/") == "/mcp/sse"
+        assert openapi_mcp_endpoint("/") == "/mcp"
 
         schema = app.openapi()
         assert schema["servers"] == [{"url": "/"}]
-        assert schema["x-canonical-mcp-endpoint"] == "/mcp/sse"
+        assert schema["x-canonical-mcp-endpoint"] == "/mcp"
     finally:
         _clear_openapi_state()
 
@@ -93,14 +113,14 @@ def test_openapi_private_profile_uses_explicit_self_hosted_surface_when_configur
         assert openapi_server_url() == "https://decision.customer.internal"
         assert (
             openapi_mcp_endpoint("https://decision.customer.internal")
-            == "https://decision.customer.internal/mcp/sse"
+            == "https://decision.customer.internal/mcp"
         )
 
         schema = app.openapi()
         assert schema["servers"] == [{"url": "https://decision.customer.internal"}]
         assert (
             schema["x-canonical-mcp-endpoint"]
-            == "https://decision.customer.internal/mcp/sse"
+            == "https://decision.customer.internal/mcp"
         )
     finally:
         _clear_openapi_state()

@@ -4,7 +4,7 @@ Use Algenta from Claude Desktop, Codex, and other MCP clients.
 
 ## Recommended split
 
-- Cloud Managed remote-MCP clients: `https://api.algenta.ai/mcp/sse`
+- Cloud Managed remote-MCP clients: `https://api.algenta.ai/mcp`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 - Claude Desktop local-process hosts: use the bundled stdio bridge below
 
@@ -41,7 +41,7 @@ Then restart Claude Desktop fully.
 Use:
 
 ```text
-URL: https://api.algenta.ai/mcp/sse
+URL: https://api.algenta.ai/mcp
 Header: Authorization: Bearer <YOUR_ALGENTA_API_KEY>
 ```
 

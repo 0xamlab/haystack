@@ -1,19 +1,34 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.thyn-ai/algenta",
-  "title": "Algenta — repository intelligence & decision engine",
-  "description": "Repository intelligence & decision engine over MCP: triage, simulate, fix, apply, agent runs.",
+  "title": "Algenta MCP Server",
+  "description": "Governed data discovery, exact queries, decisions, simulations, and runtime utilities over MCP.",
   "repository": {
     "url": "https://github.com/thyn-ai/algenta",
     "source": "github"
   },
   "websiteUrl": "https://algenta.ai",
-  "version": "1.0.3",
+  "version": "1.0.4",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.algenta.ai/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer <ALGENTA_API_KEY>. Create a key in the Algenta dashboard or authenticate with `algenta login`.",
+          "placeholder": "Bearer <ALGENTA_API_KEY>",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "algenta-mcp",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "transport": {
         "type": "stdio"
       },

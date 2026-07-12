@@ -38,7 +38,7 @@ MANIFEST_PATH = ROOT / "apps" / "docs" / "integration_manifest.v1.json"
 
 EXAMPLE_BASE_URL = "https://your-algenta-base-url.example"
 
-EXAMPLE_MCP_ENDPOINT = f"{EXAMPLE_BASE_URL}/mcp/sse"
+EXAMPLE_MCP_ENDPOINT = f"{EXAMPLE_BASE_URL}/mcp"
 
 
 

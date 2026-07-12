@@ -37,7 +37,11 @@ def test_generated_python_contract_matches_manifest() -> None:
         "enterprise": {"requests_per_minute": 0, "simulations_per_month": 0},
     }
 
-    assert contract.contract_version == "v1.4"
+    assert contract.contract_version == "v1.5"
+    assert contract.mcp_endpoint == "https://api.algenta.ai/mcp"
+    assert contract.mcp_transport == "streamable_http"
+    assert contract.mcp_protocol_version == "2025-11-25"
+    assert contract.mcp_legacy_sse_endpoint == "https://api.algenta.ai/mcp/sse"
     assert contract.plan_limits == unlimited_algenta_plans
     assert generated_contract.CONTRACT_VERSION == contract.contract_version
     assert generated_contract.BRAND == contract.brand

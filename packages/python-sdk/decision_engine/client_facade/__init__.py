@@ -171,8 +171,8 @@ if TYPE_CHECKING:
     )
 
 _httpx: Any | None = None
-_SDK_USER_AGENT = "algenta-python/1.0.3"
-_SDK_VERSION = "algenta-python/1.0.3"
+_SDK_USER_AGENT = "algenta-python/1.0.4"
+_SDK_VERSION = "algenta-python/1.0.4"
 
 
 def _get_httpx() -> Any:

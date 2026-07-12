@@ -135,10 +135,11 @@ def _mock_api_key_row(plan: str = "pro", org_id=None):
     return row
 
 def _mock_db_with_row(mock_row):
-    """Return an AsyncMock db session that yields mock_row from execute().scalar_one()."""
+    """Return an AsyncMock session that yields mock_row from scalar result accessors."""
     mock_db = AsyncMock()
-    mock_result = MagicMock()  # non-async result so .scalar_one() returns value
+    mock_result = MagicMock()
     mock_result.scalar_one.return_value = mock_row
+    mock_result.scalar_one_or_none.return_value = mock_row
     mock_db.execute.return_value = mock_result
     return mock_db
 

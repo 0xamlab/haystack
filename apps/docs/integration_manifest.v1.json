@@ -1,8 +1,11 @@
 {
-  "contract_version": "v1.4",
+  "contract_version": "v1.5",
   "brand": "Algenta",
   "api_base_url": "https://api.algenta.ai",
-  "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
+  "mcp_endpoint": "https://api.algenta.ai/mcp",
+  "mcp_transport": "streamable_http",
+  "mcp_protocol_version": "2025-11-25",
+  "mcp_legacy_sse_endpoint": "https://api.algenta.ai/mcp/sse",
   "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
   "auth_scheme": "bearer_api_key",
   "api_key_prefixes": {

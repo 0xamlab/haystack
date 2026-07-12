@@ -178,7 +178,7 @@ jobs:
           ALGENTA_RUNTIME_SRC: ${{ github.workspace }}/mojo_build/runtime-wheel
         run: |
           python -m pip install --upgrade build
-          python -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
+          python -P -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
 
       - name: Verify PyPI-compatible Linux wheel tag
         if: runner.os == 'Linux'
@@ -199,7 +199,7 @@ jobs:
               public_key = archive.read("algenta_runtime_native/algenta_release_pub.pem")
           Path("packages/algenta/algenta/_keys/algenta_release_pub.pem").write_bytes(public_key)
           PY
-          python -m build --wheel packages/algenta --outdir dist-algenta
+          python -P -m build --wheel packages/algenta --outdir dist-algenta
           python -m venv /tmp/algenta-macos-wheel
           . /tmp/algenta-macos-wheel/bin/activate
           pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
@@ -249,7 +249,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade build
-          python -m build --wheel packages/algenta --outdir dist-algenta
+          python -P -m build --wheel packages/algenta --outdir dist-algenta
           python -m venv /tmp/clean && . /tmp/clean/bin/activate
           pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
           ! command -v mojo && ! command -v modular || (echo "toolchain unexpectedly present" && exit 1)
@@ -403,3 +403,4 @@ jobs:
         with:
           packages-dir: dist-pypi
           password: ${{ secrets.PYPI_TOKEN }}
+          skip-existing: true

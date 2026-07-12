@@ -10,7 +10,7 @@ info:
 servers:
   - url: "https://your-algenta-base-url.example"
     description: "Replace with Cloud Managed https://api.algenta.ai or your self-hosted base URL before import. Private profiles do not silently fall back to Algenta cloud."
-x-canonical-mcp-endpoint: "https://your-algenta-base-url.example/mcp/sse"
+x-canonical-mcp-endpoint: "https://your-algenta-base-url.example/mcp"
 x-primary-data-query-contract:
   api:
     contract_endpoint: "/v1/meta/contract"

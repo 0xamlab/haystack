@@ -96,7 +96,7 @@ console.log(report.columns, report.row_count, report.truncated);
 Governed queries are deterministic: the same request against the same dataset returns the same rows in the same order. Use `verify` (or `explain`) to check the resolved plan before running a query for the first time.
 {% endhint %}
 
-{% expandable title="Batch queries with shared defaults" %}
+### Batch queries with shared defaults
 `queryBatch` runs several keyed queries in one round trip. Shared `defaults` (`dataset_id`, `filter`, `limit`, `order`) apply to every query unless overridden.
 
 ```typescript
@@ -109,7 +109,6 @@ const batch = await client.queryBatch({
 });
 console.log(batch);
 ```
-{% endexpandable %}
 
 ## Next steps
 

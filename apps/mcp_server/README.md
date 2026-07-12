@@ -331,7 +331,7 @@ Add to `~/.config/zed/settings.json`:
 
 ---
 
-### HTTP/SSE Transport (Remote Agents)
+### Streamable HTTP Transport (Remote Agents)
 
 Start the HTTP server:
 
@@ -342,20 +342,25 @@ python -m apps.mcp_server.server --transport http --port 8001
 ALGENTA_MCP_PORT=8001 python -m apps.mcp_server.server --transport http
 ```
 
+Standalone mode binds to `127.0.0.1` by default. Set `ALGENTA_MCP_HOST=0.0.0.0` only when an authenticated container ingress or gateway must expose the port.
+
 Or if you have the official Algenta API image running, the MCP is already mounted at:
 - **`GET  /mcp/tools`** — List tools (JSON, no auth needed, always available)
-- **`GET  /mcp/sse`** — SSE connection endpoint
-- **`POST /mcp/messages`** — Message handler
+- **`POST /mcp`** — MCP JSON-RPC request or notification
+- **`GET /mcp`** — Optional server event stream
+- **`GET /mcp/sse`** and **`POST /mcp/messages`** — deprecated compatibility routes
 
 The official image bundles the MCP transport dependencies. A `503` with `error.code = "mcp_transport_unavailable"` identifies an incomplete custom source build. Source contributors can restore the supported environment from `requirements-mcp.txt`; operators should upgrade the image rather than modify a running container.
+
+The canonical `/mcp` route implements stateless Streamable HTTP with MCP protocol `2025-11-25`. The deprecated `/mcp/sse` and `/mcp/messages` routes remain available only for older clients.
 
 ---
 
 ### n8n
 
 1. Add an **MCP Client** node
-2. Set **Transport**: `SSE`
-3. Set **URL**: `<YOUR_ALGENTA_BASE_URL>/mcp/sse`
+2. Set **Transport**: `Streamable HTTP`
+3. Set **URL**: `<YOUR_ALGENTA_BASE_URL>/mcp`
 4. Set **Header**: `Authorization: Bearer <YOUR_ALGENTA_API_KEY>`
 
 Example workflow: *Trigger → Algenta list_data/search → get_data_summary → query_data or query_batch → Send Slack notification*
@@ -369,8 +374,8 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 client = MultiServerMCPClient({
     "algenta": {
-        "url": "http://localhost:8001/mcp/sse",
-        "transport": "sse",
+        "url": "http://localhost:8001/mcp",
+        "transport": "http",
     }
 })
 
@@ -395,7 +400,7 @@ result = await agent.ainvoke({
 ```python
 from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
 
-client = BasicMCPClient("http://localhost:8001/mcp/sse")
+client = BasicMCPClient("http://localhost:8001/mcp")
 spec = McpToolSpec(client=client)
 tools = spec.to_tool_list()
 
@@ -449,7 +454,7 @@ import autogen
 from autogen.agentchat.contrib.mcp_agent import MCPAgent
 
 config = {
-    "mcp_server_url": "http://localhost:8001/mcp/sse",
+    "mcp_server_url": "http://localhost:8001/mcp",
 }
 
 algenta_agent = MCPAgent(
@@ -535,6 +540,7 @@ mcp-server:
   environment:
     ALGENTA_API_KEY: ${ALGENTA_API_KEY}
     ALGENTA_BASE_URL: http://api-server:8000
+    ALGENTA_MCP_HOST: 0.0.0.0
   ports:
     - "8001:8001"
   depends_on:

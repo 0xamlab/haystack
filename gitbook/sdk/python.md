@@ -20,7 +20,7 @@ Install the published HTTP client from PyPI.
 pip install algenta-sdk
 ```
 
-The package requires Python 3.10 or newer. CI verifies fresh wheel installs on Python 3.10, 3.12, and 3.14. It depends on `httpx>=0.28` and `pydantic>=2.7`.
+The package requires Python 3.10 or newer. Release CI verifies fresh wheel installs on Python 3.14. It depends on `httpx>=0.28` and `pydantic>=2.7`.
 
 {% hint style="warning" %}
 The import name is `decision_engine`, not `algenta_sdk`. This historical module name is stable.
@@ -80,13 +80,13 @@ The constructor accepts four arguments.
 | `timeout` | `float` | `120.0` | Request timeout in seconds. |
 | `max_retries` | `int` | `3` | Retries on `429` and `5xx`. |
 
-{% expandable title="Advanced: contract constants" %}
+### Advanced: contract constants
 The package re-exports the platform contract so you can read endpoint paths and defaults without hard-coding them.
 
 ```python title="contract_constants.py"
 from decision_engine import (
     DEFAULT_BASE_URL,             # "https://api.algenta.ai"
-    CONTRACT_VERSION,             # "v1.4"
+    CONTRACT_VERSION,             # "v1.5"
     PRIMARY_DATA_QUERY_CONTRACT,  # dict: endpoints + query shape
     AUTH_SCHEME,                  # "bearer_api_key"
     API_KEY_PREFIX_LIVE,          # "de_live_"
@@ -95,7 +95,6 @@ from decision_engine import (
 
 print(PRIMARY_DATA_QUERY_CONTRACT["api"]["contract_endpoint"])  # /v1/meta/contract
 ```
-{% endexpandable %}
 
 ## Datasets and the data contract
 
@@ -306,7 +305,7 @@ outcome = client.execute_capability(
 )
 ```
 
-{% expandable title="Capability plane method reference" %}
+### Capability plane method reference
 | Method | Endpoint | Returns |
 | --- | --- | --- |
 | `list_capability_providers()` | `GET /v1/capability-providers` | list of `CapabilityProviderResult` |
@@ -316,7 +315,6 @@ outcome = client.execute_capability(
 | `execute_capability(request)` | `POST /v1/capabilities/execute` | `CapabilityExecutionResult` |
 | `list_skills()` | `GET /v1/capabilities?kinds=skill` | skill catalog |
 | `list_mcp_providers()` | filtered providers | MCP providers |
-{% endexpandable %}
 
 ## Agent runs
 

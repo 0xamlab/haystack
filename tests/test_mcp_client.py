@@ -142,7 +142,12 @@ def test_mcp_config_tracks_current_environment_without_reload(monkeypatch) -> No
     monkeypatch.delenv("ALGENTA_BASE_URL", raising=False)
     monkeypatch.delenv("DE_BASE_URL", raising=False)
     monkeypatch.delenv("ALGENTA_API_URL", raising=False)
+    monkeypatch.delenv("ALGENTA_MCP_HOST", raising=False)
     assert mcp_config.BASE_URL == API_BASE_URL
+    assert mcp_config.HOST == "127.0.0.1"
+
+    monkeypatch.setenv("ALGENTA_MCP_HOST", "0.0.0.0")
+    assert mcp_config.HOST == "0.0.0.0"
 
     monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
     monkeypatch.setenv("ALGENTA_DISABLE_CLOUD", "1")

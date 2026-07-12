@@ -9,8 +9,10 @@ from pydantic import ValidationError
 
 from apps.mcp_server.client import api_with_status, resolve_base_url
 from apps.platform_contract import PlatformContractResponse
-from apps.platform_contract_fallback import build_platform_contract_from_openapi
-from apps.platform_contract_fallback import PlatformContractFallbackError
+from apps.platform_contract_fallback import (
+    PlatformContractFallbackError,
+    build_platform_contract_from_openapi,
+)
 from apps.validation_error_details import format_validation_error_message
 
 GET_CONTRACT_SPEC: dict[str, Any] = {
@@ -122,6 +124,9 @@ async def get_contract_handler(arguments: dict[str, Any]) -> str:
         "brand": payload.brand,
         "api_base_url": payload.api_base_url,
         "mcp_endpoint": payload.mcp_endpoint,
+        "mcp_transport": payload.mcp_transport,
+        "mcp_protocol_version": payload.mcp_protocol_version,
+        "mcp_legacy_sse_endpoint": payload.mcp_legacy_sse_endpoint,
         "mcp_tools_endpoint": payload.mcp_tools_endpoint,
         "auth_scheme": payload.auth_scheme,
         "primary_data_query_contract": payload.primary_data_query_contract.model_dump(mode="json"),

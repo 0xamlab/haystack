@@ -20,6 +20,7 @@ import argparse
 import ast
 import concurrent.futures
 import hashlib
+import html
 import json
 import re
 import subprocess
@@ -271,12 +272,14 @@ def _route_tail_for_summary_target(section_slug: str, target: str) -> str:
     return tail
 
 
-def _summary_expected_sitemap_urls(source: Path, base_url: str) -> list[str]:
+def _summary_expected_sitemap_entries(
+    source: Path, base_url: str
+) -> list[tuple[str, Path]]:
     summary_path = source / "SUMMARY.md"
     if not summary_path.is_file():
         return []
     base = base_url.rstrip("/")
-    urls: list[str] = []
+    entries: list[tuple[str, Path]] = []
     current_heading: str | None = None
     link_re = re.compile(r"^\s*\*\s+\[[^\]]+\]\(([^)]+\.md(?:#[^)]+)?)\)")
     for line in _read(summary_path).splitlines():
@@ -297,9 +300,14 @@ def _summary_expected_sitemap_urls(source: Path, base_url: str) -> list[str]:
             tail = _route_tail_for_summary_target(section_slug, target)
             route = f"/{section_slug}/{tail}" if tail else f"/{section_slug}"
         url = f"{base}{route}"
-        if url not in urls:
-            urls.append(url)
-    return urls
+        if all(existing_url != url for existing_url, _path in entries):
+            source_path = source / target.split("#", 1)[0]
+            entries.append((url, source_path))
+    return entries
+
+
+def _summary_expected_sitemap_urls(source: Path, base_url: str) -> list[str]:
+    return [url for url, _path in _summary_expected_sitemap_entries(source, base_url)]
 
 
 def _strip_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -315,6 +323,94 @@ def _strip_frontmatter(text: str) -> tuple[dict[str, str], str]:
             key, value = line.split(":", 1)
             fields[key.strip()] = value.strip().strip('"')
     return fields, text[end + 4 :]
+
+
+def _normalize_semantic_text(value: str) -> str:
+    """Normalize source/live Markdown while retaining user-visible semantics."""
+    value = html.unescape(value)
+    value = re.sub(r"<td><a[^>\n]*>[^<\n]*</a></td>", " ", value)
+    value = re.sub(r"<(https?://[^>\n]+)>", r" \1 ", value)
+    value = re.sub(r"!\[([^]\n]*)\]\([^\n)]*\)", r" \1 ", value)
+    value = re.sub(r"\[([^]\n]+)\]\([^\n)]*\)", r" \1 ", value)
+    value = re.sub(r"<[^>\n]+>", " ", value)
+    value = value.replace("\\_", "_").replace("\\|", "|")
+    tokens = [
+        token.strip("_")
+        for token in re.findall(r"[\w]+", value.casefold(), flags=re.UNICODE)
+    ]
+    return " ".join(token for token in tokens if token)
+
+
+def _source_semantic_anchors(path: Path) -> list[dict[str, Any]]:
+    text = _read(path)
+    _frontmatter, body = _strip_frontmatter(text)
+    body_offset = text[: len(text) - len(body)].count("\n")
+    anchors: list[dict[str, Any]] = []
+    in_fence = False
+    for line_number, raw in enumerate(body.splitlines(), start=body_offset + 1):
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not stripped or re.fullmatch(r"\{%.*%\}", stripped):
+            continue
+        # GitBook owns the display H1 independently from the source body, and
+        # content-ref labels are navigation rather than page semantics.
+        if stripped.startswith("# "):
+            continue
+        if re.fullmatch(r"\[[^]]+\.md\]\([^)]*\.md\)", stripped):
+            continue
+        normalized = _normalize_semantic_text(stripped)
+        minimum_tokens = 2 if in_fence else 4
+        if len(normalized.split()) < minimum_tokens:
+            continue
+        anchors.append(
+            {
+                "line": line_number,
+                "text": stripped[:240],
+                "normalized": normalized,
+            }
+        )
+    return anchors
+
+
+def _compare_live_markdown_to_source(
+    source_path: Path, live_text: str
+) -> tuple[int, int, list[dict[str, Any]]]:
+    anchors = _source_semantic_anchors(source_path)
+    normalized_live = _normalize_semantic_text(live_text)
+    missing = [anchor for anchor in anchors if anchor["normalized"] not in normalized_live]
+    return len(anchors), len(anchors) - len(missing), missing
+
+
+def _find_gitbook_ingestion_issues(rel_path: str, text: str) -> list[Issue]:
+    issues: list[Issue] = []
+    for match in re.finditer(r"\{%\s+expandable\b", text):
+        issues.append(
+            Issue(
+                "ERROR",
+                "rendered_only_expandable",
+                "GitBook omits expandable content from public Markdown and AI ingestion routes.",
+                rel_path,
+                _line_for_offset(text, match.start()),
+            )
+        )
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if not line.lstrip().startswith("|"):
+            continue
+        for code_span in re.finditer(r"`([^`\n]*)`", line):
+            if re.search(r"(?<!\\)\|", code_span.group(1)):
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        "unescaped_pipe_in_table_code",
+                        "An unescaped pipe inside a Markdown table code span "
+                        "truncates live content.",
+                        rel_path,
+                        line_number,
+                    )
+                )
+    return issues
 
 
 def _extract_code_fences(path: Path, rel_path: str, text: str) -> list[CodeFence]:
@@ -1199,6 +1295,7 @@ def _audit_page(
     issues.extend(_find_public_package_issues(path, rel_path, text))
     issues.extend(_find_runtime_encapsulation_issues(rel_path, text))
     issues.extend(_find_pricing_contract_issues(rel_path, text))
+    issues.extend(_find_gitbook_ingestion_issues(rel_path, text))
     for link in links:
         internal_issue = _validate_internal_link(source, link, all_pages)
         if internal_issue:
@@ -2037,10 +2134,18 @@ def _audit_live(
         "llms_full_bytes": 0,
         "llms_full_complete": False,
         "markdown_pages_checked": 0,
+        "source_semantic_pages_checked": 0,
+        "source_semantic_pages_exact": 0,
+        "source_semantic_anchors": 0,
+        "source_semantic_matches": 0,
+        "source_semantic_percent": 0.0,
         "source_navigation_urls": 0,
         "sitemap_matches_source_navigation": False,
         "docs_mcp": {},
     }
+    expected_navigation_entries = _summary_expected_sitemap_entries(source, base)
+    expected_navigation_urls = [url for url, _path in expected_navigation_entries]
+    source_path_by_url = dict(expected_navigation_entries)
 
     sitemap_status, sitemap_body, _ = _fetch(f"{base}/sitemap-pages.xml")
     if sitemap_status != 200:
@@ -2061,7 +2166,6 @@ def _audit_live(
             ]
             sitemap_urls = [url for url in urls if url]
             result["sitemap_urls"] = len(urls)
-            expected_navigation_urls = _summary_expected_sitemap_urls(source, base)
             result["source_navigation_urls"] = len(expected_navigation_urls)
             result["sitemap_matches_source_navigation"] = sitemap_urls == expected_navigation_urls
             if len(urls) < public_page_count:
@@ -2172,12 +2276,16 @@ def _audit_live(
         issues.extend(_find_runtime_encapsulation_issues(rel_path, text))
 
     markdown_routes = [
-        route
-        for route in (_sitemap_url_to_markdown_route(base, url) for url in sitemap_urls)
+        (route, source_path_by_url.get(url))
+        for url in sitemap_urls
+        for route in [_sitemap_url_to_markdown_route(base, url)]
         if route
     ]
 
-    def fetch_markdown_route(route: str) -> list[Issue]:
+    def fetch_markdown_route(
+        route_and_source: tuple[str, Path | None],
+    ) -> tuple[list[Issue], int, int, bool]:
+        route, source_path = route_and_source
         status, body, content_type = _fetch(f"{base}{route}", max_bytes=500_000)
         text = body.decode("utf-8", "replace")
         route_issues: list[Issue] = []
@@ -2200,15 +2308,71 @@ def _audit_live(
         )
         route_issues.extend(_find_runtime_encapsulation_issues(f"live:{route}", text))
         route_issues.extend(_find_pricing_contract_issues(f"live:{route}", text))
-        return route_issues
+        anchor_count = 0
+        matched_count = 0
+        exact = False
+        if source_path is not None and source_path.is_file() and status == 200:
+            anchor_count, matched_count, missing = _compare_live_markdown_to_source(
+                source_path, text
+            )
+            exact = not missing
+            if missing:
+                route_issues.append(
+                    Issue(
+                        "ERROR",
+                        "live_markdown_source_semantic_mismatch",
+                        "Live Markdown omits or changes user-visible source content.",
+                        _rel(source_path, source),
+                        details={
+                            "route": route,
+                            "anchors": anchor_count,
+                            "matched": matched_count,
+                            "missing_count": len(missing),
+                            "missing": missing[:10],
+                        },
+                    )
+                )
+        elif source_path is None or not source_path.is_file():
+            route_issues.append(
+                Issue(
+                    "ERROR",
+                    "live_markdown_source_missing",
+                    "A live sitemap page has no readable source page for semantic comparison.",
+                    details={"route": route},
+                )
+            )
+        return route_issues, anchor_count, matched_count, exact
 
     if markdown_routes:
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=min(8, len(markdown_routes))
         ) as executor:
-            for route_issues in executor.map(fetch_markdown_route, markdown_routes):
+            for route_issues, anchor_count, matched_count, exact in executor.map(
+                fetch_markdown_route, markdown_routes
+            ):
                 result["markdown_pages_checked"] += 1
+                result["source_semantic_pages_checked"] += 1
+                result["source_semantic_anchors"] += anchor_count
+                result["source_semantic_matches"] += matched_count
+                result["source_semantic_pages_exact"] += int(exact)
                 issues.extend(route_issues)
+    anchor_total = int(result["source_semantic_anchors"])
+    result["source_semantic_percent"] = (
+        round(int(result["source_semantic_matches"]) * 100 / anchor_total, 4)
+        if anchor_total
+        else 0.0
+    )
+    result["markdown_page_coverage_percent"] = (
+        round(int(result["markdown_pages_checked"]) * 100 / public_page_count, 4)
+        if public_page_count
+        else 100.0
+    )
+    semantic_pages_checked = int(result["source_semantic_pages_checked"])
+    result["source_semantic_page_exact_percent"] = (
+        round(int(result["source_semantic_pages_exact"]) * 100 / semantic_pages_checked, 4)
+        if semantic_pages_checked
+        else 0.0
+    )
 
     mcp_issues, mcp_report = _audit_live_docs_mcp(base)
     issues.extend(mcp_issues)
@@ -2398,6 +2562,13 @@ def run_audit(
             "source_inventory_percent": totals["source_inventory_percent"],
             "shell_syntax_validation_percent": totals["shell_syntax_validation_percent"],
             "command_execution_percent": totals["command_execution_percent"],
+            "live_markdown_page_coverage_percent": live_report.get(
+                "markdown_page_coverage_percent", 0.0
+            ),
+            "live_source_semantic_percent": live_report.get("source_semantic_percent", 0.0),
+            "live_source_semantic_page_exact_percent": live_report.get(
+                "source_semantic_page_exact_percent", 0.0
+            ),
             "fixes": totals["fixes"],
             "skips": totals["skips"],
         },

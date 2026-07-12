@@ -5,12 +5,19 @@ from __future__ import annotations
 import os
 from typing import Final
 
-from apps.privacy_policy import policy_from_environment
 from apps.platform_contract_constants import API_BASE_URL
+from apps.privacy_policy import policy_from_environment
 
-VERSION: Final[str] = "1.0.0"
+VERSION: Final[str] = "1.0.4"
 
-for _legacy_dynamic_name in ("BASE_URL", "API_KEY", "TIMEOUT", "CONNECT_TIMEOUT", "PORT"):
+for _legacy_dynamic_name in (
+    "BASE_URL",
+    "API_KEY",
+    "TIMEOUT",
+    "CONNECT_TIMEOUT",
+    "HOST",
+    "PORT",
+):
     globals().pop(_legacy_dynamic_name, None)
 
 
@@ -41,6 +48,10 @@ def resolve_connect_timeout() -> float:
     return float(_env("ALGENTA_MCP_CONNECT_TIMEOUT") or _env("ALGENTA_MCP_TIMEOUT") or "120")
 
 
+def resolve_host() -> str:
+    return _env("ALGENTA_MCP_HOST") or "127.0.0.1"
+
+
 def resolve_port() -> int:
     return int(_env("ALGENTA_MCP_PORT") or "8001")
 
@@ -54,6 +65,8 @@ def __getattr__(name: str):
         return resolve_timeout()
     if name == "CONNECT_TIMEOUT":
         return resolve_connect_timeout()
+    if name == "HOST":
+        return resolve_host()
     if name == "PORT":
         return resolve_port()
     if name == "VERSION":
@@ -65,12 +78,14 @@ __all__ = [
     "API_KEY",
     "BASE_URL",
     "CONNECT_TIMEOUT",
+    "HOST",
     "PORT",
     "TIMEOUT",
     "VERSION",
     "resolve_api_key",
     "resolve_base_url",
     "resolve_connect_timeout",
+    "resolve_host",
     "resolve_port",
     "resolve_timeout",
 ]

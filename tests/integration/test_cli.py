@@ -2537,7 +2537,13 @@ def test_cli_credit_refresh_surface():
         refreshed_payload = json.loads(refreshed.stdout.strip())
         assert refreshed_payload["billing_period"] == payload["billing_period"]
         assert refreshed_payload["credits_granted"] >= 0
-        assert refreshed_payload["credits_issued_this_month"] >= refreshed_payload["credits_granted"]
+        if refreshed_payload["monthly_limit"] == 0:
+            assert refreshed_payload["credits_issued_this_month"] == 0
+        else:
+            assert (
+                refreshed_payload["credits_issued_this_month"]
+                >= refreshed_payload["credits_granted"]
+            )
         assert refreshed_payload["monthly_limit"] >= 0
         assert refreshed_payload["monthly_remaining"] >= 0
         assert refreshed_payload["refresh_after"] >= refreshed_payload["server_time"]

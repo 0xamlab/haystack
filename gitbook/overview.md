@@ -1,6 +1,6 @@
 ---
 icon: compass
-description: Algenta is a self-hosted decision engine — deploy it, then integrate over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
+description: Algenta is a self-hosted computational runtime — deploy it, then integrate over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here to pick your path.
 cover: .gitbook/assets/brand/algenta-hero.png
 coverY: 0
 layout:
@@ -21,7 +21,7 @@ layout:
 
 # Simulate. Decide. Prove.
 
-Algenta is a deterministic decision engine you run yourself — feed it scenarios and governed data, get decisions you can audit, reached over the HTTP API, the SDKs, or MCP.
+Algenta is a deterministic computational runtime you run yourself — feed it scenarios and governed data, get decisions you can audit, reached over the HTTP API, the SDKs, or MCP.
 
 ## Start here
 

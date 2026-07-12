@@ -1,6 +1,6 @@
 {
   "name": "algenta-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -37,7 +37,7 @@
     "repository-intelligence",
     "api"
   ],
-  "homepage": "https://docs.algenta.ai/sdk/typescript",
+  "homepage": "https://docs.algenta.ai/sdks/typescript",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thyn-ai/algenta.git",

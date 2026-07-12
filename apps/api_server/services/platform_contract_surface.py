@@ -76,5 +76,9 @@ def build_platform_contract_surface(
     payload = manifest.model_dump(mode="python")
     payload["api_base_url"] = api_base_url
     payload["mcp_endpoint"] = _rebase_endpoint(api_base_url, manifest.mcp_endpoint)
+    payload["mcp_legacy_sse_endpoint"] = _rebase_endpoint(
+        api_base_url,
+        manifest.mcp_legacy_sse_endpoint,
+    )
     payload["mcp_tools_endpoint"] = _rebase_endpoint(api_base_url, manifest.mcp_tools_endpoint)
     return validate_platform_contract_payload(payload)

@@ -32,7 +32,7 @@ An MCP client sees the live surface as a flat tool list; the groups below are ho
 | Decision Memory | `log_decision`, `list_decisions`, `record_outcome` |
 | Triggers | `register_trigger`, `list_triggers`, `fire_trigger`, `pause_trigger`, `delete_trigger` |
 
-The same tools are reachable three ways: **stdio** (Cursor, Claude Desktop, Zed, Windsurf, VS Code), **HTTP/SSE** (ChatGPT, OpenWebUI, LibreChat, n8n, custom agents), and the **`/mcp/*`** routes embedded in the API server. See [MCP server](mcp.md) for transport setup.
+The same tools are reachable three ways: **stdio** (Cursor, Claude Desktop, Zed, Windsurf, VS Code), **Streamable HTTP** (ChatGPT, OpenWebUI, LibreChat, n8n, custom agents), and the **`/mcp`** route embedded in the API server. See [MCP server](mcp.md) for transport setup.
 
 ## List the tools you can use
 

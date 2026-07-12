@@ -11,13 +11,13 @@ Connect Algenta to Claude, Codex, and other MCP clients with the canonical `v1` 
 - Cloud Managed endpoint:
 
 ```text
-https://api.algenta.ai/mcp/sse
+https://api.algenta.ai/mcp
 ```
 
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL
 
 ```text
-https://your-algenta-host.example/mcp/sse
+https://your-algenta-host.example/mcp
 ```
 
 Private profiles do not silently fall back to Algenta cloud.

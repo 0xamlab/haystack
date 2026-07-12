@@ -1992,7 +1992,10 @@ def test_credit_refresh_response_compliance():
     assert isinstance(body, dict), body
     assert body["billing_period"] == billing_period, body
     assert body["credits_granted"] >= 0, body
-    assert body["credits_issued_this_month"] >= body["credits_granted"], body
+    if body["monthly_limit"] == 0:
+        assert body["credits_issued_this_month"] == 0, body
+    else:
+        assert body["credits_issued_this_month"] >= body["credits_granted"], body
     assert body["monthly_limit"] >= 0, body
     assert body["monthly_remaining"] >= 0, body
     assert body["refresh_after"] >= body["server_time"], body
@@ -2412,7 +2415,7 @@ check("Security scheme declares HTTP Bearer auth", test_bearer_auth_scheme)
 def test_openapi_server_and_mcp_endpoint_are_canonical():
     spec = get_spec()
     assert spec.get("servers") == [{"url": "https://api.algenta.ai"}], spec.get("servers")
-    assert spec.get("x-canonical-mcp-endpoint") == "https://api.algenta.ai/mcp/sse"
+    assert spec.get("x-canonical-mcp-endpoint") == "https://api.algenta.ai/mcp"
 
 
 check(
@@ -3027,9 +3030,13 @@ check("MCP tools endpoint declared and reachable", test_mcp_tools_endpoint)
 
 
 def test_mcp_transport_endpoints_declared():
-    """Verify /mcp/sse and /mcp/messages are declared with truthful fallback responses."""
+    """Verify canonical Streamable HTTP and legacy SSE routes are declared truthfully."""
     spec = get_spec()
     paths = spec.get("paths", {})
+
+    assert "/mcp" in paths, "/mcp not in spec"
+    assert {"get", "post", "delete"} <= set(paths["/mcp"])
+    assert "200" in paths["/mcp"]["post"].get("responses", {})
 
     assert "/mcp/sse" in paths, "/mcp/sse not in spec"
     assert "get" in paths["/mcp/sse"], "/mcp/sse missing GET method"
@@ -3037,7 +3044,7 @@ def test_mcp_transport_endpoints_declared():
     if "503" in sse_responses:
         assert (
             sse_responses["503"]["description"]
-            == "MCP SSE transport unavailable in this environment."
+            == "Legacy MCP SSE transport unavailable in this environment."
         )
         assert "200" not in sse_responses, "/mcp/sse fallback spec should not advertise 200"
 
@@ -3047,7 +3054,7 @@ def test_mcp_transport_endpoints_declared():
     if "503" in message_responses:
         assert (
             message_responses["503"]["description"]
-            == "MCP message transport unavailable in this environment."
+            == "Legacy MCP message transport unavailable in this environment."
         )
         assert (
             "200" not in message_responses
@@ -3059,7 +3066,7 @@ check("MCP transport endpoints declared with truthful fallback responses", test_
 
 def test_mcp_transport_runtime_contract():
     """Verify live MCP transport endpoints either stream or return the structured unavailable contract."""
-    mcp_hint = "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages."
+    mcp_hint = "Install the API or algenta-mcp package with its dependencies."
 
     try:
         status, body, _, elapsed = req("GET", "/mcp/sse", auth=False, timeout=3)

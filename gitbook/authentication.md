@@ -166,7 +166,7 @@ The response includes `raw_key` — the full secret.
 `raw_key` is returned **exactly once**. Store it immediately; you cannot retrieve it again. If you lose it, revoke the key and mint a new one.
 {% endhint %}
 
-{% expandable title="Example create response" %}
+### Example create response
 ```json
 {
   "id": "0f4c...",
@@ -178,7 +178,6 @@ The response includes `raw_key` — the full secret.
   "expires_at": "2026-12-31T23:59:59Z"
 }
 ```
-{% endexpandable %}
 
 {% hint style="info" %}
 A `device_limit` greater than zero makes the key a **capped key**. Capped keys enforce device binding (see below). A bootstrap or broad key with `device_limit: 0` skips binding entirely.
@@ -350,7 +349,7 @@ curl -X POST https://api.algenta.ai/v1/simulate \
 {% endstep %}
 {% endstepper %}
 
-{% expandable title="Device binding error reference" %}
+### Device binding error reference
 Binding fails closed. The errors you may encounter:
 
 - `403 device_identity_mismatch` — reusing a device id with a different fingerprint.
@@ -358,7 +357,6 @@ Binding fails closed. The errors you may encounter:
 - `401 device_binding_token_required` — the device is already bound; replay the token.
 - `403 invalid_device_binding_token` — the supplied token does not match.
 - `402 device_limit_reached` — the key's device slots are full; revoke a device or create a broader key.
-{% endexpandable %}
 
 ### Manage devices
 
@@ -427,7 +425,7 @@ curl -X POST https://api.algenta.ai/auth/login \
 
 ### Verify email, forgot, and reset password
 
-{% expandable title="Verify, forgot-password, and reset-password requests" %}
+### Verify, forgot-password, and reset-password requests
 ```bash
 # Verify an email via the token from the verification link
 curl "https://api.algenta.ai/auth/verify?token=$VERIFICATION_TOKEN"
@@ -442,7 +440,6 @@ curl -X POST https://api.algenta.ai/auth/reset-password \
   -H "Content-Type: application/json" \
   -d '{ "token": "$RESET_TOKEN", "new_password": "a-new-strong-password" }'
 ```
-{% endexpandable %}
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |

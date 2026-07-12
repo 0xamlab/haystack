@@ -87,7 +87,7 @@ console.log(forecast);
 | `productRetrieve(request)` | `POST /v1/retrieve` | `query` plus inline `documents` or a `collection_id`; optional `top_k`, `rerank`. |
 | `productAgentRun(request)` | `POST /v1/agent/run` | `task` to run through the tool loop; optional `context`, `tools`, `max_steps`, `output_format`. |
 
-{% expandable title="Optimize over bounded variables" %}
+### Optimize over bounded variables
 `productOptimize` searches a bounded variable space for the value of the `objective`. Each variable declares `min`/`max` (and optional `step`); constraints are expressions with an optional `required` flag.
 
 ```typescript
@@ -102,7 +102,6 @@ const optimized = await client.productOptimize({
 });
 console.log(optimized);
 ```
-{% endexpandable %}
 
 ## Next steps
 

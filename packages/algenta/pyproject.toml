@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta"
-version = "1.0.3"
-description = "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime."
+version = "1.0.4"
+description = "Algenta repository intelligence and computational runtime CLI with an automatically installed native runtime."
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 # The Python here (CLI, login, SDK client, runtime loader/doctor) is Apache-2.0. The proprietary native
@@ -14,7 +14,7 @@ requires-python = ">=3.14,<3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = [
-    "algenta", "repository-intelligence", "decision-engine", "cli", "mcp",
+    "algenta", "repository-intelligence", "computational-runtime", "cli", "mcp",
     "runtime", "deterministic", "structured-data", "query", "resolve", "agent"
 ]
 classifiers = [

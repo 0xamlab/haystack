@@ -23,6 +23,11 @@ pipx install algenta-mcp    # or: pip install algenta-mcp
 `algenta-mcp` runs the **stdio** transport by default — the right choice for the desktop clients below. The canonical environment variables are `ALGENTA_API_KEY` and `ALGENTA_BASE_URL` (legacy `DE_API_KEY` / `DE_BASE_URL` are still accepted).
 {% endhint %}
 
+The Official MCP Registry advertises both the PyPI stdio package and the hosted
+Streamable HTTP endpoint at `https://api.algenta.ai/mcp`. Registry-aware clients
+that support remote servers can discover that endpoint directly and prompt for
+an `Authorization: Bearer $ALGENTA_API_KEY` header.
+
 ## Connect your client
 
 {% tabs %}
@@ -84,7 +89,7 @@ claude mcp list
 {% endtab %}
 
 {% tab title="Codex" %}
-Add the server to `~/.codex/config.toml`:
+Add the local stdio server to `~/.codex/config.toml`:
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.algenta]
@@ -94,7 +99,15 @@ env = { ALGENTA_API_KEY = "$ALGENTA_API_KEY", ALGENTA_BASE_URL = "https://api.al
 
 Restart Codex so it picks up the new server.
 
-For repo-specific Codex workflows, keep durable project instructions in `AGENTS.md` and keep MCP credentials in `~/.codex/config.toml` or a trusted project `.codex/config.toml`. Codex reads the `AGENTS.md` instruction chain when it starts a run, and the same MCP config is shared by the CLI and IDE extension. The `algenta-mcp` command above is a stdio server; if you expose an HTTP/SSE MCP endpoint instead, configure it as a streamable HTTP server and keep the bearer token in an environment variable rather than inline text.
+For Algenta Cloud, Codex can connect directly to the Streamable HTTP endpoint instead. Export `ALGENTA_API_KEY`, then use:
+
+```toml title="~/.codex/config.toml"
+[mcp_servers.algenta]
+url = "https://api.algenta.ai/mcp"
+bearer_token_env_var = "ALGENTA_API_KEY"
+```
+
+For repo-specific Codex workflows, keep durable project instructions in `AGENTS.md` and keep MCP credentials in `~/.codex/config.toml` or a trusted project `.codex/config.toml`. Codex reads the `AGENTS.md` instruction chain when it starts a run, and the same MCP config is shared by the CLI and IDE extension.
 {% endtab %}
 {% endtabs %}
 

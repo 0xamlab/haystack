@@ -219,6 +219,9 @@ import {
   LEGACY_ENV_VARS,
   LEGACY_HEADERS,
   MCP_ENDPOINT,
+  MCP_LEGACY_SSE_ENDPOINT,
+  MCP_PROTOCOL_VERSION,
+  MCP_TRANSPORT,
   MCP_TOOLS_ENDPOINT,
   PLAN_LIMITS,
   PRIVATE_HOST_SUFFIXES,
@@ -314,6 +317,9 @@ export function buildPlatformContractFromOpenApi(
     brand: BRAND,
     api_base_url: apiBaseUrl,
     mcp_endpoint: rebaseEndpoint(apiBaseUrl, MCP_ENDPOINT),
+    mcp_transport: MCP_TRANSPORT,
+    mcp_protocol_version: MCP_PROTOCOL_VERSION,
+    mcp_legacy_sse_endpoint: rebaseEndpoint(apiBaseUrl, MCP_LEGACY_SSE_ENDPOINT),
     mcp_tools_endpoint: rebaseEndpoint(apiBaseUrl, MCP_TOOLS_ENDPOINT),
     auth_scheme: AUTH_SCHEME,
     api_key_prefixes: {
@@ -724,6 +730,9 @@ export function assertPlatformContractPayload(
   assertNonEmptyString(obj.brand, `${context}.brand`);
   assertNonEmptyString(obj.api_base_url, `${context}.api_base_url`);
   assertNonEmptyString(obj.mcp_endpoint, `${context}.mcp_endpoint`);
+  assertNonEmptyString(obj.mcp_transport, `${context}.mcp_transport`);
+  assertNonEmptyString(obj.mcp_protocol_version, `${context}.mcp_protocol_version`);
+  assertNonEmptyString(obj.mcp_legacy_sse_endpoint, `${context}.mcp_legacy_sse_endpoint`);
   assertNonEmptyString(obj.mcp_tools_endpoint, `${context}.mcp_tools_endpoint`);
   assertNonEmptyString(obj.auth_scheme, `${context}.auth_scheme`);
   assertApiKeyPrefixes(obj.api_key_prefixes, `${context}.api_key_prefixes`);
@@ -771,4 +780,3 @@ export function wrapContractValidation<T>(
     throw error;
   }
 }
-

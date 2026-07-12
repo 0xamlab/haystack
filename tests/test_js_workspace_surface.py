@@ -207,6 +207,10 @@ def test_sdk_docs_reference_root_js_build_path() -> None:
     ts_sdk_readme = (ROOT / "packages" / "ts-sdk" / "README.md").read_text()
     ts_sdk_docs = (ROOT / "apps" / "docs" / "docs" / "sdks" / "typescript.md").read_text()
 
+    assert len(ts_sdk_readme.splitlines()) <= 180
+    assert "https://docs.algenta.ai/sdks/typescript" in ts_sdk_readme
+    assert "https://docs.algenta.ai/sdk/typescript" not in ts_sdk_readme
+    assert "https://docs.algenta.ai/direct-api-client" not in ts_sdk_readme
     assert "pnpm build" in ts_sdk_readme
     assert "pnpm --dir packages/ts-sdk build" in ts_sdk_readme
     assert "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1" in (

@@ -13,6 +13,7 @@ from importlib import import_module
 
 _LAZY_EXPORTS = {
     "AlgentaClient": ("decision_engine.client_facade", "AlgentaClient"),
+    "CodnaClient": ("decision_engine.client_facade", "CodnaClient"),
     "DecisionEngineClient": ("decision_engine.client_facade", "DecisionEngineClient"),
     "QueryFilterCondition": (
         "decision_engine.models_resolve_result",

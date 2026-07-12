@@ -18,7 +18,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PLACEHOLDER_OK = re.compile(r"\$[A-Z][A-Z0-9_]+")            # $CODNA_TOKEN convention
+PLACEHOLDER_OK = re.compile(r"\$[A-Z][A-Z0-9_]+")  # $ALGENTA_API_KEY convention
 # real placeholder drift only — NOT HTML tags like <details>/<tr>/<a>
 PLACEHOLDER_BAD = re.compile(r"YOUR_[A-Z][A-Z0-9_]*|<[a-z][a-z0-9_-]*(?:token|key|secret|id|path|url|name)>", re.I)
 BLOCK_PAIRS = [("{% tabs %}", "{% endtabs %}"), ("{% stepper %}", "{% endstepper %}"),
@@ -111,7 +111,7 @@ def audit_page(path: str, archetype: str, all_paths: set) -> list:
 
     # placeholder consistency
     if PLACEHOLDER_BAD.search(text):
-        adv("placeholder drift: use the $CODNA_TOKEN convention, not <token>/YOUR_TOKEN")
+        adv("placeholder drift: use the $ALGENTA_API_KEY convention, not <token>/YOUR_TOKEN")
 
     # too many equal-weight cards in a SINGLE grid (grouped tables are fine)
     maxrows = 0

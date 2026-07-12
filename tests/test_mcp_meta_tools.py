@@ -77,7 +77,10 @@ async def test_get_contract_tool_handler_rejects_invalid_payload(monkeypatch) ->
             "contract_version": "v1.3",
             "brand": "Algenta",
             "api_base_url": "https://api.algenta.ai",
-            "mcp_endpoint": "https://api.algenta.ai/mcp/sse",
+            "mcp_endpoint": "https://api.algenta.ai/mcp",
+            "mcp_transport": "streamable_http",
+            "mcp_protocol_version": "2025-11-25",
+            "mcp_legacy_sse_endpoint": "https://api.algenta.ai/mcp/sse",
             "mcp_tools_endpoint": "https://api.algenta.ai/mcp/tools",
             "auth_scheme": "bearer_api_key",
             "api_key_prefixes": {"live": "de_live_"},
@@ -193,7 +196,7 @@ async def test_get_contract_tool_handler_falls_back_to_openapi_extension(monkeyp
     body = json.loads(raw)
 
     assert body["api_base_url"] == "https://example.test/self-host"
-    assert body["mcp_endpoint"] == "https://example.test/self-host/mcp/sse"
+    assert body["mcp_endpoint"] == "https://example.test/self-host/mcp"
     assert body["primary_data_query_contract"]["mcp"]["contract_tool"] == "get_contract"
     assert_manifest_backed_integrations(body["integrations"])
     assert seen == [

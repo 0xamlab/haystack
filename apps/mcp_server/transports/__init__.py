@@ -1,1 +1,1 @@
-"""MCP transport implementations — stdio and HTTP/SSE."""
+"""MCP transport implementations: stdio, Streamable HTTP, and legacy SSE."""

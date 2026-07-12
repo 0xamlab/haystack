@@ -73,16 +73,54 @@ def test_public_sdk_versions_are_aligned() -> None:
     assert len(set(versions.values())) == 1, f"SDK versions diverge: {versions}"
 
 
+def test_public_package_descriptions_use_algenta_branding_and_agent_discovery() -> None:
+    descriptions = {
+        pkg: str(_py_meta(pkg)["description"]) for pkg in _PYPROJECT_PKGS
+    }
+    descriptions[_TS_PKG] = str(_ts_meta()["description"])
+
+    for pkg, description in descriptions.items():
+        assert "decision engine" not in description.casefold(), pkg
+
+    mcp_metadata = _py_meta("mcp")
+    assert "Cursor" in mcp_metadata["description"]
+    assert "Codex" in mcp_metadata["description"]
+    assert {"cursor", "codex", "model-context-protocol"} <= set(
+        mcp_metadata["keywords"]
+    )
+
+
 def test_mcp_registry_manifest_matches_packaged_version() -> None:
     manifest = json.loads((_REPO_ROOT / "server.json").read_text("utf-8"))
     package_version = _py_meta("mcp")["version"]
 
+    assert manifest["$schema"] == (
+        "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json"
+    )
+    assert 1 <= len(manifest["description"]) <= 100
     assert manifest["version"] == package_version
     packages = manifest.get("packages")
     assert isinstance(packages, list) and len(packages) == 1
     assert packages[0]["registryType"] == "pypi"
     assert packages[0]["identifier"] == "algenta-mcp"
     assert packages[0]["version"] == package_version
+
+    remotes = manifest.get("remotes")
+    assert isinstance(remotes, list) and len(remotes) == 1
+    assert remotes[0]["type"] == "streamable-http"
+    assert remotes[0]["url"] == "https://api.algenta.ai/mcp"
+    assert remotes[0]["headers"] == [
+        {
+            "name": "Authorization",
+            "description": (
+                "Bearer <ALGENTA_API_KEY>. Create a key in the Algenta dashboard "
+                "or authenticate with `algenta login`."
+            ),
+            "placeholder": "Bearer <ALGENTA_API_KEY>",
+            "isRequired": True,
+            "isSecret": True,
+        }
+    ]
 
 
 def test_algenta_package_embeds_pinned_public_trust_anchors() -> None:
@@ -132,7 +170,7 @@ def test_ci_verifies_python_314_sdk_artifacts_and_repo_tests() -> None:
 
     assert 'PYTHON_VERSION: "3.14"' in ci
     assert 'python-version: ["3.14"]' in ci
-    assert 'python-version: ["3.10", "3.12", "3.14"]' in ci
+    assert ci.count('python-version: ["3.14"]') == 2
     assert 'PYTHON_VERSION: "3.14"' in release
     assert 'python-version: "3.14"' in docs
 
@@ -144,10 +182,28 @@ def test_sdk_release_workflow_is_idempotent() -> None:
     release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text(
         "utf-8"
     )
+    runtime_release = (_REPO_ROOT / ".github" / "workflows" / "build-runtime.yml").read_text(
+        "utf-8"
+    )
 
     assert release.count("skip-existing: true") == 4
     assert 'npm view "algenta-sdk@$VERSION" version' in release
     assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
+    assert runtime_release.count("skip-existing: true") == 1
+
+
+def test_python_release_builds_use_safe_import_path() -> None:
+    workflows = {
+        name: (_REPO_ROOT / ".github" / "workflows" / name).read_text("utf-8")
+        for name in ("release-sdks.yml", "build-runtime.yml")
+    }
+
+    for name, workflow in workflows.items():
+        assert "python -m build" not in workflow, (
+            f"{name} must use `python -P -m build`; the repository's build/ directory "
+            "otherwise shadows the PyPA build package"
+        )
+        assert "python -P -m build" in workflow, name
 
 
 def test_sdk_release_workflow_only_targets_existing_pypi_projects() -> None:

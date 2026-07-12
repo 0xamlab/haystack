@@ -240,7 +240,7 @@ EXPECTED_TOOLS = [
     "recommend",
 ]
 MCP_TRANSPORT_UNAVAILABLE_HINT = (
-    "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages."
+    "Install the API or algenta-mcp package with its dependencies."
 )
 SUITE_NAME = "mcp_server_integration"
 SUMMARY_ARTIFACT = LIVE_INTEGRATION_SUMMARY_ARTIFACTS[SUITE_NAME]
@@ -1949,7 +1949,10 @@ def test_control_plane_tools():
         raise
     assert credits["billing_period"] == time.strftime("%Y-%m", time.gmtime()), credits
     assert credits["credits_granted"] >= 0, credits
-    assert credits["credits_issued_this_month"] >= credits["credits_granted"], credits
+    if credits["monthly_limit"] == 0:
+        assert credits["credits_issued_this_month"] == 0, credits
+    else:
+        assert credits["credits_issued_this_month"] >= credits["credits_granted"], credits
     assert credits["monthly_limit"] >= 0, credits
     assert credits["monthly_remaining"] >= 0, credits
     assert credits["refresh_after"] >= credits["server_time"], credits
@@ -2932,6 +2935,35 @@ if _registry_available:
 print("\n" + "=" * 70)
 print("  SECTION 11: MCP Error Handling & Edge Cases")
 print("=" * 70)
+
+
+def test_mcp_streamable_http_contract():
+    """POST /mcp negotiates the latest Streamable HTTP protocol."""
+    status, data, _, _ = req(
+        "POST",
+        "/mcp",
+        body={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "clientInfo": {"name": "algenta-live-test", "version": "1.0.0"},
+            },
+        },
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": "2025-11-25",
+        },
+        auth=False,
+    )
+    assert status == 200, data
+    assert data["result"]["protocolVersion"] == "2025-11-25"
+    assert data["result"]["serverInfo"]["version"] == "1.0.4"
+
+
+check("POST /mcp → MCP 2025-11-25 Streamable HTTP", test_mcp_streamable_http_contract)
 
 
 def test_mcp_sse_endpoint_contract():

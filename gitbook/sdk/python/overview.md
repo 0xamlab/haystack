@@ -17,7 +17,7 @@ The distribution is `algenta-sdk`; the import name is `decision_engine`. This is
 pip install algenta-sdk
 ```
 
-The client requires Python 3.10 or newer. CI verifies fresh wheel installs on Python 3.10, 3.12, and 3.14.
+The client requires Python 3.10 or newer. Release CI verifies fresh wheel installs on Python 3.14.
 
 ## Construct the client
 

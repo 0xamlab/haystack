@@ -75,7 +75,7 @@ API_BASE_URL="http://localhost:$API_PORT"
 API_HEALTH_URL="$API_BASE_URL/v1/health"
 MCP_PORT="${ALGENTA_MCP_PORT:-8001}"
 MCP_TOOLS_URL="http://localhost:$MCP_PORT/mcp/tools"
-MCP_SSE_URL="http://localhost:$MCP_PORT/mcp/sse"
+MCP_URL="http://localhost:$MCP_PORT/mcp"
 UV_CACHE_DIR="${UV_CACHE_DIR:-/private/tmp/uv-cache}"
 START_LOCAL_STATE_DIR="$ROOT/build/start-local"
 API_PID_FILE="$START_LOCAL_STATE_DIR/api-$API_PORT.pid"
@@ -347,13 +347,13 @@ API_STATUS=$(curl -s "$API_HEALTH_URL" 2>/dev/null | python3 -c "import sys,json
 echo ""
 echo "✅ Codna stack ready"
 echo "   API:  $API_BASE_URL  — status: $API_STATUS (Mojo 15-worker pool)"
-echo "   MCP:  $MCP_SSE_URL — $TOOL_COUNT tools"
+echo "   MCP:  $MCP_URL — $TOOL_COUNT tools"
 if [ "$PROVIDER_ROUTER_ENABLED" = "1" ]; then
   echo "   LLM:  provider.router enabled on /v1/models"
 else
   echo "   LLM:  provider.router not configured; set ALGENTA_ENV_FILE or ALGENTA_LLM_PROVIDER_MODELS_JSON for provider-backed chat"
 fi
 echo ""
-echo "Mission Platform will auto-connect via ALGENTA_MCP_URL=$MCP_SSE_URL"
+echo "Mission Platform will auto-connect via ALGENTA_MCP_URL=$MCP_URL"
 START_LOCAL_READY=1
 trap - EXIT

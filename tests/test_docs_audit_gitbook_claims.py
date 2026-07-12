@@ -204,6 +204,69 @@ def test_runtime_encapsulation_scanner_allows_integrated_runtime_language() -> N
     assert issues == []
 
 
+def test_gitbook_ingestion_scanner_rejects_rendered_only_and_truncated_content() -> None:
+    audit = _load_module()
+    text = """{% expandable title="Hidden details" %}
+This content disappears from the live Markdown route.
+{% endexpandable %}
+
+| Method | Notes |
+| --- | --- |
+| `pauseTrigger()` | Sends `?paused=true|false`. |
+"""
+
+    issues = audit._find_gitbook_ingestion_issues("page.md", text)
+
+    assert [issue.code for issue in issues] == [
+        "rendered_only_expandable",
+        "unescaped_pipe_in_table_code",
+    ]
+    assert [issue.line for issue in issues] == [1, 7]
+
+
+def test_live_markdown_semantic_comparison_accepts_gitbook_rewrites(
+    tmp_path: Path,
+) -> None:
+    audit = _load_module()
+    source = tmp_path / "page.md"
+    source.write_text(
+        """---
+description: Example
+---
+
+# Source-owned title
+
+The runtime installs automatically and never needs a separate daemon.
+
+<table data-view="cards"><tbody><tr><td><strong>Run a decision</strong></td><td>Make one governed call.</td><td><a href="quickstart.md">quickstart.md</a></td></tr></tbody></table>
+
+```bash title="verify.sh"
+algenta runtime doctor
+```
+""",
+        encoding="utf-8",
+    )
+    live = """# GitBook-owned title
+The runtime installs automatically and never needs a separate daemon.
+<table data-view="cards"><tbody><tr><td><strong>Run a decision</strong></td><td>Make one governed call.</td><td><a href="/pages/abc123">/pages/abc123</a></td></tr></tbody></table>
+```bash
+algenta runtime doctor
+```
+"""
+
+    anchors, matched, missing = audit._compare_live_markdown_to_source(source, live)
+
+    assert anchors == matched == 3
+    assert missing == []
+
+    anchors, matched, missing = audit._compare_live_markdown_to_source(
+        source, live.replace("algenta runtime doctor", "")
+    )
+    assert anchors == 3
+    assert matched == 2
+    assert [row["text"] for row in missing] == ["algenta runtime doctor"]
+
+
 def test_pricing_contract_scanner_rejects_stale_live_rate_limit_page() -> None:
     audit = _load_module()
     text = """# Rate limits & quotas
@@ -541,6 +604,13 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
 """,
         encoding="utf-8",
     )
+    for relative_path in ("overview.md", "sdk/mcp.md", "help/ai-access.md"):
+        source_path = tmp_path / relative_path
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_text(
+            "# Algenta page\n\nInstall Algenta from the public package.\n",
+            encoding="utf-8",
+        )
     sitemap = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://docs.example</loc></url>
@@ -565,7 +635,11 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
             or url.endswith("/sdks/mcp.md")
             or url.endswith("/help/ai-access.md")
         ):
-            return 200, b"# Algenta page\n", "text/markdown; charset=utf-8"
+            return (
+                200,
+                b"# Algenta page\n\nInstall Algenta from the public package.\n",
+                "text/markdown; charset=utf-8",
+            )
         return 404, b"not found", "text/plain"
 
     monkeypatch.setattr(audit, "_fetch", fake_fetch)
@@ -612,6 +686,13 @@ def test_live_audit_checks_every_sitemap_markdown_route(monkeypatch, tmp_path: P
     assert report["source_navigation_urls"] == 3
     assert report["sitemap_matches_source_navigation"] is True
     assert report["markdown_pages_checked"] == 3
+    assert report["markdown_page_coverage_percent"] == 100.0
+    assert report["source_semantic_pages_checked"] == 3
+    assert report["source_semantic_pages_exact"] == 3
+    assert report["source_semantic_page_exact_percent"] == 100.0
+    assert report["source_semantic_anchors"] == 3
+    assert report["source_semantic_matches"] == 3
+    assert report["source_semantic_percent"] == 100.0
     assert report["llms_full_pages"] == 1
     assert report["llms_full_complete"] is True
     assert report["docs_mcp"] == {

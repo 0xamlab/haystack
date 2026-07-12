@@ -1,44 +1,31 @@
-# ─── Algenta MCP Server — SEPARATE VIRTUAL ENVIRONMENT ─────────────────────────
+# ─── Algenta MCP Server ────────────────────────────────────────────────────────
 #
-# The MCP server must be installed in its own virtualenv because it requires
-# mcp>=1.26 → starlette>=0.52 which CONFLICTS with FastAPI 0.110 (needs starlette<0.37).
+# This dependency set is installed directly into the Algenta API image. End users
+# installing algenta-mcp receive the same transport through package dependencies.
 #
 # ── Quick start ──────────────────────────────────────────────────────────────────
 #
-#   python3 -m venv mcp_venv
-#   source mcp_venv/bin/activate
 #   pip install -r requirements-mcp.txt
 #
 #   # stdio transport (Claude Desktop, Cursor)
 #   ALGENTA_API_KEY=de_live_... python -m apps.mcp_server.server
 #
-#   # HTTP/SSE transport (n8n, LangChain, remote agents)
+#   # Streamable HTTP transport (n8n, LangChain, remote agents)
 #   ALGENTA_API_KEY=de_live_... python -m apps.mcp_server.server --transport http --port 8001
 #
-# ── Claude Desktop config (~/.config/claude/claude_desktop_config.json) ──────────
-#
-#   {
-#     "mcpServers": {
-#       "algenta": {
-#         "command": "/path/to/mcp_venv/bin/python",
-#         "args": ["-m", "apps.mcp_server.server"],
-#         "env": {
-#           "ALGENTA_API_KEY": "de_live_YOUR_KEY",
-#           "ALGENTA_BASE_URL": "https://api.codna.ai"
-#         }
-#       }
-#     }
-#   }
+# End-user editor configuration uses the `algenta-mcp` command installed by the
+# published package. See https://docs.algenta.ai/sdk/mcp-registry.
 #
 # ────────────────────────────────────────────────────────────────────────────────
 
-mcp>=1.26.0
+mcp==1.28.1
+fastapi==0.133.1
 httpx>=0.28.0
 structlog>=24.1.0
 anyio[trio]>=4.5
 pydantic>=2.11.0
 pydantic-settings>=2.5.0
 # HTTP transport extras
-uvicorn>=0.42.0
-starlette>=0.52.0
-sse-starlette>=1.6.1
+uvicorn==0.51.0
+starlette==1.3.1
+sse-starlette==3.4.5

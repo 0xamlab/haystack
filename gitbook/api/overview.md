@@ -79,7 +79,7 @@ Treat `de_live_` keys as secrets. Keep them in environment variables or a secret
 
 Some keys are bound to a device (for example, an installed runtime or a capped seat). When a request is made with such a key, the engine requires device-identity headers and a binding token. Sending them yourself is only necessary if you are calling the API directly; the SDKs and CLI manage device binding for you.
 
-{% expandable title="Advanced: device-identity headers for bound keys" %}
+### Advanced: device-identity headers for bound keys
 | Header | Meaning |
 | --- | --- |
 | `X-Algenta-Device-Id` | Stable device identifier (minimum 16 characters). |
@@ -99,7 +99,6 @@ curl -sS "${ALGENTA_BASE_URL}/v1/simulate" \
 ```
 
 On the first bound request the engine issues a fresh `X-Algenta-Device-Binding-Token` in the response headers; store it and send it on subsequent calls. If a device header is missing, the error body names the exact `required_header`.
-{% endexpandable %}
 
 ## Discovery endpoints
 
@@ -254,7 +253,7 @@ Every error — auth, validation, not found, rate limit, server — is returned 
 
 The complete, generated list of every code the API can return is on [Error codes](errors.md).
 
-{% expandable title="Example: a 422 validation error with field-level details" %}
+### Example: a 422 validation error with field-level details
 On a validation failure the `details` array names each offending `field` and the `issue`, so you can map errors back to your request precisely.
 
 ```json
@@ -270,7 +269,6 @@ On a validation failure the `details` array names each offending `field` and the
   }
 }
 ```
-{% endexpandable %}
 
 {% hint style="warning" %}
 Branch on `error.code`, not on the human-readable `message`. Codes are stable; messages are not.
@@ -320,7 +318,7 @@ de data summary $DATASET_ID
 {% endtab %}
 {% endtabs %}
 
-MCP clients (Claude Desktop, Codex, and other MCP hosts) connect to the same instance at `/mcp/sse` with the matching tools at `/mcp/tools`, exposing tools such as `get_contract`, `list_data`, `query_data`, `route_capabilities`, and `execute_capability`. Whichever surface you choose, you are speaking the same `/v1` contract — pick the one that fits your stack and start from the discovery endpoints above.
+MCP clients (Claude Desktop, Codex, and other MCP hosts) connect to the same instance at the Streamable HTTP endpoint `/mcp`, with the matching tools at `/mcp/tools`, exposing tools such as `get_contract`, `list_data`, `query_data`, `route_capabilities`, and `execute_capability`. Whichever surface you choose, you are speaking the same `/v1` contract — pick the one that fits your stack and start from the discovery endpoints above.
 
 ## Next steps
 

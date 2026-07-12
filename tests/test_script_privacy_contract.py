@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 START_LOCAL_SCRIPT = ROOT / "scripts" / "start-local.sh"
 VERIFY_PHASE5A_SCRIPT = ROOT / "scripts" / "verify_phase5a.py"
 VERIFY_LIVE_API_SCRIPT = ROOT / "scripts" / "verify_live_api.py"
+GITBOOK_AUDIT_SCRIPT = ROOT / "scripts" / "gitbook" / "audit.py"
 LEGACY_LIVE_API_KEY_LITERAL = "de_live_" + "LrL6UWSAfgXsTjgfyaboI9aolrsznjLU"
 LOCAL_PLACEHOLDER_KEY_LITERAL = "de_live_" + "testonlyplaceholderdonotuse1234567890abcd"
 
@@ -44,6 +45,13 @@ def test_verify_phase5a_requires_explicit_api_key() -> None:
     assert result.returncode == 2
     assert "ALGENTA_API_KEY or DE_API_KEY must be set" in result.stderr
     assert "No default live key is bundled with this script." in result.stderr
+
+
+def test_gitbook_audit_uses_public_algenta_placeholder_convention() -> None:
+    text = GITBOOK_AUDIT_SCRIPT.read_text(encoding="utf-8")
+
+    assert "$ALGENTA_API_KEY convention" in text
+    assert "CODNA_TOKEN" not in text
 
 
 def test_start_local_requires_explicit_api_key_when_env_file_is_skipped() -> None:
@@ -111,7 +119,7 @@ def test_start_local_bootstraps_mcp_http_dependencies_and_uses_canonical_routes(
 
     assert 'API_HEALTH_URL="$API_BASE_URL/v1/health"' in text
     assert 'MCP_TOOLS_URL="http://localhost:$MCP_PORT/mcp/tools"' in text
-    assert 'MCP_SSE_URL="http://localhost:$MCP_PORT/mcp/sse"' in text
+    assert 'MCP_URL="http://localhost:$MCP_PORT/mcp"' in text
     assert 'UV_CACHE_DIR="${UV_CACHE_DIR:-/private/tmp/uv-cache}"' in text
     assert 'START_LOCAL_STATE_DIR="$ROOT/build/start-local"' in text
     assert 'API_PID_FILE="$START_LOCAL_STATE_DIR/api-$API_PORT.pid"' in text
@@ -142,8 +150,8 @@ def test_start_local_bootstraps_mcp_http_dependencies_and_uses_canonical_routes(
     assert 'MCP server exited before becoming ready. Check /tmp/algenta-mcp.log.' in text
     assert 'MCP tools endpoint did not become ready at $MCP_TOOLS_URL.' in text
     assert 'MCP listener PID could not be resolved on port $MCP_PORT.' in text
-    assert 'echo "   MCP:  $MCP_SSE_URL — $TOOL_COUNT tools"' in text
-    assert 'echo "Mission Platform will auto-connect via ALGENTA_MCP_URL=$MCP_SSE_URL"' in text
+    assert 'echo "   MCP:  $MCP_URL — $TOOL_COUNT tools"' in text
+    assert 'echo "Mission Platform will auto-connect via ALGENTA_MCP_URL=$MCP_URL"' in text
     assert 'nohup ' not in text
     assert 'kill $(lsof -ti :8000)' not in text
     assert 'kill $(lsof -ti :$MCP_PORT)' not in text
@@ -181,9 +189,9 @@ def test_start_local_only_stops_recorded_processes_and_cleans_partial_start() ->
 def test_requirements_mcp_includes_fastapi_for_http_transport() -> None:
     text = (ROOT / "requirements-mcp.txt").read_text(encoding="utf-8")
 
-    assert "fastapi>=" in text
-    assert "grpcio==" in text
-    assert "protobuf==" in text
+    assert "fastapi==0.133.1" in text
+    assert "mcp==1.28.1" in text
+    assert "starlette==1.3.1" in text
 
 
 def test_verify_live_api_honors_explicit_base_url_argument() -> None:

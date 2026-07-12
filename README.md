@@ -44,7 +44,7 @@ Algenta is **not**:
 
 Official position:
 
-> Algenta is a self-hosted decision engine you deploy on your infrastructure.
+> Algenta is a self-hosted computational runtime you deploy on your infrastructure.
 > Integrate via API or SDK. Run locally for development if needed.
 
 Enterprise deployment defaults are now explicit:
@@ -193,7 +193,7 @@ For automation, you can request structured JSON instead:
 ```
 
 `scripts/start-local.sh` loads `ALGENTA_ENV_FILE` (or `DE_ENV_FILE`) before
-falling back to `decision-engine/.env`. When
+falling back to the repository `.env`. When
 `ALGENTA_LLM_PROVIDER_MODELS_JSON` is unset, the script auto-derives a local
 provider registry from available provider credentials such as
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`,
@@ -204,8 +204,9 @@ provider registry from available provider credentials such as
 router entry. Explicit startup env overrides such as `ALGENTA_API_PORT=...`,
 `ALGENTA_MCP_PORT=...`, and `ALGENTA_LLM_PROVIDER_MODELS_JSON=...` win over
 values inside the loaded env file. It launches the API and MCP processes through
-`scripts/detach_process.py` so they survive the startup shell itself. It resolves the standalone MCP HTTP/SSE dependencies from
-`requirements-mcp.txt` via isolated `uv run` before launching `/mcp/sse`. The
+`scripts/detach_process.py` so they survive the startup shell itself. It provisions the
+standalone MCP dependencies from `requirements-mcp.txt` through an isolated `uv run`,
+then launches the canonical Streamable HTTP endpoint at `/mcp`. The
 launcher also fails closed if either the API `/v1/health` endpoint or the
 standalone MCP `/mcp/tools` endpoint never becomes ready. If port `8000` or the
 chosen MCP port is already occupied by an unrelated process, the launcher now

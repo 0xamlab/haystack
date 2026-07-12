@@ -172,6 +172,9 @@ export interface PlatformContractResponse {
   brand: string;
   api_base_url: string;
   mcp_endpoint: string;
+  mcp_transport: string;
+  mcp_protocol_version: string;
+  mcp_legacy_sse_endpoint: string;
   mcp_tools_endpoint: string;
   auth_scheme: string;
   api_key_prefixes: ApiKeyPrefixes;

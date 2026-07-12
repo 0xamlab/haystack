@@ -5,7 +5,7 @@ description: Connect Algenta to MCP-compatible tools like Cursor and Claude Desk
 
 # MCP server
 
-`algenta-mcp` is a Model Context Protocol bridge for Algenta. Install it once, point it at your engine with two environment variables, and your AI assistant gains a governed set of Algenta tools: dataset discovery and exact queries, deterministic utility-model routes, the simplified product helpers, persisted decision memory, and agent runs. This page is the reference for installing, configuring, and connecting the server from Cursor, Claude Desktop, Zed, and HTTP/SSE clients such as OpenWebUI and LibreChat, plus the full catalog of tools it exposes.
+`algenta-mcp` is a Model Context Protocol bridge for Algenta. Install it once, point it at your engine with two environment variables, and your AI assistant gains a governed set of Algenta tools: dataset discovery and exact queries, deterministic utility-model routes, the simplified product helpers, persisted decision memory, and agent runs. This page is the reference for installing, configuring, and connecting the server from Cursor, Claude Desktop, Zed, and Streamable HTTP clients such as OpenWebUI and LibreChat, plus the full catalog of tools it exposes.
 
 ## Install
 
@@ -34,7 +34,8 @@ export ALGENTA_API_KEY="de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 |----------|----------|---------|---------|
 | `ALGENTA_API_KEY` | Yes | — | Bearer credential sent to the engine. Legacy `DE_API_KEY` accepted. |
 | `ALGENTA_BASE_URL` | Self-hosted: yes | `https://api.algenta.ai` (Cloud Managed only) | Engine base URL. Legacy `DE_BASE_URL` / `ALGENTA_API_URL` accepted. |
-| `ALGENTA_MCP_PORT` | No | `8001` | HTTP/SSE listen port. |
+| `ALGENTA_MCP_PORT` | No | `8001` | Streamable HTTP listen port. |
+| `ALGENTA_MCP_HOST` | No | `127.0.0.1` | Standalone HTTP bind address. Set `0.0.0.0` only behind authenticated ingress. |
 | `ALGENTA_MCP_TIMEOUT` | No | `60` | Per-request read timeout in seconds. |
 | `ALGENTA_MCP_CONNECT_TIMEOUT` | No | `120` | Connect timeout for slow onboarding calls. |
 
@@ -49,7 +50,7 @@ Private profiles fail closed. When cloud is disabled, the server refuses to targ
 
 ## Transports
 
-`algenta-mcp` runs the **stdio** transport by default, which is what local editors expect. For remote agents and web UIs, run the **HTTP/SSE** transport.
+`algenta-mcp` runs the **stdio** transport by default, which is what local editors expect. For remote agents and web UIs, run the **Streamable HTTP** transport.
 
 {% tabs %}
 {% tab title="stdio (default)" %}
@@ -59,7 +60,7 @@ algenta-mcp
 ```
 {% endtab %}
 
-{% tab title="HTTP/SSE" %}
+{% tab title="Streamable HTTP" %}
 ```bash
 # OpenWebUI, LibreChat, n8n, remote agents
 algenta-mcp --mode http --port 8001
@@ -68,8 +69,9 @@ algenta-mcp --mode http --port 8001
 {% endtabs %}
 
 `--transport` is an accepted alias for `--mode`. The port resolves from `--port`, then `ALGENTA_MCP_PORT`, then `8001`.
+Standalone HTTP binds to loopback by default. Set `ALGENTA_MCP_HOST=0.0.0.0` only when a container or authenticated gateway must expose it to another host.
 
-{% expandable title="Equivalent invocations and explicit interpreter" %}
+### Equivalent invocations and explicit interpreter
 The following calls are interchangeable for the HTTP transport on port 9000:
 
 ```bash
@@ -82,7 +84,6 @@ You can also invoke the module directly, which is convenient for editor configs 
 ```bash
 python -m algenta_mcp.server --mode http --port 8001
 ```
-{% endexpandable %}
 
 ## Connect an editor (stdio)
 
@@ -113,7 +114,7 @@ Config file locations:
 | Cursor | `~/.cursor/mcp.json` |
 | Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
-{% expandable title="Alternative: explicit Python interpreter" %}
+### Alternative: explicit Python interpreter
 If you prefer an explicit interpreter over the console script, use `python -m algenta_mcp.server`:
 
 ```json title="mcp.json"
@@ -130,9 +131,8 @@ If you prefer an explicit interpreter over the console script, use `python -m al
   }
 }
 ```
-{% endexpandable %}
 
-{% expandable title="Zed configuration" %}
+### Zed configuration
 Zed uses `context_servers` rather than `mcpServers`. Add to `~/.config/zed/settings.json`:
 
 ```json title="settings.json"
@@ -151,7 +151,6 @@ Zed uses `context_servers` rather than `mcpServers`. Add to `~/.config/zed/setti
   }
 }
 ```
-{% endexpandable %}
 {% endstep %}
 
 {% step %}
@@ -171,7 +170,7 @@ Inspect `get_contract()`, find the orders dataset with `list_data(search='orders
 {% endstep %}
 {% endstepper %}
 
-## Connect a web UI or remote agent (HTTP/SSE)
+## Connect a web UI or remote agent (Streamable HTTP)
 
 Start the HTTP transport:
 
@@ -184,8 +183,10 @@ If you already run the Algenta API server, the MCP surface is mounted there too:
 | Route | Purpose |
 |-------|---------|
 | `GET /mcp/tools` | List tools as JSON. Always available, no auth required. |
-| `GET /mcp/sse` | SSE connection endpoint. |
-| `POST /mcp/messages` | Message handler. |
+| `POST /mcp` | Send an MCP JSON-RPC request or notification. |
+| `GET /mcp` | Optional server-to-client event stream; this stateless deployment may return `405`. |
+| `DELETE /mcp` | Session termination; this stateless deployment may return `404` or `405`. |
+| `GET /mcp/sse` and `POST /mcp/messages` | Deprecated HTTP+SSE compatibility routes for older clients. |
 
 ```bash
 curl -s http://localhost:8000/mcp/tools | jq '.tools | length'
@@ -195,24 +196,29 @@ curl -s http://localhost:8000/mcp/tools | jq '.tools | length'
 The published `algenta-mcp` package and official Algenta API image already bundle the MCP transport dependencies. A `503` with `error.code = "mcp_transport_unavailable"` means the deployment is an incomplete or outdated custom image; upgrade or reinstall the official distribution instead of managing a side dependency.
 {% endhint %}
 
+Algenta uses the MCP `2025-11-25` protocol and the single-endpoint Streamable HTTP transport. The server is stateless, returns JSON responses, validates `Host` and `Origin`, and does not require sticky sessions across API workers.
+
 ### Connect a client
 
 {% tabs %}
 {% tab title="n8n" %}
 1. Add an **MCP Client** node.
-2. Set **Transport** to `SSE`.
-3. Set **URL** to `$ALGENTA_BASE_URL/mcp/sse`.
+2. Set **Transport** to `Streamable HTTP`.
+3. Set **URL** to `$ALGENTA_BASE_URL/mcp`.
 4. Set **Header** to `Authorization: Bearer $ALGENTA_API_KEY`.
 {% endtab %}
 
 {% tab title="LangChain / LangGraph" %}
 ```python title="connect_langchain.py"
+import os
+
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 client = MultiServerMCPClient({
     "algenta": {
-        "url": "http://localhost:8001/mcp/sse",
-        "transport": "sse",
+        "url": "http://localhost:8001/mcp",
+        "transport": "http",
+        "headers": {"Authorization": f"Bearer {os.environ['ALGENTA_API_KEY']}"},
     }
 })
 
@@ -416,7 +422,7 @@ print(resp.json())
 ## Security notes
 
 - **stdio** runs locally. Your API key stays in the editor process environment.
-- **HTTP/SSE** authenticates downstream to the Algenta API with your key. Put your own gateway (API gateway or Nginx) in front of the MCP HTTP port in production.
+- **Streamable HTTP** authenticates downstream to the Algenta API with your key. Put your own gateway (API gateway or Nginx) in front of the MCP HTTP port in production.
 - `GET /mcp/tools` is a public list endpoint and exposes no sensitive data. Every actual tool call requires `ALGENTA_API_KEY` (or legacy `DE_API_KEY`).
 - Error messages and logs scrub key material, so a misbehaving upstream that reflects a credential cannot leak it through an MCP error.
 
@@ -432,7 +438,7 @@ Never expose the MCP HTTP port directly to the public internet without an authen
 | `mcp package not installed` | Reinstall or upgrade `algenta-mcp`; its declared dependencies include the MCP protocol library. Do not install a side dependency separately. |
 | `API error 401` | Rotate the key at `https://app.algenta.ai/dashboard/api-keys` (Cloud Managed) or in your operator deployment (self-hosted). |
 | `API error 429` | Inspect the structured code for an endpoint abuse control, upstream provider limit, or operator policy; Algenta editions have no request meter. |
-| `503 mcp_transport_unavailable` on `/mcp/sse` | Upgrade to the current official Algenta API image or reinstall `algenta-mcp`; both bundle the transport. |
+| `503 mcp_transport_unavailable` on `/mcp` | Upgrade to the current official Algenta API image or reinstall `algenta-mcp`; both bundle the transport. |
 | Tool not showing in Claude Desktop | Check JSON config syntax, restart the client, inspect `~/Library/Logs/Claude/`. |
 | MCP private profile error targeting an Algenta URL | In `self_hosted` / `air_gapped`, set `ALGENTA_BASE_URL` to your own engine; private profiles refuse Algenta-owned URLs. |
 

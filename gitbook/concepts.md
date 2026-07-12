@@ -5,7 +5,7 @@ description: The core Algenta model — one integrated engine, governed data, de
 
 # Core concepts
 
-Algenta is a governed decision engine exposed through one versioned HTTP contract. The Python SDK, TypeScript SDK, CLI, and MCP server are clients of that contract. The deployment owns the compiled compute runtime; client users do not install or manage a separate engine component.
+Algenta is a governed computational runtime exposed through one versioned HTTP contract. The Python SDK, TypeScript SDK, CLI, and MCP server are clients of that contract. The deployment owns the compiled compute runtime; client users do not install or manage a separate engine component.
 
 ## Execution boundary
 

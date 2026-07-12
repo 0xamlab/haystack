@@ -1,7 +1,4 @@
-"""Tests for test_package_distribution_surface: misc_b.
-
-Extracted from /Users/angel/Developer/decision-engine/.claude/worktrees/wf_6761da26-f90-1/tests/test_package_distribution_surface.py during modularization.
-"""
+"""Tests for the secondary package distribution surface."""
 from __future__ import annotations
 
 from tests._test_package_distribution_surface_helpers import *  # noqa: F401,F403
@@ -37,7 +34,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert package_json["name"] == "algenta-sdk"
     # LICENSE is published with the package (Apache-2.0, per GTM D2).
     assert package_json["files"] == ["dist", "proto", "README.md", "LICENSE"]
-    assert package_json["homepage"] == "https://docs.algenta.ai/sdk/typescript"
+    assert package_json["homepage"] == "https://docs.algenta.ai/sdks/typescript"
     assert package_json["description"] == (
         "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, "
         "simulations, governed data, and repository intelligence"
@@ -46,191 +43,43 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
         "access": "public",
         "registry": "https://registry.npmjs.org/",
     }
-    assert len(readme_text.splitlines()) <= 600
-    assert len(readme_text.encode("utf-8")) <= 25000
+    assert len(readme_text.splitlines()) <= 180
+    assert len(readme_text.encode("utf-8")) <= 12000
     assert package_json["repository"]["directory"] == "packages/ts-sdk"
     assert package_json["bugs"]["url"] == "https://github.com/thyn-ai/algenta/issues"
     assert "src/**/*.test.ts" in tsconfig["exclude"]
     assert_manifest_backed_integration_texts_equal(contract_text, source_contract_text)
-    assert "PRIMARY_DATA_QUERY_CONTRACT" in readme_text
-    assert "de_live_" not in readme_text
-    assert "PRIMARY_DATA_QUERY_CONTRACT.api.contract_endpoint" in readme_text
-    assert "PRIMARY_DATA_QUERY_CONTRACT.governed_filter_contract" in readme_text
-    assert "client.getContract" in readme_text
-    assert "client.getRuntimeManifest()" in readme_text
-    assert "client.getRuntimeModules()" in readme_text
-    assert "client.getRuntimeBenchmarks()" in readme_text
-    assert "client.getRuntimeReleaseValidation()" in readme_text
-    assert "benchmark-class `evidence_paths`" in readme_text
-    assert "`B6`" in readme_text
-    assert "checkpoint and" in readme_text
-    assert "replay overhead" in readme_text
-    assert "`B7` MCP tool latency" in readme_text
-    assert "`B9`" in readme_text
-    assert "RAG retrieval" in readme_text
-    assert "quality and" in readme_text
-    assert "latency" in readme_text
-    assert "`B10` decision workflow completion latency" in readme_text
-    assert "`mcp_call_first_party`" in readme_text
-    assert "`decision_plan_creation`" in readme_text
-    assert "`replay`" in readme_text
-    assert "## Public Methods" in readme_text
-    assert "listModels()" in readme_text
-    assert "resolveArtifactBridge({ repo_id, filename, revision, local_files_only })" in readme_text
-    assert "ALGENTA_LLM_PROVIDER_MODELS_JSON" in readme_text
-    assert "openai_compatible" in readme_text
-    assert "openai" in readme_text
-    assert "anthropic" in readme_text
-    assert "ollama" in readme_text
-    assert "google_genai" in readme_text
-    assert "mistral" in readme_text
-    assert "cohere" in readme_text
-    assert "groq" in readme_text
-    assert "xai" in readme_text
-    assert "router" in readme_text
-    assert '"targets": ["provider.groq-llama", "provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"fallback_policy": "retryable_only"' in readme_text
-    assert '"fallback_on": ["provider_rate_limited", "provider_timeout"]' in readme_text
-    assert '"timeout_seconds": 18.0' in readme_text
-    assert '"header_envs": {"OpenAI-Organization": "OPENAI_ORG_ID"}' in readme_text
-    assert '"max_attempts": 2' in readme_text
-    assert '"chat_targets": ["provider.groq-llama", "provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"embedding_targets": ["provider.openai-gpt-4o-mini"]' in readme_text
-    assert '"chat_fallback_policy": "retryable_only"' in readme_text
-    assert '"chat_fallback_on": ["provider_rate_limited"]' in readme_text
-    assert '"embedding_fallback_policy": "disabled"' in readme_text
-    assert '"embedding_fallback_on": ["provider_backend_error"]' in readme_text
-    assert '"chat_timeout_seconds": 12.5' in readme_text
-    assert '"embedding_timeout_seconds": 9.0' in readme_text
-    assert "required_provider_headers" in readme_text
-    assert "provider_auth_env_vars" in readme_text
-    assert "provider_auth_configured" in readme_text
-    assert "resolved_routing_targets" in readme_text
-    assert "resolved_chat_routing_targets" in readme_text
-    assert "resolved_embedding_routing_targets" in readme_text
-    assert '"chat_max_attempts": 2' in readme_text
-    assert '"embedding_max_attempts": 1' in readme_text
-    assert "Legacy `upstream_model`" in readme_text
-    assert "`capabilities` is optional" in readme_text
-    assert "optional `api_key_env`" in readme_text
-    assert "chat-completions only" in readme_text
-    for method in (
-        "chatCompletions({ messages, model })",
-        "streamChatCompletions({ messages, model })",
-        "streamResponses({ input, model, dimensions })",
-        "planDecision(request)",
-        "logDecision(request)",
-        "listDecisions({ page, limit, with_outcome_only })",
-        "getDecision(decisionId)",
-        "recordOutcome(decisionId, { actual_outcome, outcome_notes })",
-        "executeDecision(decisionId, { webhook_url, timeout_seconds })",
-        "testWebhookDelivery(callbackUrl)",
-        "deleteDecision(decisionId)",
-        "me()",
-        "usage()",
-        "limits()",
-        "listApiKeys()",
-        "createApiKey({ label, expires_at, device_limit })",
-        "revokeApiKey(keyId)",
+    for required in (
+        "npm install algenta-sdk",
+        "AlgentaClient",
+        "QueryFilterSpec",
+        "PRIMARY_DATA_QUERY_CONTRACT.api.contract_endpoint",
+        "client.listDatasets",
+        "client.getDatasetSummary",
+        "client.queryWithMetadata",
+        "## Runtime and Local Libraries",
+        "users do not",
+        "separate Mojo process",
+        "Runtime forwards the governed helper groups",
+        "## Unified Capability Plane",
+        "client.routeCapabilities",
+        "client.executeCapability",
+        "Execution ownership remains authoritative",
+        "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1",
+        "https://docs.algenta.ai/sdks/typescript",
+        "pnpm --dir packages/ts-sdk build",
     ):
-        assert method in readme_text
-    assert "distributions()" in readme_text
-    assert "templates()" in readme_text
-    assert "submitJob(request, callbackUrl?)" in readme_text
-    assert "getJob(jobId)" in readme_text
-    assert "getJobResult(jobId)" in readme_text
-    assert "listJobs({ page, limit, status })" in readme_text
-    assert "cancelJob(jobId)" in readme_text
-    assert "pollJob(jobId, { timeoutMs, pollIntervalMs })" in readme_text
-    assert "registerTrigger({ name, condition, simulation_template, webhook_url, execution_webhook_url, auto_execute, description })" in readme_text
-    assert "listTriggers({ status, page, limit })" in readme_text
-    assert "fireTrigger(triggerId, { force })" in readme_text
-    assert "pauseTrigger(triggerId, { paused })" in readme_text
-    assert "deleteTrigger(triggerId)" in readme_text
-    assert "const savedConnector = await client.createConnector({" in readme_text
-    assert "const connectorDetail = await client.getConnector(savedConnector.id);" in readme_text
-    assert "const updatedConnector = await client.updateConnector(savedConnector.id, {" in readme_text
-    assert "const testedConnector = await client.testConnector(savedConnector.id);" in readme_text
-    assert "const browsedConnector = await client.browseConnector(savedConnector.id);" in readme_text
-    assert "const created = await client.connectData({" in readme_text
-    assert "const refreshed = await client.refreshDataset(created.dataset_id);" in readme_text
-    assert "const datasetDetail = await client.getDataset(created.dataset_id);" in readme_text
-    assert "await client.deleteDataset(created.dataset_id);" in readme_text
-    assert "await client.deleteConnector(savedConnector.id);" in readme_text
-    assert "listConnectors({ page, limit })" in readme_text
-    assert "createConnector({ name, connector_type, description, config })" in readme_text
-    assert "getConnector(connectorId)" in readme_text
-    assert "updateConnector(connectorId, { description, config })" in readme_text
-    assert "testConnector(connectorId)" in readme_text
-    assert "browseConnector(connectorId)" in readme_text
-    assert "deleteConnector(connectorId)" in readme_text
-    assert "previewTestConnector({ connector })" in readme_text
-    assert "previewBrowseConnector({ connector })" in readme_text
-    assert "connectData({ connection_type, provider, dataset_name, description, connection_config })" in readme_text
-    assert "getDataset(datasetId)" in readme_text
-    assert "refreshDataset(datasetId)" in readme_text
-    assert "deleteDataset(datasetId)" in readme_text
-    assert "listDevices({ page, limit })" in readme_text
-    assert "revokeDevice(registrationId)" in readme_text
-    for method in (
-        "createAgentRun(request)",
-        "listAgentRuns({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id })",
-        "getAgentRunEvents(runId, { limit })",
-        "streamAgentRunEvents(runId, { limit })",
-        "listAgentRunCheckpoints(runId)",
-        "queryAgentRunCheckpoints({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, checkpoint_id })",
-        "listAgentRunMissionEvents(runId, { limit })",
-        "queryAgentRunMissionEvents({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, event_type })",
-        "listAgentRunTelemetry(runId, { limit })",
-        "queryAgentRunTelemetry({ page, limit, status, request_hash, policy_snapshot_id, schema_snapshot_id, run_id, telemetry_kind, module_name })",
-        "replayAgentRun(runId, { checkpoint_id })",
-        "forkAgentRun(runId, { checkpoint_id })",
-        "getAuditLogs({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash })",
-        "getAuditLogArtifacts({ page, limit, actor_email, action, resource_type, result, policy_snapshot_id, schema_snapshot_id, manifest_version, request_hash, content_hash })",
-        "listExecutionPolicySnapshots()",
-        "recommend(actions, { runs, seed })",
-        "score(request, { expected_value, downside_risk })",
-        "batch(items)",
-        "compare(scenarios, { runs, seed })",
+        assert required in readme_text
+    for forbidden in (
+        "de_live_",
+        "https://docs.algenta.ai/direct-api-client",
+        "https://docs.algenta.ai/sdk/typescript",
+        "Local Consumer Sync Checklist",
+        "pagination-only `listDatasets(...)` shape",
+        "`listDatasets({ page?, limit? })`",
+        "stale `algenta-sdk` build",
     ):
-        assert method in readme_text
-    assert "QueryFilterSpec" in readme_text
-    assert "const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;" in readme_text
-    assert 'throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");' in readme_text
-    assert "apiKey," in readme_text
-    assert 'client.listDatasets({ search: "orders", compact: true })' in readme_text
-    assert "client.getDatasetSummary" in readme_text
-    assert "client.queryWithMetadata" in readme_text
-    assert "client.queryBatch" in readme_text
-    assert "client.querySqlReport" in readme_text
-    assert "const recommendation = await client.recommend(" in readme_text
-    assert "const score = await client.score(" in readme_text
-    assert "const batch = await client.batch([" in readme_text
-    assert "const compared = await client.compare([" in readme_text
-    assert "/openapi.json" in readme_text
-    assert "x-primary-data-query-contract" in readme_text
-    assert 'sources: [{ dataset_id: summary.dataset_id, alias: "orders" }]' in readme_text
-    assert (
-        'sql: "SELECT order_month, gross_revenue FROM orders ORDER BY order_month DESC LIMIT 12"'
-        in readme_text
-    )
-    assert "ALGENTA_DEPLOYMENT_MODE=self_hosted" in readme_text
-    assert "ALGENTA_DEPLOYMENT_MODE=air_gapped" in readme_text
-    assert "must point `baseUrl` at your own" in readme_text
-    assert "fail closed instead of silently falling back to" in readme_text
-    assert "Local Consumer Sync Checklist" not in readme_text
-    assert "pnpm --dir packages/ts-sdk build" in readme_text
-    assert "pagination-only `listDatasets(...)` shape" not in readme_text
-    assert "`listDatasets({ page?, limit? })`" not in readme_text
-    assert "stale `algenta-sdk` build" not in readme_text
-    assert "getRuntimeModules()" in readme_text
-    assert "getRuntimeBenchmarks()" in readme_text
-    assert "Runtime" in readme_text
-    assert "libraries()" in readme_text
-    assert "Runtime forwards the governed helper groups" in readme_text
-    assert "local/runtime-backed Mojo catalog" in readme_text
-    assert 'const rt = new Runtime({' in readme_text
-    assert 'mode: "self_hosted"' in readme_text
+        assert forbidden not in readme_text
     assert "usage(): Promise<UsageInfo>;" in client_types
     assert "limits(): Promise<LimitsInfo>;" in client_types
     assert "submitJob(request: SimulateRequest, callbackUrl?: string): Promise<JobSubmitResponse>;" in client_types
@@ -274,9 +123,8 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert "Promise<DeviceListResponse>;" in runtime_types
     assert "revokeDevice(registrationId: string): Promise<DeviceRevokeResponse>;" in runtime_types
     assert 'baseUrl: "http://localhost:8000"' in readme_text
-    assert 'baseUrl: "https://api.algenta.ai"' not in readme_text[
-        readme_text.index('const rt = new Runtime({') : readme_text.index("`libraries()` remains")
-    ]
+    runtime_section = readme_text[readme_text.index("## Runtime and Local Libraries") :]
+    assert 'baseUrl: "https://api.algenta.ai"' not in runtime_section
     assert "const models = await rt.listModels();" in readme_text
     assert "const tokenized = await rt.tokenize({ input: \"alpha beta\" });" in readme_text
     assert "const usage = await rt.usage();" in readme_text
@@ -291,7 +139,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
         "lifecycle, and decision helpers",
     ):
         assert runtime_group in readme_text
-    assert "private profiles must point `baseUrl` at your own self-hosted service" in readme_text
+    assert "Private modes fail closed" in readme_text
     assert 'export type RuntimeMaturity = "experimental" | "benchmarked" | "parity_tested" | "channel_covered" | "enterprise_ready" | "deprecated";' in shared_types
     assert 'export type RuntimeSideEffectClass = "read_only" | "write_scoped" | "write_external" | "exec_external" | "network_external";' in shared_types
     assert 'export type RuntimeRiskLevel = "low" | "medium" | "high" | "critical";' in shared_types
@@ -641,5 +489,3 @@ def test_cli_docs_cover_streaming_runtime_surface() -> None:
     assert "`de agent-runs query-telemetry [--status ...]`" in text
     assert "--format json` prints one JSON object per SSE event line" in text
     assert "default table mode renders deterministic summaries" in text
-
-

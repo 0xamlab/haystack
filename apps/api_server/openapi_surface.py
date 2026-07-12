@@ -52,12 +52,77 @@ def openapi_mcp_endpoint(server_url: str | None = None) -> str:
     if resolved_server_url == API_BASE_URL:
         return MCP_ENDPOINT
     if resolved_server_url == "/":
-        return "/mcp/sse"
-    return f"{resolved_server_url.rstrip('/')}/mcp/sse"
+        return "/mcp"
+    return f"{resolved_server_url.rstrip('/')}/mcp"
 
 
 def apply_openapi_surface(schema: dict[str, object]) -> dict[str, object]:
     server_url = openapi_server_url()
     schema["servers"] = [{"url": server_url}]
     schema["x-canonical-mcp-endpoint"] = openapi_mcp_endpoint(server_url)
+    paths = schema.setdefault("paths", {})
+    if isinstance(paths, dict) and "/mcp" not in paths:
+        paths["/mcp"] = {
+            "get": {
+                "tags": ["MCP"],
+                "operationId": "stream_mcp_events",
+                "summary": "MCP Streamable HTTP event stream",
+                "responses": {
+                    "200": {"description": "MCP server event stream."},
+                    "405": {"description": "Standalone event stream is not enabled."},
+                },
+            },
+            "post": {
+                "tags": ["MCP"],
+                "operationId": "send_mcp_message",
+                "summary": "Send an MCP Streamable HTTP message",
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {"type": "object"}}},
+                },
+                "responses": {
+                    "200": {"description": "MCP JSON-RPC response."},
+                    "202": {"description": "MCP notification accepted."},
+                },
+            },
+            "delete": {
+                "tags": ["MCP"],
+                "operationId": "terminate_mcp_session",
+                "summary": "Terminate an MCP Streamable HTTP session",
+                "responses": {
+                    "200": {"description": "MCP session terminated."},
+                    "404": {"description": "MCP session not found."},
+                    "405": {"description": "Session termination is not enabled."},
+                },
+            },
+        }
+    if isinstance(paths, dict):
+        paths.setdefault(
+            "/mcp/sse",
+            {
+                "get": {
+                    "tags": ["MCP"],
+                    "operationId": "stream_legacy_mcp_events",
+                    "summary": "Legacy MCP HTTP+SSE connection",
+                    "deprecated": True,
+                    "responses": {"200": {"description": "Legacy MCP SSE stream."}},
+                }
+            },
+        )
+        paths.setdefault(
+            "/mcp/messages",
+            {
+                "post": {
+                    "tags": ["MCP"],
+                    "operationId": "send_legacy_mcp_message",
+                    "summary": "Legacy MCP HTTP+SSE message",
+                    "deprecated": True,
+                    "requestBody": {
+                        "required": True,
+                        "content": {"application/json": {"schema": {"type": "object"}}},
+                    },
+                    "responses": {"202": {"description": "Legacy MCP message accepted."}},
+                }
+            },
+        )
     return schema

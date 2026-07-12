@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Mapping
-from typing import Any
+from typing import Any, Mapping
 
 from pydantic import BaseModel
 
@@ -582,6 +581,9 @@ class PlatformContractOutput:
     brand: str
     api_base_url: str
     mcp_endpoint: str
+    mcp_transport: str
+    mcp_protocol_version: str
+    mcp_legacy_sse_endpoint: str
     mcp_tools_endpoint: str
     auth_scheme: str
     api_key_prefixes: ApiKeyPrefixes
@@ -603,6 +605,13 @@ class PlatformContractOutput:
             brand=_require_contract_string(data, "brand", context),
             api_base_url=_require_contract_string(data, "api_base_url", context),
             mcp_endpoint=_require_contract_string(data, "mcp_endpoint", context),
+            mcp_transport=_require_contract_string(data, "mcp_transport", context),
+            mcp_protocol_version=_require_contract_string(
+                data, "mcp_protocol_version", context
+            ),
+            mcp_legacy_sse_endpoint=_require_contract_string(
+                data, "mcp_legacy_sse_endpoint", context
+            ),
             mcp_tools_endpoint=_require_contract_string(data, "mcp_tools_endpoint", context),
             auth_scheme=_require_contract_string(data, "auth_scheme", context),
             api_key_prefixes=ApiKeyPrefixes.from_api(data["api_key_prefixes"]),

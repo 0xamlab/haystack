@@ -29,6 +29,7 @@ async def run_stdio_server() -> None:
 
     import os
 
+    from algenta_mcp import config
     from algenta_mcp.errors import serialize_tool_error
     from algenta_mcp.products import resolve_visible_tools
     from algenta_mcp.registry import call_tool, get_tool_specs
@@ -37,7 +38,7 @@ async def run_stdio_server() -> None:
     # session via ALGENTA_PRODUCT (set by the self-hosted/enterprise plugin package).
     allowed = resolve_visible_tools((os.environ.get("ALGENTA_PRODUCT") or "").strip() or None)
 
-    server = Server("algenta-decision-engine")
+    server = Server("algenta-mcp", version=config.VERSION)
 
     @server.list_tools()  # type: ignore[misc]
     async def handle_list_tools() -> list[Tool]:
@@ -61,8 +62,8 @@ async def run_stdio_server() -> None:
 
     async with stdio_server() as (read_stream, write_stream):
         init_opts = InitializationOptions(
-            server_name="algenta-decision-engine",
-            server_version="1.0.3",
+            server_name="algenta-mcp",
+            server_version=config.VERSION,
             capabilities=server.get_capabilities(
                 notification_options=None,
                 experimental_capabilities={},

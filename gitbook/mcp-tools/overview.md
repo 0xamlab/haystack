@@ -18,7 +18,7 @@ Once the server is configured, the tools show up in your host's tool panel after
 | Host | Transport | Config |
 | --- | --- | --- |
 | Cursor, Claude Desktop, Zed, Windsurf, VS Code | stdio | Add `algenta-mcp` to the host's MCP config. |
-| ChatGPT, OpenWebUI, LibreChat, n8n, custom apps | HTTP / SSE | Point the client at `$ALGENTA_BASE_URL/mcp/sse`. |
+| ChatGPT, OpenWebUI, LibreChat, n8n, custom apps | Streamable HTTP | Point the client at `$ALGENTA_BASE_URL/mcp`. |
 
 The tool schemas are always live. Enumerate the exact set your deployment exposes with:
 

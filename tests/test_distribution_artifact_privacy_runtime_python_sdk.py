@@ -543,7 +543,7 @@ def test_python_sdk_build_artifact_contract_module_matches_manifest_inventory():
     artifact_root = ROOT / "packages/python-sdk/build/lib"
     with _artifact_module(artifact_root, "decision_engine", "_contract") as module:
         assert module.DEFAULT_BASE_URL == "https://api.algenta.ai"
-        assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp/sse"
+        assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp"
         assert module.PRIMARY_DATA_QUERY_CONTRACT["api"]["contract_endpoint"] == (
             "/v1/meta/contract"
         )

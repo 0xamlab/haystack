@@ -254,7 +254,7 @@ def test_top_level_docs_position_service_first_and_runtime_as_development_surfac
     local_runtime = LOCAL_RUNTIME_DOC.read_text(encoding="utf-8")
     quickstart = QUICKSTART_DOC.read_text(encoding="utf-8")
 
-    assert "self-hosted decision engine you deploy on your infrastructure" in readme
+    assert "self-hosted computational runtime you deploy on your infrastructure" in readme
     assert "Integrate via API or SDK. Run locally for development if needed." in readme
     assert "self-hosted by default" in readme
     assert "GET /v1/admin/privacy-report" in readme

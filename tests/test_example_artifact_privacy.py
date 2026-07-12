@@ -7,7 +7,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_BASE_URL = "https://your-algenta-base-url.example"
-EXAMPLE_MCP_ENDPOINT = f"{EXAMPLE_BASE_URL}/mcp/sse"
+EXAMPLE_MCP_ENDPOINT = f"{EXAMPLE_BASE_URL}/mcp"
 
 
 def test_request_templates_use_neutral_placeholder_base_url() -> None:

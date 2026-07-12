@@ -261,6 +261,7 @@ def test_runtime_admin_validation_route_reports_release_theorem_status() -> None
     assert "/v1/admin/runtime/benchmarks" in openapi_payload["paths"]
     assert "/v1/admin/runtime/validation" in openapi_payload["paths"]
     assert "/mcp/tools" in openapi_payload["paths"]
+    assert "/mcp" in openapi_payload["paths"]
     assert "/mcp/sse" in openapi_payload["paths"]
     assert "/mcp/messages" in openapi_payload["paths"]
     assert openapi_payload["components"]["securitySchemes"]["BearerAuth"] == {
@@ -283,13 +284,13 @@ def test_runtime_admin_validation_route_reports_release_theorem_status() -> None
     )
     assert openapi_payload["paths"]["/v1/runtime/manifest"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/tools"]["get"].get("security") is None
+    assert openapi_payload["paths"]["/mcp"]["post"].get("security") is None
     assert openapi_payload["paths"]["/mcp/sse"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/messages"]["post"].get("security") is None
     assert "200" in openapi_payload["paths"]["/mcp/tools"]["get"]["responses"]
-    assert "503" in openapi_payload["paths"]["/mcp/sse"]["get"]["responses"]
-    assert "503" in openapi_payload["paths"]["/mcp/messages"]["post"]["responses"]
-    assert "200" not in openapi_payload["paths"]["/mcp/sse"]["get"]["responses"]
-    assert "200" not in openapi_payload["paths"]["/mcp/messages"]["post"]["responses"]
+    assert "200" in openapi_payload["paths"]["/mcp"]["post"]["responses"]
+    assert openapi_payload["paths"]["/mcp/sse"]["get"]["deprecated"] is True
+    assert openapi_payload["paths"]["/mcp/messages"]["post"]["deprecated"] is True
 
 
 def test_runtime_manifest_route_rejects_invalid_signed_model_instance(

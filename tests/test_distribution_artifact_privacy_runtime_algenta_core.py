@@ -248,7 +248,7 @@ def test_algenta_core_build_artifact_runtime_exposes_account_and_proof_helpers()
         assert runtime.limits() == {"plan": "enterprise"}
         contract = runtime.get_contract()
         assert contract["api_base_url"] == "https://api.algenta.ai"
-        assert contract["mcp_endpoint"] == "https://api.algenta.ai/mcp/sse"
+        assert contract["mcp_endpoint"] == "https://api.algenta.ai/mcp"
         assert contract["primary_data_query_contract"]["api"]["contract_endpoint"] == (
             "/v1/meta/contract"
         )
@@ -613,7 +613,7 @@ def test_algenta_core_build_artifact_contract_module_matches_manifest_inventory(
     artifact_root = ROOT / "packages/algenta/build/lib"
     with _artifact_module(artifact_root, "algenta", "_contract") as module:
         assert module.DEFAULT_BASE_URL == "https://api.algenta.ai"
-        assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp/sse"
+        assert module.MCP_ENDPOINT == "https://api.algenta.ai/mcp"
         assert module.PRIMARY_DATA_QUERY_CONTRACT["api"]["contract_endpoint"] == (
             "/v1/meta/contract"
         )

@@ -1494,7 +1494,7 @@ def test_client_contract_and_runtime_proof_routes() -> None:
     benchmarks = payload["benchmarks"]
     validation = payload["validation"]
     assert isinstance(contract["api_base_url"], str) and contract["api_base_url"].startswith("http")
-    assert contract["mcp_endpoint"].endswith("/mcp/sse")
+    assert contract["mcp_endpoint"].endswith("/mcp")
     assert manifest["runtime_version"]
     assert len(manifest["modules"]) >= 1
     manifest_provider_routing_overhead = next(
@@ -1808,7 +1808,10 @@ def test_client_control_plane_surface() -> None:
         assert billing["plan"]
         assert credits["billing_period"] == time.strftime("%Y-%m", time.gmtime())
         assert credits["credits_granted"] >= 0
-        assert credits["credits_issued_this_month"] >= credits["credits_granted"]
+        if credits["monthly_limit"] == 0:
+            assert credits["credits_issued_this_month"] == 0
+        else:
+            assert credits["credits_issued_this_month"] >= credits["credits_granted"]
         assert credits["monthly_limit"] >= 0
         assert credits["monthly_remaining"] >= 0
         assert credits["refresh_after"] >= credits["server_time"]

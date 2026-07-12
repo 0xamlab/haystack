@@ -252,7 +252,7 @@ def test_decision_engine_client_get_contract_falls_back_to_openapi_extension(
 
     assert isinstance(contract, PlatformContractResult)
     assert contract.api_base_url == "https://example.test/self-host"
-    assert contract.mcp_endpoint == "https://example.test/self-host/mcp/sse"
+    assert contract.mcp_endpoint == "https://example.test/self-host/mcp"
     assert contract.mcp_tools_endpoint == "https://example.test/self-host/mcp/tools"
     assert contract.defaults.read_only_default is True
     assert contract.integrations

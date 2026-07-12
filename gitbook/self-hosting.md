@@ -63,7 +63,7 @@ ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
   bash -c "$(curl -sSL https://algenta.ai/install.sh)"
 ```
 
-{% expandable title="Installer environment variables" %}
+### Installer environment variables
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `ALGENTA_DIR` | `$HOME/.algenta` | Install directory (holds `.env` and `docker-compose.yml`) |
@@ -72,7 +72,6 @@ ALGENTA_VERSION=git-1a2b3c4 ALGENTA_DIR=/opt/algenta \
 | `ALGENTA_IMAGE_TAG` | derived from version | Pinned image tag (e.g. `git-1a2b3c4`) |
 | `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/thyn-ai/algenta` | Image registry prefix |
 | `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set `1` to skip `compose pull` (use local images) |
-{% endexpandable %}
 
 ### Manual install
 
@@ -156,7 +155,7 @@ BOOTSTRAP_ENGINE_API_KEY=de_live_...
 BOOTSTRAP_USER_PASSWORD=...
 ```
 
-{% expandable title="Override the bootstrap identity" %}
+### Override the bootstrap identity
 Override the bootstrap identity with environment variables if the defaults do not fit:
 
 | Variable | Default |
@@ -165,7 +164,6 @@ Override the bootstrap identity with environment variables if the defaults do no
 | `ALGENTA_BOOTSTRAP_ORG_SLUG` | `self-hosted-org` |
 | `ALGENTA_BOOTSTRAP_ORG_NAME` | `Self-Hosted Organization` |
 | `ALGENTA_BOOTSTRAP_PASSWORD` | generated 32-char value |
-{% endexpandable %}
 
 ### Rotate the bootstrap key
 
@@ -330,7 +328,7 @@ Two companion endpoints give the full picture:
 
 Two scripts exercise the full stack end to end against a local build.
 
-{% expandable title="Smoke proof: full lifecycle in one run" %}
+### Smoke proof: full lifecycle in one run
 The smoke script builds the prod images, starts the stack, bootstraps, rotates and revokes the key, runs a synchronous decision, and runs an async job to completion:
 
 ```bash title="self_host_smoke.sh"
@@ -338,9 +336,8 @@ bash scripts/self_host_smoke.sh
 # or
 make self-host-smoke
 ```
-{% endexpandable %}
 
-{% expandable title="Persistence proof: survive a backup-and-restore cycle" %}
+### Persistence proof: survive a backup-and-restore cycle
 The persistence proof additionally seeds a dataset, query, and run, then restarts the stack, takes a PostgreSQL dump and volume backups, recreates the stack from those backups, and re-verifies that the dataset, query result, run, and object-storage artifacts all survive:
 
 ```bash title="self_host_persistence_proof.sh"
@@ -348,7 +345,6 @@ bash scripts/self_host_persistence_proof.sh
 # or
 make self-host-persistence-proof
 ```
-{% endexpandable %}
 
 {% hint style="success" %}
 Both scripts run on isolated ports and project names, so they will not collide with a running install.

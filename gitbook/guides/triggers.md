@@ -126,7 +126,7 @@ console.log(trigger.trigger_id, trigger.status);
 **Expected result** — a `201` `TriggerSummary` with a `trigger_id`, `status: "active"`, and the `condition` you registered. Save the id as `$TRIGGER_ID`.
 {% endhint %}
 
-{% expandable title="Condition fields" %}
+### Condition fields
 | Field | Type | Notes |
 | --- | --- | --- |
 | `source_id` | string | The registered source to watch. |
@@ -134,7 +134,6 @@ console.log(trigger.trigger_id, trigger.status);
 | `threshold` | number | The value the metric is compared against. |
 | `direction` | `above` \| `below` \| `change` | `above`/`below` compare to the threshold; `change` fires on every evaluation. |
 | `aggregation` | `sum` \| `avg` \| `max` \| `min` \| `count` | How the metric is aggregated. Defaults to `sum`. |
-{% endexpandable %}
 
 ## List triggers
 

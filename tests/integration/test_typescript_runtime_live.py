@@ -3147,7 +3147,10 @@ def run_typescript_runtime_control_plane_surface() -> None:
         assert billing["plan"]
         assert credits["billing_period"] == time.strftime("%Y-%m", time.gmtime())
         assert credits["credits_granted"] >= 0
-        assert credits["credits_issued_this_month"] >= credits["credits_granted"]
+        if credits["monthly_limit"] == 0:
+            assert credits["credits_issued_this_month"] == 0
+        else:
+            assert credits["credits_issued_this_month"] >= credits["credits_granted"]
         assert credits["monthly_limit"] >= 0
         assert credits["monthly_remaining"] >= 0
         assert credits["refresh_after"] >= credits["server_time"]

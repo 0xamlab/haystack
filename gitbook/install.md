@@ -115,14 +115,13 @@ Set these before running the installer to control where it installs, which port 
 | `ALGENTA_IMAGE_REGISTRY` | `ghcr.io/thyn-ai/algenta` | Image registry and repository. |
 | `ALGENTA_SKIP_IMAGE_PULL` | `0` | Set to `1` to skip `compose pull` (use an already-pulled image). |
 
-{% expandable title="Pin a specific build and bind a non-default port" %}
+### Pin a specific build and bind a non-default port
 ```bash
 ALGENTA_VERSION=v1.0.0 \
 ALGENTA_IMAGE_TAG=v1.0.0 \
 ALGENTA_API_PORT=8080 \
   bash -c "curl -sSL https://algenta.ai/install.sh | bash"
 ```
-{% endexpandable %}
 
 {% hint style="danger" %}
 The generated `.env` contains `ALGENTA_CONFIG_ENCRYPTION_KEY`, which encrypts every stored per-tenant provider key at rest. Back it up. If you reinstall over an existing database with a different key, the previously stored keys become undecryptable. Restore your prior key into `.env` before starting.
@@ -276,17 +275,16 @@ Install it as an isolated CLI with `pipx`:
 pipx install algenta-mcp
 ```
 
-{% expandable title="Alternative: install with pip into the current environment" %}
+### Alternative: install with pip into the current environment
 ```bash
 pip install algenta-mcp
 ```
-{% endexpandable %}
 {% endstep %}
 
 {% step %}
 ### Choose a transport
 
-Point it at your deployment with `ALGENTA_BASE_URL` and `ALGENTA_API_KEY`. It runs the stdio transport by default. For HTTP/SSE clients, run it as a server:
+Point it at your deployment with `ALGENTA_BASE_URL` and `ALGENTA_API_KEY`. It runs the stdio transport by default. For Streamable HTTP clients, run it as a server:
 
 ```bash
 algenta-mcp --mode http --port 8001

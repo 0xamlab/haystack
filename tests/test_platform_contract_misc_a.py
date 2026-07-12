@@ -11,7 +11,9 @@ def test_manifest_declares_canonical_contract() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text())
     assert manifest["brand"] == "Algenta"
     assert manifest["api_base_url"] == "https://api.algenta.ai"
-    assert manifest["mcp_endpoint"] == "https://api.algenta.ai/mcp/sse"
+    assert manifest["mcp_endpoint"] == "https://api.algenta.ai/mcp"
+    assert manifest["mcp_transport"] == "streamable_http"
+    assert manifest["mcp_protocol_version"] == "2025-11-25"
     assert manifest["auth_scheme"] == "bearer_api_key"
     assert manifest["api_key_prefixes"] == {"live": "de_live_", "test": "de_test_"}
     assert manifest["compatibility"]["deprecation_window_days"] == 90
@@ -246,7 +248,7 @@ def test_openapi_uses_canonical_bearer_contract() -> None:
     assert schema["info"]["title"] == "Algenta API"
     assert "governed data discovery" in schema["info"]["description"]
     assert schema["servers"] == [{"url": "https://api.algenta.ai"}]
-    assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp/sse"
+    assert schema["x-canonical-mcp-endpoint"] == "https://api.algenta.ai/mcp"
     assert (
         schema["x-primary-data-query-contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
     )
@@ -641,7 +643,8 @@ def test_integration_docs_cover_primary_surfaces() -> None:
     assert "governed_filter_contract" in mcp_readme
     assert "GET  /mcp/tools" in mcp_readme
     assert "always available" in mcp_readme
-    assert "GET  /mcp/sse" in mcp_readme
+    assert "POST /mcp" in mcp_readme
+    assert "GET /mcp/sse" in mcp_readme
     assert "POST /mcp/messages" in mcp_readme
     assert "mcp_transport_unavailable" in mcp_readme
     assert "official image bundles the MCP transport dependencies" in mcp_readme

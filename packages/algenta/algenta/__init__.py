@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 _LAZY_EXPORTS = {
     "Runtime": ("algenta.runtime_facade", "Runtime"),
@@ -540,6 +540,9 @@ _LAZY_EXPORTS = {
     "CONTRACT_VERSION": ("algenta._contract", "CONTRACT_VERSION"),
     "BRAND": ("algenta._contract", "BRAND"),
     "MCP_ENDPOINT": ("algenta._contract", "MCP_ENDPOINT"),
+    "MCP_TRANSPORT": ("algenta._contract", "MCP_TRANSPORT"),
+    "MCP_PROTOCOL_VERSION": ("algenta._contract", "MCP_PROTOCOL_VERSION"),
+    "MCP_LEGACY_SSE_ENDPOINT": ("algenta._contract", "MCP_LEGACY_SSE_ENDPOINT"),
     "MCP_TOOLS_ENDPOINT": ("algenta._contract", "MCP_TOOLS_ENDPOINT"),
     "AUTH_SCHEME": ("algenta._contract", "AUTH_SCHEME"),
     "API_KEY_PREFIX_LIVE": ("algenta._contract", "API_KEY_PREFIX_LIVE"),

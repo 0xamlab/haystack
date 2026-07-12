@@ -8,7 +8,7 @@ from tests._test_credit_bucket_helpers import *  # noqa: F401,F403
 
 
 @pytest.mark.anyio
-async def test_credits_refresh_grants_batch_under_quota():
+async def test_credits_refresh_grants_batch_under_quota(monkeypatch):
     """Grants full batch when well under monthly limit."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
@@ -19,6 +19,7 @@ async def test_credits_refresh_grants_batch_under_quota():
         credits_used=500,
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     with (
         patch("apps.api_server.routers.credits._get_issued", return_value=0),
@@ -33,7 +34,7 @@ async def test_credits_refresh_grants_batch_under_quota():
 
 
 @pytest.mark.anyio
-async def test_credits_refresh_denies_when_quota_exhausted():
+async def test_credits_refresh_denies_when_quota_exhausted(monkeypatch):
     """Returns HTTP 429 when monthly quota is exhausted."""
     from fastapi import HTTPException
 
@@ -46,6 +47,7 @@ async def test_credits_refresh_denies_when_quota_exhausted():
         credits_used=0,
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     with patch("apps.api_server.routers.credits._get_issued", return_value=500_000):
         with pytest.raises(HTTPException) as exc_info:
@@ -56,7 +58,7 @@ async def test_credits_refresh_denies_when_quota_exhausted():
 
 
 @pytest.mark.anyio
-async def test_credits_refresh_partial_grant_near_limit():
+async def test_credits_refresh_partial_grant_near_limit(monkeypatch):
     """Grants only the remaining credits when close to the limit."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
@@ -67,6 +69,7 @@ async def test_credits_refresh_partial_grant_near_limit():
         credits_used=0,
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     # Only 3000 left in monthly budget
     with (
@@ -95,12 +98,13 @@ async def test_credits_refresh_unlimited_plan():
     response = await refresh_credits(request, ctx, mock_db)
 
     assert response.credits_granted == 100_000
+    assert response.credits_issued_this_month == 0  # not tracked for unlimited execution
     assert response.monthly_limit == 0  # 0 = unlimited
     assert response.monthly_remaining == 0  # meaningless for unlimited
 
 
 @pytest.mark.anyio
-async def test_credits_refresh_team_plan():
+async def test_credits_refresh_team_plan(monkeypatch):
     """TEAM plan gets 25k batch."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
@@ -111,6 +115,7 @@ async def test_credits_refresh_team_plan():
         credits_used=0,
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("team"))
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     with (
         patch("apps.api_server.routers.credits._get_issued", return_value=0),
@@ -124,7 +129,7 @@ async def test_credits_refresh_team_plan():
 
 
 @pytest.mark.anyio
-async def test_credits_refresh_increments_counter():
+async def test_credits_refresh_increments_counter(monkeypatch):
     """_increment_issued is called with the correct amount."""
     from apps.api_server.routers.credits import CreditRefreshRequest, refresh_credits
 
@@ -133,6 +138,7 @@ async def test_credits_refresh_increments_counter():
         device_id="abc123def456789", billing_period="2026-04", credits_used=0
     )
     mock_db = _mock_db_with_row(_mock_api_key_row("pro"))
+    monkeypatch.setattr("apps.api_server.services.quota_service._metering_disabled", lambda: False)
 
     increment_calls = []
 
@@ -167,5 +173,3 @@ async def test_credits_refresh_response_expiry_in_future():
     assert response.expires_at > time.time()
     assert response.refresh_after > time.time()
     assert response.refresh_after < response.expires_at
-
-

@@ -5,7 +5,7 @@ description: MCP reference for async simulation jobs and real-time triggers — 
 
 # Async jobs & triggers MCP tools
 
-These tools cover two related lanes of the Algenta MCP surface: **async jobs** for long-running Monte Carlo work that outlives a single request, and **triggers** that watch a data source and auto-run a simulation when a threshold is crossed. Every tool listed here maps one-to-one to an authenticated Algenta API endpoint, so an MCP client (Claude Desktop, Cursor, an HTTP/SSE agent) and a raw `curl` call reach the same behavior.
+These tools cover two related lanes of the Algenta MCP surface: **async jobs** for long-running Monte Carlo work that outlives a single request, and **triggers** that watch a data source and auto-run a simulation when a threshold is crossed. Every tool listed here maps one-to-one to an authenticated Algenta API endpoint, so an MCP client (Claude Desktop, Cursor, or a Streamable HTTP agent) and a raw `curl` call reach the same behavior.
 
 For installing and connecting the MCP server itself, see [MCP server](../sdk/mcp.md).
 

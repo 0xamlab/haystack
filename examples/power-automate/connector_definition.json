@@ -10,7 +10,7 @@
   "schemes": ["https"],
   "consumes": ["application/json"],
   "produces": ["application/json"],
-  "x-canonical-mcp-endpoint": "https://your-algenta-base-url.example/mcp/sse",
+  "x-canonical-mcp-endpoint": "https://your-algenta-base-url.example/mcp",
   "x-primary-data-query-contract": {
     "api": {
       "contract_endpoint": "/v1/meta/contract",

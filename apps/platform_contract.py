@@ -328,6 +328,9 @@ class PlatformContractResponse(_StrictContractModel):
     brand: str
     api_base_url: str
     mcp_endpoint: str
+    mcp_transport: str
+    mcp_protocol_version: str
+    mcp_legacy_sse_endpoint: str
     mcp_tools_endpoint: str
     auth_scheme: str
     api_key_prefixes: ApiKeyPrefixesResponse
@@ -413,6 +416,9 @@ class PlatformContract:
     brand: str
     api_base_url: str
     mcp_endpoint: str
+    mcp_transport: str
+    mcp_protocol_version: str
+    mcp_legacy_sse_endpoint: str
     mcp_tools_endpoint: str
     auth_scheme: str
     api_key_prefix_live: str
@@ -461,6 +467,9 @@ def load_platform_contract() -> PlatformContract:
         brand=manifest.brand,
         api_base_url=manifest.api_base_url,
         mcp_endpoint=manifest.mcp_endpoint,
+        mcp_transport=manifest.mcp_transport,
+        mcp_protocol_version=manifest.mcp_protocol_version,
+        mcp_legacy_sse_endpoint=manifest.mcp_legacy_sse_endpoint,
         mcp_tools_endpoint=manifest.mcp_tools_endpoint,
         auth_scheme=manifest.auth_scheme,
         api_key_prefix_live=manifest.api_key_prefixes.live,

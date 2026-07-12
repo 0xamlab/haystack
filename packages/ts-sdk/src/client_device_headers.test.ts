@@ -61,8 +61,8 @@ describe("resolveClientDeviceHeaders", () => {
     Object.defineProperty(process, "platform", { value: "linux" });
 
     try {
-      const first = resolveClientDeviceHeaders("algenta-ts/1.0.3");
-      const second = resolveClientDeviceHeaders("algenta-ts/1.0.3");
+      const first = resolveClientDeviceHeaders("algenta-ts/1.0.4");
+      const second = resolveClientDeviceHeaders("algenta-ts/1.0.4");
 
       expect(first[DEVICE_ID_HEADER]).toHaveLength(32);
       expect(second[DEVICE_ID_HEADER]).toHaveLength(32);
@@ -114,8 +114,8 @@ describe("resolveClientDeviceHeaders", () => {
     );
 
     try {
-      const first = resolveClientDeviceHeaders("algenta-ts/1.0.3");
-      const second = resolveClientDeviceHeaders("algenta-ts/1.0.3");
+      const first = resolveClientDeviceHeaders("algenta-ts/1.0.4");
+      const second = resolveClientDeviceHeaders("algenta-ts/1.0.4");
       const installIdFile = path.join(runtimeDir, "install_id");
 
       expect(fs.existsSync(installIdFile)).toBe(true);
@@ -168,7 +168,7 @@ describe("resolveClientDeviceHeaders", () => {
       }) as typeof process.getBuiltinModule,
     );
 
-    const headers = resolveClientDeviceHeaders("algenta-ts/1.0.3");
+    const headers = resolveClientDeviceHeaders("algenta-ts/1.0.4");
 
     expect(headers[DEVICE_ID_HEADER]).toBe("ts-device-explicit-0001");
     expect(headers[HOSTNAME_HASH_HEADER]).toBeDefined();

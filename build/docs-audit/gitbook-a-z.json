@@ -72,7 +72,7 @@
       {
         "bytes": 40,
         "language": "bash",
-        "line": 123,
+        "line": 122,
         "path": "api/overview.md",
         "sha256": "e0274807a6496d6aafda4012f5dade89f703d8ab77d894d83cf886935543fea0",
         "validation": "command_inventory"
@@ -80,7 +80,7 @@
       {
         "bytes": 97,
         "language": "bash",
-        "line": 133,
+        "line": 132,
         "path": "api/overview.md",
         "sha256": "fd1fcd387cad6491e39c3428ef408293b55b4368ab52d8f710f5085cd2ddb52d",
         "validation": "command_inventory"
@@ -88,7 +88,7 @@
       {
         "bytes": 100,
         "language": "bash",
-        "line": 144,
+        "line": 143,
         "path": "api/overview.md",
         "sha256": "04718e77ec3fca9b8db10609fe8e4a2bc42e6b5f32f9cb075dbd8377db7cdc4b",
         "validation": "command_inventory"
@@ -96,7 +96,7 @@
       {
         "bytes": 90,
         "language": "bash",
-        "line": 155,
+        "line": 154,
         "path": "api/overview.md",
         "sha256": "20de986c2c9120637472ae00af4b1b9059c91f3d2c09048436a729fe4b6d2486",
         "validation": "command_inventory"
@@ -104,7 +104,7 @@
       {
         "bytes": 360,
         "language": "python",
-        "line": 191,
+        "line": 190,
         "path": "api/overview.md",
         "sha256": "69c13f8f8829d2dca3bcc669a7721009ab014bedf8546203b4c334d20151fa98",
         "validation": "parsed"
@@ -112,7 +112,7 @@
       {
         "bytes": 464,
         "language": "bash",
-        "line": 209,
+        "line": 208,
         "path": "api/overview.md",
         "sha256": "53b3bb2310cbdab4fc8416bf95b8f3cb326619b03adbf44466cf7bc5040f0bd3",
         "validation": "command_inventory"
@@ -120,7 +120,7 @@
       {
         "bytes": 226,
         "language": "json",
-        "line": 236,
+        "line": 235,
         "path": "api/overview.md",
         "sha256": "d74d17d026263a7ee1a9a14d46521ce666940f67e5492ed2b2c65375b4ced236",
         "validation": "parsed"
@@ -128,7 +128,7 @@
       {
         "bytes": 304,
         "language": "json",
-        "line": 260,
+        "line": 259,
         "path": "api/overview.md",
         "sha256": "7e26e5f27fd8920f26d31723ce230747e5036077ff51e06bd1886da70dcd3205",
         "validation": "parsed"
@@ -136,7 +136,7 @@
       {
         "bytes": 151,
         "language": "python",
-        "line": 297,
+        "line": 295,
         "path": "api/overview.md",
         "sha256": "025590cd3f74e68db2c28406c400b1bdd8b844eceb79f17a309305e7179cb2a0",
         "validation": "parsed"
@@ -144,7 +144,7 @@
       {
         "bytes": 187,
         "language": "typescript",
-        "line": 306,
+        "line": 304,
         "path": "api/overview.md",
         "sha256": "ed34956af153a03cbe365a2c428ebbba54240206ff7a1429cfa123585a5e3ca2",
         "validation": "static_inventory"
@@ -152,7 +152,7 @@
       {
         "bytes": 89,
         "language": "bash",
-        "line": 315,
+        "line": 313,
         "path": "api/overview.md",
         "sha256": "4803a4f2f78a3250f437cb75e5926abdf69a26cd9e5bedb0a8f867324ee51344",
         "validation": "command_inventory"
@@ -320,7 +320,7 @@
       {
         "bytes": 105,
         "language": "bash",
-        "line": 191,
+        "line": 190,
         "path": "authentication.md",
         "sha256": "2652a46ba9b47e979ff7e522df49bdbba165bc29ab7f97b6a1ff187538127133",
         "validation": "command_inventory"
@@ -328,7 +328,7 @@
       {
         "bytes": 22,
         "language": "bash",
-        "line": 198,
+        "line": 197,
         "path": "authentication.md",
         "sha256": "5a13a075253c497f7a77719e8be228796ee8eb8f8d9679ecbdd2bbf491f4b554",
         "validation": "command_inventory"
@@ -336,7 +336,7 @@
       {
         "bytes": 46,
         "language": "bash",
-        "line": 216,
+        "line": 215,
         "path": "authentication.md",
         "sha256": "c50156ad71c847e58b1172b95bb6f44d8a05909849216b119e571a9f15396679",
         "validation": "command_inventory"
@@ -344,7 +344,7 @@
       {
         "bytes": 26,
         "language": "bash",
-        "line": 235,
+        "line": 234,
         "path": "authentication.md",
         "sha256": "517e1c65c8ed20f093041bf441d484188d6735baa9c3b5a7786c71903b1df551",
         "validation": "command_inventory"
@@ -352,7 +352,7 @@
       {
         "bytes": 140,
         "language": "bash",
-        "line": 249,
+        "line": 248,
         "path": "authentication.md",
         "sha256": "d6a0d1d1eebf723ed78c78d8318923eddee2c470a1f12b286e8a5d36d849dd0b",
         "validation": "command_inventory"
@@ -360,7 +360,7 @@
       {
         "bytes": 204,
         "language": "bash",
-        "line": 259,
+        "line": 258,
         "path": "authentication.md",
         "sha256": "8f2c9eae0d924715e003f78219c8f9fa55766d0f7267bc58b5269f8f62bb4ca8",
         "validation": "command_inventory"
@@ -368,7 +368,7 @@
       {
         "bytes": 76,
         "language": "bash",
-        "line": 267,
+        "line": 266,
         "path": "authentication.md",
         "sha256": "d99bca394b708267004dbab27438a6e6f99d235ccebf1973140cb31cf8276afa",
         "validation": "command_inventory"
@@ -376,7 +376,7 @@
       {
         "bytes": 92,
         "language": "bash",
-        "line": 275,
+        "line": 274,
         "path": "authentication.md",
         "sha256": "c3749ec5db4e295c2e93c8eb42613fda4f5a73bc4842a9243ad8a45dd2e380b9",
         "validation": "command_inventory"
@@ -384,7 +384,7 @@
       {
         "bytes": 277,
         "language": "bash",
-        "line": 282,
+        "line": 281,
         "path": "authentication.md",
         "sha256": "eda4242c7721fb3949acc19c5a3b1413096f917457bee93a02b94e1c83adbc7a",
         "validation": "command_inventory"
@@ -392,7 +392,7 @@
       {
         "bytes": 365,
         "language": "bash",
-        "line": 324,
+        "line": 323,
         "path": "authentication.md",
         "sha256": "782f8f67205cae08b6d81271561b9162931e363a2331808159f269eb0652b26f",
         "validation": "command_inventory"
@@ -400,7 +400,7 @@
       {
         "bytes": 349,
         "language": "bash",
-        "line": 340,
+        "line": 339,
         "path": "authentication.md",
         "sha256": "2e8aa4ca5966da13ff0ab83d98ad42debd64fcb2b7c870c09563c7cd7b2cb8a8",
         "validation": "command_inventory"
@@ -408,7 +408,7 @@
       {
         "bytes": 132,
         "language": "bash",
-        "line": 367,
+        "line": 365,
         "path": "authentication.md",
         "sha256": "e76b562f2c885d65dd9b9e89facd8ab7a1163c6be176327dacac9d7661294591",
         "validation": "command_inventory"
@@ -416,7 +416,7 @@
       {
         "bytes": 307,
         "language": "bash",
-        "line": 374,
+        "line": 372,
         "path": "authentication.md",
         "sha256": "05f1bc12833e261614c562657f7ba9f3d4a36bfb82da1696da60863ca62f276b",
         "validation": "command_inventory"
@@ -424,7 +424,7 @@
       {
         "bytes": 195,
         "language": "bash",
-        "line": 398,
+        "line": 396,
         "path": "authentication.md",
         "sha256": "f1d1ea3e4fc1d5773f323e549517ddd89bba780c54119cf67f58e220c6454bc1",
         "validation": "command_inventory"
@@ -432,7 +432,7 @@
       {
         "bytes": 159,
         "language": "bash",
-        "line": 414,
+        "line": 412,
         "path": "authentication.md",
         "sha256": "e5b15f9d85c89b0a3f654e5f0eadbb43d0b95deca9282845b03ab84ce693b515",
         "validation": "command_inventory"
@@ -440,7 +440,7 @@
       {
         "bytes": 74,
         "language": "json",
-        "line": 422,
+        "line": 420,
         "path": "authentication.md",
         "sha256": "f9110d2315e405905a614a5feb7634c0fd0aed6d3e91d892e25c1251b8571596",
         "validation": "parsed"
@@ -448,7 +448,7 @@
       {
         "bytes": 579,
         "language": "bash",
-        "line": 431,
+        "line": 429,
         "path": "authentication.md",
         "sha256": "315c3650af8ed8e7fc9a5d69066ba6a14a1aa8becc88b9f6c283067163607ad1",
         "validation": "command_inventory"
@@ -456,7 +456,7 @@
       {
         "bytes": 227,
         "language": "bash",
-        "line": 465,
+        "line": 462,
         "path": "authentication.md",
         "sha256": "81b34b0f839499d13af5b7449b71eafb3ea7d39a4f21b7e50b6be8cbdc3bc992",
         "validation": "command_inventory"
@@ -464,7 +464,7 @@
       {
         "bytes": 92,
         "language": "bash",
-        "line": 486,
+        "line": 483,
         "path": "authentication.md",
         "sha256": "ca69889efdfcdcf7ec5ac42bd4452be30cab13e40817f2c12585e8d404e9063e",
         "validation": "command_inventory"
@@ -472,7 +472,7 @@
       {
         "bytes": 80,
         "language": "json",
-        "line": 493,
+        "line": 490,
         "path": "authentication.md",
         "sha256": "2a0a33e0fe32426e687a15044f0ffb5e4492dacd70c1361e8d962f2b421b06d3",
         "validation": "parsed"
@@ -480,7 +480,7 @@
       {
         "bytes": 112,
         "language": "bash",
-        "line": 501,
+        "line": 498,
         "path": "authentication.md",
         "sha256": "c791d18dda90f6f0aaf7b200a4f8174530c0f638e14b27b2ab8f853342ea1d7d",
         "validation": "command_inventory"
@@ -4416,7 +4416,7 @@
       {
         "bytes": 123,
         "language": "bash",
-        "line": 143,
+        "line": 142,
         "path": "guides/triggers.md",
         "sha256": "b6d90104a4467642ada47baa0e20df98cb2955f5358a18538de944c807f42a7c",
         "validation": "command_inventory"
@@ -4424,7 +4424,7 @@
       {
         "bytes": 186,
         "language": "bash",
-        "line": 158,
+        "line": 157,
         "path": "guides/triggers.md",
         "sha256": "f2cea0f54d47cb0f1200c87e4cb9d0f9b093381cd92ea5bf4ee80fc44459e028",
         "validation": "command_inventory"
@@ -4432,7 +4432,7 @@
       {
         "bytes": 351,
         "language": "python",
-        "line": 167,
+        "line": 166,
         "path": "guides/triggers.md",
         "sha256": "0129f6778d59276eed0a58362096c6306a53db09ba26fa9755c3e937e5fbf4ba",
         "validation": "parsed"
@@ -4440,7 +4440,7 @@
       {
         "bytes": 428,
         "language": "ts",
-        "line": 184,
+        "line": 183,
         "path": "guides/triggers.md",
         "sha256": "3e0d5e3bfd9774c8c14ccbe2181195cbfab8f4ae9b392b7b9e02738f94614688",
         "validation": "static_inventory"
@@ -4448,7 +4448,7 @@
       {
         "bytes": 132,
         "language": "bash",
-        "line": 217,
+        "line": 216,
         "path": "guides/triggers.md",
         "sha256": "0e479d5961b18e82d4cd9cb726ee82fda381fc047d66445cc049f94bf33900f3",
         "validation": "command_inventory"
@@ -4456,7 +4456,7 @@
       {
         "bytes": 133,
         "language": "bash",
-        "line": 224,
+        "line": 223,
         "path": "guides/triggers.md",
         "sha256": "88cd144dbdf61d5c8927471d892443af324f5aa26f0437209233e10c0f32b3aa",
         "validation": "command_inventory"
@@ -4464,7 +4464,7 @@
       {
         "bytes": 115,
         "language": "bash",
-        "line": 233,
+        "line": 232,
         "path": "guides/triggers.md",
         "sha256": "ec79e4b86d2ed696dfa933f97f9beee995652dcdc8288539520122db6359cb9d",
         "validation": "command_inventory"
@@ -4664,7 +4664,7 @@
       {
         "bytes": 188,
         "language": "bash",
-        "line": 135,
+        "line": 134,
         "path": "install.md",
         "sha256": "4f3bdffc1716117378880d7d154a953ca06f737da8fba08170659d629ea6967a",
         "validation": "command_inventory"
@@ -4672,7 +4672,7 @@
       {
         "bytes": 110,
         "language": "bash",
-        "line": 152,
+        "line": 151,
         "path": "install.md",
         "sha256": "3c39770a81c3bd674cbb7e15fa814ee217ccd8c10423875070c03d720ae4b2cb",
         "validation": "command_inventory"
@@ -4680,7 +4680,7 @@
       {
         "bytes": 129,
         "language": "bash",
-        "line": 167,
+        "line": 166,
         "path": "install.md",
         "sha256": "c60cf546a8ae74b8a9d209fd1fe7b2da6df1231e87270ea828c31c57638c2dc6",
         "validation": "command_inventory"
@@ -4688,7 +4688,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 185,
+        "line": 184,
         "path": "install.md",
         "sha256": "f171d23473b82e0eb1bc67d81d79f64863079a3d2095c451543440e9ba037670",
         "validation": "command_inventory"
@@ -4696,7 +4696,7 @@
       {
         "bytes": 588,
         "language": "python",
-        "line": 193,
+        "line": 192,
         "path": "install.md",
         "sha256": "dca92c89dbe63d009bc455b1427c0177729ae2712e4d034cbfa49961dfc1be20",
         "validation": "parsed"
@@ -4704,7 +4704,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 226,
+        "line": 225,
         "path": "install.md",
         "sha256": "cdfd8d1968b3b085a9de6ebafb891acad93ea0650aa23c7c9440607dd3890866",
         "validation": "command_inventory"
@@ -4712,7 +4712,7 @@
       {
         "bytes": 600,
         "language": "typescript",
-        "line": 236,
+        "line": 235,
         "path": "install.md",
         "sha256": "cb65c059af8a21061008acf0aec2022b5200505afe2c3db9a9af5e33487cf681",
         "validation": "static_inventory"
@@ -4720,7 +4720,7 @@
       {
         "bytes": 24,
         "language": "bash",
-        "line": 275,
+        "line": 274,
         "path": "install.md",
         "sha256": "07b5c9e3ac9fce5a5eaeb1e67f1cc29adddff5ab66dfc70c55da9af3ea5a2d1b",
         "validation": "command_inventory"
@@ -4728,7 +4728,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 280,
+        "line": 279,
         "path": "install.md",
         "sha256": "63bfd02bc040d323ebc282cf8aab0b27ae45d83d08e39c9d7125cd9bfa34e661",
         "validation": "command_inventory"
@@ -4736,7 +4736,7 @@
       {
         "bytes": 35,
         "language": "bash",
-        "line": 291,
+        "line": 289,
         "path": "install.md",
         "sha256": "8882c8fb8908d387e338622f3242e9a8119b0c0f8cd270e051a7734c9c399b13",
         "validation": "command_inventory"
@@ -4744,7 +4744,7 @@
       {
         "bytes": 226,
         "language": "json",
-        "line": 301,
+        "line": 299,
         "path": "install.md",
         "sha256": "177b471f60091df57103bdb3a1d196299bc34247fcdc9b54cbb725c732fa7ae1",
         "validation": "parsed"
@@ -4814,17 +4814,17 @@
         "validation": "parsed"
       },
       {
-        "bytes": 44,
+        "bytes": 21,
         "language": "http",
-        "line": 72,
+        "line": 79,
         "path": "integrations/microsoft/copilot-teams.md",
-        "sha256": "4a400d698f8ea3e38e30c30ec92e2118d3afe1be7a9fd103b9b5bfbd497fb0bf",
+        "sha256": "76fff152c4eb4cb1232464fa8db8424cef7c0cfd58d5918f1b258a2e2d5382e5",
         "validation": "static_inventory"
       },
       {
         "bytes": 387,
         "language": "bash",
-        "line": 97,
+        "line": 101,
         "path": "integrations/microsoft/entra-sso.md",
         "sha256": "29cd29b0370e981366e71ffff0c022c5e75998810884d249c736f3d687eaf924",
         "validation": "command_inventory"
@@ -5214,17 +5214,17 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 366,
+        "bytes": 440,
         "language": "json",
         "line": 78,
         "path": "mcp-tools/account-and-meta.md",
-        "sha256": "3bf060386fe0d9579a81fac0fa38a267f18124419fe8c955a4879fe61f97387a",
+        "sha256": "9e1cf18a33856435f8eb28b0b370de4333acfbea3b5ced832bed6efe2b685ecc",
         "validation": "parsed"
       },
       {
         "bytes": 93,
         "language": "bash",
-        "line": 94,
+        "line": 96,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "d931258aa512c25e920034b0c0e9421be66a1857e686062e6e03198319fc33d5",
         "validation": "command_inventory"
@@ -5232,7 +5232,7 @@
       {
         "bytes": 156,
         "language": "json",
-        "line": 107,
+        "line": 109,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "897af63116043facfdc5526b71ce8e85fa821854dc95143f00dd071e44172788",
         "validation": "parsed"
@@ -5240,7 +5240,7 @@
       {
         "bytes": 168,
         "language": "bash",
-        "line": 120,
+        "line": 122,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "18b8dafc950c57b6b138bb53bf00d9cb01e31060ded758d60ce80a4bedd000fe",
         "validation": "command_inventory"
@@ -5248,7 +5248,7 @@
       {
         "bytes": 45,
         "language": "json",
-        "line": 133,
+        "line": 135,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "a35855481ce67526bd5b85f58d43aef83f133c48c9fd5d1fe13d157f8024bd9c",
         "validation": "parsed"
@@ -5256,7 +5256,7 @@
       {
         "bytes": 88,
         "language": "json",
-        "line": 137,
+        "line": 139,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "47ecb024e2ac7ae801565ba2e06d505f2d4424e7c4d2531ac80ef6abb223023c",
         "validation": "parsed"
@@ -5264,7 +5264,7 @@
       {
         "bytes": 40,
         "language": "json",
-        "line": 143,
+        "line": 145,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "7d4a1dfe066205371463a58a54faf1ea9204350b2f0887fabcfee002a8ea2601",
         "validation": "parsed"
@@ -5272,7 +5272,7 @@
       {
         "bytes": 291,
         "language": "bash",
-        "line": 149,
+        "line": 151,
         "path": "mcp-tools/account-and-meta.md",
         "sha256": "73fc2fbecf518468750b51b438fce5cf9fc8078d0e485a4f3f953d824b3892cf",
         "validation": "command_inventory"
@@ -6328,7 +6328,7 @@
       {
         "bytes": 95,
         "language": "bash",
-        "line": 141,
+        "line": 140,
         "path": "quickstart.md",
         "sha256": "892bd5b245bcd9f4b782db31c2d1db75a302c0fb7a08c1da059bd6d922de6ea4",
         "validation": "command_inventory"
@@ -6336,7 +6336,7 @@
       {
         "bytes": 23,
         "language": "bash",
-        "line": 159,
+        "line": 158,
         "path": "quickstart.md",
         "sha256": "f171d23473b82e0eb1bc67d81d79f64863079a3d2095c451543440e9ba037670",
         "validation": "command_inventory"
@@ -6344,7 +6344,7 @@
       {
         "bytes": 437,
         "language": "python",
-        "line": 163,
+        "line": 162,
         "path": "quickstart.md",
         "sha256": "8e655f2199fc00860e0e6c806af77c102db34fab98525fa746215e8fd74e7c33",
         "validation": "parsed"
@@ -6352,7 +6352,7 @@
       {
         "bytes": 278,
         "language": "python",
-        "line": 191,
+        "line": 190,
         "path": "quickstart.md",
         "sha256": "5944cc81958dd72c7c6aa915d9fe11f10182ee755050c7c3dc7724cd20e40fed",
         "validation": "parsed"
@@ -6368,7 +6368,7 @@
       {
         "bytes": 203,
         "language": "json",
-        "line": 32,
+        "line": 37,
         "path": "sdk/mcp-registry.md",
         "sha256": "ddaa0cc15a9010be9ddc0712cbf6a4a4aca60dae1e786f43d33881198a62a078",
         "validation": "parsed"
@@ -6376,7 +6376,7 @@
       {
         "bytes": 203,
         "language": "json",
-        "line": 52,
+        "line": 57,
         "path": "sdk/mcp-registry.md",
         "sha256": "ddaa0cc15a9010be9ddc0712cbf6a4a4aca60dae1e786f43d33881198a62a078",
         "validation": "parsed"
@@ -6384,7 +6384,7 @@
       {
         "bytes": 128,
         "language": "bash",
-        "line": 72,
+        "line": 77,
         "path": "sdk/mcp-registry.md",
         "sha256": "db7e433df834e48693f96cf348555ff293ff22ef5d5a478a6f3857c05ca3f814",
         "validation": "command_inventory"
@@ -6392,7 +6392,7 @@
       {
         "bytes": 15,
         "language": "bash",
-        "line": 81,
+        "line": 86,
         "path": "sdk/mcp-registry.md",
         "sha256": "421832abcfaa3ad3e196deb030c3df44475ac0a76bda7b5078e8f12d5be5e05b",
         "validation": "command_inventory"
@@ -6400,15 +6400,23 @@
       {
         "bytes": 137,
         "language": "toml",
-        "line": 89,
+        "line": 94,
         "path": "sdk/mcp-registry.md",
         "sha256": "539a8d527539a3f85a10d6b3b253193084236160429d078bbb71ba4e6c24082e",
         "validation": "parsed"
       },
       {
+        "bytes": 97,
+        "language": "toml",
+        "line": 104,
+        "path": "sdk/mcp-registry.md",
+        "sha256": "d9bd5d5304ec176dd9ec1f3daa8d612dfc153b076f96941e2ac3066709be5168",
+        "validation": "parsed"
+      },
+      {
         "bytes": 52,
         "language": "bash",
-        "line": 109,
+        "line": 122,
         "path": "sdk/mcp-registry.md",
         "sha256": "6cc04909f8e7037c31205fbb06473f086c61c3db1cd6a466977fcb5f2ae8aa78",
         "validation": "command_inventory"
@@ -6432,7 +6440,7 @@
       {
         "bytes": 41,
         "language": "bash",
-        "line": 56,
+        "line": 57,
         "path": "sdk/mcp.md",
         "sha256": "f4c43817cf2b955305f612ac350cd7f44d2e824604cddcba0cc406bd73bd80e0",
         "validation": "command_inventory"
@@ -6440,7 +6448,7 @@
       {
         "bytes": 78,
         "language": "bash",
-        "line": 63,
+        "line": 64,
         "path": "sdk/mcp.md",
         "sha256": "11333062d9a9cefc1e2d173c97dde50a927bd369cf1c875fc2591860e4c8cd06",
         "validation": "command_inventory"
@@ -6448,7 +6456,7 @@
       {
         "bytes": 86,
         "language": "bash",
-        "line": 75,
+        "line": 77,
         "path": "sdk/mcp.md",
         "sha256": "87785fc45d2fe9fe87262f33ebe1ce9653f56e1dba1949142b23ddffcdd03d77",
         "validation": "command_inventory"
@@ -6456,7 +6464,7 @@
       {
         "bytes": 52,
         "language": "bash",
-        "line": 82,
+        "line": 84,
         "path": "sdk/mcp.md",
         "sha256": "f52a775a22f6bb783ef0efa59ffc2758f944e5daf61871ebf48debfe6235220a",
         "validation": "command_inventory"
@@ -6464,7 +6472,7 @@
       {
         "bytes": 226,
         "language": "json",
-        "line": 95,
+        "line": 96,
         "path": "sdk/mcp.md",
         "sha256": "177b471f60091df57103bdb3a1d196299bc34247fcdc9b54cbb725c732fa7ae1",
         "validation": "parsed"
@@ -6472,7 +6480,7 @@
       {
         "bytes": 265,
         "language": "json",
-        "line": 119,
+        "line": 120,
         "path": "sdk/mcp.md",
         "sha256": "3906158006399606fadc0ed0cceae66dacab202494692ab7aea6922f084416ba",
         "validation": "parsed"
@@ -6488,7 +6496,7 @@
       {
         "bytes": 35,
         "language": "bash",
-        "line": 178,
+        "line": 177,
         "path": "sdk/mcp.md",
         "sha256": "8882c8fb8908d387e338622f3242e9a8119b0c0f8cd270e051a7734c9c399b13",
         "validation": "command_inventory"
@@ -6496,23 +6504,23 @@
       {
         "bytes": 62,
         "language": "bash",
-        "line": 190,
+        "line": 191,
         "path": "sdk/mcp.md",
         "sha256": "02cd6001cc4cf0be45d6bfd2a796303a9d15dac4a506c092926ac55c919cce69",
         "validation": "command_inventory"
       },
       {
-        "bytes": 231,
+        "bytes": 320,
         "language": "python",
-        "line": 209,
+        "line": 212,
         "path": "sdk/mcp.md",
-        "sha256": "5170de17c34dd106ea16ea77f09a20ce81f26b19d2574da93d1a4ff2347cdcef",
+        "sha256": "31e0547945c56ff046850acc954380609f5fe779775ac30bb9967b904f834a7f",
         "validation": "parsed"
       },
       {
         "bytes": 140,
         "language": "bash",
-        "line": 361,
+        "line": 367,
         "path": "sdk/mcp.md",
         "sha256": "44b55a59d82ec735c3e45fa6b1084887cd8ff268ab043ded275cd26211b7544a",
         "validation": "command_inventory"
@@ -6520,7 +6528,7 @@
       {
         "bytes": 200,
         "language": "bash",
-        "line": 370,
+        "line": 376,
         "path": "sdk/mcp.md",
         "sha256": "523795715ed0ab3904e9e4a99ba30832657c015cd5824a9fe3efebf691d74980",
         "validation": "command_inventory"
@@ -6528,7 +6536,7 @@
       {
         "bytes": 378,
         "language": "bash",
-        "line": 381,
+        "line": 387,
         "path": "sdk/mcp.md",
         "sha256": "ab5037b44ab5e16c665cd449230f5b43d42c5e00ef740b5ceff29f96a1ee84d9",
         "validation": "command_inventory"
@@ -6536,7 +6544,7 @@
       {
         "bytes": 304,
         "language": "python",
-        "line": 401,
+        "line": 407,
         "path": "sdk/mcp.md",
         "sha256": "23f1eee077fd177f01202ddc39a34122acec6c42135b31dbaa120f70b4fd7c28",
         "validation": "parsed"
@@ -6802,13 +6810,13 @@
         "language": "python",
         "line": 86,
         "path": "sdk/python.md",
-        "sha256": "de4bf4820cb02615bbdea28d94e9ab53a338ab707a538beff736e07127159074",
+        "sha256": "93f313144c31e23c4ba201226f246952b898db8ed8af4770a5adf0ac797ea249",
         "validation": "parsed"
       },
       {
         "bytes": 125,
         "language": "python",
-        "line": 104,
+        "line": 103,
         "path": "sdk/python.md",
         "sha256": "8016ad69e013d926b1f84f1afd398f635d8b64b1ac67efaef36b4c78a71396ba",
         "validation": "parsed"
@@ -6816,7 +6824,7 @@
       {
         "bytes": 114,
         "language": "python",
-        "line": 125,
+        "line": 124,
         "path": "sdk/python.md",
         "sha256": "45153c5ed788e4fa392f09d2f9255eecfb32c463e6fa018d1b067ca0f86ab809",
         "validation": "parsed"
@@ -6824,7 +6832,7 @@
       {
         "bytes": 65,
         "language": "python",
-        "line": 134,
+        "line": 133,
         "path": "sdk/python.md",
         "sha256": "c589831bb89830fd91e7d03ef6f077ca2af68c6be6c9306c4747df2d37758649",
         "validation": "parsed"
@@ -6832,7 +6840,7 @@
       {
         "bytes": 228,
         "language": "python",
-        "line": 149,
+        "line": 148,
         "path": "sdk/python.md",
         "sha256": "afd44637052982a65fc37efd7a3d39cc62c2b5177c349c22f3a0feeafff86d5d",
         "validation": "parsed"
@@ -6840,7 +6848,7 @@
       {
         "bytes": 248,
         "language": "bash",
-        "line": 163,
+        "line": 162,
         "path": "sdk/python.md",
         "sha256": "64e01a1a32ce7f0bd5d6b869027d9419a4229b27df3f3553f9e220ffe7dd2515",
         "validation": "command_inventory"
@@ -6848,7 +6856,7 @@
       {
         "bytes": 275,
         "language": "python",
-        "line": 180,
+        "line": 179,
         "path": "sdk/python.md",
         "sha256": "118d4f99c8d4dd760a0f7e9f410546a72de386c8202dedd3d06a6c666c687541",
         "validation": "parsed"
@@ -6856,7 +6864,7 @@
       {
         "bytes": 276,
         "language": "python",
-        "line": 195,
+        "line": 194,
         "path": "sdk/python.md",
         "sha256": "bb541af4f2fa5d20dda69f829dda9b812088be8046b5cea14f4cde7c040f34af",
         "validation": "parsed"
@@ -6864,7 +6872,7 @@
       {
         "bytes": 500,
         "language": "python",
-        "line": 213,
+        "line": 212,
         "path": "sdk/python.md",
         "sha256": "3dd29d02c7485fe693a1164cd37401c79c21e88499b35fe8c82781e24cd91840",
         "validation": "parsed"
@@ -6872,7 +6880,7 @@
       {
         "bytes": 328,
         "language": "bash",
-        "line": 235,
+        "line": 234,
         "path": "sdk/python.md",
         "sha256": "1f956fab700fb075caee01b2c1e80ecef12e9f221babd526f9c99c05e375fd8c",
         "validation": "command_inventory"
@@ -6880,7 +6888,7 @@
       {
         "bytes": 646,
         "language": "python",
-        "line": 253,
+        "line": 252,
         "path": "sdk/python.md",
         "sha256": "0444188005b5b555d4e43a2f94dc45335d7859fa797ecea8a0f330b5eb9133f0",
         "validation": "parsed"
@@ -6888,7 +6896,7 @@
       {
         "bytes": 227,
         "language": "python",
-        "line": 281,
+        "line": 280,
         "path": "sdk/python.md",
         "sha256": "9c9065912515dbd5c8f7fc09dae96591092e26c503c8cb7709eb95db5597c144",
         "validation": "parsed"
@@ -6896,7 +6904,7 @@
       {
         "bytes": 656,
         "language": "python",
-        "line": 290,
+        "line": 289,
         "path": "sdk/python.md",
         "sha256": "a1d961380b403b9664197afc1ee125e1532afc4b1bb7343f9405c56d2f1bf48d",
         "validation": "parsed"
@@ -6904,7 +6912,7 @@
       {
         "bytes": 450,
         "language": "python",
-        "line": 325,
+        "line": 323,
         "path": "sdk/python.md",
         "sha256": "7e6c102b43af5dfb82d3f05361644b937ba8efe7bd211f7ff9806408643392e3",
         "validation": "parsed"
@@ -6912,7 +6920,7 @@
       {
         "bytes": 607,
         "language": "python",
-        "line": 351,
+        "line": 349,
         "path": "sdk/python.md",
         "sha256": "71d8d75406eb82e5cc82f369c7646964d1234fd9e39d01cf2bc6d6e57d4c3c47",
         "validation": "parsed"
@@ -6920,7 +6928,7 @@
       {
         "bytes": 567,
         "language": "python",
-        "line": 380,
+        "line": 378,
         "path": "sdk/python.md",
         "sha256": "7e3ea8725bbdb3502714e3d30e4ff9f82e141369dca231f65d7d20fdce30248c",
         "validation": "parsed"
@@ -6928,7 +6936,7 @@
       {
         "bytes": 378,
         "language": "python",
-        "line": 401,
+        "line": 399,
         "path": "sdk/python.md",
         "sha256": "bf9c7912bba080ac59b9d992770f38ecba7bcb04180130d4af20f2f351fa3e90",
         "validation": "parsed"
@@ -7512,7 +7520,7 @@
       {
         "bytes": 440,
         "language": "ts",
-        "line": 213,
+        "line": 212,
         "path": "sdk/typescript.md",
         "sha256": "816af9e0269b2d9cc115bfa764a0966893e35c9ed4ab856c59ef2baafe50ee1c",
         "validation": "static_inventory"
@@ -7520,7 +7528,7 @@
       {
         "bytes": 301,
         "language": "bash",
-        "line": 232,
+        "line": 231,
         "path": "sdk/typescript.md",
         "sha256": "7b7bad9a1f05bfa8dd35419a61e69b485c270459df3fda90c46fa8b842dc9042",
         "validation": "command_inventory"
@@ -7528,7 +7536,7 @@
       {
         "bytes": 431,
         "language": "ts",
-        "line": 255,
+        "line": 254,
         "path": "sdk/typescript.md",
         "sha256": "ab0a7cb0e4fa0eb38366c12715bbb8948fb2e0762edd4670e86b7b0a34d203b4",
         "validation": "static_inventory"
@@ -7536,7 +7544,7 @@
       {
         "bytes": 299,
         "language": "ts",
-        "line": 283,
+        "line": 282,
         "path": "sdk/typescript.md",
         "sha256": "cb63a23b9243be74aa410d71e46725e8774f67630979ef5bc7f5d2ed6a659201",
         "validation": "static_inventory"
@@ -7544,7 +7552,7 @@
       {
         "bytes": 38,
         "language": "ts",
-        "line": 299,
+        "line": 297,
         "path": "sdk/typescript.md",
         "sha256": "e5634826d6f265307a3f9acd0e4177044e18a1716f75dfc127591404b6f62137",
         "validation": "static_inventory"
@@ -7552,7 +7560,7 @@
       {
         "bytes": 352,
         "language": "ts",
-        "line": 309,
+        "line": 307,
         "path": "sdk/typescript.md",
         "sha256": "0857c64dd7a60176f513f79f37da3cf66c80c2555fff6e1fdc0afb4b9ea20917",
         "validation": "static_inventory"
@@ -7560,7 +7568,7 @@
       {
         "bytes": 388,
         "language": "ts",
-        "line": 332,
+        "line": 330,
         "path": "sdk/typescript.md",
         "sha256": "7d5b6bdf12a7f283d0d31644314df1ea63fb4e5b48f0099653aff7141b401b48",
         "validation": "static_inventory"
@@ -7568,7 +7576,7 @@
       {
         "bytes": 150,
         "language": "ts",
-        "line": 367,
+        "line": 365,
         "path": "sdk/typescript.md",
         "sha256": "2f58f7c1578af66cae4284fbb0b7a0df1d403b98733146a732c4d504d4a23f58",
         "validation": "static_inventory"
@@ -7576,7 +7584,7 @@
       {
         "bytes": 603,
         "language": "ts",
-        "line": 383,
+        "line": 380,
         "path": "sdk/typescript.md",
         "sha256": "289535a813da85d4bcdd783406f09525b6aa2c34e46f216a09c2271e80eb9046",
         "validation": "static_inventory"
@@ -7584,7 +7592,7 @@
       {
         "bytes": 644,
         "language": "ts",
-        "line": 433,
+        "line": 430,
         "path": "sdk/typescript.md",
         "sha256": "b93f604b85251f56ee78e19d28cac4e2f46181bf9a89fcc58172e8700c920725",
         "validation": "static_inventory"
@@ -7592,7 +7600,7 @@
       {
         "bytes": 392,
         "language": "ts",
-        "line": 457,
+        "line": 454,
         "path": "sdk/typescript.md",
         "sha256": "9bddd86ad5be73d2d7812c812fed7b8609a50cf1809e4c4382047eee690837f8",
         "validation": "static_inventory"
@@ -7600,7 +7608,7 @@
       {
         "bytes": 633,
         "language": "ts",
-        "line": 487,
+        "line": 484,
         "path": "sdk/typescript.md",
         "sha256": "2dcf802c72a7694219fd66cd73d14858b6a41cd5bdeeb4fed5f93e061eedcb35",
         "validation": "static_inventory"
@@ -7608,7 +7616,7 @@
       {
         "bytes": 282,
         "language": "ts",
-        "line": 514,
+        "line": 511,
         "path": "sdk/typescript.md",
         "sha256": "122d358e43e6560a3bcf78b3777e1c29f478fabd717fa0750040a33de348557c",
         "validation": "static_inventory"
@@ -7616,7 +7624,7 @@
       {
         "bytes": 1443,
         "language": "ts",
-        "line": 538,
+        "line": 535,
         "path": "sdk/typescript.md",
         "sha256": "a11dc6a3255f7c29a96a03046a0b5f89e75af862dc1218b3e63b366c30c9e36a",
         "validation": "static_inventory"
@@ -7640,7 +7648,7 @@
       {
         "bytes": 170,
         "language": "bash",
-        "line": 81,
+        "line": 80,
         "path": "self-hosting.md",
         "sha256": "49c272b7d30328c104b102bb0ce6bfb0a9f918b6dbd57dc159cd5283c4cf0f0a",
         "validation": "command_inventory"
@@ -7648,7 +7656,7 @@
       {
         "bytes": 78,
         "language": "bash",
-        "line": 140,
+        "line": 139,
         "path": "self-hosting.md",
         "sha256": "579324ca1946729d07a4ab7f57e7b88cd8080f47c68e1c2125d2b8cb28372828",
         "validation": "command_inventory"
@@ -7656,7 +7664,7 @@
       {
         "bytes": 289,
         "language": "text",
-        "line": 147,
+        "line": 146,
         "path": "self-hosting.md",
         "sha256": "4d28ae36bc32bcadddb9d10e19a2948b847cc9db55878b7b9d272ca98d85cac2",
         "validation": "static_inventory"
@@ -7664,7 +7672,7 @@
       {
         "bytes": 282,
         "language": "bash",
-        "line": 178,
+        "line": 176,
         "path": "self-hosting.md",
         "sha256": "14a155d3dba92839045ce2df3e6f9ecf88f9e2b299259bdfa3c3e8234ffb9be6",
         "validation": "command_inventory"
@@ -7672,7 +7680,7 @@
       {
         "bytes": 180,
         "language": "bash",
-        "line": 194,
+        "line": 192,
         "path": "self-hosting.md",
         "sha256": "91651e93cd04cafbd944c4e62fc0108ea3a08fe00ba7ffaaac7a96e32066245d",
         "validation": "command_inventory"
@@ -7680,7 +7688,7 @@
       {
         "bytes": 401,
         "language": "bash",
-        "line": 209,
+        "line": 207,
         "path": "self-hosting.md",
         "sha256": "9405482fb9829cfa3677858f9b0d47639be0e75b0e3b27944912839813023bed",
         "validation": "command_inventory"
@@ -7688,7 +7696,7 @@
       {
         "bytes": 555,
         "language": "python",
-        "line": 229,
+        "line": 227,
         "path": "self-hosting.md",
         "sha256": "eec4aff53bd6779399c96db4890ca1cd205dc31a97e6fa7aa527b4e9d6504955",
         "validation": "parsed"
@@ -7696,7 +7704,7 @@
       {
         "bytes": 553,
         "language": "typescript",
-        "line": 255,
+        "line": 253,
         "path": "self-hosting.md",
         "sha256": "9fa08712ba79fe47db56677cdcd384db869aa578c17c2e358ad0a0e5f2e1c99c",
         "validation": "static_inventory"
@@ -7704,7 +7712,7 @@
       {
         "bytes": 72,
         "language": "bash",
-        "line": 286,
+        "line": 284,
         "path": "self-hosting.md",
         "sha256": "0c37fff32611f297571aaef5fdff06023a29699b28f213728f91fe87843b2f38",
         "validation": "command_inventory"
@@ -7712,7 +7720,7 @@
       {
         "bytes": 100,
         "language": "bash",
-        "line": 301,
+        "line": 299,
         "path": "self-hosting.md",
         "sha256": "c8c9d83f577136de2415900328e8d801ef3a8ef99308425d8e49b98eb270d072",
         "validation": "command_inventory"
@@ -7720,7 +7728,7 @@
       {
         "bytes": 334,
         "language": "json",
-        "line": 308,
+        "line": 306,
         "path": "self-hosting.md",
         "sha256": "2acca6285d6ca8f9e5ffcc0576eca6c2601b12f734ffd728fdeb03cf9468beac",
         "validation": "parsed"
@@ -7728,7 +7736,7 @@
       {
         "bytes": 57,
         "language": "bash",
-        "line": 336,
+        "line": 334,
         "path": "self-hosting.md",
         "sha256": "d07c2b7d9c12a8846b1941c3ed09f41b1e95cdb9ee186e8242897f3ab33c397f",
         "validation": "command_inventory"
@@ -7736,7 +7744,7 @@
       {
         "bytes": 81,
         "language": "bash",
-        "line": 346,
+        "line": 343,
         "path": "self-hosting.md",
         "sha256": "5d6a3135d00a9b9e7ef2f66fb7112df49b3a2388a1b718ead5416a505fa12478",
         "validation": "command_inventory"
@@ -7744,7 +7752,7 @@
       {
         "bytes": 324,
         "language": "bash",
-        "line": 361,
+        "line": 357,
         "path": "self-hosting.md",
         "sha256": "159e2d70a712a33f74c9768904846c0537fa4b518fbbc89022377b9380b6794b",
         "validation": "command_inventory"
@@ -7752,7 +7760,7 @@
       {
         "bytes": 76,
         "language": "bash",
-        "line": 385,
+        "line": 381,
         "path": "self-hosting.md",
         "sha256": "455bdc6d52d05f6d9d491447f1738c2afdb8ad322aaf10968489aa6fa3e4803c",
         "validation": "command_inventory"
@@ -7760,7 +7768,7 @@
       {
         "bytes": 37,
         "language": "bash",
-        "line": 390,
+        "line": 386,
         "path": "self-hosting.md",
         "sha256": "5d4685119408c470c48da3c850a5b0754f1a1f2d5b2a03b20ad9585bb20fa0fb",
         "validation": "command_inventory"
@@ -7838,11 +7846,11 @@
         "validation": "command_inventory"
       },
       {
-        "bytes": 179,
+        "bytes": 186,
         "language": "bash",
         "line": 186,
         "path": "troubleshooting.md",
-        "sha256": "a9f111b0be34467d1319728f1772f7d661a96293bf945fa795ef2b3e62b36786",
+        "sha256": "0637a863d6db4743a50addb6617d724505bbe678598e0f10294cdcc27046067c",
         "validation": "command_inventory"
       },
       {
@@ -10036,6 +10044,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
+        "line": 109,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "api/overview.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/meta/contract",
         "line": 110,
         "match_kind": "exact",
         "method": "GET",
@@ -10044,7 +10061,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/meta/contract",
+        "endpoint": "/v1/runtime/manifest",
         "line": 111,
         "match_kind": "exact",
         "method": "GET",
@@ -10053,7 +10070,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/runtime/manifest",
+        "endpoint": "/v1/models",
         "line": 112,
         "match_kind": "exact",
         "method": "GET",
@@ -10062,17 +10079,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/models",
-        "line": 113,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "api/overview.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 124,
+        "line": 123,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10081,7 +10089,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 134,
+        "line": 133,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10090,7 +10098,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/runtime/manifest",
-        "line": 145,
+        "line": 144,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10099,7 +10107,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 156,
+        "line": 155,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10108,7 +10116,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 163,
+        "line": 162,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/overview.md",
@@ -10117,7 +10125,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/data",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10126,7 +10134,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/data/{}/summary",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10135,7 +10143,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/resolve",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10144,7 +10152,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/verify",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10153,7 +10161,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10162,7 +10170,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/batch",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10171,7 +10179,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/sql-report",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10180,7 +10188,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/sources",
-        "line": 172,
+        "line": 171,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10189,7 +10197,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions",
-        "line": 173,
+        "line": 172,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10198,7 +10206,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions/plan",
-        "line": 173,
+        "line": 172,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10207,7 +10215,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions/{}/outcome",
-        "line": 173,
+        "line": 172,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10216,6 +10224,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions/{}/execute",
+        "line": 172,
+        "match_kind": "exact",
+        "method": null,
+        "path": "api/overview.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/simulate",
         "line": 173,
         "match_kind": "exact",
         "method": null,
@@ -10224,17 +10241,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/simulate",
-        "line": 174,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/overview.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/simulate/templates",
-        "line": 174,
+        "line": 173,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10243,7 +10251,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/templates/{}/run",
-        "line": 174,
+        "line": 173,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10252,7 +10260,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/recommend",
-        "line": 174,
+        "line": 173,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10261,7 +10269,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/score",
-        "line": 174,
+        "line": 173,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10270,7 +10278,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/compare",
-        "line": 174,
+        "line": 173,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10279,7 +10287,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs",
-        "line": 175,
+        "line": 174,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10288,7 +10296,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}",
-        "line": 175,
+        "line": 174,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10297,7 +10305,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/events",
-        "line": 175,
+        "line": 174,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10306,7 +10314,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/capabilities",
-        "line": 176,
+        "line": 175,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10315,7 +10323,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/snapshots",
-        "line": 176,
+        "line": 175,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10324,7 +10332,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/triage",
-        "line": 176,
+        "line": 175,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10333,7 +10341,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/graph-query",
-        "line": 176,
+        "line": 175,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10342,7 +10350,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/models",
-        "line": 177,
+        "line": 176,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10351,7 +10359,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capability-providers",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10360,7 +10368,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capability-bindings",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10369,7 +10377,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10378,7 +10386,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/route",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10387,7 +10395,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/execute",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10396,7 +10404,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/me",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10405,7 +10413,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/usage",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10414,7 +10422,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/limits",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10423,7 +10431,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10432,7 +10440,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/register",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10441,7 +10449,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/heartbeat",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10450,7 +10458,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/list",
-        "line": 179,
+        "line": 178,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10459,7 +10467,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/billing/info",
-        "line": 180,
+        "line": 179,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10468,7 +10476,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/billing/checkout",
-        "line": 180,
+        "line": 179,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10477,7 +10485,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/billing/portal",
-        "line": 180,
+        "line": 179,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10486,7 +10494,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/credits/refresh",
-        "line": 180,
+        "line": 179,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10495,7 +10503,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/metering",
-        "line": 180,
+        "line": 179,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10504,7 +10512,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/license/challenge",
-        "line": 181,
+        "line": 180,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10513,7 +10521,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/license/renew",
-        "line": 181,
+        "line": 180,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10522,7 +10530,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/license/revocations",
-        "line": 181,
+        "line": 180,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10531,7 +10539,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 183,
+        "line": 182,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10540,7 +10548,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 210,
+        "line": 209,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10549,7 +10557,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 230,
+        "line": 229,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10558,7 +10566,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs",
-        "line": 286,
+        "line": 284,
         "match_kind": "exact",
         "method": "POST",
         "path": "api/overview.md",
@@ -10567,7 +10575,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}",
-        "line": 286,
+        "line": 284,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/overview.md",
@@ -10576,7 +10584,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}/result",
-        "line": 286,
+        "line": 284,
         "match_kind": "exact",
         "method": "GET",
         "path": "api/overview.md",
@@ -10585,16 +10593,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 293,
-        "match_kind": "exact",
-        "method": null,
-        "path": "api/overview.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 323,
+        "line": 291,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -10603,7 +10602,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 323,
+        "line": 321,
         "match_kind": "exact",
         "method": null,
         "path": "api/overview.md",
@@ -11881,7 +11880,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/0f4c",
-        "line": 192,
+        "line": 191,
         "match_kind": "template",
         "method": null,
         "path": "authentication.md",
@@ -11890,7 +11889,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 325,
+        "line": 324,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11899,7 +11898,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 341,
+        "line": 340,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11908,7 +11907,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/list",
-        "line": 376,
+        "line": 374,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11917,7 +11916,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/",
-        "line": 380,
+        "line": 378,
         "match_kind": "route_family",
         "method": null,
         "path": "authentication.md",
@@ -11926,7 +11925,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/register",
-        "line": 387,
+        "line": 385,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -11935,7 +11934,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/signup",
-        "line": 399,
+        "line": 397,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11944,7 +11943,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/login",
-        "line": 415,
+        "line": 413,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11953,7 +11952,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/verify",
-        "line": 433,
+        "line": 431,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11962,7 +11961,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/forgot-password",
-        "line": 436,
+        "line": 434,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11971,7 +11970,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/reset-password",
-        "line": 441,
+        "line": 439,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -11980,6 +11979,33 @@
       {
         "authority_match": true,
         "endpoint": "/auth/signup",
+        "line": 446,
+        "match_kind": "exact",
+        "method": null,
+        "path": "authentication.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/auth/login",
+        "line": 447,
+        "match_kind": "exact",
+        "method": null,
+        "path": "authentication.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/auth/verify",
+        "line": 448,
+        "match_kind": "exact",
+        "method": null,
+        "path": "authentication.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/auth/forgot-password",
         "line": 449,
         "match_kind": "exact",
         "method": null,
@@ -11988,7 +12014,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/auth/login",
+        "endpoint": "/auth/reset-password",
         "line": 450,
         "match_kind": "exact",
         "method": null,
@@ -11997,35 +12023,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/auth/verify",
-        "line": 451,
-        "match_kind": "exact",
-        "method": null,
-        "path": "authentication.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/auth/forgot-password",
-        "line": 452,
-        "match_kind": "exact",
-        "method": null,
-        "path": "authentication.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/auth/reset-password",
-        "line": 453,
-        "match_kind": "exact",
-        "method": null,
-        "path": "authentication.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 460,
+        "line": 457,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -12034,7 +12033,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 466,
+        "line": 463,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -12043,7 +12042,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 487,
+        "line": 484,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -12052,7 +12051,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys/anthropic",
-        "line": 502,
+        "line": 499,
         "match_kind": "template",
         "method": null,
         "path": "authentication.md",
@@ -12061,7 +12060,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 517,
+        "line": 514,
         "match_kind": "exact",
         "method": "GET",
         "path": "authentication.md",
@@ -12070,7 +12069,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 517,
+        "line": 514,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -12079,7 +12078,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/{}",
-        "line": 517,
+        "line": 514,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "authentication.md",
@@ -12088,7 +12087,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/list",
-        "line": 520,
+        "line": 517,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -12097,7 +12096,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/device/{}",
-        "line": 520,
+        "line": 517,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "authentication.md",
@@ -12106,7 +12105,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/signup",
-        "line": 521,
+        "line": 518,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -12115,7 +12114,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/login",
-        "line": 521,
+        "line": 518,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -12124,7 +12123,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/verify",
-        "line": 521,
+        "line": 518,
         "match_kind": "exact",
         "method": "GET",
         "path": "authentication.md",
@@ -12133,7 +12132,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/forgot-password",
-        "line": 521,
+        "line": 518,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -12142,7 +12141,7 @@
       {
         "authority_match": true,
         "endpoint": "/auth/reset-password",
-        "line": 521,
+        "line": 518,
         "match_kind": "exact",
         "method": null,
         "path": "authentication.md",
@@ -12151,7 +12150,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 522,
+        "line": 519,
         "match_kind": "exact",
         "method": "GET",
         "path": "authentication.md",
@@ -12160,7 +12159,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys",
-        "line": 522,
+        "line": 519,
         "match_kind": "exact",
         "method": "POST",
         "path": "authentication.md",
@@ -12169,7 +12168,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/provider-keys/{}",
-        "line": 522,
+        "line": 519,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "authentication.md",
@@ -12511,7 +12510,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries*",
-        "line": 37,
+        "line": 39,
         "match_kind": "wildcard_family",
         "method": null,
         "path": "configuration.md",
@@ -18613,7 +18612,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers",
-        "line": 141,
+        "line": 140,
         "match_kind": "exact",
         "method": "GET",
         "path": "guides/triggers.md",
@@ -18622,7 +18621,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers",
-        "line": 144,
+        "line": 143,
         "match_kind": "exact",
         "method": null,
         "path": "guides/triggers.md",
@@ -18631,7 +18630,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/{}/fire",
-        "line": 154,
+        "line": 153,
         "match_kind": "exact",
         "method": "POST",
         "path": "guides/triggers.md",
@@ -18640,7 +18639,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/",
-        "line": 159,
+        "line": 158,
         "match_kind": "route_family",
         "method": null,
         "path": "guides/triggers.md",
@@ -18649,7 +18648,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/{}/fire",
-        "line": 173,
+        "line": 172,
         "match_kind": "exact",
         "method": null,
         "path": "guides/triggers.md",
@@ -18658,7 +18657,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/",
-        "line": 187,
+        "line": 186,
         "match_kind": "route_family",
         "method": null,
         "path": "guides/triggers.md",
@@ -18667,7 +18666,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/{}/pause",
-        "line": 215,
+        "line": 214,
         "match_kind": "exact",
         "method": "PATCH",
         "path": "guides/triggers.md",
@@ -18676,7 +18675,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/",
-        "line": 218,
+        "line": 217,
         "match_kind": "route_family",
         "method": null,
         "path": "guides/triggers.md",
@@ -18685,7 +18684,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/",
-        "line": 225,
+        "line": 224,
         "match_kind": "route_family",
         "method": null,
         "path": "guides/triggers.md",
@@ -18694,7 +18693,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/{}",
-        "line": 231,
+        "line": 230,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "guides/triggers.md",
@@ -18703,7 +18702,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/triggers/",
-        "line": 234,
+        "line": 233,
         "match_kind": "route_family",
         "method": null,
         "path": "guides/triggers.md",
@@ -19072,7 +19071,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 326,
+        "line": 324,
         "match_kind": "exact",
         "method": "POST",
         "path": "install.md",
@@ -19773,17 +19772,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 83,
-        "match_kind": "exact",
-        "method": null,
-        "path": "mcp-tools/account-and-meta.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 84,
+        "line": 86,
         "match_kind": "exact",
         "method": null,
         "path": "mcp-tools/account-and-meta.md",
@@ -19792,7 +19782,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 95,
+        "line": 97,
         "match_kind": "exact",
         "method": null,
         "path": "mcp-tools/account-and-meta.md",
@@ -19801,15 +19791,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/me",
-        "line": 121,
-        "match_kind": "exact",
-        "method": null,
-        "path": "mcp-tools/account-and-meta.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/usage",
         "line": 123,
         "match_kind": "exact",
         "method": null,
@@ -19818,8 +19799,17 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/usage",
+        "line": 125,
+        "match_kind": "exact",
+        "method": null,
+        "path": "mcp-tools/account-and-meta.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 150,
+        "line": 152,
         "match_kind": "exact",
         "method": null,
         "path": "mcp-tools/account-and-meta.md",
@@ -19828,7 +19818,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/",
-        "line": 155,
+        "line": 157,
         "match_kind": "route_family",
         "method": null,
         "path": "mcp-tools/account-and-meta.md",
@@ -21096,15 +21086,6 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 21,
-        "match_kind": "exact",
-        "method": null,
-        "path": "mcp-tools/overview.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/mcp/tools",
         "line": 26,
         "match_kind": "exact",
@@ -21934,7 +21915,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/{}",
-        "line": 149,
+        "line": 148,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "quickstart.md",
@@ -21943,7 +21924,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 208,
+        "line": 207,
         "match_kind": "exact",
         "method": "GET",
         "path": "quickstart.md",
@@ -21952,7 +21933,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/{}",
-        "line": 208,
+        "line": 207,
         "match_kind": "exact",
         "method": "DELETE",
         "path": "quickstart.md",
@@ -21961,7 +21942,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 186,
+        "line": 185,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/mcp.md",
@@ -21970,7 +21951,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/sse",
-        "line": 187,
+        "line": 189,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/mcp.md",
@@ -21979,7 +21960,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/messages",
-        "line": 188,
+        "line": 189,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/mcp.md",
@@ -21988,25 +21969,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 191,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 204,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 214,
+        "line": 192,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/mcp.md",
@@ -22015,7 +21978,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 226,
+        "line": 232,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/mcp.md",
@@ -22024,7 +21987,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 262,
+        "line": 268,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/mcp.md",
@@ -22033,7 +21996,7 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 285,
+        "line": 291,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/mcp.md",
@@ -22042,60 +22005,6 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 334,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data/connect",
-        "line": 335,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data",
-        "line": 336,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data/{}/summary",
-        "line": 337,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/data/{}",
-        "line": 338,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/query",
-        "line": 339,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/query/batch",
         "line": 340,
         "match_kind": "exact",
         "method": null,
@@ -22104,7 +22013,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/query/sql-report",
+        "endpoint": "/v1/data/connect",
         "line": 341,
         "match_kind": "exact",
         "method": null,
@@ -22113,7 +22022,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/models",
+        "endpoint": "/v1/data",
         "line": 342,
         "match_kind": "exact",
         "method": null,
@@ -22122,7 +22031,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/tokenize",
+        "endpoint": "/v1/data/{}/summary",
         "line": 343,
         "match_kind": "exact",
         "method": null,
@@ -22131,7 +22040,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/count_tokens",
+        "endpoint": "/v1/data/{}",
         "line": 344,
         "match_kind": "exact",
         "method": null,
@@ -22140,7 +22049,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/embeddings",
+        "endpoint": "/v1/query",
         "line": 345,
         "match_kind": "exact",
         "method": null,
@@ -22149,7 +22058,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decision",
+        "endpoint": "/v1/query/batch",
         "line": 346,
         "match_kind": "exact",
         "method": null,
@@ -22158,7 +22067,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/forecast",
+        "endpoint": "/v1/query/sql-report",
         "line": 347,
         "match_kind": "exact",
         "method": null,
@@ -22167,7 +22076,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/plan",
+        "endpoint": "/v1/models",
         "line": 348,
         "match_kind": "exact",
         "method": null,
@@ -22176,7 +22085,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions",
+        "endpoint": "/v1/tokenize",
         "line": 349,
         "match_kind": "exact",
         "method": null,
@@ -22185,7 +22094,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions",
+        "endpoint": "/v1/count_tokens",
         "line": 350,
         "match_kind": "exact",
         "method": null,
@@ -22194,7 +22103,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/decisions/{}",
+        "endpoint": "/v1/embeddings",
         "line": 351,
         "match_kind": "exact",
         "method": null,
@@ -22203,26 +22112,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/data",
-        "line": 362,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/count_tokens",
-        "line": 371,
-        "match_kind": "exact",
-        "method": null,
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/decision",
-        "line": 382,
+        "line": 352,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/mcp.md",
@@ -22231,7 +22122,79 @@
       {
         "authority_match": true,
         "endpoint": "/v1/forecast",
-        "line": 409,
+        "line": 353,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decisions/plan",
+        "line": 354,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decisions",
+        "line": 355,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decisions",
+        "line": 356,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decisions/{}",
+        "line": 357,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/data",
+        "line": 368,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/count_tokens",
+        "line": 377,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/decision",
+        "line": 388,
+        "match_kind": "exact",
+        "method": null,
+        "path": "sdk/mcp.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/forecast",
+        "line": 415,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/mcp.md",
@@ -22240,18 +22203,9 @@
       {
         "authority_match": true,
         "endpoint": "/mcp/tools",
-        "line": 420,
+        "line": 426,
         "match_kind": "exact",
         "method": "GET",
-        "path": "sdk/mcp.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/mcp/sse",
-        "line": 435,
-        "match_kind": "exact",
-        "method": null,
         "path": "sdk/mcp.md",
         "scope": "algenta"
       },
@@ -23581,7 +23535,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/meta/contract",
-        "line": 132,
+        "line": 131,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23590,7 +23544,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 141,
+        "line": 140,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23599,7 +23553,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 164,
+        "line": 163,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23608,7 +23562,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/batch",
-        "line": 178,
+        "line": 177,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23617,7 +23571,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/sql-report",
-        "line": 193,
+        "line": 192,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23626,7 +23580,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 236,
+        "line": 235,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23635,7 +23589,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 254,
+        "line": 253,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23644,7 +23598,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/decisions/plan",
-        "line": 264,
+        "line": 263,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23653,7 +23607,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/recommend",
-        "line": 272,
+        "line": 271,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23662,7 +23616,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/verify",
-        "line": 279,
+        "line": 278,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23671,7 +23625,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capability-providers",
-        "line": 312,
+        "line": 311,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/python.md",
@@ -23680,6 +23634,15 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/{}",
+        "line": 312,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "sdk/python.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/capabilities",
         "line": 313,
         "match_kind": "exact",
         "method": "GET",
@@ -23688,17 +23651,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/capabilities",
-        "line": 314,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "sdk/python.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/capabilities/route",
-        "line": 315,
+        "line": 314,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/python.md",
@@ -23707,7 +23661,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/execute",
-        "line": 316,
+        "line": 315,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/python.md",
@@ -23716,7 +23670,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities",
-        "line": 317,
+        "line": 316,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/python.md",
@@ -23725,7 +23679,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs",
-        "line": 341,
+        "line": 339,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23734,7 +23688,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}",
-        "line": 341,
+        "line": 339,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23743,7 +23697,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/events",
-        "line": 341,
+        "line": 339,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/python.md",
@@ -23752,7 +23706,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/triage",
-        "line": 352,
+        "line": 350,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/python.md",
@@ -23761,7 +23715,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/simulate",
-        "line": 358,
+        "line": 356,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/python.md",
@@ -23770,7 +23724,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/apply",
-        "line": 364,
+        "line": 362,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/python.md",
@@ -23784,15 +23738,6 @@
         "method": null,
         "path": "sdk/testing.md",
         "scope": "external"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/mcp/*",
-        "line": 35,
-        "match_kind": "wildcard_family",
-        "method": null,
-        "path": "sdk/tool-discovery.md",
-        "scope": "algenta"
       },
       {
         "authority_match": true,
@@ -25354,7 +25299,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/sql-report",
-        "line": 233,
+        "line": 232,
         "match_kind": "exact",
         "method": null,
         "path": "sdk/typescript.md",
@@ -25363,7 +25308,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query",
-        "line": 247,
+        "line": 246,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25372,7 +25317,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/batch",
-        "line": 248,
+        "line": 247,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25381,7 +25326,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/query/sql-report",
-        "line": 249,
+        "line": 248,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25390,7 +25335,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/route",
-        "line": 275,
+        "line": 274,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25399,7 +25344,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/{}",
-        "line": 276,
+        "line": 275,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25408,7 +25353,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/execute",
-        "line": 277,
+        "line": 276,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25417,7 +25362,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities",
-        "line": 278,
+        "line": 277,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25426,7 +25371,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capabilities/outcomes",
-        "line": 279,
+        "line": 278,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25435,7 +25380,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/capability-providers",
-        "line": 284,
+        "line": 283,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25444,6 +25389,24 @@
       {
         "authority_match": true,
         "endpoint": "/v1/runtime/manifest",
+        "line": 331,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "sdk/typescript.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/admin/runtime/modules",
+        "line": 332,
+        "match_kind": "exact",
+        "method": "GET",
+        "path": "sdk/typescript.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
+        "endpoint": "/v1/admin/runtime/benchmarks",
         "line": 333,
         "match_kind": "exact",
         "method": "GET",
@@ -25452,7 +25415,7 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/modules",
+        "endpoint": "/v1/admin/runtime/validation",
         "line": 334,
         "match_kind": "exact",
         "method": "GET",
@@ -25461,26 +25424,8 @@
       },
       {
         "authority_match": true,
-        "endpoint": "/v1/admin/runtime/benchmarks",
-        "line": 335,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "sdk/typescript.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
-        "endpoint": "/v1/admin/runtime/validation",
-        "line": 336,
-        "match_kind": "exact",
-        "method": "GET",
-        "path": "sdk/typescript.md",
-        "scope": "algenta"
-      },
-      {
-        "authority_match": true,
         "endpoint": "/v1/runtime/manifest",
-        "line": 341,
+        "line": 339,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25489,7 +25434,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/runtime/modules",
-        "line": 342,
+        "line": 340,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25498,7 +25443,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/runtime/benchmarks",
-        "line": 343,
+        "line": 341,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25507,7 +25452,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/runtime/validation",
-        "line": 344,
+        "line": 342,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25516,7 +25461,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs",
-        "line": 472,
+        "line": 469,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25525,7 +25470,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}",
-        "line": 473,
+        "line": 470,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25534,7 +25479,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/events",
-        "line": 474,
+        "line": 471,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25543,7 +25488,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/approve",
-        "line": 475,
+        "line": 472,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25552,7 +25497,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/resume",
-        "line": 476,
+        "line": 473,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25561,7 +25506,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/cancel",
-        "line": 477,
+        "line": 474,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25570,7 +25515,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/fork",
-        "line": 478,
+        "line": 475,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25579,7 +25524,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/agent/runs/{}/replay",
-        "line": 479,
+        "line": 476,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25588,7 +25533,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs",
-        "line": 527,
+        "line": 524,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25597,7 +25542,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}",
-        "line": 528,
+        "line": 525,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25606,7 +25551,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}/result",
-        "line": 529,
+        "line": 526,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25615,7 +25560,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}",
-        "line": 530,
+        "line": 527,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25624,7 +25569,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/list",
-        "line": 531,
+        "line": 528,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25633,7 +25578,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/jobs/{}/cancel",
-        "line": 532,
+        "line": 529,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25642,7 +25587,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/capabilities",
-        "line": 592,
+        "line": 589,
         "match_kind": "exact",
         "method": "GET",
         "path": "sdk/typescript.md",
@@ -25651,7 +25596,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/snapshots",
-        "line": 593,
+        "line": 590,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25660,7 +25605,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/triage",
-        "line": 594,
+        "line": 591,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25669,7 +25614,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/graph-query",
-        "line": 595,
+        "line": 592,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25678,7 +25623,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/simulate",
-        "line": 596,
+        "line": 593,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25687,7 +25632,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/repositories/{}/apply",
-        "line": 597,
+        "line": 594,
         "match_kind": "exact",
         "method": "POST",
         "path": "sdk/typescript.md",
@@ -25705,7 +25650,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys",
-        "line": 182,
+        "line": 180,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25714,7 +25659,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/api-keys/",
-        "line": 197,
+        "line": 195,
         "match_kind": "route_family",
         "method": null,
         "path": "self-hosting.md",
@@ -25723,7 +25668,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 210,
+        "line": 208,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25732,7 +25677,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 234,
+        "line": 232,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25741,7 +25686,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/simulate",
-        "line": 256,
+        "line": 254,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25750,7 +25695,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 287,
+        "line": 285,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25759,7 +25704,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/health",
-        "line": 292,
+        "line": 290,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25768,7 +25713,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/privacy-report",
-        "line": 302,
+        "line": 300,
         "match_kind": "exact",
         "method": null,
         "path": "self-hosting.md",
@@ -25777,7 +25722,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-policy",
-        "line": 326,
+        "line": 324,
         "match_kind": "exact",
         "method": "GET",
         "path": "self-hosting.md",
@@ -25786,7 +25731,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/admin/egress-log",
-        "line": 327,
+        "line": 325,
         "match_kind": "exact",
         "method": "GET",
         "path": "self-hosting.md",
@@ -26654,49 +26599,49 @@
       },
       {
         "kind": "internal",
-        "line": 255,
+        "line": 254,
         "path": "api/overview.md",
         "target": "errors.md"
       },
       {
         "kind": "internal",
-        "line": 287,
+        "line": 285,
         "path": "api/overview.md",
         "target": "rate-limits.md"
       },
       {
         "kind": "internal",
-        "line": 289,
+        "line": 287,
         "path": "api/overview.md",
         "target": "reference.md"
       },
       {
         "kind": "internal",
-        "line": 289,
+        "line": 287,
         "path": "api/overview.md",
         "target": "explorer.md"
       },
       {
         "kind": "internal",
-        "line": 328,
+        "line": 326,
         "path": "api/overview.md",
         "target": "reference.md"
       },
       {
         "kind": "internal",
-        "line": 332,
+        "line": 330,
         "path": "api/overview.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 336,
+        "line": 334,
         "path": "api/overview.md",
         "target": "../sdk/python.md"
       },
       {
         "kind": "internal",
-        "line": 340,
+        "line": 338,
         "path": "api/overview.md",
         "target": "../sdk/mcp.md"
       },
@@ -26786,25 +26731,25 @@
       },
       {
         "kind": "internal",
-        "line": 527,
+        "line": 524,
         "path": "authentication.md",
         "target": "quickstart.md"
       },
       {
         "kind": "internal",
-        "line": 531,
+        "line": 528,
         "path": "authentication.md",
         "target": "cli.md"
       },
       {
         "kind": "internal",
-        "line": 535,
+        "line": 532,
         "path": "authentication.md",
         "target": "api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 539,
+        "line": 536,
         "path": "authentication.md",
         "target": "licensing.md"
       },
@@ -27134,7 +27079,7 @@
       },
       {
         "kind": "internal",
-        "line": 109,
+        "line": 111,
         "path": "configuration.md",
         "target": "self-hosting.md"
       },
@@ -29378,19 +29323,19 @@
       },
       {
         "kind": "internal",
-        "line": 248,
+        "line": 247,
         "path": "guides/triggers.md",
         "target": "webhooks.md"
       },
       {
         "kind": "internal",
-        "line": 249,
+        "line": 248,
         "path": "guides/triggers.md",
         "target": "simulate.md"
       },
       {
         "kind": "internal",
-        "line": 250,
+        "line": 249,
         "path": "guides/triggers.md",
         "target": "connect-data.md"
       },
@@ -29648,31 +29593,31 @@
       },
       {
         "kind": "internal",
-        "line": 159,
+        "line": 158,
         "path": "install.md",
         "target": "cli.md"
       },
       {
         "kind": "internal",
-        "line": 329,
+        "line": 327,
         "path": "install.md",
         "target": "quickstart.md"
       },
       {
         "kind": "internal",
-        "line": 333,
+        "line": 331,
         "path": "install.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 337,
+        "line": 335,
         "path": "install.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 341,
+        "line": 339,
         "path": "install.md",
         "target": "sdk/python.md"
       },
@@ -29702,27 +29647,27 @@
       },
       {
         "kind": "internal",
-        "line": 59,
+        "line": 66,
         "path": "integrations/microsoft/copilot-teams.md",
         "target": "entra-sso.md"
       },
       {
         "kind": "internal",
-        "line": 102,
+        "line": 113,
         "path": "integrations/microsoft/copilot-teams.md",
         "target": "excel.md"
       },
       {
         "kind": "internal",
-        "line": 103,
+        "line": 114,
         "path": "integrations/microsoft/copilot-teams.md",
         "target": "entra-sso.md"
       },
       {
         "kind": "internal",
-        "line": 104,
+        "line": 115,
         "path": "integrations/microsoft/copilot-teams.md",
-        "target": "../../guides/governed-decisions.md"
+        "target": "../../sdk/mcp.md"
       },
       {
         "kind": "anchor",
@@ -29732,19 +29677,19 @@
       },
       {
         "kind": "internal",
-        "line": 132,
+        "line": 136,
         "path": "integrations/microsoft/entra-sso.md",
         "target": "../azure/gateway.md"
       },
       {
         "kind": "internal",
-        "line": 133,
+        "line": 137,
         "path": "integrations/microsoft/entra-sso.md",
         "target": "copilot-teams.md"
       },
       {
         "kind": "internal",
-        "line": 134,
+        "line": 138,
         "path": "integrations/microsoft/entra-sso.md",
         "target": "excel.md"
       },
@@ -30014,19 +29959,19 @@
       },
       {
         "kind": "internal",
-        "line": 164,
+        "line": 166,
         "path": "mcp-tools/account-and-meta.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 168,
+        "line": 170,
         "path": "mcp-tools/account-and-meta.md",
         "target": "../api/overview.md"
       },
       {
         "kind": "internal",
-        "line": 172,
+        "line": 174,
         "path": "mcp-tools/account-and-meta.md",
         "target": "control-plane.md"
       },
@@ -30644,25 +30589,25 @@
       },
       {
         "kind": "internal",
-        "line": 211,
+        "line": 210,
         "path": "quickstart.md",
         "target": "self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 215,
+        "line": 214,
         "path": "quickstart.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 219,
+        "line": 218,
         "path": "quickstart.md",
         "target": "sdk/python.md"
       },
       {
         "kind": "internal",
-        "line": 223,
+        "line": 222,
         "path": "quickstart.md",
         "target": "api/reference.md"
       },
@@ -30686,55 +30631,55 @@
       },
       {
         "kind": "external",
-        "line": 107,
+        "line": 120,
         "path": "sdk/mcp-registry.md",
         "target": "https://smithery.ai"
       },
       {
         "kind": "internal",
-        "line": 142,
+        "line": 155,
         "path": "sdk/mcp-registry.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 155,
+        "line": 168,
         "path": "sdk/mcp-registry.md",
         "target": "../mcp-tools/overview.md"
       },
       {
         "kind": "internal",
-        "line": 156,
+        "line": 169,
         "path": "sdk/mcp-registry.md",
         "target": "mcp.md"
       },
       {
         "kind": "internal",
-        "line": 157,
+        "line": 170,
         "path": "sdk/mcp-registry.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 440,
+        "line": 446,
         "path": "sdk/mcp.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 444,
+        "line": 450,
         "path": "sdk/mcp.md",
         "target": "../api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 448,
+        "line": 454,
         "path": "sdk/mcp.md",
         "target": "python.md"
       },
       {
         "kind": "internal",
-        "line": 452,
+        "line": 458,
         "path": "sdk/mcp.md",
         "target": "../self-hosting.md"
       },
@@ -30998,25 +30943,25 @@
       },
       {
         "kind": "internal",
-        "line": 424,
+        "line": 422,
         "path": "sdk/python.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 428,
+        "line": 426,
         "path": "sdk/python.md",
         "target": "../cli.md"
       },
       {
         "kind": "internal",
-        "line": 432,
+        "line": 430,
         "path": "sdk/python.md",
         "target": "../self-hosting.md"
       },
       {
         "kind": "internal",
-        "line": 436,
+        "line": 434,
         "path": "sdk/python.md",
         "target": "../api/reference.md"
       },
@@ -31184,19 +31129,19 @@
       },
       {
         "kind": "internal",
-        "line": 111,
+        "line": 110,
         "path": "sdk/typescript/decisions-and-products.md",
         "target": "simulations-and-queries.md"
       },
       {
         "kind": "internal",
-        "line": 112,
+        "line": 111,
         "path": "sdk/typescript/decisions-and-products.md",
         "target": "llm.md"
       },
       {
         "kind": "internal",
-        "line": 113,
+        "line": 112,
         "path": "sdk/typescript/decisions-and-products.md",
         "target": "overview.md"
       },
@@ -31304,61 +31249,61 @@
       },
       {
         "kind": "internal",
-        "line": 118,
+        "line": 117,
         "path": "sdk/typescript/simulations-and-queries.md",
         "target": "decisions-and-products.md"
       },
       {
         "kind": "internal",
-        "line": 119,
+        "line": 118,
         "path": "sdk/typescript/simulations-and-queries.md",
         "target": "../../guides/governed-query.md"
       },
       {
         "kind": "internal",
-        "line": 120,
+        "line": 119,
         "path": "sdk/typescript/simulations-and-queries.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 431,
+        "line": 428,
         "path": "sdk/typescript.md",
         "target": "../guides/agent-runs.md"
       },
       {
         "kind": "internal",
-        "line": 483,
+        "line": 480,
         "path": "sdk/typescript.md",
         "target": "../guides/async-jobs.md"
       },
       {
         "kind": "internal",
-        "line": 536,
+        "line": 533,
         "path": "sdk/typescript.md",
         "target": "../guides/repository-intelligence.md"
       },
       {
         "kind": "internal",
-        "line": 602,
+        "line": 599,
         "path": "sdk/typescript.md",
         "target": "../authentication.md"
       },
       {
         "kind": "internal",
-        "line": 606,
+        "line": 603,
         "path": "sdk/typescript.md",
         "target": "python.md"
       },
       {
         "kind": "internal",
-        "line": 610,
+        "line": 607,
         "path": "sdk/typescript.md",
         "target": "../api/reference.md"
       },
       {
         "kind": "internal",
-        "line": 614,
+        "line": 611,
         "path": "sdk/typescript.md",
         "target": "../self-hosting.md"
       },
@@ -31370,37 +31315,37 @@
       },
       {
         "kind": "internal",
-        "line": 409,
+        "line": 405,
         "path": "self-hosting.md",
         "target": "install.md"
       },
       {
         "kind": "internal",
-        "line": 413,
+        "line": 409,
         "path": "self-hosting.md",
         "target": "authentication.md"
       },
       {
         "kind": "internal",
-        "line": 417,
+        "line": 413,
         "path": "self-hosting.md",
         "target": "licensing.md"
       },
       {
         "kind": "internal",
-        "line": 421,
+        "line": 417,
         "path": "self-hosting.md",
         "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
-        "line": 425,
+        "line": 421,
         "path": "self-hosting.md",
         "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
-        "line": 429,
+        "line": 425,
         "path": "self-hosting.md",
         "target": "troubleshooting.md"
       },
@@ -31522,22 +31467,22 @@
         "term": "algenta"
       },
       {
-        "line": 180,
+        "line": 179,
         "path": "api/overview.md",
         "term": "algenta"
       },
       {
-        "line": 242,
+        "line": 241,
         "path": "api/overview.md",
         "term": "algenta"
       },
       {
-        "line": 269,
+        "line": 268,
         "path": "api/overview.md",
         "term": "algenta"
       },
       {
-        "line": 287,
+        "line": 285,
         "path": "api/overview.md",
         "term": "algenta"
       },
@@ -31657,92 +31602,92 @@
         "term": "algenta"
       },
       {
-        "line": 192,
+        "line": 191,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 251,
+        "line": 250,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 277,
+        "line": 276,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 325,
+        "line": 324,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 341,
+        "line": 340,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 376,
+        "line": 374,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 380,
+        "line": 378,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 399,
+        "line": 397,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 415,
+        "line": 413,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 433,
+        "line": 431,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 436,
+        "line": 434,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 441,
+        "line": 439,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 457,
+        "line": 454,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 466,
+        "line": 463,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 477,
+        "line": 474,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 487,
+        "line": 484,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 502,
+        "line": 499,
         "path": "authentication.md",
         "term": "algenta"
       },
       {
-        "line": 284,
+        "line": 283,
         "path": "authentication.md",
         "term": "mission"
       },
@@ -32187,32 +32132,27 @@
         "term": "algenta"
       },
       {
-        "line": 28,
+        "line": 29,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 35,
+        "line": 37,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 40,
+        "line": 42,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 47,
+        "line": 49,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 52,
-        "path": "configuration.md",
-        "term": "algenta"
-      },
-      {
-        "line": 58,
+        "line": 54,
         "path": "configuration.md",
         "term": "algenta"
       },
@@ -32222,12 +32162,17 @@
         "term": "algenta"
       },
       {
-        "line": 81,
+        "line": 62,
         "path": "configuration.md",
         "term": "algenta"
       },
       {
-        "line": 81,
+        "line": 83,
+        "path": "configuration.md",
+        "term": "algenta"
+      },
+      {
+        "line": 83,
         "path": "configuration.md",
         "term": "algenta"
       },
@@ -33827,37 +33772,37 @@
         "term": "algenta"
       },
       {
-        "line": 144,
+        "line": 143,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 159,
+        "line": 158,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 173,
+        "line": 172,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 187,
+        "line": 186,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 218,
+        "line": 217,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 225,
+        "line": 224,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
       {
-        "line": 234,
+        "line": 233,
         "path": "guides/triggers.md",
         "term": "algenta"
       },
@@ -34137,6 +34082,11 @@
         "term": "algenta"
       },
       {
+        "line": 135,
+        "path": "install.md",
+        "term": "algenta"
+      },
+      {
         "line": 136,
         "path": "install.md",
         "term": "algenta"
@@ -34152,22 +34102,22 @@
         "term": "algenta"
       },
       {
-        "line": 139,
+        "line": 147,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 148,
+        "line": 163,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 164,
+        "line": 169,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 170,
+        "line": 171,
         "path": "install.md",
         "term": "algenta"
       },
@@ -34182,27 +34132,22 @@
         "term": "algenta"
       },
       {
-        "line": 174,
+        "line": 182,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 183,
+        "line": 266,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 267,
+        "line": 302,
         "path": "install.md",
         "term": "algenta"
       },
       {
-        "line": 304,
-        "path": "install.md",
-        "term": "algenta"
-      },
-      {
-        "line": 325,
+        "line": 323,
         "path": "install.md",
         "term": "algenta"
       },
@@ -34227,6 +34172,11 @@
         "term": "algenta"
       },
       {
+        "line": 21,
+        "path": "integrations/azure/gateway.md",
+        "term": "algenta"
+      },
+      {
         "line": 48,
         "path": "integrations/azure/gateway.md",
         "term": "algenta"
@@ -34239,6 +34189,56 @@
       {
         "line": 157,
         "path": "integrations/azure/gateway.md",
+        "term": "algenta"
+      },
+      {
+        "line": 3,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 10,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 13,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 21,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 61,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 87,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 101,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 104,
+        "path": "integrations/microsoft/copilot-teams.md",
+        "term": "algenta"
+      },
+      {
+        "line": 109,
+        "path": "integrations/microsoft/copilot-teams.md",
         "term": "algenta"
       },
       {
@@ -35037,7 +35037,7 @@
         "term": "algenta"
       },
       {
-        "line": 206,
+        "line": 205,
         "path": "quickstart.md",
         "term": "algenta"
       },
@@ -35077,52 +35077,57 @@
         "term": "algenta"
       },
       {
-        "line": 35,
+        "line": 27,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 39,
+        "line": 40,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 46,
+        "line": 44,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 55,
+        "line": 51,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 59,
+        "line": 60,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 66,
+        "line": 64,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 73,
+        "line": 71,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 75,
+        "line": 78,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 90,
+        "line": 80,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 92,
+        "line": 95,
+        "path": "sdk/mcp-registry.md",
+        "term": "algenta"
+      },
+      {
+        "line": 97,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
@@ -35132,17 +35137,17 @@
         "term": "algenta"
       },
       {
-        "line": 110,
+        "line": 105,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 118,
+        "line": 106,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 118,
+        "line": 115,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
@@ -35152,22 +35157,37 @@
         "term": "algenta"
       },
       {
-        "line": 129,
+        "line": 131,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 129,
+        "line": 131,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 134,
+        "line": 136,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
       {
-        "line": 148,
+        "line": 142,
+        "path": "sdk/mcp-registry.md",
+        "term": "algenta"
+      },
+      {
+        "line": 142,
+        "path": "sdk/mcp-registry.md",
+        "term": "algenta"
+      },
+      {
+        "line": 147,
+        "path": "sdk/mcp-registry.md",
+        "term": "algenta"
+      },
+      {
+        "line": 161,
         "path": "sdk/mcp-registry.md",
         "term": "algenta"
       },
@@ -35202,27 +35222,27 @@
         "term": "algenta"
       },
       {
-        "line": 43,
+        "line": 44,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 43,
+        "line": 44,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 47,
+        "line": 48,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 98,
+        "line": 99,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 122,
+        "line": 123,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
@@ -35232,67 +35252,72 @@
         "term": "algenta"
       },
       {
-        "line": 160,
+        "line": 159,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 182,
+        "line": 181,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 195,
+        "line": 196,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 213,
+        "line": 199,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 232,
+        "line": 218,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 330,
+        "line": 238,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 399,
+        "line": 336,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 419,
+        "line": 405,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 424,
+        "line": 425,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 433,
+        "line": 430,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 434,
+        "line": 439,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 435,
+        "line": 440,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
       {
-        "line": 437,
+        "line": 441,
+        "path": "sdk/mcp.md",
+        "term": "algenta"
+      },
+      {
+        "line": 443,
         "path": "sdk/mcp.md",
         "term": "algenta"
       },
@@ -35427,12 +35452,12 @@
         "term": "algenta"
       },
       {
-        "line": 164,
+        "line": 163,
         "path": "sdk/python.md",
         "term": "algenta"
       },
       {
-        "line": 236,
+        "line": 235,
         "path": "sdk/python.md",
         "term": "algenta"
       },
@@ -35622,27 +35647,27 @@
         "term": "algenta"
       },
       {
-        "line": 233,
+        "line": 232,
         "path": "sdk/typescript.md",
         "term": "algenta"
       },
       {
-        "line": 325,
+        "line": 323,
         "path": "sdk/typescript.md",
         "term": "algenta"
       },
       {
-        "line": 365,
+        "line": 363,
         "path": "sdk/typescript.md",
         "term": "algenta"
       },
       {
-        "line": 423,
+        "line": 420,
         "path": "sdk/typescript.md",
         "term": "algenta"
       },
       {
-        "line": 502,
+        "line": 499,
         "path": "sdk/typescript.md",
         "term": "algenta"
       },
@@ -35712,7 +35737,12 @@
         "term": "algenta"
       },
       {
-        "line": 79,
+        "line": 78,
+        "path": "self-hosting.md",
+        "term": "algenta"
+      },
+      {
+        "line": 81,
         "path": "self-hosting.md",
         "term": "algenta"
       },
@@ -35722,67 +35752,62 @@
         "term": "algenta"
       },
       {
-        "line": 83,
+        "line": 125,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 126,
+        "line": 130,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 131,
+        "line": 133,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 134,
+        "line": 133,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 134,
+        "line": 140,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 141,
+        "line": 149,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 150,
+        "line": 163,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 164,
+        "line": 203,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 205,
+        "line": 355,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 359,
+        "line": 358,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 362,
+        "line": 382,
         "path": "self-hosting.md",
         "term": "algenta"
       },
       {
-        "line": 386,
-        "path": "self-hosting.md",
-        "term": "algenta"
-      },
-      {
-        "line": 391,
+        "line": 387,
         "path": "self-hosting.md",
         "term": "algenta"
       },
@@ -35891,7 +35916,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"${ALGENTA_BASE_URL}/v1/health\"",
         "executed": false,
-        "line": 124,
+        "line": 123,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35899,7 +35924,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"${ALGENTA_BASE_URL}/v1/meta/contract\" \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\"",
         "executed": false,
-        "line": 134,
+        "line": 133,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35907,7 +35932,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"${ALGENTA_BASE_URL}/v1/runtime/manifest\" \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\"",
         "executed": false,
-        "line": 145,
+        "line": 144,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35915,7 +35940,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"${ALGENTA_BASE_URL}/v1/models\" \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\"",
         "executed": false,
-        "line": 156,
+        "line": 155,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35923,7 +35948,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS \"${ALGENTA_BASE_URL}/v1/simulate\" \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"mode\": \"auto\",\n\"simulation_model\": \"monte_carlo\",\n\"scenario\": {\n\"name\": \"Product launch decision\",\n\"variables\": {\n\"revenue\": { \"low\": 80000, \"high\": 200000 },\n\"cost\":    { \"low\": 40000, \"high\": 90000 }\n},\n\"objective\": \"maximize_net_value\"\n},\n\"runs\": 10000\n}'",
         "executed": false,
-        "line": 210,
+        "line": 209,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35931,7 +35956,7 @@
         "classification": "requires_environment",
         "command": "de contract",
         "executed": false,
-        "line": 316,
+        "line": 314,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35939,7 +35964,7 @@
         "classification": "requires_environment",
         "command": "de data list --search orders --compact --limit 10",
         "executed": false,
-        "line": 317,
+        "line": 315,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -35947,7 +35972,7 @@
         "classification": "requires_environment",
         "command": "de data summary $DATASET_ID",
         "executed": false,
-        "line": 318,
+        "line": 316,
         "path": "api/overview.md",
         "syntax_valid": true
       },
@@ -36063,7 +36088,7 @@
         "classification": "destructive_mutation",
         "command": "curl -X DELETE https://api.algenta.ai/v1/api-keys/0f4c... \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 192,
+        "line": 191,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36071,7 +36096,7 @@
         "classification": "destructive_mutation",
         "command": "de keys revoke $KEY_ID",
         "executed": false,
-        "line": 199,
+        "line": 198,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36079,7 +36104,7 @@
         "classification": "external_or_mutating",
         "command": "de keys create \"prod-2026-q3\" --device-limit 5",
         "executed": false,
-        "line": 217,
+        "line": 216,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36087,7 +36112,7 @@
         "classification": "destructive_mutation",
         "command": "de keys revoke $OLD_KEY_ID",
         "executed": false,
-        "line": 236,
+        "line": 235,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36095,7 +36120,7 @@
         "classification": "requires_environment",
         "command": "curl -sSL https://algenta.ai/install.sh | bash",
         "executed": false,
-        "line": 251,
+        "line": 250,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36103,7 +36128,7 @@
         "classification": "requires_environment",
         "command": "export PATH=\"$HOME/.local/bin:$PATH\"",
         "executed": false,
-        "line": 252,
+        "line": 251,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36111,7 +36136,7 @@
         "classification": "external_or_mutating",
         "command": "de login                                 # prompts for the API key",
         "executed": false,
-        "line": 260,
+        "line": 259,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36119,7 +36144,7 @@
         "classification": "external_or_mutating",
         "command": "de login $ALGENTA_API_KEY                # key as an argument (CI-safe)",
         "executed": false,
-        "line": 261,
+        "line": 260,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36127,7 +36152,7 @@
         "classification": "static_only",
         "command": "ALGENTA_API_KEY=de_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx de login",
         "executed": false,
-        "line": 262,
+        "line": 261,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36135,7 +36160,7 @@
         "classification": "external_or_mutating",
         "command": "de logout                                # removes the stored device license",
         "executed": false,
-        "line": 268,
+        "line": 267,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36143,7 +36168,7 @@
         "classification": "external_or_mutating",
         "command": "de config set-key $ALGENTA_API_KEY",
         "executed": false,
-        "line": 276,
+        "line": 275,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36151,7 +36176,7 @@
         "classification": "external_or_mutating",
         "command": "de config set-key $ALGENTA_API_KEY https://api.algenta.ai",
         "executed": false,
-        "line": 277,
+        "line": 276,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36159,7 +36184,7 @@
         "classification": "requires_environment",
         "command": "de keys list                                       # list active API keys",
         "executed": false,
-        "line": 283,
+        "line": 282,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36167,7 +36192,7 @@
         "classification": "external_or_mutating",
         "command": "de keys create \"Mission Key\"                       # mint a new key",
         "executed": false,
-        "line": 284,
+        "line": 283,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36175,7 +36200,7 @@
         "classification": "external_or_mutating",
         "command": "de keys create \"CI\" --device-limit 3 --expires-at 2026-12-31T23:59:59Z",
         "executed": false,
-        "line": 285,
+        "line": 284,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36183,7 +36208,7 @@
         "classification": "destructive_mutation",
         "command": "de keys revoke $KEY_ID                            # revoke a key",
         "executed": false,
-        "line": 286,
+        "line": 285,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36191,7 +36216,7 @@
         "classification": "external_or_mutating",
         "command": "curl -i -X POST https://api.algenta.ai/v1/simulate \\\n-H \"Authorization: Bearer de_live_CAPPED_KEY\" \\\n-H \"X-Algenta-Device-Id: ci-runner-7f3a9b1c2d4e5f60\" \\\n-H \"X-Algenta-Platform: Linux\" \\\n-H \"X-Algenta-Hostname-Hash: 3b1c...e90\" \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"...\": \"...\" }'",
         "executed": false,
-        "line": 325,
+        "line": 324,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36199,7 +36224,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/v1/simulate \\\n-H \"Authorization: Bearer de_live_CAPPED_KEY\" \\\n-H \"X-Algenta-Device-Id: ci-runner-7f3a9b1c2d4e5f60\" \\\n-H \"X-Algenta-Platform: Linux\" \\\n-H \"X-Algenta-Hostname-Hash: 3b1c...e90\" \\\n-H \"X-Algenta-Device-Binding-Token: <token>\" \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"...\": \"...\" }'",
         "executed": false,
-        "line": 341,
+        "line": 340,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36207,7 +36232,7 @@
         "classification": "requires_environment",
         "command": "de devices list                          # list registered devices",
         "executed": false,
-        "line": 368,
+        "line": 366,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36215,7 +36240,7 @@
         "classification": "destructive_mutation",
         "command": "de devices revoke $REGISTRATION_ID      # free up one device slot",
         "executed": false,
-        "line": 369,
+        "line": 367,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36223,7 +36248,7 @@
         "classification": "requires_environment",
         "command": "curl https://api.algenta.ai/v1/device/list \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 376,
+        "line": 374,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36231,7 +36256,7 @@
         "classification": "destructive_mutation",
         "command": "curl -X DELETE https://api.algenta.ai/v1/device/$REGISTRATION_ID \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 380,
+        "line": 378,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36239,7 +36264,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/auth/signup \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"email\": \"you@example.com\",\n\"password\": \"a-strong-password\",\n\"name\": \"Your Name\"\n}'",
         "executed": false,
-        "line": 399,
+        "line": 397,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36247,7 +36272,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/auth/login \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"email\": \"you@example.com\", \"password\": \"a-strong-password\" }'",
         "executed": false,
-        "line": 415,
+        "line": 413,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36255,7 +36280,7 @@
         "classification": "requires_environment",
         "command": "curl \"https://api.algenta.ai/auth/verify?token=$VERIFICATION_TOKEN\"",
         "executed": false,
-        "line": 433,
+        "line": 431,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36263,7 +36288,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/auth/forgot-password \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"email\": \"you@example.com\" }'",
         "executed": false,
-        "line": 436,
+        "line": 434,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36271,7 +36296,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/auth/reset-password \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"token\": \"$RESET_TOKEN\", \"new_password\": \"a-new-strong-password\" }'",
         "executed": false,
-        "line": 441,
+        "line": 439,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36279,7 +36304,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST https://api.algenta.ai/v1/provider-keys \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d \"{\n\\\"backend\\\": \\\"anthropic\\\",\n\\\"api_key\\\": \\\"$ANTHROPIC_API_KEY\\\"\n}\"",
         "executed": false,
-        "line": 466,
+        "line": 463,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36287,7 +36312,7 @@
         "classification": "requires_environment",
         "command": "curl https://api.algenta.ai/v1/provider-keys \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 487,
+        "line": 484,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -36295,7 +36320,7 @@
         "classification": "destructive_mutation",
         "command": "curl -X DELETE https://api.algenta.ai/v1/provider-keys/anthropic \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 502,
+        "line": 499,
         "path": "authentication.md",
         "syntax_valid": true
       },
@@ -40647,7 +40672,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"https://api.algenta.ai/v1/triggers?status=active&page=1&limit=50\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 144,
+        "line": 143,
         "path": "guides/triggers.md",
         "syntax_valid": true
       },
@@ -40655,7 +40680,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"https://api.algenta.ai/v1/triggers/$TRIGGER_ID/fire\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"force\": false }'",
         "executed": false,
-        "line": 159,
+        "line": 158,
         "path": "guides/triggers.md",
         "syntax_valid": true
       },
@@ -40663,7 +40688,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X PATCH \"https://api.algenta.ai/v1/triggers/$TRIGGER_ID/pause?paused=true\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 218,
+        "line": 217,
         "path": "guides/triggers.md",
         "syntax_valid": true
       },
@@ -40671,7 +40696,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS -X PATCH \"https://api.algenta.ai/v1/triggers/$TRIGGER_ID/pause?paused=false\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 225,
+        "line": 224,
         "path": "guides/triggers.md",
         "syntax_valid": true
       },
@@ -40679,7 +40704,7 @@
         "classification": "destructive_mutation",
         "command": "curl -sS -X DELETE \"https://api.algenta.ai/v1/triggers/$TRIGGER_ID\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 234,
+        "line": 233,
         "path": "guides/triggers.md",
         "syntax_valid": true
       },
@@ -40773,7 +40798,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose ps",
         "executed": false,
-        "line": 136,
+        "line": 135,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40781,7 +40806,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose logs -f api",
         "executed": false,
-        "line": 137,
+        "line": 136,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40789,7 +40814,7 @@
         "classification": "environment_mutating",
         "command": "cd ~/.algenta && docker compose pull && docker compose up -d   # upgrade",
         "executed": false,
-        "line": 138,
+        "line": 137,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40797,7 +40822,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta && docker compose stop",
         "executed": false,
-        "line": 139,
+        "line": 138,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40805,7 +40830,7 @@
         "classification": "requires_environment",
         "command": "export PATH=\"$HOME/.local/bin:$PATH\"",
         "executed": false,
-        "line": 153,
+        "line": 152,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40817,7 +40842,7 @@
         "execution_exit_code": 0,
         "execution_status": "pass",
         "files_created": [],
-        "line": 154,
+        "line": 153,
         "path": "install.md",
         "stdout_bytes": 0,
         "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -40827,7 +40852,7 @@
         "classification": "requires_environment",
         "command": "de health",
         "executed": false,
-        "line": 155,
+        "line": 154,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40835,7 +40860,7 @@
         "classification": "requires_environment",
         "command": "de account me --format json",
         "executed": false,
-        "line": 156,
+        "line": 155,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40843,7 +40868,7 @@
         "classification": "static_only",
         "command": "python3.14 -m venv .venv",
         "executed": false,
-        "line": 168,
+        "line": 167,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40851,7 +40876,7 @@
         "classification": "static_only",
         "command": "source .venv/bin/activate",
         "executed": false,
-        "line": 169,
+        "line": 168,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40859,7 +40884,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta",
         "executed": false,
-        "line": 170,
+        "line": 169,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40867,7 +40892,7 @@
         "classification": "requires_environment",
         "command": "algenta runtime doctor",
         "executed": false,
-        "line": 172,
+        "line": 171,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40875,7 +40900,7 @@
         "classification": "requires_environment",
         "command": "algenta simulate",
         "executed": false,
-        "line": 173,
+        "line": 172,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40883,7 +40908,7 @@
         "classification": "requires_environment",
         "command": "algenta benchmark",
         "executed": false,
-        "line": 174,
+        "line": 173,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40891,7 +40916,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta-sdk",
         "executed": false,
-        "line": 186,
+        "line": 185,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40899,7 +40924,7 @@
         "classification": "environment_mutating",
         "command": "npm install algenta-sdk",
         "executed": false,
-        "line": 227,
+        "line": 226,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40907,7 +40932,7 @@
         "classification": "environment_mutating",
         "command": "pipx install algenta-mcp",
         "executed": false,
-        "line": 276,
+        "line": 275,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40915,7 +40940,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta-mcp",
         "executed": false,
-        "line": 281,
+        "line": 280,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -40923,7 +40948,7 @@
         "classification": "static_only",
         "command": "algenta-mcp --mode http --port 8001",
         "executed": false,
-        "line": 292,
+        "line": 290,
         "path": "install.md",
         "syntax_valid": true
       },
@@ -41011,7 +41036,7 @@
         "classification": "static_only",
         "command": "ALGENTA_ENTRA_AUDIENCE=\"api://$GATEWAY_AUDIENCE\"",
         "executed": false,
-        "line": 100,
+        "line": 104,
         "path": "integrations/microsoft/entra-sso.md",
         "syntax_valid": true
       },
@@ -41019,7 +41044,7 @@
         "classification": "static_only",
         "command": "ALGENTA_ENTRA_TENANT_ID=\"$TENANT_ID\"",
         "executed": false,
-        "line": 105,
+        "line": 109,
         "path": "integrations/microsoft/entra-sso.md",
         "syntax_valid": true
       },
@@ -41289,7 +41314,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_BASE_URL/v1/meta/contract\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 95,
+        "line": 97,
         "path": "mcp-tools/account-and-meta.md",
         "syntax_valid": true
       },
@@ -41297,7 +41322,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_BASE_URL/v1/me\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 121,
+        "line": 123,
         "path": "mcp-tools/account-and-meta.md",
         "syntax_valid": true
       },
@@ -41305,7 +41330,7 @@
         "classification": "requires_environment",
         "command": "curl -sS \"$ALGENTA_BASE_URL/v1/usage\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 123,
+        "line": 125,
         "path": "mcp-tools/account-and-meta.md",
         "syntax_valid": true
       },
@@ -41313,7 +41338,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS \"$ALGENTA_BASE_URL/v1/api-keys\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{ \"label\": \"ci-pipeline\", \"device_limit\": 2 }'",
         "executed": false,
-        "line": 150,
+        "line": 152,
         "path": "mcp-tools/account-and-meta.md",
         "syntax_valid": true
       },
@@ -41321,7 +41346,7 @@
         "classification": "destructive_mutation",
         "command": "curl -sS -X DELETE \"$ALGENTA_BASE_URL/v1/api-keys/$KEY_ID\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\"",
         "executed": false,
-        "line": 155,
+        "line": 157,
         "path": "mcp-tools/account-and-meta.md",
         "syntax_valid": true
       },
@@ -42017,7 +42042,7 @@
         "execution_exit_code": 0,
         "execution_status": "pass",
         "files_created": [],
-        "line": 142,
+        "line": 141,
         "path": "quickstart.md",
         "stdout_bytes": 0,
         "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -42027,7 +42052,7 @@
         "classification": "environment_mutating",
         "command": "pip install algenta-sdk",
         "executed": false,
-        "line": 160,
+        "line": 159,
         "path": "quickstart.md",
         "syntax_valid": true
       },
@@ -42043,7 +42068,7 @@
         "classification": "requires_environment",
         "command": "claude mcp add algenta \\\n-e ALGENTA_API_KEY=$ALGENTA_API_KEY \\\n-e ALGENTA_BASE_URL=https://api.algenta.ai \\\n-- algenta-mcp",
         "executed": false,
-        "line": 73,
+        "line": 78,
         "path": "sdk/mcp-registry.md",
         "syntax_valid": true
       },
@@ -42051,7 +42076,7 @@
         "classification": "requires_environment",
         "command": "claude mcp list",
         "executed": false,
-        "line": 82,
+        "line": 87,
         "path": "sdk/mcp-registry.md",
         "syntax_valid": true
       },
@@ -42059,7 +42084,7 @@
         "classification": "environment_mutating",
         "command": "npx -y @smithery/cli install algenta --client cursor",
         "executed": false,
-        "line": 110,
+        "line": 123,
         "path": "sdk/mcp-registry.md",
         "syntax_valid": true
       },
@@ -42103,7 +42128,7 @@
         "classification": "static_only",
         "command": "algenta-mcp",
         "executed": false,
-        "line": 58,
+        "line": 59,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42111,7 +42136,7 @@
         "classification": "static_only",
         "command": "algenta-mcp --mode http --port 8001",
         "executed": false,
-        "line": 65,
+        "line": 66,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42119,7 +42144,7 @@
         "classification": "static_only",
         "command": "algenta-mcp --transport http --port 9000",
         "executed": false,
-        "line": 76,
+        "line": 78,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42127,7 +42152,7 @@
         "classification": "static_only",
         "command": "ALGENTA_MCP_PORT=9000 algenta-mcp --mode http",
         "executed": false,
-        "line": 77,
+        "line": 79,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42135,7 +42160,7 @@
         "classification": "requires_environment",
         "command": "python -m algenta_mcp.server --mode http --port 8001",
         "executed": false,
-        "line": 83,
+        "line": 85,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42143,7 +42168,7 @@
         "classification": "static_only",
         "command": "algenta-mcp --mode http --port 8001",
         "executed": false,
-        "line": 179,
+        "line": 178,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42151,7 +42176,7 @@
         "classification": "requires_environment",
         "command": "curl -s http://localhost:8000/mcp/tools | jq '.tools | length'",
         "executed": false,
-        "line": 191,
+        "line": 192,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42159,7 +42184,7 @@
         "classification": "requires_environment",
         "command": "curl -s \"$ALGENTA_BASE_URL/v1/data?search=orders&compact=true\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" | jq '.datasets[].dataset_id'",
         "executed": false,
-        "line": 362,
+        "line": 368,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42167,7 +42192,7 @@
         "classification": "external_or_mutating",
         "command": "curl -s \"$ALGENTA_BASE_URL/v1/count_tokens\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"input\": \"the quick brown fox\", \"model\": \"text.tokenizer\"}'",
         "executed": false,
-        "line": 371,
+        "line": 377,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42175,7 +42200,7 @@
         "classification": "external_or_mutating",
         "command": "curl -s \"$ALGENTA_BASE_URL/v1/decision\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"objective\": \"Maximize Q3 margin\",\n\"risk_tolerance\": \"medium\",\n\"inputs\": [\n{\"name\": \"revenue\", \"value\": 500000, \"low\": 400000, \"high\": 650000},\n{\"name\": \"cost\", \"value\": 300000}\n]\n}'",
         "executed": false,
-        "line": 382,
+        "line": 388,
         "path": "sdk/mcp.md",
         "syntax_valid": true
       },
@@ -42227,7 +42252,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS https://api.algenta.ai/v1/query \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"dataset_id\": \"ds_orders\",\n\"metric\": {\"hint\": \"completed_order_count\"},\n\"aggregation\": \"sum\"\n}'",
         "executed": false,
-        "line": 164,
+        "line": 163,
         "path": "sdk/python.md",
         "syntax_valid": true
       },
@@ -42235,7 +42260,7 @@
         "classification": "external_or_mutating",
         "command": "curl -sS https://api.algenta.ai/v1/query \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"dataset_id\": \"ds_orders\",\n\"metric\": {\"hint\": \"revenue\"},\n\"aggregation\": \"sum\",\n\"filters\": {\"conditions\": [{\"field\": \"status\", \"operator\": \"eq\", \"value\": \"completed\"}]}\n}'",
         "executed": false,
-        "line": 236,
+        "line": 235,
         "path": "sdk/python.md",
         "syntax_valid": true
       },
@@ -42315,7 +42340,7 @@
         "classification": "external_or_mutating",
         "command": "curl -s https://api.algenta.ai/v1/query/sql-report \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"sources\": [{ \"dataset_id\": \"ds_nps_scores\", \"alias\": \"nps\" }],\n\"sql\": \"SELECT AVG(nps.nps_score) AS avg_nps FROM nps\",\n\"max_rows\": 500\n}'",
         "executed": false,
-        "line": 233,
+        "line": 232,
         "path": "sdk/typescript.md",
         "syntax_valid": true
       },
@@ -42339,7 +42364,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta",
         "executed": false,
-        "line": 82,
+        "line": 81,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42347,7 +42372,7 @@
         "classification": "static_only",
         "command": "docker compose -f docker-compose.selfhosted.yml up -d",
         "executed": false,
-        "line": 84,
+        "line": 83,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42355,7 +42380,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta",
         "executed": false,
-        "line": 141,
+        "line": 140,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42363,7 +42388,7 @@
         "classification": "static_only",
         "command": "docker compose exec -T api python scripts/bootstrap_self_host.py",
         "executed": false,
-        "line": 142,
+        "line": 141,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42375,7 +42400,7 @@
         "execution_exit_code": 0,
         "execution_status": "pass",
         "files_created": [],
-        "line": 179,
+        "line": 177,
         "path": "self-hosting.md",
         "stdout_bytes": 0,
         "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -42385,7 +42410,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST http://localhost:8000/v1/api-keys \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\"label\":\"mission-runtime\",\"expires_at\":\"2028-05-19T00:00:00Z\"}'",
         "executed": false,
-        "line": 182,
+        "line": 180,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42397,7 +42422,7 @@
         "execution_exit_code": 0,
         "execution_status": "pass",
         "files_created": [],
-        "line": 195,
+        "line": 193,
         "path": "self-hosting.md",
         "stdout_bytes": 0,
         "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -42407,7 +42432,7 @@
         "classification": "destructive_mutation",
         "command": "curl -X DELETE http://localhost:8000/v1/api-keys/${BOOTSTRAP_API_KEY_ID} \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\"",
         "executed": false,
-        "line": 197,
+        "line": 195,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42415,7 +42440,7 @@
         "classification": "external_or_mutating",
         "command": "curl -X POST http://localhost:8000/v1/simulate \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"mode\": \"auto\",\n\"scenario\": {\n\"variables\": {\n\"revenue\": { \"low\": 80000, \"high\": 200000 },\n\"cost\": { \"low\": 30000, \"high\": 90000 }\n},\n\"objective\": \"maximize_net_value\"\n},\n\"runs\": 10000,\n\"seed\": 42\n}'",
         "executed": false,
-        "line": 210,
+        "line": 208,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42423,7 +42448,7 @@
         "classification": "requires_environment",
         "command": "curl http://localhost:8000/v1/health",
         "executed": false,
-        "line": 287,
+        "line": 285,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42431,7 +42456,7 @@
         "classification": "requires_environment",
         "command": "curl http://localhost:8000/v1/admin/privacy-report \\\n-H \"Authorization: Bearer ${ALGENTA_API_KEY}\"",
         "executed": false,
-        "line": 302,
+        "line": 300,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42439,7 +42464,7 @@
         "classification": "static_only",
         "command": "bash scripts/self_host_smoke.sh",
         "executed": false,
-        "line": 337,
+        "line": 335,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42447,7 +42472,7 @@
         "classification": "static_only",
         "command": "make self-host-smoke",
         "executed": false,
-        "line": 339,
+        "line": 337,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42455,7 +42480,7 @@
         "classification": "static_only",
         "command": "bash scripts/self_host_persistence_proof.sh",
         "executed": false,
-        "line": 347,
+        "line": 344,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42463,7 +42488,7 @@
         "classification": "static_only",
         "command": "make self-host-persistence-proof",
         "executed": false,
-        "line": 349,
+        "line": 346,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42471,7 +42496,7 @@
         "classification": "static_only",
         "command": "cd ~/.algenta",
         "executed": false,
-        "line": 362,
+        "line": 358,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42479,7 +42504,7 @@
         "classification": "static_only",
         "command": "docker compose ps                 # service status",
         "executed": false,
-        "line": 364,
+        "line": 360,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42487,7 +42512,7 @@
         "classification": "static_only",
         "command": "docker compose logs -f api        # follow API logs",
         "executed": false,
-        "line": 365,
+        "line": 361,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42495,7 +42520,7 @@
         "classification": "static_only",
         "command": "docker compose logs -f engine     # follow worker, Mojo, and agent-runtime logs",
         "executed": false,
-        "line": 366,
+        "line": 362,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42503,7 +42528,7 @@
         "classification": "environment_mutating",
         "command": "docker compose pull && docker compose up -d   # upgrade to a new pinned tag",
         "executed": false,
-        "line": 367,
+        "line": 363,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42511,7 +42536,7 @@
         "classification": "static_only",
         "command": "docker compose stop               # stop the stack",
         "executed": false,
-        "line": 368,
+        "line": 364,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42519,7 +42544,7 @@
         "classification": "static_only",
         "command": "ANTHROPIC_API_KEY=\"replace-with-your-anthropic-api-key\"",
         "executed": false,
-        "line": 387,
+        "line": 383,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42527,7 +42552,7 @@
         "classification": "environment_mutating",
         "command": "cd ~/.algenta && docker compose up -d",
         "executed": false,
-        "line": 391,
+        "line": 387,
         "path": "self-hosting.md",
         "syntax_valid": true
       },
@@ -42693,7 +42718,7 @@
       },
       {
         "classification": "requires_environment",
-        "command": "python -m apps.mcp_server.server --mode http     # HTTP/SSE (OpenWebUI, LibreChat, n8n)",
+        "command": "python -m apps.mcp_server.server --mode http     # Streamable HTTP (OpenWebUI, LibreChat, n8n)",
         "executed": false,
         "line": 188,
         "path": "troubleshooting.md",
@@ -42719,41 +42744,9 @@
   },
   "issues": [],
   "live": {
-    "base_url": "https://docs.algenta.ai",
-    "docs_mcp": {
-      "initialize_status": 200,
-      "page_status": 200,
-      "protocol_version": "2025-03-26",
-      "search_status": 200,
-      "tool_url_aliases": [
-        {
-          "canonical": "https://docs.algenta.ai/getting-started",
-          "canonical_status": 200,
-          "equivalent": true,
-          "example": "https://docs.algenta.ai//getting-started",
-          "redirect_status": 307,
-          "redirect_target": "https://docs.algenta.ai/getting-started",
-          "tool": "getPage"
-        }
-      ],
-      "tools": [
-        "getPage",
-        "searchDocumentation"
-      ],
-      "tools_status": 200
-    },
-    "llms_full_bytes": 1992506,
-    "llms_full_complete": true,
-    "llms_full_pages": 2,
-    "llms_full_status": 200,
-    "llms_txt_status": 200,
-    "markdown_pages_checked": 133,
-    "robots_status": 200,
-    "sitemap_matches_source_navigation": true,
-    "sitemap_urls": 133,
-    "source_navigation_urls": 133
+    "skipped": true
   },
-  "live_url": "https://docs.algenta.ai",
+  "live_url": "",
   "openapi_identity": {
     "algenta_title": true,
     "cross_product_mentions": 0,
@@ -42762,39 +42755,7 @@
     "runtime_encapsulation_mentions": 0
   },
   "package_registries": {
-    "npm": {
-      "algenta-sdk": {
-        "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
-        "license": "Apache-2.0",
-        "status": 200,
-        "version": "1.0.3"
-      }
-    },
-    "public_runtime_install_claims": 2,
-    "public_runtime_native_install_claims": 0,
-    "pypi": {
-      "algenta": {
-        "status": 200,
-        "summary": "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime.",
-        "version": "1.0.3"
-      },
-      "algenta-mcp": {
-        "status": 200,
-        "summary": "Algenta MCP server \u2014 a Model Context Protocol surface for the Algenta API (Cursor, Claude Desktop, \u2026)",
-        "version": "1.0.3"
-      },
-      "algenta-runtime-native": {
-        "status": 200,
-        "summary": "Bundled Algenta runtime artifacts for the algenta package. Installed automatically; not a standalone API.",
-        "version": "1.0.3"
-      },
-      "algenta-sdk": {
-        "status": 200,
-        "summary": "Python SDK for Algenta \u2014 public data, query, and simulation API",
-        "version": "1.0.3"
-      }
-    },
-    "skipped": false
+    "skipped": true
   },
   "pages": [
     {
@@ -42882,7 +42843,7 @@
         "safe_static": 2,
         "static_only": 0
       },
-      "endpoint_mentions": 68,
+      "endpoint_mentions": 67,
       "external_links": 0,
       "internal_links": 8,
       "links": 8,
@@ -44763,7 +44724,7 @@
       "links": 4,
       "path": "integrations/azure/gateway.md",
       "product_claims": {
-        "algenta": 7,
+        "algenta": 8,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44788,7 +44749,7 @@
       "links": 4,
       "path": "integrations/microsoft/copilot-teams.md",
       "product_claims": {
-        "algenta": 0,
+        "algenta": 10,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -44982,7 +44943,7 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 24,
+      "endpoint_mentions": 23,
       "external_links": 0,
       "internal_links": 3,
       "links": 3,
@@ -45207,7 +45168,7 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 2,
+      "endpoint_mentions": 1,
       "external_links": 0,
       "internal_links": 8,
       "links": 8,
@@ -45498,7 +45459,7 @@
       "shell_commands": 7
     },
     {
-      "code_fences": 7,
+      "code_fences": 8,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 2,
@@ -45513,7 +45474,7 @@
       "links": 8,
       "path": "sdk/mcp-registry.md",
       "product_claims": {
-        "algenta": 26,
+        "algenta": 30,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -45532,13 +45493,13 @@
         "safe_static": 2,
         "static_only": 5
       },
-      "endpoint_mentions": 33,
+      "endpoint_mentions": 30,
       "external_links": 0,
       "internal_links": 4,
       "links": 4,
       "path": "sdk/mcp.md",
       "product_claims": {
-        "algenta": 25,
+        "algenta": 26,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -45832,7 +45793,7 @@
         "safe_static": 0,
         "static_only": 0
       },
-      "endpoint_mentions": 5,
+      "endpoint_mentions": 4,
       "external_links": 0,
       "internal_links": 8,
       "links": 8,
@@ -46157,7 +46118,7 @@
     "source_paths": 218
   },
   "snippets": {
-    "code_fences": 980,
+    "code_fences": 981,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 808,
@@ -46171,31 +46132,34 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 881,
+    "claim_mentions": 897,
     "command_execution_percent": 100.0,
     "commands_classified": 808,
     "commands_executed": 67,
     "commands_unexecuted": 0,
-    "endpoint_mentions": 1997,
+    "endpoint_mentions": 1990,
     "failures": 0,
     "fixes": 0,
     "links_checked": 934,
+    "live_markdown_page_coverage_percent": 0.0,
+    "live_source_semantic_page_exact_percent": 0.0,
+    "live_source_semantic_percent": 0.0,
     "pages_checked": 134,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 741,
-    "snippets_checked": 980,
+    "skips": 742,
+    "snippets_checked": 981,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5600,
+    "source_items_inventoried": 5610,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 881,
-    "code_fences": 980,
+    "claim_mentions": 897,
+    "code_fences": 981,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
-    "endpoint_mentions": 1997,
+    "endpoint_mentions": 1990,
     "environment_mutating_commands": 20,
     "executed_commands": 67,
     "external_links": 3,
@@ -46207,7 +46171,7 @@
     "links": 934,
     "pages": 134,
     "product_claims": {
-      "algenta": 872,
+      "algenta": 888,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
@@ -46221,13 +46185,13 @@
     "shell_commands": 808,
     "shell_syntax_validated_commands": 808,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 741,
+    "skips": 742,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 5600,
+    "source_items_inventoried": 5610,
     "static_only_commands": 60,
     "static_or_guarded_commands": 741,
     "unexecuted_runnable_commands": 0,
-    "unique_endpoint_operations": 411,
+    "unique_endpoint_operations": 409,
     "warnings": 0
   }
 }

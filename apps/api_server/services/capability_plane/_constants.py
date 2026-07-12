@@ -128,7 +128,7 @@ DEFAULT_PROVIDER_SPECS: tuple[dict[str, Any], ...] = (
             "Customer-registered MCP provider profile. Discovery persists MCP tools, "
             "resources, and prompts into the unified capability catalog."
         ),
-        "docs_url": "/mcp/sse",
+        "docs_url": "/mcp",
         "auth_schema_json": {
             "type": "oauth_or_api_key",
             "fields": ["server_url", "authorization_url"],
@@ -261,5 +261,4 @@ SECRET_FIELD_NAMES = {
     "secret",
     "token",
 }
-
 

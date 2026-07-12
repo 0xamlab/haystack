@@ -32,7 +32,7 @@ REQUIRED_RUNTIME_MCP_TOOLS = [
     "get_runtime_release_validation",
 ]
 MCP_TRANSPORT_UNAVAILABLE_HINT = (
-    "Install requirements-mcp.txt to enable /mcp/sse and /mcp/messages."
+    "Install the API or algenta-mcp package with its dependencies."
 )
 REPRESENTATIVE_PROTECTED_OPENAPI_OPERATIONS = [
     ("/v1/models", "get"),
@@ -101,8 +101,7 @@ def _expected_requested_urls(base_url: str) -> list[str]:
         f"{base_url}/v1/meta/contract",
         f"{base_url}/openapi.json",
         f"{base_url}/mcp/tools",
-        f"{base_url}/mcp/sse",
-        f"{base_url}/mcp/messages",
+        f"{base_url}/mcp",
     ]
     urls.extend(f"{base_url}{path}" for path in RUNTIME_ADMIN_GET_PATHS)
     urls.extend(f"{base_url}{path}" for path in REPRESENTATIVE_PROTECTED_RUNTIME_GET_PATHS)
@@ -282,6 +281,7 @@ def _assert_runtime_health_manifest_contract_and_openapi(base_url: str) -> None:
     assert "/v1/admin/runtime/benchmarks" in openapi_payload["paths"]
     assert "/v1/admin/runtime/validation" in openapi_payload["paths"]
     assert "/mcp/tools" in openapi_payload["paths"]
+    assert "/mcp" in openapi_payload["paths"]
     assert "/mcp/sse" in openapi_payload["paths"]
     assert "/mcp/messages" in openapi_payload["paths"]
     for path, method in REPRESENTATIVE_PROTECTED_OPENAPI_OPERATIONS:
@@ -314,13 +314,13 @@ def _assert_runtime_health_manifest_contract_and_openapi(base_url: str) -> None:
     assert openapi_payload["paths"]["/v1/runtime/manifest"]["get"].get("security") is None
     assert openapi_payload["paths"]["/v1/meta/contract"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/tools"]["get"].get("security") is None
+    assert openapi_payload["paths"]["/mcp"]["post"].get("security") is None
     assert openapi_payload["paths"]["/mcp/sse"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/messages"]["post"].get("security") is None
     assert "200" in openapi_payload["paths"]["/mcp/tools"]["get"]["responses"]
-    assert "503" in openapi_payload["paths"]["/mcp/sse"]["get"]["responses"]
-    assert "503" in openapi_payload["paths"]["/mcp/messages"]["post"]["responses"]
-    assert "200" not in openapi_payload["paths"]["/mcp/sse"]["get"]["responses"]
-    assert "200" not in openapi_payload["paths"]["/mcp/messages"]["post"]["responses"]
+    assert "200" in openapi_payload["paths"]["/mcp"]["post"]["responses"]
+    assert openapi_payload["paths"]["/mcp/sse"]["get"]["deprecated"] is True
+    assert openapi_payload["paths"]["/mcp/messages"]["post"]["deprecated"] is True
     assert (
         openapi_payload["paths"]["/v1/admin/runtime/modules"]["get"]["security"]
         == PROTECTED_OPENAPI_SECURITY
@@ -340,17 +340,27 @@ def _assert_runtime_health_manifest_contract_and_openapi(base_url: str) -> None:
     tool_names = {tool["name"] for tool in mcp_tools_payload["tools"]}
     assert tool_names.issuperset(REQUIRED_RUNTIME_MCP_TOOLS)
 
-    mcp_sse = httpx.get(f"{base_url}/mcp/sse", timeout=10.0)
-    assert mcp_sse.status_code == 503, mcp_sse.text
-    mcp_sse_payload = mcp_sse.json()
-    assert mcp_sse_payload["error"]["code"] == "mcp_transport_unavailable"
-    assert mcp_sse_payload["error"]["details"]["hint"] == MCP_TRANSPORT_UNAVAILABLE_HINT
-
-    mcp_messages = httpx.post(f"{base_url}/mcp/messages", json={}, timeout=10.0)
-    assert mcp_messages.status_code == 503, mcp_messages.text
-    mcp_messages_payload = mcp_messages.json()
-    assert mcp_messages_payload["error"]["code"] == "mcp_transport_unavailable"
-    assert mcp_messages_payload["error"]["details"]["hint"] == MCP_TRANSPORT_UNAVAILABLE_HINT
+    mcp_initialize = httpx.post(
+        f"{base_url}/mcp",
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            "MCP-Protocol-Version": "2025-11-25",
+        },
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "clientInfo": {"name": "startup-smoke", "version": "1.0.0"},
+            },
+        },
+        timeout=10.0,
+    )
+    assert mcp_initialize.status_code == 200, mcp_initialize.text
+    assert mcp_initialize.json()["result"]["protocolVersion"] == "2025-11-25"
 
     for path in RUNTIME_ADMIN_GET_PATHS:
         unauthorized = httpx.get(f"{base_url}{path}", timeout=10.0)
@@ -517,22 +527,21 @@ def _fake_openapi_payload() -> dict[str, Any]:
             "/v1/admin/runtime/benchmarks": {"get": {"security": PROTECTED_OPENAPI_SECURITY}},
             "/v1/admin/runtime/validation": {"get": {"security": PROTECTED_OPENAPI_SECURITY}},
             "/mcp/tools": {"get": {"responses": {"200": {"description": "Successful Response"}}}},
+            "/mcp": {
+                "get": {"responses": {"200": {"description": "MCP event stream"}}},
+                "post": {"responses": {"200": {"description": "MCP response"}}},
+                "delete": {"responses": {"404": {"description": "Session not found"}}},
+            },
             "/mcp/sse": {
                 "get": {
-                    "responses": {
-                        "503": {
-                            "description": "MCP SSE transport unavailable in this environment."
-                        }
-                    }
+                    "deprecated": True,
+                    "responses": {"200": {"description": "Legacy MCP SSE stream"}},
                 }
             },
             "/mcp/messages": {
                 "post": {
-                    "responses": {
-                        "503": {
-                            "description": "MCP message transport unavailable in this environment."
-                        }
-                    }
+                    "deprecated": True,
+                    "responses": {"202": {"description": "Legacy MCP message accepted"}},
                 }
             },
         },
@@ -555,6 +564,18 @@ def _fake_mcp_transport_unavailable_payload() -> dict[str, Any]:
             "message": "The MCP SSE transport is unavailable in this environment.",
             "details": {"hint": MCP_TRANSPORT_UNAVAILABLE_HINT},
         }
+    }
+
+
+def _fake_mcp_initialize_payload() -> dict[str, Any]:
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "algenta-mcp", "version": "1.0.4"},
+        },
     }
 
 
@@ -675,8 +696,8 @@ def test_startup_smoke_reuses_healthy_port_8000_without_spawning(
             ):
                 return _FakeResponse(401, _fake_invalid_api_key_payload())
             return _FakeResponse(401, _fake_unauthorized_payload())
-        if url.endswith("/mcp/messages"):
-            return _FakeResponse(503, _fake_mcp_transport_unavailable_payload())
+        if url.endswith("/mcp"):
+            return _FakeResponse(200, _fake_mcp_initialize_payload())
         raise AssertionError(url)
 
     def _fake_popen(*args: Any, **kwargs: Any) -> _FakeProc:
@@ -807,8 +828,8 @@ def test_startup_smoke_falls_back_to_free_port_when_8000_listener_is_unhealthy(
             ):
                 return _FakeResponse(401, _fake_invalid_api_key_payload())
             return _FakeResponse(401, _fake_unauthorized_payload())
-        if url.endswith("/mcp/messages"):
-            return _FakeResponse(503, _fake_mcp_transport_unavailable_payload())
+        if url.endswith("/mcp"):
+            return _FakeResponse(200, _fake_mcp_initialize_payload())
         raise AssertionError(url)
 
     def _fake_popen(*args: Any, **kwargs: Any) -> _FakeProc:
@@ -942,8 +963,8 @@ def test_startup_smoke_falls_back_to_free_port_when_8000_listener_is_stale(
             ):
                 return _FakeResponse(401, _fake_invalid_api_key_payload())
             return _FakeResponse(401, _fake_unauthorized_payload())
-        if url.endswith("/mcp/messages"):
-            return _FakeResponse(503, _fake_mcp_transport_unavailable_payload())
+        if url.endswith("/mcp"):
+            return _FakeResponse(200, _fake_mcp_initialize_payload())
         raise AssertionError(url)
 
     def _fake_popen(*args: Any, **kwargs: Any) -> _FakeProc:

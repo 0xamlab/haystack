@@ -129,7 +129,7 @@ await client.deleteTrigger(trigger.trigger_id);
 | `registerTrigger(request)` | `POST /v1/triggers` | `request` is a `RegisterTriggerRequest` (`name`, `condition`, `simulation_template`, `webhook_url`, `execution_webhook_url`, `auto_execute`, `description`). |
 | `listTriggers(options?)` | `GET /v1/triggers` | Options: `status` (`active`, `paused`, `all`), `page`, `limit`. |
 | `fireTrigger(triggerId, { force })` | `POST /v1/triggers/{trigger_id}/fire` | Evaluate the condition now; `force` defaults to `false`. |
-| `pauseTrigger(triggerId, { paused })` | `PATCH /v1/triggers/{trigger_id}/pause` | Sends `?paused=true|false`; `paused` defaults to `true`. |
+| `pauseTrigger(triggerId, { paused })` | `PATCH /v1/triggers/{trigger_id}/pause` | Sends `?paused=true\|false`; `paused` defaults to `true`. |
 | `deleteTrigger(triggerId)` | `DELETE /v1/triggers/{trigger_id}` | Returns `{ trigger_id, deleted: true }`. |
 
 ## The capability plane

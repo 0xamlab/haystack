@@ -9,7 +9,7 @@ This page takes you from nothing to a working Algenta engine in about two minute
 
 There are two supported execution targets, and both use the same HTTP contract:
 
-- **Self-hosted engine** — a real HTTP service on `localhost:8000` with Postgres, Redis, and object storage, driven over `/v1`. Use this when you want the full decision engine, API keys, and the agentic flows.
+- **Self-hosted engine** — a real HTTP service on `localhost:8000` with Postgres, Redis, and object storage, driven over `/v1`. Use this when you want the full computational runtime, API keys, and the agentic flows.
 - **Algenta cloud** — use `https://api.algenta.ai` with an API key; Algenta operates the integrated runtime.
 
 {% hint style="info" %}
@@ -128,13 +128,12 @@ The response is returned once and contains the raw key. Capture `raw_key`, `id`,
 The `raw_key` is shown exactly once and is never recoverable. Capture it now. If you lose it, mint a new key and revoke the old one.
 {% endhint %}
 
-{% expandable title="Request body fields" %}
+### Request body fields
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `label` | string | yes | Human-readable name (1–255 chars), e.g. `mission-runtime`. |
 | `expires_at` | RFC 3339 timestamp | no | Must be in the future. Omit for a non-expiring key. |
 | `device_limit` | integer (`>= 0`) | no | Max registered devices on the local-runtime path. `0` keeps the plan default. |
-{% endexpandable %}
 
 Swap your shell over to the replacement key:
 

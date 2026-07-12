@@ -221,6 +221,9 @@ class PlatformContractResult(_ContractBaseModel):
     brand: str
     api_base_url: str
     mcp_endpoint: str
+    mcp_transport: str
+    mcp_protocol_version: str
+    mcp_legacy_sse_endpoint: str
     mcp_tools_endpoint: str
     auth_scheme: str
     api_key_prefixes: ApiKeyPrefixesResult

@@ -1362,14 +1362,14 @@ def run_api_runtime_account_surface() -> None:
     assert any(key in me for key in ("org_id", "organization", "email", "user", "org")), me
 
     usage = runtime.usage()
-    assert usage.billing_period
-    assert usage.quota_limit >= 0
+    assert usage.billing_period, usage
+    assert usage.quota_limit >= 0, usage
 
     limits = runtime.limits()
     assert isinstance(limits, dict), type(limits)
 
     listed_before = runtime.list_api_keys()
-    assert all(not hasattr(item, "raw_key") for item in listed_before)
+    assert all(not hasattr(item, "raw_key") for item in listed_before), listed_before
 
     created = None
     revoked = False
@@ -1380,22 +1380,25 @@ def run_api_runtime_account_surface() -> None:
             runtime,
             label=label,
         )
-        assert created.label == label
-        assert created.device_limit == requested_device_limit
-        assert created.raw_key.startswith(created.key_prefix)
+        assert created.label == label, created
+        assert created.device_limit == requested_device_limit, created
+        assert created.raw_key.startswith(created.key_prefix), created
 
         listed_after = runtime.list_api_keys()
         created_entry = next((item for item in listed_after if item.id == created.id), None)
-        assert created_entry is not None
-        assert created_entry.label == label
-        assert created_entry.device_limit == requested_device_limit
+        assert created_entry is not None, (created.id, listed_after)
+        assert created_entry.label == label, created_entry
+        assert created_entry.device_limit == requested_device_limit, created_entry
 
         revoke_result = runtime.revoke_api_key(created.id)
         revoked = True
-        assert revoke_result == {}
+        assert revoke_result == {}, revoke_result
 
         listed_final = runtime.list_api_keys()
-        assert all(item.id != created.id for item in listed_final)
+        assert all(item.id != created.id for item in listed_final), (
+            created.id,
+            listed_final,
+        )
     finally:
         if created is not None and not revoked:
             runtime.revoke_api_key(created.id)
@@ -1424,7 +1427,10 @@ def run_api_runtime_control_plane_surface() -> None:
         raise
     assert credits.billing_period == _current_billing_period()
     assert credits.credits_granted >= 0
-    assert credits.credits_issued_this_month >= credits.credits_granted
+    if credits.monthly_limit == 0:
+        assert credits.credits_issued_this_month == 0
+    else:
+        assert credits.credits_issued_this_month >= credits.credits_granted
     assert credits.monthly_limit >= 0
     assert credits.monthly_remaining >= 0
     assert credits.refresh_after >= credits.server_time

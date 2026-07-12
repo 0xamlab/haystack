@@ -920,7 +920,12 @@ def test_client_control_plane_surface() -> None:
         raise
     assert _value(credits, "billing_period") == _current_billing_period()
     assert _value(credits, "credits_granted") >= 0
-    assert _value(credits, "credits_issued_this_month") >= _value(credits, "credits_granted")
+    if _value(credits, "monthly_limit") == 0:
+        assert _value(credits, "credits_issued_this_month") == 0
+    else:
+        assert _value(credits, "credits_issued_this_month") >= _value(
+            credits, "credits_granted"
+        )
     assert _value(credits, "monthly_limit") >= 0
     assert _value(credits, "monthly_remaining") >= 0
     assert _value(credits, "refresh_after") >= _value(credits, "server_time")
@@ -1322,7 +1327,7 @@ def test_client_contract_and_runtime_proof_routes() -> None:
     client = AlgentaClient(api_key=API_KEY, base_url=BASE_URL)
     contract = client.get_contract()
     assert isinstance(contract.api_base_url, str) and contract.api_base_url.startswith("http")
-    assert contract.mcp_endpoint.endswith("/mcp/sse")
+    assert contract.mcp_endpoint.endswith("/mcp")
     assert contract_integrations_match_manifest(contract.integrations)
 
     manifest = client.get_runtime_manifest()

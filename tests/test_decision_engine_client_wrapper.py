@@ -177,7 +177,7 @@ def test_decision_engine_client_wrapper_loads_default_base_url_without_facade(mo
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
                     BRAND="Algenta",
-                    MCP_ENDPOINT="http://localhost:8000/mcp/sse",
+                    MCP_ENDPOINT="http://localhost:8000/mcp",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",
                     API_KEY_PREFIX_LIVE="de_live_",
@@ -200,7 +200,7 @@ def test_decision_engine_client_wrapper_loads_default_base_url_without_facade(mo
 
         assert module.DEFAULT_BASE_URL == "http://localhost:8000"
         assert module.CONTRACT_VERSION == "v1.3"
-        assert module.MCP_ENDPOINT == "http://localhost:8000/mcp/sse"
+        assert module.MCP_ENDPOINT == "http://localhost:8000/mcp"
         assert module.LEGACY_HEADERS == ("X-API-Key",)
         assert module.READ_ONLY_DEFAULT is True
         assert_manifest_backed_integrations(module.INTEGRATIONS)
@@ -246,7 +246,7 @@ def test_async_decision_engine_client_wrapper_loads_default_base_url_without_fac
                     DEFAULT_BASE_URL="http://localhost:8000",
                     CONTRACT_VERSION="v1.3",
                     BRAND="Algenta",
-                    MCP_ENDPOINT="http://localhost:8000/mcp/sse",
+                    MCP_ENDPOINT="http://localhost:8000/mcp",
                     MCP_TOOLS_ENDPOINT="http://localhost:8000/mcp/tools",
                     AUTH_SCHEME="bearer_api_key",
                     API_KEY_PREFIX_LIVE="de_live_",

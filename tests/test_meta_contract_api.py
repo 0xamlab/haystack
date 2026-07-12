@@ -83,7 +83,7 @@ def test_get_platform_contract_route_rebases_private_profile_urls(
     assert response.status_code == 200
     body = response.json()
     assert body["api_base_url"] == "https://decision.customer.internal"
-    assert body["mcp_endpoint"] == "https://decision.customer.internal/mcp/sse"
+    assert body["mcp_endpoint"] == "https://decision.customer.internal/mcp"
     assert body["mcp_tools_endpoint"] == "https://decision.customer.internal/mcp/tools"
     assert body["primary_data_query_contract"]["api"]["contract_endpoint"] == "/v1/meta/contract"
 
@@ -107,7 +107,7 @@ def test_get_platform_contract_route_rebases_private_profile_urls_from_algenta_a
     assert response.status_code == 200
     body = response.json()
     assert body["api_base_url"] == "https://decision.customer.internal"
-    assert body["mcp_endpoint"] == "https://decision.customer.internal/mcp/sse"
+    assert body["mcp_endpoint"] == "https://decision.customer.internal/mcp"
     assert body["mcp_tools_endpoint"] == "https://decision.customer.internal/mcp/tools"
 
 
