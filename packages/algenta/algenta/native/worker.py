@@ -16,6 +16,7 @@ import socket
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -54,6 +55,14 @@ _STARTUP_TIMEOUT_SECONDS = 15.0
 
 class NativeWorkerUnavailable(RuntimeError):  # noqa: N818
     """No bundled Algenta runtime worker is available."""
+
+
+def _worker_environment(resolution: NativeWorkerResolution) -> dict[str, str]:
+    """Return an isolated launch environment for the bundled CPython 3.14 worker."""
+    env = os.environ.copy()
+    if resolution.source == "bundled runtime":
+        env["PYTHONHOME"] = sys.base_prefix
+    return env
 
 
 @dataclass(frozen=True)
@@ -130,6 +139,7 @@ class _WorkerSession:
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
                 close_fds=True,
+                env=_worker_environment(self._resolution),
             )
             deadline = time.monotonic() + min(max(timeout, 0.1), _STARTUP_TIMEOUT_SECONDS)
             client: socket.socket | None = None

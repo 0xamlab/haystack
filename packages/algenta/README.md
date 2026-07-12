@@ -20,7 +20,7 @@ Supported release targets:
 
 - macOS Apple Silicon
 - Linux x86-64
-- Python 3.10 through 3.14
+- Python 3.14
 
 Package resolution fails on an unsupported platform instead of installing a
 runtime that cannot execute.

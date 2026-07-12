@@ -7,7 +7,7 @@ name = "algenta-runtime-native"
 version = "1.0.3"
 description = "Bundled Algenta runtime artifacts for the algenta package. Installed automatically; not a standalone API."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14,<3.15"
 # Proprietary: this wheel carries the compiled native runtime. Kept in its OWN distribution + import
 # namespace (algenta_runtime_native) so the `algenta` CLI stays pure-Python/Apache and there is no
 # cross-distribution file ownership.
@@ -17,10 +17,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",

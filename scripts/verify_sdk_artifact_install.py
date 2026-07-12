@@ -146,7 +146,10 @@ def _verify_algenta() -> None:
 def main() -> int:
     for pkg, smoke in _SMOKES.items():
         _verify(pkg, smoke)
-    _verify_algenta()
+    if sys.version_info >= (3, 14):
+        _verify_algenta()
+    else:
+        print("[skip] algenta: the bundled native runtime requires Python 3.14")
     _verify_mcp()
     print("\nAll Python SDK + MCP artifacts install + import from the wheel.")
     return 0

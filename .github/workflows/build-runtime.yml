@@ -88,6 +88,13 @@ jobs:
               [ -f "$artifact" ] || continue
               strip -x "$artifact" 2>/dev/null || true
             done
+            for artifact in *; do
+              [ -f "$artifact" ] || continue
+              if file -b "$artifact" | grep -q 'Mach-O'; then
+                codesign --force --sign - "$artifact"
+                codesign --verify --strict "$artifact"
+              fi
+            done
           else
             for artifact in *; do
               [ -f "$artifact" ] || continue
@@ -172,6 +179,28 @@ jobs:
         run: |
           python -m pip install --upgrade build
           python -m build --wheel packages/algenta-runtime-native --outdir dist-runtime
+
+      - name: Validate macOS wheel execution
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist-runtime").glob("*.whl"))
+          with ZipFile(wheel) as archive:
+              public_key = archive.read("algenta_runtime_native/algenta_release_pub.pem")
+          Path("packages/algenta/algenta/_keys/algenta_release_pub.pem").write_bytes(public_key)
+          PY
+          python -m build --wheel packages/algenta --outdir dist-algenta
+          python -m venv /tmp/algenta-macos-wheel
+          . /tmp/algenta-macos-wheel/bin/activate
+          pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
+          algenta runtime doctor | grep -q "status:          READY"
+          algenta runtime execute vector_kernels.dot dot64_f32 \
+            --args-json '{"a":[1,2,6],"b":[3,2,1]}' > /tmp/algenta-macos-execute.json
+          python -c 'import json; p=json.load(open("/tmp/algenta-macos-execute.json")); assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0'
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

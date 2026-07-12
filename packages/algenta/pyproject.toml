@@ -7,7 +7,7 @@ name = "algenta"
 version = "1.0.3"
 description = "Algenta repository intelligence and decision engine CLI with an automatically installed local runtime."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14,<3.15"
 # The Python here (CLI, login, SDK client, runtime loader/doctor) is Apache-2.0. The proprietary native
 # runtime ships as an automatic per-platform dependency, so THIS distribution stays pure-Python +
 # Apache-2.0 and platform-agnostic while the native artifact remains in its own wheel.
@@ -22,10 +22,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]

@@ -280,6 +280,39 @@ def test_worker_frame_round_trip_over_private_socket() -> None:
         server.close()
 
 
+def test_bundled_worker_uses_running_python_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("PYTHONHOME", "/untrusted/python")
+    resolution = package_worker.NativeWorkerResolution(
+        source="bundled runtime",
+        path=tmp_path / package_worker.WORKER_BASENAME,
+        verified=True,
+    )
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["PYTHONHOME"] == sys.base_prefix
+    assert env is not package_worker.os.environ
+
+
+def test_override_worker_preserves_explicit_python_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("PYTHONHOME", "/internal/python")
+    resolution = package_worker.NativeWorkerResolution(
+        source="env override",
+        path=tmp_path / package_worker.WORKER_BASENAME,
+        verified=False,
+    )
+
+    env = package_worker._worker_environment(resolution)
+
+    assert env["PYTHONHOME"] == "/internal/python"
+
+
 def test_package_worker_rejects_tampered_signed_dependency(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
