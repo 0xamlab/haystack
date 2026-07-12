@@ -151,6 +151,20 @@ def test_sdk_release_workflow_is_idempotent() -> None:
     assert 'if [ "$PUBLISHED_VERSION" = "$VERSION" ]' in release
 
 
+def test_algenta_core_uses_trusted_publishing() -> None:
+    release = (_REPO_ROOT / ".github" / "workflows" / "release-sdks.yml").read_text(
+        "utf-8"
+    )
+    production = release.split("\n  publish-pypi:\n", 1)[1].split("\n  publish-npm:\n", 1)[0]
+    core_step = production.split("      - name: Publish algenta-core (shim)\n", 1)[1].split(
+        "\n      - name:", 1
+    )[0]
+
+    assert "id-token: write" in production
+    assert "password:" not in core_step
+    assert "skip-existing: true" in core_step
+
+
 def test_ts_package_publishes_runtime_and_metadata_files() -> None:
     # The npm "files" allowlist is the ONLY thing that lands in the published tarball (no
     # .npmignore). dist/ holds the compiled JS+types; proto/ is loaded at runtime by the gRPC
