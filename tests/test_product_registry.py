@@ -18,6 +18,8 @@ def test_client_id_resolution():
     assert pr.product_for_client_id("telys-cli") == "telys"
     # codna-cli is RESERVED but device_login=False → stays rejected exactly like before this change.
     assert pr.product_for_client_id("codna-cli") is None
+    # cohenta-cli is likewise RESERVED (device_login=False) — billable via the website, no CLI signup yet.
+    assert pr.product_for_client_id("cohenta-cli") is None
     assert pr.product_for_client_id("nope") is None
     assert pr.product_for_client_id("") is None
     assert pr.product_for_client_id(None) is None
@@ -31,6 +33,9 @@ def test_plan_namespace_resolution():
     assert pr.product_for_plan("algenta_pro") == "algenta"
     assert pr.product_for_plan("telys_developer") == "telys"
     assert pr.product_for_plan("telys_team") == "telys"
+    assert pr.product_for_plan("cohenta_free") == "cohenta"
+    assert pr.product_for_plan("cohenta_pro_runner") == "cohenta"
+    assert pr.product_for_plan("cohenta_team") == "cohenta"
     # unprefixed / legacy plans are codna (the default), never mis-bucketed
     for legacy in ("free", "developer", "pro", "proplus", "ultra", "team", "enterprise"):
         assert pr.product_for_plan(legacy) == "codna", legacy
@@ -40,8 +45,8 @@ def test_plan_namespace_resolution():
 
 # ── RS256 signer routing ─────────────────────────────────────────────────────────
 def test_rs256_products_set():
-    # Telys was the only RS256 product; Algenta joins it. Codna stays OFF (its runtime verifies HS256).
-    assert pr.rs256_license_products() == frozenset({"telys", "algenta"})
+    # Telys was the only RS256 product; Algenta then Cohenta joined it. Codna stays OFF (HS256 runtime).
+    assert pr.rs256_license_products() == frozenset({"telys", "algenta", "cohenta"})
     assert "codna" not in pr.rs256_license_products()
 
 
@@ -51,6 +56,8 @@ def test_product_flags_default_safe():
     assert pr.product_flag("codna", "device_login") is False
     assert pr.product_flag("algenta", "billing") is True  # live (credential gate is the real switch)
     assert pr.product_flag("algenta", "device_login") is True
+    assert pr.product_flag("cohenta", "billing") is True  # website checkout is live
+    assert pr.product_flag("cohenta", "device_login") is False  # cohenta-cli reserved, not shipped
     # unknown product / unknown flag → the supplied default, never a crash
     assert pr.product_flag("ghost", "device_login") is False
     assert pr.product_flag("algenta", "does_not_exist") is False

@@ -22,6 +22,9 @@ class OrgPlan(StrEnum):
     ALGENTA_FREE = "algenta_free"    # Community — free forever, self-hosted, 1 device · 1 worker, 1 seat
     ALGENTA_PRO = "algenta_pro"      # Pro — self-hosted, PER DEVICE ($99/device), 5 workers/device, 1 seat
     ALGENTA_TEAM = "algenta_team"    # Team — self-hosted, PER DEVICE ($499/device), 20 workers/device, 15 seats
+    COHENTA_FREE = "cohenta_free"            # free, 1-device Cohenta campaign-orchestration tier
+    COHENTA_PRO_RUNNER = "cohenta_pro_runner"  # paid Cohenta — solo runner, commercial, multi-device
+    COHENTA_TEAM = "cohenta_team"            # paid Cohenta — team, per-SEAT billed
     # NOTE: `algenta_selfhost` was removed (2026-07). All paid Algenta tiers are self-hosted + per-device;
     # there is no separate self-host plan. The Postgres org_plan enum still carries the orphaned value
     # (migration 0050) — Postgres can't DROP an enum value — but it is unused and no longer offered.

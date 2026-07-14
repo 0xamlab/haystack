@@ -705,6 +705,18 @@ def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
                 and price_id == _settings.stripe_price_team
             ):
                 return "team"
+            # Codna solo power tiers (Pro+/Ultra) — sellable from the website checkout, so their
+            # price_ids must reverse-map or a renewal/update logs "unknown price" forever.
+            if (
+                hasattr(_settings, "stripe_price_proplus")
+                and price_id == _settings.stripe_price_proplus
+            ):
+                return "proplus"
+            if (
+                hasattr(_settings, "stripe_price_ultra")
+                and price_id == _settings.stripe_price_ultra
+            ):
+                return "ultra"
             # Telys runtime paid tiers (telys_developer is free → no Stripe price). Without these a
             # paid Telys subscription's price_id falls through to "free", and the handler's
             # unknown-price branch keeps the org on its current (free) plan — silently de-entitling
@@ -732,6 +744,19 @@ def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
                 and price_id == _settings.stripe_price_algenta_team
             ):
                 return "algenta_team"
+            # Cohenta paid tiers (cohenta_free is free → no Stripe price). Same rationale as telys/
+            # algenta: without these a cohenta subscription's price_id falls through to "free" and
+            # silently de-entitles a paying customer. Keep in lockstep with stripe_service.PLAN_PRICE_IDS.
+            if (
+                hasattr(_settings, "stripe_price_cohenta_pro_runner")
+                and price_id == _settings.stripe_price_cohenta_pro_runner
+            ):
+                return "cohenta_pro_runner"
+            if (
+                hasattr(_settings, "stripe_price_cohenta_team")
+                and price_id == _settings.stripe_price_cohenta_team
+            ):
+                return "cohenta_team"
     except Exception as exc:
         logger.debug("subscription_plan_parse_failed", error=str(exc))
     return "free"

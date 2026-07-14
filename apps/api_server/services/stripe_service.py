@@ -97,6 +97,21 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 and not _is_placeholder(current_settings.stripe_price_algenta_team)
                 else None
             ),
+            # Cohenta campaign-orchestration plans: cohenta_free has no SKU; pro_runner is the paid solo
+            # tier and team is billed PER SEAT (Stripe quantity = seats, like codna team / telys_team).
+            "cohenta_free": None,
+            "cohenta_pro_runner": (
+                current_settings.stripe_price_cohenta_pro_runner
+                if hasattr(current_settings, "stripe_price_cohenta_pro_runner")
+                and not _is_placeholder(current_settings.stripe_price_cohenta_pro_runner)
+                else None
+            ),
+            "cohenta_team": (
+                current_settings.stripe_price_cohenta_team
+                if hasattr(current_settings, "stripe_price_cohenta_team")
+                and not _is_placeholder(current_settings.stripe_price_cohenta_team)
+                else None
+            ),
         }
 
     def __getitem__(self, key: str) -> str | None:
@@ -241,8 +256,8 @@ async def create_checkout_session(
             data={
                 "mode": "subscription",
                 "line_items[0][price]": price_id,
-                # Quantity axis is caller-decided: per-seat plans (team/telys_team) bill by seats,
-                # per-device plans (algenta_pro/algenta_team) bill by devices; solo plans stay at 1.
+                # Quantity axis is caller-decided: per-seat plans (team/telys_team/cohenta_team) bill
+                # by seats, per-device plans (algenta_pro/algenta_team) by devices; solo plans stay at 1.
                 "line_items[0][quantity]": str(max(1, quantity)),
                 "success_url": resolved_success_url,
                 "cancel_url": resolved_cancel_url,
@@ -254,14 +269,14 @@ async def create_checkout_session(
                 # (Stripe gives no ordering guarantee) — otherwise the per-device quantity never syncs.
                 "subscription_data[metadata][org_id]": org_id,
                 "subscription_data[metadata][plan]": plan,
-                # Let buyers self-select the quantity for both per-seat (team) and per-device
-                # (algenta_pro/algenta_team) plans.
+                # Let buyers self-select the quantity for both per-seat (team/telys_team/cohenta_team)
+                # and per-device (algenta_pro/algenta_team) plans.
                 **(
                     {
                         "line_items[0][adjustable_quantity][enabled]": "true",
                         "line_items[0][adjustable_quantity][minimum]": "1",
                     }
-                    if plan in ("team", "telys_team", "algenta_pro", "algenta_team")
+                    if plan in ("team", "telys_team", "cohenta_team", "algenta_pro", "algenta_team")
                     else {}
                 ),
             },

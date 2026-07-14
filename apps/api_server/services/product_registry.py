@@ -42,6 +42,10 @@ ALGENTA_FEATURES_FULL: tuple[str, ...] = (
     "fix",
     "apply",
 )
+# Cohenta (campaign orchestration) — the campaign lifecycle surface: create/manage campaigns, the
+# human approval gate, and confirmed publication. Minimal on purpose (the verifier only requires a
+# non-empty list); grow it alongside the Cohenta runtime the way telys/algenta grew theirs.
+COHENTA_FEATURES_FULL: tuple[str, ...] = ("campaigns", "approvals", "publishing")
 
 # The SHARED platform license signer (the decision-engine ``license-signer`` Cloudflare Worker + the OEM
 # minter). EVERY product's RS256 license carries this issuer + audience + kid; product scoping is via the
@@ -125,6 +129,22 @@ _PRODUCTS: dict[str, ProductConfig] = {
         public_api_base="https://api.algenta.ai",
         rs256_license=True,
         feature_flags={"billing": True, "device_login": True},
+    ),
+    # Cohenta — campaign orchestration; live for self-serve website billing (accounts.thyn.ai checkout),
+    # RS256 platform license. device_login stays OFF (cohenta-cli is reserved, not yet wired) so — like
+    # codna — there is no ungated CLI signup until it ships; the accounts portal is the only entry.
+    "cohenta": ProductConfig(
+        id="cohenta",
+        display_name="Cohenta",
+        accounts_client_id="cohenta-cli",
+        accounts_app_slug="cohenta",
+        plan_namespace="cohenta",
+        default_free_tier="cohenta_free",
+        features_full=COHENTA_FEATURES_FULL,
+        mcp_server_name="io.github.thyn-ai/cohenta",
+        public_api_base="https://api.cohenta.ai",
+        rs256_license=True,
+        feature_flags={"billing": True, "device_login": False},
     ),
 }
 

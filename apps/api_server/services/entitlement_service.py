@@ -35,6 +35,7 @@ from apps.api_server.services import plan_limits
 from apps.api_server.services.product_registry import (
     ALGENTA_FEATURES_FULL,
     CODNA_FEATURES_FULL,
+    COHENTA_FEATURES_FULL,
     TELYS_FEATURES_FULL,
 )
 
@@ -92,6 +93,10 @@ def _telys_full(tier: str) -> dict[str, ProductGrant]:
 
 def _algenta_full(tier: str) -> dict[str, ProductGrant]:
     return {"algenta": ProductGrant(tier=tier, features=frozenset(ALGENTA_FEATURES_FULL))}
+
+
+def _cohenta_full(tier: str) -> dict[str, ProductGrant]:
+    return {"cohenta": ProductGrant(tier=tier, features=frozenset(COHENTA_FEATURES_FULL))}
 
 
 
@@ -152,6 +157,33 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
         plan="algenta_team", deployment_class="server",
         products=_algenta_full("team"),
         named_seat_limit=15, active_node_limit=1,
+        concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    # Cohenta (campaign orchestration) — mirrors the telys developer/pro/team shape so the runtime gets
+    # products.cohenta. cohenta_free is the free, no-card, 1-device tier; pro_runner is the paid solo
+    # tier; team is per-SEAT (Stripe quantity = seats, see team_seats), at the self-service ceiling.
+    "cohenta_free": EntitlementRecord(
+        plan="cohenta_free",
+        deployment_class="desktop",
+        products=_cohenta_full("developer"),
+        named_seat_limit=1,
+        active_node_limit=1,
+        concurrent_worker_limit=1,
+        device_allowance_per_seat=1,
+        commercial_use=False,
+        offline_grace_days=30,
+    ),
+    "cohenta_pro_runner": EntitlementRecord(
+        plan="cohenta_pro_runner", deployment_class="desktop",
+        products=_cohenta_full("pro"),
+        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=2,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    "cohenta_team": EntitlementRecord(
+        plan="cohenta_team", deployment_class="server",
+        products=_cohenta_full("team"),
+        named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
     ),

@@ -67,12 +67,14 @@ def days_left_for_stage(stage: str) -> int | None:
 
 # ── Sweep orchestration ───────────────────────────────────────────────────────
 # Paid plans that make an account "active" regardless of sign-in — never dormant-delete a payer.
-# (Free tiers — free / telys_developer / algenta_free — are intentionally NOT here: a never-signing-in
-# free account is dormant-deletable. Every PAID tier of every brand MUST be listed or a payer is deleted.)
+# (Free tiers — free / telys_developer / algenta_free / cohenta_free — are intentionally NOT here: a
+# never-signing-in free account is dormant-deletable. Every PAID tier of every brand MUST be listed
+# or a payer is deleted.)
 PAID_PLANS = {
     "developer", "pro", "proplus", "ultra", "team",
     "telys_pro", "telys_team",
     "algenta_pro", "algenta_team",
+    "cohenta_pro_runner", "cohenta_team",
 }
 KEEP_URL = "https://accounts.thyn.ai/login"
 

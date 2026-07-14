@@ -318,6 +318,10 @@ class Settings(BaseSettings):
     # `billing` flag (product_registry) until the owner flips it after verifying in Stripe test-mode.
     stripe_price_algenta_pro: str = Field(default="price_algenta_pro_replace_me")
     stripe_price_algenta_team: str = Field(default="price_algenta_team_replace_me")
+    # Cohenta paid tiers (cohenta_free is free → no Stripe price). The catalog prices exist (lookup keys
+    # cohenta_pro_runner_monthly / cohenta_team_monthly); set the env (Fly secrets) to the price IDs.
+    stripe_price_cohenta_pro_runner: str = Field(default="price_cohenta_pro_runner_replace_me")
+    stripe_price_cohenta_team: str = Field(default="price_cohenta_team_replace_me")
 
     # ─── GitHub App (codna "watch CI / open fix PRs") ─────────────────────────
     # Inert until configured: webhook route, token minter, and event handlers all

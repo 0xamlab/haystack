@@ -41,12 +41,25 @@ from apps.api_server.services.stripe_service import (
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["account"])
 
-# Plans purchasable from the website Upgrade buttons (mirrors codna plans.ts checkout tiers).
-# Free is $0 and Enterprise is sales-assisted, so neither goes through Checkout here. Telys's public
-# ladder is Developer (free) / Pro / Enterprise (contact-sales) — telys_team is retained for existing
-# orgs + enforcement but is NOT publicly sellable, so it's excluded from self-serve checkout.
-# Keep in sync with the Stripe catalog (product.metadata.source=telys) + stripe_service.PLAN_PRICE_IDS.
-_CHECKOUT_PLANS = frozenset({"pro", "team", "telys_pro", "algenta_pro", "algenta_team"})
+# Plans purchasable from the website Upgrade buttons, across every brand's public ladder: codna
+# pro/proplus/ultra/team, telys_pro, algenta pro/team (per-device), cohenta pro_runner/team. Free
+# tiers are $0 and Enterprise is sales-assisted, so neither goes through Checkout here. Telys's
+# public ladder is Developer (free) / Pro / Enterprise (contact-sales) — telys_team is retained for
+# existing orgs + enforcement but is NOT publicly sellable, so it's excluded from self-serve checkout.
+# Keep in sync with the Stripe catalog (product.metadata.source=<brand>) + stripe_service.PLAN_PRICE_IDS.
+_CHECKOUT_PLANS = frozenset(
+    {
+        "pro",
+        "team",
+        "proplus",
+        "ultra",
+        "telys_pro",
+        "algenta_pro",
+        "algenta_team",
+        "cohenta_pro_runner",
+        "cohenta_team",
+    }
+)
 
 
 def _require_billing() -> None:
@@ -64,7 +77,8 @@ def _require_billing() -> None:
 class CheckoutRequest(BaseModel):
     plan: str = Field(min_length=1, max_length=32)
     # Units to purchase: per-DEVICE for algenta_pro/algenta_team (Stripe quantity = licensed devices),
-    # per-SEAT for team. Defaults to 1; the webhook syncs this quantity into licensed_devices / seats.
+    # per-SEAT for team/cohenta_team. Defaults to 1; the webhook syncs this quantity into
+    # licensed_devices / seats.
     quantity: int = Field(default=1, ge=1, le=10000)
     # Post-checkout redirect back to the CALLER (the accounts portal). Validated against the trusted
     # accounts host (open-redirect protection); ignored if it points anywhere else. Omit → derived default.
