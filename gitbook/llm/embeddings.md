@@ -1,5 +1,5 @@
 ---
-icon: vector-square
+icon: chart-scatter
 description: Generate text embeddings, score two vectors with a similarity metric, and rerank candidate documents over the Algenta LLM API — from curl, Python, TypeScript, or the CLI.
 ---
 
