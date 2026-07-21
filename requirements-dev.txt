@@ -87,8 +87,11 @@ protobuf==6.33.5
 types-redis==4.6.0.20240425
 
 # ─── Telys code lexical index (repository-intelligence localization lane) ───
-# On-device BM25 + code-aware tokenization (telys PR #87): beats BM25 on 7/8 MTEB(Code)/CoIR tasks.
-# numpy-only, native kernel optional (pure-Python fallback). Wired as an opt-in RRF triage lane
-# gated by ALGENTA_REPOSITORIES_LEXICAL_RANKING; the import is lazy so a missing wheel degrades to a
-# no-op rather than breaking triage.
-memengine @ git+https://github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py
+# The opt-in code-lexical triage lane (ALGENTA_REPOSITORIES_LEXICAL_RANKING; telys PR #87 — on-device
+# BM25 + code-aware tokenization, numpy-only) needs the Telys `memengine` SDK. It is deliberately NOT
+# pinned here: telys is a private repo and this file is installed by the credential-free prod image
+# build (infra/docker/Dockerfile.api.prod — no git in the builder stage), so a git+https pin would break
+# that build. The lane's import is lazy and fail-open — absent memengine it degrades to a no-op, so the
+# default image is unaffected. To exercise the lane, install memengine out-of-band, e.g.:
+#   pip install "memengine @ git+https://github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py"
+# Productionizing it (a BuildKit-secret clone or a private index) is a separate infra change.
