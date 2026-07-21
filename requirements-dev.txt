@@ -85,3 +85,10 @@ protobuf==6.33.5
 
 # Type stubs
 types-redis==4.6.0.20240425
+
+# ─── Telys code lexical index (repository-intelligence localization lane) ───
+# On-device BM25 + code-aware tokenization (telys PR #87): beats BM25 on 7/8 MTEB(Code)/CoIR tasks.
+# numpy-only, native kernel optional (pure-Python fallback). Wired as an opt-in RRF triage lane
+# gated by ALGENTA_REPOSITORIES_LEXICAL_RANKING; the import is lazy so a missing wheel degrades to a
+# no-op rather than breaking triage.
+memengine @ git+https://github.com/thyn-ai/telys.git@main#subdirectory=packages/memengine-py

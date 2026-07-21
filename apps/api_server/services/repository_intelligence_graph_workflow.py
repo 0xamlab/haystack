@@ -16,6 +16,7 @@ from apps.api_server.schemas.repositories import (
     RepositoryTriageResponse,
 )
 from apps.api_server.services import repository_intelligence_graph as repository_graph
+from apps.api_server.services import repository_intelligence_lexical as lexical_ranking
 from apps.api_server.services import repository_intelligence_sdk_ranking as sdk_ranking
 from apps.api_server.services import repository_intelligence_storage as repository_storage
 from apps.api_server.services import repository_intelligence_telemetry as telemetry
@@ -82,8 +83,11 @@ def _triage_lookup_key(
 
 
 def _triage_ranking_mode() -> str:
-    """Identity of the active triage ranking lane (part of the cache key)."""
-    return "sdk_rrf" if sdk_ranking.sdk_ranking_enabled() else "heuristic"
+    """Identity of the active triage ranking lanes (part of the cache key)."""
+    mode = "sdk_rrf" if sdk_ranking.sdk_ranking_enabled() else "heuristic"
+    if lexical_ranking.lexical_ranking_enabled():
+        mode += "+lex"  # invalidate cached bundles when the code-lexical lane toggles
+    return mode
 
 
 def _graph_query_lookup_key(
@@ -488,27 +492,36 @@ def triage_repository(
     # AR-OPT-0: time triage ranking into the span the CI presence gate requires.
     with telemetry.span("triage_rank_ms"):
         scores = repository_graph._score_snapshot_files(snapshot_manifest, request.signals)
-    if sdk_ranking.sdk_ranking_enabled():
-        # AR-OPT-6/7 + SDK "DNA": fuse the keyword/diagnostic heuristic, graph
-        # proximity, and (when the Algenta Mojo runtime is available) a batched
-        # Mojo ranking lane via Reciprocal Rank Fusion. Falls back to the pure
-        # heuristic ordering when the Mojo lane is unavailable.
+    if sdk_ranking.sdk_ranking_enabled() or lexical_ranking.lexical_ranking_enabled():
+        # AR-OPT-6/7 + SDK "DNA": fuse the keyword/diagnostic heuristic, graph proximity, the Algenta
+        # Mojo lane (when enabled), and the Telys on-device code-lexical BM25 lane (when enabled) via
+        # Reciprocal Rank Fusion. Falls back to the pure heuristic ordering when the optional lanes are
+        # unavailable.
         heuristic_rank = repository_graph._ranked_paths_by_score(scores)
         graph_rank = repository_graph._ranked_paths_by_score(
             repository_graph._graph_proximity_scores(snapshot_manifest, request.signals)
         )
         rankings = [heuristic_rank, graph_rank]
-        # Mojo-rank the heuristic-ordered candidates (the lane bounds internally);
-        # if the heuristic found nothing, fall back to the first files.
-        ranked_candidates = heuristic_rank or [
-            str(file_entry["file_path"]) for file_entry in snapshot_manifest["files"]
-        ]
-        mojo_scores = sdk_ranking.mojo_repo_rank_scores(
-            query_terms=sorted(repository_graph._keywords_from_signals(request.signals)),
-            candidates=[{"path": path} for path in ranked_candidates],
-        )
-        if mojo_scores:
-            rankings.append(repository_graph._ranked_paths_by_score(mojo_scores))
+        query_terms = sorted(repository_graph._keywords_from_signals(request.signals))
+        if sdk_ranking.sdk_ranking_enabled():
+            # Mojo-rank the heuristic-ordered candidates (the lane bounds internally);
+            # if the heuristic found nothing, fall back to the first files.
+            ranked_candidates = heuristic_rank or [
+                str(file_entry["file_path"]) for file_entry in snapshot_manifest["files"]
+            ]
+            mojo_scores = sdk_ranking.mojo_repo_rank_scores(
+                query_terms=query_terms,
+                candidates=[{"path": path} for path in ranked_candidates],
+            )
+            if mojo_scores:
+                rankings.append(repository_graph._ranked_paths_by_score(mojo_scores))
+        if lexical_ranking.lexical_ranking_enabled():
+            # Telys code-lexical BM25 (PR #87) over (path + symbol names) — on-device, numpy-only.
+            lex_rank = lexical_ranking.lexical_rank(
+                snapshot_manifest, query_terms, request.max_evidence_items
+            )
+            if lex_rank:
+                rankings.append(lex_rank)
         fused = sdk_ranking.reciprocal_rank_fusion(rankings)
         # Restrict to real snapshot files: the signal/graph lanes seed on
         # changed_files / failing_tests, which can be test node-ids (file::test),
