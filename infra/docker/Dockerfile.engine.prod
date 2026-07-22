@@ -25,13 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements-dev.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --prefix=/install -r requirements-dev.txt
-# Telys code-lexical index (memengine.lexical; telys PR #87) — vendored as a pinned, pure-Python wheel.
-# telys is a private repo and this builder has no git/creds, so a git+https pin can't resolve here; a
-# committed wheel is reproducible + credential-free (and freezable for a publishable engine build).
-# Powers the opt-in ALGENTA_REPOSITORIES_LEXICAL_RANKING triage lane; the lane is fail-open, so this
-# only takes effect when the flag is set. numpy (its one runtime dep) is already pulled via pandas/pyarrow.
-COPY vendor/wheels/telys_runtime-0.1.0a1-py3-none-any.whl /tmp/wheels/
-RUN pip install --no-cache-dir --prefix=/install /tmp/wheels/telys_runtime-0.1.0a1-py3-none-any.whl
 COPY . /build/context/
 RUN mkdir -p /build/context/mojo_build
 
