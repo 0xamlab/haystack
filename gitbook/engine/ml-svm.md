@@ -1,5 +1,5 @@
 ---
-icon: chart-scatter
+icon: scale-balanced
 description: Trainable soft-margin SVM classifier via simplified SMO with linear and RBF kernels.
 ---
 
