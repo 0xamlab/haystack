@@ -1,5 +1,5 @@
 ---
-icon: arrows-left-right-to-line
+icon: gauge-high
 description: Split-conformal prediction intervals with finite-sample coverage guarantees.
 ---
 

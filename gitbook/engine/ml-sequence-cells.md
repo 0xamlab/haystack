@@ -1,5 +1,5 @@
 ---
-icon: link
+icon: code-branch
 description: LSTM and GRU cell forward passes with exact gate math for sequence models.
 ---
 

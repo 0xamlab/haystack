@@ -1,5 +1,5 @@
 ---
-icon: table-cells
+icon: table-list
 description: Dense 2-D matrix type with matmul, matvec and outer products backing the trainable-model kernels.
 ---
 

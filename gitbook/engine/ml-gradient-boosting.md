@@ -1,5 +1,5 @@
 ---
-icon: tree
+icon: diagram-project
 description: Gradient-boosted regression trees with exact SSE-gain splits, subsampling and shrinkage.
 ---
 

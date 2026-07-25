@@ -1,5 +1,5 @@
 ---
-icon: chart-area
+icon: chart-line
 description: Durbin-Levinson AR estimation, innovations MA fitting and ARIMA forecasting building blocks.
 ---
 

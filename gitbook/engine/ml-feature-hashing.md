@@ -1,5 +1,5 @@
 ---
-icon: hashtag
+icon: bolt
 description: Seeded FNV-1a feature hashing for fixed-width vectorization of unbounded feature names.
 ---
 

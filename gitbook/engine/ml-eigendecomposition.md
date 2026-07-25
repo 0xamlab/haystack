@@ -1,5 +1,5 @@
 ---
-icon: border-none
+icon: cubes
 description: Jacobi symmetric eigendecomposition and thin SVD for full-rank spectral computation.
 ---
 

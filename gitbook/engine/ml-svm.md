@@ -1,5 +1,5 @@
 ---
-icon: vector-square
+icon: chart-scatter
 description: Trainable soft-margin SVM classifier via simplified SMO with linear and RBF kernels.
 ---
 

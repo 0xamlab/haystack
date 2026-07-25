@@ -34,17 +34,15 @@ to clear zero is what "only promote if better" means statistically.
 `paired_bootstrap_diff_ci`, `mcnemar_exact_p` and `sharpe_diff_bootstrap_ci`
 assume exchangeable pairs. Overlapping forecast targets (stride-1 windows
 predicting h-step returns) violate that badly — measured ~3× type-I
-inflation at h = 5 in the design-partner system. For such data either
+inflation at h = 5 measured in production use. For such data either
 subsample every h-th observation before calling them, or use
 `diebold_mariano(err_a, err_b, h)`, whose Newey–West variance (lags
 `1..h-1`) is designed exactly for overlapping h-step forecast errors and
 needs no subsampling.
 
-## Design-partner origin
+## Verification
 
-Powers autonomous champion/challenger promotion in a live trading system:
-candidates fine-tuned on drift are promoted only when the paired tests
-agree. Verified against independent references (McNemar to 2e-9 relative
-error; Diebold–Mariano re-derived from the Newey–West definition).
+Verified against independent references: McNemar to 2e-9 relative error;
+Diebold–Mariano re-derived from the Newey–West definition.
 
 **Next:** validate on honest splits with [time-series model selection](ml-model-selection.md), or browse the [engine catalog](catalog.md).

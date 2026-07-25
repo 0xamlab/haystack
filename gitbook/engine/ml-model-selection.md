@@ -1,5 +1,5 @@
 ---
-icon: timeline
+icon: clock-rotate-left
 description: Walk-forward, purged, k-fold and temporal splits for leakage-free time-series model selection.
 ---
 
@@ -31,11 +31,9 @@ samples within *h* of the test boundary see part of the test window's
 future. Set `purge_gap >= h` to remove them. This is the standard
 Lopez de Prado correction for overlapping-label leakage.
 
-## Design-partner origin
+## Verification
 
-Built for a live trading system where model candidates are promoted only
-after walk-forward evaluation on purged folds — the same splits gate real
-capital. Every splitter is covered by known-value geometry tests plus a
+Every splitter is covered by known-value geometry tests plus a
 50k-split invariant fuzzer.
 
 **Next:** promote what you trained with [statistical model comparison](ml-model-comparison.md), or browse the [engine catalog](catalog.md).

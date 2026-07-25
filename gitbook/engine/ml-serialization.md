@@ -1,5 +1,5 @@
 ---
-icon: floppy-disk
+icon: database
 description: Bit-exact float64 weight serialization for saving and restoring trained kernels.
 ---
 

@@ -23,11 +23,9 @@ Isotonic fits any monotone distortion but needs more data (it can overfit
 below ~1k samples). Platt is two parameters — robust when small. When in
 doubt, compare both on a held-out reliability curve.
 
-## Design-partner origin
+## Verification
 
-The isotonic implementation mirrors the calibration chain of a live trading
-model stack (raw LSTM outputs → z-scale → isotonic), verified against
-sklearn including weighted-tie pooling cases that break naive PAV
-implementations.
+Verified against sklearn's isotonic regression, including weighted-tie
+pooling cases that break naive PAV implementations.
 
 **Next:** promote what you trained with [statistical model comparison](ml-model-comparison.md), or browse the [engine catalog](catalog.md).

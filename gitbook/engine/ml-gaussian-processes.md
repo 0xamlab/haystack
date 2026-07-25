@@ -1,5 +1,5 @@
 ---
-icon: wave-sine
+icon: chart-scatter
 description: Gaussian process regression with RBF and Matern kernels, exact posterior mean and variance.
 ---
 

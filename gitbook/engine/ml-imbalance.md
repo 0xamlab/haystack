@@ -1,5 +1,5 @@
 ---
-icon: scale-unbalanced
+icon: scale-balanced
 description: SMOTE, random over/under-sampling and balanced class weights for skewed datasets.
 ---
 

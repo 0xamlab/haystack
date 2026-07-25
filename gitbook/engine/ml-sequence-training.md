@@ -1,5 +1,5 @@
 ---
-icon: arrows-rotate
+icon: gears
 description: Full BPTT training loop for LSTM regressors, gradient-checked against finite differences.
 ---
 

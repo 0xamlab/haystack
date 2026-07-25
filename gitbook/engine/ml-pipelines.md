@@ -1,5 +1,5 @@
 ---
-icon: timeline-arrow
+icon: diagram-project
 description: Composable fit/transform preprocessing pipelines (standardize, min-max, chained) with exact inverses.
 ---
 

@@ -1,5 +1,5 @@
 ---
-icon: arrow-trend-up
+icon: chart-line
 description: NIPALS PLS1 regression for collinear and wide (p > n) feature matrices, sklearn-matched.
 ---
 
