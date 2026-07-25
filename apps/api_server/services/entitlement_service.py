@@ -36,6 +36,7 @@ from apps.api_server.services.product_registry import (
     ALGENTA_FEATURES_FULL,
     CODNA_FEATURES_FULL,
     COHENTA_FEATURES_FULL,
+    SQAI_FEATURES_FULL,
     TELYS_FEATURES_FULL,
 )
 
@@ -91,6 +92,10 @@ def _telys_full(tier: str) -> dict[str, ProductGrant]:
     return {"telys": ProductGrant(tier=tier, features=frozenset(TELYS_FEATURES_FULL))}
 
 
+def _sqai_full(tier: str) -> dict[str, ProductGrant]:
+    return {"sqai": ProductGrant(tier=tier, features=frozenset(SQAI_FEATURES_FULL))}
+
+
 def _algenta_full(tier: str) -> dict[str, ProductGrant]:
     return {"algenta": ProductGrant(tier=tier, features=frozenset(ALGENTA_FEATURES_FULL))}
 
@@ -126,6 +131,32 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
     "telys_team": EntitlementRecord(
         plan="telys_team", deployment_class="server",
         products=_telys_full("team"),
+        named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
+        concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    # SQAI (on-device structured-query runtime) — mirrors the telys developer/pro/team capacities.
+    # sqai_developer is the free, no-card, 1-device, local/non-commercial tier `sqai login` lands on.
+    "sqai_developer": EntitlementRecord(
+        plan="sqai_developer",
+        deployment_class="desktop",
+        products=_sqai_full("developer"),
+        named_seat_limit=1,
+        active_node_limit=1,
+        concurrent_worker_limit=1,
+        device_allowance_per_seat=1,
+        commercial_use=False,
+        offline_grace_days=30,
+    ),
+    "sqai_pro": EntitlementRecord(
+        plan="sqai_pro", deployment_class="desktop",
+        products=_sqai_full("pro"),
+        named_seat_limit=1, active_node_limit=1, concurrent_worker_limit=2,
+        device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
+    ),
+    "sqai_team": EntitlementRecord(
+        plan="sqai_team", deployment_class="server",
+        products=_sqai_full("team"),
         named_seat_limit=SELF_SERVICE_MAX_SEATS, active_node_limit=SELF_SERVICE_MAX_NODES,
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,

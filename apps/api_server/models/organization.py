@@ -19,6 +19,9 @@ class OrgPlan(StrEnum):
     TELYS_DEVELOPER = "telys_developer"  # free, 1-device, local/non-commercial Telys runtime dev license
     TELYS_PRO = "telys_pro"      # paid Telys runtime — commercial, multi-device
     TELYS_TEAM = "telys_team"    # paid Telys runtime — team/server seats
+    SQAI_DEVELOPER = "sqai_developer"  # free, 1-device, local/non-commercial SQAI runtime dev license
+    SQAI_PRO = "sqai_pro"        # paid SQAI runtime — commercial, multi-device
+    SQAI_TEAM = "sqai_team"      # paid SQAI runtime — team/server seats
     ALGENTA_FREE = "algenta_free"    # Community — free forever, self-hosted, 1 device · 1 worker, 1 seat
     ALGENTA_PRO = "algenta_pro"      # Pro — self-hosted, PER DEVICE ($99/device), 5 workers/device, 1 seat
     ALGENTA_TEAM = "algenta_team"    # Team — self-hosted, PER DEVICE ($499/device), 20 workers/device, 15 seats

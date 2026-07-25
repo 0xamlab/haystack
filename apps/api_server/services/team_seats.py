@@ -16,7 +16,7 @@ is a fixed bundle from the pricing card — independent of how many devices they
 DEFAULT_TEAM_SEATS = 5
 _UNLIMITED = 0  # sentinel: 0 means "no cap"
 
-_MULTI_SEAT_PLANS = {"team", "telys_team", "cohenta_team"}  # per-seat billed: Stripe quantity = seats
+_MULTI_SEAT_PLANS = {"team", "telys_team", "cohenta_team", "sqai_team"}  # per-seat billed: Stripe quantity = seats
 _UNLIMITED_PLANS = {"enterprise"}
 # Per-device plans carry fixed seat bundles; seats are not the billing unit.
 _FIXED_SEAT_PLANS = {"algenta_team": 15}

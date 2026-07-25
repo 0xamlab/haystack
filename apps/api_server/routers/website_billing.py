@@ -58,6 +58,8 @@ _CHECKOUT_PLANS = frozenset(
         "algenta_team",
         "cohenta_pro_runner",
         "cohenta_team",
+        "sqai_pro",
+        "sqai_team",
     }
 )
 

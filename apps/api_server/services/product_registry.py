@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 CODNA_FEATURES_FULL: tuple[str, ...] = ("repo_graph", "triage", "simulate", "fix", "apply")
 # Telys (on-device memory/retrieval runtime) — mirror of telys-sdk telys/verify.py TELYS_FEATURES.
 TELYS_FEATURES_FULL: tuple[str, ...] = ("local_runtime", "partitioned_vector", "ivf_partition")
+# SQAI (on-device structured-query runtime) — mirrors the telys shape (local runtime + its query surface).
+SQAI_FEATURES_FULL: tuple[str, ...] = ("local_runtime", "structured_query")
 # Algenta IS the engine (codna is its coding edition), so its product grants the full engine surface:
 # the bundled local runtime (``local_runtime``, like telys) plus the repository-intelligence flow
 # (the codna feature keys, so the shared feature→tool map applies unchanged).
@@ -145,6 +147,23 @@ _PRODUCTS: dict[str, ProductConfig] = {
         public_api_base="https://api.cohenta.ai",
         rs256_license=True,
         feature_flags={"billing": True, "device_login": False},
+    ),
+    # SQAI — on-device structured-query runtime; mirrors the telys shape. RS256 platform license,
+    # device-login, self-serve free tier. Billing is ON (Pro/Team live in Stripe under the
+    # sqai_<plan>_<cadence> lookup keys); the effective gate is credential-based — billing_configured()
+    # refuses checkout unless a real (non-placeholder) Stripe key is present, so a keyless deploy is safe.
+    "sqai": ProductConfig(
+        id="sqai",
+        display_name="SQAI",
+        accounts_client_id="sqai-cli",
+        accounts_app_slug="sqai",
+        plan_namespace="sqai",
+        default_free_tier="sqai_developer",
+        features_full=SQAI_FEATURES_FULL,
+        mcp_server_name="io.github.thyn-ai/sqai",
+        public_api_base="https://api.sqai.ai",
+        rs256_license=True,
+        feature_flags={"billing": True, "device_login": True},
     ),
 }
 

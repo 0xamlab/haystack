@@ -313,6 +313,10 @@ class Settings(BaseSettings):
     # Telys runtime paid tiers (telys_developer is free → no Stripe price). Create these in Stripe + set the env.
     stripe_price_telys_pro: str = Field(default="price_telys_pro_replace_me")
     stripe_price_telys_team: str = Field(default="price_telys_team_replace_me")
+    # SQAI runtime paid tiers (sqai_developer is free → no Stripe price). Billing ships DARK — checkout is
+    # gated on the product's `billing` flag (product_registry) until the owner flips it on.
+    stripe_price_sqai_pro: str = Field(default="price_sqai_pro_replace_me")
+    stripe_price_sqai_team: str = Field(default="price_sqai_team_replace_me")
     # Algenta engine paid tiers (algenta_free is free → no Stripe price). Create these in Stripe (tagged
     # metadata.source=algenta) + set the env. Billing ships DARK — the checkout is gated on the product's
     # `billing` flag (product_registry) until the owner flips it after verifying in Stripe test-mode.

@@ -45,8 +45,8 @@ def test_plan_namespace_resolution():
 
 # ── RS256 signer routing ─────────────────────────────────────────────────────────
 def test_rs256_products_set():
-    # Telys was the only RS256 product; Algenta then Cohenta joined it. Codna stays OFF (HS256 runtime).
-    assert pr.rs256_license_products() == frozenset({"telys", "algenta", "cohenta"})
+    # RS256 products: telys, algenta, cohenta, and now sqai. Codna stays OFF (its runtime verifies HS256).
+    assert pr.rs256_license_products() == frozenset({"telys", "algenta", "cohenta", "sqai"})
     assert "codna" not in pr.rs256_license_products()
 
 

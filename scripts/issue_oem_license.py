@@ -61,6 +61,7 @@ _DEFAULT_KEY = os.environ.get("ALGENTA_PLATFORM_LICENSE_PRIVATE_KEY_FILE", "dist
 PRODUCT_DEFAULT_FEATURES: dict[str, tuple[str, ...]] = {
     "codna": ("repo_graph", "triage", "simulate", "fix", "apply"),
     "telys": ("local_runtime", "partitioned_vector", "ivf_partition"),
+    "sqai": ("local_runtime", "structured_query"),
     "algenta": ("local_runtime", "repo_graph", "triage", "simulate", "fix", "apply"),
     "cohenta": ("local_runtime",),
     "decimas": ("local_runtime",),

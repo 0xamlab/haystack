@@ -110,6 +110,7 @@ async def checkout(
     if plan not in (
         "developer", "pro", "proplus", "ultra", "team",
         "telys_pro", "telys_team",
+        "sqai_pro", "sqai_team",
         "algenta_pro", "algenta_team",
     ):
         raise HTTPException(
@@ -157,7 +158,7 @@ async def checkout(
             devices
             if is_per_device_plan(plan)
             else seats
-            if plan in ("team", "telys_team")
+            if plan in ("team", "telys_team", "sqai_team")
             else 1
         ),
         success_url=redirect_urls.success_url,
@@ -731,6 +732,19 @@ def _plan_from_subscription(sub_obj: dict[str, Any]) -> str:
                 and price_id == _settings.stripe_price_telys_team
             ):
                 return "telys_team"
+            # SQAI runtime paid tiers (sqai_developer is free → no Stripe price). Same rationale as telys:
+            # without these an sqai subscription's price_id falls through to "free" and silently
+            # de-entitles a paying customer. Keep in lockstep with stripe_service.PLAN_PRICE_IDS.
+            if (
+                hasattr(_settings, "stripe_price_sqai_pro")
+                and price_id == _settings.stripe_price_sqai_pro
+            ):
+                return "sqai_pro"
+            if (
+                hasattr(_settings, "stripe_price_sqai_team")
+                and price_id == _settings.stripe_price_sqai_team
+            ):
+                return "sqai_team"
             # Algenta engine paid tiers (algenta_free is free → no Stripe price). Same rationale as telys:
             # without these an algenta subscription's price_id falls through to "free" and silently
             # de-entitles a paying customer. Keep in lockstep with stripe_service.PLAN_PRICE_IDS.

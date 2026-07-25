@@ -82,6 +82,21 @@ class _PlanPriceIdMapping(Mapping[str, str | None]):
                 and not _is_placeholder(current_settings.stripe_price_telys_team)
                 else None
             ),
+            # SQAI runtime plans: sqai_developer is free (no Stripe SKU); pro/team are paid (dark until
+            # the product's `billing` flag flips on).
+            "sqai_developer": None,
+            "sqai_pro": (
+                current_settings.stripe_price_sqai_pro
+                if hasattr(current_settings, "stripe_price_sqai_pro")
+                and not _is_placeholder(current_settings.stripe_price_sqai_pro)
+                else None
+            ),
+            "sqai_team": (
+                current_settings.stripe_price_sqai_team
+                if hasattr(current_settings, "stripe_price_sqai_team")
+                and not _is_placeholder(current_settings.stripe_price_sqai_team)
+                else None
+            ),
             # Algenta engine plans: algenta_free is Community (no SKU); pro/team are self-hosted and billed
             # PER DEVICE (Stripe quantity = number of licensed devices — see create_checkout_session).
             "algenta_free": None,
@@ -269,14 +284,14 @@ async def create_checkout_session(
                 # (Stripe gives no ordering guarantee) — otherwise the per-device quantity never syncs.
                 "subscription_data[metadata][org_id]": org_id,
                 "subscription_data[metadata][plan]": plan,
-                # Let buyers self-select the quantity for both per-seat (team/telys_team/cohenta_team)
-                # and per-device (algenta_pro/algenta_team) plans.
+                # Let buyers self-select the quantity for both per-seat (team/telys_team/cohenta_team/
+                # sqai_team) and per-device (algenta_pro/algenta_team) plans.
                 **(
                     {
                         "line_items[0][adjustable_quantity][enabled]": "true",
                         "line_items[0][adjustable_quantity][minimum]": "1",
                     }
-                    if plan in ("team", "telys_team", "cohenta_team", "algenta_pro", "algenta_team")
+                    if plan in ("team", "telys_team", "cohenta_team", "sqai_team", "algenta_pro", "algenta_team")
                     else {}
                 ),
             },
