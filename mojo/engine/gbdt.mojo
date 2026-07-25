@@ -6,7 +6,9 @@ sklearn.ensemble.GradientBoostingRegressor for tabular regression:
 depth-limited greedy variance-reduction splits, residual fitting,
 shrinkage (learning rate), and seeded row subsampling. Complements
 regression_tree.mojo (single CART on nested lists) with a flat
-row-major feature matrix and O(m log m) prefix-sum split search.
+row-major feature matrix and a prefix-sum split search over feature
+columns presorted once per fit (per-node O(m log m) re-sort only as a
+bit-exactness fallback for columns with tied values or tiny nodes).
 
 Model layout: one GBDTModel struct holding the whole forest as flat
 parallel lists (split_feature / split_value / left_child / right_child /
@@ -148,6 +150,97 @@ fn _heapsort_pair(mut keys: List[Float64], mut vals: List[Float64]):
         _sift_down(keys, vals, 0, end)
 
 
+fn _sift_down_key_idx(
+    mut keys: List[Float64], mut vals: List[Int], start: Int, end: Int
+):
+    """Max-heap sift-down over keys[start..end], Int payload in lockstep."""
+    var root = start
+    while True:
+        var child = 2 * root + 1
+        if child > end:
+            return
+        if child + 1 <= end and keys[child] < keys[child + 1]:
+            child += 1
+        if keys[root] < keys[child]:
+            var tk = keys[root]
+            keys[root] = keys[child]
+            keys[child] = tk
+            var tv = vals[root]
+            vals[root] = vals[child]
+            vals[child] = tv
+            root = child
+        else:
+            return
+
+
+fn _heapsort_key_idx(mut keys: List[Float64], mut vals: List[Int]):
+    """Sort keys ascending, permuting the Int payload identically."""
+    var n = len(keys)
+    if n < 2:
+        return
+    var start = n // 2 - 1
+    while start >= 0:
+        _sift_down_key_idx(keys, vals, start, n - 1)
+        start -= 1
+    var end = n - 1
+    while end > 0:
+        var tk = keys[0]
+        keys[0] = keys[end]
+        keys[end] = tk
+        var tv = vals[0]
+        vals[0] = vals[end]
+        vals[end] = tv
+        end -= 1
+        _sift_down_key_idx(keys, vals, 0, end)
+
+
+# ── global column presort (shared across every node of every tree) ──────────
+
+
+@fieldwise_init
+struct _SplitCtx(Copyable, Movable):
+    """Per-fit presorted feature order reused by every node's split search.
+
+    order is column-major: order[f * n_rows + r] is the row index holding
+    the r-th smallest value of feature f. col_fallback[f] marks columns
+    whose sorted values are not strictly increasing (exact ties, NaN):
+    those keep the per-node heapsort, because heapsort's tie permutation
+    feeds the float prefix-sum order and results must stay bit-identical.
+    mask holds a per-node stamp so membership tests need no clearing.
+    """
+
+    var n_rows: Int
+    var order: List[Int]
+    var col_fallback: List[Bool]
+    var mask: List[Int]
+    var stamp: Int
+
+
+fn _presort_columns(X: List[Float64], n_rows: Int, n_cols: Int) -> _SplitCtx:
+    """Sort each feature column once; flag columns needing the fallback."""
+    var order = List[Int](capacity=n_rows * n_cols)
+    var col_fallback = List[Bool](capacity=n_cols)
+    for f in range(n_cols):
+        var keys = List[Float64](capacity=n_rows)
+        var idx = List[Int](capacity=n_rows)
+        for r in range(n_rows):
+            keys.append(X[r * n_cols + f])
+            idx.append(r)
+        _heapsort_key_idx(keys, idx)
+        var fallback = False
+        for r in range(1, n_rows):
+            if not (keys[r - 1] < keys[r]):
+                fallback = True
+                break
+        col_fallback.append(fallback)
+        for r in range(n_rows):
+            order.append(idx[r])
+    var mask = List[Int](capacity=n_rows)
+    for _ in range(n_rows):
+        mask.append(0)
+    return _SplitCtx(n_rows, order^, col_fallback^, mask^, 0)
+
+
 # ── split search ─────────────────────────────────────────────────────────────
 
 
@@ -165,14 +258,25 @@ fn _best_split(
     resid: List[Float64],
     idxs: List[Int],
     min_leaf: Int,
+    mut ctx: _SplitCtx,
 ) -> _Split:
     """Greedy variance-reduction split over all features.
 
-    For each feature the node's rows are sorted by value; a prefix-sum
-    scan scores every boundary between distinct values with
+    For each feature the node's rows are visited in ascending value
+    order; a prefix-sum scan scores every boundary between distinct
+    values with
       gain = S_L^2/n_L + S_R^2/n_R - S^2/m   (SSE reduction, >= 0),
     honoring min_leaf on both sides. Ties keep the first (lowest feature
-    index, lowest threshold) for determinism. O(n_cols * m log m).
+    index, lowest threshold) for determinism.
+
+    The ascending order comes from the fit-wide presort in ctx: the
+    node's rows are stamped into ctx.mask and the global column order is
+    walked once, O(n_rows) per feature with no per-node sort. Columns
+    flagged in col_fallback — and nodes small enough that re-sorting m
+    rows is cheaper than walking n_rows — use the original per-node
+    heapsort path instead; on strictly-increasing columns both paths
+    visit identical (value, residual) sequences, so gains, thresholds,
+    and tie-breaks are bit-identical either way.
     """
     var m = len(idxs)
     var out = _Split(-1, 0.0, 0.0)
@@ -182,30 +286,73 @@ fn _best_split(
     for i in range(m):
         total += resid[idxs[i]]
     var parent_score = total * total / Float64(m)
-    for f in range(n_cols):
-        var keys = List[Float64](capacity=m)
-        var vals = List[Float64](capacity=m)
+    # Presorted walk costs ~n_rows per feature; the per-node heapsort
+    # costs ~m log2(m) heavier steps. Pick the walk only when it wins.
+    var lg = 0
+    var v = m
+    while v > 1:
+        v >>= 1
+        lg += 1
+    var use_walk = 2 * m * lg >= ctx.n_rows
+    if use_walk:
+        ctx.stamp += 1
         for i in range(m):
-            keys.append(X[idxs[i] * n_cols + f])
-            vals.append(resid[idxs[i]])
-        _heapsort_pair(keys, vals)
-        var left_sum: Float64 = 0.0
-        for s in range(1, m):
-            left_sum += vals[s - 1]
-            if s < min_leaf or m - s < min_leaf:
-                continue
-            if fabs(keys[s] - keys[s - 1]) < 1e-15:
-                continue
-            var right_sum = total - left_sum
-            var gain = (
-                left_sum * left_sum / Float64(s)
-                + right_sum * right_sum / Float64(m - s)
-                - parent_score
-            )
-            if gain > out.gain:
-                out.gain = gain
-                out.feature = f
-                out.value = (keys[s - 1] + keys[s]) / 2.0
+            ctx.mask[idxs[i]] = ctx.stamp
+    for f in range(n_cols):
+        if use_walk and not ctx.col_fallback[f]:
+            var base = f * ctx.n_rows
+            var left_sum: Float64 = 0.0
+            var prev_key: Float64 = 0.0
+            var prev_val: Float64 = 0.0
+            var cnt = 0
+            for r in range(ctx.n_rows):
+                var row = ctx.order[base + r]
+                if ctx.mask[row] != ctx.stamp:
+                    continue
+                var key = X[row * n_cols + f]
+                if cnt >= 1:
+                    left_sum += prev_val
+                    if cnt >= min_leaf and m - cnt >= min_leaf:
+                        if not (fabs(key - prev_key) < 1e-15):
+                            var right_sum = total - left_sum
+                            var gain = (
+                                left_sum * left_sum / Float64(cnt)
+                                + right_sum * right_sum / Float64(m - cnt)
+                                - parent_score
+                            )
+                            if gain > out.gain:
+                                out.gain = gain
+                                out.feature = f
+                                out.value = (prev_key + key) / 2.0
+                prev_key = key
+                prev_val = resid[row]
+                cnt += 1
+                if cnt == m:
+                    break
+        else:
+            var keys = List[Float64](capacity=m)
+            var vals = List[Float64](capacity=m)
+            for i in range(m):
+                keys.append(X[idxs[i] * n_cols + f])
+                vals.append(resid[idxs[i]])
+            _heapsort_pair(keys, vals)
+            var left_sum: Float64 = 0.0
+            for s in range(1, m):
+                left_sum += vals[s - 1]
+                if s < min_leaf or m - s < min_leaf:
+                    continue
+                if fabs(keys[s] - keys[s - 1]) < 1e-15:
+                    continue
+                var right_sum = total - left_sum
+                var gain = (
+                    left_sum * left_sum / Float64(s)
+                    + right_sum * right_sum / Float64(m - s)
+                    - parent_score
+                )
+                if gain > out.gain:
+                    out.gain = gain
+                    out.feature = f
+                    out.value = (keys[s - 1] + keys[s]) / 2.0
     return out^
 
 
@@ -240,6 +387,7 @@ fn _grow(
     max_depth: Int,
     min_leaf: Int,
     lr: Float64,
+    mut ctx: _SplitCtx,
 ) -> Int:
     """Recursively grow one regression tree on the residuals of the rows
     in idxs. Leaf values are the mean residual scaled by lr. Returns the
@@ -252,7 +400,7 @@ fn _grow(
         mean /= Float64(m)
     if depth >= max_depth or m < 2 or m < 2 * min_leaf:
         return _add_node(model, -1, 0.0, -1, -1, lr * mean)
-    var sp = _best_split(X, n_cols, resid, idxs, min_leaf)
+    var sp = _best_split(X, n_cols, resid, idxs, min_leaf, ctx)
     if sp.feature < 0 or sp.gain <= 1e-12:
         return _add_node(model, -1, 0.0, -1, -1, lr * mean)
     var left_idx = List[Int]()
@@ -266,10 +414,28 @@ fn _grow(
         return _add_node(model, -1, 0.0, -1, -1, lr * mean)
     var node = _add_node(model, sp.feature, sp.value, -1, -1, lr * mean)
     var l = _grow(
-        model, X, n_cols, resid, left_idx, depth + 1, max_depth, min_leaf, lr
+        model,
+        X,
+        n_cols,
+        resid,
+        left_idx,
+        depth + 1,
+        max_depth,
+        min_leaf,
+        lr,
+        ctx,
     )
     var r = _grow(
-        model, X, n_cols, resid, right_idx, depth + 1, max_depth, min_leaf, lr
+        model,
+        X,
+        n_cols,
+        resid,
+        right_idx,
+        depth + 1,
+        max_depth,
+        min_leaf,
+        lr,
+        ctx,
     )
     model.left_child[node] = l
     model.right_child[node] = r
@@ -342,6 +508,7 @@ fn gbdt_fit(
         if k > n:
             k = n
     var rng = _seed_state(seed)
+    var ctx = _presort_columns(X, n, n_cols)
 
     var pred = List[Float64](capacity=n)
     for _ in range(n):
@@ -363,7 +530,16 @@ fn gbdt_fit(
                 sampled.append(idxs[i])
             idxs = sampled^
         var root = _grow(
-            model, X, n_cols, resid, idxs, 0, max_depth, ml, learning_rate
+            model,
+            X,
+            n_cols,
+            resid,
+            idxs,
+            0,
+            max_depth,
+            ml,
+            learning_rate,
+            ctx,
         )
         model.tree_root.append(root)
         for i in range(n):

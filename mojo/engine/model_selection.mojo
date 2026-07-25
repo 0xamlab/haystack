@@ -27,9 +27,9 @@ struct SplitIndices(Copyable, Movable):
         self.train = List[Int]()
         self.test = List[Int]()
 
-    fn __init__(out self, train: List[Int], test: List[Int]):
-        self.train = train.copy()
-        self.test = test.copy()
+    fn __init__(out self, var train: List[Int], var test: List[Int]):
+        self.train = train^
+        self.test = test^
 
 
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
@@ -107,13 +107,13 @@ fn walk_forward_splits(
         var lo = 0
         if not expanding:
             lo = t0 - min_train
-        var train = List[Int]()
+        var train = List[Int](capacity=t0 - lo)
         for i in range(lo, t0):
             train.append(i)
-        var test = List[Int]()
+        var test = List[Int](capacity=t1 - t0)
         for i in range(t0, t1):
             test.append(i)
-        result.append(SplitIndices(train, test))
+        result.append(SplitIndices(train^, test^))
         start = t1
     return result^
 
@@ -161,14 +161,14 @@ fn purged_walk_forward_splits(
         var t0 = start
         var t1 = start + size
         var train_end = t0 - gap
-        var train = List[Int]()
+        var train = List[Int](capacity=train_end)
         for i in range(train_end):
             if not embargoed[i]:
                 train.append(i)
-        var test = List[Int]()
+        var test = List[Int](capacity=t1 - t0)
         for i in range(t0, t1):
             test.append(i)
-        result.append(SplitIndices(train, test))
+        result.append(SplitIndices(train^, test^))
         # Mark embargo region after this test window for later training sets.
         var stop = t1 + emb
         if stop > n:
@@ -220,14 +220,14 @@ fn kfold_splits(n: Int, k: Int, seed: Int, shuffle: Bool) -> List[SplitIndices]:
             pos += 1
 
     for f in range(k):
-        var train = List[Int]()
-        var test = List[Int]()
+        var train = List[Int](capacity=n)
+        var test = List[Int](capacity=n)
         for i in range(n):
             if fold_of[i] == f:
                 test.append(i)
             else:
                 train.append(i)
-        result.append(SplitIndices(train, test))
+        result.append(SplitIndices(train^, test^))
     return result^
 
 
@@ -279,14 +279,14 @@ fn stratified_kfold_splits(
             next_fold = (next_fold + 1) % k
 
     for f in range(k):
-        var train = List[Int]()
-        var test = List[Int]()
+        var train = List[Int](capacity=n)
+        var test = List[Int](capacity=n)
         for i in range(n):
             if fold_of[i] == f:
                 test.append(i)
             else:
                 train.append(i)
-        result.append(SplitIndices(train, test))
+        result.append(SplitIndices(train^, test^))
     return result^
 
 
