@@ -16,8 +16,8 @@ from apps.api_server.services.entitlement_service import _TIER_CAPACITY, resolve
 def test_client_id_resolution():
     assert pr.product_for_client_id("algenta-cli") == "algenta"
     assert pr.product_for_client_id("telys-cli") == "telys"
-    # codna-cli is RESERVED but device_login=False → stays rejected exactly like before this change.
-    assert pr.product_for_client_id("codna-cli") is None
+    # codna-cli is now wired for device-login (device_login=True) → resolves to codna.
+    assert pr.product_for_client_id("codna-cli") == "codna"
     # cohenta-cli is likewise RESERVED (device_login=False) — billable via the website, no CLI signup yet.
     assert pr.product_for_client_id("cohenta-cli") is None
     assert pr.product_for_client_id("nope") is None
@@ -53,7 +53,7 @@ def test_rs256_products_set():
 # ── feature flags (default-safe) ────────────────────────────────────────────────
 def test_product_flags_default_safe():
     assert pr.product_flag("telys", "device_login") is True
-    assert pr.product_flag("codna", "device_login") is False
+    assert pr.product_flag("codna", "device_login") is True  # codna CLI device-login shipped
     assert pr.product_flag("algenta", "billing") is True  # live (credential gate is the real switch)
     assert pr.product_flag("algenta", "device_login") is True
     assert pr.product_flag("cohenta", "billing") is True  # website checkout is live

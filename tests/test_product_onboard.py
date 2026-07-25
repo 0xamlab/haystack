@@ -109,12 +109,22 @@ async def test_onboard_requires_bearer(client, app):
 
 
 async def test_onboard_rejects_reserved_off_product(client, app, monkeypatch):
-    # codna is a registered product but device_login=False (GitHub-App auth) → NOT self-serve onboardable
-    # here → 404 (matches the reserved-off intent; no ungated signup for a not-yet-live-for-CLI brand).
+    # cohenta is a registered product but device_login=False (website-only signup) → NOT self-serve
+    # onboardable here → 404 (matches the reserved-off intent; no ungated CLI signup for a not-yet-live brand).
+    _stub_supabase(monkeypatch, email="cohentauser@example.com")
+    r = await client.post("/v1/products/cohenta/onboard", headers={"authorization": "Bearer JWT"}, json={})
+    assert r.status_code == 404, r.text
+    assert await _org_for_email("cohentauser@example.com") is None
+
+
+async def test_codna_onboards_now_device_login_on(client, app, monkeypatch):
+    # codna cut over to device_login=True → `codna login` is self-serve onboardable, minting a codna org
+    # on the free tier + the first API key (like telys/algenta). License stays HS256 (rs256 unchanged).
     _stub_supabase(monkeypatch, email="codnauser@example.com")
     r = await client.post("/v1/products/codna/onboard", headers={"authorization": "Bearer JWT"}, json={})
-    assert r.status_code == 404, r.text
-    assert await _org_for_email("codnauser@example.com") is None
+    assert r.status_code == 201, r.text
+    org = await _org_for_email("codnauser@example.com")
+    assert org is not None and org.plan == OrgPlan.FREE
 
 
 async def test_onboard_does_not_downgrade_a_paid_org(client, app, monkeypatch):

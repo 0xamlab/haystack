@@ -85,8 +85,9 @@ class ProductConfig:
 # The registry. Order is display order (drives "your products" style overviews).
 _PRODUCTS: dict[str, ProductConfig] = {
     # Codna — the coding edition; the unprefixed legacy default (developer/pro/team plans have no prefix).
-    # Its CLI auth is the GitHub App today (client_id reserved, not yet wired into device-login); it stays
-    # on its existing license path (rs256_license=False) until an explicit cutover.
+    # CLI device-login is now shipped (codna-cli → /v1/products/codna/onboard), alongside the GitHub App
+    # for cloud fixes. The runtime license stays HS256 (rs256_license=False) — decoupled from device_login,
+    # which only governs the accounts device-code sign-in, not the license format.
     "codna": ProductConfig(
         id="codna",
         display_name="Codna",
@@ -98,7 +99,7 @@ _PRODUCTS: dict[str, ProductConfig] = {
         mcp_server_name="io.github.thyn-ai/codna",
         public_api_base="https://api.codna.ai",
         rs256_license=False,
-        feature_flags={"billing": True, "device_login": False},
+        feature_flags={"billing": True, "device_login": True},
     ),
     # Telys — on-device memory/retrieval runtime; live, RS256 platform licenses, device-login shipped.
     "telys": ProductConfig(
@@ -184,7 +185,7 @@ def product_for_client_id(client_id: str | None) -> str | None:
     """Device-login: map a CLI ``client_id`` (e.g. ``algenta-cli``) to its product id, or ``None``.
 
     Replaces the private ``oauth_device._KNOWN_CLIENTS`` map. A product only participates in device-login
-    when its ``device_login`` flag is set (so ``codna-cli`` is reserved but rejected until codna cuts over).
+    when its ``device_login`` flag is set (``codna-cli`` is now wired; ``cohenta-cli`` stays reserved/off).
     """
     if not client_id:
         return None
