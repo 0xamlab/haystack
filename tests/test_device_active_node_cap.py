@@ -438,9 +438,16 @@ async def test_withheld_heartbeat_still_reconciles_usage(
     client, app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A withheld (over-cap) heartbeat must still bill work already performed — only the active slot
-    is withheld, never the usage record (otherwise an over-cap node's executions are lost forever)."""
+    is withheld, never the usage record (otherwise an over-cap node's executions are lost forever).
+
+    Usage billing only runs when metering is enabled (self-hosted ships with it OFF), so this
+    metering-specific test opts it in explicitly."""
     monkeypatch.setenv("ALGENTA_ENFORCE_ACTIVE_NODE_CAP", "1")
     monkeypatch.setenv("ALGENTA_ACTIVE_NODE_WINDOW_SECONDS", "3600")
+    monkeypatch.setenv("ALGENTA_ENABLE_METERING", "true")
+    from apps.api_server.config import get_settings
+
+    get_settings.cache_clear()
     redis_stub = _RedisStub()  # noqa: F405
 
     async def _fake_redis() -> object:
@@ -471,6 +478,7 @@ async def test_withheld_heartbeat_still_reconciles_usage(
         assert after - before == 7, (before, after)  # ...but the 7 executions were still billed
     finally:
         app.dependency_overrides.pop(get_redis, None)  # noqa: F405
+        get_settings.cache_clear()  # don't leak metering=on into other tests
 
 
 @pytest.mark.anyio

@@ -122,7 +122,10 @@ def test_issue_control_plane_license_uses_api_key_expiry_when_present(monkeypatc
     monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
     get_settings.cache_clear()
 
-    expires_at = datetime.now(UTC) + timedelta(days=730)
+    # Use an api-key expiry INSIDE the rolling renewal window so the license honors it directly.
+    # (A far-future key expiry is deliberately capped to now + _LICENSE_RENEWAL_TTL_DAYS to close
+    # "pay once and leave" — see test_issue_control_plane_license_caps_far_future_expiry below.)
+    expires_at = datetime.now(UTC) + timedelta(days=10)
     token = _issue_license_jwt(
         device_id="device-expiry-bound-123",
         api_key_prefix="de_live_test",
@@ -136,6 +139,38 @@ def test_issue_control_plane_license_uses_api_key_expiry_when_present(monkeypatc
     assert parsed is not None
     assert parsed.valid is True
     assert parsed.expires_at == int(expires_at.timestamp())
+    assert parsed.key_expires_at == int(expires_at.timestamp())
+
+    get_settings.cache_clear()
+
+
+def test_issue_control_plane_license_caps_far_future_expiry(monkeypatch):
+    """A far-future api-key expiry is capped to the rolling renewal window on the license
+    (``expires_at``), while ``key_expires_at`` still records the true key expiry — this is the
+    "pay once and leave" defense: the license must be renewed within the window regardless."""
+    from apps.api_server.services.device_service import _LICENSE_RENEWAL_TTL_DAYS
+
+    monkeypatch.delenv("LICENSE_SIGNING_SECRET", raising=False)
+    monkeypatch.setenv("JWT_SECRET", "jwt-signing-seed")
+    get_settings.cache_clear()
+
+    expires_at = datetime.now(UTC) + timedelta(days=730)
+    token = _issue_license_jwt(
+        device_id="device-farfuture-123",
+        api_key_prefix="de_live_test",
+        plan="developer",
+        device_limit=5,
+        org_id="org_test",
+        api_key_expires_at=expires_at,
+    )
+
+    parsed = _parse_token(token, "de_live_test_key")
+    assert parsed is not None and parsed.valid is True
+    # expires_at is capped to the rolling window (not the 730-day key expiry)...
+    window_ceiling = int(datetime.now(UTC).timestamp()) + _LICENSE_RENEWAL_TTL_DAYS * 86400
+    assert parsed.expires_at <= window_ceiling + 5  # small clock-skew tolerance
+    assert parsed.expires_at < int(expires_at.timestamp())
+    # ...but the true backing key expiry is still recorded.
     assert parsed.key_expires_at == int(expires_at.timestamp())
 
     get_settings.cache_clear()

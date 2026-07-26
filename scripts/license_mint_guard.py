@@ -76,6 +76,8 @@ def paid_selfhost_violations(claims: Mapping[str, object]) -> list[str]:
     grace_days = _as_int(claims.get("offline_grace_days"))
     thumbprint = str(claims.get("device_pubkey_thumbprint", "")).strip()
     plan = str(claims.get("plan", "")).strip().lower()
+    license_scope = str(claims.get("license_scope", "device")).strip().lower()
+    max_concurrent_units = _as_int(claims.get("max_concurrent_units"))
 
     # 1) Never an OEM / redistribution license for a paying customer — that's the fleet-portable shape.
     if deployment_class == "oem" or _is_truthy(claims.get("oem")):
@@ -92,7 +94,15 @@ def paid_selfhost_violations(claims: Mapping[str, object]) -> list[str]:
         violations.append("commercial_use is false: a paid self-host license must grant commercial use.")
 
     # 3) FINITE caps — at least one enforceable ceiling. All-zero caps = uncapped = fleet-portable.
-    if active_node_limit <= 0 and worker_limit <= 0:
+    #    For a DEPLOYMENT-scope (server) license the enforceable ceiling is the Compute-Unit pool
+    #    (max_concurrent_units); for a device-scope license it's the node/worker cap.
+    if license_scope == "deployment":
+        if max_concurrent_units <= 0:
+            violations.append(
+                "deployment-scope license has no Compute-Unit ceiling: set --max-concurrent-units > 0. "
+                "An unbounded unit pool runs on unlimited capacity — the fleet-abuse hole."
+            )
+    elif active_node_limit <= 0 and worker_limit <= 0:
         violations.append(
             "no finite caps: set --active-node-limit (connected) and/or --concurrent-worker-limit > 0. "
             "An all-zero-cap license runs on unlimited nodes — the exact fleet-abuse hole."

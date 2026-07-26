@@ -239,6 +239,11 @@ app.include_router(connectors.router)
 app.include_router(repositories.router)
 app.include_router(deployments.router)
 
+# Deployment (server / Compute-Unit) licensing activation — POST /v1/deployment/activate
+from apps.api_server.routers import deployment_activation as _deployment_activation_router  # noqa: E402
+
+app.include_router(_deployment_activation_router.router)
+
 # Export API — /v1/runs/{run_id}/export.{csv,xlsx,pdf,json}
 from apps.api_server.routers import export as _export_router  # noqa: E402
 

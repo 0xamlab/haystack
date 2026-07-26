@@ -35,6 +35,11 @@ from .decision_aggregate import (
     RetentionMode,
 )
 from .deployment import CloudProvider, Deployment, DeploymentStatus
+from .deployment_license import (
+    DeploymentLicenseRegistration,
+    DeploymentLicenseStatus,
+    DeploymentNodeLease,
+)
 from .device_grant import DeviceGrant
 from .dormant_notification import DormantNotification
 from .entra_principal import EntraPrincipalMapping
@@ -93,6 +98,9 @@ __all__ = [
     "Deployment",
     "DeploymentStatus",
     "CloudProvider",
+    "DeploymentLicenseRegistration",
+    "DeploymentLicenseStatus",
+    "DeploymentNodeLease",
     "ExecutionOwner",
     "ExecutionSessionStatus",
     "ImplementationKind",

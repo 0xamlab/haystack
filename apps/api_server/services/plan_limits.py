@@ -186,6 +186,45 @@ _PLANS: dict[str, PlanConfig] = {
         permitted_modules=["*"], credit_batch_size=10_000, concurrent_jobs=0, storage_gb=0,
         llm_spend_cap_usd_month=0,
     ),
+    # ALGENTA SERVER — organization-deployment scope (Compute Units, not per-device). Local
+    # runtime enabled; devices/executions unlimited (units are the metric, enforced by the
+    # node broker + control-plane pool, NOT by the per-device count). price None = catalog/quote.
+    "algenta_server": PlanConfig(
+        display_name="ALGENTA SERVER", price_usd_month=None, executions_month=0,
+        devices=0, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=100_000, concurrent_jobs=0, storage_gb=0,
+        llm_spend_cap_usd_month=0,
+    ),
+    # Server (deployment scope) for the other editions — same shape as ALGENTA SERVER.
+    "codna_server": PlanConfig(
+        display_name="CODNA SERVER", price_usd_month=None, executions_month=0,
+        devices=0, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=100_000, concurrent_jobs=0, storage_gb=0,
+        llm_spend_cap_usd_month=0,
+    ),
+    "telys_server": PlanConfig(
+        display_name="TELYS SERVER", price_usd_month=None, executions_month=0,
+        devices=0, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=100_000, concurrent_jobs=0, storage_gb=0,
+        llm_spend_cap_usd_month=0,
+    ),
+    "sqai_server": PlanConfig(
+        display_name="SQAI SERVER", price_usd_month=None, executions_month=0,
+        devices=0, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=100_000, concurrent_jobs=0, storage_gb=0,
+        llm_spend_cap_usd_month=0,
+    ),
+    "cohenta_server": PlanConfig(
+        display_name="COHENTA SERVER", price_usd_month=None, executions_month=0,
+        devices=0, local_runtime=True, rate_per_minute=0, async_jobs=True, webhooks=True,
+        max_runs_per_call=1_000_000, max_batch=100, audit_trail=True, rbac=True,
+        permitted_modules=["*"], credit_batch_size=100_000, concurrent_jobs=0, storage_gb=0,
+        llm_spend_cap_usd_month=0,
+    ),
     # SQAI (on-device structured-query runtime) — mirrors the telys tier capacities initially.
     # sqai_developer: local runtime ENABLED (can register 1 device), no card, non-commercial.
     "sqai_developer": PlanConfig(
@@ -445,6 +484,14 @@ _WORKER_LIMITS: dict[str, int] = {
     "proplus": 10,
     "telys_team": 20,
     "algenta_team": 20,
+    # Server (deployment scope): the per-node worker cap is DERIVED from Compute Units
+    # (units × workers_per_unit) by the runtime broker, so the per-device claim is 0 (=derive,
+    # not free-capped). Never fall through to the free cap of 1 for a server node.
+    "algenta_server": 0,
+    "codna_server": 0,
+    "telys_server": 0,
+    "sqai_server": 0,
+    "cohenta_server": 0,
     "cohenta_team": 20,
     "sqai_developer": 1,
     "sqai_pro": 5,

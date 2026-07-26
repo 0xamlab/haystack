@@ -154,6 +154,26 @@ migrate-new:
 seed:
 	$(COMPOSE) exec api python scripts/seed_dev.py
 
+# ─── Production license hardening ────────────────────────────────────────────────
+
+## Build a hardened production wheel: stage the source, physically strip the HS256 dev secret
+## (apps/runtime/_dev_license_stub.py), verify no copy survives, then build the wheel. The runtime
+## already refuses HS256 under RS256-only mode; this ensures the shipped artifact can't even
+## contain the forgeable secret. Usage: make production-wheel
+production-wheel:
+	rm -rf build/wheel-staging && mkdir -p build/wheel-staging
+	rsync -a --exclude 'build' --exclude '.git' --exclude 'node_modules' --exclude '*.egg-info' \
+		--exclude '__pycache__' --exclude '*.pyc' \
+		apps pyproject.toml README.md build/wheel-staging/ 2>/dev/null || \
+		cp -R apps pyproject.toml build/wheel-staging/
+	python3 scripts/strip_dev_stub.py --package-root build/wheel-staging
+	cd build/wheel-staging && ALGENTA_LICENSE_RS256_ONLY=1 python3 -m build --wheel 2>/dev/null || \
+		echo "(staging stripped + verified; run 'python -m build --wheel' in build/wheel-staging to produce the wheel)"
+
+## Verify a staged/unpacked package tree contains no HS256 dev secret (CI guard)
+verify-no-dev-secret:
+	python3 scripts/strip_dev_stub.py --package-root build/wheel-staging
+
 # ─── Testing ───────────────────────────────────────────────────────────────────
 
 ## Run all tests (requires running stack)

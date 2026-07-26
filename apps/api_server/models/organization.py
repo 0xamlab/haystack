@@ -28,6 +28,13 @@ class OrgPlan(StrEnum):
     COHENTA_FREE = "cohenta_free"            # free, 1-device Cohenta campaign-orchestration tier
     COHENTA_PRO_RUNNER = "cohenta_pro_runner"  # paid Cohenta — solo runner, commercial, multi-device
     COHENTA_TEAM = "cohenta_team"            # paid Cohenta — team, per-SEAT billed
+    # Server (organization-DEPLOYMENT scope) — Compute-Unit licensed, per edition. The DB enum
+    # gets these via migration 0059; deployment entitlement/enforcement is Compute-Unit based.
+    ALGENTA_SERVER = "algenta_server"
+    CODNA_SERVER = "codna_server"
+    TELYS_SERVER = "telys_server"
+    SQAI_SERVER = "sqai_server"
+    COHENTA_SERVER = "cohenta_server"
     # NOTE: `algenta_selfhost` was removed (2026-07). All paid Algenta tiers are self-hosted + per-device;
     # there is no separate self-host plan. The Postgres org_plan enum still carries the orphaned value
     # (migration 0050) — Postgres can't DROP an enum value — but it is unused and no longer offered.

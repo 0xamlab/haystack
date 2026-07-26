@@ -53,6 +53,14 @@ def _enforce_peer_node_cap() -> bool:
     return _env_truthy("ALGENTA_ENFORCE_PEER_NODE_CAP")
 
 
+def _is_community_floor(lic: object) -> bool:
+    """The always-free Community fallback (a lapsed paid license that settled to the floor). It is
+    NEVER capacity-gated — the never-hard-cut invariant wins over any node cap. Without this an
+    unbound, license_id-less Community token would fail the peer census closed and hard-block the
+    free floor (violating never-hard-cut)."""
+    return str(getattr(lic, "source", "") or "") == "community-fallback"
+
+
 def license_enforcing() -> bool:
     """The license-enforcement predicate that gates L1 (mirrors the daemon startup gate)."""
     try:
@@ -92,9 +100,13 @@ def assert_node_binding(lic: object, *, enforcing: bool) -> None:
     those) and when dark. Called at daemon startup (sync, before anything binds)."""
     if not enforcing:
         return
-    limit = int(getattr(lic, "node_limit", lambda: 0)())
-    if limit <= 0:
-        return
+    if _is_community_floor(lic):
+        return  # never-hard-cut: the free Community floor is never blocked by binding
+    # A BOUND token (carries device_pubkey_thumbprint) may run ONLY on its bound node — enforced
+    # regardless of node_limit. Deployment/server licenses have active_node_limit=0 (units, not
+    # nodes, are the metric); gating this check on node_limit>0 (the old behavior) made binding
+    # dead code for exactly those licenses, letting an offline deployment license be copied across
+    # nodes. Binding is now independent of node_limit; unbound tokens fall through to the L2 census.
     claimed = (getattr(lic, "device_pubkey_thumbprint", "") or "").strip()
     if not claimed:
         return  # unbound token → the peer census (L2) is the enforcement path, not binding
@@ -106,8 +118,51 @@ def assert_node_binding(lic: object, *, enforcing: bool) -> None:
         ) from exc
     if local != claimed:
         raise NodeAdmissionError(
-            "this machine is not the licensed node — the license is device-bound to a different node "
-            "(active_node_limit is per-device for self-hosted deployments)"
+            "this machine is not the licensed node — the license is bound to a different node "
+            "(a bound device/deployment license runs only on the node it was issued for)"
+        )
+
+
+# ── Deployment scope: Compute-Unit capacity (server/enterprise) ───────────────────────────────────
+
+
+def node_compute_units(lic: object) -> float:
+    """This node's fractional Compute-Unit contribution under the license's measurement policy.
+
+    Uses the cgroup-aware effective-vCPU measurement (apps/runtime/capacity.py) divided by the
+    license's ``vcpu_per_unit``. Deterministic; safe to call at boot and on heartbeat."""
+    from apps.runtime.capacity import measure_effective_vcpu, node_contribution
+
+    unit_size = int(getattr(lic, "unit_size", lambda: 0)() or 0)
+    measurement = measure_effective_vcpu()
+    return node_contribution(measurement.effective_vcpu, unit_size or 4)
+
+
+def assert_deployment_capacity(lic: object, *, enforcing: bool) -> None:
+    """Fail closed if THIS node alone exceeds the deployment's Compute-Unit pool ceiling.
+
+    This is the local (air-gap-safe, no-coordination) ceiling for a PINNED single-node server
+    deployment: a node measured at more Compute Units than the whole purchased pool can never be
+    admitted. The DISTRIBUTED pool sum across many nodes (floating pool) is the L3/Relay lease
+    authority — this covers the single-node case that needs no backend. No-op for device scope,
+    when dark, or when no unit ceiling is set."""
+    if not enforcing:
+        return
+    if not bool(getattr(lic, "is_deployment_scope", lambda: False)()):
+        return
+    max_units = int(getattr(lic, "max_concurrent_units", 0) or 0)
+    if max_units <= 0:
+        return
+    this_node = node_compute_units(lic)
+    # Fractional node contribution rounded up to whole units for the ceiling comparison — a node
+    # consuming 4.2 units needs a pool of at least 5.
+    import math
+
+    needed = int(math.ceil(this_node)) if this_node > 0 else 0
+    if needed > max_units:
+        raise NodeAdmissionError(
+            f"this node measures {this_node:.2f} Compute Units (needs {needed}) but the deployment "
+            f"pool ceiling is {max_units} — provision more Compute Units or split the workload"
         )
 
 
@@ -123,6 +178,8 @@ async def assert_node_census(lic: object, *, enforcing: bool, now: float | None 
     an UNBOUND token with a finite pool fails closed (it cannot be counted offline)."""
     if not enforcing or not _enforce_peer_node_cap():
         return None
+    if _is_community_floor(lic):
+        return None  # never-hard-cut: the free Community floor is never blocked by the census
     limit = int(getattr(lic, "node_limit", lambda: 0)())
     if limit <= 0:
         return None

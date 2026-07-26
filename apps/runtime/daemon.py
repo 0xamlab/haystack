@@ -163,6 +163,10 @@ def _validate_daemon_startup_prerequisites() -> None:
     from apps.runtime import node_broker
 
     node_broker.assert_node_binding(license_record, enforcing=True)
+    # Deployment (server) scope: the local Compute-Unit ceiling for a pinned single-node
+    # deployment — a node bigger than the whole purchased pool can never boot. No-op for
+    # personal-device licenses. The distributed pool sum (floating pool) is the L3/Relay path.
+    node_broker.assert_deployment_capacity(license_record, enforcing=True)
 
 
 # ── Mojo process manager ──────────────────────────────────────────────────────

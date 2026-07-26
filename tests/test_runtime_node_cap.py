@@ -84,9 +84,17 @@ def _use_redis(monkeypatch, redis):  # noqa: ANN001
 
 
 # ── L1 device-binding (sync, air-gap-safe) ─────────────────────────────────────────
-def test_l1_dark_when_not_enforcing_or_limit_zero() -> None:
-    assert_node_binding(_Lic(node_limit=1, thumbprint=OTHER), enforcing=False)  # dark → no raise
-    assert_node_binding(_Lic(node_limit=0, thumbprint=OTHER), enforcing=True)   # limit 0 → no raise
+def test_l1_dark_when_not_enforcing_or_unbound() -> None:
+    assert_node_binding(_Lic(node_limit=1, thumbprint=OTHER), enforcing=False)  # not enforcing → no raise
+    assert_node_binding(_Lic(node_limit=0, thumbprint=""), enforcing=True)      # limit 0 + UNBOUND → L2 handles
+
+
+def test_l1_bound_enforced_even_at_zero_node_limit() -> None:
+    # A BOUND deployment license has active_node_limit=0 (units, not nodes, are the metric) but is
+    # still pinned to its node — binding is independent of node_limit (fixes the offline-license
+    # copy-across-nodes hole).
+    with pytest.raises(NodeAdmissionError, match="not the licensed node"):
+        assert_node_binding(_Lic(node_limit=0, thumbprint=OTHER), enforcing=True)
 
 
 def test_l1_bound_match_boots() -> None:

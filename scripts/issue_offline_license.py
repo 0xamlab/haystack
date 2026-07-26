@@ -114,6 +114,27 @@ def _build_parser() -> argparse.ArgumentParser:
         "--redistribution-allowed", action="store_true", help="v2: redistribution grant.",
     )
     parser.add_argument("--offline-grace-days", type=int, default=0, help="v2 offline grace claim.")
+    # ── server/enterprise DEPLOYMENT scope (Compute Units) ──
+    parser.add_argument(
+        "--license-scope", default="device", choices=["device", "deployment"],
+        help="v2: 'device' (personal) or 'deployment' (org server pool). deployment activates "
+        "the Compute-Unit enforcement path.",
+    )
+    parser.add_argument("--deployment-id", default="", help="v2: deployment identity (deployment scope).")
+    parser.add_argument(
+        "--max-concurrent-units", type=int, default=0,
+        help="v2: Compute-Unit pool ceiling (deployment scope). The enforceable server cap.",
+    )
+    parser.add_argument(
+        "--max-effective-vcpu", type=int, default=0,
+        help="v2: per-node workstation effective-vCPU ceiling (0 = unspecified).",
+    )
+    parser.add_argument(
+        "--vcpu-per-unit", type=int, default=0,
+        help="v2: measurement policy — effective vCPU per Compute Unit (0 = runtime default 4).",
+    )
+    parser.add_argument("--measurement-policy-version", default="", help="v2: names the vCPU→unit rules.")
+    parser.add_argument("--grace-policy-id", default="", help="v2: names the lapse/grace/Community-floor policy.")
     parser.add_argument(
         "--paid-selfhost",
         action="store_true",
@@ -193,6 +214,20 @@ def _build_claims(args: argparse.Namespace) -> dict[str, object]:
         "redistribution_allowed": bool(args.redistribution_allowed),
         "offline_grace_days": max(0, int(args.offline_grace_days)),
     }
+    # Server/enterprise deployment-scope claims — emitted only for deployment scope so device
+    # licenses keep their exact claim shape.
+    if str(getattr(args, "license_scope", "device")) == "deployment":
+        claims["license_scope"] = "deployment"
+        claims["deployment_id"] = args.deployment_id
+        claims["max_concurrent_units"] = max(0, int(args.max_concurrent_units))
+        if int(args.max_effective_vcpu) > 0:
+            claims["max_effective_vcpu"] = int(args.max_effective_vcpu)
+        if int(args.vcpu_per_unit) > 0:
+            claims["vcpu_per_unit"] = int(args.vcpu_per_unit)
+        if args.measurement_policy_version:
+            claims["measurement_policy_version"] = args.measurement_policy_version
+        if args.grace_policy_id:
+            claims["grace_policy_id"] = args.grace_policy_id
     return claims
 
 
@@ -204,6 +239,14 @@ def main() -> int:
         private_key = _read_private_key(args.private_key_file)
         claims = _build_claims(args)
         if args.paid_selfhost:
+            # A paid, metered self-host license must lapse so it's renewal-gated — a perpetual
+            # (no-expiry) paid license re-opens "pay once and leave". Enforce a finite expiry at
+            # the ISSUANCE layer (the entitlement-claims guard stays expiry-agnostic).
+            if int(args.expires_at) <= 0:
+                raise LicenseMintGuardError(
+                    "paid self-host mint rejected: --expires-at must be a finite future epoch "
+                    "(a perpetual paid license never lapses / is not renewal-gated)."
+                )
             # Fails closed (raises) if these claims would be an abusable paid self-host license.
             assert_paid_selfhost_claims(claims)
         token = jwt.encode(claims, private_key, algorithm="RS256")

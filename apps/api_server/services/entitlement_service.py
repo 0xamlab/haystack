@@ -50,6 +50,16 @@ SELF_SERVICE_MAX_NODES = 2
 # Above this ⇒ enterprise contract. Kept in sync with plan_limits._WORKER_LIMITS.
 SELF_SERVICE_MAX_WORKERS = 20
 
+# ── Compute-Unit (server/enterprise) policy — TUNABLE; the authoritative values are the
+# Stripe catalog's; these are the code defaults + safety anchors. Named in the signed license
+# so the runtime knows which measurement/grace rules are in force. ──
+MEASUREMENT_POLICY_VERSION = "cgroup-v1"  # apps/runtime/capacity.py effective-vCPU rules
+GRACE_POLICY_ID = "community-floor-v1"  # lapse → Community floor state machine
+DEFAULT_VCPU_PER_UNIT = 4  # 4 effective vCPU = 1 Compute Unit
+# Per-ORDER Compute-Unit minimums (NEVER per node/pod — the plan's anti-per-node-minimum rule).
+PINNED_SERVER_MIN_UNITS = 4
+FLOATING_POOL_MIN_UNITS = 16
+
 
 @dataclass(frozen=True)
 class ProductGrant:
@@ -79,9 +89,23 @@ class EntitlementRecord:
     redistribution_allowed: bool = False
     offline_grace_days: int = 0
     entitlement_version: int = 0  # monotonic; the signer rejects regressions
+    # ── server/enterprise (Compute-Unit) capacity — default = personal-device scope ──
+    # license_scope switches the whole enforcement model: "device" (the shipped per-device
+    # path — devices/workers) vs "deployment" (org server pool — Compute Units). Only a
+    # deployment record carries the unit claims; device records leave them at zero so device
+    # tokens are unchanged.
+    license_scope: str = "device"  # device | deployment
+    max_concurrent_units: int = 0  # Compute-Unit pool ceiling (deployment scope)
+    max_effective_vcpu: int = 0  # per-node workstation vCPU ceiling (0 = unspecified)
+    vcpu_per_unit: int = 0  # measurement policy (0 = runtime default of 4)
+    measurement_policy_version: str = ""  # names the vCPU→unit rules in force
+    grace_policy_id: str = ""  # names the lapse/grace/Community-floor policy
 
     def has_product(self, product: str) -> bool:
         return product in self.products
+
+    def is_deployment_scope(self) -> bool:
+        return self.license_scope == "deployment"
 
 
 def _codna_full(tier: str) -> dict[str, ProductGrant]:
@@ -102,6 +126,30 @@ def _algenta_full(tier: str) -> dict[str, ProductGrant]:
 
 def _cohenta_full(tier: str) -> dict[str, ProductGrant]:
     return {"cohenta": ProductGrant(tier=tier, features=frozenset(COHENTA_FEATURES_FULL))}
+
+
+def _server_record(plan: str, products: dict[str, ProductGrant]) -> EntitlementRecord:
+    """Build a DEPLOYMENT-scope (Compute-Unit) server tier — identical across every edition, so
+    Algenta/Codna/Telys/SQAI/Cohenta share ONE server-licensing model (only the product grant
+    differs). The mint overrides ``max_concurrent_units`` with the org's purchased unit quantity;
+    this base is the pinned-server minimum."""
+    return EntitlementRecord(
+        plan=plan,
+        deployment_class="server",
+        license_scope="deployment",
+        products=products,
+        named_seat_limit=0,
+        active_node_limit=0,
+        concurrent_worker_limit=0,  # derived from units by the runtime broker
+        device_allowance_per_seat=0,
+        commercial_use=True,
+        offline_grace_days=14,
+        max_concurrent_units=PINNED_SERVER_MIN_UNITS,
+        max_effective_vcpu=0,
+        vcpu_per_unit=DEFAULT_VCPU_PER_UNIT,
+        measurement_policy_version=MEASUREMENT_POLICY_VERSION,
+        grace_policy_id=GRACE_POLICY_ID,
+    )
 
 
 
@@ -191,6 +239,16 @@ _TIER_CAPACITY: dict[str, EntitlementRecord] = {
         concurrent_worker_limit=SELF_SERVICE_MAX_WORKERS,
         device_allowance_per_seat=3, commercial_use=True, offline_grace_days=14,
     ),
+    # Algenta SERVER — organization-DEPLOYMENT scope (Compute Units, not per-device). Same
+    # server model as every other edition (_server_record); the mint overrides
+    # max_concurrent_units with the org's PURCHASED unit quantity (Stripe qty).
+    "algenta_server": _server_record("algenta_server", _algenta_full("enterprise")),
+    # Server (DEPLOYMENT scope) tiers for every edition — the SAME Compute-Unit model, one code
+    # path (_server_record); only the product grant differs. mint overrides max_concurrent_units.
+    "codna_server": _server_record("codna_server", _codna_full("enterprise")),
+    "telys_server": _server_record("telys_server", _telys_full("enterprise")),
+    "sqai_server": _server_record("sqai_server", _sqai_full("enterprise")),
+    "cohenta_server": _server_record("cohenta_server", _cohenta_full("enterprise")),
     # Cohenta (campaign orchestration) — mirrors the telys developer/pro/team shape so the runtime gets
     # products.cohenta. cohenta_free is the free, no-card, 1-device tier; pro_runner is the paid solo
     # tier; team is per-SEAT (Stripe quantity = seats, see team_seats), at the self-service ceiling.
@@ -287,6 +345,13 @@ def _apply_overrides(record: EntitlementRecord, overrides: Mapping[str, object])
         "device_allowance_per_seat",
         "offline_grace_days",
         "entitlement_version",
+        # server/enterprise negotiated pools (Compute Units)
+        "license_scope",
+        "max_concurrent_units",
+        "max_effective_vcpu",
+        "vcpu_per_unit",
+        "measurement_policy_version",
+        "grace_policy_id",
     ):
         if key in overrides and overrides[key] is not None:
             changes[key] = overrides[key]
@@ -372,7 +437,7 @@ def to_license_claims(record: EntitlementRecord) -> dict[str, object]:
     signing. Field names + shapes match what ``apps/runtime/license.py`` parses back
     (``products`` = ``{name: {tier, features:[...]}}``); round-trip tested.
     """
-    return {
+    claims: dict[str, object] = {
         "ver": 2,
         "plan": record.plan,
         "deployment_class": record.deployment_class,
@@ -389,3 +454,18 @@ def to_license_claims(record: EntitlementRecord) -> dict[str, object]:
         "offline_grace_days": record.offline_grace_days,
         "entitlement_version": record.entitlement_version,
     }
+    # Server/Compute-Unit claims are emitted ONLY for a deployment-scope record, so every
+    # existing per-device token keeps its exact claim shape (golden-stable). scope="deployment"
+    # is the sole switch that activates the server enforcement path in the runtime.
+    if record.is_deployment_scope():
+        claims["license_scope"] = "deployment"
+        claims["max_concurrent_units"] = record.max_concurrent_units
+        if record.max_effective_vcpu:
+            claims["max_effective_vcpu"] = record.max_effective_vcpu
+        if record.vcpu_per_unit:
+            claims["vcpu_per_unit"] = record.vcpu_per_unit
+        if record.measurement_policy_version:
+            claims["measurement_policy_version"] = record.measurement_policy_version
+        if record.grace_policy_id:
+            claims["grace_policy_id"] = record.grace_policy_id
+    return claims

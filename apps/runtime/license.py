@@ -58,8 +58,14 @@ logger = structlog.get_logger(__name__)
 
 _LICENSE_VERSION = 2
 
-# Secret used for self-signed dev licenses (never used for cloud validation)
-_DEV_SECRET = "algenta-dev-local-v1-not-for-production"  # noqa: S105
+# Secret used for self-signed dev licenses (never used for cloud validation). It lives ONLY in the
+# dev-only stub module so the production wheel can physically strip it (scripts/strip_dev_stub.py);
+# when the stub is absent, _DEV_SECRET is None and the HS256 dev-stub verify/issue paths become
+# unreachable — the runtime is RS256-only by construction, not just by flag.
+try:
+    from apps.runtime._dev_license_stub import DEV_SECRET as _DEV_SECRET
+except ImportError:  # production wheel — dev stub stripped
+    _DEV_SECRET = None  # type: ignore[assignment]
 
 _CONTROL_PLANE_TIMEOUT_SECONDS = float(
     os.environ.get("ALGENTA_CONTROL_PLANE_TIMEOUT_SECONDS", "20")
@@ -93,6 +99,35 @@ def _env_api_key() -> str:
 def _runtime_dev_mode_enabled() -> bool:
     value = os.environ.get("ALGENTA_RUNTIME_DEV_MODE", "").strip().lower()
     return value in {"1", "true", "yes", "on"}
+
+
+def _rs256_only_enforced() -> bool:
+    """Production RS256-only mode: reject EVERY HS256 token (the forgeable dev-stub AND the
+    control-plane HS256 secrets), leaving asymmetric RS256 the only accepted signature.
+
+    True when ``ALGENTA_LICENSE_RS256_ONLY`` is set OR the deployment already requires a local
+    signed license (``require_local_license``). Production wheels set the flag so the HS256 path
+    is unreachable regardless of profile — the runtime half of the artifact split (the packaging
+    half physically strips the dev secret from the wheel; this guarantees safety even if it's
+    present). Default OFF preserves the shipped HS256-verifying internal consumers."""
+    value = os.environ.get("ALGENTA_LICENSE_RS256_ONLY", "").strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    return _local_license_required()
+
+
+def _runtime_product() -> str:
+    """The product edition this runtime is licensed for (algenta | codna | telys | sqai | cohenta).
+
+    Used by the strict verifier to reject a license minted for a different product (cross-product
+    replay). Defaults to ``algenta`` (the engine) and is overridable per edition deployment."""
+    return (os.environ.get("ALGENTA_RUNTIME_PRODUCT", "") or "algenta").strip() or "algenta"
+
+
+def _runtime_deployment_id() -> str:
+    """Explicit organization-deployment activation signal. Its PRESENCE (with a deployment-scope
+    license) is one of the ways a runtime opts into deployment scope — detection never does."""
+    return (os.environ.get("ALGENTA_DEPLOYMENT_ID", "") or "").strip()
 
 
 def _local_license_required() -> bool:
@@ -298,6 +333,18 @@ class DeviceLicense:
     activation_id: str = ""
     entitlement_version: int = 0
     deployment_class: str = ""  # desktop | server | ci | airgapped | oem
+    # ── server/enterprise scope + Compute-Unit claims (additive; default = personal device) ──
+    # license_scope is the top-level context switch: "device" (default — personal, local,
+    # never sees Compute Units/pools/Relay) vs "deployment" (org server deployment). A token
+    # without the claim is "device" (back-compat + fail-safe). Detection NEVER sets this — only
+    # an explicitly-minted deployment license / Relay lease carries scope="deployment".
+    license_scope: str = "device"  # device | deployment
+    deployment_id: str = ""  # set only for deployment-scoped licenses
+    max_concurrent_units: int = 0  # Compute-Unit pool ceiling (0 = unspecified / device scope)
+    max_effective_vcpu: int = 0  # per-node workstation vCPU ceiling (0 = unspecified)
+    vcpu_per_unit: int = 0  # measurement policy: effective vCPU per Compute Unit (0 = default 4)
+    measurement_policy_version: str = ""  # names the vCPU→unit measurement rules in force
+    grace_policy_id: str = ""  # names the lapse/grace/Community-floor policy in force
     device_pubkey_thumbprint: str = ""
     products: dict[str, ProductEntitlement] = field(default_factory=dict)
     named_seat_limit: int = 0  # 0 = unspecified (control-plane enforced)
@@ -362,6 +409,20 @@ class DeviceLicense:
         ``apps/runtime/node_broker.py``."""
         return self.active_node_limit
 
+    def is_deployment_scope(self) -> bool:
+        """True only for an explicitly-minted organization-deployment license. Personal-device
+        licenses (the default, and any legacy token without the claim) return False — so the
+        server enforcement path (Compute Units / pools / Relay) is opt-in per signed claim,
+        never inferred from the host environment."""
+        return self.valid and self.license_scope == "deployment"
+
+    def unit_size(self) -> int:
+        """Effective vCPU per Compute Unit for this license (falls back to the measurement
+        default when the claim is unset)."""
+        from apps.runtime.capacity import DEFAULT_VCPU_PER_UNIT
+
+        return self.vcpu_per_unit if self.vcpu_per_unit > 0 else DEFAULT_VCPU_PER_UNIT
+
 
 def _coerce_products(value: object) -> dict[str, ProductEntitlement]:
     """Parse the v2 ``products`` claim, fail-closed: malformed entries are dropped."""
@@ -403,6 +464,15 @@ def _device_license_from_payload(
         activation_id=_coerce_str(payload.get("activation_id")),
         entitlement_version=_coerce_int(payload.get("entitlement_version"), 0),
         deployment_class=_coerce_str(payload.get("deployment_class")),
+        # Scope defaults to "device": a token without the claim (legacy or personal) is
+        # personal-device scope, never accidentally a server deployment.
+        license_scope=(_coerce_str(payload.get("license_scope"), "device") or "device"),
+        deployment_id=_coerce_str(payload.get("deployment_id")),
+        max_concurrent_units=_coerce_int(payload.get("max_concurrent_units"), 0),
+        max_effective_vcpu=_coerce_int(payload.get("max_effective_vcpu"), 0),
+        vcpu_per_unit=_coerce_int(payload.get("vcpu_per_unit"), 0),
+        measurement_policy_version=_coerce_str(payload.get("measurement_policy_version")),
+        grace_policy_id=_coerce_str(payload.get("grace_policy_id")),
         device_pubkey_thumbprint=_coerce_str(payload.get("device_pubkey_thumbprint")),
         products=_coerce_products(payload.get("products")),
         named_seat_limit=_coerce_int(payload.get("named_seat_limit"), 0),
@@ -458,7 +528,9 @@ def _make_invalid_license(message: str, *, api_key: str = "") -> DeviceLicense:
     )
 
 
-def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLicense:
+def _make_community_license(
+    api_key: str = "", *, reason: str = "", deployment_id: str = ""
+) -> DeviceLicense:
     """Free-forever Community fallback for a lapsed/expired PAID license.
 
     A deployment whose paid license hard-expires and cannot renew downgrades to Community rather
@@ -467,6 +539,11 @@ def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLic
     updates/support resume only when the license renews. The fallback is local and works for a
     previously valid connected or air-gapped license; an installation with no valid signed license
     remains blocked when the deployment profile requires one.
+
+    For a lapsed SERVER/DEPLOYMENT license, ``deployment_id`` is carried through so the recovery
+    floor is scoped ONCE per deployment (an elected recovery runtime — coordinated by the node
+    broker), never one free Community allowance per node/pod/replica. The floor itself stays
+    1 unit / 1 worker regardless of scope.
     """
     from apps.runtime.device import get_device_id
 
@@ -485,6 +562,11 @@ def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLic
         message=(reason or "Paid license expired — running on Community (free-forever). Renew to restore your plan."),
         source="community-fallback",
         deployment_class="desktop",
+        # Stays device-scope: a lapsed deployment recovers to the personal-device Community
+        # floor. deployment_id is retained so the once-per-deployment recovery election (node
+        # broker) can key on it; it does NOT re-grant deployment-scope capacity.
+        license_scope="device",
+        deployment_id=deployment_id,
         named_seat_limit=1,
         active_node_limit=1,
         concurrent_worker_limit=1,  # Community per-device worker cap
@@ -495,7 +577,10 @@ def _make_community_license(api_key: str = "", *, reason: str = "") -> DeviceLic
 
 
 def _issue_dev_jwt(device_id: str, api_key: str = "") -> str:
-    """Issue a self-signed dev JWT for local storage."""
+    """Issue a self-signed dev JWT for local storage. Unavailable in a production wheel (the dev
+    stub is stripped → _DEV_SECRET is None), where dev-mode issuance must not exist."""
+    if _DEV_SECRET is None:
+        raise RuntimeError("dev-stub license issuance is unavailable in a production build")
     payload = {
         "api_key_prefix": api_key[:12] if api_key else "dev-local",
         "device_id": device_id,
@@ -550,6 +635,13 @@ def mint_device_token(
     license_id: str = "",
     activation_id: str = "",
     deployment_class: str = "desktop",
+    license_scope: str = "device",
+    deployment_id: str = "",
+    max_concurrent_units: int = 0,
+    max_effective_vcpu: int = 0,
+    vcpu_per_unit: int = 0,
+    measurement_policy_version: str = "",
+    grace_policy_id: str = "",
     issued_at: int | None = None,
     private_key_pem: str | None = None,
     extra_claims: dict[str, object] | None = None,
@@ -588,6 +680,23 @@ def mint_device_token(
         payload["api_key_prefix"] = api_key_prefix
     if products:
         payload["products"] = products
+    # Server/deployment claims — emitted ONLY when set, so personal-device tokens (and existing
+    # golden shapes) are unchanged. scope="deployment" is the sole switch that activates the
+    # server enforcement path at runtime.
+    if license_scope and license_scope != "device":
+        payload["license_scope"] = license_scope
+    if deployment_id:
+        payload["deployment_id"] = deployment_id
+    if max_concurrent_units > 0:
+        payload["max_concurrent_units"] = int(max_concurrent_units)
+    if max_effective_vcpu > 0:
+        payload["max_effective_vcpu"] = int(max_effective_vcpu)
+    if vcpu_per_unit > 0:
+        payload["vcpu_per_unit"] = int(vcpu_per_unit)
+    if measurement_policy_version:
+        payload["measurement_policy_version"] = measurement_policy_version
+    if grace_policy_id:
+        payload["grace_policy_id"] = grace_policy_id
     if expires_at:
         # JWT exp = the HARD-deny boundary (expiry + grace), so a verifier that DOES check exp agrees
         # with the runtime's is_hard_expired(); the runtime itself decodes with verify_exp=False.
@@ -595,6 +704,99 @@ def mint_device_token(
     if extra_claims:
         payload.update(extra_claims)
     return jwt.encode(payload, _signing_private_key(private_key_pem), algorithm="RS256")
+
+
+def mint_deployment_token(
+    *,
+    org_id: str,
+    product: str,
+    edition: str,
+    deployment_id: str,
+    license_claims: dict[str, object],
+    device_pubkey_thumbprint: str = "",
+    ttl_days: int = 365,
+    grace_days: int = _DEFAULT_GRACE_DAYS,
+    jti: str = "",
+    kid: str = "",
+    issued_at: int | None = None,
+    private_key_pem: str | None = None,
+    audience: str = "algenta-runtime",
+    issuer: str = "https://license.algenta.ai",
+) -> str:
+    """Mint a STRICT-PROFILE (``typ=algenta-license+jwt``) RS256 deployment license.
+
+    This is the server/enterprise counterpart to ``mint_device_token``: it emits the full strict
+    JOSE profile the hardened verifier (``license_verify``) requires — exact ``typ``/``kid``/
+    ``iss``/``aud``/``product``/``edition`` + all required claims — merging the resolved
+    ``license_claims`` (from an ``EntitlementSnapshot``, incl. ``max_concurrent_units`` etc.).
+    ``license_scope`` is forced to ``deployment``. The private key must live only where signing
+    happens (control plane / operator), never on a device.
+    """
+    if not org_id or not product or not deployment_id:
+        raise ValueError("org_id, product, and deployment_id are required for a deployment token")
+    now = int(issued_at if issued_at is not None else time.time())
+    grace = max(0, int(grace_days))
+    expires_at = now + max(1, int(ttl_days)) * 86400
+    license_id = jti or _new_jti()
+    payload: dict[str, object] = {
+        # strict-profile required claims
+        "iss": issuer,
+        "aud": audience,
+        "sub": "device-license",
+        "jti": license_id,
+        "license_id": license_id,
+        # Stable per (org, deployment) — the CRL revokes by activation_id (same convention as
+        # device licenses), so a deployment license is revocable even across re-issues.
+        "activation_id": _deployment_activation_id(org_id, deployment_id),
+        "iat": now,
+        "nbf": now,
+        "issued_at": now,
+        "exp": expires_at + grace * 86400,  # hard-deny boundary; runtime owns grace within
+        "expires_at": expires_at,
+        "grace_days": grace,
+        "schema_version": 2,
+        "ver": 2,
+        "product": product,
+        "edition": edition,
+        "license_scope": "deployment",
+        "deployment_id": deployment_id,
+        "device_pubkey_thumbprint": device_pubkey_thumbprint,
+        "permitted_modules": ["*"],
+    }
+    # Merge the resolved entitlement claims (products, max_concurrent_units, vcpu_per_unit,
+    # measurement/grace policy, commercial_use, ...). Never let them override the identity/scope.
+    for key, value in (license_claims or {}).items():
+        payload.setdefault(key, value)
+    payload["license_scope"] = "deployment"  # authoritative regardless of claims
+    if "deployment_class" not in payload:
+        payload["deployment_class"] = "server"
+
+    headers = {"typ": "algenta-license+jwt", "kid": kid or _signing_kid()}
+    return jwt.encode(
+        payload, _signing_private_key(private_key_pem), algorithm="RS256", headers=headers
+    )
+
+
+def _new_jti() -> str:
+    import uuid
+
+    return str(uuid.uuid4())
+
+
+def _deployment_activation_id(org_id: str, deployment_id: str) -> str:
+    """Deterministic, stable, opaque activation id for an (org, deployment) — the CRL revokes by
+    it. Stable across re-issues so a deployment can be named once for revocation."""
+    import uuid
+
+    try:
+        namespace = uuid.UUID(str(org_id))
+    except (ValueError, AttributeError, TypeError):
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{org_id}:{deployment_id}"))
+    return str(uuid.uuid5(namespace, f"deployment:{deployment_id}"))
+
+
+def _signing_kid() -> str:
+    return (os.environ.get("ALGENTA_LICENSE_SIGNING_KID", "") or "algenta-license-default").strip()
 
 
 # ── Disk I/O ──────────────────────────────────────────────────────────────────
@@ -651,7 +853,28 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
     Dev tokens use HMAC-SHA256 with the dev secret; cloud/offline tokens use
     RS256 with the Algenta public key.
     """
-    strict_local_license = _local_license_required()
+    # Strict-profile (new server/deployment) tokens carry typ=algenta-license+jwt and are
+    # verified by the hardened RS256-only JOSE profile (no HS256, exact iss/aud/product match).
+    # They NEVER fall through to the legacy path — a strict token that fails strict verification
+    # is invalid, full stop. Legacy tokens (no such typ) are untouched below.
+    try:
+        from apps.runtime import license_verify
+
+        if license_verify.is_strict_profile_token(token):
+            verified, reason = license_verify.try_verify_license_token(
+                token, expected_product=_runtime_product()
+            )
+            if verified is None:
+                logger.warning("strict_license_rejected", reason=reason)
+                return None
+            return _device_license_from_payload(
+                verified.payload, source="strict", api_key=api_key, default_plan="enterprise"
+            )
+    except Exception:  # noqa: BLE001 — strict verifier problems must not crash license load
+        logger.debug("strict_license_verify_error", exc_info=True)
+        return None
+
+    rs256_only = _rs256_only_enforced()
     try:
         header = jwt.get_unverified_header(token)
     except jwt.InvalidTokenError:
@@ -677,10 +900,16 @@ def _parse_token(token: str, api_key: str = "") -> DeviceLicense | None:
                 continue
         return None
 
-    if strict_local_license:
+    if rs256_only:
+        # Production RS256-only: no HS256 token (dev-stub or control-plane secret) is accepted.
         return None
 
-    for secret, source in [(_DEV_SECRET, "dev-stub"), *_control_plane_verification_secrets()]:
+    # The dev-stub secret is only in the loop when the dev stub is present (dev/test builds); a
+    # production wheel with the stub stripped has _DEV_SECRET=None and never accepts a dev-stub token.
+    hs256_secrets: list[tuple[str, str]] = list(_control_plane_verification_secrets())
+    if _DEV_SECRET is not None:
+        hs256_secrets.insert(0, (_DEV_SECRET, "dev-stub"))
+    for secret, source in hs256_secrets:
         try:
             decoded = jwt.decode(
                 token,
@@ -1134,6 +1363,7 @@ def load_license(api_key: str = "") -> DeviceLicense:
                         f"Your {parsed.plan} license expired — running on Community (free-forever). "
                         f"Renew to restore {parsed.plan}."
                     ),
+                    deployment_id=parsed.deployment_id,
                 )
             # Revocation (P3b-D2): dormant for v1 (current); v2 → CRL-checked, fail-open.
             denied = _deny_if_revoked(parsed)

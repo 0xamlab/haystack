@@ -58,6 +58,11 @@ class _RedisStub:
     async def expire(self, *_args, **_kwargs) -> bool:
         return True
 
+    async def incr(self, *_args, **_kwargs) -> int:
+        # First increment in a fresh window — keeps the rate limiter's counter path exercised
+        # (and quiet) instead of falling back with a "backend unavailable" warning.
+        return 1
+
 class _SyntheticValidationPayload(BaseModel):
     count: int
 
