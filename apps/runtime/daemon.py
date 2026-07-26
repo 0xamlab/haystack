@@ -137,9 +137,27 @@ def _wait_for_detached_daemon_ready(timeout_seconds: float = 10.0) -> bool:
     return False
 
 
+def _require_verified_native_worker() -> bool:
+    """Production hardening flag: boot ONLY with the verified, signed native worker. Default OFF so
+    self-host/dev (locally-built or repo-dev workers) are unaffected; a production deployment sets
+    it so license enforcement can't be run in a patched Python-only process without the signed
+    native runtime — the 'native-daemon-only verification' guarantee."""
+    return (os.environ.get("ALGENTA_REQUIRE_VERIFIED_NATIVE_WORKER", "").strip().lower()
+            in {"1", "true", "yes", "on"})
+
+
 def _validate_daemon_startup_prerequisites() -> None:
     from apps.privacy_policy import policy_from_environment
     from apps.runtime.license import load_license
+
+    # Native-daemon verification (before anything else): in a hardened production deployment the
+    # runtime must be the verified, signed native worker — refuse to start on an unverified/patched
+    # runtime so the license gate below can't be bypassed by swapping in a dev/Python-only process.
+    if _require_verified_native_worker() and not _MOJO_BINARY_VERIFIED:
+        raise RuntimeError(
+            "ALGENTA_REQUIRE_VERIFIED_NATIVE_WORKER=1 but the resolved native worker is unverified "
+            f"(source={_MOJO_BINARY_SOURCE!r}); refusing to start — install the signed native worker."
+        )
 
     privacy_policy = policy_from_environment()
     # P5: gate on EITHER the require_local_license profile OR the (default-OFF)

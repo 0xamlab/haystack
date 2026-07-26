@@ -10,11 +10,14 @@ their infra, no phone-home).
 """
 from __future__ import annotations
 
+import base64
+import os
+import secrets
 from datetime import UTC, datetime
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -33,6 +36,20 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["deployment"])
 
 
+def _deployment_pop_required() -> bool:
+    """When set, a node must PROVE possession of its deployment key (sign a server nonce) to
+    heartbeat — so an org API key alone can't spoof/register node identities it doesn't control.
+    Default OFF (back-compat: API-key-only heartbeat); hardened production sets it. A request that
+    supplies PoP fields is always verified regardless, so honest clients get checked either way."""
+    return os.environ.get("ALGENTA_REQUIRE_DEPLOYMENT_POP", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+
+
+def _pop_nonce_key(org_id: object, deployment_id: str, node_thumbprint: str) -> str:
+    return f"deployment_pop_nonce:{org_id}:{deployment_id}:{node_thumbprint}"
+
+
 class DeploymentActivateRequest(BaseModel):
     deployment_id: str = Field(..., min_length=1, max_length=128)
     deployment_pubkey_thumbprint: str = Field(..., min_length=1, max_length=128)
@@ -47,6 +64,20 @@ class DeploymentNodeHeartbeatRequest(BaseModel):
     deployment_id: str = Field(..., min_length=1, max_length=128)
     node_thumbprint: str = Field(..., min_length=1, max_length=128)
     units: int = Field(..., ge=1, le=1_000_000)
+    # Proof-of-possession (optional unless ALGENTA_REQUIRE_DEPLOYMENT_POP): the node signs the
+    # server nonce from /v1/deployment/node/challenge with its deployment key.
+    nonce: str = Field(default="", max_length=256)  # base64, echoed from the challenge
+    public_key_pem: str = Field(default="", max_length=4096)
+    signature: str = Field(default="", max_length=1024)  # base64
+
+
+class DeploymentNodeChallengeRequest(BaseModel):
+    deployment_id: str = Field(..., min_length=1, max_length=128)
+    node_thumbprint: str = Field(..., min_length=1, max_length=128)
+
+
+class DeploymentNodeChallengeResponse(BaseModel):
+    nonce: str  # base64; sign this with the deployment key and echo it back on heartbeat
 
 
 class DeploymentNodeHeartbeatResponse(BaseModel):
@@ -265,6 +296,64 @@ async def activate_deployment(
 
 
 @router.post(
+    "/v1/deployment/node/challenge",
+    response_model=DeploymentNodeChallengeResponse,
+    summary="Issue a single-use nonce for deployment-node proof-of-possession",
+)
+async def deployment_node_challenge(
+    body: DeploymentNodeChallengeRequest,
+    ctx: Annotated[AuthContext, Depends(get_current_org)],
+    request: Request,
+) -> DeploymentNodeChallengeResponse:
+    from apps.api_server.routers.license import _store_nonce
+
+    nonce = secrets.token_bytes(32)
+    redis = getattr(request.app.state, "redis", None)
+    await _store_nonce(
+        redis, _pop_nonce_key(ctx["org_id"], body.deployment_id, body.node_thumbprint), nonce
+    )
+    return DeploymentNodeChallengeResponse(nonce=base64.b64encode(nonce).decode())
+
+
+async def _verify_deployment_pop(
+    body: DeploymentNodeHeartbeatRequest, ctx: AuthContext, request: Request
+) -> None:
+    """Verify the node proved possession of its deployment key. Raises 401 on any failure. Runs
+    when PoP is required OR when the client supplied PoP fields (honest clients get verified either
+    way). Checks: single-use nonce, signature over the nonce, and thumbprint(pubkey)==node_thumbprint."""
+    from apps.api_server.routers.license import _consume_nonce
+    from apps.runtime.device_keypair import thumbprint_for_public_pem, verify_signature
+
+    supplied = bool(body.nonce or body.public_key_pem or body.signature)
+    if not _deployment_pop_required() and not supplied:
+        return  # PoP not required and not offered → API-key-only (back-compat)
+    if not (body.nonce and body.public_key_pem and body.signature):
+        raise HTTPException(status_code=401, detail={"error": "pop_required",
+            "message": "deployment node PoP requires nonce + public_key_pem + signature"})
+
+    # the presented key must be the claimed node thumbprint
+    if (thumbprint_for_public_pem(body.public_key_pem) or "") != body.node_thumbprint:
+        raise HTTPException(status_code=401, detail={"error": "pop_thumbprint_mismatch",
+            "message": "public_key_pem does not match node_thumbprint"})
+
+    redis = getattr(request.app.state, "redis", None)
+    stored = await _consume_nonce(
+        redis, _pop_nonce_key(ctx["org_id"], body.deployment_id, body.node_thumbprint)
+    )
+    if stored is None:
+        raise HTTPException(status_code=401, detail={"error": "pop_nonce_invalid",
+            "message": "no valid challenge nonce — request /v1/deployment/node/challenge first"})
+    try:
+        sig = base64.b64decode(body.signature)
+        presented_nonce = base64.b64decode(body.nonce)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=401, detail={"error": "pop_malformed"}) from exc
+    if presented_nonce != stored or not verify_signature(body.public_key_pem, stored, sig):
+        raise HTTPException(status_code=401, detail={"error": "pop_signature_invalid",
+            "message": "deployment-key proof-of-possession failed"})
+
+
+@router.post(
     "/v1/deployment/node/heartbeat",
     response_model=DeploymentNodeHeartbeatResponse,
     summary="L3 connected-pool: admit/renew an engine node's Compute-Unit lease against the pool",
@@ -273,11 +362,14 @@ async def deployment_node_heartbeat(
     body: DeploymentNodeHeartbeatRequest,
     ctx: Annotated[AuthContext, Depends(get_current_org)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
 ) -> DeploymentNodeHeartbeatResponse:
     from apps.api_server.services.deployment_service import (
         DeploymentActivationError,
         admit_deployment_node,
     )
+
+    await _verify_deployment_pop(body, ctx, request)
 
     try:
         result = await admit_deployment_node(
