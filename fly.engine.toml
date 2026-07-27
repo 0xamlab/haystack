@@ -39,6 +39,15 @@ primary_region = "iad"
   source = "codna_engine_data"
   destination = "/home/app/.algenta"
 
+# IDLE COST — this is a WORKER (Celery + agent-core, no [http_service]), so Fly Proxy's
+# traffic-driven auto_stop/auto_start does NOT apply: there's no proxied request to wake it on.
+# It is also the priciest VM here (performance-4x/8gb + volume). Since the shipped product is
+# self-hosted, this hosted engine is dogfood/benchmark only — when it isn't actively in use,
+# scale it to zero operationally: `fly scale count 0 -a codna-engine` (bring back with
+# `fly scale count 1`). For on-demand wake instead, expose the agent-core port via a [[services]]
+# block with auto_stop_machines = "suspend" + auto_start_machines = true so an internal request
+# starts it — deferred here to avoid changing the api→engine network path in a config-only PR.
+
 [[vm]]
   # Dedicated CPU for the hot compute: Mojo simulation + the Cline agent + git clones.
   # Resizable in place anytime with `fly scale vm <size> -a codna-engine` (no destroy).

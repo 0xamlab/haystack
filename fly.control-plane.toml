@@ -64,10 +64,15 @@ primary_region = "iad"
   # Bind the HTTP service to the named "app" process (required once [processes] is defined).
   processes = ["app"]
   force_https = true
-  # Stateless; scales horizontally behind Cloudflare. Stay warm (auth/billing/licensing latency).
-  auto_stop_machines = "off"
+  # Scale to ZERO when idle. The product is self-hosted (licenses verify offline on the customer's
+  # own machine); this control plane only handles bursty, latency-tolerant calls (license
+  # mint/renew, deployment activation, Stripe webhook, accounts seam), so paying to stay warm 24/7
+  # is waste. "suspend" snapshots RAM → Fly Proxy wakes the machine in <1s on the next request
+  # (auto_start), so there's effectively no cold-start penalty and zero idle compute cost. Stripe
+  # webhooks wake it on delivery and are retried for 3 days, so a wake miss is safe.
+  auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
   [http_service.concurrency]
     type = "requests"
@@ -82,6 +87,10 @@ primary_region = "iad"
     grace_period = "30s"
 
 [[vm]]
-  # Small/cheap: the control plane does no engine work (no Mojo pool). Resizable in place.
-  size = "shared-cpu-2x"
+  # Small/cheap: the control plane does no engine work (no Mojo pool). shared-cpu-1x is ample for
+  # the light, request-driven licensing/auth/billing surface. Resizable in place with
+  # `fly scale vm <size> -a algenta-control-plane` if load ever warrants. Memory kept at 1gb so
+  # the full FastAPI import graph + 2 workers boot comfortably (smaller RAM = smaller suspend snap,
+  # but 512mb risks OOM on the heavy import set — bump only after profiling).
+  size = "shared-cpu-1x"
   memory = "1gb"

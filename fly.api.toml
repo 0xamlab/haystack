@@ -37,10 +37,14 @@ primary_region = "iad"
 [http_service]
   internal_port = 8000
   force_https = true
-  # Speed: stay warm — never scale to zero (cold start would break the <15ms hot-path story).
-  auto_stop_machines = "off"
+  # Scale to ZERO when idle. This is the HOSTED/dogfood engine API — the shipped product is
+  # self-hosted, so there's no paying-customer hot path to keep warm here. "suspend" snapshots RAM
+  # so Fly Proxy wakes it in <1s (auto_start) — the <15ms engine benchmark is measured warm/
+  # engine-level, unaffected by an idle-wake on the first hosted HTTP request. If this ever fronts
+  # a latency-SLA'd hosted tier, set min_machines_running = 1 to keep one warm.
+  auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
   [http_service.concurrency]
     type = "requests"
