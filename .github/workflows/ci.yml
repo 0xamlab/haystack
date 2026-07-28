@@ -370,7 +370,9 @@ jobs:
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
   # the Fly registry and `flyctl deploy` codna-api, whose release_command applies alembic migrations.
   # Runs only after the image is pushed (needs: build) and only on a push to main — never on PRs.
-  # Manual, wider-scope deploys (engine/control-plane, specific tags) still go through deploy.yml.
+  #
+  # The CONTROL PLANE deploys automatically too — see the deploy-control-plane job below. Only the
+  # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
     runs-on: ubuntu-latest
@@ -379,6 +381,13 @@ jobs:
     permissions:
       contents: read
       packages: read
+    # Serialize deploys OF THIS APP so two quick merges cannot run two `alembic upgrade head`
+    # against codna-pg concurrently. cancel-in-progress is deliberately false: cancelling a
+    # half-finished deploy/migration is worse than queueing behind it. The group is per-app, so
+    # this never blocks the control-plane deploy.
+    concurrency:
+      group: deploy-codna-api
+      cancel-in-progress: false
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       SRC: ghcr.io/${{ github.repository }}
@@ -410,3 +419,91 @@ jobs:
           docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push "registry.fly.io/codna-api:$TAG"
           flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"
+
+  # ── Deploy the CONTROL PLANE to Fly (AUTOMATIC on merge to main) ──────────
+  # WHY THIS EXISTS: api.telys.ai is served by the `algenta-control-plane` Fly app, but until now
+  # NOTHING deployed it automatically — it was reachable only via a manual `workflow_dispatch` of
+  # deploy.yml. The result was silent drift: on 2026-07-28 the control plane was found running a
+  # 10-commit-old image (last deployed af9b72d6, 2026-07-25), so merged-and-"deployed" fixes were
+  # live on codna-api but absent from the hostname the Telys CLI actually calls. A merged
+  # /v1/products/{product}/whoami endpoint 404'd in production as a result.
+  #
+  # DELIBERATELY A SEPARATE JOB, not another step in `deploy`: it depends on `build`, NOT on
+  # `deploy`. If the codna-api deploy fails, the control plane must still get the new image —
+  # otherwise a flaky engine-image check silently reintroduces exactly the drift this job exists
+  # to prevent.
+  #
+  # TRADE-OFF, STATED PLAINLY: this makes every merge to main run `alembic upgrade head` against
+  # algenta-control-plane-pg (the control plane's OWN Postgres — never codna-pg). That is the same
+  # contract codna-api has already had, but the blast radius is larger: this app is the shared
+  # auth / billing / licensing plane for algenta, codna, cohenta and telys. Mitigations are the
+  # rolling strategy + /v1/health checks in fly.control-plane.toml, and the concurrency group
+  # below. A migration that cannot be applied safely on every merge must be gated behind an
+  # expand/contract pattern, not by leaving this app un-deployed.
+  deploy-control-plane:
+    name: Deploy to Fly (algenta-control-plane)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: read
+    # Per-app group: serializes control-plane deploys with each other (never two concurrent
+    # migrations against algenta-control-plane-pg) without blocking the codna-api deploy.
+    concurrency:
+      group: deploy-algenta-control-plane
+      cancel-in-progress: false
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      SRC: ghcr.io/${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Install flyctl
+        run: |
+          curl -fsSL https://fly.io/install.sh | sh
+          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to GHCR (pull the prebuilt api image)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+
+      - name: Authenticate Docker to the Fly registry
+        run: flyctl auth docker
+
+      # The control plane reuses the SAME api image as codna-api and selects the engine-free app
+      # via ALGENTA_SERVICE_ROLE=control_plane (set in fly.control-plane.toml). Passing -i makes
+      # flyctl ignore that file's [build] section, so no separate image is built. This mirrors
+      # deploy.yml's existing control-plane step.
+      #
+      # Pinned to the IMMUTABLE git-<short-sha> tag rather than `latest`, so the artifact deployed
+      # is provably the commit that triggered this run. `latest` is mutable: with two auto-deploy
+      # jobs now running in parallel, a second merge could move `latest` between the two pulls and
+      # deploy mismatched images to the two apps. The tag comes from the build job's
+      # docker/metadata-action (`type=sha,prefix=git-,format=short`).
+      #
+      # No verify_api_image_mojo_server_mode.sh here, unlike codna-api: the control plane mounts
+      # no engine routers and ships no Mojo, so that assertion does not apply to it.
+      - name: Deploy algenta-control-plane
+        run: |
+          set -euo pipefail
+          TAG="git-$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
+          echo "Deploying algenta-control-plane at pinned tag: $TAG"
+          docker pull "$SRC/api:$TAG"
+          docker tag  "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
+          docker push "registry.fly.io/algenta-control-plane:$TAG"
+          flyctl deploy -c fly.control-plane.toml -a algenta-control-plane \
+            -i "registry.fly.io/algenta-control-plane:$TAG"
+
+      # Prove the deploy actually took, rather than trusting a green flyctl exit. The drift was
+      # invisible precisely because nobody asserted what the hostname served, so assert it.
+      - name: Verify the control plane is serving
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -A "ci-verify" \
+            https://api.telys.ai/v1/control-plane/meta | tee /dev/stderr \
+            | grep -q '"role":"control_plane"'
