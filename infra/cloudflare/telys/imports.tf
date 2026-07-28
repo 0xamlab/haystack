@@ -26,10 +26,9 @@ import {
   id = "${var.telys_zone_id}/9e911f9a2ce0b4d94afa5e59b01b2f54"
 }
 
-import {
-  to = cloudflare_record.packages
-  id = "${var.telys_zone_id}/940229920a49c42cb1e4589643331a7b"
-}
+# NOTE: packages.telys.ai (AAAA 100::, id 940229920a49c42cb1e4589643331a7b) is deliberately NOT
+# imported. Cloudflare marks Worker-placeholder records read-only and returns error 1043 on any edit,
+# so managing it guarantees a failing apply. See the explanation in dns.tf.
 
 import {
   to = cloudflare_record.docs

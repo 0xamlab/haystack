@@ -29,21 +29,24 @@ resource "cloudflare_record" "api_v6" {
   comment = "Telys control plane API → Fly algenta-control-plane"
 }
 
-# packages.telys.ai → the telys-runtime-host Cloudflare Worker, which serves the SIGNED runtime
-# bundle. The AAAA 100:: placeholder is the standard Cloudflare pattern for a hostname handled purely
-# by a Worker route: there is no origin, the placeholder just makes the name proxiable so the route
-# binds. The route itself + CONTROL_PLANE_URL live in the Worker's wrangler.toml, NOT here:
+# ── packages.telys.ai is NOT managed here: Cloudflare marks it READ-ONLY ────────────────────────────
+# It exists as `AAAA packages.telys.ai -> 100:: (proxied)`, the standard Cloudflare pattern for a
+# hostname handled purely by a Worker route: there is no origin, the placeholder just makes the name
+# proxiable so the route binds. The route itself + CONTROL_PLANE_URL live in the Worker's
+# wrangler.toml, NOT here:
 #   memory-engine/infra/cloudflare/telys-runtime-host/wrangler.toml
 # Deploying that Worker is what actually makes this hostname serve anything.
-resource "cloudflare_record" "packages" {
-  zone_id = var.telys_zone_id
-  name    = "packages"
-  type    = "AAAA"
-  content = "100::"
-  proxied = true
-  ttl     = 1
-  comment = "Telys runtime host Worker (route bound in telys-runtime-host/wrangler.toml)"
-}
+#
+# An earlier revision DID declare it, and the very first real apply failed on exactly that resource:
+#
+#   Error: failed to create DNS record: Unable to edit this record as this has been configured as
+#          read only. (1043)
+#
+# Cloudflare owns Worker-placeholder records and refuses edits to them — including the no-op comment
+# write Terraform wanted to make. The record IMPORTS fine; it is the subsequent modify that 1043s, so
+# declaring it can only ever produce a permanently-failing apply. Left unmanaged deliberately: there
+# is nothing here for Terraform to own. If this hostname ever needs to change, change the Worker
+# route, not DNS.
 
 # docs.telys.ai → GitBook. DNS-only (grey): GitBook terminates TLS and issues the cert itself once the
 # domain is registered on the Telys site + published. Proxying this would break their cert issuance.
