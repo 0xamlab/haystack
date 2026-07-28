@@ -157,3 +157,10 @@ scripts/.deploy.env
 *.tfstate
 *.tfstate.*
 **/.terraform/
+
+# Personal Codex / MCP client config — machine-specific and secret-bearing.
+# .codex/qdrant_roo_repo_wrapper.py was committed since the initial commit with a live
+# OPENAI_API_KEY and QDRANT_API_KEY inlined as os.environ assignments. These files hardcode
+# absolute /Users/<name>/ paths, so they were never shareable; they are local tooling, not
+# project config. Keep them out of the repo entirely.
+.codex/
