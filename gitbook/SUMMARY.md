@@ -40,6 +40,7 @@
 * [Feature hashing (the hashing trick)](engine/ml-feature-hashing.md)
 * [Partial least squares regression (PLS1)](engine/ml-pls.md)
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
+* [Batched chain greeks](engine/ml-chain-greeks.md)
 * [How the engine works](concepts/engine.md)
 
 ## Concepts
