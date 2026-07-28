@@ -217,6 +217,19 @@ except Exception as exc:
         error=str(exc),
     )
 
+# Origin guard — added LAST so it is the OUTERMOST middleware, rejecting a request that skipped
+# Cloudflare before it reaches auth, idempotency or the DB. codna-api is bypassable exactly like
+# the control plane is: codna-api.fly.dev answers the same routes without any edge rule in front.
+# Inert unless ORIGIN_GUARD_MODE is log/enforce AND ORIGIN_SHARED_SECRET is set — no-op by default.
+from apps.api_server.middleware.origin_guard import OriginGuardMiddleware  # noqa: E402
+
+_origin_guard_cfg = get_settings()
+app.add_middleware(
+    OriginGuardMiddleware,
+    secret=_origin_guard_cfg.origin_shared_secret,
+    mode=_origin_guard_cfg.origin_guard_mode,
+)
+
 app.include_router(meta.router)
 app.include_router(simulate.router)
 app.include_router(recommend.router)

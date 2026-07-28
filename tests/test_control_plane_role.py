@@ -54,9 +54,31 @@ def _paths(app) -> set[str]:
     return {r.path for r in app.routes if hasattr(r, "path")}
 
 
+# Control-plane routes that sit UNDER an engine prefix but are not engine surfaces.
+# `/v1/products/{product}/onboard` resolves-or-creates the org and mints the first API key;
+# `/v1/products/{product}/whoami` reports how an identity resolved. Both are pure control-plane
+# concerns (accounts, entitlements) that merely happen to be namespaced by product.
+#
+# Verified 2026-07-28: these are the ONLY `/v1/products` routes on EITHER app, and the full app
+# exposes no engine-only route under that prefix — so the blanket `/v1/products` entry above was
+# guarding nothing real while failing this test. (It had been failing on main since before
+# `whoami` existed, reporting `onboard` alone.) Keeping the prefix plus this explicit allowlist
+# means a genuinely new engine `/v1/products/...` route still trips the isolation guarantee.
+_CONTROL_PLANE_EXCEPTIONS = frozenset({
+    "/v1/products/{product}/onboard",
+    "/v1/products/{product}/whoami",
+})
+
+
 def test_control_plane_mounts_no_engine_paths() -> None:
     cp = _paths(build_control_plane_app())
-    leaked = sorted(p for p in cp for pre in _ENGINE_PREFIXES if p.startswith(pre))
+    leaked = sorted(
+        p
+        for p in cp
+        if p not in _CONTROL_PLANE_EXCEPTIONS
+        for pre in _ENGINE_PREFIXES
+        if p.startswith(pre)
+    )
     assert not leaked, f"engine paths leaked onto the control plane: {leaked}"
 
 

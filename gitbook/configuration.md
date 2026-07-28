@@ -74,6 +74,8 @@ Where a variable has accepted aliases (for example a legacy `DE_` name), they ap
 | `MAX_PAYLOAD_SIZE_BYTES` | `1048576` | — | — |
 | `MAX_SYNC_RUNS` | `100000` | — | — |
 | `METRICS_SECRET` | — | — | Bearer secret guarding the /metrics endpoint. |
+| `ORIGIN_GUARD_MODE` | `off` | — | — |
+| `ORIGIN_SHARED_SECRET` | — | — | — |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | — | — |
 | `QUOTA_DEVELOPER_SIMULATIONS_MONTH` | `10000` | — | — |
 | `QUOTA_FREE_SIMULATIONS_MONTH` | `500` | — | — |

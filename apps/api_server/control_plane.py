@@ -28,6 +28,7 @@ from apps.api_server.app_support import (
 from apps.api_server.config import get_settings
 from apps.api_server.middleware.idempotency import IdempotencyMiddleware
 from apps.api_server.middleware.logging import StructuredLoggingMiddleware
+from apps.api_server.middleware.origin_guard import OriginGuardMiddleware
 from apps.api_server.middleware.request_id import RequestIDMiddleware
 from apps.api_server.middleware.response_contract import ResponseContractMiddleware
 from apps.api_server.openapi_surface import validate_openapi_surface_configuration
@@ -137,6 +138,15 @@ def build_control_plane_app() -> FastAPI:
         from apps.api_server.middleware.deployment_router import DeploymentRoutingMiddleware
 
         app.add_middleware(DeploymentRoutingMiddleware)
+
+    # Added LAST so it is the OUTERMOST middleware: a request that did not come through Cloudflare
+    # is rejected before it touches auth, idempotency, or the DB. Inert unless ORIGIN_GUARD_MODE is
+    # set to log/enforce AND ORIGIN_SHARED_SECRET is present, so this is a no-op by default.
+    app.add_middleware(
+        OriginGuardMiddleware,
+        secret=config.origin_shared_secret,
+        mode=config.origin_guard_mode,
+    )
 
     for router in _CONTROL_PLANE_ROUTERS:
         app.include_router(router)

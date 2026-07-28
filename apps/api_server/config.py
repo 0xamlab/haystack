@@ -262,6 +262,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     jwt_expire_minutes: int = Field(default=10080)
     license_signing_secret: str | None = Field(default=None)
+    # ─── Origin guard — makes the Cloudflare edge non-optional ─────────────────
+    # The Fly apps also answer on their public *.fly.dev names, which skip Cloudflare entirely, so
+    # the edge rate limits / WAF / Full-Strict are bypassable just by using the origin hostname
+    # (measured 2026-07-28: 40 unthrottled POSTs to /v1/device/register direct, versus 429 from
+    # request 31 through api.telys.ai). These let the origin require a secret that only the
+    # Cloudflare Transform Rule injects. INERT by default — mode stays "off" until explicitly set,
+    # so shipping the middleware changes nothing. Staged rollout: middleware/origin_guard.py.
+    origin_shared_secret: str | None = Field(default=None)
+    origin_guard_mode: str = Field(default="off")  # off | log | enforce
     # ─── License signer (P1) — keeps the private key out of the app/Fly ────────
     # backend: dev_hmac (default, legacy HS256) | pem (local RSA) | cf_worker (Cloudflare
     # Worker holds the key, app only calls it). See services/license_signer.py.

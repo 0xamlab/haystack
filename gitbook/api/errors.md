@@ -113,6 +113,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `onboard_failed` | Onboarding the account or dataset failed. |
 | `org_not_found` | The organization id is unknown. |
 | `organization_suspended` | The organization is suspended. |
+| `origin_guard_required` | Call the API at its public hostname; the origin host is not directly usable. |
 | `owner_grant_forbidden` | You cannot grant the owner role. |
 | `persistence_backend_unavailable` | The persistence backend is temporarily unavailable; retry. |
 | `playground_error` | The playground request could not be processed. |

@@ -51,6 +51,7 @@ MEANINGS = {
     "device_fingerprint_required": "The device-capped key needs the fingerprint headers.",
     "device_platform_required": "The device-capped key needs `X-Algenta-Platform`.",
     "device_revoked": "The device activation was revoked by an owner.",
+    "origin_guard_required": "Call the API at its public hostname; the origin host is not directly usable.",
     "idempotency_key_conflict": "An idempotency key was reused with a different payload.",
     "resource_write_conflict": "A concurrent write conflicted; retry.",
     "dataset_not_found": "The dataset id is unknown.",
