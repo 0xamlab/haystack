@@ -255,6 +255,17 @@ async def ensure_identity_link(db: AsyncSession, *, supabase_uid: str, org_id: u
         )
     ).scalar_one_or_none()
     if existing is not None:
+        # Heal a DANGLING link: the row survives but the org it points at is gone (hard-deleted
+        # org, a partial purge, a restore that dropped organizations but kept identity_org_links).
+        # Returning the stale id strands the identity on a phantom org forever —
+        # resolve_org_for_supabase_user reads the link first, _org_by_id returns None, and the
+        # caller 403s `no_org`, while every fresh onboard mints its api key and registers its
+        # device on a NEW org the portal never reads. That is exactly the "No devices registered
+        # yet" state alongside a CLI that reports success. Repoint instead.
+        if await _org_by_id(db, existing.org_id) is None:
+            existing.org_id = org_id
+            await db.flush()
+            return org_id
         return existing.org_id
     try:
         async with db.begin_nested():

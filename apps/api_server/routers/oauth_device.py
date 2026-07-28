@@ -8,9 +8,12 @@ Three endpoints on the control plane:
   * ``GET  /oauth/device/grant``   (Supabase auth) — the /device page looks up a user_code to show what it is
     approving (client + scope) before the user confirms.
 
-The CLI hits ``accounts.thyn.ai/oauth/device/{code,token}`` (a thin proxy to these); the browser hits
-``accounts.thyn.ai/device`` which calls approve/grant here. The returned access_token IS a Supabase JWT, so the
-CLI then reuses the existing control-plane interface verbatim (POST /v1/api-keys → POST /v1/device/register).
+The CLI hits ``accounts.thyn.ai/oauth/device/{code,token}`` (a thin proxy to these); the browser
+hits ``accounts.thyn.ai/device`` which calls approve/grant here. The returned access_token IS a
+Supabase JWT, which the CLI then spends on ``POST /v1/<product>/onboard`` → ``POST
+/v1/device/register``. NOTE: onboarding does NOT go through ``POST /v1/api-keys`` — that route
+requires an existing API key/license and rejects a Supabase JWT, which is why the bootstrap has its
+own route (see ``_do_product_onboard`` in routers/account.py).
 
 State lives in ``device_grants`` (short TTL, single-use); the plaintext token is cleared the instant it is
 redeemed. See models/device_grant.py.
@@ -270,7 +273,7 @@ async def device_approve(
     auth = await _authed_subject(authorization)
     claims = auth["claims"]
     subject = claims.get("sub")
-    await _rate_limit(str(subject or _client_ip(request)), redis, prefix="device_approve", per_minute=20)
+    await _rate_limit(str(subject or _client_ip(request)), redis, prefix="device_approve", per_minute=200)
 
     grant = await _by_user_code(db, _normalize_user_code(payload.user_code))
     now = datetime.now(UTC)

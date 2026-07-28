@@ -771,6 +771,73 @@ async def telys_onboard(
     return await _do_product_onboard("telys", payload, authorization, db)
 
 
+@router.get(
+    "/v1/products/{product}/whoami",
+    summary="Diagnose which org this identity resolves to and whether its devices are visible",
+    description=(
+        "Read-only self-diagnosis for the CLI-login path. For the CALLER only: which org does the "
+        "identity link point at, does that org still exist, and how many active devices does it "
+        "hold. `link_dangling: true` — or a device count that disagrees with what the CLI just "
+        "registered — is the signature of the identity-link drift that makes the portal report "
+        "'No devices registered yet' while `<product> login` reports success."
+    ),
+)
+async def product_whoami(
+    product: str,
+    authorization: Annotated[str | None, Header()] = None,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Caller-scoped only: every field derives from the presented Supabase JWT. There is deliberately
+    no ``supabase_uid`` parameter — this must never be usable to inspect another tenant."""
+    from apps.api_server.models.identity_org_link import IdentityOrgLink
+    from apps.api_server.services.byok_org_resolver import _org_by_id
+    from apps.api_server.services.device_service import list_devices_with_activity
+    from apps.api_server.services.entitlement_service import resolve_entitlement
+    from apps.api_server.services.product_registry import get_product
+    from apps.api_server.services.website_identity import verify_identity
+
+    cfg = get_product(product)
+    if cfg is None:
+        raise HTTPException(
+            status_code=404, detail=error_body("unknown_product", f"unknown product {product!r}")
+        )
+
+    identity = await verify_identity(authorization)
+    uid = identity.get("supabase_uid")
+
+    link = (
+        await db.execute(select(IdentityOrgLink).where(IdentityOrgLink.supabase_uid == uid))
+    ).scalar_one_or_none()
+    linked_org = await _org_by_id(db, link.org_id) if link is not None else None
+
+    entitled: bool | None = None
+    if linked_org is not None:
+        products = getattr(resolve_entitlement(linked_org.plan.value), "products", {})
+        entitled = cfg.id in products
+
+    out: dict[str, object] = {
+        "product": cfg.id,
+        "supabase_uid": uid,
+        "email": identity.get("email"),
+        "link_present": link is not None,
+        "linked_org_id": str(link.org_id) if link is not None else None,
+        # The tell: a link row whose org row no longer exists. Every resolve via the link then
+        # misses, so the portal 403s `no_org` (rendered as an empty device list) while the CLI
+        # keeps provisioning a fresh org that nothing ever reads back.
+        "link_dangling": link is not None and linked_org is None,
+        "resolved_org_id": str(linked_org.id) if linked_org is not None else None,
+        "resolved_org_plan": linked_org.plan.value if linked_org is not None else None,
+        "product_entitled": entitled,
+        "device_count": None,
+    }
+    if linked_org is not None:
+        try:
+            out["device_count"] = len(await list_devices_with_activity(linked_org.id, db))
+        except Exception as exc:  # noqa: BLE001 — diagnostics must never 500
+            out["device_count_error"] = str(exc)
+    return out
+
+
 @router.delete("/v1/api-keys/{key_id}", status_code=204, summary="Revoke an API key")
 async def revoke_api_key(
     key_id: uuid.UUID,
