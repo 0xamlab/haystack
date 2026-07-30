@@ -19,15 +19,20 @@ import base64
 import hashlib
 import json
 import os
+import platform
 import time
 import urllib.error
 import urllib.request
 import uuid
 
+from algenta import __version__ as _cli_version
 from algenta import auth, paths
 
 _CLIENT_ID = "algenta-cli"
 _MAX_RESP_BYTES = 1 << 20  # control-plane JSON is tiny; cap defensively
+#: Sent on every control-plane call. See the note in ``_request`` — without it the Cloudflare
+#: edge rejects the request with Error 1010 and login is impossible.
+_USER_AGENT = f"{_CLIENT_ID}/{_cli_version} python-urllib/{platform.python_version()}"
 
 
 class LoginError(RuntimeError):
@@ -92,8 +97,14 @@ def _cache_device_id(path: str, value: str) -> None:
 # ── HTTP (stdlib; small JSON; Bearer) ─────────────────────────────────────────────────────────────────
 def _request(method: str, url: str, *, bearer: str | None = None, body: dict | None = None,
              timeout: float = 30.0) -> tuple[int, dict]:
+    # UA is mandatory: the api.algenta.ai zone WAF rejects the urllib default
+    # ("Python-urllib/X.Y") with Cloudflare Error 1010 browser_signature_banned, so EVERY login
+    # attempt 403s before the request reaches the control plane. Verified against the published
+    # 1.0.4 wheel: no UA -> HTTP 403 (1010); with a real UA -> HTTP 401 (reached the origin).
+    # Setting a stable, identifiable UA also lets the edge allowlist legitimate CLI traffic
+    # separately from anonymous urllib bot noise. Same fix as telys-sdk telys/login.py (telys#90).
     data = json.dumps(body).encode() if body is not None else None
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "User-Agent": _USER_AGENT}
     if data is not None:
         headers["Content-Type"] = "application/json"
     if bearer:
