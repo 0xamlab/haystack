@@ -52,6 +52,11 @@ from engines.relation_detector  import run_relation_detect
 from engines.repo_classifier    import run_repo_classifier
 from engines.string_similarity  import run_string_similarity
 from runtime_library_dispatch_generated import dispatch_runtime_library
+from algenta_runtime.batch import run_batch_execute
+from algenta_runtime.pipeline import run_pipeline_execute
+from algenta_runtime.query import run_query
+from algenta_runtime.session import ResidentDatasets
+from algenta_runtime.stream import ResidentStreams
 
 
 def _run_raw(raw: String) raises -> String:
@@ -126,6 +131,10 @@ def run_server_loop(socket_path: String) raises:
     libc_listen(server_fd, 1)
 
     var resident_column_rank = ResidentColumnRankState()
+    # Sibling of resident_column_rank: connection-scoped, dropped when the loop
+    # exits, so a handle can never outlive the connection that opened it.
+    var resident_datasets = ResidentDatasets()
+    var resident_streams = ResidentStreams()
     var keep_running = True
     while keep_running:
         var conn_fd = libc_accept(server_fd)
@@ -160,6 +169,28 @@ def run_server_loop(socket_path: String) raises:
                 response = resident_column_rank.run_batch(raw)
             elif msg_type == "library_execute":
                 response = dispatch_runtime_library(raw)
+            elif msg_type == "batch_execute":
+                response = run_batch_execute[dispatch_runtime_library](
+                    raw, resident_datasets
+                )
+            elif msg_type == "pipeline_execute":
+                response = run_pipeline_execute[dispatch_runtime_library](
+                    raw, resident_datasets
+                )
+            elif msg_type == "query_execute":
+                response = run_query(raw, resident_datasets)
+            elif msg_type == "dataset_open":
+                response = resident_datasets.open_from_json(raw)
+            elif msg_type == "dataset_close":
+                response = resident_datasets.close_from_json(raw)
+            elif msg_type == "dataset_list":
+                response = resident_datasets.list_json()
+            elif msg_type == "stream_open":
+                response = resident_streams.open_from_json(raw, resident_datasets)
+            elif msg_type == "stream_next":
+                response = resident_streams.next_from_json(raw, resident_datasets)
+            elif msg_type == "stream_close":
+                response = resident_streams.close_from_json(raw)
             else:
                 try:
                     response = _run_raw(raw)

@@ -113,12 +113,31 @@ def _module_source_exists(import_path: str, engine_root: Path = ENGINE_DIR) -> b
     return False
 
 
-def _expected_generated_test_files() -> set[str]:
-    return {f"test_{target.module_id}.mojo" for target, _ in mojo_test_gen.build_generation_plan()}
+def _expected_generated_test_files(libs_dir: Path = LIBS_DIR) -> set[str]:
+    """Filenames that should exist in ``libs_dir``.
+
+    Generated-plan suites plus any *registered* hand-written suite present in that
+    directory. Hand-written suites are deliberately excluded from the generation
+    plan, so without adding them back this set under-counts and the inventory
+    always reads as stale.
+
+    Uses the explicit `HANDWRITTEN_TESTS` registry rather than
+    `protected_test_files()`: the latter also treats any unmarked file as
+    protected, which is the right conservative rule for never deleting something
+    unrecognised, but the wrong rule here — an unmarked orphan should surface as
+    drift so it gets pruned or registered, not silently accepted.
+    """
+    planned = {
+        f"test_{target.module_id}.mojo" for target, _ in mojo_test_gen.build_generation_plan()
+    }
+    handwritten = {
+        name for name in mojo_test_gen.HANDWRITTEN_TESTS if (libs_dir / name).is_file()
+    }
+    return planned | handwritten
 
 
 def _generated_test_inventory_needs_refresh(libs_dir: Path = LIBS_DIR) -> bool:
-    expected = _expected_generated_test_files()
+    expected = _expected_generated_test_files(libs_dir)
     actual = {test_file.name for test_file in libs_dir.glob("test_*.mojo")}
     return actual != expected
 
@@ -271,17 +290,25 @@ def main() -> int:
     MODULAR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     MODULAR_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Regenerate test files when the generated inventory no longer matches the
-    # current mojo/engine tree. This keeps the suite load-bearing after
-    # module moves or recursive layout changes.
+    # Assert the generated test inventory matches the current mojo/engine tree.
+    # This used to regenerate in place, which silently overwrote every
+    # hand-written known-value suite in mojo/tests/libs/ and pruned any file the
+    # plan did not claim. Regeneration is now an explicit, reviewable step.
+    gen_script = _PROJECT_ROOT / "tests" / "generate_mojo_tests.py"
     if not LIBS_DIR.exists() or _generated_test_inventory_needs_refresh():
-        print("  Mojo test inventory is stale — regenerating...")
-        gen_script = _PROJECT_ROOT / "tests" / "generate_mojo_tests.py"
+        print("=" * 70)
+        print("  Mojo Libraries A-Z — preflight failed")
+        print("=" * 70)
+        print("  Generated Mojo test inventory is stale vs mojo/engine.")
+        print("  This suite no longer regenerates automatically, because doing so")
+        print("  overwrote the hand-written known-value suites.")
+        print("  Run:  make gen-mojo-tests    (then review the diff and commit)")
         subprocess.run(
-            [sys.executable, str(gen_script)],
-            check=True,
+            [sys.executable, str(gen_script), "--check"],
+            check=False,
             cwd=str(_PROJECT_ROOT),
         )
+        return 1
 
     missing_imports = _discover_missing_test_imports()
     if missing_imports:

@@ -179,6 +179,11 @@ _LAZY_EXPORTS = {
         "algenta.runtime_model_decision_memory",
         "ExecutionReceiptOutput",
     ),
+    "MemoryEpisodeOutput": ("algenta.runtime_model_memory", "MemoryEpisodeOutput"),
+    "MemoryFactOutput": ("algenta.runtime_model_memory", "MemoryFactOutput"),
+    "MemoryRecallHit": ("algenta.runtime_model_memory", "MemoryRecallHit"),
+    "MemoryRecallOutput": ("algenta.runtime_model_memory", "MemoryRecallOutput"),
+    "MemoryCompactionOutput": ("algenta.runtime_model_memory", "MemoryCompactionOutput"),
     "JobSubmitOutput": ("algenta.runtime_model_jobs", "JobSubmitOutput"),
     "JobStatusOutput": ("algenta.runtime_model_jobs", "JobStatusOutput"),
     "JobListOutput": ("algenta.runtime_model_jobs", "JobListOutput"),
@@ -560,6 +565,21 @@ _LAZY_EXPORTS = {
     "INTEGRATIONS": ("algenta._contract", "INTEGRATIONS"),
     "PRIMARY_DATA_QUERY_CONTRACT": ("algenta._contract", "PRIMARY_DATA_QUERY_CONTRACT"),
     "CAPABILITY_PLANE_CONTRACT": ("algenta._contract", "CAPABILITY_PLANE_CONTRACT"),
+    # ── coarse local execution: batch, pipeline, resident datasets, queries ────
+    # All local-only surfaces over the bundled Mojo worker. Lazy like everything
+    # else here, so importing `algenta` still does not touch the runtime.
+    "BatchItem": ("algenta.batch", "BatchItem"),
+    "Pipeline": ("algenta.pipeline", "Pipeline"),
+    "PipelineShardError": ("algenta.pipeline", "PipelineShardError"),
+    "PREV": ("algenta.pipeline", "PREV"),
+    "Ref": ("algenta.pipeline", "Ref"),
+    "DatasetError": ("algenta.session", "DatasetError"),
+    "Expr": ("algenta.query", "Expr"),
+    "Query": ("algenta.query", "Query"),
+    "QueryError": ("algenta.query", "QueryError"),
+    "QueryResult": ("algenta.query", "QueryResult"),
+    "col": ("algenta.query", "col"),
+    "lit": ("algenta.query", "lit"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

@@ -94,6 +94,29 @@ def _normalize_value(
     return {_STRUCT_TYPE_KEY: type_name, _STRUCT_VALUES_KEY: normalized}
 
 
+def is_deferred_reference(value: Any) -> bool:
+    """True for an argument the worker resolves, so the client cannot type-check it.
+
+    Two forms, both resolved inside Mojo before the kernel sees them:
+
+    * ``"@handle"`` — a resident dataset (``dataset_open``)
+    * ``"$k"``      — the output of pipeline node k
+
+    A reference stands in for a value of any declared type, so validating it here
+    would reject every legitimate use: `"@ds_1"` is a string where the signature
+    says `List[Float64]`. Arity is still enforced, and the worker fails loudly on an
+    unknown handle or an out-of-range node, so deferring the type check does not
+    lose the error — it moves it to where the value actually exists.
+    """
+    if not isinstance(value, str) or len(value) < 2:
+        return False
+    if value[0] == "@":
+        return len(value) > 1
+    if value[0] == "$":
+        return value[1:].isdigit()
+    return False
+
+
 def _normalize_arguments(
     args: Any,
     function: RuntimeFunctionSpec,
@@ -133,7 +156,9 @@ def _normalize_arguments(
             received=len(provided),
         )
     return [
-        _normalize_value(value, param.typ, structs, f"args.{param.name}")
+        value
+        if is_deferred_reference(value)
+        else _normalize_value(value, param.typ, structs, f"args.{param.name}")
         for param, value in zip(function.params, provided, strict=False)
     ]
 

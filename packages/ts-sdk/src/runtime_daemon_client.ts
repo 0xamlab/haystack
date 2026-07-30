@@ -62,8 +62,16 @@ interface LoadedRuntimeGrpc {
   Client: new (
     address: string,
     credentials: ReturnType<GrpcJs["credentials"]["createInsecure"]>,
+    options?: Record<string, unknown>,
   ) => RuntimeGrpcClient;
 }
+
+/**
+ * gRPC defaults to a 4 MiB receive limit, which is far below what the local
+ * transport supports (the Python worker allows 64 MiB) and is applied silently —
+ * a larger result just fails. Match the worker's ceiling so both transports agree.
+ */
+const MAX_MESSAGE_BYTES = 64 * 1024 * 1024;
 
 interface GrpcHealthResponse {
   ok: boolean;
@@ -330,7 +338,10 @@ async function withRuntimeClient<T>(
   callback: (client: RuntimeGrpcClient, deadline: number) => Promise<T>,
 ): Promise<T> {
   const { grpc, Client } = await loadRuntimeGrpc();
-  const client = new Client(resolveDaemonTarget(config), grpc.credentials.createInsecure());
+  const client = new Client(resolveDaemonTarget(config), grpc.credentials.createInsecure(), {
+    "grpc.max_receive_message_length": MAX_MESSAGE_BYTES,
+    "grpc.max_send_message_length": MAX_MESSAGE_BYTES,
+  });
   try {
     return await callback(client, Date.now() + resolveTimeoutMs(config));
   } catch (error) {

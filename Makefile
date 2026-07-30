@@ -15,7 +15,10 @@
         go-live-verify-fivetran-prebaseline \
         test-go-live-connectivity test-go-live-connectivity-tier2 test-go-live-connectivity-tier3 test-go-live-full \
         test-csv-generic test-csv-regression test-csv-all bench-csv-corpus bench-csv-corpus-full \
-        bench-dist-accuracy bench-real-data test-mojo-engines test-mojo-malformed
+        bench-dist-accuracy bench-real-data test-mojo-engines test-mojo-malformed \
+        gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check \
+        verify-dispatch-compiles bench-runtime-batch bench-runtime-pipeline \
+        bench-runtime-session
 
 # ─── Shell / PATH ──────────────────────────────────────────────────────────────
 SHELL := /bin/bash
@@ -652,6 +655,50 @@ build-mojo:
 	else \
 		echo "❌ pixi/mojo_env not found. Run: make setup-mojo"; exit 1; \
 	fi
+
+## Regenerate every kernel-inventory artifact from mojo/engine in one step:
+## the discovery cache, the SDK-facing contract, the Mojo dispatch table, and the
+## GitBook catalog. Run this after adding a kernel — otherwise the kernel compiles
+## and its tests pass but the local SDK cannot reach it (module_not_registered).
+inventory-refresh:
+	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py
+	$(REPO_PYTHON) scripts/generate_runtime_library_dispatch.py --report build/runtime_struct_construction.json
+	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py
+	@echo "✅ inventory refreshed — review the diff before committing"
+
+## Verify every kernel-inventory artifact is current (CI gate, no writes)
+inventory-check:
+	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py --check
+	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
+
+## Prove the generated dispatch COMPILES for the structs that can only be built
+## via default-construct + field assignment. This is the gate that was missing:
+## the generated table emitted positional construction for such structs, which
+## does not compile, so the whole runtime build failed and those kernels were
+## unreachable end-to-end. Bounded: seconds and under 4 GB, versus the monolith's
+## 17 GB+.
+verify-dispatch-compiles:
+	$(REPO_PYTHON) scripts/verify_dispatch_struct_construction.py
+
+## Regenerate the per-kernel Mojo test suites (hand-written suites are protected)
+gen-mojo-tests:
+	python3 tests/generate_mojo_tests.py
+
+## Verify hand-written kernel suites are intact and generated suites are fresh
+gen-mojo-tests-check:
+	python3 tests/generate_mojo_tests.py --check
+
+## Measure batched vs one-at-a-time kernel dispatch on the local runtime
+bench-runtime-batch:
+	$(REPO_PYTHON) benchmarks/bench_runtime_batch.py --sizes 1,4,16,64,256 --reps 9
+
+## Measure chained execution: one pipeline frame vs threading results via Python
+bench-runtime-pipeline:
+	$(REPO_PYTHON) benchmarks/bench_runtime_pipeline.py --depths 2,4,8,16 --reps 9
+
+## Measure resident datasets: send a large input once vs. with every call
+bench-runtime-session:
+	$(REPO_PYTHON) benchmarks/bench_runtime_session.py --rows 100,1000,10000,50000 --calls 8 --reps 5
 
 ## Smoke-test the compiled Mojo binary
 test-mojo:

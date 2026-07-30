@@ -46,7 +46,129 @@ SKIP_IMPORT_PATHS = {
 }
 SKIP_DIRS = {
     "engines",
+    # Coarse execution layer: invoked through its own message types in main.mojo,
+    # not through library_execute, and its entry points take a compile-time
+    # dispatcher parameter that the generator cannot synthesise. Covered by
+    # hand-written suites instead.
+    "algenta_runtime",
+    # Determinism substrate: hand-written suites + a bit-exact reference validator.
+    "determinism",
+    # Canonical encoding: identity infrastructure, hand-written suite.
+    "canonical",
+    # Numeric contract for new surfaces; legacy paths are untouched.
+    "numeric",
+    # Columnar substrate: hand-written suites.
+    "columnar",
+    # Query IR + columnar executor: hand-written suites.
+    "query",
 }
+
+# ── Hand-written test protection ──────────────────────────────────────────────
+# These suites are hand-written known-value/determinism tests, NOT generated.
+# Without this guard, `generate()` overwrites every test_<module>.mojo it plans
+# and unlinks every test_*.mojo it does not, so a single generator run silently
+# destroys them. They are excluded from the generation plan and are never
+# written or unlinked. Add new hand-written suites here.
+HANDWRITTEN_TESTS = frozenset(
+    {
+        "test_arima.mojo",
+        "test_automl.mojo",
+        "test_calibration.mojo",
+        "test_conformal.mojo",
+        "test_eigen_full.mojo",
+        "test_ensembles.mojo",
+        "test_explainability.mojo",
+        "test_feature_hashing.mojo",
+        "test_gaussian_process.mojo",
+        "test_gbdt.mojo",
+        "test_hmm.mojo",
+        "test_imbalance.mojo",
+        "test_linear_models.mojo",
+        "test_mixture_models.mojo",
+        "test_model_compare.mojo",
+        "test_model_selection.mojo",
+        "test_pipelines.mojo",
+        "test_algenta_runtime_batch.mojo",
+        "test_algenta_runtime_pipeline.mojo",
+        "test_algenta_runtime_resources.mojo",
+        "test_algenta_runtime_session.mojo",
+        "test_algenta_runtime_stream.mojo",
+        "test_determinism_counter_rng.mojo",
+        "test_determinism_streams.mojo",
+        "test_canonical_encode.mojo",
+        "test_numeric_contract.mojo",
+        "test_determinism_sampling_keyed.mojo",
+        "test_columnar_validity.mojo",
+        "test_columnar_array.mojo",
+        "test_columnar_batch.mojo",
+        "test_query_ir.mojo",
+        "test_query_aggregate.mojo",
+        "test_columnar_hash_index.mojo",
+        "test_query_executor.mojo",
+        "test_query_join.mojo",
+        "test_query_window.mojo",
+        "test_query_plan.mojo",
+        "test_sparse_numerics_csr.mojo",
+        "test_sparse_numerics_spmv.mojo",
+        "test_sparse_numerics_diagnostics.mojo",
+        "test_sparse_numerics_iterative.mojo",
+        "test_sparse_numerics_factor.mojo",
+        "test_pls.mojo",
+        "test_seq_nn.mojo",
+        "test_seq_training.mojo",
+        "test_serialization_io.mojo",
+        "test_sparse_numerics_csr.mojo",
+        "test_sparse_numerics_iterative.mojo",
+        "test_sparse_numerics_diagnostics.mojo",
+        "test_sparse_numerics_factor.mojo",
+        "test_sparse_numerics_spmv.mojo",
+        "test_svm_solver.mojo",
+        "test_tensor2d.mojo",
+    }
+)
+
+# Marker written into the docstring of every generated suite by `emit_lib_test`.
+GENERATED_MARKER = "auto-generated"
+
+# ── module_id collision disambiguation ────────────────────────────────────────
+# module_id is import_path with "." -> "_", so a top-level `foo_bar.mojo` and a
+# packaged `foo/bar.mojo` both yield module_id "foo_bar" and both target
+# test_foo_bar.mojo — the second write silently destroys the first module's
+# coverage. Override the *packaged* module to a distinct filename so both are
+# covered. The pre-existing test_graph_algorithms.mojo keeps its name and
+# content; graph.algorithms gains its own suite.
+MODULE_ID_OVERRIDES: dict[str, str] = {
+    "graph.algorithms": "graph_pkg_algorithms",
+}
+
+
+def _module_id_collisions(modules: list[ModuleTarget]) -> dict[str, list[str]]:
+    """Return {module_id: [import_path, ...]} for any module_id claimed twice."""
+    by_id: dict[str, list[str]] = {}
+    for target in modules:
+        by_id.setdefault(target.module_id, []).append(target.import_path)
+    return {mid: paths for mid, paths in by_id.items() if len(paths) > 1}
+
+
+def protected_test_files(out_dir: Path | None = None) -> frozenset[str]:
+    """Test filenames the generator must never write or unlink.
+
+    Union of the explicit ``HANDWRITTEN_TESTS`` registry and any on-disk
+    ``test_*.mojo`` lacking ``GENERATED_MARKER``. The second half matters: it
+    protects a newly hand-written suite that nobody has registered yet, which
+    is exactly when the silent-overwrite failure used to happen.
+    """
+    out_dir = OUT_DIR if out_dir is None else out_dir
+    protected = set(HANDWRITTEN_TESTS)
+    if out_dir.is_dir():
+        for existing in out_dir.glob("test_*.mojo"):
+            try:
+                head = existing.read_text(encoding="utf-8")[:512]
+            except OSError:
+                continue
+            if GENERATED_MARKER not in head:
+                protected.add(existing.name)
+    return frozenset(protected)
 
 _SCALAR_VALUES: dict[str, str] = {
     # 0.5 covers probabilities (0-1), rates (0-1), and is valid for most math.
@@ -249,9 +371,18 @@ _EXTRA_SAMPLE_PREAMBLES: dict[str, list[str]] = {
         "                _lf75_video_motion3x5x5.append(10.0)",
     ],
 }
+
+_COLUMN_RANK_SMOKE_REQUEST = (
+    '"{\\"hint\\":\\"unit price\\",'
+    '\\"candidates\\":[{\\"source\\":\\"orders\\",'
+    '\\"column\\":\\"unit_price\\"}],\\"top_k\\":1}"'
+)
+
 # Per-function argument overrides (lib, fn) → list of arg expressions.
 # Used when the generic 0.5 value causes NaN/Inf for domain-specific reasons.
 _PARAM_OVERRIDES: dict[tuple[str, str], list[str]] = {
+    # column_rank consumes a JSON request, not arbitrary free-form text.
+    ("column_rank", "run_column_rank"): [_COLUMN_RANK_SMOKE_REQUEST],
     # carnot_cop_cooling(t_cold, t_hot): t_cold/t_hot must have t_cold < t_hot
     ("cryogenics", "carnot_cop_cooling"): ["200.0", "300.0"],
     # time_to_peak(ka, ke): ka != ke to avoid log(1)/0
@@ -691,6 +822,9 @@ def _import_path_for(path: Path, engine_root: Path = MOJO_DIR) -> str:
 
 
 def _module_id_for_import_path(import_path: str) -> str:
+    override = MODULE_ID_OVERRIDES.get(import_path)
+    if override is not None:
+        return override
     return import_path.replace(".", "_")
 
 
@@ -849,8 +983,13 @@ def build_generation_plan(
     if modules is None:
         modules = discover_library_modules()
 
+    protected = protected_test_files()
+
     plan: list[tuple[ModuleTarget, list[FnSig]]] = []
     for target in modules:
+        if f"test_{target.module_id}.mojo" in protected:
+            # Hand-written suite owns this module; never plan a generated one.
+            continue
         sigs = parse_library(
             target.path,
             module_id=target.module_id,
@@ -973,16 +1112,25 @@ def generate(
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     plan = build_generation_plan(modules)
+    protected = protected_test_files()
     counts: dict[str, int] = {}
     total_fns = 0
     expected_files: set[str] = set()
     shown_dry_run = False
 
     for target, testable in plan:
+        out_name = f"test_{target.module_id}.mojo"
+        if out_name in protected:
+            # Defence in depth: build_generation_plan already excludes these.
+            raise SystemExit(
+                f"generate_mojo_tests: refusing to overwrite hand-written suite {out_name}. "
+                "This is a bug in the generation plan filter."
+            )
+
         n = len(testable)
         counts[target.module_id] = n
         total_fns += n
-        expected_files.add(f"test_{target.module_id}.mojo")
+        expected_files.add(out_name)
 
         code = emit_lib_test(target.module_id, target.import_path, testable)
         if dry_run:
@@ -990,10 +1138,12 @@ def generate(
                 print(code)
                 shown_dry_run = True
         else:
-            (OUT_DIR / f"test_{target.module_id}.mojo").write_text(code, encoding="utf-8")
+            (OUT_DIR / out_name).write_text(code, encoding="utf-8")
 
     if not dry_run:
         for stale_file in OUT_DIR.glob("test_*.mojo"):
+            if stale_file.name in protected:
+                continue
             if stale_file.name not in expected_files:
                 stale_file.unlink()
 
@@ -1002,13 +1152,90 @@ def generate(
         print(f"Generated {len(counts)} test files in {OUT_DIR}")
         print(f"  Total functions to test: {total_fns}")
         print(f"  Skipped modules (untestable): {skipped_modules}")
+        print(f"  Protected hand-written suites (untouched): {len(protected)}")
 
     return counts
+
+
+def check(modules: list[ModuleTarget] | None = None) -> int:
+    """Verify hand-written suites are intact and generated suites are fresh.
+
+    Used by CI and by tests/integration/test_mojo_libraries_az.py, which asserts
+    freshness rather than regenerating (regeneration is what destroyed the
+    hand-written suites).
+    """
+    problems: list[str] = []
+
+    missing = sorted(name for name in HANDWRITTEN_TESTS if not (OUT_DIR / name).is_file())
+    if missing:
+        problems.append(
+            "registered hand-written suites are missing from disk (deleted?): "
+            + ", ".join(missing)
+        )
+
+    protected = protected_test_files()
+    plan = build_generation_plan(modules)
+    collisions = sorted(
+        f"test_{target.module_id}.mojo"
+        for target, _ in plan
+        if f"test_{target.module_id}.mojo" in protected
+    )
+    if collisions:
+        problems.append("generation plan would overwrite protected suites: " + ", ".join(collisions))
+
+    id_collisions = _module_id_collisions(modules if modules is not None else [])
+    if id_collisions:
+        detail = "; ".join(
+            f"{mid} <- {' + '.join(sorted(paths))}" for mid, paths in sorted(id_collisions.items())
+        )
+        problems.append(
+            "module_id collision — one module's coverage would be silently overwritten. "
+            f"Add a MODULE_ID_OVERRIDES entry: {detail}"
+        )
+
+    stale: list[str] = []
+    for target, testable in plan:
+        out_path = OUT_DIR / f"test_{target.module_id}.mojo"
+        expected = emit_lib_test(target.module_id, target.import_path, testable)
+        current = out_path.read_text(encoding="utf-8") if out_path.is_file() else None
+        if current != expected:
+            stale.append(out_path.name)
+    if stale:
+        problems.append(
+            f"{len(stale)} generated suite(s) stale vs source — run "
+            f"`python3 tests/generate_mojo_tests.py`: {', '.join(sorted(stale)[:10])}"
+            + (" …" if len(stale) > 10 else "")
+        )
+
+    orphans = sorted(
+        path.name
+        for path in OUT_DIR.glob("test_*.mojo")
+        if path.name not in protected
+        and path.name not in {f"test_{t.module_id}.mojo" for t, _ in plan}
+    )
+    if orphans:
+        problems.append(
+            "generated suite(s) with no source module — run the generator to prune: "
+            + ", ".join(orphans)
+        )
+
+    if problems:
+        for problem in problems:
+            print(f"FAIL: {problem}")
+        return 1
+
+    print(
+        f"OK: {len(protected)} hand-written suite(s) protected, "
+        f"{len(plan)} generated suite(s) fresh."
+    )
+    return 0
 
 
 def main():
     dry_run = "--dry-run" in sys.argv
     modules = discover_library_modules()
+    if "--check" in sys.argv:
+        raise SystemExit(check(modules))
     print(f"Scanning {len(modules)} module files...")
     generate(modules, dry_run=dry_run)
 

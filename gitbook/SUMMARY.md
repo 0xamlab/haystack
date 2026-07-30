@@ -17,6 +17,8 @@
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
+* [Batched and chained execution](engine/coarse-execution.md)
+* [Columnar queries](engine/columnar-queries.md)
 * [Time-series model selection](engine/ml-model-selection.md)
 * [Statistical model comparison](engine/ml-model-comparison.md)
 * [Probability calibration](engine/ml-calibration.md)

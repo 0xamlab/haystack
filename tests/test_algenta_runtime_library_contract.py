@@ -24,8 +24,29 @@ from algenta.runtime_library_transport import (  # noqa: E402
     parse_worker_response,
 )
 
+CONTRACT_PATH = ALGENTA_PACKAGE / "algenta" / "runtime_library_contract.json"
 
-def test_generated_contract_is_current_and_sanitized() -> None:
+# Regression floors for the shipped kernel surface. The surface may only grow.
+# These are floors, not fixtures: adding a kernel must not require editing a
+# test. Exact agreement with the source tree is proven separately by
+# `scripts/generate_algenta_runtime_contract.py --check`, and internal
+# consistency is derived from the payload itself. Raise these deliberately after
+# `make inventory-refresh`; never lower them.
+MODULE_COUNT_FLOOR = 495
+FUNCTION_COUNT_FLOOR = 4873
+
+
+def _contract_payload() -> dict:
+    return json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+
+
+def test_generated_contract_is_current() -> None:
+    """The committed contract must match a fresh generation from mojo/engine.
+
+    Fails when a kernel was added without running `make inventory-refresh` — in
+    which case that kernel is invisible to the local SDK (`find_runtime_function`
+    raises `module_not_registered`) even though it compiles and its tests pass.
+    """
     proc = subprocess.run(
         [sys.executable, "scripts/generate_algenta_runtime_contract.py", "--check"],
         cwd=ROOT,
@@ -33,14 +54,30 @@ def test_generated_contract_is_current_and_sanitized() -> None:
         text=True,
         timeout=60,
     )
-    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert proc.returncode == 0, (
+        (proc.stderr or proc.stdout) + "\n\nRun: make inventory-refresh"
+    )
 
-    contract_path = ALGENTA_PACKAGE / "algenta" / "runtime_library_contract.json"
+
+def test_contract_counts_are_self_consistent_and_meet_floors() -> None:
+    payload = _contract_payload()
+
+    # Derived from the payload — never needs bumping.
+    assert payload["module_count"] == len(payload["modules"])
+    assert payload["function_count"] == sum(
+        len(module["functions"]) for module in payload["modules"]
+    )
+    assert len(runtime_modules()) == payload["module_count"]
+
+    # Regression floors — the surface must not shrink.
+    assert payload["module_count"] >= MODULE_COUNT_FLOOR
+    assert payload["function_count"] >= FUNCTION_COUNT_FLOOR
+
+
+def test_generated_contract_is_sanitized() -> None:
+    contract_path = CONTRACT_PATH
     payload = json.loads(contract_path.read_text(encoding="utf-8"))
     encoded = contract_path.read_text(encoding="utf-8").lower()
-    assert payload["module_count"] == 472
-    assert payload["function_count"] == 4757
-    assert len(runtime_modules()) == 472
     assert "runtime_library_dispatch_generated" not in {
         module["name"] for module in payload["modules"]
     }

@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **472 modules** and **4757 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **500 modules** and **4973 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -55,12 +55,13 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-21 modules.
+23 modules.
 
 | Module | Functions |
 | --- | --- |
 | `activations` | 10 |
 | `bayesian_inference` | 10 |
+| `calibration` | 5 |
 | `config.toml_parser` | 5 |
 | `config.yaml_parser` | 5 |
 | `constraint` | 8 |
@@ -78,21 +79,24 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `optimizer_full` | 10 |
 | `quantization` | 10 |
 | `quantization_stack` | 10 |
+| `seq_training` | 4 |
 | `state_space_models` | 10 |
 | `training_stability` | 10 |
 
 ## Tensors & linear algebra
 
-14 modules.
+16 modules.
 
 | Module | Functions |
 | --- | --- |
+| `eigen_full` | 2 |
 | `gpu_kernels` | 10 |
 | `linalg` | 16 |
 | `linalg_ext` | 8 |
 | `matrix_decomp` | 11 |
 | `matrix_ops` | 12 |
 | `tensor` | 29 |
+| `tensor2d` | 11 |
 | `tensor_ops` | 10 |
 | `time_series_decompose` | 9 |
 | `vector_kernels.batch_ranker` | 1 |
@@ -124,7 +128,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `scipy_stats_ops` | 10 |
 | `stat_tests` | 9 |
 | `stateful_runtime` | 10 |
-| `stats` | 8 |
+| `stats` | 12 |
 | `stats_bootstrap` | 10 |
 | `timeseries_stats` | 9 |
 
@@ -148,7 +152,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Cryptography & hashing
 
-9 modules.
+10 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -160,6 +164,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `crypto.hmac` | 2 |
 | `crypto.pbkdf2` | 7 |
 | `crypto.uuid` | 2 |
+| `feature_hashing` | 4 |
 | `perceptual_hash` | 8 |
 
 ## Text & language
@@ -201,7 +206,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Serialization & data
 
-11 modules.
+12 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -216,6 +221,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `json.writer` | 12 |
 | `model_serialization` | 10 |
 | `serialization.msgpack` | 10 |
+| `serialization_io` | 3 |
 
 ## Bits, numbers & time
 
@@ -278,7 +284,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-309 modules.
+331 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -293,11 +299,13 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `apiculture` | 12 |
 | `aquaculture` | 12 |
 | `archaeology` | 12 |
+| `arima` | 8 |
 | `astrobiology` | 10 |
 | `astronomy` | 12 |
 | `atmospheric_chemistry` | 10 |
 | `auction` | 11 |
 | `autograd_ops` | 10 |
+| `automl` | 4 |
 | `autonomous_vehicles` | 12 |
 | `aviation` | 10 |
 | `battery` | 12 |
@@ -328,6 +336,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `combustion` | 12 |
 | `composites` | 12 |
 | `concrete` | 12 |
+| `conformal` | 6 |
 | `continuous_batching` | 10 |
 | `contrastive_learning` | 10 |
 | `control` | 9 |
@@ -370,6 +379,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `elevator` | 12 |
 | `encoding` | 7 |
 | `encryption_modes` | 12 |
+| `ensembles` | 4 |
 | `entomology` | 12 |
 | `env` | 5 |
 | `epidemiology` | 10 |
@@ -377,6 +387,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `etiology` | 10 |
 | `evaluation_feedback` | 10 |
 | `execution_planner` | 10 |
+| `explainability` | 4 |
 | `fault_tolerance` | 10 |
 | `feature_engineering` | 10 |
 | `feature_selection` | 9 |
@@ -392,11 +403,14 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `fuzzy_logic` | 11 |
 | `game_physics` | 12 |
 | `game_theory` | 8 |
+| `gaussian_process` | 5 |
+| `gbdt` | 3 |
 | `generation_loop` | 10 |
 | `genomics` | 10 |
 | `glaciology` | 10 |
 | `greenhouse` | 12 |
 | `hematology` | 10 |
+| `hmm` | 4 |
 | `horticulture` | 10 |
 | `hvac` | 12 |
 | `hybrid_reasoning` | 10 |
@@ -404,6 +418,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `hydrology` | 12 |
 | `hydrometeorology` | 10 |
 | `hydroponics` | 12 |
+| `imbalance` | 5 |
 | `immunology` | 10 |
 | `information_theory` | 10 |
 | `insurance` | 12 |
@@ -416,6 +431,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `lidar_mapping` | 10 |
 | `limnochemistry` | 11 |
 | `limnology` | 10 |
+| `linear_models` | 4 |
 | `linear_programming` | 8 |
 | `linguistics` | 12 |
 | `logging.logger` | 1 |
@@ -432,6 +448,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `microbiology` | 10 |
 | `mineralogy` | 10 |
 | `mining` | 12 |
+| `mixture_models` | 5 |
 | `mixture_of_experts` | 10 |
 | `ml.classifiers` | 7 |
 | `ml.clustering` | 4 |
@@ -440,9 +457,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `ml.preprocessing` | 6 |
 | `ml.random_forest` | 8 |
 | `model_abi` | 10 |
+| `model_compare` | 4 |
 | `model_interop` | 10 |
 | `model_parallel` | 10 |
 | `model_router` | 10 |
+| `model_selection` | 5 |
 | `moe_production` | 10 |
 | `moe_routing` | 10 |
 | `multi_objective` | 7 |
@@ -487,7 +506,9 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `physics` | 12 |
 | `phytochemistry` | 10 |
 | `pipeline` | 12 |
+| `pipelines` | 5 |
 | `plasma_physics` | 10 |
+| `pls` | 4 |
 | `plumbing` | 12 |
 | `pneumatics` | 12 |
 | `polymer` | 12 |
@@ -532,6 +553,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `sedimentology` | 10 |
 | `seismology` | 12 |
 | `semiconductors` | 12 |
+| `seq_nn` | 8 |
 | `series` | 10 |
 | `set_ops` | 12 |
 | `silviculture` | 10 |
@@ -542,6 +564,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `solar_energy` | 12 |
 | `sorting` | 10 |
 | `sparse` | 6 |
+| `sparse_numerics.csr` | 34 |
+| `sparse_numerics.diagnostics` | 21 |
+| `sparse_numerics.factor` | 11 |
+| `sparse_numerics.iterative` | 18 |
+| `sparse_numerics.spmv` | 16 |
 | `sparse_vector` | 10 |
 | `special_functions` | 12 |
 | `speculative_decoding` | 10 |
@@ -555,6 +582,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `survival` | 8 |
 | `sustainability` | 12 |
 | `svm_kernel` | 9 |
+| `svm_solver` | 5 |
 | `taphonomy` | 10 |
 | `telecommunications` | 12 |
 | `thermodynamics` | 11 |

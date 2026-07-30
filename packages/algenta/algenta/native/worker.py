@@ -492,9 +492,21 @@ def execute(
     *,
     timeout: float = 60.0,
     require_verified: bool = False,
+    module_name: str | None = None,
 ) -> dict[str, Any]:
-    raw_module_name = request.get("module") if request.get("type") == "library_execute" else None
-    module_name = raw_module_name if isinstance(raw_module_name, str) else None
+    """Send one framed request to the worker that owns the routed module.
+
+    `module_name` overrides shard routing. Needed for coarse message types such
+    as `batch_execute`, whose frame has no single top-level "module" key: the
+    caller groups its items by owning worker and names the routing module for
+    each group. Omitting it preserves the previous behaviour exactly — derive
+    from `request["module"]` for `library_execute`, otherwise the default worker.
+    """
+    if module_name is None:
+        raw_module_name = (
+            request.get("module") if request.get("type") == "library_execute" else None
+        )
+        module_name = raw_module_name if isinstance(raw_module_name, str) else None
     resolution = require_worker(module_name=module_name, require_verified=require_verified)
     return _session_for(resolution).execute(request, timeout)
 

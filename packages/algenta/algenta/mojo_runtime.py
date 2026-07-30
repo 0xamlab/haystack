@@ -88,6 +88,148 @@ class _BundledRuntime:
             "error": "",
         }
 
+    def execute_batch(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        partial_ok: bool = True,
+    ) -> dict[str, Any]:
+        from algenta.batch import execute_batch as _execute_batch
+
+        return _execute_batch(
+            items,
+            timeout=self._timeout,
+            partial_ok=partial_ok,
+            require_verified=self._require_verified_runtime(),
+        )
+
+    def query(self, plan: Any, *, routing_module: str = "stats") -> Any:
+        from algenta.query import run_query
+
+        return run_query(
+            plan,
+            routing_module=routing_module,
+            timeout=self._timeout,
+            require_verified=self._require_verified_runtime(),
+        )
+
+    def open_dataset(self, value: Any, *, name: str = "", routing_module: str) -> str:
+        from algenta.session import open_dataset
+
+        return open_dataset(
+            value,
+            name=name,
+            routing_module=routing_module,
+            timeout=self._timeout,
+            require_verified=self._require_verified_runtime(),
+        )
+
+    def close_dataset(self, handle: str, *, routing_module: str) -> bool:
+        from algenta.session import close_dataset
+
+        return close_dataset(
+            handle,
+            routing_module=routing_module,
+            timeout=self._timeout,
+            require_verified=self._require_verified_runtime(),
+        )
+
+    def list_datasets(self, *, routing_module: str) -> dict[str, Any]:
+        from algenta.session import list_datasets
+
+        return list_datasets(
+            routing_module=routing_module,
+            timeout=self._timeout,
+            require_verified=self._require_verified_runtime(),
+        )
+
+    def stream(self, handle: str, *, routing_module: str, chunk_rows: int | None = None):
+        from algenta.session import stream_chunks
+
+        return stream_chunks(
+            handle,
+            routing_module=routing_module,
+            timeout=self._timeout,
+            require_verified=self._require_verified_runtime(),
+            chunk_rows=chunk_rows,
+        )
+
+    def run_pipeline(self, nodes: list[dict[str, Any]]) -> dict[str, Any]:
+        from algenta.native import worker
+        from algenta.pipeline import PipelineShardError
+
+        if not nodes:
+            return {
+                "result": None,
+                "results": [],
+                "lineage": [],
+                "nodes": 0,
+                "ok": 0,
+                "failed": 0,
+                "success": True,
+                "error": "",
+            }
+
+        require_verified = self._require_verified_runtime()
+        # A worker only holds its own shard's modules, so the whole DAG must route
+        # to one worker. Refuse rather than half-execute it.
+        routes: dict[str, str] = {}
+        for node in nodes:
+            module = str(node.get("module", ""))
+            if module in routes:
+                continue
+            routes[module] = str(
+                worker.require_worker(
+                    module_name=module, require_verified=require_verified
+                ).path
+            )
+        distinct = sorted(set(routes.values()))
+        if len(distinct) > 1:
+            grouped: dict[str, list[str]] = {}
+            for module, path in routes.items():
+                grouped.setdefault(path, []).append(module)
+            detail = "; ".join(
+                f"{path.rsplit('/', 1)[-1]}: {', '.join(sorted(mods))}"
+                for path, mods in sorted(grouped.items())
+            )
+            raise PipelineShardError(
+                "Pipeline nodes span more than one runtime shard, so they cannot "
+                f"execute in a single frame ({detail}). Split the plan per shard, "
+                "or install a runtime filtered to these modules."
+            )
+
+        frame = {
+            "type": "pipeline_execute",
+            "engine_type": "pipeline_execute",
+            "nodes": nodes,
+        }
+        started = perf_counter()
+        try:
+            envelope = worker.execute(
+                frame,
+                timeout=self._timeout,
+                require_verified=require_verified,
+                module_name=str(nodes[0].get("module", "")),
+            )
+        except worker.NativeWorkerUnavailable as exc:
+            return {
+                "result": None,
+                "results": [],
+                "lineage": [],
+                "nodes": len(nodes),
+                "ok": 0,
+                "failed": len(nodes),
+                "success": False,
+                "error": str(exc),
+                "error_code": "compute_runtime_unavailable",
+                "latency_ms": round((perf_counter() - started) * 1000, 3),
+            }
+
+        envelope = dict(envelope)
+        envelope["latency_ms"] = round((perf_counter() - started) * 1000, 3)
+        envelope["success"] = not envelope.get("error_code")
+        return envelope
+
     def health(self) -> dict[str, Any]:
         from algenta.native import worker
 
@@ -441,6 +583,77 @@ class MojoRuntime:
 
     def execute(self, module: str, function: str, args: Any = None) -> dict[str, Any]:
         return self._ensure_runtime().execute(module, function, args)
+
+    def execute_batch(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        partial_ok: bool = True,
+    ) -> dict[str, Any]:
+        """Execute many kernel calls in as few frames as shard routing allows.
+
+        Each entry is `{"module": ..., "function": ..., "args": ...}`. Results come
+        back in the same order, each shaped like a single `execute()` envelope, so
+        one failing item never sinks its neighbours. `partial_ok=False` stops a
+        shard group at its first failure.
+        """
+        return self._ensure_runtime().execute_batch(items, partial_ok=partial_ok)
+
+    def pipeline(self) -> Any:
+        """Start a chained plan whose intermediates never leave the worker.
+
+        Nodes run in order; `Ref(i)` / `PREV` in a node's args are replaced by an
+        earlier node's output inside Mojo, so an N-step chain costs one frame.
+        """
+        from algenta.pipeline import Pipeline
+
+        return Pipeline(self)
+
+    def run_pipeline(self, nodes: list[dict[str, Any]]) -> dict[str, Any]:
+        """Execute an already-built node list. `pipeline()` is the usual entry."""
+        return self._ensure_runtime().run_pipeline(nodes)
+
+    def query(self, plan: Any, *, routing_module: str = "stats") -> Any:
+        """Run a columnar query plan in one dispatch, entirely on this device.
+
+        Build the plan with `algenta.Query` / `col`. Every operator is a compiled
+        Mojo kernel; the plan crosses the boundary once rather than per operator, and
+        the returned `plan_hash` identifies the computation rather than the data.
+
+        Raises `algenta.QueryError` if the plan is rejected or an operator fails — a
+        failed plan returns no rows, because an empty result would be
+        indistinguishable from a complete answer.
+        """
+        return self._ensure_runtime().query(plan, routing_module=routing_module)
+
+    def open_dataset(self, value: Any, *, name: str = "", routing_module: str) -> str:
+        """Make `value` resident so later calls reference it by handle.
+
+        Reference it from a batch item or pipeline node as `"@<handle>"`; per-call
+        payload then stays O(1) in rows. `routing_module` picks the shard, so it
+        must be a module the later calls also use.
+        """
+        return self._ensure_runtime().open_dataset(
+            value, name=name, routing_module=routing_module
+        )
+
+    def close_dataset(self, handle: str, *, routing_module: str) -> bool:
+        """Release a resident dataset. Handles are never reissued."""
+        return self._ensure_runtime().close_dataset(handle, routing_module=routing_module)
+
+    def list_datasets(self, *, routing_module: str) -> dict[str, Any]:
+        """Resident handles and their sizes for one shard."""
+        return self._ensure_runtime().list_datasets(routing_module=routing_module)
+
+    def stream(self, handle: str, *, routing_module: str, chunk_rows: int | None = None):
+        """Iterate a resident dataset in chunks, pulling only what you consume.
+
+        A generator: breaking early leaves the remainder unencoded, and the cursor
+        is closed on exit either way.
+        """
+        return self._ensure_runtime().stream(
+            handle, routing_module=routing_module, chunk_rows=chunk_rows
+        )
 
     def health(self) -> dict[str, Any]:
         return self._ensure_runtime().health()

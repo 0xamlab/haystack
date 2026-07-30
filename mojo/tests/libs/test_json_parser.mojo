@@ -1,6 +1,6 @@
 """test_json_parser.mojo — auto-generated tests for json.parser."""
 from std.math import isnan, isinf
-from json.parser import skip_whitespace, skip_json_value, find_key, json_get_string, json_get_float, json_get_int, json_get_bool, json_is_null, json_get_object, json_get_array, json_array_len, json_array_get
+from json.parser import skip_whitespace, skip_json_value, find_key, json_get_string, json_get_float, json_get_int, json_get_bool, json_is_null, json_get_object, json_get_array, json_array_len, json_array_get, json_array_tokens, json_decode_base64_bytes, json_parse_float64_list
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -67,5 +67,11 @@ def main() raises:
     passed += 1; print("  ✅ json.parser::json_array_len")
     _ = json_array_get("test", 5)
     passed += 1; print("  ✅ json.parser::json_array_get")
+    var _v_json_array_tokens = json_array_tokens("test")
+    if len(_v_json_array_tokens) >= 0: passed += 1; print("  ✅ json.parser::json_array_tokens")
+    var _v_json_decode_base64_bytes = json_decode_base64_bytes("test")
+    if len(_v_json_decode_base64_bytes) >= 0: passed += 1; print("  ✅ json.parser::json_decode_base64_bytes")
+    var _v_json_parse_float64_list = json_parse_float64_list("test")
+    if len(_v_json_parse_float64_list) >= 0: passed += 1; print("  ✅ json.parser::json_parse_float64_list")
 
     print("  [json.parser] Passed:", passed, "Failed:", failed)

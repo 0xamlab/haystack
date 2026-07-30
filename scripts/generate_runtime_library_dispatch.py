@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -127,16 +128,27 @@ def _init_param_types(signature: str) -> list[str]:
     return types
 
 
-def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], bool]]:
-    """Generator-local struct parser: {name: (fields, memberwise)}.
+def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], str]]:
+    """Generator-local struct parser: {name: (fields, construction)}.
 
     `fields` are the `var name: type` declarations at the struct's own body
     indent (NOT method-local vars, which mojo_inventory's parser misreads as
-    fields — e.g. DataFrame.sum_val). `memberwise` is True when the struct can
-    be built positionally as `Name(field_0, ..., field_{n-1})`: it has an
-    __init__ whose non-self arity equals the field count, or a @value /
-    @fieldwise_init decorator. Structs that aren't memberwise (e.g. DataFrame,
-    whose __init__ takes no args) cannot be round-tripped by the dispatch.
+    fields — e.g. DataFrame.sum_val).
+
+    `construction` is how a decoder can build the struct, resolved from the
+    source rather than assumed:
+
+    * ``"positional"`` — `Name(field_0, ..., field_{n-1})`. Available when a
+      @value / @fieldwise_init decorator synthesises a field-ordered
+      constructor, or an explicit __init__ takes exactly the fields, in order,
+      BY TYPE (matching arity alone is not enough — e.g. Tensor1D(data, size)
+      vs its __init__(size, fill)).
+    * ``"assign"`` — `var v = Name(); v.field = ...`. Available when the struct
+      has a zero-argument __init__ and at least one field. Structs such as
+      SVMModel / PLSResult / GRUState only offer this shape; emitting positional
+      construction for them produces code that does not compile.
+    * ``"none"`` — cannot be built from a payload at all. The struct and every
+      function touching it must be excluded rather than emitted.
     """
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     result: dict[str, tuple[list[tuple[str, str]], bool]] = {}
@@ -193,17 +205,13 @@ def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], bool]]:
                     init_signatures.append(_init_param_types(sig))
             i += 1
         field_types = [field_typ for _, field_typ in fields]
-        if deco_memberwise:
-            # @value / @fieldwise_init synthesize a field-ordered constructor.
-            memberwise = True
-        elif has_init:
-            # Round-trippable only if some __init__ takes exactly the fields,
-            # in order, BY TYPE (matching arity alone is not enough — e.g.
-            # Tensor1D(data, size) vs its __init__(size, fill)).
-            memberwise = any(field_types == sig for sig in init_signatures)
+        if deco_memberwise or (has_init and any(field_types == sig for sig in init_signatures)):
+            construction = "positional"
+        elif has_init and any(len(sig) == 0 for sig in init_signatures) and fields:
+            construction = "assign"
         else:
-            memberwise = False
-        result[name] = (fields, memberwise)
+            construction = "none"
+        result[name] = (fields, construction)
     return result
 
 
@@ -308,6 +316,7 @@ def _emit_struct_parse_function(
     type_name: str,
     *,
     struct_specs: dict[str, "RuntimeStructSpec"],
+    struct_construction: dict[str, str],
 ) -> list[str]:
     spec = struct_specs[type_name]
     fn_name = _parse_fn_name(type_name)
@@ -324,8 +333,18 @@ def _emit_struct_parse_function(
         lines.append(
             f"{INDENT}var field_{index} = {_parse_fn_name(field.typ)}(json_array_get(values_json, {index}))"
         )
-    field_args = ", ".join(f"field_{index}^" for index in range(len(spec.fields)))
-    lines.append(f"{INDENT}return {type_name}({field_args})")
+
+    construction = struct_construction.get(type_name, "positional")
+    if construction == "assign":
+        # The struct has no field-ordered constructor, only `__init__(out self)`.
+        # Default-construct, then assign each decoded field.
+        lines.append(f"{INDENT}var decoded = {type_name}()")
+        for index, field in enumerate(spec.fields):
+            lines.append(f"{INDENT}decoded.{field.name} = field_{index}^")
+        lines.append(f"{INDENT}return decoded^")
+    else:
+        field_args = ", ".join(f"field_{index}^" for index in range(len(spec.fields)))
+        lines.append(f"{INDENT}return {type_name}({field_args})")
     lines.append("")
     return lines
 
@@ -334,6 +353,7 @@ def _emit_parse_functions(
     type_names: set[str],
     *,
     struct_specs: dict[str, "RuntimeStructSpec"],
+    struct_construction: dict[str, str],
 ) -> list[str]:
     lines: list[str] = []
     for type_name in _ordered_types(type_names):
@@ -342,7 +362,13 @@ def _emit_parse_functions(
         if _is_list_type(type_name):
             lines.extend(_emit_list_parse_function(type_name))
         elif type_name in struct_specs:
-            lines.extend(_emit_struct_parse_function(type_name, struct_specs=struct_specs))
+            lines.extend(
+                _emit_struct_parse_function(
+                    type_name,
+                    struct_specs=struct_specs,
+                    struct_construction=struct_construction,
+                )
+            )
         else:
             lines.extend(_emit_scalar_parse_function(type_name))
     return lines
@@ -574,11 +600,13 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
     module_struct_fields: dict[tuple[str, str], list[tuple[str, str]]] = {}
     module_defines: dict[str, set[str]] = {}
     struct_def_count: dict[str, int] = {}
+    module_struct_construction: dict[tuple[str, str], str] = {}
     for module in modules:
         defined = module_defines.setdefault(module.import_path, set())
-        for struct_name, (fields, _memberwise) in _parse_struct_defs(module.path).items():
+        for struct_name, (fields, construction) in _parse_struct_defs(module.path).items():
             if struct_name not in defined:
                 module_struct_fields[(module.import_path, struct_name)] = fields
+                module_struct_construction[(module.import_path, struct_name)] = construction
                 defined.add(struct_name)
                 struct_def_count[struct_name] = struct_def_count.get(struct_name, 0) + 1
     ambiguous = {name for name, count in struct_def_count.items() if count > 1}
@@ -586,6 +614,9 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
     struct_specs: dict[str, RuntimeStructSpec] = {}
     struct_origin: dict[str, str] = {}            # non-aliased struct name -> module
     alias_imports: dict[str, tuple[str, str]] = {}  # alias -> (module, base name)
+    # Emitted-name -> "positional" | "assign" | "none". Aliases inherit the
+    # strategy of the base struct in their defining module.
+    struct_construction: dict[str, str] = {}
 
     def qualify(type_name: str, module: str) -> str:
         """Map an ambiguous struct (defined in `module`) to a per-module alias
@@ -604,6 +635,9 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
                         for fname, ftyp in module_struct_fields.get((module, type_name), [])
                     ),
                 )
+                struct_construction[alias] = module_struct_construction.get(
+                    (module, type_name), "positional"
+                )
             return alias
         if type_name in struct_specs or type_name in alias_imports:
             return type_name
@@ -617,6 +651,9 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
                     ),
                 )
                 struct_origin[type_name] = mod
+                struct_construction[type_name] = module_struct_construction.get(
+                    (mod, nm), "positional"
+                )
                 break
         return type_name
 
@@ -766,7 +803,13 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
             "",
         ]
     )
-    lines.extend(_emit_parse_functions(param_types, struct_specs=struct_specs))
+    lines.extend(
+        _emit_parse_functions(
+            param_types,
+            struct_specs=struct_specs,
+            struct_construction=struct_construction,
+        )
+    )
     lines.extend(
         _emit_to_json_functions(
             result_types, struct_specs=struct_specs, display_names=struct_display
@@ -816,18 +859,47 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
 
 
 def main() -> None:
-    from apps.runtime.mojo_inventory import discover_runtime_library_modules
+    from apps.runtime.mojo_inventory import (
+        DEFAULT_ENGINE_DIR,
+        discover_runtime_library_modules,
+    )
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=TARGET)
+    parser.add_argument(
+        "--engine-root",
+        type=Path,
+        default=DEFAULT_ENGINE_DIR,
+        help="Engine source root to inventory. Dedicated builds should pass an isolated stage.",
+    )
+    parser.add_argument(
+        "--cache-path",
+        type=Path,
+        default=None,
+        help="Optional isolated inventory-cache path.",
+    )
     parser.add_argument(
         "--modules",
         nargs="*",
         default=(),
         help="Optional runtime-library import paths to include in the generated dispatch.",
     )
+    parser.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        help=(
+            "Write a JSON census of per-struct construction strategies "
+            "(positional / assign / none). Structs resolving to 'none' cannot be "
+            "decoded from a payload; this makes that visible instead of silent."
+        ),
+    )
     args = parser.parse_args()
-    modules = discover_runtime_library_modules(executable_only=True)
+    modules = discover_runtime_library_modules(
+        engine_root=args.engine_root,
+        executable_only=True,
+        cache_path=args.cache_path,
+    )
     if args.modules:
         available_modules = {module.import_path: module for module in modules}
         missing_modules = [
@@ -845,6 +917,36 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered, encoding="utf-8")
     print(args.output)
+
+    if args.report is not None:
+        entries: list[dict[str, object]] = []
+        counts: dict[str, int] = {"positional": 0, "assign": 0, "none": 0}
+        seen: set[tuple[str, str]] = set()
+        for module in modules:
+            for struct_name, (fields, construction) in _parse_struct_defs(module.path).items():
+                key = (module.import_path, struct_name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                counts[construction] = counts.get(construction, 0) + 1
+                entries.append(
+                    {
+                        "module": module.import_path,
+                        "struct": struct_name,
+                        "fields": len(fields),
+                        "construction": construction,
+                    }
+                )
+        entries.sort(key=lambda item: (str(item["module"]), str(item["struct"])))
+        report = {
+            "schema_version": 1,
+            "counts": counts,
+            "undecodable": [e for e in entries if e["construction"] == "none"],
+            "structs": entries,
+        }
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        print(f"{args.report} ({counts})")
 
 
 if __name__ == "__main__":

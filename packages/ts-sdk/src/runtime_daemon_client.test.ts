@@ -81,7 +81,16 @@ describe("runtime daemon client", () => {
     ]);
     expect(protoLoadMock).toHaveBeenCalledOnce();
     expect(createInsecureMock).toHaveBeenCalledOnce();
-    expect(ClientConstructorMock).toHaveBeenCalledWith("127.0.0.1:50099", { insecure: true });
+    // Message-size options are explicit: gRPC's silent 4 MiB receive default is
+    // far below what the local transport supports (the worker allows 64 MiB).
+    expect(ClientConstructorMock).toHaveBeenCalledWith(
+      "127.0.0.1:50099",
+      { insecure: true },
+      {
+        "grpc.max_receive_message_length": 64 * 1024 * 1024,
+        "grpc.max_send_message_length": 64 * 1024 * 1024,
+      },
+    );
   });
 
   it("maps structured execution failures to explicit runtime errors", async () => {

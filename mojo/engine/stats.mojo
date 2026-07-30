@@ -73,3 +73,46 @@ def fast_sort(mut a: List[Float64], n: Int):
         var p = part3(a, lo, hi)
         stk.append(lo);   stk.append(p-1); stk.append(d-1)
         stk.append(p+1);  stk.append(hi);  stk.append(d-1)
+
+
+# ── Sorting order-statistics (sort a COPY — safe for UNSORTED input) ─────────────
+# `pctile` above is the O(1) index-into-a-pre-sorted-buffer hot path (callers
+# fast_sort first). The kernels below take raw UNSORTED input, sort a private
+# copy, and never mutate the caller's list. `quantile`/`percentile`/`median` use
+# linear interpolation to match numpy's default method and pandas .median()/.quantile().
+
+def sort_values(v: List[Float64], n: Int) -> List[Float64]:
+    """Ascending-sorted COPY of the FINITE values among the first n (drops NaN/+/-inf so a
+    non-finite input degrades gracefully instead of crashing the worker; input untouched).
+    Finite test: NaN fails x==x; +/-inf fails (x-x)==0 since inf-inf=NaN."""
+    var cap = n if n > 0 else 1
+    var a = List[Float64](capacity=cap)
+    for i in range(n):
+        var x = v[i]
+        if x == x and (x - x) == 0.0: a.append(x)
+    fast_sort(a, len(a))
+    return a^
+
+def quantile(v: List[Float64], n: Int, q: Float64) -> Float64:
+    """Linear-interpolated quantile of UNSORTED input, q in [0,1] (numpy 'linear'). Non-finite
+    values are ignored; the rank is computed over the finite count."""
+    var a = sort_values(v, n)
+    var m = len(a)
+    if m == 0: return 0.0
+    if m == 1: return a[0]
+    var qq = q
+    if qq < 0.0: qq = 0.0
+    if qq > 1.0: qq = 1.0
+    var rank = Float64(m - 1) * qq
+    var lo = Int(rank)
+    if lo >= m - 1: return a[m - 1]
+    var frac = rank - Float64(lo)
+    return a[lo] + frac * (a[lo + 1] - a[lo])
+
+def percentile(v: List[Float64], n: Int, p: Int) -> Float64:
+    """Linear-interpolated percentile of UNSORTED input, p in [0,100]."""
+    return quantile(v, n, Float64(p) / 100.0)
+
+def median(v: List[Float64], n: Int) -> Float64:
+    """Median of UNSORTED input (mean of the two middle values for even n)."""
+    return quantile(v, n, 0.5)

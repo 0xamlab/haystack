@@ -1,6 +1,6 @@
 """test_stats.mojo — auto-generated tests for stats."""
 from std.math import isnan, isinf
-from stats import compute_mean, compute_variance, pctile, count_below_zero, ilog2
+from stats import compute_mean, compute_variance, pctile, count_below_zero, ilog2, sort_values, quantile, percentile, median
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -55,5 +55,16 @@ def main() raises:
     passed += 1; print("  ✅ stats::count_below_zero")
     _ = ilog2(5)
     passed += 1; print("  ✅ stats::ilog2")
+    var _v_sort_values = sort_values(_lf5, 5)
+    if len(_v_sort_values) >= 0: passed += 1; print("  ✅ stats::sort_values")
+    var _v_quantile = quantile(_lf5, 5, 0.5)
+    if is_finite(_v_quantile): passed += 1; print("  ✅ stats::quantile =", _v_quantile)
+    else: failed += 1; print("  ❌ stats::quantile → non-finite:", _v_quantile)
+    var _v_percentile = percentile(_lf5, 5, 5)
+    if is_finite(_v_percentile): passed += 1; print("  ✅ stats::percentile =", _v_percentile)
+    else: failed += 1; print("  ❌ stats::percentile → non-finite:", _v_percentile)
+    var _v_median = median(_lf5, 5)
+    if is_finite(_v_median): passed += 1; print("  ✅ stats::median =", _v_median)
+    else: failed += 1; print("  ❌ stats::median → non-finite:", _v_median)
 
     print("  [stats] Passed:", passed, "Failed:", failed)

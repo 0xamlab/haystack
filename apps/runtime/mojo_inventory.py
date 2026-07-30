@@ -46,7 +46,7 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
 _SKIP_RUNTIME_RELATIVE_PREFIXES = {
     ("vector_kernels", "semantic_micro"),
 }
-_SKIP_RUNTIME_DIRS = {"engines"}
+_SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism", "numeric", "query"}
 _BENCHMARK_NON_RUNTIME_LIB_IDS = {
     "engines_column_ranker_table",
     "engines_column_ranker_v2",
@@ -357,7 +357,14 @@ def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]
 
         signature = " ".join(signature_lines)
         params_match = re.search(r"\(([^)]*)\)", signature)
-        params = _parse_param_specs(params_match.group(1)) if params_match else ()
+        if params_match is None:
+            # Signature never closed within the lookahead window, so the parse is
+            # truncated. Skip rather than emit `f()`: a wrong arity in the
+            # contract is worse than an absent entry, because the dispatch table
+            # would then accept a call with no arguments.
+            index += 1
+            continue
+        params = _parse_param_specs(params_match.group(1))
         if params is None:
             index += 1
             continue
@@ -405,6 +412,7 @@ def parse_runtime_struct_specs(path: Path) -> dict[str, RuntimeStructSpec]:
         if struct_match is None:
             index += 1
             continue
+
 
         struct_name = struct_match.group(1)
         struct_indent = len(lines[index]) - len(lines[index].lstrip(" "))

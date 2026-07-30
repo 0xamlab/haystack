@@ -42,7 +42,7 @@ def main() raises:
     var passed: Int = 0
     var failed: Int = 0
 
-    _ = run_column_rank("test")
+    _ = run_column_rank("{\"hint\":\"unit price\",\"candidates\":[{\"source\":\"orders\",\"column\":\"unit_price\"}],\"top_k\":1}")
     passed += 1; print("  ✅ column_rank::run_column_rank")
 
     print("  [column_rank] Passed:", passed, "Failed:", failed)
