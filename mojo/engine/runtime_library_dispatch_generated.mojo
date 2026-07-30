@@ -2341,6 +2341,97 @@ from graph_algorithms import (
     graph_density as _graph_algorithms__graph_density,
 )
 
+from graph_analytics.adjacency import (
+    graph_status_name as _graph_analytics_adjacency__graph_status_name,
+    graph_csr_empty as _graph_analytics_adjacency__graph_csr_empty,
+    graph_csr_from_arrays as _graph_analytics_adjacency__graph_csr_from_arrays,
+    graph_csr_from_triplets as _graph_analytics_adjacency__graph_csr_from_triplets,
+    graph_csr_validate_flat as _graph_analytics_adjacency__graph_csr_validate_flat,
+    graph_csr_validate as _graph_analytics_adjacency__graph_csr_validate,
+    graph_csr_has_negative_weight as _graph_analytics_adjacency__graph_csr_has_negative_weight,
+    graph_csr_reverse as _graph_analytics_adjacency__graph_csr_reverse,
+    graph_csr_sorted as _graph_analytics_adjacency__graph_csr_sorted,
+    graph_csr_dedupe_min as _graph_analytics_adjacency__graph_csr_dedupe_min,
+    graph_csr_out_degrees as _graph_analytics_adjacency__graph_csr_out_degrees,
+    graph_csr_in_degrees as _graph_analytics_adjacency__graph_csr_in_degrees,
+    graph_csr_degree_sequence as _graph_analytics_adjacency__graph_csr_degree_sequence,
+    graph_csr_edge_min_weight as _graph_analytics_adjacency__graph_csr_edge_min_weight,
+    graph_csr_has_edge as _graph_analytics_adjacency__graph_csr_has_edge,
+    graph_csr_symmetry as _graph_analytics_adjacency__graph_csr_symmetry,
+    graph_csr_to_dense as _graph_analytics_adjacency__graph_csr_to_dense,
+    graph_csr_dijkstra as _graph_analytics_adjacency__graph_csr_dijkstra,
+    graph_csr_bfs_levels as _graph_analytics_adjacency__graph_csr_bfs_levels,
+    graph_csr_shortest_path as _graph_analytics_adjacency__graph_csr_shortest_path,
+    graph_csr_build as _graph_analytics_adjacency__graph_csr_build,
+    graph_csr_reverse_driver as _graph_analytics_adjacency__graph_csr_reverse_driver,
+    graph_csr_dedupe_min_driver as _graph_analytics_adjacency__graph_csr_dedupe_min_driver,
+    graph_csr_validate_driver as _graph_analytics_adjacency__graph_csr_validate_driver,
+    graph_csr_out_degrees_driver as _graph_analytics_adjacency__graph_csr_out_degrees_driver,
+    graph_csr_in_degrees_driver as _graph_analytics_adjacency__graph_csr_in_degrees_driver,
+    graph_csr_degree_sequence_driver as _graph_analytics_adjacency__graph_csr_degree_sequence_driver,
+    graph_csr_to_dense_driver as _graph_analytics_adjacency__graph_csr_to_dense_driver,
+    graph_csr_edge_min_weight_driver as _graph_analytics_adjacency__graph_csr_edge_min_weight_driver,
+    graph_csr_symmetry_driver as _graph_analytics_adjacency__graph_csr_symmetry_driver,
+    graph_csr_dijkstra_driver as _graph_analytics_adjacency__graph_csr_dijkstra_driver,
+    graph_csr_bfs_levels_driver as _graph_analytics_adjacency__graph_csr_bfs_levels_driver,
+    graph_csr_shortest_path_driver as _graph_analytics_adjacency__graph_csr_shortest_path_driver,
+    graph_dijkstra_from_triplets as _graph_analytics_adjacency__graph_dijkstra_from_triplets,
+    graph_bfs_levels_from_triplets as _graph_analytics_adjacency__graph_bfs_levels_from_triplets,
+)
+
+from graph_analytics.centrality import (
+    centrality_status_name as _graph_analytics_centrality__centrality_status_name,
+    graph_betweenness_unweighted as _graph_analytics_centrality__graph_betweenness_unweighted,
+    graph_betweenness_weighted as _graph_analytics_centrality__graph_betweenness_weighted,
+    graph_betweenness_from_triplets as _graph_analytics_centrality__graph_betweenness_from_triplets,
+    graph_closeness_centrality as _graph_analytics_centrality__graph_closeness_centrality,
+    graph_harmonic_centrality as _graph_analytics_centrality__graph_harmonic_centrality,
+    graph_degree_centrality as _graph_analytics_centrality__graph_degree_centrality,
+    graph_eigenvector_centrality as _graph_analytics_centrality__graph_eigenvector_centrality,
+    graph_pagerank as _graph_analytics_centrality__graph_pagerank,
+)
+
+from graph_analytics.community import (
+    community_status_name as _graph_analytics_community__community_status_name,
+    community_version as _graph_analytics_community__community_version,
+    community_default_tolerance as _graph_analytics_community__community_default_tolerance,
+    community_canonical_labels as _graph_analytics_community__community_canonical_labels,
+    community_compare_labels as _graph_analytics_community__community_compare_labels,
+    community_visit_order as _graph_analytics_community__community_visit_order,
+    community_modularity_gain as _graph_analytics_community__community_modularity_gain,
+    community_modularity_driver as _graph_analytics_community__community_modularity_driver,
+    community_modularity_pairwise_driver as _graph_analytics_community__community_modularity_pairwise_driver,
+    community_modularity_from_triplets as _graph_analytics_community__community_modularity_from_triplets,
+    community_symmetrized_driver as _graph_analytics_community__community_symmetrized_driver,
+    community_aggregate_driver as _graph_analytics_community__community_aggregate_driver,
+    community_louvain_levels_driver as _graph_analytics_community__community_louvain_levels_driver,
+    community_louvain_driver as _graph_analytics_community__community_louvain_driver,
+    community_louvain_default_driver as _graph_analytics_community__community_louvain_default_driver,
+    community_louvain_from_triplets as _graph_analytics_community__community_louvain_from_triplets,
+    community_local_moving_driver as _graph_analytics_community__community_local_moving_driver,
+    community_label_propagation_driver as _graph_analytics_community__community_label_propagation_driver,
+    community_label_propagation_from_triplets as _graph_analytics_community__community_label_propagation_from_triplets,
+)
+
+from graph_analytics.temporal import (
+    temporal_status_name as _graph_analytics_temporal__temporal_status_name,
+    temporal_validate as _graph_analytics_temporal__temporal_validate,
+    temporal_validate_driver as _graph_analytics_temporal__temporal_validate_driver,
+    temporal_earliest_arrival as _graph_analytics_temporal__temporal_earliest_arrival,
+    temporal_earliest_arrival_instant as _graph_analytics_temporal__temporal_earliest_arrival_instant,
+    temporal_earliest_arrival_window as _graph_analytics_temporal__temporal_earliest_arrival_window,
+    temporal_earliest_arrival_path as _graph_analytics_temporal__temporal_earliest_arrival_path,
+    temporal_fastest_durations as _graph_analytics_temporal__temporal_fastest_durations,
+    temporal_fastest_path as _graph_analytics_temporal__temporal_fastest_path,
+    temporal_reachable_set as _graph_analytics_temporal__temporal_reachable_set,
+    temporal_reaches as _graph_analytics_temporal__temporal_reaches,
+    temporal_static_gap as _graph_analytics_temporal__temporal_static_gap,
+    temporal_sorted_by_time as _graph_analytics_temporal__temporal_sorted_by_time,
+    temporal_window_subgraph as _graph_analytics_temporal__temporal_window_subgraph,
+    temporal_activity_summary as _graph_analytics_temporal__temporal_activity_summary,
+    temporal_node_activity as _graph_analytics_temporal__temporal_node_activity,
+)
+
 from graph_compiler import (
     fusion_benefit_score as _graph_compiler__fusion_benefit_score,
     dead_op_elimination_check as _graph_compiler__dead_op_elimination_check,
@@ -3904,6 +3995,10 @@ from optimizer_full import (
     gradient_centralization as _optimizer_full__gradient_centralization,
 )
 
+from option_greeks_batch import (
+    chain_greeks as _option_greeks_batch__chain_greeks,
+)
+
 from option_pricing import (
     norm_cdf as _option_pricing__norm_cdf,
     black_scholes_call as _option_pricing__black_scholes_call,
@@ -5039,6 +5134,17 @@ from sentiment import (
     count_negative_words as _sentiment__count_negative_words,
     most_positive_word as _sentiment__most_positive_word,
     most_negative_word as _sentiment__most_negative_word,
+)
+
+from seq2_trainer import (
+    seq2_weight_count as _seq2_trainer__seq2_weight_count,
+    seq2_init as _seq2_trainer__seq2_init,
+    seq2_export as _seq2_trainer__seq2_export,
+    seq2_from_flat as _seq2_trainer__seq2_from_flat,
+    seq2_forward as _seq2_trainer__seq2_forward,
+    seq2_loss as _seq2_trainer__seq2_loss,
+    seq2_grad as _seq2_trainer__seq2_grad,
+    worker as _seq2_trainer__worker,
 )
 
 from seq_nn import (
@@ -6600,6 +6706,47 @@ from graph.weighted import (
     WeightedEdge,
 )
 
+from graph_analytics.adjacency import (
+    GraphBuildResult,
+    GraphCSR,
+    GraphDistances,
+    GraphEdgeQuery,
+    GraphIntsResult,
+    GraphLevels,
+    GraphPath,
+    GraphSymmetry,
+    GraphVectorResult,
+)
+
+from graph_analytics.centrality import (
+    BetweennessResult,
+    ClosenessResult,
+    DegreeCentralityResult,
+    EigenvectorResult,
+    HarmonicResult,
+    PageRankResult,
+)
+
+from graph_analytics.community import (
+    CommunityAggregate,
+    CommunityCompare,
+    CommunityCounts,
+    CommunityLevels,
+    CommunityOrder,
+    CommunityPartition,
+    CommunityScore,
+)
+
+from graph_analytics.temporal import (
+    TemporalActivity,
+    TemporalArrival,
+    TemporalDurations,
+    TemporalGap,
+    TemporalIntsResult,
+    TemporalPath,
+    TemporalStream,
+)
+
 from hmm import (
     HMMForward,
     HMMModel,
@@ -6681,6 +6828,10 @@ from optimize import (
     OptResult,
 )
 
+from option_greeks_batch import (
+    ChainGreeksResult,
+)
+
 from persistence import (
     KVStore,
 )
@@ -6706,6 +6857,10 @@ from regression import (
 
 from regression_tree import (
     RegressionTree,
+)
+
+from seq2_trainer import (
+    Seq2Params,
 )
 
 from seq_nn import (
@@ -7062,6 +7217,19 @@ fn _parse_graph_token(token: String) raises -> Graph:
     var field_2 = _parse_list_list_float64_token(json_array_get(values_json, 2))
     return Graph(field_0^, field_1^, field_2^)
 
+fn _parse_graphcsr_token(token: String) raises -> GraphCSR:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 7:
+        raise Error("Expected 7 fields for GraphCSR, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_list_float64_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_bool_token(json_array_get(values_json, 4))
+    var field_5 = _parse_bool_token(json_array_get(values_json, 5))
+    var field_6 = _parse_int_token(json_array_get(values_json, 6))
+    return GraphCSR(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
+
 fn _parse_hsl_token(token: String) raises -> HSL:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 3:
@@ -7340,6 +7508,25 @@ fn _parse_svmmodel_token(token: String) raises -> SVMModel:
     decoded.support_coef = field_7^
     decoded.n_support = field_8^
     return decoded^
+
+fn _parse_seq2params_token(token: String) raises -> Seq2Params:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 13:
+        raise Error("Expected 13 fields for Seq2Params, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_list_float64_token(json_array_get(values_json, 3))
+    var field_4 = _parse_list_float64_token(json_array_get(values_json, 4))
+    var field_5 = _parse_list_float64_token(json_array_get(values_json, 5))
+    var field_6 = _parse_list_float64_token(json_array_get(values_json, 6))
+    var field_7 = _parse_list_float64_token(json_array_get(values_json, 7))
+    var field_8 = _parse_list_float64_token(json_array_get(values_json, 8))
+    var field_9 = _parse_list_float64_token(json_array_get(values_json, 9))
+    var field_10 = _parse_list_float64_token(json_array_get(values_json, 10))
+    var field_11 = _parse_list_float64_token(json_array_get(values_json, 11))
+    var field_12 = _parse_list_float64_token(json_array_get(values_json, 12))
+    return Seq2Params(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^, field_11^, field_12^)
 
 fn _parse_simstate_token(token: String) raises -> SimState:
     var values_json = json_get_array(token, "v")
@@ -7773,6 +7960,30 @@ fn _to_json_arfit(value: ARFit) -> String:
     result += "]}"
     return result
 
+fn _to_json_betweennessresult(value: BetweennessResult) -> String:
+    var result = String("{\"__algenta_struct\":\"BetweennessResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_sources)
+    result += ","
+    result += _to_json_bool(value.weighted)
+    result += ","
+    result += _to_json_bool(value.normalized)
+    result += ","
+    result += _to_json_bool(value.undirected)
+    result += ","
+    result += _to_json_bool(value.path_counts_exact)
+    result += ","
+    result += _to_json_int(value.max_node)
+    result += ","
+    result += _to_json_float64(value.max_value)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
 fn _to_json_bool(value: Bool) -> String:
     return "true" if value else "false"
 
@@ -7918,6 +8129,20 @@ fn _to_json_candidatetable_vector_kernels_table(value: CandidateTable__vector_ke
     result += "]}"
     return result
 
+fn _to_json_chaingreeksresult(value: ChainGreeksResult) -> String:
+    var result = String("{\"__algenta_struct\":\"ChainGreeksResult\",\"v\":[")
+    result += _to_json_list_float64(value.price)
+    result += ","
+    result += _to_json_list_float64(value.delta)
+    result += ","
+    result += _to_json_list_float64(value.gamma)
+    result += ","
+    result += _to_json_list_float64(value.vega)
+    result += ","
+    result += _to_json_list_float64(value.theta)
+    result += "]}"
+    return result
+
 fn _to_json_circularbuffer(value: CircularBuffer) -> String:
     var result = String("{\"__algenta_struct\":\"CircularBuffer\",\"v\":[")
     result += _to_json_list_float64(value.data)
@@ -7938,6 +8163,30 @@ fn _to_json_classweights(value: ClassWeights) -> String:
     result += "]}"
     return result
 
+fn _to_json_closenessresult(value: ClosenessResult) -> String:
+    var result = String("{\"__algenta_struct\":\"ClosenessResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_bool(value.weighted)
+    result += ","
+    result += _to_json_int(value.defined_count)
+    result += ","
+    result += _to_json_int(value.incomplete_count)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_float64(value.scaled_values)
+    result += ","
+    result += _to_json_list_bool(value.defined)
+    result += ","
+    result += _to_json_list_int(value.reached_count)
+    result += ","
+    result += _to_json_list_float64(value.sum_distance)
+    result += "]}"
+    return result
+
 fn _to_json_column(value: Column) -> String:
     var result = String("{\"__algenta_struct\":\"Column\",\"v\":[")
     result += _to_json_string(value.name)
@@ -7945,6 +8194,150 @@ fn _to_json_column(value: Column) -> String:
     result += _to_json_list_float64(value.data)
     result += ","
     result += _to_json_int(value.n)
+    result += "]}"
+    return result
+
+fn _to_json_communityaggregate(value: CommunityAggregate) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityAggregate\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_float64(value.total_weight)
+    result += ","
+    result += _to_json_list_int(value.row_ptr)
+    result += ","
+    result += _to_json_list_int(value.targets)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += "]}"
+    return result
+
+fn _to_json_communitycompare(value: CommunityCompare) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityCompare\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_bool(value.same_partition)
+    result += ","
+    result += _to_json_int(value.n_communities_a)
+    result += ","
+    result += _to_json_int(value.n_communities_b)
+    result += ","
+    result += _to_json_int(value.canonical_mismatches)
+    result += ","
+    result += _to_json_float64(value.adjusted_rand_index)
+    result += "]}"
+    return result
+
+fn _to_json_communitycounts(value: CommunityCounts) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityCounts\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_communities)
+    result += ","
+    result += _to_json_list_int(value.label)
+    result += ","
+    result += _to_json_list_int(value.size)
+    result += "]}"
+    return result
+
+fn _to_json_communitylevels(value: CommunityLevels) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityLevels\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_levels)
+    result += ","
+    result += _to_json_int(value.n_communities)
+    result += ","
+    result += _to_json_int(value.n_passes)
+    result += ","
+    result += _to_json_int(value.moves)
+    result += ","
+    result += _to_json_bool(value.monotone)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_float64(value.total_weight)
+    result += ","
+    result += _to_json_float64(value.modularity)
+    result += ","
+    result += _to_json_list_float64(value.level_modularity)
+    result += ","
+    result += _to_json_list_int(value.level_communities)
+    result += ","
+    result += _to_json_list_int(value.label)
+    result += "]}"
+    return result
+
+fn _to_json_communityorder(value: CommunityOrder) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityOrder\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.level)
+    result += ","
+    result += _to_json_int(value.pass_index)
+    result += ","
+    result += _to_json_list_int(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_communitypartition(value: CommunityPartition) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityPartition\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_communities)
+    result += ","
+    result += _to_json_int(value.n_levels)
+    result += ","
+    result += _to_json_int(value.n_passes)
+    result += ","
+    result += _to_json_int(value.moves)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_float64(value.total_weight)
+    result += ","
+    result += _to_json_float64(value.modularity)
+    result += ","
+    result += _to_json_list_int(value.label)
+    result += ","
+    result += _to_json_list_int(value.size)
+    result += "]}"
+    return result
+
+fn _to_json_communityscore(value: CommunityScore) -> String:
+    var result = String("{\"__algenta_struct\":\"CommunityScore\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_communities)
+    result += ","
+    result += _to_json_int(value.pairs_scanned)
+    result += ","
+    result += _to_json_float64(value.total_weight)
+    result += ","
+    result += _to_json_float64(value.modularity)
+    result += ","
+    result += _to_json_list_float64(value.internal_weight)
+    result += ","
+    result += _to_json_list_float64(value.total_degree)
+    result += ","
+    result += _to_json_list_int(value.size)
     result += "]}"
     return result
 
@@ -8024,6 +8417,26 @@ fn _to_json_dataframe(value: DataFrame) -> String:
     result += "]}"
     return result
 
+fn _to_json_degreecentralityresult(value: DegreeCentralityResult) -> String:
+    var result = String("{\"__algenta_struct\":\"DegreeCentralityResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_bool(value.normalized)
+    result += ","
+    result += _to_json_int(value.parallel_edges_collapsed)
+    result += ","
+    result += _to_json_int(value.self_loops_ignored)
+    result += ","
+    result += _to_json_list_float64(value.out_values)
+    result += ","
+    result += _to_json_list_float64(value.in_values)
+    result += ","
+    result += _to_json_list_float64(value.total_values)
+    result += "]}"
+    return result
+
 fn _to_json_diffci(value: DiffCI) -> String:
     var result = String("{\"__algenta_struct\":\"DiffCI\",\"v\":[")
     result += _to_json_float64(value.lo)
@@ -8039,6 +8452,30 @@ fn _to_json_eigresult2x2(value: EigResult2x2) -> String:
     result += _to_json_float64(value.lambda1)
     result += ","
     result += _to_json_float64(value.lambda2)
+    result += "]}"
+    return result
+
+fn _to_json_eigenvectorresult(value: EigenvectorResult) -> String:
+    var result = String("{\"__algenta_struct\":\"EigenvectorResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.max_iter)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.symmetric)
+    result += ","
+    result += _to_json_bool(value.strongly_connected)
+    result += ","
+    result += _to_json_float64(value.eigenvalue)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_float64(value.shift)
+    result += ","
+    result += _to_json_list_float64(value.values)
     result += "]}"
     return result
 
@@ -8204,6 +8641,166 @@ fn _to_json_graph(value: Graph) -> String:
     result += "]}"
     return result
 
+fn _to_json_graphbuildresult(value: GraphBuildResult) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphBuildResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.skipped_edges)
+    result += ","
+    result += _to_json_int(value.self_loops)
+    result += ","
+    result += _to_json_int(value.duplicate_edges)
+    result += ","
+    result += _to_json_int(value.negative_weights)
+    result += ","
+    result += _to_json_int(value.non_finite_weights)
+    result += ","
+    result += _to_json_bool(value.sorted_targets)
+    result += ","
+    result += _to_json_bool(value.deduplicated)
+    result += ","
+    result += _to_json_list_int(value.row_ptr)
+    result += ","
+    result += _to_json_list_int(value.targets)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += "]}"
+    return result
+
+fn _to_json_graphcsr(value: GraphCSR) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphCSR\",\"v\":[")
+    result += _to_json_list_int(value.row_ptr)
+    result += ","
+    result += _to_json_list_int(value.targets)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_bool(value.sorted_targets)
+    result += ","
+    result += _to_json_bool(value.deduplicated)
+    result += ","
+    result += _to_json_int(value.skipped_edges)
+    result += "]}"
+    return result
+
+fn _to_json_graphdistances(value: GraphDistances) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphDistances\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.settled_count)
+    result += ","
+    result += _to_json_int(value.unreachable_count)
+    result += ","
+    result += _to_json_int(value.heap_pushes)
+    result += ","
+    result += _to_json_list_float64(value.distance)
+    result += ","
+    result += _to_json_list_bool(value.reached)
+    result += ","
+    result += _to_json_list_int(value.predecessor)
+    result += "]}"
+    return result
+
+fn _to_json_graphedgequery(value: GraphEdgeQuery) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphEdgeQuery\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.found)
+    result += ","
+    result += _to_json_int(value.multiplicity)
+    result += ","
+    result += _to_json_float64(value.weight)
+    result += "]}"
+    return result
+
+fn _to_json_graphintsresult(value: GraphIntsResult) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphIntsResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.length)
+    result += ","
+    result += _to_json_list_int(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_graphlevels(value: GraphLevels) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphLevels\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.reached_count)
+    result += ","
+    result += _to_json_int(value.unreachable_count)
+    result += ","
+    result += _to_json_int(value.max_level)
+    result += ","
+    result += _to_json_list_int(value.level)
+    result += ","
+    result += _to_json_list_bool(value.reached)
+    result += "]}"
+    return result
+
+fn _to_json_graphpath(value: GraphPath) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphPath\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.found)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.target)
+    result += ","
+    result += _to_json_int(value.hops)
+    result += ","
+    result += _to_json_float64(value.total_weight)
+    result += ","
+    result += _to_json_list_int(value.nodes)
+    result += "]}"
+    return result
+
+fn _to_json_graphsymmetry(value: GraphSymmetry) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphSymmetry\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.structurally_symmetric)
+    result += ","
+    result += _to_json_bool(value.weight_symmetric)
+    result += ","
+    result += _to_json_int(value.missing_reverse)
+    result += ","
+    result += _to_json_int(value.weight_mismatch)
+    result += ","
+    result += _to_json_int(value.self_loops)
+    result += ","
+    result += _to_json_int(value.distinct_edges)
+    result += "]}"
+    return result
+
+fn _to_json_graphvectorresult(value: GraphVectorResult) -> String:
+    var result = String("{\"__algenta_struct\":\"GraphVectorResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.length)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
 fn _to_json_hmmforward(value: HMMForward) -> String:
     var result = String("{\"__algenta_struct\":\"HMMForward\",\"v\":[")
     result += _to_json_list_list_float64(value.log_alpha)
@@ -8249,6 +8846,24 @@ fn _to_json_halvinground(value: HalvingRound) -> String:
     result += _to_json_int(value.n_survivors)
     result += ","
     result += _to_json_int(value.budget)
+    result += "]}"
+    return result
+
+fn _to_json_harmonicresult(value: HarmonicResult) -> String:
+    var result = String("{\"__algenta_struct\":\"HarmonicResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_bool(value.weighted)
+    result += ","
+    result += _to_json_bool(value.normalized)
+    result += ","
+    result += _to_json_int(value.zero_distance_nodes)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_bool(value.defined)
     result += "]}"
     return result
 
@@ -8641,6 +9256,30 @@ fn _to_json_prf1result(value: PRF1Result) -> String:
     result += "]}"
     return result
 
+fn _to_json_pagerankresult(value: PageRankResult) -> String:
+    var result = String("{\"__algenta_struct\":\"PageRankResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.max_iter)
+    result += ","
+    result += _to_json_int(value.dangling_nodes)
+    result += ","
+    result += _to_json_bool(value.dangling_redistributed)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_float64(value.damping)
+    result += ","
+    result += _to_json_float64(value.mass)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
 fn _to_json_partialdependence(value: PartialDependence) -> String:
     var result = String("{\"__algenta_struct\":\"PartialDependence\",\"v\":[")
     result += _to_json_list_float64(value.mean)
@@ -8842,6 +9481,36 @@ fn _to_json_svmmodel(value: SVMModel) -> String:
     result += _to_json_list_float64(value.support_coef)
     result += ","
     result += _to_json_int(value.n_support)
+    result += "]}"
+    return result
+
+fn _to_json_seq2params(value: Seq2Params) -> String:
+    var result = String("{\"__algenta_struct\":\"Seq2Params\",\"v\":[")
+    result += _to_json_int(value.input_dim)
+    result += ","
+    result += _to_json_int(value.hidden)
+    result += ","
+    result += _to_json_int(value.dense_h)
+    result += ","
+    result += _to_json_list_float64(value.l1_wx)
+    result += ","
+    result += _to_json_list_float64(value.l1_wh)
+    result += ","
+    result += _to_json_list_float64(value.l1_b)
+    result += ","
+    result += _to_json_list_float64(value.l2_wx)
+    result += ","
+    result += _to_json_list_float64(value.l2_wh)
+    result += ","
+    result += _to_json_list_float64(value.l2_b)
+    result += ","
+    result += _to_json_list_float64(value.d1_w)
+    result += ","
+    result += _to_json_list_float64(value.d1_b)
+    result += ","
+    result += _to_json_list_float64(value.d2_w)
+    result += ","
+    result += _to_json_list_float64(value.d2_b)
     result += "]}"
     return result
 
@@ -9183,6 +9852,188 @@ fn _to_json_table(value: Table) -> String:
     result += _to_json_int(value.n_rows)
     result += ","
     result += _to_json_list_list_float64(value.data)
+    result += "]}"
+    return result
+
+fn _to_json_temporalactivity(value: TemporalActivity) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalActivity\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.skipped_edges)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_gaps)
+    result += ","
+    result += _to_json_int(value.distinct_times)
+    result += ","
+    result += _to_json_int(value.simultaneous_events)
+    result += ","
+    result += _to_json_bool(value.has_span)
+    result += ","
+    result += _to_json_float64(value.t_min)
+    result += ","
+    result += _to_json_float64(value.t_max)
+    result += ","
+    result += _to_json_float64(value.span)
+    result += ","
+    result += _to_json_bool(value.has_interarrival)
+    result += ","
+    result += _to_json_float64(value.mean_interarrival)
+    result += ","
+    result += _to_json_float64(value.min_gap)
+    result += ","
+    result += _to_json_float64(value.max_gap)
+    result += ","
+    result += _to_json_bool(value.has_dispersion)
+    result += ","
+    result += _to_json_float64(value.stdev_interarrival)
+    result += ","
+    result += _to_json_bool(value.has_cv)
+    result += ","
+    result += _to_json_float64(value.coefficient_of_variation)
+    result += ","
+    result += _to_json_bool(value.has_burstiness)
+    result += ","
+    result += _to_json_float64(value.burstiness)
+    result += ","
+    result += _to_json_list_float64(value.gaps)
+    result += "]}"
+    return result
+
+fn _to_json_temporalarrival(value: TemporalArrival) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalArrival\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_float64(value.start_time)
+    result += ","
+    result += _to_json_int(value.reached_count)
+    result += ","
+    result += _to_json_int(value.unreachable_count)
+    result += ","
+    result += _to_json_int(value.skipped_edges)
+    result += ","
+    result += _to_json_int(value.usable_edges)
+    result += ","
+    result += _to_json_list_float64(value.arrival)
+    result += ","
+    result += _to_json_list_bool(value.reached)
+    result += ","
+    result += _to_json_list_int(value.predecessor)
+    result += ","
+    result += _to_json_list_int(value.predecessor_edge)
+    result += ","
+    result += _to_json_list_int(value.hops)
+    result += "]}"
+    return result
+
+fn _to_json_temporaldurations(value: TemporalDurations) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalDurations\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.reached_count)
+    result += ","
+    result += _to_json_int(value.unreachable_count)
+    result += ","
+    result += _to_json_int(value.starts_tried)
+    result += ","
+    result += _to_json_list_float64(value.duration)
+    result += ","
+    result += _to_json_list_float64(value.departure)
+    result += ","
+    result += _to_json_list_bool(value.reached)
+    result += "]}"
+    return result
+
+fn _to_json_temporalgap(value: TemporalGap) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalGap\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.temporal_reached_count)
+    result += ","
+    result += _to_json_int(value.static_reached_count)
+    result += ","
+    result += _to_json_int(value.false_positive_count)
+    result += ","
+    result += _to_json_list_int(value.false_positives)
+    result += "]}"
+    return result
+
+fn _to_json_temporalintsresult(value: TemporalIntsResult) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalIntsResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.length)
+    result += ","
+    result += _to_json_list_int(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_temporalpath(value: TemporalPath) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalPath\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.found)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.target)
+    result += ","
+    result += _to_json_int(value.hops)
+    result += ","
+    result += _to_json_float64(value.departure_time)
+    result += ","
+    result += _to_json_float64(value.arrival_time)
+    result += ","
+    result += _to_json_float64(value.duration)
+    result += ","
+    result += _to_json_list_int(value.nodes)
+    result += ","
+    result += _to_json_list_float64(value.arrival_times)
+    result += ","
+    result += _to_json_list_float64(value.departure_times)
+    result += "]}"
+    return result
+
+fn _to_json_temporalstream(value: TemporalStream) -> String:
+    var result = String("{\"__algenta_struct\":\"TemporalStream\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.skipped_edges)
+    result += ","
+    result += _to_json_int(value.dropped_before)
+    result += ","
+    result += _to_json_int(value.dropped_after)
+    result += ","
+    result += _to_json_bool(value.windowed)
+    result += ","
+    result += _to_json_float64(value.window_start)
+    result += ","
+    result += _to_json_float64(value.window_end)
+    result += ","
+    result += _to_json_list_int(value.src)
+    result += ","
+    result += _to_json_list_int(value.dst)
+    result += ","
+    result += _to_json_list_float64(value.weight)
+    result += ","
+    result += _to_json_list_float64(value.time)
     result += "]}"
     return result
 
@@ -42885,6 +43736,1558 @@ fn _dispatch_graph_algorithms(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module graph_algorithms."
     )
 
+fn _dispatch_graph_analytics__adjacency(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "graph_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_empty":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_empty(arg_0)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_empty."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_empty expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_from_arrays":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_from_arrays(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_from_arrays."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_from_arrays expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_from_triplets":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_from_triplets(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_from_triplets expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_validate_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_validate_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_validate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_validate_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_validate":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_validate(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_validate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_validate expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_has_negative_weight":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_has_negative_weight(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_has_negative_weight."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_has_negative_weight expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_reverse":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_reverse(arg_0)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_reverse."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_reverse expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_sorted":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_sorted(arg_0)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_sorted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_sorted expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_dedupe_min":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_dedupe_min(arg_0)
+                var result_json = _to_json_graphcsr(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_dedupe_min."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_dedupe_min expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_out_degrees":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_out_degrees(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_out_degrees."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_out_degrees expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_in_degrees":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_in_degrees(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_in_degrees."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_in_degrees expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_degree_sequence":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_adjacency__graph_csr_degree_sequence(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_degree_sequence."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_degree_sequence expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_edge_min_weight":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _graph_analytics_adjacency__graph_csr_edge_min_weight(arg_0, arg_1, arg_2)
+                var result_json = _to_json_graphedgequery(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_edge_min_weight."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_edge_min_weight expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_has_edge":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _graph_analytics_adjacency__graph_csr_has_edge(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_has_edge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_has_edge expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_symmetry":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _graph_analytics_adjacency__graph_csr_symmetry(arg_0, arg_1)
+                var result_json = _to_json_graphsymmetry(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_symmetry."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_symmetry expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_to_dense":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _graph_analytics_adjacency__graph_csr_to_dense(arg_0, arg_1)
+                var result_json = _to_json_graphvectorresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_to_dense."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_to_dense expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_dijkstra":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _graph_analytics_adjacency__graph_csr_dijkstra(arg_0, arg_1)
+                var result_json = _to_json_graphdistances(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_dijkstra."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_dijkstra expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_bfs_levels":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _graph_analytics_adjacency__graph_csr_bfs_levels(arg_0, arg_1)
+                var result_json = _to_json_graphlevels(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_bfs_levels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_bfs_levels expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_shortest_path":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_graphcsr_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _graph_analytics_adjacency__graph_csr_shortest_path(arg_0, arg_1, arg_2)
+                var result_json = _to_json_graphpath(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_shortest_path."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_shortest_path expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_build":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_build(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphbuildresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_build."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_build expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_reverse_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_reverse_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphbuildresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_reverse_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_reverse_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_dedupe_min_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_dedupe_min_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphbuildresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_dedupe_min_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_dedupe_min_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_validate_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_validate_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_validate_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_validate_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_out_degrees_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_out_degrees_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphintsresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_out_degrees_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_out_degrees_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_in_degrees_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_in_degrees_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphintsresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_in_degrees_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_in_degrees_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_degree_sequence_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_adjacency__graph_csr_degree_sequence_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_graphintsresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_degree_sequence_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_degree_sequence_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_to_dense_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_csr_to_dense_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphvectorresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_to_dense_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_to_dense_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_edge_min_weight_driver":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_adjacency__graph_csr_edge_min_weight_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_graphedgequery(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_edge_min_weight_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_edge_min_weight_driver expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_symmetry_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_csr_symmetry_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphsymmetry(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_symmetry_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_symmetry_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_dijkstra_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_csr_dijkstra_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphdistances(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_dijkstra_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_dijkstra_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_bfs_levels_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_csr_bfs_levels_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphlevels(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_bfs_levels_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_bfs_levels_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_csr_shortest_path_driver":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_adjacency__graph_csr_shortest_path_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_graphpath(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_csr_shortest_path_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_csr_shortest_path_driver expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_dijkstra_from_triplets":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_dijkstra_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphdistances(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_dijkstra_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_dijkstra_from_triplets expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_bfs_levels_from_triplets":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_adjacency__graph_bfs_levels_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_graphlevels(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.adjacency.graph_bfs_levels_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.adjacency.graph_bfs_levels_from_triplets expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module graph_analytics.adjacency."
+    )
+
+fn _dispatch_graph_analytics__centrality(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "centrality_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_centrality__centrality_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.centrality_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.centrality_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_betweenness_unweighted":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_centrality__graph_betweenness_unweighted(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_betweennessresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_betweenness_unweighted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_betweenness_unweighted expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_betweenness_weighted":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_centrality__graph_betweenness_weighted(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_betweennessresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_betweenness_weighted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_betweenness_weighted expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_betweenness_from_triplets":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_centrality__graph_betweenness_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_betweennessresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_betweenness_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_betweenness_from_triplets expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_closeness_centrality":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_centrality__graph_closeness_centrality(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_closenessresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_closeness_centrality."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_closeness_centrality expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_harmonic_centrality":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_centrality__graph_harmonic_centrality(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_harmonicresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_harmonic_centrality."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_harmonic_centrality expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_degree_centrality":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_centrality__graph_degree_centrality(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_degreecentralityresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_degree_centrality."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_degree_centrality expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_eigenvector_centrality":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_centrality__graph_eigenvector_centrality(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_eigenvectorresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_eigenvector_centrality."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_eigenvector_centrality expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "graph_pagerank":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_centrality__graph_pagerank(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_pagerankresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.centrality.graph_pagerank."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.centrality.graph_pagerank expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module graph_analytics.centrality."
+    )
+
+fn _dispatch_graph_analytics__community(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "community_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_community__community_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_version":
+        if arg_count == 0:
+            try:
+                var result = _graph_analytics_community__community_version()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_version."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_version expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_default_tolerance":
+        if arg_count == 0:
+            try:
+                var result = _graph_analytics_community__community_default_tolerance()
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_default_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_default_tolerance expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_canonical_labels":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_community__community_canonical_labels(arg_0)
+                var result_json = _to_json_communitycounts(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_canonical_labels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_canonical_labels expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_compare_labels":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _graph_analytics_community__community_compare_labels(arg_0, arg_1)
+                var result_json = _to_json_communitycompare(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_compare_labels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_compare_labels expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_visit_order":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_community__community_visit_order(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_communityorder(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_visit_order."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_visit_order expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_modularity_gain":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_community__community_modularity_gain(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_modularity_gain."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_modularity_gain expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_modularity_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_community__community_modularity_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_communityscore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_modularity_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_modularity_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_modularity_pairwise_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_community__community_modularity_pairwise_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_communityscore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_modularity_pairwise_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_modularity_pairwise_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_modularity_from_triplets":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_community__community_modularity_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_communityscore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_modularity_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_modularity_from_triplets expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_symmetrized_driver":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _graph_analytics_community__community_symmetrized_driver(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_communityaggregate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_symmetrized_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_symmetrized_driver expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_aggregate_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_community__community_aggregate_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_communityaggregate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_aggregate_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_aggregate_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_louvain_levels_driver":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_community__community_louvain_levels_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_communitylevels(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_louvain_levels_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_louvain_levels_driver expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_louvain_driver":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_community__community_louvain_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_louvain_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_louvain_driver expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_louvain_default_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_community__community_louvain_default_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_louvain_default_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_louvain_default_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_louvain_from_triplets":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_community__community_louvain_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_louvain_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_louvain_from_triplets expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_local_moving_driver":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_community__community_local_moving_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_local_moving_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_local_moving_driver expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_label_propagation_driver":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_community__community_label_propagation_driver(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_label_propagation_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_label_propagation_driver expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "community_label_propagation_from_triplets":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_community__community_label_propagation_from_triplets(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_communitypartition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.community.community_label_propagation_from_triplets."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.community.community_label_propagation_from_triplets expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module graph_analytics.community."
+    )
+
+fn _dispatch_graph_analytics__temporal(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "temporal_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _graph_analytics_temporal__temporal_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_validate":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_temporal__temporal_validate(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_validate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_validate expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_validate_driver":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_temporal__temporal_validate_driver(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_validate_driver."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_validate_driver expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_earliest_arrival":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_temporal__temporal_earliest_arrival(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_temporalarrival(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_earliest_arrival."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_earliest_arrival expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_earliest_arrival_instant":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_temporal__temporal_earliest_arrival_instant(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_temporalarrival(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_earliest_arrival_instant."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_earliest_arrival_instant expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_earliest_arrival_window":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var result = _graph_analytics_temporal__temporal_earliest_arrival_window(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_temporalarrival(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_earliest_arrival_window."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_earliest_arrival_window expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_earliest_arrival_path":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_temporal__temporal_earliest_arrival_path(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_temporalpath(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_earliest_arrival_path."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_earliest_arrival_path expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_fastest_durations":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_temporal__temporal_fastest_durations(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_temporaldurations(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_fastest_durations."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_fastest_durations expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_fastest_path":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_temporal__temporal_fastest_path(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_temporalpath(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_fastest_path."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_fastest_path expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_reachable_set":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_temporal__temporal_reachable_set(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_temporalintsresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_reachable_set."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_reachable_set expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_reaches":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _graph_analytics_temporal__temporal_reaches(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_reaches."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_reaches expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_static_gap":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_temporal__temporal_static_gap(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_temporalgap(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_static_gap."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_static_gap expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_sorted_by_time":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_temporal__temporal_sorted_by_time(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_temporalstream(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_sorted_by_time."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_sorted_by_time expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_window_subgraph":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _graph_analytics_temporal__temporal_window_subgraph(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_temporalstream(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_window_subgraph."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_window_subgraph expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_activity_summary":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _graph_analytics_temporal__temporal_activity_summary(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_temporalactivity(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_activity_summary."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_activity_summary expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "temporal_node_activity":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _graph_analytics_temporal__temporal_node_activity(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_temporalactivity(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for graph_analytics.temporal.temporal_node_activity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function graph_analytics.temporal.temporal_node_activity expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module graph_analytics.temporal."
+    )
+
 fn _dispatch_graph_compiler(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fusion_benefit_score":
@@ -65218,6 +67621,34 @@ fn _dispatch_optimizer_full(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module optimizer_full."
     )
 
+fn _dispatch_option_greeks_batch(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "chain_greeks":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var result = _option_greeks_batch__chain_greeks(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_chaingreeksresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for option_greeks_batch.chain_greeks."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function option_greeks_batch.chain_greeks expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module option_greeks_batch."
+    )
+
 fn _dispatch_option_pricing(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "norm_cdf":
@@ -81589,6 +84020,163 @@ fn _dispatch_sentiment(function_name: String, args_array: String) raises -> Stri
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module sentiment."
+    )
+
+fn _dispatch_seq2_trainer(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "seq2_weight_count":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _seq2_trainer__seq2_weight_count(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_weight_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_weight_count expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_init":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _seq2_trainer__seq2_init(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_seq2params(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_init."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_init expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_export":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_seq2params_token(json_array_get(args_array, 0))
+                var result = _seq2_trainer__seq2_export(arg_0)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_export."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_export expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_from_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _seq2_trainer__seq2_from_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_seq2params(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_from_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_from_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_forward":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_seq2params_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _seq2_trainer__seq2_forward(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_forward."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_forward expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_loss":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_seq2params_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _seq2_trainer__seq2_loss(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_loss."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_loss expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "seq2_grad":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_seq2params_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _seq2_trainer__seq2_grad(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.seq2_grad."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.seq2_grad expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "worker":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                _ = _seq2_trainer__worker(arg_0)
+                var result_json = "null"
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for seq2_trainer.worker."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function seq2_trainer.worker expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module seq2_trainer."
     )
 
 fn _dispatch_seq_nn(function_name: String, args_array: String) raises -> String:
@@ -102762,6 +105350,14 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_graph__weighted(function_name, args_array)
     if module_name == "graph_algorithms":
         return _dispatch_graph_algorithms(function_name, args_array)
+    if module_name == "graph_analytics.adjacency":
+        return _dispatch_graph_analytics__adjacency(function_name, args_array)
+    if module_name == "graph_analytics.centrality":
+        return _dispatch_graph_analytics__centrality(function_name, args_array)
+    if module_name == "graph_analytics.community":
+        return _dispatch_graph_analytics__community(function_name, args_array)
+    if module_name == "graph_analytics.temporal":
+        return _dispatch_graph_analytics__temporal(function_name, args_array)
     if module_name == "graph_compiler":
         return _dispatch_graph_compiler(function_name, args_array)
     if module_name == "graph_decision":
@@ -103004,6 +105600,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_optimize(function_name, args_array)
     if module_name == "optimizer_full":
         return _dispatch_optimizer_full(function_name, args_array)
+    if module_name == "option_greeks_batch":
+        return _dispatch_option_greeks_batch(function_name, args_array)
     if module_name == "option_pricing":
         return _dispatch_option_pricing(function_name, args_array)
     if module_name == "orthodontics":
@@ -103174,6 +105772,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_semiconductors(function_name, args_array)
     if module_name == "sentiment":
         return _dispatch_sentiment(function_name, args_array)
+    if module_name == "seq2_trainer":
+        return _dispatch_seq2_trainer(function_name, args_array)
     if module_name == "seq_nn":
         return _dispatch_seq_nn(function_name, args_array)
     if module_name == "seq_training":

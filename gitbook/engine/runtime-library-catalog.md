@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **500 modules** and **4973 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **506 modules** and **5061 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -55,7 +55,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-23 modules.
+24 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -79,6 +79,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `optimizer_full` | 10 |
 | `quantization` | 10 |
 | `quantization_stack` | 10 |
+| `seq2_trainer` | 8 |
 | `seq_training` | 4 |
 | `state_space_models` | 10 |
 | `training_stability` | 10 |
@@ -182,7 +183,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Graph & automata
 
-17 modules.
+21 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -195,6 +196,10 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `graph.algorithms` | 8 |
 | `graph.weighted` | 9 |
 | `graph_algorithms` | 10 |
+| `graph_analytics.adjacency` | 35 |
+| `graph_analytics.centrality` | 9 |
+| `graph_analytics.community` | 19 |
+| `graph_analytics.temporal` | 16 |
 | `graph_compiler` | 10 |
 | `graph_decision` | 10 |
 | `heap` | 13 |
@@ -274,12 +279,13 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Finance & business
 
-3 modules.
+4 modules.
 
 | Module | Functions |
 | --- | --- |
 | `accounting` | 12 |
 | `finance` | 12 |
+| `option_greeks_batch` | 1 |
 | `option_pricing` | 10 |
 
 ## General & domain modules
