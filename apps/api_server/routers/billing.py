@@ -184,7 +184,11 @@ async def public_plans(request: Request, app: str | None = None) -> dict[str, An
         )
     else:
         resolved = requested
-    return {"app": resolved, "plans": await list_plans(resolved)}
+    # The catalogue carries the Stripe price `id` so checkout can resolve a plan from the same
+    # source this page renders. It is dropped here: the public payload keeps exactly the fields it
+    # had, so nothing that parses a pricing page changes shape.
+    plans = [{k: v for k, v in plan.items() if k != "id"} for plan in await list_plans(resolved)]
+    return {"app": resolved, "plans": plans}
 
 
 @router.post("/v1/billing/checkout", summary="Create Stripe Checkout session")
@@ -203,29 +207,55 @@ async def checkout(
         devices = max(1, int(body.get("devices", 1)))
     except (TypeError, ValueError):
         devices = 1
-    if plan not in (
-        "developer", "pro", "proplus", "ultra", "team",
-        "telys_pro", "telys_team",
-        "sqai_pro", "sqai_team",
-        "algenta_pro", "algenta_team",
-    ):
+    interval = str(body.get("interval") or "month").strip().lower()
+    if interval not in ("month", "year"):
         raise HTTPException(
             status_code=400,
             detail={
                 "error": {
                     "code": "invalid_plan",
-                    "message": "Invalid plan",
+                    "message": f"Unsupported billing interval '{interval}'; use month or year.",
                 }
             },
         )
 
-    # Product-scoped billing gate: a brand's checkout is live only when its `billing` flag is on. Algenta
-    # ships billing DARK (Stripe test-mode first) — its plans are in the allow-list above (machinery
-    # deployed) but checkout is refused until the owner flips product_registry algenta.billing on.
-    # codna/telys are on, so this is a no-op for them.
+    # A plan is valid when STRIPE SELLS IT, not when this file happens to list it. The literal
+    # allow-list here (developer/pro/proplus/ultra/team + the per-brand pro/team pairs) was a fourth
+    # place a new plan had to be registered, alongside a `stripe_price_<plan>` setting, an entry in
+    # `PLAN_PRICE_IDS`, and the env var in production. Miss any one and the plan is ADVERTISED by
+    # /billing/plans and refused here — measured on the live host, where `algenta_server` ($600/mo)
+    # and `telys_server` were both listed publicly and unbuyable.
+    #
+    # The catalogue is now the authority, so the two stay in step by construction. The legacy names
+    # remain accepted through `PLAN_PRICE_IDS` in `create_checkout_session`, so a brand whose prices
+    # are configured by env rather than carried in the catalogue keeps working unchanged.
     from apps.api_server.services.product_registry import product_flag, product_for_plan
+    from apps.api_server.services.stripe_catalog import resolve_price
 
     _plan_product = product_for_plan(plan)
+    catalogue_price = await resolve_price(_plan_product, plan, interval)
+    _LEGACY_PLANS = (
+        "developer", "pro", "proplus", "ultra", "team",
+        "telys_pro", "telys_team",
+        "sqai_pro", "sqai_team",
+        "algenta_pro", "algenta_team",
+    )
+    if catalogue_price is None and (plan not in _LEGACY_PLANS or interval != "month"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "invalid_plan",
+                    "message": (
+                        f"No active Stripe price for plan '{plan}' at interval '{interval}'."
+                    ),
+                }
+            },
+        )
+
+    # Product-scoped billing gate: a brand's checkout is live only when its `billing` flag is on.
+    # Independent of whether Stripe sells the price — a brand can have a full catalogue and still be
+    # dark. `_plan_product` and the imports are resolved above, where the plan is validated.
     if not product_flag(_plan_product, "billing", default=True):
         raise HTTPException(
             status_code=403,
@@ -257,6 +287,7 @@ async def checkout(
             if plan in ("team", "telys_team", "sqai_team")
             else 1
         ),
+        price_id=(catalogue_price or {}).get("id"),
         success_url=redirect_urls.success_url,
         cancel_url=redirect_urls.cancel_url,
         audit_context=audit_context_from_auth(

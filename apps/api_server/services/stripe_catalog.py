@@ -29,6 +29,13 @@ def _shape(price: dict[str, Any]) -> dict[str, Any] | None:
     pmeta = prod.get("metadata") or {}
     features = [f.get("name") for f in (prod.get("marketing_features") or []) if f.get("name")]
     return {
+        # The Stripe price id, kept so checkout can resolve a plan from the SAME catalog the pricing
+        # page renders. `list_plans` strips it before returning, so the public payload is unchanged.
+        # Without it, plan -> price was a hand-maintained map (one `stripe_price_<plan>` setting plus
+        # an allow-list entry per plan), and any plan added to Stripe was ADVERTISED by this catalog
+        # while checkout refused it as `invalid_plan` — which is exactly what happened to the
+        # `*_server` tiers.
+        "id": price.get("id"),
         "plan": (price.get("metadata") or {}).get("plan") or pmeta.get("plan"),
         "name": prod.get("name"),
         "description": prod.get("description"),
@@ -69,3 +76,36 @@ async def list_plans(app: str, *, use_cache: bool = True) -> list[dict[str, Any]
     plans.sort(key=lambda p: p["price_usd"])
     _CACHE[app] = (now, plans)
     return plans
+
+
+async def resolve_price(app: str, plan: str, interval: str = "month") -> dict[str, Any] | None:
+    """The Stripe price for `(app, plan, interval)` straight from the catalogue, or ``None``.
+
+    This is the mapping that was missing. Checkout resolved a plan through `PLAN_PRICE_IDS`, a
+    hand-maintained dict of `plan -> settings.stripe_price_<plan>`, so adding a plan to Stripe took
+    four separate edits (a config field, a mapping entry, an allow-list entry, and the env var in
+    production). Skip any one and the plan is listed on the pricing page and refused at checkout.
+    Measured on the live host: `/billing/plans` advertises `algenta_server` at $600/mo and
+    `telys_server`, and neither is in the allow-list or the mapping, so both were unbuyable.
+
+    That map also had no INTERVAL, holding one price id per plan — so the annual prices in the
+    catalogue (`algenta_pro_annual`, $948) were unreachable through checkout even though the account
+    portal already links `/checkout?app=...&plan=...&interval=year`.
+
+    Resolving from the catalogue fixes the class rather than the two instances: a plan that Stripe
+    sells is a plan this engine can charge for, with no code change and nothing to keep in sync.
+    `interval` is matched exactly rather than defaulted at the Stripe end, because silently billing
+    a customer monthly when they asked for annual is worse than refusing.
+    """
+    wanted_plan = (plan or "").strip().lower()
+    wanted_interval = (interval or "month").strip().lower()
+    if not wanted_plan:
+        return None
+    for candidate in await list_plans(app):
+        if (candidate.get("plan") or "").strip().lower() != wanted_plan:
+            continue
+        if (candidate.get("interval") or "").strip().lower() != wanted_interval:
+            continue
+        if candidate.get("id"):
+            return candidate
+    return None

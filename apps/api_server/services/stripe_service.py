@@ -240,12 +240,20 @@ async def create_checkout_session(
     cancel_url: str | None = None,
     audit_context: EgressAuditContext | None = None,
     quantity: int = 1,
+    price_id: str | None = None,
 ) -> dict[str, str]:
     """
     Create a Stripe Checkout Session for upgrading to the given plan.
     Returns {"url": "https://checkout.stripe.com/..."}
+
+    `price_id`, when given, is the price the CATALOGUE resolved for this plan and interval — the
+    same catalogue `/billing/plans` renders. It takes precedence over `PLAN_PRICE_IDS`, which is a
+    hand-maintained `plan -> settings.stripe_price_<plan>` map holding one price per plan and no
+    interval: annual prices were unreachable through it, and any plan added to Stripe without its
+    four accompanying edits was advertised on the pricing page and refused here. The map remains the
+    fallback so brands whose prices are configured by env keep working untouched.
     """
-    price_id = PLAN_PRICE_IDS.get(plan)
+    price_id = price_id or PLAN_PRICE_IDS.get(plan)
     if not price_id or _is_placeholder(price_id):
         raise HTTPException(
             status_code=400,
