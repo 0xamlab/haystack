@@ -357,23 +357,29 @@ def test_published_mcp_package_uses_same_streamable_http_contract(monkeypatch) -
         "Content-Type": "application/json",
         "MCP-Protocol-Version": "2025-11-25",
     }
+    tool_call = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "get_contract", "arguments": {}},
+    }
 
     with TestClient(_build_http_app(), base_url="http://127.0.0.1:8001") as client:
         response = client.post("/mcp", headers=headers, json=initialize)
+        anonymous_tool_response = client.post("/mcp", headers=headers, json=tool_call)
         tool_response = client.post(
             "/mcp",
-            headers=headers,
-            json={
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {"name": "get_contract", "arguments": {}},
-            },
+            headers={**headers, "Authorization": "Bearer sk-package-contract-test"},
+            json=tool_call,
         )
 
     assert response.status_code == 200
     payload = response.json()["result"]
     assert payload["protocolVersion"] == "2025-11-25"
     assert payload["serverInfo"]["version"] == "1.0.4"
+    # Discovery (initialize) is open; execution is not. The standalone app used to mount the session
+    # manager bare, so a keyless tools/call ran the tool with the server's own ambient credential.
+    assert anonymous_tool_response.status_code == 401
+    assert anonymous_tool_response.json()["error"]["code"] == -32001
     assert tool_response.status_code == 200
     assert tool_response.json()["result"]["content"][0]["text"] == "https://engine.example"

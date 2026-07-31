@@ -74,6 +74,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `invalid_device_limit` | The requested device limit is out of the allowed range. |
 | `invalid_filter_condition` | A query filter condition is malformed. |
 | `invalid_plan` | The plan name is not a valid, purchasable plan. |
+| `invalid_product` | The requested product name is not a recognized Algenta product; the message lists the valid names. |
 | `invalid_provider` | The provider is not recognized. |
 | `invalid_region` | The deployment region is not supported. |
 | `invalid_role` | The team role is not one of the allowed roles. |
@@ -119,6 +120,7 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `playground_error` | The playground request could not be processed. |
 | `playground_rate_limit` | The keyless playground rate limit was hit; slow down or use an API key. |
 | `preview_capability_not_executable` | This capability can be previewed but not executed in preview mode. |
+| `product_not_served` | This API host serves one product's plans only and will not price a different product. Ask that product's own API host. |
 | `provider_key_not_found` | No BYOK provider key is configured for this backend. |
 | `quota_exceeded` | A custom or non-Algenta governance quota is exhausted; Algenta editions have no monthly execution quota. |
 | `rate_limit_backend_unavailable` | The rate-limit backend (Redis) is unreachable. |

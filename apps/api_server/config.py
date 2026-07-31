@@ -319,6 +319,17 @@ class Settings(BaseSettings):
     stripe_price_proplus: str = Field(default="price_proplus_replace_me")
     stripe_price_ultra: str = Field(default="price_ultra_replace_me")
     stripe_price_team: str = Field(default="price_team_replace_me")
+    # Which product (brand) THIS deployment presents as its own. One engine serves several brands, so a
+    # caller may still ask for any of them explicitly (`/billing/plans?app=telys`) — this only decides the
+    # default when no brand is named, and it WINS over the Host header so a spoofed header cannot talk a
+    # configured deployment out of its own edition. It exists because that default used to be the literal
+    # "codna", so `api.algenta.ai/billing/plans` answered `{"app":"codna",...}` and advertised another
+    # product's catalogue on an Algenta-branded host. Unset falls back to the request's own Host, then to
+    # the registry's unprefixed default — correct for the codna deployment, which owns that namespace.
+    deployment_product: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ALGENTA_PRODUCT"),
+    )
     # Telys runtime paid tiers (telys_developer is free → no Stripe price). Create these in Stripe + set the env.
     stripe_price_telys_pro: str = Field(default="price_telys_pro_replace_me")
     stripe_price_telys_team: str = Field(default="price_telys_team_replace_me")

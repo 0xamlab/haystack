@@ -315,8 +315,18 @@ def _assert_runtime_health_manifest_contract_and_openapi(base_url: str) -> None:
     assert openapi_payload["paths"]["/v1/meta/contract"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/tools"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp"]["post"].get("security") is None
-    assert openapi_payload["paths"]["/mcp/sse"]["get"].get("security") is None
-    assert openapi_payload["paths"]["/mcp/messages"]["post"].get("security") is None
+    # /mcp/sse and /mcp/messages are the DEPRECATED HTTP+SSE pair, and they are protected while
+    # /mcp and /mcp/tools above stay open. Discovery is public; this transport is not, because it had
+    # no tools/call challenge at all — a keyless call reached the tool layer and fell back to the
+    # SERVER's own API key, executing tools as the deployment's identity. These two lines asserted
+    # `is None`, i.e. they encoded that hole as the contract.
+    assert (
+        openapi_payload["paths"]["/mcp/sse"]["get"]["security"] == PROTECTED_OPENAPI_SECURITY
+    )
+    assert (
+        openapi_payload["paths"]["/mcp/messages"]["post"]["security"]
+        == PROTECTED_OPENAPI_SECURITY
+    )
     assert "200" in openapi_payload["paths"]["/mcp/tools"]["get"]["responses"]
     assert "200" in openapi_payload["paths"]["/mcp"]["post"]["responses"]
     assert openapi_payload["paths"]["/mcp/sse"]["get"]["deprecated"] is True
@@ -532,16 +542,28 @@ def _fake_openapi_payload() -> dict[str, Any]:
                 "post": {"responses": {"200": {"description": "MCP response"}}},
                 "delete": {"responses": {"404": {"description": "Session not found"}}},
             },
+            # The deprecated pair is PROTECTED while /mcp and /mcp/tools stay open. The fake has to
+            # carry that, or the three port-reuse tests below assert the real contract against a
+            # fiction — which is how they came to encode the unauthenticated posture in the first
+            # place.
             "/mcp/sse": {
                 "get": {
                     "deprecated": True,
-                    "responses": {"200": {"description": "Legacy MCP SSE stream"}},
+                    "security": PROTECTED_OPENAPI_SECURITY,
+                    "responses": {
+                        "200": {"description": "Legacy MCP SSE stream"},
+                        "401": {"description": "Authentication required."},
+                    },
                 }
             },
             "/mcp/messages": {
                 "post": {
                     "deprecated": True,
-                    "responses": {"202": {"description": "Legacy MCP message accepted"}},
+                    "security": PROTECTED_OPENAPI_SECURITY,
+                    "responses": {
+                        "202": {"description": "Legacy MCP message accepted"},
+                        "401": {"description": "Authentication required."},
+                    },
                 }
             },
         },

@@ -285,8 +285,14 @@ def test_runtime_admin_validation_route_reports_release_theorem_status() -> None
     assert openapi_payload["paths"]["/v1/runtime/manifest"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp/tools"]["get"].get("security") is None
     assert openapi_payload["paths"]["/mcp"]["post"].get("security") is None
-    assert openapi_payload["paths"]["/mcp/sse"]["get"].get("security") is None
-    assert openapi_payload["paths"]["/mcp/messages"]["post"].get("security") is None
+    # The deprecated HTTP+SSE pair requires a key on EVERY request: unlike streamable /mcp (which keeps
+    # discovery open and challenges only tools/call), a tools/call over this lane arrives as a POST whose
+    # body the SSE transport owns, so it never reached that challenge and executed with the server's own
+    # ambient credential. Nothing in the tree connects to it, so the spec advertises it as protected.
+    assert openapi_payload["paths"]["/mcp/sse"]["get"]["security"] == PROTECTED_OPENAPI_SECURITY
+    assert (
+        openapi_payload["paths"]["/mcp/messages"]["post"]["security"] == PROTECTED_OPENAPI_SECURITY
+    )
     assert "200" in openapi_payload["paths"]["/mcp/tools"]["get"]["responses"]
     assert "200" in openapi_payload["paths"]["/mcp"]["post"]["responses"]
     assert openapi_payload["paths"]["/mcp/sse"]["get"]["deprecated"] is True

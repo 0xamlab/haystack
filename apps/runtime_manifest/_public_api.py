@@ -115,6 +115,16 @@ from apps.runtime_manifest._builders import (
 )
 
 
+def runtime_version() -> str:
+    """The engine build version, for surfaces that need the version WITHOUT building the manifest.
+
+    Building the manifest reads proof bundles off disk and hashes artifacts; a public ``/v1/version``
+    that a load balancer hits on every probe must not pay that. Exposing the constant as a function is
+    what lets other surfaces stop keeping their own literal copy of the version and silently drift.
+    """
+    return _RUNTIME_VERSION
+
+
 @lru_cache(maxsize=8)
 def load_runtime_manifest(
     api_env: str,

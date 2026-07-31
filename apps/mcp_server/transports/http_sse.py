@@ -118,6 +118,44 @@ class _MCPToolCallAuthChallengeASGIApp:
         await self._app(scope, replay_receive, send)
 
 
+class _MCPLegacyTransportAuthASGIApp:
+    """Require a caller credential on the DEPRECATED HTTP+SSE lane, for every method.
+
+    The streamable ``/mcp`` mount challenges only ``tools/call`` so that discovery (``initialize``,
+    ``tools/list``) stays open the way MCP clients expect. The legacy pair could not reuse that: a
+    ``tools/call`` arrives as ``POST /mcp/messages?session_id=...`` whose body the SSE transport owns,
+    so the same body-sniffing challenge does not see it — an unauthenticated ``GET /mcp/sse`` handed
+    out a session id and the paired POST then executed tools with whatever credential the SERVER
+    process happened to have. Nothing in the tree connects to this lane (it is OpenAPI-deprecated and
+    every client uses streamable ``/mcp``), so requiring a key outright costs no consumer and removes
+    the asymmetry instead of trying to reproduce the challenge over a transport that hides the body.
+
+    Discovery is unaffected: ``GET /mcp/tools`` and streamable ``tools/list`` remain public.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http" or _scope_api_key(scope):
+            await self._app(scope, receive, send)
+            return
+        response = JSONResponse(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Bearer realm="algenta", error="invalid_token"'},
+            content={
+                "error": {
+                    "code": "authentication_required",
+                    "message": (
+                        "Authentication required: the deprecated MCP HTTP+SSE transport needs "
+                        "Authorization: Bearer <key>. Use the Streamable HTTP endpoint /mcp."
+                    ),
+                }
+            },
+        )
+        await response(scope, receive, send)
+
+
 class _LifespanBoundASGIApp:
     """Dispatch to the fresh official SDK manager owned by the active lifespan."""
 
@@ -254,6 +292,36 @@ def _embedded_downstream_base_url(scope: Scope) -> str:
 def _scope_product(scope: Scope) -> str | None:
     """The ``X-Algenta-Product`` routing hint selects an Algenta edition."""
     return _scope_headers(scope).get("x-algenta-product", "").strip() or None
+def _deployment_product() -> str | None:
+    """The edition THIS deployment presents as, when the caller sent no ``X-Algenta-Product`` hint.
+
+    Without this the HTTP transport had no product at all for an un-hinted request, and
+    ``product_allowlist(None)`` means "the entire registry" — so a caller that simply omitted the
+    header was listed every tool of every brand (billing, team, audit and admin-runtime tools included)
+    rather than this deployment's edition. The stdio transport already reads ``ALGENTA_PRODUCT``; this
+    is the same signal for HTTP, so one setting scopes both.
+
+    Env first (that is how a container/Fly deployment sets it). When embedded in the API process the
+    same value may instead come from its settings file, so fall back to the setting the API already
+    defines; the import is optional so the standalone package behaves identically without it.
+    """
+    configured = os.environ.get("ALGENTA_PRODUCT", "").strip()
+    if configured:
+        return configured.lower()
+    try:
+        from apps.api_server.config import get_settings
+    except ImportError:
+        return None
+    try:
+        value = (getattr(get_settings(), "deployment_product", None) or "").strip()
+    except Exception:  # pragma: no cover - settings must never break tool discovery
+        return None
+    return value.lower() or None
+
+
+def _effective_product(product: str | None) -> str | None:
+    """Header hint > this deployment's edition. ``None`` only on an unconfigured shared engine."""
+    return product or _deployment_product()
 
 
 def _request_product(server: Any) -> str | None:
@@ -344,7 +412,7 @@ def _build_http_app() -> ASGIApp:
 
         @server.list_tools()  # type: ignore[misc]
         async def handle_list_tools() -> list[Tool]:
-            allowed = resolve_visible_tools(_request_product(server))
+            allowed = resolve_visible_tools(_effective_product(_request_product(server)))
             return [
                 Tool(
                     name=spec["name"],
@@ -368,11 +436,15 @@ def _build_http_app() -> ASGIApp:
                     base_url=(
                         _embedded_downstream_base_url(scope) if use_request_base_url else None
                     ),
+                    # An HTTP caller authenticates as itself or not at all: never fall through to the
+                    # server process's ALGENTA_API_KEY/DE_API_KEY (compose injects one), which would
+                    # let a keyless request run tools with the deployment's own credential.
+                    allow_ambient_key=False,
                 ):
                     result = await call_tool(
                         name,
                         arguments or {},
-                        resolve_visible_tools(_scope_product(scope)),
+                        resolve_visible_tools(_effective_product(_scope_product(scope))),
                     )
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
@@ -430,19 +502,22 @@ def _build_http_app() -> ASGIApp:
 
     async def handle_tools(request: Request) -> JSONResponse:
         allowed = resolve_visible_tools(
-            (request.headers.get("x-algenta-product") or "").strip() or None
+            _effective_product((request.headers.get("x-algenta-product") or "").strip() or None)
         )
         return JSONResponse({"tools": get_tool_specs(allowed)})
 
     return Starlette(
         routes=[
             Route("/mcp/tools", endpoint=handle_tools),
-            Route("/mcp", endpoint=streamable_http),
-            Mount("/mcp/sse", app=canonical_sse),
-            Mount("/mcp/messages", app=canonical_messages),
+            # Same posture as the embedded mount: discovery is open, tools/call is challenged. The
+            # standalone app used to mount the manager bare, so this app alone executed tools for an
+            # unauthenticated caller.
+            Route("/mcp", endpoint=_MCPToolCallAuthChallengeASGIApp(streamable_http)),
+            Mount("/mcp/sse", app=_MCPLegacyTransportAuthASGIApp(canonical_sse)),
+            Mount("/mcp/messages", app=_MCPLegacyTransportAuthASGIApp(canonical_messages)),
             Route("/tools", endpoint=handle_tools),
-            Mount("/sse", app=legacy_sse),
-            Mount("/messages", app=legacy_messages),
+            Mount("/sse", app=_MCPLegacyTransportAuthASGIApp(legacy_sse)),
+            Mount("/messages", app=_MCPLegacyTransportAuthASGIApp(legacy_messages)),
         ],
         lifespan=lifespan,
     )
@@ -556,7 +631,7 @@ def _build_fastapi_router() -> APIRouter | None:
         @router.get("/mcp/tools", summary="List available MCP tools")
         async def list_tools_unavailable(request: Request) -> JSONResponse:
             allowed = resolve_visible_tools(
-                (request.headers.get("x-algenta-product") or "").strip() or None
+                _effective_product((request.headers.get("x-algenta-product") or "").strip() or None)
             )
             return JSONResponse({"tools": get_tool_specs(allowed)})
 
@@ -567,7 +642,7 @@ def _build_fastapi_router() -> APIRouter | None:
 
         @server.list_tools()  # type: ignore[misc]
         async def _list_tools() -> list[Tool]:
-            allowed = resolve_visible_tools(_request_product(server))
+            allowed = resolve_visible_tools(_effective_product(_request_product(server)))
             return [
                 Tool(
                     name=spec["name"],
@@ -591,11 +666,15 @@ def _build_fastapi_router() -> APIRouter | None:
                     base_url=(
                         _embedded_downstream_base_url(scope) if use_request_base_url else None
                     ),
+                    # An HTTP caller authenticates as itself or not at all: never fall through to the
+                    # server process's ALGENTA_API_KEY/DE_API_KEY (compose injects one), which would
+                    # let a keyless request run tools with the deployment's own credential.
+                    allow_ambient_key=False,
                 ):
                     result = await call_tool(
                         name,
                         arguments or {},
-                        resolve_visible_tools(_scope_product(scope)),
+                        resolve_visible_tools(_effective_product(_scope_product(scope))),
                     )
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
@@ -651,7 +730,7 @@ def _build_fastapi_router() -> APIRouter | None:
     @router.get("/mcp/tools", summary="List available MCP tools")
     async def list_tools(request: Request) -> JSONResponse:
         allowed = resolve_visible_tools(
-            (request.headers.get("x-algenta-product") or "").strip() or None
+            _effective_product((request.headers.get("x-algenta-product") or "").strip() or None)
         )
         return JSONResponse({"tools": get_tool_specs(allowed)})
 
@@ -663,13 +742,13 @@ def _build_fastapi_router() -> APIRouter | None:
     )
     router.add_route(
         "/mcp/sse",
-        _CallableASGIApp(sse_endpoint_app),
+        _MCPLegacyTransportAuthASGIApp(_CallableASGIApp(sse_endpoint_app)),
         methods=["GET"],
         name="mcp_sse",
     )
     router.add_route(
         "/mcp/messages",
-        _CallableASGIApp(post_message_endpoint_app),
+        _MCPLegacyTransportAuthASGIApp(_CallableASGIApp(post_message_endpoint_app)),
         methods=["POST"],
         name="mcp_messages",
     )

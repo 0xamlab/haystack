@@ -70,7 +70,7 @@ DESCRIPTIONS = {
         "Encrypts per-tenant provider keys at rest — durable secret, never rotate without "
         "re-encrypting."
     ),
-    "ALGENTA_PRODUCT": "Edition surface to expose (e.g. algenta); filters the tool set.",
+    "ALGENTA_PRODUCT": "Edition this deployment presents (e.g. algenta): scopes the MCP tool set and which product /billing/plans prices.",
     "ALGENTA_DEVICE_ID": "Pin a stable device identity for a device-capped key (16-64 chars).",
     "DATABASE_URL": "Async PostgreSQL connection string.",
     "DATABASE_URL_SYNC": "Sync PostgreSQL connection string (migrations).",

@@ -44,6 +44,24 @@ def test_plan_namespace_resolution():
 
 
 # ── RS256 signer routing ─────────────────────────────────────────────────────────
+def test_legacy_default_product_is_derived_not_written_twice():
+    """The unprefixed plan namespace DEFINES the legacy default, so the id must come from it.
+
+    `/billing/plans` used to hardcode `app: str = "codna"`, which meant an Algenta-branded host answered
+    `{"app":"codna",...}` — the right catalogue for the codna deployment and the wrong one everywhere
+    else. The id is now derived from `plan_namespace == ""`, so it cannot disagree with the namespace it
+    is supposed to name, and `product_for_plan` shares the same derivation.
+    """
+    owner = pr.legacy_default_product()
+    unprefixed = [cfg.id for cfg in pr.all_products() if not cfg.plan_namespace]
+    assert unprefixed == [owner]
+    # The inverse mapping must agree: an unprefixed plan resolves to the same product.
+    for unnamespaced_plan in ("pro", "team", "free", "enterprise", "developer"):
+        assert pr.product_for_plan(unnamespaced_plan) == owner
+    # A namespaced plan must NOT resolve to it, or the namespace would be meaningless.
+    assert pr.product_for_plan("algenta_pro") == "algenta"
+
+
 def test_rs256_products_set():
     # RS256 products: telys, algenta, cohenta, and now sqai. Codna stays OFF (its runtime verifies HS256).
     assert pr.rs256_license_products() == frozenset({"telys", "algenta", "cohenta", "sqai"})

@@ -2967,9 +2967,24 @@ check("POST /mcp → MCP 2025-11-25 Streamable HTTP", test_mcp_streamable_http_c
 
 
 def test_mcp_sse_endpoint_contract():
-    """GET /mcp/sse should either stream or return the structured unavailable contract."""
+    """GET /mcp/sse requires a credential, then either streams or returns the unavailable contract.
+
+    This test previously asserted that an UNAUTHENTICATED GET returned 200/204 — it encoded the
+    defect. The deprecated HTTP+SSE lane had no auth challenge (the challenge was wired only to the
+    streamable `/mcp` mount), so an anonymous `tools/call` over this transport reached the tool
+    layer with no key and fell back to the SERVER's own ALGENTA_API_KEY. That is an anonymous caller
+    executing tools as the deployment's identity, so the keyless case must now be refused.
+    """
+    keyless, keyless_body, _, _ = req("GET", "/mcp/sse", auth=False, timeout=3)
+    assert keyless != 404, "SSE endpoint returned 404"
+    if keyless != 503:
+        assert keyless == 401, f"keyless /mcp/sse must be refused, got {keyless}"
+        if isinstance(keyless_body, dict):
+            # No session id may be handed out before authentication.
+            assert "session_id" not in str(keyless_body), keyless_body
+
     try:
-        status, data, _, _ = req("GET", "/mcp/sse", auth=False, timeout=3)
+        status, data, _, _ = req("GET", "/mcp/sse", timeout=3)
         assert status != 404, "SSE endpoint returned 404"
         if status == 503:
             assert isinstance(data, dict), f"Expected JSON body, got {type(data).__name__}"
@@ -2977,7 +2992,7 @@ def test_mcp_sse_endpoint_contract():
             assert error.get("code") == "mcp_transport_unavailable", error
             assert error.get("details", {}).get("hint") == MCP_TRANSPORT_UNAVAILABLE_HINT, error
             return
-        assert status in {200, 204}, f"Unexpected /mcp/sse status: {status}"
+        assert status in {200, 204}, f"Unexpected authenticated /mcp/sse status: {status}"
     except TimeoutError:
         pass  # Expected — SSE is a streaming endpoint
     except Exception as e:
@@ -2995,7 +3010,14 @@ check(
 
 def test_mcp_messages_endpoint_contract():
     """POST /mcp/messages should either reject malformed traffic or return the structured unavailable contract."""
-    status, data, _, _ = req("POST", "/mcp/messages", body={}, auth=False, timeout=3)
+    keyless, _, _, _ = req("POST", "/mcp/messages", body={}, auth=False, timeout=3)
+    assert keyless != 404, "Messages endpoint returned 404"
+    if keyless != 503:
+        # Refused BEFORE the body is judged: this lane used to execute tools under the server's own
+        # ambient credential when no key was supplied, so authentication has to precede validation.
+        assert keyless == 401, f"keyless /mcp/messages must be refused, got {keyless}"
+
+    status, data, _, _ = req("POST", "/mcp/messages", body={}, timeout=3)
     assert status != 404, "Messages endpoint returned 404"
     if status == 503:
         assert isinstance(data, dict), f"Expected JSON body, got {type(data).__name__}"
@@ -3003,11 +3025,11 @@ def test_mcp_messages_endpoint_contract():
         assert error.get("code") == "mcp_transport_unavailable", error
         assert error.get("details", {}).get("hint") == MCP_TRANSPORT_UNAVAILABLE_HINT, error
         return
-    assert status in {400, 405, 415, 422}, f"Unexpected /mcp/messages status: {status}"
+    assert status in {400, 405, 415, 422}, f"Unexpected authenticated /mcp/messages status: {status}"
 
 
 check(
-    "POST /mcp/messages → transport available or structured 503 fallback",
+    "POST /mcp/messages → keyless refused, then transport available or structured 503",
     test_mcp_messages_endpoint_contract,
 )
 

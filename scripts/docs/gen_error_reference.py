@@ -52,6 +52,8 @@ MEANINGS = {
     "device_platform_required": "The device-capped key needs `X-Algenta-Platform`.",
     "device_revoked": "The device activation was revoked by an owner.",
     "origin_guard_required": "Call the API at its public hostname; the origin host is not directly usable.",
+    "invalid_product": "The requested product name is not a recognized Algenta product; the message lists the valid names.",
+    "product_not_served": "This API host serves one product's plans only and will not price a different product. Ask that product's own API host.",
     "idempotency_key_conflict": "An idempotency key was reused with a different payload.",
     "resource_write_conflict": "A concurrent write conflicted; retry.",
     "dataset_not_found": "The dataset id is unknown.",

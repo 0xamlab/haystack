@@ -39,6 +39,7 @@ from apps.runtime_manifest import (
     get_runtime_admin_modules,
     get_runtime_manifest,
     get_runtime_release_validation,
+    runtime_version,
     validate_runtime_admin_benchmarks_payload,
     validate_runtime_admin_modules_payload,
     validate_runtime_manifest_payload,
@@ -48,8 +49,17 @@ from apps.runtime_manifest import (
 router = APIRouter(tags=["System"])
 settings = SettingsProxy()
 
-ENGINE_VERSION = "0.1.0"
 API_VERSION = "1.0.0"
+
+
+# The engine build this process IS, taken from the runtime manifest — never a second literal.
+# ``/v1/version`` is public (load balancers, installers and four integration tests fetch it without a
+# key), so it is the build identifier most people see. It used to be the module literal ``"0.1.0"``
+# while the same process's ``/v1/runtime/manifest`` reported a ``runtime_version`` five years newer; a
+# public version that disagrees with the runtime is worse than no version at all. Reading the manifest's
+# own constant (not rebuilding the manifest — that hashes artifacts, and a health-adjacent public route
+# must stay cheap) makes the two impossible to drift.
+ENGINE_VERSION = runtime_version()
 
 
 class HealthResponse(BaseModel):

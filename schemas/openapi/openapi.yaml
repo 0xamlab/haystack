@@ -1897,12 +1897,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EngineListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
   /v1/engines/tiers:
     get:
       tags:
@@ -1917,6 +1925,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EngineTierResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
   /v1/engines/{slug}:
     get:
       tags:
@@ -1938,12 +1954,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EngineResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
   /v1/decision:
     post:
       tags:
@@ -3716,26 +3740,42 @@ paths:
     get:
       tags:
       - MCP
-      summary: MCP SSE transport unavailable
-      operationId: mcp_sse_unavailable_mcp_sse_get
+      summary: Legacy MCP HTTP+SSE connection
+      operationId: stream_legacy_mcp_events
+      deprecated: true
       responses:
         '200':
-          description: Successful Response
+          description: Legacy MCP SSE stream.
           content:
             application/json:
               schema: {}
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
   /mcp/messages:
     post:
       tags:
       - MCP
-      summary: MCP message transport unavailable
-      operationId: mcp_messages_unavailable_mcp_messages_post
+      summary: Legacy MCP HTTP+SSE message
+      operationId: send_legacy_mcp_message
+      deprecated: true
       responses:
-        '200':
-          description: Successful Response
+        '202':
+          description: Legacy MCP message accepted.
           content:
             application/json:
               schema: {}
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
   /v1/simulate/templates:
     get:
       tags:

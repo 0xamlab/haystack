@@ -196,6 +196,42 @@ def product_for_client_id(client_id: str | None) -> str | None:
     return None
 
 
+def product_for_public_api_host(host: str | None) -> str | None:
+    """Map the host a request ARRIVED on to the brand that host belongs to, or ``None``.
+
+    Derived from each row's ``public_api_base`` (``https://api.algenta.ai`` → ``algenta``) rather than a
+    second per-brand host map, so a new brand cannot be reachable without being resolvable. The brand
+    hosts are DNS aliases in front of ONE engine, so the host is the only per-request signal that says
+    which brand a caller is actually talking to — which is what makes it the right default for a public,
+    pre-auth surface where there is no key, no plan and no license to read the product from.
+
+    A ``Host`` header is caller-supplied and therefore NOT a trust boundary: this answers "which brand is
+    this host", never "is the caller allowed". Treat it exactly as authoritative as an explicit
+    ``?app=`` — its value is that the honest, common case (a brand's own pricing page hitting its own
+    host) resolves correctly with zero configuration.
+
+    Returns ``None`` for a non-brand host (an internal Fly/Kubernetes name, an IP, ``localhost``, a
+    preview URL). ``None`` means "this host does not speak for any single brand", so callers fall back
+    to configuration — it must never be read as a brand.
+    """
+    candidate = (host or "").strip().lower()
+    if not candidate:
+        return None
+    # Drop any port; a brand host is the same brand on :443 as on :8000.
+    if candidate.startswith("["):  # bracketed IPv6 literal — never a brand host
+        return None
+    candidate = candidate.split(":", 1)[0].rstrip(".")
+    if not candidate:
+        return None
+    for cfg in _PRODUCTS.values():
+        base = cfg.public_api_base.strip().lower()
+        # Compare hostnames, not URLs, so scheme/port/trailing-slash differences cannot cause a miss.
+        base_host = base.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].rstrip(".")
+        if base_host and base_host == candidate:
+            return cfg.id
+    return None
+
+
 def product_for_plan(plan_name: str | None) -> str:
     """Billing/entitlement: map an internal plan name to its product id via the plan-name namespace.
 
@@ -208,7 +244,25 @@ def product_for_plan(plan_name: str | None) -> str:
     for cfg in sorted(_PRODUCTS.values(), key=lambda c: len(c.plan_namespace), reverse=True):
         if cfg.plan_namespace and name.startswith(f"{cfg.plan_namespace}_"):
             return cfg.id
-    return "codna"
+    return legacy_default_product()
+
+
+def legacy_default_product() -> str:
+    """The product owning the UNPREFIXED plan namespace — i.e. what a nameless plan or brand means.
+
+    Derived from ``plan_namespace == ""`` rather than written as a literal, because that empty namespace
+    IS the definition of "the legacy default" and having the id spelled out in a second place is how the
+    two drift apart. Exactly one product may claim it; more than one is a registry error, and it is
+    raised rather than resolved arbitrarily, because silently picking one would make an unprefixed plan
+    resolve to a different brand depending on dict order.
+    """
+    unprefixed = [cfg.id for cfg in _PRODUCTS.values() if not cfg.plan_namespace]
+    if len(unprefixed) != 1:
+        raise ValueError(
+            "exactly one product must own the unprefixed plan namespace, found: "
+            + (", ".join(sorted(unprefixed)) or "none")
+        )
+    return unprefixed[0]
 
 
 def rs256_license_products() -> frozenset[str]:

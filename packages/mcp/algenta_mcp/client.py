@@ -38,14 +38,27 @@ _BASE_URL_OVERRIDE: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "algenta_mcp_base_url_override",
     default=None,
 )
+# Whether this request context may fall back to the SERVER process's own credential. True for stdio /
+# in-process use, where the environment IS the caller's configuration. HTTP transports set it False:
+# an HTTP caller authenticates as itself or not at all. Without that, a keyless HTTP request reached
+# _resolve_api_key() with no override and picked up ALGENTA_API_KEY / DE_API_KEY from the environment
+# (docker-compose injects one into the api container), i.e. ran tools with the deployment's credential.
+_AMBIENT_KEY_ALLOWED: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "algenta_mcp_ambient_key_allowed",
+    default=True,
+)
 
 
 def _resolve_api_key() -> str:
+    override = _API_KEY_OVERRIDE.get()
+    if override:
+        return override
+    if not _AMBIENT_KEY_ALLOWED.get():
+        # Deliberately empty rather than the process credential: _headers() then raises the
+        # unsupported-auth error, which the transport serializes as a tool error.
+        return ""
     return (
-        _API_KEY_OVERRIDE.get()
-        or os.environ.get("ALGENTA_API_KEY", "")
-        or os.environ.get("DE_API_KEY", "")
-        or config.API_KEY
+        os.environ.get("ALGENTA_API_KEY", "") or os.environ.get("DE_API_KEY", "") or config.API_KEY
     )
 
 
@@ -84,13 +97,26 @@ def resolve_base_url() -> str:
 
 
 @contextmanager
-def request_overrides(*, api_key: str | None = None, base_url: str | None = None) -> Iterator[None]:
-    """Temporarily override MCP downstream auth/base URL for the current request context."""
+def request_overrides(
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    allow_ambient_key: bool = True,
+) -> Iterator[None]:
+    """Temporarily override MCP downstream auth/base URL for the current request context.
+
+    ``allow_ambient_key=False`` additionally forbids falling back to the server process's
+    ``ALGENTA_API_KEY`` / ``DE_API_KEY``; pass it from any transport where the caller is a remote HTTP
+    client, so a request without its own credential fails instead of borrowing the deployment's.
+    """
     key_token = _API_KEY_OVERRIDE.set(api_key) if api_key else None
     base_token = _BASE_URL_OVERRIDE.set(base_url.rstrip("/")) if base_url else None
+    ambient_token = None if allow_ambient_key else _AMBIENT_KEY_ALLOWED.set(False)
     try:
         yield
     finally:
+        if ambient_token is not None:
+            _AMBIENT_KEY_ALLOWED.reset(ambient_token)
         if base_token is not None:
             _BASE_URL_OVERRIDE.reset(base_token)
         if key_token is not None:

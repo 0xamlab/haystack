@@ -97,6 +97,10 @@ def apply_openapi_surface(schema: dict[str, object]) -> dict[str, object]:
             },
         }
     if isinstance(paths, dict):
+        # The deprecated HTTP+SSE pair requires a key on every request (unlike streamable /mcp, which
+        # leaves discovery open and challenges only tools/call). These operations are hand-declared
+        # because the routes are raw ASGI, so their security has to be declared here too — otherwise the
+        # published spec keeps advertising a transport that can execute tools as unauthenticated.
         paths.setdefault(
             "/mcp/sse",
             {
@@ -105,7 +109,11 @@ def apply_openapi_surface(schema: dict[str, object]) -> dict[str, object]:
                     "operationId": "stream_legacy_mcp_events",
                     "summary": "Legacy MCP HTTP+SSE connection",
                     "deprecated": True,
-                    "responses": {"200": {"description": "Legacy MCP SSE stream."}},
+                    "security": [{"BearerAuth": []}],
+                    "responses": {
+                        "200": {"description": "Legacy MCP SSE stream."},
+                        "401": {"description": "Authentication required."},
+                    },
                 }
             },
         )
@@ -117,11 +125,15 @@ def apply_openapi_surface(schema: dict[str, object]) -> dict[str, object]:
                     "operationId": "send_legacy_mcp_message",
                     "summary": "Legacy MCP HTTP+SSE message",
                     "deprecated": True,
+                    "security": [{"BearerAuth": []}],
                     "requestBody": {
                         "required": True,
                         "content": {"application/json": {"schema": {"type": "object"}}},
                     },
-                    "responses": {"202": {"description": "Legacy MCP message accepted."}},
+                    "responses": {
+                        "202": {"description": "Legacy MCP message accepted."},
+                        "401": {"description": "Authentication required."},
+                    },
                 }
             },
         )

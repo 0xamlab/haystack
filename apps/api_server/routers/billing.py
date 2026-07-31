@@ -35,7 +35,13 @@ from apps.api_server.services.entitlement_service import entitlement_for_org
 from apps.api_server.services.plan_limits import device_limit as _plan_device_limit
 from apps.api_server.services.plan_limits import is_per_device_plan
 from apps.api_server.services.plan_limits import local_runtime_allowed as _plan_local_runtime
-from apps.api_server.services.product_registry import get_product, product_for_plan
+from apps.api_server.services.product_registry import (
+    all_products,
+    get_product,
+    legacy_default_product,
+    product_for_plan,
+    product_for_public_api_host,
+)
 from apps.api_server.services.public_url_policy import (
     request_origin_base_url,
     resolve_billing_redirect_urls,
@@ -82,13 +88,103 @@ async def _suspend_excess_members(db: AsyncSession, org_id: Any, seat_cap: int) 
     return suspended
 
 
+def _registered_product_ids() -> str:
+    """The registered brands, for an error message that lets a caller fix the request."""
+    return ", ".join(sorted(cfg.id for cfg in all_products()))
+
+
+def _invalid_product_error(product: str) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail={
+            "error": {
+                "code": "invalid_product",
+                "message": (
+                    f"Unknown product '{product}'. Registered products: "
+                    f"{_registered_product_ids()}."
+                ),
+            }
+        },
+    )
+
+
+def _brand_pin(request: Request) -> str | None:
+    """The ONE brand this endpoint may price, or ``None`` when this host speaks for no single brand.
+
+    Resolved from authoritative signals only, most explicit first:
+      1. ``ALGENTA_PRODUCT`` — the deployment declaring its own edition (also used by the MCP edition).
+      2. the request's ``Host`` matched against the registry's ``public_api_base`` — so a brand host is
+         pinned to its brand with zero configuration.
+    A non-brand host (internal Fly name, IP, ``localhost``) on an unconfigured deployment yields
+    ``None``: that is the shared multi-brand engine, where cross-brand pricing is the point.
+
+    ``X-Forwarded-Host`` is consulted only when ``Host`` names no brand, because an edge that rewrites
+    ``Host`` to an internal origin name would otherwise un-pin the deployment and quietly restore the
+    old wrong answer. Neither header is a trust boundary (see ``product_for_public_api_host``); a caller
+    who forges one gains nothing it could not get by naming the brand outright on an unpinned host.
+    """
+    configured = (_get_settings().deployment_product or "").strip().lower()
+    if configured:
+        return configured
+    from_host = product_for_public_api_host(request.headers.get("host"))
+    if from_host is not None:
+        return from_host
+    forwarded = (request.headers.get("x-forwarded-host") or "").split(",")[0]
+    return product_for_public_api_host(forwarded)
+
+
 @router.get("/billing/plans", summary="Public — active plans for an app, dynamic from Stripe")
-async def public_plans(app: str = "codna") -> dict[str, Any]:
+async def public_plans(request: Request, app: str | None = None) -> dict[str, Any]:
     """Plan titles/prices/descriptions/features straight from Stripe (no hardcoding). Public —
-    pricing is public. Free + Enterprise (no Stripe price) are added by the frontend as bookends."""
+    pricing is public (a pricing page renders before sign-in). Free + Enterprise (no Stripe price)
+    are added by the frontend as bookends.
+
+    A BRANDED host prices exactly one brand: its own. `api.algenta.ai` used to answer
+    `{"app":"codna",...}` because the signature default was the literal `"codna"`, so an
+    Algenta-branded host publicly advertised another product's catalogue — and `?app=<brand>` let any
+    host price any brand, including unlaunched SKUs. The brand is now taken from an authoritative
+    signal (`ALGENTA_PRODUCT`, else the request's own `Host` via the registry's `public_api_base`),
+    and a request for a DIFFERENT brand on a branded host is refused rather than served: cross-brand
+    pricing stays possible only on the shared engine's own non-brand host, which is where a
+    multi-brand portal belongs. `?app=<own brand>` remains valid so existing callers keep working.
+
+    An unregistered `app` is rejected rather than answered with an empty plan list under a 200, which
+    read as "this brand has no paid tiers" instead of "no such brand" — and, because the brand string
+    was passed straight into the Stripe catalogue cache, an unbounded number of distinct values each
+    bought a permanent cache entry and a live Stripe call from an unauthenticated endpoint.
+    """
     from apps.api_server.services.stripe_catalog import list_plans
 
-    return {"app": app, "plans": await list_plans(app)}
+    pinned = _brand_pin(request)
+    if pinned is not None and get_product(pinned) is None:
+        # Only reachable from a typo in ALGENTA_PRODUCT (the host signal is registry-derived). Surface
+        # it instead of falling back to another brand's catalogue — a silent fallback would reintroduce
+        # exactly this defect while making the operator believe the host was configured.
+        raise _invalid_product_error(pinned)
+
+    requested = (app or "").strip().lower()
+    if not requested:
+        # Nothing named and no brand host: the registry's unprefixed namespace is what a nameless brand
+        # means, so an unconfigured deployment keeps answering instead of failing closed on a public page.
+        resolved = pinned or legacy_default_product()
+    elif get_product(requested) is None:
+        raise _invalid_product_error(requested)
+    elif pinned is not None and requested != pinned:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "product_not_served",
+                    "message": (
+                        f"This deployment serves '{pinned}' plans only; it will not price "
+                        f"'{requested}'. Ask '{requested}' on its own API host."
+                    ),
+                }
+            },
+        )
+    else:
+        resolved = requested
+    return {"app": resolved, "plans": await list_plans(resolved)}
 
 
 @router.post("/v1/billing/checkout", summary="Create Stripe Checkout session")
