@@ -44,5 +44,8 @@ These are not aspirations. They are the conditions a result has to meet before i
 ## Related
 
 * [Compute kernels](compute-kernels.md) — dense and quantized matrix kernel results.
+* [Attention](attention.md) — tiled attention memory, rotary embedding, and block-size invariance.
+* [Normalization](normalization.md) — RMSNorm and LayerNorm, and the price of a safe variance.
+* [Feed-forward](feed-forward.md) — gated activations, the two GELU conventions, and embedding cost.
 * [Runtime libraries](../engine/runtime-libraries.md) — the surface these kernels are exposed through.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.

@@ -202,6 +202,9 @@
 
 * [Benchmarks](benchmarks/overview.md)
 * [Compute kernels](benchmarks/compute-kernels.md)
+* [Attention](benchmarks/attention.md)
+* [Normalization](benchmarks/normalization.md)
+* [Feed-forward](benchmarks/feed-forward.md)
 
 ## Help
 
