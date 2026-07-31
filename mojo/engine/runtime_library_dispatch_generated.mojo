@@ -5134,6 +5134,22 @@ from reservoir import (
     sample_without_replacement as _reservoir__sample_without_replacement,
 )
 
+from retrieval.fuse import (
+    rrf_fuse_flat as _retrieval_fuse__rrf_fuse_flat,
+    rrf_provenance_flat as _retrieval_fuse__rrf_provenance_flat,
+)
+
+from retrieval.score import (
+    retrieval_status_name as _retrieval_score__retrieval_status_name,
+    retrieval_finite as _retrieval_score__retrieval_finite,
+    retrieval_rank_order as _retrieval_score__retrieval_rank_order,
+    retrieval_truncation as _retrieval_score__retrieval_truncation,
+    hybrid_rank_flat as _retrieval_score__hybrid_rank_flat,
+    mmr_select_flat as _retrieval_score__mmr_select_flat,
+    retrieval_quality_flat as _retrieval_score__retrieval_quality_flat,
+    retrieval_ceiling_report as _retrieval_score__retrieval_ceiling_report,
+)
+
 from rheology import (
     shear_stress as _rheology__shear_stress,
     shear_rate as _rheology__shear_rate,
@@ -7211,6 +7227,17 @@ from regression import (
 
 from regression_tree import (
     RegressionTree,
+)
+
+from retrieval.fuse import (
+    Fusion,
+    Provenance,
+)
+
+from retrieval.score import (
+    HybridRanking,
+    MMRSelection,
+    RetrievalQuality,
 )
 
 from seq2_trainer import (
@@ -9385,6 +9412,34 @@ fn _to_json_frontsort(value: FrontSort) -> String:
     result += "]}"
     return result
 
+fn _to_json_fusion(value: Fusion) -> String:
+    var result = String("{\"__algenta_struct\":\"Fusion\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_lanes)
+    result += ","
+    result += _to_json_int(value.n_empty_lanes)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_int(value.n_returned)
+    result += ","
+    result += _to_json_float64(value.k)
+    result += ","
+    result += _to_json_list_int(value.doc_ids)
+    result += ","
+    result += _to_json_list_float64(value.scores)
+    result += ","
+    result += _to_json_list_int(value.lane_hits)
+    result += ","
+    result += _to_json_list_int(value.best_lane)
+    result += ","
+    result += _to_json_list_int(value.best_rank)
+    result += ","
+    result += _to_json_list_int(value.lane_returned)
+    result += "]}"
+    return result
+
 fn _to_json_gbdtmodel(value: GBDTModel) -> String:
     var result = String("{\"__algenta_struct\":\"GBDTModel\",\"v\":[")
     result += _to_json_int(value.n_features)
@@ -9780,6 +9835,34 @@ fn _to_json_huffmannode(value: HuffmanNode) -> String:
     result += _to_json_int(value.left)
     result += ","
     result += _to_json_int(value.right)
+    result += "]}"
+    return result
+
+fn _to_json_hybridranking(value: HybridRanking) -> String:
+    var result = String("{\"__algenta_struct\":\"HybridRanking\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_int(value.n_returned)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_bool(value.dense_ranks_nothing)
+    result += ","
+    result += _to_json_bool(value.sparse_ranks_nothing)
+    result += ","
+    result += _to_json_float64(value.max_attribution_residual)
+    result += ","
+    result += _to_json_list_int(value.doc_ids)
+    result += ","
+    result += _to_json_list_float64(value.scores)
+    result += ","
+    result += _to_json_list_float64(value.dense_part)
+    result += ","
+    result += _to_json_list_float64(value.sparse_part)
+    result += ","
+    result += _to_json_list_int(value.dominant_lane)
     result += "]}"
     return result
 
@@ -10425,6 +10508,28 @@ fn _to_json_milpresult(value: MILPResult) -> String:
     result += _to_json_int(value.lp_iterations)
     result += ","
     result += _to_json_list_float64(value.x)
+    result += "]}"
+    return result
+
+fn _to_json_mmrselection(value: MMRSelection) -> String:
+    var result = String("{\"__algenta_struct\":\"MMRSelection\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_int(value.n_selected)
+    result += ","
+    result += _to_json_float64(value.lambda_mmr)
+    result += ","
+    result += _to_json_list_int(value.doc_ids)
+    result += ","
+    result += _to_json_list_float64(value.mmr_scores)
+    result += ","
+    result += _to_json_list_float64(value.relevance)
+    result += ","
+    result += _to_json_list_float64(value.max_sim)
+    result += ","
+    result += _to_json_list_bool(value.max_sim_known)
     result += "]}"
     return result
 
@@ -11086,6 +11191,32 @@ fn _to_json_priorityqueueentry(value: PriorityQueueEntry) -> String:
     result += "]}"
     return result
 
+fn _to_json_provenance(value: Provenance) -> String:
+    var result = String("{\"__algenta_struct\":\"Provenance\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_int(value.n_returned)
+    result += ","
+    result += _to_json_float64(value.max_attribution_residual)
+    result += ","
+    result += _to_json_list_int(value.doc_ids)
+    result += ","
+    result += _to_json_list_int(value.lanes)
+    result += ","
+    result += _to_json_list_int(value.ranks)
+    result += ","
+    result += _to_json_list_float64(value.contributions)
+    result += ","
+    result += _to_json_list_float64(value.fused_scores)
+    result += ","
+    result += _to_json_list_int(value.fused_positions)
+    result += "]}"
+    return result
+
 fn _to_json_qpbound(value: QPBound) -> String:
     var result = String("{\"__algenta_struct\":\"QPBound\",\"v\":[")
     result += _to_json_int(value.status)
@@ -11537,6 +11668,28 @@ fn _to_json_reliabilitybins(value: ReliabilityBins) -> String:
     result += _to_json_list_float64(value.observed_freq)
     result += ","
     result += _to_json_list_float64(value.count)
+    result += "]}"
+    return result
+
+fn _to_json_retrievalquality(value: RetrievalQuality) -> String:
+    var result = String("{\"__algenta_struct\":\"RetrievalQuality\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_float64(value.precision)
+    result += ","
+    result += _to_json_bool(value.precision_known)
+    result += ","
+    result += _to_json_float64(value.coverage)
+    result += ","
+    result += _to_json_bool(value.coverage_known)
+    result += ","
+    result += _to_json_float64(value.relevance)
+    result += ","
+    result += _to_json_bool(value.relevance_known)
+    result += ","
+    result += _to_json_int(value.n_retrieved)
+    result += ","
+    result += _to_json_int(value.n_query_terms)
     result += "]}"
     return result
 
@@ -86847,6 +87000,201 @@ fn _dispatch_reservoir(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module reservoir."
     )
 
+fn _dispatch_retrieval__fuse(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "rrf_fuse_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _retrieval_fuse__rrf_fuse_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_fusion(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.fuse.rrf_fuse_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.fuse.rrf_fuse_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rrf_provenance_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _retrieval_fuse__rrf_provenance_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_provenance(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.fuse.rrf_provenance_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.fuse.rrf_provenance_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module retrieval.fuse."
+    )
+
+fn _dispatch_retrieval__score(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "retrieval_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _retrieval_score__retrieval_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "retrieval_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _retrieval_score__retrieval_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "retrieval_rank_order":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _retrieval_score__retrieval_rank_order(arg_0, arg_1)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_rank_order."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_rank_order expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "retrieval_truncation":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _retrieval_score__retrieval_truncation(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_truncation."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_truncation expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "hybrid_rank_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _retrieval_score__hybrid_rank_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_hybridranking(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.hybrid_rank_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.hybrid_rank_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mmr_select_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _retrieval_score__mmr_select_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_mmrselection(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.mmr_select_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.mmr_select_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "retrieval_quality_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _retrieval_score__retrieval_quality_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_retrievalquality(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_quality_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_quality_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "retrieval_ceiling_report":
+        if arg_count == 0:
+            try:
+                var result = _retrieval_score__retrieval_ceiling_report()
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for retrieval.score.retrieval_ceiling_report."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function retrieval.score.retrieval_ceiling_report expected 0 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module retrieval.score."
+    )
+
 fn _dispatch_rheology(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "shear_stress":
@@ -112306,6 +112654,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_rerank_eval(function_name, args_array)
     if module_name == "reservoir":
         return _dispatch_reservoir(function_name, args_array)
+    if module_name == "retrieval.fuse":
+        return _dispatch_retrieval__fuse(function_name, args_array)
+    if module_name == "retrieval.score":
+        return _dispatch_retrieval__score(function_name, args_array)
     if module_name == "rheology":
         return _dispatch_rheology(function_name, args_array)
     if module_name == "risk":

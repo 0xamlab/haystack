@@ -580,6 +580,40 @@ _LAZY_EXPORTS = {
     "QueryResult": ("algenta.query", "QueryResult"),
     "col": ("algenta.query", "col"),
     "lit": ("algenta.query", "lit"),
+    # ── retrieval: six typed verbs over one explicit backend ───────────────────
+    # Appended, never reordered, so no existing export moves. Lazy like the rest:
+    # importing `algenta` still probes no engine and touches no runtime, and a
+    # backend's availability is only ever resolved when a verb is actually called.
+    "BackendStatus": ("algenta.retrieval", "BackendStatus"),
+    "CompactionReport": ("algenta.retrieval", "CompactionReport"),
+    "RETRIEVAL_BACKENDS": ("algenta.retrieval", "BACKENDS"),
+    "RETRIEVAL_FUSIONS": ("algenta.retrieval", "FUSIONS"),
+    "RETRIEVAL_LANES": ("algenta.retrieval", "LANES"),
+    "RETRIEVAL_METRICS": ("algenta.retrieval", "METRICS"),
+    "RETRIEVAL_RERANK_METHODS": ("algenta.retrieval", "RERANK_METHODS"),
+    "RETRIEVAL_VERBS": ("algenta.retrieval", "VERBS"),
+    "RememberReceipt": ("algenta.retrieval", "RememberReceipt"),
+    "Retrieval": ("algenta.retrieval", "Retrieval"),
+    "RetrievalCandidate": ("algenta.retrieval", "RetrievalCandidate"),
+    "RetrievalDocument": ("algenta.retrieval", "RetrievalDocument"),
+    "RetrievalError": ("algenta.retrieval", "RetrievalError"),
+    "RetrievalFilter": ("algenta.retrieval", "RetrievalFilter"),
+    "RetrievalHit": ("algenta.retrieval", "RetrievalHit"),
+    "RetrievalLaneContribution": ("algenta.retrieval", "RetrievalLaneContribution"),
+    "RetrievalProvenance": ("algenta.retrieval", "RetrievalProvenance"),
+    "RetrievalProvenanceItem": ("algenta.retrieval", "RetrievalProvenanceItem"),
+    "RetrievalRequest": ("algenta.retrieval", "RetrievalRequest"),
+    "RetrievalResult": ("algenta.retrieval", "RetrievalResult"),
+    "backend_status": ("algenta.retrieval", "backend_status"),
+    "compact": ("algenta.retrieval", "compact"),
+    "filtered_search": ("algenta.retrieval", "filtered_search"),
+    "hybrid_search": ("algenta.retrieval", "hybrid_search"),
+    "provenance": ("algenta.retrieval", "provenance"),
+    "recall": ("algenta.retrieval", "recall"),
+    "remember": ("algenta.retrieval", "remember"),
+    "rerank": ("algenta.retrieval", "rerank"),
+    "sparse_search": ("algenta.retrieval", "sparse_search"),
+    "vector_search": ("algenta.retrieval", "vector_search"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

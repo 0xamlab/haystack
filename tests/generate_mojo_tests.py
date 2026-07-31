@@ -129,6 +129,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_optimization_scheduling.mojo",
         "test_optimization_multiobjective.mojo",
         "test_optimization_robust.mojo",
+        "test_retrieval_score.mojo",
         "test_pls.mojo",
         "test_seq_nn.mojo",
         "test_seq_training.mojo",

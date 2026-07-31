@@ -22,6 +22,7 @@
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
 * [Optimization & decision programs](engine/optimization.md)
 * [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
+* [Retrieval & ranking](engine/retrieval.md)
 * [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Reproducible evolutionary search](engine/reproducible-search.md)
 * [Asset degradation state](engine/degradation-state.md)
