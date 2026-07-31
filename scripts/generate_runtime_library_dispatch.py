@@ -1001,6 +1001,31 @@ def main() -> None:
                 + ", ".join(sorted(missing_modules))
             )
         modules = tuple(available_modules[module_name] for module_name in args.modules)
+
+    # A FILTERED generation must never land on the tracked artifact. That file is the whole runtime
+    # contract by definition, so writing a subset there does not "update" it -- it deletes the rest,
+    # and the result still COMPILES and a module-filtered build still PASSES, which is why it goes
+    # unnoticed until something calls a kernel whose arm is gone.
+    #
+    # `scripts/build_mojo_binary.sh` already stages filtered output into a temp dir, but that guard
+    # sits inside `if [[ "${MOJO_SRC}" == "${DEFAULT_MOJO_SRC}" ]]`, so any caller that sets MOJO_SRC
+    # walks past it. Measured: a `MOJO_RUNTIME_MODULE_FILTER=stats` build truncated the tracked file
+    # from 114,002 lines to 397, and it reached neither a commit nor CI only because an unrelated
+    # test happened to count import bindings.
+    #
+    # Guarding each caller is a losing game. There is exactly one place that writes this path, and a
+    # filtered subset can never be correct there whatever route the caller took, so the check lives
+    # at the sink. Filtered output must be given an explicit --output.
+    if args.modules and args.output.resolve() == TARGET.resolve():
+        raise SystemExit(
+            "refusing to write a module-FILTERED dispatch over the tracked artifact\n"
+            f"  {TARGET}\n"
+            f"  requested modules: {', '.join(args.modules)}\n"
+            "That file is the complete runtime contract; a filtered write silently deletes every\n"
+            "other module's dispatch arm and still compiles. Pass --output pointing somewhere in\n"
+            "your build directory, which is what scripts/build_mojo_binary.sh does when it stages."
+        )
+
     rendered = render_dispatch_source(modules)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered, encoding="utf-8")

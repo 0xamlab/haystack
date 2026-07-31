@@ -143,6 +143,21 @@ mkdir -p \
     "$(dirname "${DISPATCH_OUTPUT_PATH}")"
 rm -f "${TEMP_OBJECT_PATH}" "${TEMP_BINARY_PATH}"
 
+# A module-FILTERED build must not write its dispatch over the tracked artifact. Left alone, the
+# lines below hand the generator `--output <tracked> --modules <subset>`, which replaces the whole
+# ~114k-line runtime contract with the few hundred lines that subset needs. It still compiles and
+# the filtered build still passes, so nothing notices until a kernel whose dispatch arm is gone
+# answers `module_not_registered`. Measured: 114,002 lines -> 397.
+#
+# Redirecting into the build directory is the fix rather than refusing, because a filtered build is
+# a legitimate and common thing to want -- it is how a single shard gets built in seconds instead of
+# compiling the monolith. The generator ALSO refuses this combination outright as a backstop, so if
+# this redirect is ever removed the result is a loud failure and not a silent truncation.
+if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" \
+   && "${DISPATCH_OUTPUT_PATH}" == "${REPO_ROOT}/mojo/engine/runtime_library_dispatch_generated.mojo" ]]; then
+    DISPATCH_OUTPUT_PATH="${BUILD_DIR}/runtime_library_dispatch_generated.mojo"
+fi
+
 DISPATCH_GENERATOR_ARGS=(--output "${DISPATCH_OUTPUT_PATH}")
 if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" ]]; then
     IFS=',' read -r -a RAW_MODULE_FILTER <<< "${MOJO_RUNTIME_MODULE_FILTER_RAW}"
