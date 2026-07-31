@@ -9,10 +9,19 @@ so they carry the most assertions:
 
 Both are checked on data built specifically to expose them: adjacent partitions with
 distinctive values, and a tie in the middle of a partition.
+
+A third failure of the same kind is a NaN partition key: `!=` says NaN differs from
+itself, so an adjacency cut gives one single-row partition per NaN row while
+`aggregate.group_by` — through `columnar.hash_index`, which normalizes every NaN — puts
+them all in one group. Two groupings of one column, both reported as success. The NaN
+block below pins the partitioning AND checks it against `group_by` on the same column,
+because agreeing with the frozen index is the actual requirement, not merely having some
+NaN behaviour.
 """
 from columnar.array import Float64Array, float64_from_list, float64_with_nulls
 from columnar.batch import RecordBatch, schema_of
 from numeric.contract import AGG_AVG, AGG_COUNT, AGG_MAX, AGG_MIN, AGG_SUM
+from query.aggregate import group_by
 from query.window import (
     FRAME_UNBOUNDED,
     NO_ROW,
@@ -33,6 +42,10 @@ fn _batch(
     var names: List[String], var cols: List[Float64Array], n: Int
 ) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
+
+
+fn _nan() -> Float64:
+    return Float64(0.0) / Float64(0.0)
 
 
 fn _sales() -> RecordBatch:
@@ -397,6 +410,262 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ empty-frame policy wrong")
+
+    # ── a NaN partition key is ONE partition, the same as group_by's one group ─
+    # Three NaN rows interleaved with two real keys. The NaNs are deliberately NOT
+    # adjacent in row order and the sort cannot make them adjacent either —
+    # `executor._key_precedes` answers False in both directions for a NaN, so a NaN
+    # neither moves nor lets anything move past it. An adjacency cut therefore gave SIX
+    # single-row partitions here (one per row); `columnar.hash_index` gives THREE groups.
+    #
+    #     row  region  month  amount
+    #     0    NaN     1      10
+    #     1    1.0     1      100
+    #     2    NaN     2      20
+    #     3    2.0     1      500
+    #     4    NaN     3      30
+    #     5    1.0     2      200
+    #
+    # The three NaNs use three DIFFERENT bit patterns, so this checks normalization and
+    # not merely that one NaN equals itself.
+    var nan_region = List[Float64]()
+    var nan_month = List[Float64]()
+    var nan_amount = List[Float64]()
+    nan_region.append(_nan());        nan_month.append(1.0); nan_amount.append(10.0)
+    nan_region.append(1.0);           nan_month.append(1.0); nan_amount.append(100.0)
+    nan_region.append(_nan() * 2.0);  nan_month.append(2.0); nan_amount.append(20.0)
+    nan_region.append(2.0);           nan_month.append(1.0); nan_amount.append(500.0)
+    nan_region.append(-_nan());       nan_month.append(3.0); nan_amount.append(30.0)
+    nan_region.append(1.0);           nan_month.append(2.0); nan_amount.append(200.0)
+
+    var qnames = List[String]()
+    qnames.append("region")
+    qnames.append("month")
+    qnames.append("amount")
+    var qcols = List[Float64Array]()
+    qcols.append(float64_from_list(nan_region^))
+    qcols.append(float64_from_list(nan_month^))
+    qcols.append(float64_from_list(nan_amount^))
+    var qbatch = _batch(qnames^, qcols^, 6)
+    var qparts = _partitions(qbatch)
+
+    if qparts.count() == 3:
+        passed += 1
+        print("  ✅ NaN + 1.0 + 2.0 is 3 partitions, not one per NaN row")
+    else:
+        failed += 1
+        print("  ❌ NaN partitioning wrong:", qparts.count(), "partitions")
+
+    # All three NaN rows in ONE partition, and that partition is not a real key's.
+    var nan_p = qparts.partition_of(0)
+    if (
+        nan_p >= 0
+        and qparts.partition_of(2) == nan_p
+        and qparts.partition_of(4) == nan_p
+        and qparts.lengths[nan_p] == 3
+        and qparts.partition_of(1) != nan_p
+        and qparts.partition_of(3) != nan_p
+    ):
+        passed += 1
+        print("  ✅ rows 0,2,4 (three distinct NaN patterns) share one 3-row partition")
+    else:
+        failed += 1
+        print("  ❌ NaN rows did not share a partition:", nan_p,
+              qparts.partition_of(2), qparts.partition_of(4))
+
+    # The real keys still partition normally alongside the NaNs: 1.0 -> rows 1,5 and
+    # 2.0 -> row 3. A NaN must not absorb or displace a real key.
+    var one_p = qparts.partition_of(1)
+    var two_p = qparts.partition_of(3)
+    if (
+        qparts.partition_of(5) == one_p
+        and one_p != two_p
+        and qparts.lengths[one_p] == 2
+        and qparts.lengths[two_p] == 1
+    ):
+        passed += 1
+        print("  ✅ NaN mixed with real keys: 1.0 -> 2 rows, 2.0 -> 1 row, unaffected")
+    else:
+        failed += 1
+        print("  ❌ real keys mispartitioned next to a NaN:", one_p, two_p)
+
+    # Partitions stay CONTIGUOUS spans of `groups` even though the NaN rows are not
+    # adjacent in the sorted order — every frame walks a span, so a hole would silently
+    # mix two partitions.
+    var span_ok = True
+    var covered = 0
+    for p in range(qparts.count()):
+        covered += qparts.lengths[p]
+        for i in range(qparts.lengths[p]):
+            if qparts.row_at(p, i) == NO_ROW or qparts.partition_of(
+                qparts.row_at(p, i)
+            ) != p:
+                span_ok = False
+        if qparts.row_at(p, qparts.lengths[p]) != NO_ROW:
+            span_ok = False
+    if span_ok and covered == 6:
+        passed += 1
+        print("  ✅ every row appears exactly once, in a contiguous partition span")
+    else:
+        failed += 1
+        print("  ❌ partition spans are not contiguous/complete:", covered)
+
+    # ── the window grouping IS aggregate.group_by's grouping ─────────────────
+    # The reference is `columnar.hash_index`, which `group_by` uses and which shipped
+    # first. Same column, same key semantics, so: same group count, same per-group row
+    # counts, and the same per-row total from `partition_total` as from `group_by`.
+    var grouped = group_by(qbatch, 0, 2, AGG_SUM)
+    if grouped.n_groups() == qparts.count() and grouped.null_key_rows == 0:
+        passed += 1
+        print("  ✅ group_by sees the same 3 groups partition_rows sees")
+    else:
+        failed += 1
+        print("  ❌ group_by and partition_rows disagree on group count:",
+              grouped.n_groups(), qparts.count())
+
+    # Both orders are first-appearance, so they line up index for index here.
+    if (
+        grouped.counts[0] == 3.0
+        and grouped.counts[1] == 2.0
+        and grouped.counts[2] == 1.0
+        and Float64(qparts.lengths[0]) == grouped.counts[0]
+        and Float64(qparts.lengths[1]) == grouped.counts[1]
+        and Float64(qparts.lengths[2]) == grouped.counts[2]
+    ):
+        passed += 1
+        print("  ✅ per-group row counts match the partition lengths: 3, 2, 1")
+    else:
+        failed += 1
+        print("  ❌ group counts != partition lengths:", grouped.counts[0],
+              qparts.lengths[0])
+
+    # NaN rows sum to 10+20+30 = 60 as ONE group; per-row it must be 60 on all three,
+    # not each row's own amount, which is what a partition-per-NaN-row would give.
+    var qtotal = partition_total(qbatch, qparts, 2, AGG_SUM)
+    if (
+        qtotal.get(0) == 60.0
+        and qtotal.get(2) == 60.0
+        and qtotal.get(4) == 60.0
+        and qtotal.get(1) == 300.0
+        and qtotal.get(5) == 300.0
+        and qtotal.get(3) == 500.0
+    ):
+        passed += 1
+        print("  ✅ partition_total over NaN keys is 60 on all three rows, not 10/20/30")
+    else:
+        failed += 1
+        print("  ❌ NaN partition_total wrong:", qtotal.get(0), qtotal.get(2),
+              qtotal.get(4))
+
+    if (
+        qtotal.get(0) == grouped.values[0]
+        and qtotal.get(1) == grouped.values[1]
+        and qtotal.get(3) == grouped.values[2]
+    ):
+        passed += 1
+        print("  ✅ partition_total equals group_by's SUM group for group: 60/300/500")
+    else:
+        failed += 1
+        print("  ❌ window and aggregate produced different sums:", qtotal.get(0),
+              grouped.values[0])
+
+    # ── a NaN ORDER key is a TIE, the same equality the partitioning uses ────
+    # One partition, two NaN amounts. The comparator cannot order NaNs, so this asserts
+    # only what does not depend on their position: the two NaN rows get the SAME rank.
+    # Ranking them 1 and 2 would be a second definition of "equal" in one file.
+    var tie_g = List[Float64]()
+    var tie_v = List[Float64]()
+    tie_g.append(1.0); tie_v.append(_nan())
+    tie_g.append(1.0); tie_v.append(_nan() * 3.0)
+    tie_g.append(1.0); tie_v.append(5.0)
+    tie_g.append(1.0); tie_v.append(7.0)
+    var tnames = List[String]()
+    tnames.append("g")
+    tnames.append("v")
+    var tcols = List[Float64Array]()
+    tcols.append(float64_from_list(tie_g^))
+    tcols.append(float64_from_list(tie_v^))
+    var tbatch = _batch(tnames^, tcols^, 4)
+    var tby = List[Int]()
+    tby.append(0)
+    var torder = List[Int]()
+    torder.append(1)
+    var tdesc = List[Bool]()
+    tdesc.append(False)
+    var tparts = partition_rows(tbatch, tby, torder, tdesc, True)
+    var trank = rank(tbatch, tparts, 1)
+    var tdense = dense_rank(tbatch, tparts, 1)
+    if (
+        tparts.count() == 1
+        and trank.get(0) == trank.get(1)
+        and tdense.get(0) == tdense.get(1)
+        and trank.get(2) != trank.get(0)
+        and trank.get(3) != trank.get(2)
+    ):
+        passed += 1
+        print("  ✅ two NaN order keys tie in rank and dense_rank, 5 and 7 do not")
+    else:
+        failed += 1
+        print("  ❌ NaN ranks are not tied:", trank.get(0), trank.get(1))
+
+    # ── -0.0 and +0.0 are one partition, as hash_index says ─────────────────
+    # They compare equal under `==` too, so this is a regression guard on the
+    # normalization rather than a change: a bit-pattern comparison would split them.
+    var z_region = List[Float64]()
+    var z_month = List[Float64]()
+    z_region.append(0.0);  z_month.append(1.0)
+    z_region.append(-0.0); z_month.append(2.0)
+    z_region.append(1.0);  z_month.append(3.0)
+    var znames = List[String]()
+    znames.append("region")
+    znames.append("month")
+    var zcols = List[Float64Array]()
+    zcols.append(float64_from_list(z_region^))
+    zcols.append(float64_from_list(z_month^))
+    var zbatch = _batch(znames^, zcols^, 3)
+    var zparts = _partitions(zbatch)
+    if (
+        zparts.count() == 2
+        and zparts.partition_of(0) == zparts.partition_of(1)
+        and zparts.partition_of(2) != zparts.partition_of(0)
+    ):
+        passed += 1
+        print("  ✅ -0.0 and +0.0 are one partition; 1.0 is another")
+    else:
+        failed += 1
+        print("  ❌ signed zero partitioning wrong:", zparts.count())
+
+    # ── null partition keys: still their own partition, still all together ───
+    # The documented divergence from `aggregate`, which EXCLUDES a null-keyed row. Pinned
+    # so the NaN fix cannot quietly change it: two nulls remain one partition and the
+    # rows keep a window value.
+    var un_region = List[Float64]()
+    var un_mask = List[Bool]()
+    var un_month = List[Float64]()
+    un_region.append(0.0); un_mask.append(False); un_month.append(1.0)
+    un_region.append(7.0); un_mask.append(True);  un_month.append(2.0)
+    un_region.append(0.0); un_mask.append(False); un_month.append(3.0)
+    var unames = List[String]()
+    unames.append("region")
+    unames.append("month")
+    var ucols = List[Float64Array]()
+    ucols.append(float64_with_nulls(un_region^, un_mask))
+    ucols.append(float64_from_list(un_month^))
+    var ubatch = _batch(unames^, ucols^, 3)
+    var uparts = _partitions(ubatch)
+    var urn = row_number(ubatch, uparts)
+    if (
+        uparts.count() == 2
+        and uparts.partition_of(0) == uparts.partition_of(2)
+        and uparts.partition_of(1) != uparts.partition_of(0)
+        and urn.is_valid_at(0)
+        and urn.is_valid_at(2)
+    ):
+        passed += 1
+        print("  ✅ null keys form ONE partition of their own and keep a window value")
+    else:
+        failed += 1
+        print("  ❌ null-key partitioning changed:", uparts.count())
 
     # ── lineage description ──────────────────────────────────────────────────
     if describe_partitions(parts).find("2 partitions, largest 4 rows") >= 0:

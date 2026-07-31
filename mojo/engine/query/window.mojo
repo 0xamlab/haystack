@@ -33,9 +33,44 @@ A frame containing no live values gives `count` 0 and `sum` 0 — real answers �
 mean, min or max. SQL returns NULL for `SUM() OVER` on an empty frame; `numeric.contract`
 says the sum of nothing is 0 and that contract is what every other new surface here
 obeys, so this follows it rather than SQL. Stated because it is a real divergence.
+
+What counts as the SAME key — `columnar.hash_index` is the reference
+-------------------------------------------------------------------
+`keys_equal_at` below is the one definition of key equality in this file, and it is
+`columnar.hash_index.normalize_bits` — the frozen, already-shipped notion that
+`query.aggregate`'s `group_by` / `group_by_multi` group by. That index is the tiebreaker
+because it shipped first and because a second definition of "the same key" inside one
+package is a defect on its own: the same column grouped two ways would give two
+different groupings and neither docstring would say so.
+
+Concretely, `normalize_bits` collapses every NaN onto one quiet NaN and `-0.0` onto
+`+0.0`, so:
+
+  * **all NaN rows form ONE partition**, not one partition per row. Raw `!=` would cut a
+    fresh partition for every NaN row, because NaN != NaN — which also means a `rank` or
+    a `partition_total` computed over them would be a per-row self-report dressed up as
+    a group answer.
+  * `-0.0` and `+0.0` are one partition, which raw `==` already agreed with. Normalizing
+    keeps the hash and the comparison from disagreeing.
+
+Because the sort comparator cannot order NaN (nothing precedes a NaN and a NaN precedes
+nothing), NaN rows are NOT necessarily adjacent after the sort. So partitioning cannot
+be a cut between adjacent rows; it is a hash grouping through the frozen
+`CompositeKeyIndex`. See `partition_rows`.
+
+Null keys still diverge from `aggregate`, deliberately
+-----------------------------------------------------
+`group_by` EXCLUDES a row whose key is null and counts it in `null_key_rows`; here a
+null partition key forms its own partition and the row keeps its window value, which is
+what `PARTITION BY` means and what `query.plan`'s header already states. That divergence
+is about a row belonging to no group versus belonging to the "unknown" group — a
+different question from what equality means, and it is documented on both sides rather
+than silently different. Within a partition column, two nulls are the same key, matching
+what the presence-comparison here has always done.
 """
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch
+from columnar.hash_index import CompositeKeyIndex, normalize_bits
 from numeric.contract import (
     AGG_AVG,
     AGG_COUNT,
@@ -100,6 +135,29 @@ struct Partitions(Copyable, Movable):
         return -1
 
 
+fn keys_equal_at(column: Float64Array, left_row: Int, right_row: Int) -> Bool:
+    """Whether two rows carry the same key value, by `columnar.hash_index`'s definition.
+
+    The ONE definition of key equality in this file, so `partition_rows` and
+    `_rank_column` cannot drift into disagreeing about what a tie is — and so neither
+    disagrees with `query.aggregate`, which groups through the same `normalize_bits`.
+
+    Two absences are the same key: a partition of nulls is one partition and a run of
+    nulls is one tie, which is what the presence comparison here has always done. Two
+    NaNs are also the same key, because `normalize_bits` collapses them; raw `!=` would
+    make every NaN row distinct from every other including itself.
+    """
+    var left_present = column.is_valid_at(left_row)
+    var right_present = column.is_valid_at(right_row)
+    if left_present != right_present:
+        return False
+    if not left_present:
+        return True
+    return normalize_bits(column.get(left_row)) == normalize_bits(
+        column.get(right_row)
+    )
+
+
 fn partition_rows(
     batch: RecordBatch,
     partition_columns: List[Int],
@@ -111,8 +169,31 @@ fn partition_rows(
 
     Ordering runs ONCE over the whole batch, keyed by the partition columns first and
     the order columns after — so a single stable multi-key sort produces every
-    partition already in window order, contiguously. Sorting per partition would be the
-    obvious implementation and would cost a sort per group.
+    partition already in window order. Sorting per partition would be the obvious
+    implementation and would cost a sort per group.
+
+    Grouping is a HASH on the key tuple, not a cut between adjacent rows
+    -------------------------------------------------------------------
+    The earlier implementation walked the sorted rows and started a new partition
+    wherever the key differed from the previous row's. That is only sound if equal keys
+    are adjacent, and for a NaN key they are not: `executor._key_precedes` answers False
+    in both directions for a NaN, so a NaN neither moves nor lets anything move past it
+    and NaN rows stay wherever they started. Combined with `!=`, which is True for every
+    pair of NaNs, EVERY NaN row became its own single-row partition while
+    `aggregate.group_by` put them all in one group — the same column grouped two ways,
+    two answers.
+
+    So the key tuple goes through the frozen `columnar.hash_index.CompositeKeyIndex`,
+    which is what `aggregate.group_by_multi` uses, and partition membership no longer
+    depends on the sort having ordered the key at all. Each column contributes TWO
+    components, `(present, value)`, because the index has no notion of a null and a
+    present 0.0 must not collide with an absent cell; `normalize_bits` inside the index
+    then does the NaN and `-0.0` collapsing (see the module header).
+
+    Equal keys still occupy a CONTIGUOUS span of `groups`, in the sorted order, and
+    partitions still appear in order of first appearance — so for key columns with no
+    NaN this returns exactly what the adjacency cut returned. Two extra `Int` lists of
+    `len(ordered)` are the cost; the caller's row cap lives in `query.plan`.
 
     An empty `partition_columns` is one partition over everything, which is what
     `OVER (ORDER BY ...)` with no PARTITION BY means.
@@ -135,36 +216,56 @@ fn partition_rows(
         lengths.append(len(ordered))
         return Partitions(ordered^, starts^, lengths^)
 
-    # Walk the ordered rows and cut a new partition whenever the key tuple changes.
-    # Sound only because the sort put the partition columns first: equal keys are
-    # adjacent by construction, so no index is needed here.
     var key_cols = List[Float64Array]()
     for i in range(len(partition_columns)):
         key_cols.append(batch.column(partition_columns[i]))
+    var width = len(key_cols)
 
-    var current_start = 0
+    # Pass 1: a partition slot per sorted position, assigned in order of first
+    # appearance. `key` is allocated once and overwritten per row rather than built per
+    # row, so grouping costs no allocation per row.
+    var index = CompositeKeyIndex(2 * width, 64)
+    var key = List[Float64]()
+    for _ in range(2 * width):
+        key.append(0.0)
+    var slot_of_position = List[Int]()
     for position in range(len(ordered)):
-        if position == 0:
-            continue
-        var previous = ordered[position - 1]
         var row = ordered[position]
-        var changed = False
-        for c in range(len(key_cols)):
-            var prev_present = key_cols[c].is_valid_at(previous)
-            var row_present = key_cols[c].is_valid_at(row)
-            if prev_present != row_present:
-                changed = True
-            elif prev_present and key_cols[c].get(previous) != key_cols[c].get(row):
-                changed = True
-        if changed:
-            starts.append(current_start)
-            lengths.append(position - current_start)
-            current_start = position
-    if len(ordered) > 0:
-        starts.append(current_start)
-        lengths.append(len(ordered) - current_start)
+        for c in range(width):
+            var present = key_cols[c].is_valid_at(row)
+            key[2 * c] = 1.0 if present else 0.0
+            key[2 * c + 1] = key_cols[c].get(row) if present else 0.0
+        var next_slot = len(lengths)
+        var slot = index.get_or_assign(key, next_slot)
+        if slot == next_slot:
+            # A newly assigned slot; `lengths` grows with it, and this is the only place
+            # the index and the length array can get out of step.
+            lengths.append(0)
+        lengths[slot] += 1
+        slot_of_position.append(slot)
 
-    return Partitions(ordered^, starts^, lengths^)
+    # Pass 2: lay the partitions out contiguously. `starts` is the prefix sum of
+    # `lengths`, and a per-partition cursor scatters each row into its own span while
+    # preserving the sorted order within it.
+    var offset = 0
+    var cursor = List[Int]()
+    for p in range(len(lengths)):
+        starts.append(offset)
+        cursor.append(offset)
+        offset += lengths[p]
+
+    var groups = List[Int]()
+    for _ in range(len(ordered)):
+        groups.append(0)
+    for position in range(len(ordered)):
+        # Every index here is in range by construction: a slot is < len(cursor), and a
+        # cursor stays inside its own span because the span is exactly that slot's
+        # count. Rule 1 — a read past the end would take the worker down.
+        var slot = slot_of_position[position]
+        groups[cursor[slot]] = ordered[position]
+        cursor[slot] += 1
+
+    return Partitions(groups^, starts^, lengths^)
 
 
 fn row_number(batch: RecordBatch, partitions: Partitions) -> Float64Array:
@@ -193,6 +294,10 @@ fn _rank_column(
     One implementation for both, because the difference is a single counter: `rank`
     advances by the size of the tied run, `dense_rank` by one. Written once so the two
     cannot drift into disagreeing about what a tie is.
+
+    A tie is `keys_equal_at`, the same equality `partition_rows` groups by, so two NaNs
+    tie rather than ranking 1 and 2 — one notion of equality per package, and
+    `columnar.hash_index` is the reference for it (see the module header).
     """
     var key = batch.column(order_column)
     var values = List[Float64]()
@@ -208,11 +313,7 @@ fn _rank_column(
             var row = partitions.row_at(p, i)
             if i > 0:
                 var previous = partitions.row_at(p, i - 1)
-                var prev_present = key.is_valid_at(previous)
-                var row_present = key.is_valid_at(row)
-                var tied = prev_present == row_present and (
-                    not row_present or key.get(previous) == key.get(row)
-                )
+                var tied = keys_equal_at(key, previous, row)
                 if not tied:
                     if dense:
                         # Next distinct value, next rank. No gaps.

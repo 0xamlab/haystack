@@ -249,6 +249,240 @@ def test_limit_carries_offset_and_count():
     }
 
 
+# ── join and window wire shape ────────────────────────────────────────────────
+#
+# The engine owns the same checks — a caller on another binding has no builder — so
+# these pin only that the builder cannot EMIT an op the kernel would reject, and that
+# the request stays byte-identical for a plan with no side tables. Resource limits
+# (table count, output rows, window rows) are deliberately absent here: only the engine
+# knows the real counts, and one limit at two strengths is worse than one.
+
+
+def test_a_plan_without_tables_sends_no_tables_key():
+    """Byte-identical to what the same plan sent before joins existed, so no plan hash
+    that a caller recorded moves."""
+    assert "tables" not in _plan().sort("amount").to_request()
+
+
+def test_a_table_travels_beside_the_plan_not_inside_the_op():
+    """`plan_hash` is over `ops`; rows inside an op would make it data-dependent, and
+    two runs of one computation over different data would stop comparing."""
+    plan = (
+        _plan()
+        .with_table("customers", ["id", "tier"], rows=[[7, 1]])
+        .join("customers", left_on="region", right_on="id", how="left")
+    )
+    request = plan.to_request()
+    assert request["tables"] == [
+        {"name": "customers", "columns": ["id", "tier"], "rows": [[7.0, 1.0]]}
+    ]
+    assert request["ops"] == [
+        {
+            "op": "join",
+            "table": "customers",
+            "left_on": "region",
+            "right_on": "id",
+            "how": "left",
+            "method": "hash",
+        }
+    ]
+    assert "rows" not in request["ops"][0]
+
+
+def test_a_table_takes_rows_or_a_handle_but_not_both():
+    with pytest.raises(QueryError, match="exactly one of rows or dataset"):
+        _plan().with_table("customers", ["id"], rows=[[1]], dataset="ds_1")
+    with pytest.raises(QueryError, match="exactly one of rows or dataset"):
+        _plan().with_table("customers", ["id"])
+
+
+def test_a_table_name_is_declared_once():
+    """Two entries with one name would leave which body a join reads to the engine."""
+    plan = _plan().with_table("customers", ["id"], rows=[[1]])
+    with pytest.raises(QueryError, match="declared twice"):
+        plan.with_table("customers", ["id"], rows=[[2]])
+
+
+def test_the_on_shorthand_is_spelled_out_on_the_wire():
+    plan = _plan().with_table("c", ["region"], rows=[[1]]).join("c", on="region")
+    assert plan.ops[0]["left_on"] == plan.ops[0]["right_on"] == "region"
+
+
+def test_a_mix_of_on_and_one_side_is_rejected():
+    plan = _plan().with_table("c", ["id"], rows=[[1]])
+    with pytest.raises(QueryError, match="not a mix"):
+        plan.join("c", on="region", right_on="id")
+
+
+def test_an_unimplemented_join_is_rejected_by_name():
+    """Never silently mapped to `left`, which answers a different question."""
+    for how in ("right", "outer", "full", "cross"):
+        with pytest.raises(QueryError, match="not implemented"):
+            _plan().join("c", on="region", how=how)
+
+
+def test_a_merge_semi_join_is_rejected_rather_than_falling_back_to_hash():
+    with pytest.raises(QueryError, match="not defined for how 'semi'"):
+        _plan().join("c", on="region", how="semi", method="merge")
+
+
+def test_a_prefix_on_a_semi_join_is_rejected_rather_than_ignored():
+    """semi/anti emit no right columns, so a prefix would silently do nothing."""
+    with pytest.raises(QueryError, match="no right columns"):
+        _plan().join("c", on="region", how="anti", prefix="c.")
+
+
+def test_an_undeclared_table_is_caught_before_the_wire():
+    plan = _plan().with_table("customers", ["id"], rows=[[1]])
+    plan.join("orders", on="region")
+    with pytest.raises(QueryError, match="available: customers"):
+        plan.to_request()
+
+
+def test_a_join_error_carries_the_index_the_op_would_have_had():
+    plan = _plan().sort("amount")
+    with pytest.raises(QueryError) as caught:
+        plan.join("c", on="region", how="cross")
+    assert caught.value.op_index == 1
+
+
+def test_the_window_output_name_is_emitted_as_as():
+    """`as` is a Python keyword, so the builder kwarg is `name=`."""
+    plan = _plan().row_number(name="seq", partition_by="region", order_by="amount")
+    assert plan.ops[0] == {
+        "op": "window",
+        "fn": "row_number",
+        "as": "seq",
+        "nulls_last": True,
+        "partition_by": ["region"],
+        "order_by": ["amount"],
+    }
+
+
+def test_a_window_needs_an_output_name():
+    with pytest.raises(QueryError, match="requires 'as'"):
+        _plan().window("row_number", name="", order_by="amount")
+
+
+def test_an_unknown_window_fn_lists_the_accepted_set():
+    with pytest.raises(QueryError, match="got 'ntile'"):
+        _plan().window("ntile", name="x", order_by="amount")
+
+
+def test_rank_needs_exactly_one_order_column():
+    """`_rank_column` defines a tie by that one column; several would report ties that
+    are not ties."""
+    with pytest.raises(QueryError, match="exactly one 'order_by'"):
+        _plan().window("rank", name="r", order_by=["region", "amount"])
+
+
+def test_every_fn_but_partition_total_needs_an_order():
+    with pytest.raises(QueryError, match="non-empty 'order_by'"):
+        _plan().window("cumulative", name="t", value="amount", agg="sum")
+    # Order-independent by definition, so its absence is not an error.
+    assert "order_by" not in _plan().partition_total(
+        "amount", name="total", partition_by="region"
+    ).ops[0]
+
+
+def test_a_desc_list_must_match_the_order_columns():
+    with pytest.raises(QueryError, match="2 expected, 1 given"):
+        _plan().window(
+            "row_number", name="seq", order_by=["region", "amount"], desc=[True]
+        )
+
+
+def test_a_scalar_desc_is_broadcast_across_the_order_columns():
+    plan = _plan().window(
+        "row_number", name="seq", order_by=["region", "amount"], desc=True
+    )
+    assert plan.ops[0]["desc"] == [True, True]
+
+
+def test_a_value_is_required_where_it_is_read_and_rejected_where_it_is_not():
+    with pytest.raises(QueryError, match="requires 'value'"):
+        _plan().window("lag", name="prev", order_by="amount")
+    with pytest.raises(QueryError, match="takes no 'value'"):
+        _plan().window("row_number", name="seq", order_by="amount", value="amount")
+
+
+def test_a_window_aggregation_the_frame_cannot_answer_is_rejected():
+    """`var` would come back as a full column of nulls carrying a success status."""
+    for agg in ("var", "std", "median"):
+        with pytest.raises(QueryError, match="not defined over a window frame"):
+            _plan().running("amount", name="v", order_by="amount", agg=agg)
+
+
+def test_a_lag_offset_must_be_at_least_one():
+    """A signed offset is not the wire API: `lag` with -1 would silently be a lead."""
+    with pytest.raises(QueryError, match="'offset' >= 1"):
+        _plan().lag("amount", name="prev", order_by="amount", offset=0)
+    assert _plan().lag("amount", name="prev", order_by="amount").ops[0]["offset"] == 1
+
+
+def test_a_rolling_frame_needs_a_preceding_and_a_negative_one_is_rejected():
+    """-1 is FRAME_UNBOUNDED inside the kernel and never crosses the wire, so a stray
+    -1 cannot turn a rolling frame into a cumulative one."""
+    with pytest.raises(QueryError, match="use fn 'cumulative'"):
+        _plan().window("framed", name="a", order_by="amount", value="amount", agg="avg")
+    with pytest.raises(QueryError, match="use fn 'cumulative'"):
+        _plan().rolling(
+            "amount", name="a", order_by="amount", preceding=-1, agg="avg"
+        )
+    assert _plan().rolling(
+        "amount", name="a", order_by="amount", preceding=2, agg="avg"
+    ).ops[0]["preceding"] == 2
+
+
+def test_an_integer_the_wire_cannot_carry_is_rejected_not_wrapped():
+    """The engine reads a plan's integers as signed 64-bit with `value*10 + digit`,
+    which wraps instead of trapping — so `offset=2**64 + 3` would arrive as a lag of 3
+    and be answered successfully. Every integer that reaches the wire is range-checked
+    here, where the value the caller wrote still exists to quote back."""
+    past = 2**63
+    for build in (
+        lambda v: _plan().lag("amount", name="p", order_by="amount", offset=v),
+        lambda v: _plan().lead("amount", name="n", order_by="amount", offset=v),
+        lambda v: _plan().rolling(
+            "amount", name="r", order_by="amount", preceding=v
+        ),
+        lambda v: _plan().limit(v),
+        lambda v: _plan().limit(10, offset=v),
+        lambda v: _plan().top_k("amount", v),
+    ):
+        with pytest.raises(QueryError, match="signed 64-bit") as raised:
+            build(past + 3)
+        assert raised.value.code == "invalid_arguments"
+        assert raised.value.op_index == 0
+        # The boundary itself still crosses, so the check rejects only what wraps.
+        build(past - 1)
+
+
+def test_a_non_integer_offset_is_named_rather_than_crashing_the_builder():
+    """`int(float('inf'))` raises OverflowError, `int('x')` a ValueError and
+    `int(None)` a TypeError — three exception types for one caller mistake, so they
+    are normalised into the QueryError the rest of this builder raises."""
+    for value in (float("inf"), float("nan"), "seven", object()):
+        with pytest.raises(QueryError, match="must be an integer"):
+            _plan().lag("amount", name="p", order_by="amount", offset=value)
+
+
+def test_the_sugar_emits_the_same_op_as_the_general_form():
+    """One op vocabulary, several spellings — the sugar must not become a dialect."""
+    sugar = _plan().running(
+        "amount", name="t", partition_by="region", order_by="amount"
+    )
+    general = _plan().window(
+        "cumulative",
+        name="t",
+        partition_by="region",
+        order_by="amount",
+        value="amount",
+        agg="sum",
+    )
+    assert sugar.ops == general.ops
+
+
 # ── result decoding ───────────────────────────────────────────────────────────
 
 

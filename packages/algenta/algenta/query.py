@@ -30,6 +30,29 @@ A predicate over an absent value is *unknown*, and unknown does not pass a filte
 so a row with a missing amount is neither kept nor counted, rather than silently
 being treated as amount 0.
 
+Joins and windows
+-----------------
+A join reads a NAMED SIDE TABLE declared once per request, never inside an op:
+
+    result = (
+        Query(columns=["order_id", "customer_id", "amount"], rows=orders)
+        .with_table("customers", ["id", "tier"], rows=customers)
+        .join("customers", left_on="customer_id", right_on="id", how="left")
+        .running("amount", name="running_total",
+                 partition_by="customers.tier", order_by="order_id")
+        .run(rt, routing_module="stats")
+    )
+
+Tables live beside the plan because `plan_hash` is over `ops`: rows inside an op
+would make the hash data-dependent, so two runs of the same computation over
+different data would stop comparing — which is the one property the hash has. The
+table's NAME, keys, `how`, `method` and `prefix` are in `ops` and so in the hash; its
+body is not, exactly as the left side's `rows` are not.
+
+A window function appends ONE column and does not reorder the rows. `partition_by`
+and `order_by` are column names; the output name is required, because every default
+either is ambiguous or shadows an existing column.
+
 `routing_module` picks which shard binary serves the request. It exists because the
 runtime is shipped as filtered shards — nobody installs all 495 modules — so the
 call has to say which shard it belongs to. Any module in the installed shard works;
@@ -74,6 +97,71 @@ _OP_COALESCE = 122
 _OP_COL_REF = 130
 
 _ACCEPTED_AGGREGATIONS = ("sum", "avg", "mean", "min", "max", "count", "var", "std")
+
+# ── join / window vocabularies, mirroring query/plan.mojo ─────────────────────
+# Local tuples rather than a call to the engine: a typo caught here carries the
+# caller's traceback, and a builder that can emit an op the kernel will reject is
+# a bug. The engine's five resource bounds are deliberately NOT enforced here — a
+# limit checked in two places at two strengths is worse than one, and only the
+# engine knows the real row counts — but they ARE written down, in the docstrings
+# of `with_table`, `join` and `window`, because a caller cannot plan around a limit
+# nobody states. They are, in full:
+#
+#   MAX_TABLES              8 named side tables per request
+#   MAX_MATERIALIZED_CELLS  32,000,000 cells, summed over every side table AND
+#                           over a join's materialized output
+#   MAX_JOIN_OUTPUT_ROWS    1,000,000 rows out of one join
+#   MAX_WINDOW_ROWS         20,000 rows INTO a window op
+#   MAX_COLUMNS             512 columns in any declared header, and the ceiling a
+#                           window's appended column counts against
+#
+# The engine's message reports the number it measured, which is the reason the
+# check belongs there and not here.
+_ACCEPTED_JOIN_HOW = ("inner", "left", "semi", "anti")
+_UNIMPLEMENTED_JOIN_HOW = ("right", "outer", "full", "cross")
+_ACCEPTED_JOIN_METHODS = ("hash", "merge")
+_JOIN_HOW_WITHOUT_RIGHT_COLUMNS = ("semi", "anti")
+
+_ACCEPTED_WINDOW_FNS = (
+    "row_number",
+    "rank",
+    "dense_rank",
+    "lag",
+    "lead",
+    "cumulative",
+    "framed",
+    "partition_total",
+)
+# A window frame answers sum/avg/min/max/count. `parse_aggregation` also accepts
+# var/std/median, but the frame kernels answer those with an all-null column and a
+# success status, so they are rejected rather than shipped.
+_ACCEPTED_WINDOW_AGGREGATIONS = ("sum", "avg", "mean", "min", "max", "count")
+_WINDOW_FNS_TAKING_VALUE = ("lag", "lead", "cumulative", "framed", "partition_total")
+_WINDOW_FNS_TAKING_AGG = ("cumulative", "framed", "partition_total")
+_WINDOW_FNS_TAKING_OFFSET = ("lag", "lead")
+# Every fn except partition_total needs an order: a running total with no order is
+# not a defined answer. partition_total is order-independent by definition, so an
+# order_by there is accepted and ignored — one spec can be shared across ops.
+_WINDOW_FNS_NEEDING_ORDER = (
+    "row_number",
+    "rank",
+    "dense_rank",
+    "lag",
+    "lead",
+    "cumulative",
+    "framed",
+)
+# A tie is defined by the single order column, so several would report ties that
+# are not ties.
+_WINDOW_FNS_NEEDING_ONE_ORDER = ("rank", "dense_rank")
+
+# The widest integer the plan's JSON survives. Python's `int` is unbounded; the engine
+# reads an integer with `value = value*10 + digit` in SIGNED 64-BIT arithmetic, which
+# does not trap — it wraps. So an out-of-range `offset` or `preceding` would arrive as a
+# different, small, entirely plausible number and be answered successfully. This builder
+# is the last place the value the caller actually wrote still exists.
+_WIRE_INT_MIN = -(2**63)
+_WIRE_INT_MAX = 2**63 - 1
 
 
 class QueryError(RuntimeError):
@@ -226,6 +314,16 @@ class QueryResult:
     plan_hash: str
     ops: int
     latency_ms: float
+    non_finite_cells: int = 0
+    """How many result cells held a value that is not a real number, and so arrive as `None`.
+
+    The engine computes this and puts it on the wire specifically so a `None` is not ambiguous, and
+    the SDK used to drop it — which threw away the only signal distinguishing an OVERFLOWED cell
+    from a genuinely absent one. `[[1, 1e308], [1, 1e308]]` summed by `partition_total` overflows to
+    infinity, which is not representable in JSON, so the cell is sent as null with this counter at
+    1; without the counter that is indistinguishable from a row that simply had no value. A nonzero
+    count means some `None` in `rows` is an arithmetic failure, not a missing datum.
+    """
 
     def __len__(self) -> int:
         return len(self.rows)
@@ -259,6 +357,10 @@ class Query:
     dataset: str | None = None
     strict: bool = False
     ops: list[dict[str, Any]] = field(default_factory=list)
+    # Side tables for `join`, alongside the plan rather than inside an op: `plan_hash`
+    # is over `ops` only, so rows in an op would make the hash data-dependent and two
+    # runs of the same computation over different data would stop comparing.
+    tables: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.columns:
@@ -270,6 +372,24 @@ class Query:
                 "pass rows OR dataset, not both — sending both would leave which one "
                 "is authoritative up to the engine"
             )
+        # Tables handed to the constructor go through the same normalisation as
+        # `with_table`, so there is one definition of a valid table entry rather than
+        # a validated path and an unvalidated one.
+        if self.tables:
+            supplied = list(self.tables)
+            self.tables = []
+            for entry in supplied:
+                if not isinstance(entry, dict):
+                    raise QueryError(
+                        "invalid_arguments",
+                        f"a table must be a dict, not {type(entry).__name__}",
+                    )
+                self.with_table(
+                    entry.get("name"),
+                    entry.get("columns"),
+                    rows=entry.get("rows"),
+                    dataset=entry.get("dataset"),
+                )
 
     # ── operators ─────────────────────────────────────────────────────────────
     def filter(self, predicate: Expr) -> Query:
@@ -360,8 +480,15 @@ class Query:
 
         Agrees with `sort` on ordering, not merely on the set.
         """
+        op_index = len(self.ops)
         self.ops.append(
-            {"op": "top_k", "by": by, "k": int(k), "desc": desc, "nulls_last": nulls_last}
+            {
+                "op": "top_k",
+                "by": by,
+                "k": _wire_int(k, "top_k 'k'", op_index),
+                "desc": desc,
+                "nulls_last": nulls_last,
+            }
         )
         return self
 
@@ -377,12 +504,597 @@ class Query:
 
     def limit(self, count: int, *, offset: int = 0) -> Query:
         """A row window. Clamps; a window past the end is empty."""
-        self.ops.append({"op": "limit", "offset": int(offset), "count": int(count)})
+        op_index = len(self.ops)
+        self.ops.append(
+            {
+                "op": "limit",
+                "offset": _wire_int(offset, "limit 'offset'", op_index),
+                "count": _wire_int(count, "limit 'count'", op_index),
+            }
+        )
         return self
+
+    # ── side tables, for join ──────────────────────────────────────────────────
+    def with_table(
+        self,
+        name: str,
+        columns: list[str],
+        *,
+        rows: list[list[Any]] | None = None,
+        dataset: str | None = None,
+    ) -> Query:
+        """Declare a named table a later `join` can name. Sent once per request.
+
+        A table lives beside the plan, not inside an op, for three reasons: `plan_hash`
+        covers `ops`, so rows in an op would make the hash data-dependent; a table
+        joined twice would otherwise be sent and parsed twice; and a 20-op plan over
+        one dimension table would ship it 20 times.
+
+        `rows` inlines the data — reachable from every binding. `dataset` references a
+        handle from `open_dataset` instead, which makes the per-request payload O(1) in
+        rows, and is a Python-side optimisation only: handles are scoped to a worker
+        connection. The op JSON is byte-identical either way; it only ever says
+        `"table": "<name>"`.
+
+        Engine bounds, enforced there and reported with the number it measured: at most
+        8 side tables per request (`MAX_TABLES`); at most 512 columns in a table's
+        header (`MAX_COLUMNS`); and at most 32,000,000 cells — rows x columns —
+        SUMMED over every side table in the request (`MAX_MATERIALIZED_CELLS`), a
+        budget a join's own output draws on as well. A per-table ceiling would not be a
+        bound: eight tables each under it allocate eight times it.
+        """
+        if not isinstance(name, str) or not name:
+            raise QueryError("invalid_arguments", "a table needs a non-empty name")
+        if any(table["name"] == name for table in self.tables):
+            raise QueryError(
+                "invalid_arguments", f"table {name!r} is declared twice"
+            )
+        if not columns or not isinstance(columns, (list, tuple)):
+            raise QueryError(
+                "invalid_arguments",
+                f"table {name!r} needs a non-empty columns list",
+            )
+        if (rows is None) == (dataset is None):
+            raise QueryError(
+                "invalid_arguments",
+                f"table {name!r} needs exactly one of rows or dataset; sending both "
+                "would leave which one is authoritative up to the engine, and neither "
+                "leaves the join with nothing to read",
+            )
+        entry: dict[str, Any] = {"name": name, "columns": [str(c) for c in columns]}
+        if dataset is not None:
+            if not isinstance(dataset, str) or not dataset:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"table {name!r} has an empty dataset handle",
+                )
+            entry["dataset"] = dataset
+        else:
+            entry["rows"] = _normalize_rows(rows or [], len(entry["columns"]))
+        self.tables.append(entry)
+        return self
+
+    # ── join ──────────────────────────────────────────────────────────────────
+    def join(
+        self,
+        table: str,
+        *,
+        on: str | None = None,
+        left_on: str | None = None,
+        right_on: str | None = None,
+        how: str = "inner",
+        method: str = "hash",
+        prefix: str | None = None,
+    ) -> Query:
+        """Join a named side table on ONE equality key.
+
+        `how`: `inner`, `left`, `semi` or `anti`. `semi` keeps a left row that has a
+        partner and `anti` keeps one known to have none — left columns only, one row out
+        per row in, so they cannot fan out. They are SQL's `IN` / `NOT IN`, not
+        `EXISTS` / `NOT EXISTS`: a left row whose key is NULL is excluded from BOTH
+        results, because it does not match and it is not *known* not to match either.
+        `right`, `outer`, `full` and `cross` are rejected by name rather than quietly
+        mapped to `left`.
+
+        A null key matches nothing, deliberately unlike `distinct` where two rows
+        missing the same field are the same row: a join is a sequence of equality tests
+        and `null = null` is unknown. Under `inner` such a row disappears; under `left`
+        it survives once with nulls across the right columns.
+
+        Duplicate keys multiply: three left rows and two right rows sharing a key are
+        six output rows, which is what a join means and the usual source of a surprise
+        count. The engine bounds that product before allocating it — at most 1,000,000
+        output rows (`MAX_JOIN_OUTPUT_ROWS`) and at most 32,000,000 output cells
+        (`MAX_MATERIALIZED_CELLS`, the same budget the side tables draw on) — and
+        refuses rather than truncating, since a truncated join is a wrong answer
+        carrying a success status.
+
+        `method="merge"` walks two already-sorted inputs with no hash table. A plan
+        cannot sort a side table, so it is only usable when the table arrives sorted
+        ascending with nulls last.
+
+        `prefix` (default `"<table>."`) is prepended to every right column name.
+        `Schema.index_of` returns the first match, so two columns answering to one name
+        would silently resolve every later reference to the left one — which is why the
+        engine rejects a collision instead of accepting it.
+        """
+        op_index = len(self.ops)
+        if not isinstance(table, str) or not table:
+            raise QueryError("invalid_arguments", "join requires 'table'", op_index)
+        if how in _UNIMPLEMENTED_JOIN_HOW:
+            raise QueryError(
+                "invalid_arguments",
+                f"join 'how' must be {_english(_ACCEPTED_JOIN_HOW)}; got {how!r} "
+                "(right, outer, full and cross joins are not implemented)",
+                op_index,
+            )
+        if how not in _ACCEPTED_JOIN_HOW:
+            raise QueryError(
+                "invalid_arguments",
+                f"join 'how' must be {_english(_ACCEPTED_JOIN_HOW)}; got {how!r}",
+                op_index,
+            )
+        if method not in _ACCEPTED_JOIN_METHODS:
+            raise QueryError(
+                "invalid_arguments",
+                f"join 'method' must be hash or merge; got {method!r}",
+                op_index,
+            )
+        if method == "merge" and how in _JOIN_HOW_WITHOUT_RIGHT_COLUMNS:
+            raise QueryError(
+                "invalid_arguments",
+                f"join method 'merge' is not defined for how {how!r}",
+                op_index,
+            )
+        if on is not None:
+            if left_on is not None or right_on is not None:
+                raise QueryError(
+                    "invalid_arguments",
+                    "join takes 'on', or both 'left_on' and 'right_on', not a mix — "
+                    "which key applies would be left to the engine",
+                    op_index,
+                )
+            left_key, right_key = on, on
+        else:
+            if left_on is None or right_on is None:
+                raise QueryError(
+                    "invalid_arguments",
+                    "join requires 'on', or both 'left_on' and 'right_on'",
+                    op_index,
+                )
+            left_key, right_key = left_on, right_on
+        for label, key in (("left_on", left_key), ("right_on", right_key)):
+            if not isinstance(key, str) or not key:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"join {label!r} must be a single column name (a composite key "
+                    "would be a different algorithm and is not implemented)",
+                    op_index,
+                )
+        if prefix is not None and how in _JOIN_HOW_WITHOUT_RIGHT_COLUMNS:
+            raise QueryError(
+                "invalid_arguments",
+                f"join how {how!r} emits no right columns, so 'prefix' would have no "
+                "effect; drop it or use how 'inner' or 'left'",
+                op_index,
+            )
+
+        op: dict[str, Any] = {
+            "op": "join",
+            "table": table,
+            "left_on": left_key,
+            "right_on": right_key,
+            "how": how,
+            "method": method,
+        }
+        # Emitted only when asked for: the engine's default is `"<table>."`, and
+        # spelling the default out here would make this builder's plan hash differ
+        # from an equivalent plan built by another binding.
+        if prefix is not None:
+            if not isinstance(prefix, str) or not prefix:
+                raise QueryError(
+                    "invalid_arguments",
+                    "an empty join prefix is not expressible — it can only ask for a "
+                    "name collision; omit prefix for the default '<table>.'",
+                    op_index,
+                )
+            op["prefix"] = prefix
+        self.ops.append(op)
+        return self
+
+    # ── window ────────────────────────────────────────────────────────────────
+    def window(
+        self,
+        fn: str,
+        *,
+        name: str,
+        partition_by: str | list[str] | None = None,
+        order_by: str | list[str] | None = None,
+        desc: bool | list[bool] | None = None,
+        value: str | None = None,
+        agg: str | None = None,
+        offset: int | None = None,
+        preceding: int | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """Append ONE window column, keeping row order exactly as it is.
+
+        `name` becomes the wire key `"as"` (`as` is a Python keyword) and is REQUIRED:
+        every default is either ambiguous — two frames over `amount` both wanting
+        `sum_amount` — or collides with an existing column, and `Schema.index_of`
+        returns the first match so a collision silently shadows.
+
+        Row order is NOT changed. `partition_rows` computes an internal ordering but
+        the batch is not permuted into it, because permuting would silently change what
+        a following `limit` or `top_k` means. Add a `sort` op afterwards for window
+        order.
+
+        `partition_by` may be empty: one partition over everything, which is what
+        `OVER (ORDER BY ...)` means. A null partition key forms its OWN single
+        partition — unlike `group_by`, where a null group key joins no group.
+
+        Offsets and frames stop at the partition edge and yield an absence there, never
+        the neighbouring partition's row.
+
+        Engine bounds: a window op accepts at most 20,000 input rows
+        (`MAX_WINDOW_ROWS`) — it orders the RAW rows, and the cost of that grows
+        quadratically, so a larger batch is REFUSED with a message naming the ops that
+        reduce rows first, an honest error being better than a request that never
+        returns. Reduce first with `filter`, `group_by`, `top_k` or `limit`. The
+        appended column also counts against the 512-column ceiling (`MAX_COLUMNS`), so a
+        batch already at 512 columns has no room for one.
+        """
+        op_index = len(self.ops)
+        if fn not in _ACCEPTED_WINDOW_FNS:
+            raise QueryError(
+                "invalid_arguments",
+                f"window 'fn' must be {_english(_ACCEPTED_WINDOW_FNS)}; got {fn!r}",
+                op_index,
+            )
+        if not isinstance(name, str) or not name:
+            raise QueryError(
+                "invalid_arguments",
+                "window requires 'as' (the output column name)",
+                op_index,
+            )
+
+        partitions = _as_name_list(partition_by, "partition_by", op_index)
+        orders = _as_name_list(order_by, "order_by", op_index)
+
+        if fn in _WINDOW_FNS_NEEDING_ORDER and not orders:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} requires a non-empty 'order_by'",
+                op_index,
+            )
+        if fn in _WINDOW_FNS_NEEDING_ONE_ORDER and len(orders) != 1:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} requires exactly one 'order_by' column; "
+                f"got {len(orders)}",
+                op_index,
+            )
+
+        desc_list: list[bool] | None = None
+        if desc is not None:
+            if isinstance(desc, bool):
+                desc_list = [desc] * len(orders)
+            elif isinstance(desc, (list, tuple)):
+                desc_list = [bool(d) for d in desc]
+            else:
+                raise QueryError(
+                    "invalid_arguments",
+                    "window 'desc' must be a bool or a list of bools",
+                    op_index,
+                )
+            # One boolean per order column. A short list silently leaves the trailing
+            # keys ascending, which is a different ordering and hence different ranks.
+            if len(desc_list) != len(orders):
+                raise QueryError(
+                    "invalid_arguments",
+                    "window 'desc' must be an array of one boolean per 'order_by' "
+                    f"column ({len(orders)} expected, {len(desc_list)} given)",
+                    op_index,
+                )
+
+        if fn in _WINDOW_FNS_TAKING_VALUE:
+            if not isinstance(value, str) or not value:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"window fn {fn!r} requires 'value'",
+                    op_index,
+                )
+        elif value is not None:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} takes no 'value'",
+                op_index,
+            )
+
+        if fn in _WINDOW_FNS_TAKING_AGG:
+            if agg is None:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"window fn {fn!r} requires 'agg'",
+                    op_index,
+                )
+            if agg not in _ACCEPTED_WINDOW_AGGREGATIONS:
+                raise QueryError(
+                    "invalid_arguments",
+                    "window 'agg' must be sum, avg, min, max or count; "
+                    f"got {agg!r} (var, std and median are not defined over a window "
+                    "frame here)",
+                    op_index,
+                )
+        elif agg is not None:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} takes no 'agg'",
+                op_index,
+            )
+
+        offset_value = 1
+        if fn in _WINDOW_FNS_TAKING_OFFSET:
+            offset_value = (
+                1
+                if offset is None
+                else _wire_int(offset, f"window fn {fn!r} 'offset'", op_index)
+            )
+            if offset_value < 1:
+                # A signed offset is deliberately not the wire API: "lag" with -1 would
+                # silently be a lead.
+                raise QueryError(
+                    "invalid_arguments",
+                    f"window fn {fn!r} requires 'offset' >= 1",
+                    op_index,
+                )
+        elif offset is not None:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} takes no 'offset'",
+                op_index,
+            )
+
+        preceding_value = 0
+        if fn == "framed":
+            if preceding is None:
+                raise QueryError(
+                    "invalid_arguments",
+                    "window fn 'framed' requires 'preceding' >= 0; use fn 'cumulative' "
+                    "for an unbounded frame",
+                    op_index,
+                )
+            preceding_value = _wire_int(
+                preceding, "window fn 'framed' 'preceding'", op_index
+            )
+            if preceding_value < 0:
+                # -1 is FRAME_UNBOUNDED inside the kernel and never appears on the
+                # wire, so a stray -1 cannot turn a rolling frame into a cumulative one.
+                raise QueryError(
+                    "invalid_arguments",
+                    "window fn 'framed' requires 'preceding' >= 0; use fn 'cumulative' "
+                    "for an unbounded frame",
+                    op_index,
+                )
+        elif preceding is not None:
+            raise QueryError(
+                "invalid_arguments",
+                f"window fn {fn!r} takes no 'preceding'; use fn 'framed' for a rolling "
+                "frame",
+                op_index,
+            )
+
+        op: dict[str, Any] = {
+            "op": "window",
+            "fn": fn,
+            "as": name,
+            "nulls_last": bool(nulls_last),
+        }
+        if partitions:
+            op["partition_by"] = partitions
+        if orders:
+            op["order_by"] = orders
+        if desc_list is not None:
+            op["desc"] = desc_list
+        if value is not None:
+            op["value"] = value
+        if agg is not None:
+            op["agg"] = agg
+        if fn in _WINDOW_FNS_TAKING_OFFSET:
+            op["offset"] = offset_value
+        if fn == "framed":
+            op["preceding"] = preceding_value
+        self.ops.append(op)
+        return self
+
+    # ── window sugar: the same op, spelled as the function it computes ─────────
+    def row_number(
+        self,
+        *,
+        name: str,
+        order_by: str | list[str],
+        partition_by: str | list[str] | None = None,
+        desc: bool | list[bool] | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """1-based position within the partition. Never null, never tied."""
+        return self.window(
+            "row_number",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            nulls_last=nulls_last,
+        )
+
+    def rank(
+        self,
+        *,
+        name: str,
+        order_by: str,
+        partition_by: str | list[str] | None = None,
+        desc: bool | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """Competition rank: 10,20,20,30 -> 1,2,2,4. Gaps after a tie."""
+        return self.window(
+            "rank",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            nulls_last=nulls_last,
+        )
+
+    def dense_rank(
+        self,
+        *,
+        name: str,
+        order_by: str,
+        partition_by: str | list[str] | None = None,
+        desc: bool | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """Dense rank: 10,20,20,30 -> 1,2,2,3. No gaps."""
+        return self.window(
+            "dense_rank",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            nulls_last=nulls_last,
+        )
+
+    def lag(
+        self,
+        value: str,
+        *,
+        name: str,
+        order_by: str | list[str],
+        partition_by: str | list[str] | None = None,
+        offset: int = 1,
+        desc: bool | list[bool] | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """The value `offset` rows earlier in the partition; absent at the edge."""
+        return self.window(
+            "lag",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            value=value,
+            offset=offset,
+            nulls_last=nulls_last,
+        )
+
+    def lead(
+        self,
+        value: str,
+        *,
+        name: str,
+        order_by: str | list[str],
+        partition_by: str | list[str] | None = None,
+        offset: int = 1,
+        desc: bool | list[bool] | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """The value `offset` rows later in the partition; absent at the edge."""
+        return self.window(
+            "lead",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            value=value,
+            offset=offset,
+            nulls_last=nulls_last,
+        )
+
+    def running(
+        self,
+        value: str,
+        *,
+        name: str,
+        order_by: str | list[str],
+        partition_by: str | list[str] | None = None,
+        agg: str = "sum",
+        desc: bool | list[bool] | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """A running aggregate over the partition so far — the unbounded frame."""
+        return self.window(
+            "cumulative",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            value=value,
+            agg=agg,
+            nulls_last=nulls_last,
+        )
+
+    def rolling(
+        self,
+        value: str,
+        *,
+        name: str,
+        order_by: str | list[str],
+        preceding: int,
+        partition_by: str | list[str] | None = None,
+        agg: str = "sum",
+        desc: bool | list[bool] | None = None,
+        nulls_last: bool = True,
+    ) -> Query:
+        """A trailing frame of `preceding + 1` rows, clamped at the partition start."""
+        return self.window(
+            "framed",
+            name=name,
+            partition_by=partition_by,
+            order_by=order_by,
+            desc=desc,
+            value=value,
+            agg=agg,
+            preceding=preceding,
+            nulls_last=nulls_last,
+        )
+
+    def partition_total(
+        self,
+        value: str,
+        *,
+        name: str,
+        partition_by: str | list[str] | None = None,
+        agg: str = "sum",
+        nulls_last: bool = True,
+    ) -> Query:
+        """The partition's aggregate on every row of it — a share-of-total with no join.
+
+        Order-independent, so no `order_by`: it would change nothing.
+        """
+        return self.window(
+            "partition_total",
+            name=name,
+            partition_by=partition_by,
+            value=value,
+            agg=agg,
+            nulls_last=nulls_last,
+        )
 
     # ── execution ─────────────────────────────────────────────────────────────
     def to_request(self) -> dict[str, Any]:
         """The wire frame this plan will send. Useful for hashing or inspection."""
+        declared = [table["name"] for table in self.tables]
+        for index, op in enumerate(self.ops):
+            if op.get("op") != "join":
+                continue
+            if op.get("table") not in declared:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"join references table {op.get('table')!r}, which the plan does "
+                    f"not supply (available: {', '.join(declared) or 'none'})",
+                    index,
+                )
         request: dict[str, Any] = {
             "type": "query_execute",
             "columns": list(self.columns),
@@ -393,11 +1105,78 @@ class Query:
             request["dataset"] = self.dataset
         else:
             request["rows"] = _normalize_rows(self.rows or [], len(self.columns))
+        # Only when non-empty, so every request a plan without side tables sends is
+        # byte-identical to what it sent before joins existed and no plan hash moves.
+        if self.tables:
+            request["tables"] = [dict(table) for table in self.tables]
         return request
 
     def run(self, runtime: Any, *, routing_module: str = "stats") -> QueryResult:
         """Execute the whole plan in one dispatch on this device."""
         return runtime.query(self, routing_module=routing_module)
+
+
+def _english(accepted: tuple[str, ...]) -> str:
+    """Join names as `a, b or c` — the engine's phrasing, so both messages match."""
+    if len(accepted) == 1:
+        return accepted[0]
+    return ", ".join(accepted[:-1]) + " or " + accepted[-1]
+
+
+def _wire_int(value: Any, label: str, op_index: int | None = None) -> int:
+    """An integer the engine will read back as the SAME number, or a rejection.
+
+    Python's `int` is unbounded and the engine's JSON reader is signed 64-bit and does
+    not trap on overflow, so `preceding=2**64 + 3` would cross the wire and come back as
+    a three-row frame — a real answer to a question nobody asked, which is exactly what
+    a status cannot rescue because nothing failed. Rejected here, where the number the
+    caller wrote is still available to quote back at them.
+    """
+    try:
+        number = int(value)
+    except (TypeError, ValueError, OverflowError):
+        raise QueryError(
+            "invalid_arguments",
+            f"{label} must be an integer; got {value!r}",
+            op_index,
+        ) from None
+    if number < _WIRE_INT_MIN or number > _WIRE_INT_MAX:
+        raise QueryError(
+            "invalid_arguments",
+            f"{label} must be within {_WIRE_INT_MIN}..{_WIRE_INT_MAX}; got {number} "
+            "(a plan's integers are read as signed 64-bit, so a value past that range "
+            "would arrive as a different, smaller number rather than as an error)",
+            op_index,
+        )
+    return number
+
+
+def _as_name_list(
+    value: str | list[str] | None, label: str, op_index: int
+) -> list[str]:
+    """A single name, a list of names, or nothing — always out as a list.
+
+    Names, not indices, for the same reason every other op uses names: a reordered
+    header must not retarget the plan.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple)):
+        for entry in value:
+            if not isinstance(entry, str) or not entry:
+                raise QueryError(
+                    "invalid_arguments",
+                    f"window {label!r} takes column names; got {entry!r}",
+                    op_index,
+                )
+        return [str(entry) for entry in value]
+    raise QueryError(
+        "invalid_arguments",
+        f"window {label!r} must be a column name or a list of them",
+        op_index,
+    )
 
 
 def _normalize_rows(rows: list[list[Any]], width: int) -> list[list[Any]]:
@@ -477,4 +1256,6 @@ def run_query(
         plan_hash=str(response.get("plan_hash") or ""),
         ops=int(response.get("ops") or 0),
         latency_ms=round((perf_counter() - started) * 1000, 3),
+        # Absent from the envelope when zero — the engine only emits the key when N > 0.
+        non_finite_cells=int(response.get("non_finite_cells") or 0),
     )

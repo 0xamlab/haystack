@@ -84,10 +84,24 @@ def fast_sort(mut a: List[Float64], n: Int):
 def sort_values(v: List[Float64], n: Int) -> List[Float64]:
     """Ascending-sorted COPY of the FINITE values among the first n (drops NaN/+/-inf so a
     non-finite input degrades gracefully instead of crashing the worker; input untouched).
-    Finite test: NaN fails x==x; +/-inf fails (x-x)==0 since inf-inf=NaN."""
-    var cap = n if n > 0 else 1
+    Finite test: NaN fails x==x; +/-inf fails (x-x)==0 since inf-inf=NaN.
+
+    `n` is CLAMPED to the list's real length. It is in the public runtime contract, so `n` is
+    caller-supplied over the wire, and reading past a List end is an uncatchable abort that takes
+    the whole worker process and every resident dataset with it — `library_execute stats.sort_values
+    [[5 floats], 25]` killed the serving worker. The A-Z suite cannot catch this class: it calls
+    every contract function with a 5-element list and 5 for every Int, so `n <= len(v)` always held.
+    `quantile`, `percentile` and `median` all funnel through here, so one guard covers four exports.
+
+    Clamped rather than refused-as-empty on purpose: `quantile` maps an empty result to 0.0, so
+    returning empty would convert this crash into a SILENT WRONG ANSWER (a median of 0.0 for real
+    data) for a caller who merely passed too large an `n`. Clamping answers the question actually
+    asked -- the finite values among the first `n`, of which only `len(v)` exist."""
+    var upto = n if n < len(v) else len(v)
+    if upto < 0: upto = 0
+    var cap = upto if upto > 0 else 1
     var a = List[Float64](capacity=cap)
-    for i in range(n):
+    for i in range(upto):
         var x = v[i]
         if x == x and (x - x) == 0.0: a.append(x)
     fast_sort(a, len(a))

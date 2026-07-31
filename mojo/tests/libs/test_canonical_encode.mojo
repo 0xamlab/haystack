@@ -304,6 +304,141 @@ fn main() raises:
         failed += 1
         print("  ❌ escape handling collapsed distinct strings")
 
+    # ── the ASCII encoding is pinned, because it is already shipping ─────────
+    # Every hash ever produced depends on these exact bytes, so they are written out
+    # rather than compared against the encoder's own opinion.
+    if to_hex(transcode('{"a":1,"b":2}')) == "0702" + "050161" + "0302" + "050162" + "0304":
+        passed += 1
+        print("  ✅ ASCII object bytes unchanged (07 count, sorted key/value pairs)")
+    else:
+        failed += 1
+        print("  ❌ ASCII encoding drifted:", to_hex(transcode('{"a":1,"b":2}')))
+
+    # ── \uXXXX must NOT collapse to the literal text of its own escape ───────
+    # Live plan_hash COLLISION, fixed here: the decoder emitted the `u` after the
+    # backslash and let the hex digits through as text, so `ñ` and the ASCII string
+    # `u00f1` produced identical canonical bytes. Two plans naming DIFFERENT columns
+    # ("año" vs "au00f1o") shared one plan_hash and returned different results.
+    var escaped_nlike = to_hex(transcode('["a\\u00f1o"]'))
+    var literal_ulike = to_hex(transcode('["au00f1o"]'))
+    if escaped_nlike != literal_ulike:
+        passed += 1
+        print("  ✅ 'año' and the ASCII text 'au00f1o' hash differently")
+    else:
+        failed += 1
+        print("  ❌ \\u escape collides with its own literal spelling:", escaped_nlike)
+
+    # Same collision as it reached a join prefix: "café." vs "cafu00e9.".
+    if to_hex(transcode('{"prefix":"caf\\u00e9."}')) != to_hex(
+        transcode('{"prefix":"cafu00e9."}')
+    ):
+        passed += 1
+        print("  ✅ join prefix 'café.' and 'cafu00e9.' hash differently")
+    else:
+        failed += 1
+        print("  ❌ join prefix collision persists")
+
+    # ── the other side of the coin: escaped and literal SAME value hash same ─
+    # This is the actual canonicalisation requirement. Python's json.dumps escapes
+    # non-ASCII by default and JavaScript's JSON.stringify does not, so the two
+    # producers must agree.
+    if (
+        to_hex(transcode('["\\u00f1"]')) == to_hex(transcode('["ñ"]'))
+        and to_hex(transcode('["\\u00f1"]')) == "0601" + "0502c3b1"
+    ):
+        passed += 1
+        print("  ✅ \\u00f1 and a literal ñ are one value, encoded as UTF-8 c3b1")
+    else:
+        failed += 1
+        print("  ❌ escaped/literal ñ disagree:", to_hex(transcode('["\\u00f1"]')))
+
+    # ── a surrogate pair is ONE code point, not two halves ──────────────────
+    # 😀 is U+1F600, whose UTF-8 is the four bytes f0 9f 98 80.
+    var pair = to_hex(transcode('["\\ud83d\\ude00"]'))
+    if pair == "0601" + "0504f09f9880" and pair == to_hex(transcode('["😀"]')):
+        passed += 1
+        print("  ✅ \\uD83D\\uDE00 decodes to the one code point U+1F600")
+    else:
+        failed += 1
+        print("  ❌ surrogate pair mishandled:", pair)
+
+    # Case of the hex digits is not part of the value.
+    if to_hex(transcode('["\\uD83D\\uDE00"]')) == pair:
+        passed += 1
+        print("  ✅ \\uXXXX hex digits are case-insensitive")
+    else:
+        failed += 1
+        print("  ❌ hex case changed the value:", to_hex(transcode('["\\uD83D\\uDE00"]')))
+
+    # ── raw UTF-8 survives byte for byte ────────────────────────────────────
+    # `chr(Int(byte))` rebuilding turned región (7 bytes) into regiÃ³n (9); these
+    # expected byte strings are the UTF-8 of each name and nothing else.
+    if (
+        to_hex(transcode('["región"]')) == "0601" + "0507" + "72656769c3b36e"
+        and to_hex(transcode('["café"]')) == "0601" + "0505" + "636166c3a9"
+        and to_hex(transcode('["売上"]')) == "0601" + "0506" + "e5a3b2e4b88a"
+    ):
+        passed += 1
+        print("  ✅ región / café / 売上 encode as their exact UTF-8 bytes")
+    else:
+        failed += 1
+        print(
+            "  ❌ non-ASCII bytes corrupted:",
+            to_hex(transcode('["región"]')),
+            to_hex(transcode('["café"]')),
+            to_hex(transcode('["売上"]')),
+        )
+
+    # ── the standard escapes, including a NUL byte ─────
+    if (
+        to_hex(transcode('["\\u0041"]')) == to_hex(transcode('["A"]'))
+        and to_hex(transcode('["\\/"]')) == to_hex(transcode('["/"]'))
+        and to_hex(transcode('["\\u0000"]')) == "0601" + "050100"
+        and to_hex(transcode('["\\t"]')) == "0601" + "050109"
+        and to_hex(transcode('["\\""]')) == "0601" + "050122"
+    ):
+        passed += 1
+        print("  ✅ \\u0041/\\/ match their literals; \\u0000 and \\t are single bytes")
+    else:
+        failed += 1
+        print("  ❌ standard escape decoding wrong:", to_hex(transcode('["\\u0000"]')))
+
+    # ── malformed input is refused, never given a canonical form ────────────
+    # `[t]` did not merely mis-encode: `skip_json_value` returns pos+4 for any token
+    # starting with `t`, so the slice read past the end of the document and CRASHED
+    # the process — uncatchable, taking the worker with it. Reaching the print below
+    # at all is the regression test.
+    var rejected = 0
+    var malformed = List[String]()
+    malformed.append("[t]")  # truncated literal, formerly an out-of-bounds read
+    malformed.append("[tr]")
+    malformed.append("[nul]")
+    malformed.append('["ab')  # unterminated string
+    malformed.append('["ab\\')  # ends in a backslash
+    malformed.append("{a:1}")  # unquoted key
+    malformed.append('["\\q"]')  # not a JSON escape
+    malformed.append('["\\u00f"]')  # \u with three hex digits
+    malformed.append('["\\uzzzz"]')  # \u with no hex digits
+    for i in range(len(malformed)):
+        try:
+            _ = transcode(malformed[i])
+        except:
+            rejected += 1
+    if rejected == len(malformed):
+        passed += 1
+        print("  ✅ malformed documents are refused, not canonicalised (no crash)")
+    else:
+        failed += 1
+        print("  ❌ malformed documents accepted:", rejected, "of", len(malformed))
+
+    # A valid literal still encodes, so the check above did not just refuse everything.
+    if to_hex(transcode("[true,false,null]")) == "0603" + "02" + "01" + "00":
+        passed += 1
+        print("  ✅ true/false/null still encode as 02/01/00")
+    else:
+        failed += 1
+        print("  ❌ literal encoding broken:", to_hex(transcode("[true,false,null]")))
+
     print("  [canonical.encode] Passed:", passed, "Failed:", failed)
 
 

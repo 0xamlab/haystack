@@ -46,8 +46,14 @@ the kernels are inside the wheel.
 | `top_k(by, k, desc=...)` | the k best rows without sorting the rest |
 | `distinct(*names)` | first row of each distinct combination |
 | `limit(count, offset=...)` | a row window |
+| `with_table(name, columns, rows=...)` | declare a named side table, once per request |
+| `join(table, on=..., how=...)` | one equality key against a named side table |
+| `window(fn, name=..., ...)` | append one window column, row order unchanged |
 
 Aggregations: `sum`, `avg` (or `mean`), `min`, `max`, `count`, `var`, `std`.
+
+Window functions have a method each — `row_number`, `rank`, `dense_rank`, `lag`, `lead`,
+`running`, `rolling` and `partition_total` — and all of them are spellings of `window`.
 
 ## Expressions
 
@@ -150,6 +156,199 @@ result.columns   # ['region', 'channel', 'sum_amount']
 A row is excluded if **any** key column is missing. `(region=2, channel=None)` is a
 row whose group is unknown, so putting it under region 2 would report a total that
 includes rows nobody can attribute.
+
+## Joins
+
+A join reads a **named side table**. Declare it once with `with_table` and name it from
+the `join` op — the table is sent once per request, so joining it from three ops sends
+it once, not three times:
+
+```python
+orders = [[1, 10, 100.0], [2, None, 50.0], [3, 99, 7.0]]
+customers = [[10, 1.0], [10, 2.0], [99, 3.0]]
+
+result = (
+    Query(columns=["order_id", "customer_id", "amount"], rows=orders)
+    .with_table("customers", ["id", "tier"], rows=customers)
+    .join("customers", left_on="customer_id", right_on="id", how="left")
+    .run(runtime, routing_module="stats")
+)
+
+result.columns
+# ['order_id', 'customer_id', 'amount', 'customers.id', 'customers.tier']
+```
+
+Right columns arrive prefixed with the table's name, so a join cannot quietly shadow a
+column you already had — pass `prefix="c_"` for a different one. Use `on="id"` when both
+sides spell the key the same way, `left_on`/`right_on` when they do not. One equality key
+per join; join again for a second key.
+
+A side table can be a resident dataset instead of inline rows — `with_table("customers",
+["id", "tier"], dataset=handle)` — which keeps the per-request payload constant however
+many rows the table has. See [Large tables](#large-tables-send-once-query-many-times).
+
+### how
+
+| `how` | What comes back |
+| --- | --- |
+| `inner` | left rows that have a partner, once per partner |
+| `left` | every left row, with nulls across the right columns where there was none |
+| `semi` | left rows that have a partner — left columns only, one row per row in |
+| `anti` | left rows known to have none — left columns only, one row per row in |
+
+`right`, `outer`, `full` and `cross` are rejected by name rather than quietly treated as
+`left`.
+
+`semi` and `anti` cannot fan out: they answer a yes/no question about each left row, so
+three partners still give you one row. They are SQL's `IN` and `NOT IN` — **not** `EXISTS`
+and `NOT EXISTS`. The difference shows on a missing key: a left row whose key is `None` is
+excluded from **both** results. It has no partner, and it is not *known* to have none
+either, which is the same reason `NOT IN` with a missing value surprises people in SQL.
+
+```python
+def matched(how):
+    return (
+        Query(columns=["order_id", "customer_id", "amount"], rows=orders)
+        .with_table("customers", ["id", "tier"], rows=customers)
+        .join("customers", left_on="customer_id", right_on="id", how=how)
+        .run(runtime, routing_module="stats")
+    )
+
+matched("semi").rows   # [[1.0, 10.0, 100.0], [3.0, 99.0, 7.0]]  — orders 1 and 3
+matched("anti").rows   # []  — order 2's key is missing, so it is in neither
+```
+
+### A missing key matches nothing
+
+A `None` key matches nothing — not even another `None` key. `null = null` is unknown and a
+join is a sequence of equality tests, so:
+
+* **`inner`** — the row disappears.
+* **`left`** — the row survives once, with nulls across every right column.
+* **`semi` / `anti`** — the row is in neither result.
+
+That is deliberately the opposite of `distinct`, where two rows missing the same field
+*are* the same row. An inner join that matched missing keys would pair unrelated rows that
+happen to both be incomplete.
+
+Write `None` for a key you do not have, rather than a stand-in value: `0` or `-1` is a key
+like any other and will match every other row that also used it.
+
+### Duplicate keys multiply
+
+Three left rows and two right rows sharing a key produce **six** output rows. That is what
+a join means, and it is the usual source of a surprise row count — above, customer `10`
+appears twice, so order `1` comes back twice. Reach for `semi` when you meant "orders from
+a customer in this list" rather than "one row per matching pair".
+
+Because that product grows faster than the request does, the size of the output is checked
+**before** it is built. A join may produce at most **1,000,000 rows** and **32,000,000
+cells** (rows x columns); a plan that would exceed either is refused, and the error
+reports the count it measured. It is never truncated — half a join is a wrong answer that
+looks exactly like a right one.
+
+The other limits on the same surface: a request may declare at most **8** side tables, all
+of them together at most **32,000,000 cells** (the budget the join output draws on too),
+and any header, left or right, at most **512 columns**.
+
+### merge
+
+`method="merge"` walks two already-sorted inputs and builds no hash table, which is the
+cheaper choice when the left side is sorted on the key already. A plan cannot sort a side
+table, so it applies only when the table you supply is itself ascending on its key with
+missing values last — and that is verified rather than assumed, because an unsorted input
+would silently drop matches, and a join that quietly drops matches is worse than one that
+refuses. `method="merge"` is not defined for `semi` or `anti`.
+
+## Window functions
+
+A window function appends **one** column and leaves row order exactly as you gave it:
+
+```python
+result = (
+    Query(columns=["region", "amount"], rows=[[1, 10], [1, 20], [2, 50]])
+    .running("amount", name="running_total", partition_by="region", order_by="amount")
+    .run(runtime, routing_module="stats")
+)
+
+result.columns   # ['region', 'amount', 'running_total']
+result.rows      # [[1.0, 10.0, 10.0], [1.0, 20.0, 30.0], [2.0, 50.0, 50.0]]
+```
+
+| Method | What it appends |
+| --- | --- |
+| `row_number(name=..., order_by=...)` | 1-based position in the partition; never tied |
+| `rank(name=..., order_by=...)` | competition rank: 10, 20, 20, 30 -> 1, 2, 2, **4** |
+| `dense_rank(name=..., order_by=...)` | dense rank: 10, 20, 20, 30 -> 1, 2, 2, **3** |
+| `lag(value, name=..., order_by=..., offset=1)` | the value `offset` rows earlier |
+| `lead(value, name=..., order_by=..., offset=1)` | the value `offset` rows later |
+| `running(value, name=..., order_by=..., agg=...)` | the aggregate of the partition so far |
+| `rolling(value, name=..., order_by=..., preceding=..., agg=...)` | a trailing frame of `preceding + 1` rows |
+| `partition_total(value, name=..., agg=...)` | the partition's aggregate, on every row of it |
+
+Every one of them also takes `partition_by=...`, and all but `partition_total` take
+`desc=...` — one boolean, or one per `order_by` column, since a short list would leave the
+trailing keys ascending and quietly change the ranks.
+
+`window(fn, name=..., ...)` is the general form; each method above is a spelling of it.
+Frame aggregations are `sum`, `avg` (or `mean`), `min`, `max` and `count` — `var`, `std`
+and `median` are not defined over a frame here and are rejected rather than answered with
+a column of nulls.
+
+`rank` and `dense_rank` differ only on ties, and only after one: both give the tied rows
+the same number, then `rank` skips the numbers the tie consumed while `dense_rank` does
+not. Use `rank` for "how many rows are ahead of me", `dense_rank` for "how many distinct
+values are ahead of me".
+
+The rules:
+
+* **`name` is required.** Two frames over `amount` would both want to be called
+  `sum_amount`, and a name that collides with an existing column would shadow it rather
+  than replace it.
+* **`order_by` is required for everything except `partition_total`.** A running total with
+  no order is not a defined answer. `partition_total` is order-independent by definition,
+  so it takes none.
+* **`rank` and `dense_rank` take exactly one order column.** A tie is defined by that
+  column; two keys would report ties that are not ties.
+* **`partition_by` is optional.** Leave it out for one partition over the whole table,
+  which is what `OVER (ORDER BY ...)` means. A missing partition key forms its **own**
+  partition — unlike `group_by`, where a missing key belongs to no group.
+* **Row order does not change.** Add a `sort` after the window op if you want the rows in
+  window order; permuting them silently would change what a following `limit` or `top_k`
+  means.
+* **A window op takes at most 20,000 rows**, and its appended column counts against the
+  512-column ceiling. Ordering the raw rows is the expensive part, so a larger batch is
+  refused — with a message naming the operators that reduce rows — instead of taking
+  minutes and looking like a stall. `filter`, `group_by`, `top_k` and `limit` all come
+  first in a plan for that reason.
+
+### At a partition edge the answer is missing, not zero
+
+`lag` on the first row of a partition, and `lead` on the last, have nothing to point at.
+They come back `None`:
+
+```python
+result = (
+    Query(columns=["region", "amount"], rows=[[1, 10], [1, 20], [2, 50]])
+    .lag("amount", name="previous", partition_by="region", order_by="amount")
+    .lead("amount", name="next", partition_by="region", order_by="amount")
+    .run(runtime, routing_module="stats")
+)
+
+result.rows
+# [[1.0, 10.0, None, 20.0],
+#  [1.0, 20.0, 10.0, None],
+#  [2.0, 50.0, None, None]]   region 2 has one row: no previous, no next
+```
+
+`0` there would be a number nobody computed, and a difference against it — `amount - lag`
+— would report a full-sized change where there is no comparison to make. An offset never
+reaches into the neighbouring partition; `region=2` above is its own partition, so both
+its answers are absent.
+
+A frame behaves the same way at the start: `rolling(..., preceding=6, agg="avg")` on the
+third row of a partition averages the three rows that exist rather than padding the frame
+out with zeros.
 
 ## Large tables: send once, query many times
 
