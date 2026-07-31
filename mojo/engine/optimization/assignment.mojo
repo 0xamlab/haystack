@@ -113,6 +113,31 @@ it: an idle agent at exactly 0.0 says nothing about a MATCHED agent at +4.0, whi
 why the row reduction is done at all:
 without it the reduced costs can be negative and the shortest-path search is invalid.
 
+Every tolerance here is sized by the ONE quantity it judges
+-----------------------------------------------------------
+The certificate is a set of per-pair and per-agent statements, so each one is judged against
+its own budget: the caller's ABSOLUTE tolerance plus a ROUNDING allowance of
+`1024 * DBL_EPSILON * (the magnitude of that comparison's own terms)`. A reduced cost
+`c_ij - u_i - v_j` is judged against `|c_ij| + |u_i| + |v_j|`, an agent potential against the
+terms of the pair it is tight on, and the greedy-versus-optimal bound against those two
+totals. Nothing is scaled by the matrix.
+
+The form that was here before was `DEFAULT_FEASIBILITY_TOL * (1 + max_ij |c_ij|)`, and it was
+three of rule 4b's four spellings at once: a MAX over every cell, a 1.0 floor, and the
+caller's tolerance used as the RELATIVE multiplier where only DBL_EPSILON belongs. Executed:
+`assignment_dual_check(cost = (0.0, 1e9, 0.5, 1e9), rows = 2, cols = 2,
+col_of_row = (1, 0), u = (0, 0), v = (0.5, 1e9))` returned `certified = True` for a matching
+costing 1e9 + 0.5 whose optimum is 1e9, because the threshold was `1e-9 * (1 + 1e9) = 1.0`
+and the reduced cost of the unchosen pair (0, 0) is -0.5. One cell of 1e9 — an ordinary cost
+in currency units — bought a full unit of slack for every comparison in the matrix, and
+`certified` is the field a caller checks INSTEAD of looking. 0.5 at magnitude 0.5 is not a
+rounding artefact; at magnitude 1e9 the real allowance is 2.3e-4.
+
+`max_dual_violation` and `max_tight_gap` are still the worst violation and gap in the
+caller's own units, and they are reported and never thresholded, for the same reason
+`linear.LpResult.infeasibility` is: a max over pairs is a summary, not a quantity any single
+budget can judge.
+
 Why a dense scan and not a heap
 -------------------------------
 Each phase is a Dijkstra over reduced costs, run as a dense O(agents) scan per settled
@@ -179,6 +204,23 @@ comptime ASSIGN_DEFECT_ABSENT: Float64 = -1.0
 # only on a strict `<`, so a cell holding this value is unselectable BY THAT KERNEL'S OWN
 # convention rather than by a magnitude this module hopes is large enough. Never summed.
 comptime ASSIGN_FORBIDDEN_SENTINEL: Float64 = 1e308
+
+# ── tolerances ────────────────────────────────────────────────────────────────
+
+# The spacing between consecutive Float64 values at 1.0. Defined here rather than imported
+# from `optimization.linear` (whose `LP_DBL_EPSILON` is the same number) because this module
+# has no other reason to depend on the simplex, and `scheduling.SCHED_DBL_EPSILON` set that
+# precedent. The VALUE is a property of Float64, not a tuning knob, so it cannot drift.
+comptime ASSIGN_DBL_EPSILON: Float64 = 2.220446049250313e-16
+
+# How many ulps OF THE JUDGED QUANTITY a certificate comparison may absorb before the
+# violation counts as real. Matches `linear.LP_FEAS_ULP_BUDGET`, and generous on purpose: a
+# reduced cost is a difference of three terms, so a few ulps of their magnitude is all that
+# floating point can be blamed for. That is the only thing a relative term may ever explain
+# away — which is why the multiplier is DBL_EPSILON and never `DEFAULT_FEASIBILITY_TOL`.
+# `1e-9` used as a relative multiplier is 4.5 MILLION ulps, and at a cost of 1e9 that is a
+# whole unit of dual violation waved through under `certified = True`.
+comptime ASSIGN_CERT_ULP_BUDGET: Float64 = 1024.0
 
 
 fn assign_status_name(code: Int) -> String:
@@ -313,6 +355,13 @@ struct DualCheck(Copyable, Movable):
     not prove this matching optimal however tight they look. `certified` requires all of
     them. `dual_objective` is `sum(u) + sum(v)`, which equals the primal cost exactly when
     the triple is certified.
+
+    Each condition is judged PER PAIR or PER AGENT against a budget built from that
+    comparison's own terms — the caller's absolute tolerance plus `1024 * DBL_EPSILON` times
+    `|c_ij| + |u_i| + |v_j|` — so no cell anywhere else in the matrix can raise the threshold
+    a given pair is held to. `max_dual_violation` and `max_tight_gap` are the worst violation
+    and gap in the caller's units, reported for inspection and never compared against a
+    threshold themselves.
     """
 
     var status: Int
@@ -397,23 +446,72 @@ fn _shape_defect(
     return ASSIGN_OK
 
 
-fn _max_abs(cost: List[Float64]) -> Float64:
-    var worst = 0.0
-    for k in range(len(cost)):
-        var m = fabs(cost[k])
-        if m > worst:
-            worst = m
-    return worst
+fn _rounding_allowance(scale: Float64) -> Float64:
+    """`1024 * DBL_EPSILON * scale` — what floating point can explain at `scale`, no more.
 
+    `scale` must be the magnitude of the terms in the ONE comparison being made. There is no
+    floor: `scale == 0.0` yields exactly 0.0, which is right, because zero is exactly
+    representable and a comparison at magnitude zero has nothing to forgive. A floor of 1.0
+    would make this an ABSOLUTE allowance of one unit times the caller's tolerance for every
+    comparison below unit magnitude, sized by nothing in the problem — that is rule 4b's
+    third spelling and it is what shipped here.
 
-fn _certificate_tol(max_abs_cost: Float64) -> Float64:
-    """Scaled tolerance for the slackness checks.
-
-    Relative, because an exact certificate is only exact on exactly-representable data:
-    with costs around 1e9 the reduced costs cancel at about 1e-7, and an absolute 1e-9
-    would report a numerical breakdown on a correct answer.
+    A non-finite or negative `scale` yields 0.0. That matters: a `nan` scale makes the budget
+    `nan`, and `x > nan` is False for EVERY x, so a threshold built from it passes having
+    counted zero violations (rule 4d). Costs of 1e308 are legal here — the suite asserts a
+    matching around them — and `|c| + |u| + |v|` at that magnitude overflows to `inf`, so
+    this is a reachable path, not a defensive one. No allowance at all is the only safe
+    reading: it can refuse a certificate, never forge one.
     """
-    return DEFAULT_FEASIBILITY_TOL * (1.0 + max_abs_cost)
+    if not _finite(scale) or scale <= 0.0:
+        return 0.0
+    var slop = ASSIGN_CERT_ULP_BUDGET * ASSIGN_DBL_EPSILON * scale
+    if not _finite(slop):
+        return 0.0
+    return slop
+
+
+fn _pair_tol(cell: Float64, potential_u: Float64, potential_v: Float64) -> Float64:
+    """Budget for judging the reduced cost `cell - potential_u - potential_v`.
+
+    The quantity judged is that one pair's reduced cost, and the only magnitudes that can
+    have contributed rounding to it are the three terms it was built from. Not the largest
+    cell in the matrix: that cell's units have nothing to do with this pair's cancellation,
+    and letting it in is how a 0.5 violation between numbers of magnitude 0.5 was certified
+    because some other pair cost 1e9.
+    """
+    return DEFAULT_FEASIBILITY_TOL + _rounding_allowance(
+        fabs(cell) + fabs(potential_u) + fabs(potential_v)
+    )
+
+
+fn _agent_tol(
+    cost: List[Float64], cols: Int, col_of_row: List[Int],
+    u: List[Float64], v: List[Float64], agent: Int,
+) -> Float64:
+    """Budget for judging `u[agent] <= 0`, sized by THAT agent's own dual relation.
+
+    An agent's potential is not a free-standing number. On the pair it is matched to,
+    complementary slackness makes it exactly `cost[agent][t] - v[t]`, so the rounding it can
+    carry is what those terms explain — `|u_i| + |c_it| + |v_t|` — and nothing about another
+    agent, another task, or the matrix. An idle agent has no such relation and its potential
+    must be exactly 0.0 (`n_idle_nonzero` checks that, exactly, and separately), so its only
+    allowance is the caller's absolute one.
+    """
+    var scale = fabs(u[agent])
+    var t = col_of_row[agent]
+    if t != ASSIGN_NONE and t >= 0 and t < cols:
+        scale += fabs(cost[agent * cols + t]) + fabs(v[t])
+    return DEFAULT_FEASIBILITY_TOL + _rounding_allowance(scale)
+
+
+fn _total_tol(left: Float64, right: Float64) -> Float64:
+    """Budget for comparing two assignment TOTALS — the only two magnitudes in play.
+
+    Both are `kahan_sum` outputs, whose error is a few ulps of the summands regardless of how
+    many there were, so `|left| + |right|` bounds the rounding either can carry.
+    """
+    return DEFAULT_FEASIBILITY_TOL + _rounding_allowance(fabs(left) + fabs(right))
 
 
 # ── the exact solve ───────────────────────────────────────────────────────────
@@ -458,9 +556,6 @@ fn _assignment_core(
         return _no_assignment(defect, rows, cols)
     if cols > rows:
         return _no_assignment(ASSIGN_ERR_FEWER_AGENTS_THAN_TASKS, rows, cols)
-
-    var max_abs_cost = _max_abs(cost)
-    var tol = _certificate_tol(max_abs_cost)
 
     # No tasks is a real answer, not an edge case to reject: every agent idle, cost 0.0,
     # perfectly assigned. Same precedent as `sparse_numerics.factor`, where the system with
@@ -643,14 +738,25 @@ fn _assignment_core(
         return _no_assignment(ASSIGN_ERR_OVERFLOW, rows, cols)
 
     # ── the certificate, recomputed from the answer ───────────────────────────
+    # Each verdict is taken PER PAIR and PER AGENT against that comparison's own budget
+    # (`_pair_tol`, `_agent_tol`). `max_violation` and `max_gap` are accumulated alongside as
+    # magnitude summaries in the caller's units and are never themselves thresholded: a max
+    # over pairs is not a quantity one budget can judge, because the pair holding the maximum
+    # need not be the pair whose scale set the budget. Same split as
+    # `linear.LpResult.infeasibility`, which reports a total while the verdict is per row.
     var max_violation = 0.0
+    var dual_feasible = True
     for w in range(rows):
         for t in range(cols):
             if not _pair_allowed(allowed, masked, w, t, cols):
                 continue
-            var slack = cost[w * cols + t] - u[w] - v[t]
-            if slack < 0.0 and -slack > max_violation:
-                max_violation = -slack
+            var cell = cost[w * cols + t]
+            var slack = cell - u[w] - v[t]
+            if slack < 0.0:
+                if -slack > max_violation:
+                    max_violation = -slack
+                if -slack > _pair_tol(cell, u[w], v[t]):
+                    dual_feasible = False
     for w in range(rows):
         # `u[i] <= 0` is the dual of the capacity constraint `sum_j x[i][j] <= 1` and it
         # binds on every agent, not only the idle ones — see `_dual_check_core` for the
@@ -660,7 +766,10 @@ fn _assignment_core(
         # solver's own certificate cannot pass on an answer the external check would reject.
         if u[w] > max_violation:
             max_violation = u[w]
+        if u[w] > _agent_tol(cost, cols, col_of_row, u, v, w):
+            dual_feasible = False
     var max_gap = 0.0
+    var slack_tight = True
     var idle_nonzero = 0
     for w in range(rows):
         var t = col_of_row[w]
@@ -668,12 +777,13 @@ fn _assignment_core(
             if u[w] != 0.0:
                 idle_nonzero += 1
             continue
-        var gap = fabs(cost[w * cols + t] - u[w] - v[t])
+        var cell = cost[w * cols + t]
+        var gap = fabs(cell - u[w] - v[t])
         if gap > max_gap:
             max_gap = gap
-    var certified = (
-        max_violation <= tol and max_gap <= tol and idle_nonzero == 0
-    )
+        if gap > _pair_tol(cell, u[w], v[t]):
+            slack_tight = False
+    var certified = dual_feasible and slack_tight and idle_nonzero == 0
     if not certified:
         # An optimum that cannot be certified is exactly the converged-looking answer this
         # package exists to remove, so it does not travel with a matching attached.
@@ -703,7 +813,11 @@ fn _assignment_core(
             if _finite(bound):
                 greedy_cost = bound
                 has_greedy_cost = True
-    if has_greedy_cost and greedy_cost < total - tol:
+    # The quantity judged is the DIFFERENCE of these two totals, so its budget comes from
+    # those two totals and nothing else — not from the largest cell, which at 1e9 made this
+    # oracle unable to fire below a whole unit and at 1e308 unable to fire at all.
+    var bound_tol = _total_tol(greedy_cost, total)
+    if has_greedy_cost and greedy_cost < total - bound_tol:
         # A feasible assignment cheaper than the "optimal" one is a proof of a bug in this
         # solver, and the frozen greedy is an independent implementation, so it is worth
         # asking every time.
@@ -711,9 +825,9 @@ fn _assignment_core(
     var improvement = 0.0
     if has_greedy_cost:
         improvement = greedy_cost - total
-        if improvement < tol:
-            # Within the certificate tolerance the two costs are the same number, and a
-            # -1e-16 improvement would read as the greedy answer having won.
+        if improvement < bound_tol:
+            # Within the rounding the two sums can carry, the two costs are the same number,
+            # and a -1e-16 improvement would read as the greedy answer having won.
             improvement = 0.0
 
     return Assignment(
@@ -915,20 +1029,30 @@ fn _dual_check_core(
             )
         used[t] = True
 
-    var tol = _certificate_tol(_max_abs(cost))
+    # Every comparison below is judged against ITS OWN budget — `_pair_tol` for a pair,
+    # `_agent_tol` for an agent potential. There is deliberately no single `tol` in this
+    # function any more: one number covering the whole matrix is exactly how a 0.5 violation
+    # between terms of magnitude 0.5 came back `certified = True` because one unrelated cell
+    # held 1e9. `max_violation` and `max_gap` are reported, not thresholded.
     var n_pairs = 0
     var n_tight = 0
     var max_violation = 0.0
+    var pair_feasible = True
     for w in range(rows):
         for t in range(cols):
             if not _pair_allowed(allowed, masked, w, t, cols):
                 continue
             n_pairs += 1
-            var slack = cost[w * cols + t] - u[w] - v[t]
-            if fabs(slack) <= tol:
+            var cell = cost[w * cols + t]
+            var slack = cell - u[w] - v[t]
+            var pair_tol = _pair_tol(cell, u[w], v[t])
+            if fabs(slack) <= pair_tol:
                 n_tight += 1
-            if slack < 0.0 and -slack > max_violation:
-                max_violation = -slack
+            if slack < 0.0:
+                if -slack > max_violation:
+                    max_violation = -slack
+                if -slack > pair_tol:
+                    pair_feasible = False
 
     # The second family of dual constraints: `u[i] <= 0` for EVERY agent, matched or idle.
     # The primal capacity constraint is `sum_j x[i][j] <= 1`, an inequality, so its dual
@@ -942,12 +1066,13 @@ fn _dual_check_core(
     # the agent that IS matched; only this loop can.
     var agent_sign_violations = 0
     for w in range(rows):
-        if u[w] > tol:
+        if u[w] > _agent_tol(cost, cols, col_of_row, u, v, w):
             agent_sign_violations += 1
         if u[w] > max_violation:
             max_violation = u[w]
 
     var max_gap = 0.0
+    var slack_tight = True
     var idle_nonzero = 0
     for w in range(rows):
         var t = col_of_row[w]
@@ -955,9 +1080,12 @@ fn _dual_check_core(
             if u[w] != 0.0:
                 idle_nonzero += 1
             continue
-        var gap = fabs(cost[w * cols + t] - u[w] - v[t])
+        var cell = cost[w * cols + t]
+        var gap = fabs(cell - u[w] - v[t])
         if gap > max_gap:
             max_gap = gap
+        if gap > _pair_tol(cell, u[w], v[t]):
+            slack_tight = False
     var potentials = List[Float64]()
     for w in range(rows):
         potentials.append(u[w])
@@ -967,13 +1095,12 @@ fn _dual_check_core(
     var has_objective = _finite(objective)
     if not has_objective:
         objective = 0.0
-    var feasible = max_violation <= tol and agent_sign_violations == 0
-    var tight = max_gap <= tol
+    var feasible = pair_feasible and agent_sign_violations == 0
     return DualCheck(
         ASSIGN_OK,
-        feasible and tight and idle_nonzero == 0 and has_objective,
+        feasible and slack_tight and idle_nonzero == 0 and has_objective,
         feasible,
-        tight,
+        slack_tight,
         n_pairs,
         n_tight,
         idle_nonzero,

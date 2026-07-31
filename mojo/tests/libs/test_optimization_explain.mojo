@@ -17,6 +17,21 @@ target the ways an explanation can be plausible and wrong:
     pairs that must NOT fire: a tight row priced at zero (degeneracy — a checker that flags it
     rejects any model with a duplicated row) and a tight row whose slack is 4e-13 of pivot
     rounding rather than room;
+  * every certificate THRESHOLD is asserted, not just the verdicts, because the threshold is
+    what shipped wrong twice. The complementarity product is judged per ROW: the executed
+    reproduction `duals = [1e6, 0.5]`, `slack = [0.0, 10.0]`, both rows binding, `dual_tol =
+    1e-9` returned `complementary = True` with `cs_gap = 0.0` over a product of 5.0, because
+    the threshold was `1e-6 * (1 + max|dual| * max slack) = 10.000001` — row 0's price paying
+    for row 1's violation. It is asserted beside the unit-scale control (row 1 byte-identical,
+    row 0's dual lowered — the pair that was always caught) and demanding the two verdicts be
+    IDENTICAL, plus a large-price row whose 4e-13 of pivot rounding must still pass and the
+    same large price with ten units of real room that must not. The strong-duality and
+    objective-sum budgets are asserted the same way at 1e12 and at 1.0: a gap of 1e6 on an
+    objective of 1e12 was `strong_duality = True`, and 1e3 of residual or drift was
+    `sums_to_objective`, because `1e-6` and `1e-9` were being used as RELATIVE multipliers
+    where only `LP_DBL_EPSILON` belongs — 1e-9 relative is 4.5 million ulps. The budget
+    builders `_rounding_budget` and `_cs_product_budget` are imported and called directly,
+    since a solver that fails to converge cannot be summoned on demand;
   * a nan or an inf anywhere in the audited pair — a dual, a slack, or the `dual_tol` a caller
     passes — comes back as a status and never as `complementary`. nan satisfies no comparison,
     so `|nan| > dual_tol` and `|y_i| > nan` are both False and an unvalidated audit counts
@@ -62,6 +77,12 @@ from std.math import inf, nan
 from linear_programming import lp_solve_2var
 from query.ir import OP_MUL, OP_VAR_REF
 from optimization.explain import (
+    # The two budget builders every threshold in `explain.mojo` goes through. Importable
+    # because Mojo has no access control — the underscore keeps them out of the runtime
+    # contract, not out of the test — and imported because a certificate's threshold IS the
+    # thing that shipped wrong, so it is asserted directly and not only through a solve.
+    _cs_product_budget,
+    _rounding_budget,
     EXPLAIN_ERR_BOUNDS_NOT_ROWS,
     EXPLAIN_ERR_COMPLEMENTARY_SLACKNESS,
     EXPLAIN_ERR_CORE_UNVERIFIED,
@@ -87,10 +108,13 @@ from optimization.explain import (
 )
 from optimization.linear import (
     LIN_ERR_NONLINEAR_PRODUCT,
+    LP_DBL_EPSILON,
+    LP_FEAS_ULP_BUDGET,
     LP_INFEASIBLE,
     LP_UNBOUNDED,
 )
 from optimization.model import (
+    DEFAULT_OPTIMALITY_TOL,
     MODEL_ERR_DENSE_SHAPE,
     MODEL_ERR_DIMENSION_TOO_LARGE,
     MODEL_ERR_LENGTH_MISMATCH,
@@ -457,6 +481,81 @@ fn main() raises:
             noisy.status,
         )
 
+    # ── the complementarity product is judged PER ROW, never against maxima ───
+    # REPRODUCTION, verbatim, of the defect that shipped on origin/main: this pair returned
+    # `complementary = True`, `EXPLAIN_OK`, `cs_row = -1` and `cs_gap = 0.0` for a
+    # complementarity product of `|0.5 * 10| = 5.0` on row 1, because the threshold was
+    # `EXPLAIN_CERT_SLOP * (1 + max|dual| * max slack) = 1e-6 * (1 + 1e6 * 10) = 10.000001`.
+    # Row 0's price and row 1's room were multiplied together into one number and then used to
+    # judge row 1 — a threshold built from a MAXIMUM over rows looks per-row and is not.
+    var cross_row = slackness_check(
+        _floats(1e6, 0.5), _floats(0.0, 10.0), _bools(True, True), 1e-9
+    )
+    # CONTROL at unit scale: row 1 is byte-identical and only row 0's dual is reduced, which is
+    # the pair that was already reported correctly. The two verdicts must now be the SAME
+    # verdict on the same row with the same gap — that identity is what "no row's magnitudes
+    # buy another row's violation a pass" means, and it is not something a blanket tightening
+    # would give.
+    var unit_row = slackness_check(
+        _floats(1.0, 0.5), _floats(0.0, 10.0), _bools(True, True), 1e-9
+    )
+    # CONTROL, a legitimate near-zero at a LARGE scale: 4e-13 of pivot rounding on a row priced
+    # at 1e6 is a product of 4e-7 and must still pass, or the audit calls every tight row of a
+    # large-price model a contradiction. Its budget is that row's own `dual_tol * (|dual| +
+    # slack)` — 1.0 here — and comes from row 1 alone.
+    var big_price_noise = slackness_check(
+        _floats(1e6, 1e6), _floats(0.0, 4e-13), _bools(True, True), 1e-6
+    )
+    # ...and the same large price with ten units of real room is a violation worth 1e7, caught
+    # at the same scale where the rounding passed. Loose-versus-tight is decided by the row's
+    # own two factors, not by how big the model's numbers are.
+    var big_price_room = slackness_check(
+        _floats(1e6, 1e6), _floats(0.0, 10.0), _bools(True, True), 1e-6
+    )
+    # The budget builder itself, on row 1 of the reproduction: 1.05e-8 against a product of
+    # 5.0, where the old cross-row threshold was 10.000001. Asserted directly because the
+    # threshold IS the defect — `_cs_product_budget` is importable (Mojo has no access control;
+    # the underscore only keeps it out of the runtime contract).
+    var repro_budget = _cs_product_budget(0.5, 10.0, 1e-9)
+    var old_cross_row_tol = 1e-6 * (1.0 + 1e6 * 10.0)
+    if (
+        cross_row.status == EXPLAIN_ERR_COMPLEMENTARY_SLACKNESS
+        and not cross_row.complementary
+        and cross_row.cs_row == 1
+        and cross_row.cs_gap == 5.0
+        and cross_row.n_binding == 2
+        and cross_row.n_degenerate == 0
+        and unit_row.status == cross_row.status
+        and unit_row.complementary == cross_row.complementary
+        and unit_row.cs_row == cross_row.cs_row
+        and unit_row.cs_gap == cross_row.cs_gap
+        and big_price_noise.status == EXPLAIN_OK
+        and big_price_noise.complementary
+        and big_price_noise.cs_row == -1
+        and big_price_noise.cs_gap == 0.0
+        and big_price_noise.n_binding == 2
+        and big_price_room.status == EXPLAIN_ERR_COMPLEMENTARY_SLACKNESS
+        and not big_price_room.complementary
+        and big_price_room.cs_row == 1
+        and big_price_room.cs_gap == 1e7
+        and repro_budget < 1e-7
+        and 5.0 > repro_budget
+        and 5.0 < old_cross_row_tol
+    ):
+        passed += 1
+        print("  ✅ one row's dual cannot buy another row's slackness violation a pass")
+    else:
+        failed += 1
+        print(
+            "  ❌ per-row complementarity threshold wrong:",
+            cross_row.status,
+            cross_row.cs_row,
+            cross_row.cs_gap,
+            big_price_noise.status,
+            big_price_room.cs_gap,
+            repro_budget,
+        )
+
     # ── a nan cannot satisfy the certificate ──────────────────────────────────
     # nan compares False against everything, so an audit that trusts its input finds
     # `|nan| > dual_tol` False, counts ZERO violations and returns `complementary` — a passing
@@ -475,16 +574,22 @@ fn main() raises:
     )
     # The third way in is the THRESHOLD, which is why it is validated too: a nan `dual_tol`
     # disables every comparison at once, and `binding_constraints` derives its own threshold
-    # as `EXPLAIN_CERT_SLOP * (1 + max|dual|)` from the very duals it is auditing.
+    # from the very duals it is auditing.
     var nan_tol = slackness_check(
         _floats(1.0, 0.5), _floats(0.0, 5.0), _bools(True, False), nan64
     )
     # `binding_constraints` goes through this same door: its report on the 3-var program is
-    # replayed here through the public entry point with the tolerance the function derives
-    # (max|dual| = 1), and every audited field matches. Two audits is how one of them ends up
-    # without the finiteness check.
+    # replayed here through the public entry point with the tolerance the function derives —
+    # the caller's absolute `optimality_tol` plus 1024 ulps of `max|dual| = 1` — and every
+    # audited field matches. Two audits is how one of them ends up without the finiteness
+    # check. The derivation is written out rather than named so that a change to it cannot pass
+    # this replay silently: it was `1e-6 * (1 + max|dual|)`, which read every dual under a full
+    # unit as zero on a model whose prices are 1e6.
     var replayed = slackness_check(
-        three.duals, three.slack, three.binding, 1e-6 * (1.0 + 1.0)
+        three.duals,
+        three.slack,
+        three.binding,
+        DEFAULT_OPTIMALITY_TOL + LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * 1.0,
     )
     if (
         nan_dual.status == MODEL_ERR_NON_FINITE_VALUE
@@ -750,6 +855,127 @@ fn main() raises:
             with_const.parts_total,
             cancelled.has_share,
             ragged_parts.status,
+        )
+
+    # ── strong duality at a scale of 1e12 is not a million-unit gap ───────────
+    # REPRODUCTION of the second defect: the strong-duality test was
+    # `gap <= EXPLAIN_CERT_SLOP * (1 + |objective|)`, so at `objective = 1e12` a primal/dual
+    # gap of up to 1.0e6 came back `strong_duality = True` with `EXPLAIN_OK` and no
+    # `EXPLAIN_ERR_DUALITY_GAP`. A gap of a million on an objective of a trillion is a solve
+    # that did not converge, published as a theorem. 1e-6 is not a rounding budget;
+    # `LP_DBL_EPSILON` is, and 1e-6 as a RELATIVE multiplier is 4.5 billion ulps.
+    #
+    # `min 1e6 x` subject to `x >= 1e6` is that scale with an exact answer: x = 1e6, objective
+    # 1e12, one binding row priced at 1e6, and `bᵀy = 1e6 * 1e6 = 1e12`, so the gap is exactly
+    # zero. The certificate must still hold — a legitimate near-zero at a large scale passes —
+    # while the 1e6 gap the old threshold admitted must not.
+    var huge = binding_constraints_default(
+        _floats(1e6), _floats(1.0), 1, 1, _ints(SENSE_GE), _floats(1e6), False
+    )
+    # The threshold itself, at both scales, through the builder `binding_constraints` uses:
+    # the caller's absolute `optimality_tol` plus 1024 + m + n ulps of the larger operand of
+    # the very subtraction being judged.
+    var gap_budget_1e12 = DEFAULT_OPTIMALITY_TOL + _rounding_budget(2, 1e12)
+    var gap_budget_unit = DEFAULT_OPTIMALITY_TOL + _rounding_budget(2, 1.0)
+    var old_gap_tol_1e12 = 1e-6 * (1.0 + 1e12)
+    var old_gap_tol_unit = 1e-6 * (1.0 + 1.0)
+    if (
+        huge.status == EXPLAIN_OK
+        and huge.has_objective
+        and huge.objective == 1e12
+        and _exact(huge.x, _floats(1e6))
+        and _exact(huge.duals, _floats(1e6))
+        and huge.dual_objective == 1e12
+        and huge.duality_gap == 0.0
+        and huge.strong_duality
+        and huge.complementary
+        and huge.n_binding == 1
+        # The reported gap that the old threshold called strong duality is now a violation...
+        and 1.0e6 > gap_budget_1e12
+        # ...and it really was accepted, which is the defect this pins.
+        and 1.0e6 <= old_gap_tol_1e12
+        # CONTROL, legitimate rounding at 1e12: ulps of 1e12 still pass, so the fix is not a
+        # demand for exactness at scale. The whole allowance is ~0.23 — 1026 ulps of 1e12 —
+        # against the 1e6 the old form granted, a factor of four million.
+        and 1e-5 <= gap_budget_1e12
+        and gap_budget_1e12 < 1.0
+        # CONTROL at unit scale: the SAME violation relative to the objective — a gap of 1e-6
+        # on an objective of 1 — is caught, where the old form accepted it.
+        and 1e-6 > gap_budget_unit
+        and 1e-6 <= old_gap_tol_unit
+    ):
+        passed += 1
+        print("  ✅ a 1e6 duality gap on a 1e12 objective is not strong duality")
+    else:
+        failed += 1
+        print(
+            "  ❌ duality-gap threshold wrong:",
+            huge.status,
+            huge.objective,
+            huge.dual_objective,
+            huge.duality_gap,
+            huge.strong_duality,
+            gap_budget_1e12,
+        )
+
+    # ── the itemisation is of the SAME number, to ulps and not to 1e-9 ────────
+    # REPRODUCTION of the same spelling on the two sum checks: both were
+    # `EXPLAIN_SUM_TOL * (1 + |objective|)` with `EXPLAIN_SUM_TOL = 1e-9`, so at an objective of
+    # 1e12 a decomposition could disagree with its own total by 1.0e3 and still report
+    # `sums_to_objective`, and `optimum_contributions` accepted 1.0e3 of drift between two
+    # computations of one number.
+    var huge_parts = optimum_contributions_default(
+        _floats(1e6), _floats(1.0), 1, 1, _ints(SENSE_GE), _floats(1e6), False
+    )
+    # CONTROL, a residual that is REAL rounding at a large scale: `linear_form_value` sums
+    # naively (1e16 + 1 rounds back to 1e16) while the parts go through `kahan_sum`, so the two
+    # routes differ by up to a full unit over addends totalling 2e16 in magnitude. That is one
+    # unit out of 2e16 — rounding — and it must still report `sums_to_objective`.
+    var cancel_big = objective_contributions(
+        _floats(1e16, 1.0, -1e16), 0.0, _floats(1.0, 1.0, 1.0), False
+    )
+    var sum_budget_1e12 = _rounding_budget(1, 1e12)
+    var sum_budget_unit = _rounding_budget(1, 1.0)
+    var old_sum_tol_1e12 = 1e-9 * (1.0 + 1e12)
+    var old_sum_tol_unit = 1e-9 * (1.0 + 1.0)
+    if (
+        huge_parts.status == EXPLAIN_OK
+        and huge_parts.objective == 1e12
+        and _exact(huge_parts.contribution, _floats(1e12))
+        and huge_parts.parts_total == 1e12
+        and huge_parts.residual == 0.0
+        and huge_parts.sums_to_objective
+        and cancel_big.status == EXPLAIN_OK
+        and cancel_big.sums_to_objective
+        and cancel_big.residual >= -1.0
+        and cancel_big.residual <= 1.0
+        # A residual of a thousand on a 1e12 objective is a mismatch now, and was accepted.
+        and 1.0e3 > sum_budget_1e12
+        and 1.0e3 <= old_sum_tol_1e12
+        # The same for the drift between the itemisation and the solver's own objective.
+        and 1.0e3 > DEFAULT_OPTIMALITY_TOL + sum_budget_1e12
+        # CONTROL, legitimate rounding at 1e12: ulps of 1e12 still pass.
+        and 1e-4 <= sum_budget_1e12
+        # CONTROL at unit scale: a residual of 1e-9 against unit-scale addends is a mismatch,
+        # where the old `1e-9 * (1 + |objective|)` floor accepted it.
+        and 1e-9 > sum_budget_unit
+        and 1e-9 <= old_sum_tol_unit
+        # ...and the SAME 1.0 residual that is rounding at 2e16 is a mismatch at unit scale.
+        and 1.0 <= _rounding_budget(3, 2e16)
+        and 1.0 > _rounding_budget(3, 3.0)
+    ):
+        passed += 1
+        print("  ✅ the objective residual and drift budgets are ulps, not 1e-9 of the scale")
+    else:
+        failed += 1
+        print(
+            "  ❌ sum-mismatch threshold wrong:",
+            huge_parts.status,
+            huge_parts.residual,
+            huge_parts.sums_to_objective,
+            cancel_big.residual,
+            cancel_big.sums_to_objective,
+            sum_budget_1e12,
         )
 
     # ── an unbounded and an infeasible program carry NO explanation ───────────

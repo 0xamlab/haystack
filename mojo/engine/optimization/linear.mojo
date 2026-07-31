@@ -76,12 +76,21 @@ wrong answer with an optimal status. Phase 1 minimises the sum of the artificial
 instead, so infeasibility is a MEASURED residual (`infeasibility` reports its total) and
 it is reported as `LP_INFEASIBLE` with no solution vector at all.
 
-The acceptance test on that residual is PER ROW, against each row's OWN magnitude —
-`art_i <= feas_tol * (1 + |b_i|)` — never against an aggregate. A threshold scaled by
-`Σ_i |b_i|` was the earlier rule and it returned `LP_OPTIMAL` for programs with no
-feasible point: 200 ordinary `x0 <= 1e7` capacity rows next to the contradictory pair
-`x1 >= 3, x1 <= 2` push a `1e-9` tolerance past 1.0, so a row violated by a FULL UNIT
-passed as optimal, complete with x, duals, reduced costs and a basis. See `_simplex_run`.
+The acceptance test on that residual is PER ROW, against each row's OWN magnitude, and it
+is `art_i <= feas_tol + 1024 * DBL_EPSILON * |b_i|` — an ABSOLUTE allowance the caller chose
+plus a ROUNDING allowance at that row's scale. `_lp_row_gap_budget` is the one definition,
+shared with the `binding` flag so the two verdicts about one row cannot disagree.
+
+Two earlier spellings of that threshold each shipped a confident wrong answer, which is why
+the form above is stated here rather than left to the call site. `feas_tol * (1 + Σ_i |b_i|)`
+is an aggregate and returned `LP_OPTIMAL` for programs with no feasible point: 200 ordinary
+`x0 <= 1e7` capacity rows next to the contradictory pair `x1 >= 3, x1 <= 2` push a `1e-9`
+tolerance past 1.0, so a row violated by a FULL UNIT passed as optimal, complete with x,
+duals, reduced costs and a basis. `feas_tol * (1 + |b_i|)` is per-row and no better: it
+floors the test at `feas_tol` regardless of scale and then uses `feas_tol` — 4.5 million
+ulps at magnitude 1e9 — as the RELATIVE multiplier, so `{x >= 1e9, x <= 1e9 - 1}` came back
+optimal at x = 1e9, and a row with nine tenths of a unit of slack came back BINDING. See
+`_simplex_run`, `_solution_from_simplex` and `LP_FEAS_ULP_BUDGET`.
 
 An artificial is created for every row but only made basic where no slack can be: a `<=`
 row with `b >= 0` (or a `>=` row with `b < 0`, after the row sign flip that makes every
@@ -271,6 +280,39 @@ comptime LP_DBL_EPSILON: Float64 = 2.220446049250313e-16
 # relative term by DBL_EPSILON instead of by `feas_tol` keeps it pinned to what floating
 # point can actually explain away.
 comptime LP_FEAS_ULP_BUDGET: Float64 = 1024.0
+
+
+fn _lp_row_gap_budget(feas_tol: Float64, rhs_i: Float64) -> Float64:
+    """How far row `i`'s activity may sit from `b_i` and still count as ZERO distance.
+
+    The ONE definition in this file of "this row is met exactly", used by both places that
+    ask the question, because they must not be able to disagree about the same row:
+
+      * `_simplex_run` decides SATISFIED — is the phase-1 artificial on this row zero?
+      * `_solution_from_simplex` decides BINDS — is the returned point ON this row?
+
+    A row satisfied only because its violation fits the budget is, by construction, a row
+    whose activity equals `b_i` to within the same budget, so "infeasible" and "not binding"
+    cannot both be claimed about one row, and neither can "satisfied" and "binds" be denied
+    together. Two independent thresholds for one geometric fact is how those verdicts drift.
+
+    The quantity being judged is `|b_i - A_i x|`, a distance in row `i`'s OWN units, and the
+    budget is built only from that: the caller's ABSOLUTE `feas_tol`, plus a ROUNDING
+    allowance of `LP_FEAS_ULP_BUDGET` ulps AT that row's magnitude. Nothing about any other
+    row enters, and no other row's magnitude can raise it.
+
+    Rejected forms, both of which shipped here and both of which produced a confident wrong
+    answer — see `LP_FEAS_ULP_BUDGET` and `_solution_from_simplex`:
+
+      * `feas_tol * (1 + Σ_i |b_i|)`: an aggregate. One unrelated large row lifts every other
+        row's threshold without limit.
+      * `feas_tol * (1 + |b_i|)`: per-row and STILL wrong, twice over. The `1 +` makes it a
+        FLOOR of `feas_tol` at a scale the caller never chose, and using `feas_tol` itself as
+        the RELATIVE multiplier is 4.5 million ulps of slop at magnitude 1e9 — so at
+        `b_i = 1e9` the threshold is 1.000000001 and a row with nine tenths of a unit of
+        genuine slack was reported as BINDING, complete with a shadow price.
+    """
+    return feas_tol + LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * fabs(rhs_i)
 
 
 fn lin_status_name(code: Int) -> String:
@@ -1137,13 +1179,15 @@ fn _simplex_run(
     #
     # Each row's budget is the caller's ABSOLUTE tolerance plus a ROUNDING allowance sized by
     # what the elimination could have accumulated at that row's magnitude — see
-    # `LP_FEAS_ULP_BUDGET`. It is deliberately not `feas_tol * (1 + |b_i|)`: that form is
-    # per-row and still wrong, because the fraction shrinks with the row's magnitude while
-    # the violation does not, so `{x >= 1e9, x <= 1e9 - 1}` (residual exactly 1.0, no
-    # feasible point) came back LP_OPTIMAL at x = 1e9.
+    # `_lp_row_gap_budget`, which is the same budget `_solution_from_simplex` calls a row
+    # BINDING by, so "row i is satisfied" and "row i binds" are one threshold. It is
+    # deliberately not `feas_tol * (1 + |b_i|)`: that form is per-row and still wrong,
+    # because the fraction shrinks with the row's magnitude while the violation does not, so
+    # `{x >= 1e9, x <= 1e9 - 1}` (residual exactly 1.0, no feasible point) came back
+    # LP_OPTIMAL at x = 1e9.
     var arts = _artificial_values(s)
     for i in range(m):
-        var budget = feas_tol + LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * fabs(rhs[i])
+        var budget = _lp_row_gap_budget(feas_tol, rhs[i])
         if arts[i] > budget:
             s.status = LP_INFEASIBLE
             return s^
@@ -1287,9 +1331,22 @@ fn _solution_from_simplex(
         activity.append(value)
         var gap = fabs(rhs[i] - value)
         slack.append(gap)
-        # Relative to |rhs|, because "binds" is a statement about the caller's units and a
-        # row with b = 1e6 is not non-binding because its gap is 1e-7.
-        binding.append(gap <= feasibility_tol * (1.0 + fabs(rhs[i])))
+        # "Binds" means the returned point is ON this row, so the only thing the threshold may
+        # absorb is what floating point cannot say about THIS gap: the caller's absolute
+        # `feasibility_tol` plus a rounding allowance at row `i`'s own magnitude. That is
+        # exactly the budget phase 1 accepted the row's residual under, so a row cannot be
+        # called satisfied here and violated there — see `_lp_row_gap_budget`.
+        #
+        # It was `feasibility_tol * (1.0 + fabs(rhs[i]))`, justified as "relative to |rhs|,
+        # because binds is a statement about the caller's units". The intuition is right and
+        # that implementation of it is not: `feasibility_tol` as the RELATIVE multiplier makes
+        # the threshold `1e-9 * (1 + 1e9)` = 1.000000001 at b = 1e9, so `max x s.t.
+        # {x <= 1e9, x <= 1e9 - 0.9}` reported row 0 — with 0.8999999761581421 of real slack —
+        # as BINDING, and `explain.binding_constraints` then presents that row's dual as an
+        # actionable shadow price while `lp_rhs_ranges` ties its interval to the same claim.
+        # A row with b = 1e6 whose gap is 1e-7 still reads as binding under the form below:
+        # 1024 ulps at 1e6 is 2.3e-7, which is what rounding at that magnitude actually costs.
+        binding.append(gap <= _lp_row_gap_budget(feasibility_tol, rhs[i]))
 
     var reduced = List[Float64]()
     for j in range(cols):

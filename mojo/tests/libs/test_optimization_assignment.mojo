@@ -608,6 +608,129 @@ fn main() raises:
             honest_dual.certified,
         )
 
+    # ── one big cell may not buy slack for a small pair (rule 4b) ─────────────
+    # The regression, verbatim as it reproduced. `_certificate_tol` was
+    # `DEFAULT_FEASIBILITY_TOL * (1 + max_ij |c_ij|)`: a MAX over every cell, a 1.0 floor, and
+    # the caller's tolerance used as the RELATIVE multiplier. One cell of 1e9 made the
+    # threshold `1e-9 * (1 + 1e9)` = exactly 1.0, so this triple came back
+    # `certified = True, dual_feasible = True` on a matching costing 1e9 + 0.5 whose optimum
+    # is 1e9 — the reduced cost of the unchosen pair (0, 0) is -0.5, and 0.5 is not a rounding
+    # artefact between terms whose own magnitudes are 0.0, 0.0 and 0.5.
+    var scaled_cost = _floats(0.0, 1.0e9, 0.5, 1.0e9)
+    var swallowed = assignment_dual_check(
+        scaled_cost, 2, 2, _ints(1, 0), _floats(0.0, 0.0), _floats(0.5, 1.0e9)
+    )
+    var swallowed_scored = assignment_cost_of(scaled_cost, 2, 2, _ints(1, 0))
+    var scaled_optimum = assignment_solve(scaled_cost, 2, 2)
+    var scaled_honest = assignment_dual_check(
+        scaled_cost, 2, 2, scaled_optimum.col_of_row, scaled_optimum.u, scaled_optimum.v
+    )
+    if (
+        swallowed.status == ASSIGN_OK
+        and not swallowed.certified
+        and not swallowed.dual_feasible
+        and swallowed.slack_tight  # tightness was never the missing half
+        and swallowed.n_idle_nonzero == 0
+        and swallowed.n_agent_sign_violations == 0
+        and swallowed.max_dual_violation == 0.5
+        and swallowed.dual_objective == 1000000000.5
+        # …and the matching it used to certify really is suboptimal, by that same 0.5.
+        and swallowed_scored.status == ASSIGN_OK
+        and swallowed_scored.total_cost == 1000000000.5
+        and scaled_optimum.status == ASSIGN_OK
+        and scaled_optimum.total_cost == 1.0e9
+        and _same_ints(scaled_optimum.col_of_row, _ints(0, 1))
+        and scaled_optimum.dual_certified
+        and scaled_honest.certified
+        and scaled_honest.dual_objective == 1.0e9
+    ):
+        passed += 1
+        print("  ✅ a 0.5 dual violation beside a 1e9 cell is refused, not certified")
+    else:
+        failed += 1
+        print(
+            "  ❌ scaled certificate wrong:",
+            swallowed.certified,
+            swallowed.dual_feasible,
+            swallowed.max_dual_violation,
+            swallowed.dual_objective,
+            scaled_optimum.total_cost,
+            scaled_honest.certified,
+        )
+
+    # ── CONTROL 1: the same violation at unit scale was always caught ─────────
+    # Identical structure with the 1e9 cells replaced by 1.0 — the reduced cost of pair
+    # (0, 0) is still exactly -0.5. The old threshold here was `1e-9 * (1 + 1.0)` = 2e-9, so
+    # this case passed before the fix and passes after it. That is what makes the case above a
+    # SCALE defect and not a missing check, and it is the assertion that proves the fix is a
+    # re-scaling rather than a blanket tightening of the certificate.
+    var unit_cost = _floats(0.0, 1.0, 0.5, 1.0)
+    var unit_swallowed = assignment_dual_check(
+        unit_cost, 2, 2, _ints(1, 0), _floats(0.0, 0.0), _floats(0.5, 1.0)
+    )
+    if (
+        unit_swallowed.status == ASSIGN_OK
+        and not unit_swallowed.certified
+        and not unit_swallowed.dual_feasible
+        and unit_swallowed.slack_tight
+        and unit_swallowed.max_dual_violation == 0.5
+    ):
+        passed += 1
+        print("  ✅ the same 0.5 violation at unit scale is refused too")
+    else:
+        failed += 1
+        print(
+            "  ❌ unit-scale control wrong:",
+            unit_swallowed.certified,
+            unit_swallowed.dual_feasible,
+            unit_swallowed.max_dual_violation,
+        )
+
+    # ── CONTROL 2: a genuine near-zero at 1e9 must still certify ──────────────
+    # The optimal triple for the same matrix with `v[1]` nudged by FOUR ULPS of 1e9
+    # (ulp(1e9) = 2^-52 * 2^29 = 1.19209...e-7, so the nudge is exactly representable and no
+    # rounding hides it). The reduced cost of pairs (0, 1) and (1, 1) is then -4.768e-7 and
+    # the chosen pair (1, 1) is off tightness by the same amount — real cancellation noise at
+    # this magnitude, which the per-pair budget of `1024 * DBL_EPSILON * 2e9` = 4.5e-4
+    # absorbs. A certificate that refused this would be useless on currency-scale costs, so
+    # the relative term is still doing its job: `certified` is True WITH a nonzero measured
+    # violation reported beside it.
+    var four_ulps = 4.76837158203125e-07
+    var noisy_v = _floats(0.0, 1.0e9 + four_ulps)
+    var noisy = assignment_dual_check(
+        scaled_cost, 2, 2, _ints(0, 1), _floats(0.0, 0.0), noisy_v
+    )
+    # …and the SAME absolute defect at unit scale is 2 billion ulps, so it is a violation.
+    var noisy_unit = assignment_dual_check(
+        unit_cost, 2, 2, _ints(0, 1), _floats(0.0, 0.0), _floats(0.0, 1.0 + four_ulps)
+    )
+    if (
+        noisy.status == ASSIGN_OK
+        and noisy.certified
+        and noisy.dual_feasible
+        and noisy.slack_tight
+        and noisy.max_dual_violation == four_ulps
+        and noisy.max_tight_gap == four_ulps
+        and noisy.n_agent_sign_violations == 0
+        and noisy_unit.status == ASSIGN_OK
+        and not noisy_unit.certified
+        and not noisy_unit.dual_feasible
+        and noisy_unit.max_dual_violation == four_ulps
+    ):
+        passed += 1
+        print("  ✅ 4 ulps of 1e9 still certifies; the same 4.8e-7 at scale 1.0 does not")
+    else:
+        failed += 1
+        print(
+            "  ❌ near-zero control wrong:",
+            noisy.certified,
+            noisy.dual_feasible,
+            noisy.slack_tight,
+            noisy.max_dual_violation,
+            noisy.max_tight_gap,
+            noisy_unit.certified,
+        )
+
     # ── an infeasible dual is caught too ─────────────────────────────────────
     var bumped = _floats(solved.u[0] + 1.0, solved.u[1], solved.u[2])
     var bad_dual = assignment_dual_check(rank_one, 3, 3, solved.col_of_row, bumped, solved.v)

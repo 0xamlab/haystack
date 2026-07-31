@@ -31,6 +31,17 @@ out a negative-cost residual cycle without enumerating cycles.
 Exact equality is used for every capacity, flow and cost here. All of them are small
 integers or dyadic fractions (1.5, 4.0), so a tolerance would hide a genuine
 mis-accumulation rather than absorb a rounding.
+
+One group of tests works at 1e12 instead, and it is about the THRESHOLDS rather than the
+arithmetic: every tolerance in `flow.mojo` must be built from the magnitude of the one
+quantity it judges, with a relative term in ulps of that magnitude and never a 1e-9 fraction
+of it. Each of those tests carries the violation that was executed on the shipped code, a
+CONTROL repeating the same violation at magnitude 1.0 (so a fix cannot be a blanket
+tightening that only bites at 1e12), and a CONTROL in the other direction where a legitimate
+near-zero at 1e12 must still pass (so it cannot be a blanket tightening either). Values at
+that scale are still exact — 1e12, 3e12 and 1e12 + 1000.0 all have exact Float64
+representations — except where a decimal like 1.001 is deliberately used, and there the
+measured magnitude is bracketed rather than compared for equality.
 """
 from graph_analytics.adjacency import graph_dijkstra_from_triplets
 from graph_decision import flow_augment_amount, flow_residual_capacity
@@ -867,6 +878,311 @@ fn main() raises:
             broken.first_bad_node,
             over_cap.capacity_violations,
             over_cap.first_bad_edge,
+        )
+
+    # ── a tolerance is built from the quantity it judges, at ULP scale ────────
+    # REGRESSION, executed on the shipped code before the fix. `_tolerance` was
+    # `FLOW_TOL + FLOW_TOL * |scale|`, i.e. the relative term was a 1e-9 FRACTION of the
+    # magnitude — about 4.5 million ulps — so the allowance grew with the network while the
+    # violation stayed a violation. The reproduction is verbatim: ONE edge of capacity 1e12
+    # carrying 1e12 + 1000.0 came back `feasible = True`, `capacity_violations = 0`,
+    # `worst_capacity_violation = 0.0`, `value = 1000000001000.0`. A thousand whole units of
+    # overload certified as a feasible flow by the function whose entire job is to say
+    # whether somebody else's flow is valid.
+    #
+    # 1000.0 at magnitude 1e12 is ~8.2 million ulps: nowhere near what floating point can
+    # explain away. The budget is now `FLOW_TOL + 1024 * DBL_EPSILON * magnitude` = 0.227 at
+    # this scale, so the overload is 4000x over it.
+    var huge_over = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1,
+        _floats(1e12 + 1000.0),
+    )
+    # CONTROL at unit scale: the SAME violation shape on a capacity of 1.0 must still be
+    # caught, so the fix is a correct scale and not a blanket tightening that only bites at
+    # 1e12. 1.001 - 1.0 is not exactly 0.001 in binary, so the measured excess is bracketed
+    # rather than compared for equality.
+    var unit_over = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1.0), List[Float64](), 2, 0, 1, _floats(1.001)
+    )
+    # CONTROL the other way: a legitimate near-zero at 1e12 must still PASS. One thousandth
+    # of a unit on a 1e12 edge is a handful of ulps of rounding, not an overload, and it must
+    # come back feasible — AND it must come back with the near-miss visible, because the
+    # measured magnitude is reported whether or not it crossed the threshold.
+    var big_slack_flow = 1e12 + 0.001
+    var big_excess = big_slack_flow - 1e12
+    var near_miss = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1,
+        _floats(big_slack_flow),
+    )
+    # And an exactly-saturated 1e12 edge is feasible with nothing measured above capacity, so
+    # 0.0 still means 0.0.
+    var exact_big = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1, _floats(1e12)
+    )
+    if (
+        huge_over.status == FLOW_OK
+        and not huge_over.feasible
+        and not huge_over.has_value
+        and huge_over.value == 0.0
+        and huge_over.capacity_violations == 1
+        and huge_over.first_bad_edge == 0
+        # The measured magnitude, reported as measured. This was 0.0 on the shipped code:
+        # the threshold that let the violation through also erased the evidence of it.
+        and huge_over.worst_capacity_violation == 1000.0
+        and unit_over.capacity_violations == 1
+        and not unit_over.feasible
+        and unit_over.first_bad_edge == 0
+        and unit_over.worst_capacity_violation > 0.0009
+        and unit_over.worst_capacity_violation < 0.0011
+        and near_miss.status == FLOW_OK
+        and near_miss.feasible
+        and near_miss.has_value
+        and near_miss.value == big_slack_flow
+        and near_miss.capacity_violations == 0
+        # Feasible AND the near-miss is not hidden behind the verdict.
+        and near_miss.worst_capacity_violation == big_excess
+        and big_excess > 0.0
+        and exact_big.feasible
+        and exact_big.value == 1e12
+        and exact_big.worst_capacity_violation == 0.0
+        and exact_big.capacity_violations == 0
+    ):
+        passed += 1
+        print("  ✅ 1000 units over a 1e12 capacity is a violation, and it is reported")
+    else:
+        failed += 1
+        print(
+            "  ❌ capacity tolerance:",
+            huge_over.feasible,
+            huge_over.capacity_violations,
+            huge_over.worst_capacity_violation,
+            unit_over.capacity_violations,
+            near_miss.feasible,
+            near_miss.worst_capacity_violation,
+        )
+
+    # The SAME threshold was deciding a second, different question: `f >= 0`. Zero has no
+    # magnitude, so nothing about the capacity may pay for a flow running backwards — but the
+    # audit compared `-f` against a tolerance built from the capacity, so an edge of capacity
+    # 1e12 carrying a flow of -100.0 audited as feasible (with a "value" of -100.0). A hundred
+    # units the wrong way down a one-way arc is not a rounding artefact at any capacity.
+    var backwards = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1, _floats(-100.0)
+    )
+    # And the case that pins the bound apart from the ULP budget rather than from the old
+    # 1e-9 fraction: -0.1 is BELOW 1024 ulps of 1e12 (0.227), so a lower bound that borrows the
+    # capacity's magnitude still swallows it however tight the relative term is. A tenth of a
+    # unit backwards is a violation; only the absolute floor may forgive anything here.
+    var mild_backwards = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1, _floats(-0.1)
+    )
+    # CONTROL at unit scale: a thousandth of a unit backwards on a capacity of 1.0 is still
+    # caught, so the lower bound is absolute at BOTH scales and not merely re-scaled.
+    var unit_backwards = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1.0), List[Float64](), 2, 0, 1, _floats(-0.001)
+    )
+    # CONTROL the other way: -1e-12 is a caller's rounding against zero, under the absolute
+    # floor, and stays feasible at BOTH capacities — measured and reported either way.
+    var tiny_backwards = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1e12), List[Float64](), 2, 0, 1, _floats(-1e-12)
+    )
+    var tiny_backwards_unit = flow_audit_flat(
+        _ints(0), _ints(1), _floats(1.0), List[Float64](), 2, 0, 1, _floats(-1e-12)
+    )
+    if (
+        backwards.status == FLOW_OK
+        and not backwards.feasible
+        and not backwards.has_value
+        and backwards.capacity_violations == 1
+        and backwards.first_bad_edge == 0
+        and backwards.worst_capacity_violation == 100.0
+        and not mild_backwards.feasible
+        and mild_backwards.capacity_violations == 1
+        and mild_backwards.first_bad_edge == 0
+        and mild_backwards.worst_capacity_violation == 0.1
+        and not unit_backwards.feasible
+        and unit_backwards.capacity_violations == 1
+        and unit_backwards.worst_capacity_violation > 0.0009
+        and unit_backwards.worst_capacity_violation < 0.0011
+        and tiny_backwards.feasible
+        and tiny_backwards.capacity_violations == 0
+        and tiny_backwards.worst_capacity_violation == 1e-12
+        and tiny_backwards_unit.feasible
+        and tiny_backwards_unit.worst_capacity_violation == 1e-12
+    ):
+        passed += 1
+        print("  ✅ a flow of -100 is not made feasible by a capacity of 1e12")
+    else:
+        failed += 1
+        print(
+            "  ❌ negative-flow bound:",
+            backwards.feasible,
+            backwards.capacity_violations,
+            backwards.worst_capacity_violation,
+            mild_backwards.feasible,
+            unit_backwards.feasible,
+            tiny_backwards.feasible,
+            tiny_backwards.worst_capacity_violation,
+        )
+
+    # Same defect at the conservation test, same 1e-9-fraction cause. Node 1 takes in 1e12
+    # and passes on 1e12 - 1000: it loses a thousand units. Its gross throughput is ~2e12, so
+    # the old threshold was 1e-9 * 2e12 = 2000 and the 1000-unit leak conserved.
+    var leak = flow_audit_flat(
+        _ints(0, 1), _ints(1, 2), _floats(1e12, 1e12), List[Float64](), 3, 0, 2,
+        _floats(1e12, 1e12 - 1000.0),
+    )
+    # CONTROL at unit scale: the same leak shape at magnitude 1.0 is still caught.
+    var unit_leak = flow_audit_flat(
+        _ints(0, 1), _ints(1, 2), _floats(1.0, 1.0), List[Float64](), 3, 0, 2,
+        _floats(1.0, 0.999),
+    )
+    # CONTROL the other way: a thousandth of a unit lost at a node moving 2e12 is rounding,
+    # and must still conserve — with the imbalance reported as measured.
+    var tiny_leak_flow = 1e12 - 0.001
+    var tiny_imbalance = 1e12 - tiny_leak_flow
+    var tiny_leak = flow_audit_flat(
+        _ints(0, 1), _ints(1, 2), _floats(1e12, 1e12), List[Float64](), 3, 0, 2,
+        _floats(1e12, tiny_leak_flow),
+    )
+    if (
+        leak.status == FLOW_OK
+        and not leak.feasible
+        and not leak.has_value
+        and leak.conservation_violations == 1
+        and leak.first_bad_node == 1
+        and leak.worst_conservation_violation == 1000.0
+        and leak.capacity_violations == 0
+        and not unit_leak.feasible
+        and unit_leak.conservation_violations == 1
+        and unit_leak.first_bad_node == 1
+        and unit_leak.worst_conservation_violation > 0.0009
+        and unit_leak.worst_conservation_violation < 0.0011
+        and tiny_leak.feasible
+        and tiny_leak.conservation_violations == 0
+        and tiny_leak.worst_conservation_violation == tiny_imbalance
+        and tiny_imbalance > 0.0
+    ):
+        passed += 1
+        print("  ✅ a 1000-unit leak at a node moving 2e12 units is not conservation")
+    else:
+        failed += 1
+        print(
+            "  ❌ conservation tolerance:",
+            leak.feasible,
+            leak.conservation_violations,
+            leak.worst_conservation_violation,
+            unit_leak.conservation_violations,
+            tiny_leak.feasible,
+            tiny_leak.worst_conservation_violation,
+        )
+
+    # The same fraction sized the "did we reach the target" test, and that one is a CLAIM:
+    # `target_met` is the field a caller reads to learn whether its demand was routed. A
+    # single edge of capacity 1e12 - 1000 asked for 1e12 came back FLOW_OK with
+    # `target_met = True`, 1000 units short, because 1e-9 * 1e12 == 1000 exactly. It is now
+    # FLOW_ERR_TARGET_UNREACHABLE with no value and no cost.
+    var short_target = min_cost_flow(
+        _ints(0), _ints(1), _floats(1e12 - 1000.0), _floats(1.0), 2, 0, 1, 1e12
+    )
+    # CONTROL at unit scale: a target of 1.0 on a capacity of 0.999 is still unreachable.
+    var unit_target = min_cost_flow(
+        _ints(0), _ints(1), _floats(0.999), _floats(1.0), 2, 0, 1, 1.0
+    )
+    # CONTROL the other way: a target of 1e12 that IS routable is still met, priced, and not
+    # turned into a false rejection by the tighter budget.
+    var big_target = min_cost_flow(
+        _ints(0), _ints(1), _floats(1e12), _floats(1.0), 2, 0, 1, 1e12
+    )
+    if (
+        short_target.status == FLOW_ERR_TARGET_UNREACHABLE
+        and not short_target.has_value
+        and not short_target.has_cost
+        and not short_target.target_met
+        and unit_target.status == FLOW_ERR_TARGET_UNREACHABLE
+        and not unit_target.target_met
+        and big_target.status == FLOW_OK
+        and big_target.target_met
+        and big_target.value == 1e12
+        and big_target.cost == 1e12
+    ):
+        passed += 1
+        print("  ✅ a 1e12 demand routed 1000 units short is unreachable, not met")
+    else:
+        failed += 1
+        print(
+            "  ❌ target tolerance:",
+            short_target.status,
+            short_target.target_met,
+            unit_target.status,
+            big_target.status,
+            big_target.target_met,
+        )
+
+    # The max-flow == min-cut self-check and the dual-feasibility check use the same
+    # `_tolerance`, and tightening a SELF-check risks the opposite failure: a correct answer
+    # rejected as a defect. Both must still solve at 1e12 capacities and 1e12 costs, with the
+    # identity exact and the potentials dual feasible — the tolerance was tightened, not the
+    # arithmetic.
+    # The classic network's own capacities, every one of them scaled by 1e12: the max flow
+    # scales with them, so the answer is 5e12 and it is exact in binary (3e12 and 5e12 both
+    # have exact Float64 representations, and so does their sum).
+    var big_cap = _floats(3e12, 2e12, 5e12, 2e12, 3e12)
+    var big_flow = max_flow_dinic(
+        _classic_src(), _classic_dst(), big_cap, 4, 0, 3
+    )
+    var big_costs = _floats(0.0, 1e12, 6e12, 0.0)
+    var big_priced = min_cost_max_flow(
+        _cost_src(), _cost_dst(), _cost_cap(), big_costs, 4, 0, 3
+    )
+    # The other end of the range, asserted because `FLOW_EPS` documents it as a consequence:
+    # an arc whose whole capacity is below the 1e-12 progress floor is never usable, so the
+    # max flow is 0.0. What matters here is that the answer stays COHERENT — the absolute term
+    # of the tolerance keeps the identity check from turning a documented floor into a
+    # FLOW_ERR_CUT_MISMATCH, and the cut still prices the arc it declined to push on.
+    var below_floor = max_flow_dinic(
+        _ints(0), _ints(1), _floats(1e-13), 2, 0, 1
+    )
+    var big_dual_ok = True
+    for k in range(4):
+        var u = _cost_src()[k]
+        var v = _cost_dst()[k]
+        var f = big_priced.edge_flow[k]
+        var pi = big_priced.potential.copy()
+        if flow_residual_capacity(_cost_cap()[k], f) > 0.0:
+            if big_costs[k] + pi[u] - pi[v] < 0.0:
+                big_dual_ok = False
+        if f > 0.0:
+            if -big_costs[k] + pi[v] - pi[u] < 0.0:
+                big_dual_ok = False
+    if (
+        big_flow.status == FLOW_OK
+        and _invariants_hold(
+            big_flow, _classic_src(), _classic_dst(), big_cap, 4, 0, 3
+        )
+        and big_flow.value == big_flow.cut_capacity
+        and big_flow.value == 5e12
+        and big_priced.status == FLOW_OK
+        and big_priced.value == 2.0
+        and big_priced.cost == 7e12
+        and big_dual_ok
+        and below_floor.status == FLOW_OK
+        and below_floor.has_value
+        and below_floor.value == 0.0
+        and below_floor.cut_capacity == 1e-13
+    ):
+        passed += 1
+        print("  ✅ 1e12 capacities and costs: identity exact, potentials dual feasible")
+    else:
+        failed += 1
+        print(
+            "  ❌ large-scale self-checks:",
+            big_flow.status,
+            big_flow.value,
+            big_flow.cut_capacity,
+            big_priced.status,
+            big_priced.cost,
+            big_dual_ok,
         )
 
     # ── the per-step scalars, exposed and folded ──────────────────────────────

@@ -564,6 +564,87 @@ fn main() raises:
             scaled_good.status,
         )
 
+    # ── `binding` is a distance to the row, not a fraction of its rhs ─────────
+    # `max x  s.t.  x <= 1e9,  x <= 1e9 - 0.9` optimises at x = 999999999.1 with row 1 tight
+    # and row 0 holding 0.8999999761581421 of REAL slack. Row 0 was reported BINDING, because
+    # the flag was `gap <= feasibility_tol * (1 + |rhs_i|)` = `1e-9 * (1 + 1e9)` = 1.000000001
+    # — an absolute threshold of one whole unit, at a scale no caller chose, built by using
+    # `feasibility_tol` (4.5 million ulps at 1e9) as the RELATIVE multiplier. It matters past
+    # the flag itself: `explain.binding_constraints` reads `binding` to decide which rows get
+    # a shadow price, so a row with nearly a full unit of room was presented as a constraint
+    # whose dual is actionable, and `lp_rhs_ranges` ties its intervals to the same basis
+    # claim. The budget is now `_lp_row_gap_budget` — the caller's ABSOLUTE tolerance plus
+    # 1024 ulps at the row's own magnitude — the identical budget phase 1 accepts a residual
+    # under, so "satisfied" and "binds" cannot disagree about one row.
+    var big_binding = lp_solve_default(
+        _floats(1.0), _floats(1.0, 1.0), 2, 1,
+        _ints(SENSE_LE, SENSE_LE), _floats(1e9, 1e9 - 0.9), True,
+    )
+    # CONTROL, same shape at unit scale: 0.9 of room out of a rhs of 1.0. Non-binding before
+    # the fix and non-binding after it — the fix is a rescaling, not a blanket tightening, so
+    # the verdict at the scale where the old form happened to work must not move.
+    var unit_binding = lp_solve_default(
+        _floats(1.0), _floats(1.0, 1.0), 2, 1,
+        _ints(SENSE_LE, SENSE_LE), _floats(1.0, 0.1), True,
+    )
+    # CONTROL, a LEGITIMATE near-zero at large scale: rows at 1e6 separated by 1e-7. That gap
+    # is 100x the absolute 1e-9 default, so replacing the broken relative term with a purely
+    # absolute test would call this tight row non-binding and drop a real shadow price. 1024
+    # ulps at 1e6 is 2.3e-7, which is what rounding at that magnitude actually costs, so the
+    # row still binds.
+    var scaled_tight = lp_solve_default(
+        _floats(1.0), _floats(1.0, 1.0), 2, 1,
+        _ints(SENSE_LE, SENSE_LE), _floats(1e6, 1e6 - 1e-7), True,
+    )
+    # CONTROL, the SAME 1e-7 gap at unit scale: 1024 ulps at 1.0 is 2.3e-13, so 1e-7 is a real
+    # distance here and the row does NOT bind. The relative term is tied to the row's scale in
+    # both directions; it is not a floor that loosens every comparison in the file.
+    var unit_tight = lp_solve_default(
+        _floats(1.0), _floats(1.0, 1.0), 2, 1,
+        _ints(SENSE_LE, SENSE_LE), _floats(1.0, 1.0 - 1e-7), True,
+    )
+    # The flag travels: `RhsSensitivity` copies `binding` straight out of the solution, so the
+    # ranges report inherits whatever verdict was reached above.
+    var big_binding_ranges = lp_rhs_ranges(
+        _floats(1.0), 0.0, _floats(1.0, 1.0), 2, 1,
+        _ints(SENSE_LE, SENSE_LE), _floats(1e9, 1e9 - 0.9), True, 1000, 1e-9, 1e-9,
+    )
+    if (
+        big_binding.status == LP_OPTIMAL
+        and _close(big_binding.x[0], 1e9 - 0.9, 1e-6)
+        and _close(big_binding.slack[0], 0.8999999761581421, 1e-12)
+        and not big_binding.binding[0]
+        and big_binding.binding[1]
+        and unit_binding.status == LP_OPTIMAL
+        and _close(unit_binding.slack[0], 0.9, 1e-12)
+        and not unit_binding.binding[0]
+        and unit_binding.binding[1]
+        and scaled_tight.status == LP_OPTIMAL
+        and scaled_tight.slack[0] > 1e-9
+        and scaled_tight.binding[0]
+        and scaled_tight.binding[1]
+        and unit_tight.status == LP_OPTIMAL
+        and not unit_tight.binding[0]
+        and unit_tight.binding[1]
+        and big_binding_ranges.status == LP_OPTIMAL
+        and not big_binding_ranges.binding[0]
+        and big_binding_ranges.binding[1]
+    ):
+        passed += 1
+        print("  ✅ `binding` measures the gap in the row's own ulps, not a fraction of rhs")
+    else:
+        failed += 1
+        print(
+            "  ❌ binding threshold wrong:",
+            big_binding.slack[0],
+            big_binding.binding[0],
+            unit_binding.binding[0],
+            scaled_tight.slack[0],
+            scaled_tight.binding[0],
+            unit_tight.binding[0],
+            big_binding_ranges.binding[0],
+        )
+
     # ── a rank-deficient equality block: the range is PINNED, never open ──────
     # A balanced transportation problem, which is rank-deficient by one BY CONSTRUCTION:
     # supplies 10 + 5 equal demands 8 + 7, so row1 + row2 - row3 - row4 = 0 and phase 1

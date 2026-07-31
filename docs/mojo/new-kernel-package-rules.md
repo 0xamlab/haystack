@@ -339,8 +339,60 @@ inherited the bug and reported `EXPLAIN_FEASIBLE_NO_CORE` with `is_infeasible = 
 an infeasible model. **A wrong status propagates further than a wrong number, because
 downstream code branches on it.**
 
-Generally: whenever a comparison mixes a tolerance with a scale, check what the scale sums
-over. It must span exactly the quantity being judged and nothing else.
+### The rule as first written was not specific enough. Here are the four spellings.
+
+This section was added after the `Σ|b_i|` defect above. Tier 2 was built by agents that had read
+it, and reproduced the same family **four more ways**. So the principle alone does not transfer —
+the spellings have to be named.
+
+**The principle, stated to cover all of them:** a tolerance exists to absorb what floating point
+cannot represent about *the one quantity being judged*. Build it from
+`DBL_EPSILON × (that quantity's own magnitude)`, plus the caller's **absolute** tolerance if they
+supplied one. Never from an aggregate over other items, never from a floor that dominates the real
+scale, never by multiplying the caller's tolerance by a magnitude.
+
+| # | Spelling | What it actually did |
+| --- | --- | --- |
+| 1 | `Σ` over all items | `feas_tol * (1 + Σᵢ\|bᵢ\|)` — 200 ordinary capacity rows swallowed a flat contradiction; an infeasible LP returned `LP_OPTIMAL` with duals and a basis |
+| 2 | `max` / norm over all items | a pivot tolerance scaled by `max_diag` of the whole matrix accepted an eigenvalue of **−0.68** as convex because another diagonal was 1e12 |
+| 3 | `1 + \|x\|` whose **1.0 floor dominates** | a "relative" slop floored at 1.0 is an *absolute* allowance of one unit — a resource limit that permits one whole unit of overload |
+| 4 | `caller_tol × magnitude` | sizing the *relative* term by the caller's tolerance instead of `DBL_EPSILON` — a measured gap of **400,000,000** reported `at_optimum = True` |
+
+Spelling 2 is the one to watch for, because `max` *looks* per-item. It is not: it is an aggregate
+over every item, and it transfers one item's units onto another item's comparison. A pivot's
+tolerance must come from that pivot's own magnitude and the elimination error accumulated at its
+position. A direction's curvature tolerance must come from that direction's own curvature.
+
+Spelling 3 hides because `1 + |x|` is the idiom for "relative, but don't divide by zero". That is
+fine when `|x|` is O(1) or larger. It is a lie when `|x|` is 1e-13 and the floor is doing all the
+work — the comparison has silently become absolute at a scale the caller never chose.
+
+**Practical check before writing any `if error > tol`:** say out loud what quantity `error`
+measures, then confirm `tol` is derived from *that quantity alone*. If the derivation mentions any
+other item, it is one of the four above.
+
+**When you fix a premise, re-examine everything downstream that trusted it.** Two of tier 2's
+criticals were endorsed by the module's *own* cross-checks — a KKT certificate and an independent
+linearisation bound both agreed the answer was optimal, because both inherited the same false
+convexity verdict. Independent checks are only independent if they don't share the broken input.
+
+**Self-consistency is a testable property, so test it.** `qp_convexity_flat` reported
+`positive_definite = True` for a matrix the solver in the same run called unbounded, and one struct
+carried `rank = 1` beside `positive_definite = True`. Two mutually exclusive claims in one returned
+value means a caller can use neither. Assert that a package's own reports agree with each other —
+that assertion catches a broken premise even when you cannot compute the right answer by hand.
+
+### Bounding memory is not bounding work
+
+A dimension can sit inside the allocation ceiling and still drive an unbounded number of
+operations. Scheduling bounded `n_machines` against the allocation ceiling but never charged it
+against the work budget, while `_mach_pred_of` and `_ranks_of` each looped over it on *every* tabu
+trial — a confirmed hang, which from the caller's side is the same outcome as the uncatchable abort
+in rule 1. Multiobjective bounded memory and pair comparisons but not
+`generations × pop_size × rows × n_vars`.
+
+So: for every work or iteration budget, walk each loop bound that multiplies into the cost and
+confirm it is charged. A budget that only counts one factor of a product is not a budget.
 
 ## 4c. `Float64(Int(v))` past the integer grid is poison, not truncation.
 

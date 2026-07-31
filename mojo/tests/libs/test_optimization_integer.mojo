@@ -33,6 +33,13 @@ as if it were an OPTIMUM.
     box row in `n_constraints`. A box that extends below zero is a status, not a clip, and
     the redundant-upper-bound variant of the two-variable program pins that a bound which
     cannot bind does not change the answer.
+  * The incumbent VERIFIER's row budget is asserted per row and at two scales, because its
+    threshold used to be `feasibility_tol * (1 + |b_i|)` — the form `linear.mojo` documents as
+    rejected. At `b_i = 1e9` that is 1.000000001, so a point violating `x <= 1e9` by a FULL
+    UNIT verified as `MODEL_OK`, and `_verify_point` is the only thing standing between a
+    snapped vertex and an incumbent that prunes the real optimum. The same violation at unit
+    scale is asserted to still fail, a legitimate rounding-scale gap at 1e9 to still pass, and
+    the SNAP allowance to survive on an integer column while being absent on a continuous one.
   * The status codes are asserted to sit at 100+, clear of `optimization.explain`'s 80-86:
     when this module started at 80, `milp_status_name(81)` and `explain_status_name(81)` gave
     two different meanings for one integer out of one package.
@@ -62,6 +69,7 @@ from optimization.integer import (
     MILP_RELAXATION_FAILED,
     MILP_RELAXATION_UNBOUNDED,
     MILP_SNAP_INFEASIBLE,
+    _verify_point,
     branch_choice,
     milp_from_arenas,
     milp_knapsack,
@@ -69,7 +77,7 @@ from optimization.integer import (
     milp_solve_default,
     milp_status_name,
 )
-from optimization.linear import LP_OPTIMAL, lp_solve_default
+from optimization.linear import LP_INFEASIBLE, LP_OPTIMAL, lp_solve_default
 from optimization.model import (
     DEFAULT_FEASIBILITY_TOL,
     DEFAULT_INTEGRALITY_TOL,
@@ -1072,6 +1080,82 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ status names collide:", distinct, milp_status_name(MODEL_ERR_VAR_KIND))
+
+    # ── the incumbent verifier's row budget, per row and at two scales ────────
+    # RULE 4b. `_verify_point`'s threshold was `feasibility_tol * (1.0 + fabs(rhs[i]))
+    # + integrality_tol * Σ_j|a_ij|`, which is the second form `linear._lp_row_gap_budget`
+    # names as rejected: the `1 +` is an absolute FLOOR at a scale the caller never chose, and
+    # `feasibility_tol` as the RELATIVE multiplier is 4.5 million ulps at magnitude 1e9. This
+    # is the executed reproduction, verbatim — a point one FULL UNIT past `x <= 1e9` came back
+    # `MODEL_OK`, so the one check between a snapped vertex and an incumbent that prunes the
+    # real optimum passed a violation of 1.0. It must now be LP_INFEASIBLE, which is what
+    # `milp_solve` turns into MILP_SNAP_INFEASIBLE rather than an answer.
+    var verify_huge = _verify_point(
+        _floats(1.0), 1, 1, _ints(SENSE_LE), _floats(1.0e9),
+        _floats(1.0e9 + 1.0), _ints(VAR_INTEGER),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    # CONTROL, same violation at unit scale: the fix must not be a blanket tightening that
+    # only ever catches large numbers, and it must not have stopped catching this.
+    var verify_unit = _verify_point(
+        _floats(1.0), 1, 1, _ints(SENSE_LE), _floats(1.0),
+        _floats(2.0), _ints(VAR_INTEGER),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    # CONTROL, a legitimate near-zero at LARGE scale: 2e-7 past `x <= 1e9` is inside 1024 ulps
+    # of 1e9 (~2.3e-7 per operand, so ~4.5e-7 over the two here), which is what the recomputed
+    # dot product and the subtraction genuinely cost at that magnitude. It must still verify,
+    # or every honest large-scale MILP aborts as MILP_SNAP_INFEASIBLE.
+    var verify_noise = _verify_point(
+        _floats(1.0), 1, 1, _ints(SENSE_LE), _floats(1.0e9),
+        _floats(1.0e9 + 2.0e-7), _ints(VAR_INTEGER),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    # CONTROL, the SNAP allowance itself, which is the whole reason this budget is looser than
+    # `linear`'s: with `a = 1e9` on an INTEGER column, snapping by up to `integrality_tol`
+    # moves the activity by up to 1e-9 * 1e9 = 1.0, so 0.5 past the row is the snap and
+    # verifies. The SAME row with the SAME 0.5 on a CONTINUOUS column must NOT verify — a
+    # continuous coordinate is copied through unchanged, so nothing snapped and nothing
+    # explains the 0.5. Summing |a_ij| over columns that cannot have moved was the second half
+    # of this defect: one continuous column with |a| = 1e9 bought a full unit of slack.
+    var verify_snap = _verify_point(
+        _floats(1.0e9), 1, 1, _ints(SENSE_LE), _floats(1.0e9 - 0.5),
+        _floats(1.0), _ints(VAR_INTEGER),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    var verify_nosnap = _verify_point(
+        _floats(1.0e9), 1, 1, _ints(SENSE_LE), _floats(1.0e9 - 0.5),
+        _floats(1.0), _ints(VAR_CONTINUOUS),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    # PER ROW, not per program: one unrelated large-rhs row must not raise the threshold for
+    # the row next to it. `x0 <= 1e12` is satisfied with room to spare and `x1 <= 1.0` is
+    # violated by 1.0, and the aggregate form `Σ_i |b_i|` would have forgiven the second.
+    var verify_mixed = _verify_point(
+        _floats(1.0, 0.0, 0.0, 1.0), 2, 2, _ints(SENSE_LE, SENSE_LE),
+        _floats(1.0e12, 1.0), _floats(1.0, 2.0), _ints(VAR_INTEGER, VAR_INTEGER),
+        DEFAULT_FEASIBILITY_TOL, DEFAULT_INTEGRALITY_TOL,
+    )
+    if (
+        verify_huge == LP_INFEASIBLE
+        and verify_unit == LP_INFEASIBLE
+        and verify_noise == MODEL_OK
+        and verify_snap == MODEL_OK
+        and verify_nosnap == LP_INFEASIBLE
+        and verify_mixed == LP_INFEASIBLE
+    ):
+        passed += 1
+        print(
+            "  ✅ the verifier's row budget is DBL_EPSILON-scaled per row: a unit violation"
+            " at b = 1e9 is refused, 2e-7 of rounding is not, and the snap term is only for"
+            " columns that snap"
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌ verifier row budget wrong:", verify_huge, verify_unit, verify_noise,
+            verify_snap, verify_nosnap, verify_mixed,
+        )
 
     # ── the codes are one numbering across the package, not two ───────────────
     # These codes used to start at 80, where `optimization.explain` already lives: 81 was

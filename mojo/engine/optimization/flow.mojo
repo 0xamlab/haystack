@@ -48,9 +48,16 @@ The invariant is checked INSIDE the driver
 Max-flow value equals min-cut capacity exactly, and both are computed here from different
 data — the value from the augmentations, the cut from a residual reachability sweep and
 the ORIGINAL capacities. So the identity is a self-check, not just a test assertion: if
-the two disagree by more than a relative tolerance the result is
-`FLOW_ERR_CUT_MISMATCH` with no numbers attached. A wrong answer that satisfies neither
-side of a checkable identity should not be returned at all.
+the two disagree by more than `_tolerance` of the magnitude of the two totals themselves —
+an absolute floor plus a rounding budget in ULPS of that magnitude, never a fraction of it
+— the result is `FLOW_ERR_CUT_MISMATCH` with no numbers attached. A wrong answer that
+satisfies neither side of a checkable identity should not be returned at all.
+
+Every tolerance in this file is built the same way and the rule is worth stating once: the
+scale is the magnitude of the ONE quantity being judged (this edge's capacity and flow, this
+node's throughput, these two totals), the relative term is `FLOW_ULP_BUDGET *
+FLOW_DBL_EPSILON` and never a fraction like `FLOW_TOL`, and no sum, max or norm over other
+edges or nodes ever enters. See `_tolerance`.
 
 Absence markers
 ---------------
@@ -121,6 +128,7 @@ from columnar.hash_index import HashIndex
 from graph_analytics.adjacency import GRAPH_OK, graph_csr_build
 from graph_decision import flow_augment_amount, flow_residual_capacity
 from heap import heap_pop_min, heap_push_min
+from optimization.linear import LP_DBL_EPSILON, LP_FEAS_ULP_BUDGET
 from optimization.model import model_finite as _finite
 from sparse_numerics.csr import MAX_CSR_DIM
 
@@ -156,12 +164,41 @@ comptime FLOW_ERR_DEAD_PATH: Int = 21
 # An arc counts as usable when its residual exceeds this. Not 0.0: a residual of 1e-17
 # left by rounding would keep an exhausted arc in the level graph forever, and the phase
 # loop would spend its whole budget pushing amounts that change nothing.
+#
+# This is a PROGRESS floor, not a verdict tolerance: nothing is certified against it, and it
+# decides only whether pushing along an arc is worth an iteration. It is absolute on purpose
+# — a relative floor would have to be relative to something, and per-arc it would make the
+# floor 0.22 on a 1e12 arc, i.e. it would stop the solver a fifth of a unit short. The
+# consequence to know about is at the other end of the range: a network whose capacities are
+# all at or below 1e-12 has no usable arc at all and its max flow is 0.0. The absolute term
+# of `FLOW_TOL` below is what keeps the max-flow == min-cut identity consistent when that
+# happens, so the answer is coherent rather than a `FLOW_ERR_CUT_MISMATCH`.
 comptime FLOW_EPS: Float64 = 1e-12
 
-# Slack allowed on an audited capacity or conservation identity, and on the
-# max-flow == min-cut self-check. Relative, because a network with capacities near 1e12
-# accumulates absolute error near 1e-4 and a fixed 1e-9 would call it broken.
+# The ABSOLUTE slack allowed on an audited capacity or conservation identity, on the
+# max-flow == min-cut self-check and on a met flow target. Absolute and nothing else: it is
+# this module's default "how close to zero is zero" for a caller that supplies no tolerance,
+# and it is the same 1e-9 `optimization.model.DEFAULT_FEASIBILITY_TOL` uses. It is also the
+# only term that has to cover the residual floor below — `_ssp` stops when the shortfall is
+# `<= FLOW_EPS` and `_residual_reachable` treats a residual of `<= FLOW_EPS` as saturated, so
+# a correct run can miss an identity by a few multiples of 1e-12.
 comptime FLOW_TOL: Float64 = 1e-9
+
+# The relative term is sized by ULPS of the judged quantity, NOT by FLOW_TOL.
+#
+# `_tolerance` used to be `FLOW_TOL + FLOW_TOL * |scale|`, which made the relative term a
+# FRACTION (1e-9) of the magnitude — about 4.5 MILLION ulps at any scale, i.e. an allowance
+# that grows without limit while the violation it is meant to absorb does not. Executed, on
+# `flow_audit_flat` with one edge of capacity 1e12 carrying 1e12 + 1000.0: `feasible = True`,
+# `capacity_violations = 0`, a thousand whole units of overload certified as a flow. A
+# capacity constraint that permits a thousand units is not a capacity constraint.
+#
+# 1024 ulps of the quantity's OWN magnitude is what a fold over that quantity's own terms can
+# actually lose to rounding, and it is the only thing a relative term may absorb. Same numbers
+# as `optimization.linear`'s post-fix phase-1 test, IMPORTED from there rather than restated,
+# because two spellings of "how many ulps may a feasibility test forgive" would drift.
+comptime FLOW_DBL_EPSILON: Float64 = LP_DBL_EPSILON
+comptime FLOW_ULP_BUDGET: Float64 = LP_FEAS_ULP_BUDGET
 
 # How many arrays of length n_nodes one request may hold live at the same time. MEASURED
 # on the widest path through this file, worst case first:
@@ -421,6 +458,15 @@ struct FlowAudit(Copyable, Movable):
 
     `has_cost` is False when no cost array was supplied — a network without costs has no
     cost, which is not the same as a cost of zero.
+
+    `worst_capacity_violation` and `worst_conservation_violation` are MEASUREMENTS, not
+    consequences of the verdict: they are the largest overload and the largest imbalance the
+    audit actually found, reported whether or not they crossed the threshold that decides
+    `feasible`. They were previously assigned only inside the violation branch, so an audit
+    that measured 1000.0 units of overload and then declined to count it reported 0.0 — the
+    number that would have exposed the wrong threshold erased by that same threshold. 0.0 now
+    means "nothing measured above capacity" and only that; a small non-zero on a `feasible`
+    result is a near-miss the caller is entitled to see.
     """
 
     var status: Int
@@ -473,9 +519,34 @@ struct FlowScalar(Copyable, Movable):
 
 
 fn _tolerance(scale: Float64) -> Float64:
-    """Absolute slack for an identity whose terms are of magnitude `scale`."""
+    """Slack for ONE identity, where `scale` is that identity's OWN magnitude.
+
+    `FLOW_TOL` is the absolute part — the module's "how close to zero is zero" — and the
+    relative part is a ROUNDING budget: 1024 ulps of `scale`, which is what folding terms of
+    that magnitude can lose. `scale` must be the magnitude of the very quantity being judged
+    (this edge's capacity, this node's throughput, these two totals) and never a sum, a max
+    or a norm over other edges or nodes: that would let one edge's units pay for another
+    edge's overload, which is exactly how a thousand units of capacity violation came back
+    `feasible = True`.
+
+    It is deliberately NOT `FLOW_TOL + FLOW_TOL * |scale|`, and not `FLOW_TOL * (1 + |scale|)`
+    either: a 1e-9 FRACTION of the magnitude is ~4.5 million ulps, so the allowance scales
+    with the network while the violation stays a violation.
+    """
     var s = fabs(scale)
-    return FLOW_TOL + FLOW_TOL * s
+    return FLOW_TOL + FLOW_ULP_BUDGET * FLOW_DBL_EPSILON * s
+
+
+fn _pair_tolerance(a: Float64, b: Float64) -> Float64:
+    """`_tolerance` for a comparison BETWEEN two quantities, at the larger magnitude.
+
+    `a - b` cannot be represented to better than an ulp of the larger of the two, so the
+    scale of the difference is `max(|a|, |b|)` — still the magnitude of the quantities in
+    THIS comparison, and of nothing else.
+    """
+    var x = fabs(a)
+    var y = fabs(b)
+    return _tolerance(x) if x > y else _tolerance(y)
 
 
 fn _augment_limit(n_nodes: Int, n_edges: Int) -> Int:
@@ -887,10 +958,16 @@ fn max_flow_dinic(
     var side = _residual_reachable(net, source)
     var cut = List[Int]()
     var cut_capacity = _cut_edges(edge_src, edge_dst, capacity, side, cut)
-    if fabs(cut_capacity - total) > _tolerance(total):
+    if fabs(cut_capacity - total) > _pair_tolerance(total, cut_capacity):
         # The identity is exact in exact arithmetic, so a gap this large is a defect in
         # one of the two computations. Returning either number would be returning a wrong
         # answer that looks like a right one.
+        #
+        # Judged at the magnitude of the two totals being compared — BOTH of them, not just
+        # `total`: each is a fold of non-negative terms (augmentation amounts on one side,
+        # cut capacities on the other), so its own magnitude IS the magnitude the fold
+        # accumulated at. Scaling by `total` alone would size the tolerance from the smaller
+        # side whenever the cut extraction is the computation that went wrong.
         return _no_max_flow(FLOW_ERR_CUT_MISMATCH, n_nodes, m, source, sink)
 
     var inside = 0
@@ -966,6 +1043,13 @@ fn _reduced_dijkstra(
             var v = net.arc_head[a]
             var red = net.arc_cost[a] + pi[node] - pi[v]
             if red < 0.0:
+                # The quantity judged is THIS arc's reduced cost, and the only thing that can
+                # explain a negative one away is the rounding in the three terms it was
+                # summed from — this arc's cost and the two potentials. So the scale is those
+                # three magnitudes and nothing about any other arc, and the multiplier is
+                # ulps: a 1e-9 fraction of `|pi|` would forgive a real dual violation of a
+                # thousand cost units on a network priced near 1e12, and a dual violation is
+                # how a cheaper-looking flow that is not minimum cost gets returned.
                 var slack = _tolerance(
                     fabs(net.arc_cost[a]) + fabs(pi[node]) + fabs(pi[v])
                 )
@@ -1128,7 +1212,13 @@ fn _min_cost_run(
         return _no_min_cost(
             FLOW_ERR_NON_FINITE_FLOW, n_nodes, m, source, sink, target
         )
-    if limited and target - total > _tolerance(target):
+    # The shortfall is judged at the magnitude of the two numbers it is the difference of,
+    # the requested target and the routed total — `_ssp` stops augmenting at
+    # `target - total <= FLOW_EPS`, so the absolute part of `_tolerance` already covers the
+    # only legitimate shortfall, and the relative part covers the rounding in the fold of
+    # augmentation amounts that produced `total`. A 1e-9 FRACTION of the target instead would
+    # report `met = True` for a demand of 1e12 that came up 1000 units short.
+    if limited and target - total > _pair_tolerance(target, total):
         # The demand cannot be routed at all, so there is no minimum-cost flow of that
         # value and no cost for one. The largest flow this network admits is a different
         # question, and `min_cost_max_flow` is the function that answers it.
@@ -1137,7 +1227,7 @@ fn _min_cost_run(
         )
     var met = True
     if limited:
-        met = fabs(total - target) <= _tolerance(target)
+        met = fabs(total - target) <= _pair_tolerance(target, total)
     return MinCostFlow(
         FLOW_OK, n_nodes, m, source, sink, True, total, True, priced, target, met,
         augmentations, _edge_flows(net), pi^,
@@ -1249,16 +1339,42 @@ fn flow_audit_flat(
         var excess = over
         if under > excess:
             excess = under
-        if excess > _tolerance(capacity[k]):
+        # MEASURED first, and kept whatever the verdict is. `worst_cap` used to be assigned
+        # only inside the violation branch, so an audit that measured an excess of 1000.0 and
+        # then failed to count it reported `worst_capacity_violation = 0.0` — the threshold
+        # erasing the measurement. A caller reading 0.0 cannot tell "nothing was over
+        # capacity" from "something was and the comparison swallowed it", and a near-miss it
+        # should be looking at is invisible. Clamped at 0.0 because `excess` is negative when
+        # the edge has slack, and negative overload is not a measurement of overload.
+        if excess > worst_cap:
+            worst_cap = excess
+        # TWO bounds, and they do NOT share a tolerance, because they are not comparisons
+        # against the same quantity.
+        #
+        # The upper bound is `f - capacity[k]`: a difference of two numbers of this EDGE's own
+        # magnitude, so it cannot be resolved below an ulp of the larger of them, and the
+        # rounding budget is ulps of that. No other edge's capacity may raise the bar here,
+        # and the relative term is ulps rather than a 1e-9 fraction — that fraction certified
+        # `1e12 + 1000.0` on a capacity of `1e12` as a feasible flow.
+        #
+        # The lower bound is `f >= 0`, and ZERO HAS NO MAGNITUDE. `f` is an input, exact as
+        # given, and nothing was subtracted to produce it, so there is no rounding to forgive
+        # and the only allowance is the absolute one. Scaling this one by the capacity was the
+        # same defect wearing the other bound's clothes: it spent the CAPACITY's units on a
+        # comparison against zero, so an edge of capacity 1e12 carrying a flow of -100.0 —
+        # a hundred units running backwards down a one-way arc — audited as a feasible flow.
+        var over_bound = over > _pair_tolerance(capacity[k], f)
+        var under_bound = under > FLOW_TOL
+        if over_bound or under_bound:
             cap_violations += 1
-            if excess > worst_cap:
-                worst_cap = excess
             if first_bad_edge < 0:
                 first_bad_edge = k
         net_out[edge_src[k]] = net_out[edge_src[k]] + f
         net_out[edge_dst[k]] = net_out[edge_dst[k]] - f
         # Gross throughput per node, so the conservation slack scales with the numbers at
-        # that node: a fixed 1e-9 would call a node handling 1e12 units broken.
+        # that node and with nothing else: a purely absolute 1e-9 would call a node handling
+        # 1e12 units broken, and a network-wide scale would let the busiest node set the bar
+        # for the quietest one.
         gross[edge_src[k]] = gross[edge_src[k]] + fabs(f)
         gross[edge_dst[k]] = gross[edge_dst[k]] + fabs(f)
         if costed:
@@ -1271,10 +1387,16 @@ fn flow_audit_flat(
         if v == source or v == sink:
             continue
         var imbalance = fabs(net_out[v])
+        # Measured and kept regardless of the verdict, for the same reason as `worst_cap`
+        # above: the reported magnitude is what the audit found, not what it decided about it.
+        if imbalance > worst_conservation:
+            worst_conservation = imbalance
+        # Per NODE, against the gross throughput at THAT node — the sum `net_out[v]` was
+        # itself accumulated from, so it is the magnitude the cancellation happened at, and it
+        # says nothing about any other node. Relative term in ulps of that throughput: 1e-9 of
+        # it let a node moving 1e12 units lose 1000 of them and still conserve.
         if imbalance > _tolerance(gross[v]):
             conservation_violations += 1
-            if imbalance > worst_conservation:
-                worst_conservation = imbalance
             if first_bad_node < 0:
                 first_bad_node = v
 
@@ -1288,8 +1410,13 @@ fn flow_audit_flat(
             conservation_violations, worst_cap, worst_conservation,
             first_bad_edge, first_bad_node,
         )
+    # Feasible, and the two worst MEASURED magnitudes travel with the verdict rather than
+    # being flattened to 0.0. They are the near-miss: a capacity slack of 1e-4 on a 1e12 edge
+    # is feasible AND worth seeing, and a caller that only ever gets 0.0 back from a passing
+    # audit has no way to notice it is running at the edge of the tolerance.
     return FlowAudit(
-        FLOW_OK, True, True, value, costed, priced, 0, 0, 0.0, 0.0, -1, -1
+        FLOW_OK, True, True, value, costed, priced, 0, 0, worst_cap,
+        worst_conservation, -1, -1,
     )
 
 
@@ -1422,5 +1549,10 @@ fn is_saturated(capacity: Float64, flow: Float64, tol: Float64) -> Bool:
     `flow_residual_capacity(capacity, flow) <= tol` disagree on a negative flow: the first
     calls it unsaturated and open for business, the second calls it saturated because the
     frozen scalar clamps. The clamping definition is the one the solvers use.
+
+    `tol` is the caller's ABSOLUTE tolerance, used as given: it is never multiplied by the
+    capacity, because that would turn the caller's number into a fraction of a magnitude the
+    caller did not name — the defect `_tolerance` documents. A caller that wants a relative
+    test asks for one by passing a tolerance derived from its own capacity.
     """
     return flow_residual_capacity(capacity, flow) <= tol

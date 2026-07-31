@@ -35,9 +35,12 @@ function called exactly that. It is not usable, for two independent reasons:
 
 It also takes a point, so it can only ever refute infeasibility, never establish it: no
 finite set of trial points shows that a system has NO solution. `lp_solve`'s phase 1 does
-establish it — it minimises the sum of the artificials and compares the MEASURED residual
-against a threshold relative to `Σ|b|` — so every feasibility question here is asked as an
-LP status. That is the reuse rule and the correctness argument at once.
+establish it — it minimises the sum of the artificials and then compares EACH row's measured
+artificial against a budget built from that row's own right-hand side — so every feasibility
+question here is asked as an LP status. That is the reuse rule and the correctness argument at
+once. (The threshold used to be relative to `Σ|b|`, a sum over every row, and a 2e9
+right-hand-side scale then swallowed a one-unit contradiction; the test suite still asserts
+that model from this side, because a core is the shape that defect arrives in here.)
 
 The trial solves use a ZERO objective
 -------------------------------------
@@ -81,9 +84,13 @@ Both are therefore checked:
     zero, whatever the flag says.
 
 `cs_gap` is that product in either case, because the product is exactly what the defect adds
-to the duality gap. The product's threshold is relative to `max|dual| * max slack`, taken
-from the data like every other tolerance here, so pivot noise on a genuinely tight row is not
-a contradiction.
+to the duality gap. The product's threshold is PER ROW, built from row `i`'s own two factors
+and the caller's absolute `dual_tol` (see `_cs_product_budget`), so pivot noise on a genuinely
+tight row is not a contradiction and no other row's magnitudes enter row `i`'s verdict. It was
+once `1e-6 * (1 + max|dual| * max slack)`, which is how `duals = [1e6, 0.5]` beside
+`slack = [0.0, 10.0]` came back `complementary` with a product of 5.0 on row 1: a threshold
+built from a MAXIMUM over other rows looks per-row and is not — it transfers one row's units
+onto another row's comparison.
 
 A binding row with a ZERO dual is not a contradiction either. That is ordinary degeneracy: a
 redundant row, or a vertex over-determined by more rows than variables, has tight rows worth
@@ -98,9 +105,12 @@ duplicate implementation of it — it is a way to pass it, because a nan dual sa
 comparison: `|nan| > dual_tol` is False, so an unvalidated audit counts zero violations and
 returns "complementary" over numbers it never read.
 
-`binding` is the solver's own verdict, reused and not recomputed. `lp_solve` calls row `i`
-tight when `|b_i - a_iᵀx| <= feasibility_tol * (1 + |b_i|)`; a second definition of "tight"
-here is how a report ends up contradicting the solution it is explaining.
+`binding` is the solver's own verdict, reused and not recomputed: `lp_solve` decides row `i`'s
+tightness by its own per-row test on `|b_i - a_iᵀx|`, and that formula is deliberately not
+restated here — a second definition of "tight", or a stale copy of the solver's, is how a
+report ends up contradicting the solution it is explaining. What this module does own is
+direction two of the audit below, which is what makes a `binding` flag that disagrees with its
+own `slack` vector detectable at all.
 
 Ceilings, and why there is a third one
 --------------------------------------
@@ -127,6 +137,8 @@ from numerical_stability import kahan_sum
 from optimization.linear import (
     LPMatrix,
     LPSolution,
+    LP_DBL_EPSILON,
+    LP_FEAS_ULP_BUDGET,
     LP_INFEASIBLE,
     LP_OPTIMAL,
     LP_UNBOUNDED,
@@ -187,17 +199,38 @@ comptime EXPLAIN_ERR_DISCRETE_VARIABLE: Int = 86
 # A magnitude cannot be negative, so -1.0 is unmistakably "this was never measured".
 comptime EXPLAIN_GAP_ABSENT: Float64 = -1.0
 
-# The certificate tolerances are DELIBERATELY looser than the solver's own. Both checks are
-# audits of numbers a finite-precision pivot sequence produced, so a threshold at the
-# solver's convergence tolerance reports the pivots' rounding as a contradiction. A real
-# complementary-slackness violation or duality gap is O(1) relative to the objective, not
-# O(1e-9). Both are applied relative to a scale taken from the data.
-comptime EXPLAIN_CERT_SLOP: Float64 = 1e-6
-
-# The decomposition is a different sum of the SAME products the solver's `vec_dot` added,
-# so its residual is bounded by summation order alone and a tight relative threshold is
-# right here. `kahan_sum` is what makes it tight.
-comptime EXPLAIN_SUM_TOL: Float64 = 1e-9
+# ── every threshold in this file has ONE shape ────────────────────────────────
+#
+#     budget = <the caller's ABSOLUTE tolerance, when one is in scope>
+#            + <ulps> * LP_DBL_EPSILON * <the magnitude of the very quantity being judged>
+#
+# which is the shape `linear.mojo`'s phase-1 feasibility test has after its own fix. Two
+# module constants used to stand where `<ulps> * LP_DBL_EPSILON` stands now, multiplying a
+# scale taken from the data: `EXPLAIN_CERT_SLOP = 1e-6` on both certificates and
+# `EXPLAIN_SUM_TOL = 1e-9` on the decomposition. Neither is a rounding budget. 1e-9 relative
+# is 4.5 MILLION ulps and 1e-6 relative is 4.5 billion, so both certificates certified
+# violations nine orders of magnitude above anything floating point could explain:
+#
+#   * EXECUTED: `slackness_check(duals=[1e6, 0.5], slack=[0.0, 10.0], binding=[True, True],
+#     dual_tol=1e-9)` returned `complementary = True`, `EXPLAIN_OK`, `cs_row = -1`,
+#     `cs_gap = 0.0` for a complementarity product of `|0.5 * 10| = 5.0` — because the
+#     threshold was `1e-6 * (1 + max|dual| * max slack) = 10.000001`. Row 0's price bought
+#     row 1's violation a pass, and complementary slackness is a PER-ROW statement.
+#   * EXECUTED: at `objective = 1e12` the strong-duality test accepted a primal/dual gap of
+#     up to `1e6` as `strong_duality = True` with no `EXPLAIN_ERR_DUALITY_GAP`, and the
+#     objective-drift test accepted 1e3 of disagreement between two computations of the same
+#     number.
+#
+# So, here and in every threshold below: no hardcoded relative multiplier, no `1 + |x|`
+# (whose 1.0 floor makes the test secretly ABSOLUTE at a scale the caller never chose), no
+# scale carried over from a quantity other than the one under test, and no aggregate over
+# other rows. `LP_DBL_EPSILON` and `LP_FEAS_ULP_BUDGET` (1024 ulps) come from `linear.mojo`
+# rather than being restated, because a second definition of "one ulp" is a second thing to
+# drift.
+#
+# Loosening a certificate threshold is the most damaging edit available in this file: a
+# `certified`/`complementary`/`strong_duality` flag that passes a real violation is worse
+# than no flag at all, because the caller stops looking (package rule 4d).
 
 # The third ceiling: SOLVES, not dimensions and not cells. `1 + m + 1 + |core|` two-phase
 # simplex runs, so 512 rows is up to 1026 solves. Above this the request is refused rather
@@ -237,6 +270,68 @@ fn explain_status_name(code: Int) -> String:
 # the package's definition of "finite" to drift. Mojo has no access control, so the underscore
 # on the alias only keeps the name out of the runtime contract. Policy validation is delegated
 # the same way, through `_policy_parts_defect` to `model.policy_defect`.
+
+
+# ── the two budget builders every threshold below goes through ────────────────
+
+
+fn _rounding_budget(additions: Int, magnitude: Float64) -> Float64:
+    """`LP_FEAS_ULP_BUDGET + additions` ulps of `magnitude`, and never a non-finite budget.
+
+    `magnitude` must be the magnitude of the QUANTITY BEING JUDGED — the operands of the very
+    subtraction whose result is compared against this budget, or the addends of the very sum
+    whose two summations are being reconciled. Nothing else may be passed here.
+
+    `additions` is how many floating-point additions produced that quantity, because a naive
+    dot product over `n` terms accumulates up to one ulp per addition, so a fixed 1024-ulp
+    budget would report an honest large-`n` summation as a defect. Every term is a multiple of
+    `LP_DBL_EPSILON`, which is what keeps the whole allowance ~1e-13 relative: no real
+    violation fits inside it, at any scale.
+
+    A budget that overflowed comes back 0.0 rather than `inf`. An infinite threshold switches
+    its own test off, which is the single failure every check in this file is written against;
+    demanding exactness instead can only ever raise a false alarm, never certify a violation.
+    """
+    if additions < 0 or not (magnitude > 0.0):
+        # `not (magnitude > 0.0)` and not `magnitude <= 0.0`: a nan magnitude satisfies
+        # neither comparison, and it must land here rather than propagate into the budget.
+        return 0.0
+    var budget = (LP_FEAS_ULP_BUDGET + Float64(additions)) * LP_DBL_EPSILON * magnitude
+    if not _finite(budget):
+        return 0.0
+    return budget
+
+
+fn _cs_product_budget(dual_mag: Float64, slack_mag: Float64, dual_tol: Float64) -> Float64:
+    """How far ONE row's `|dual_i| * slack_i` may sit from zero and still be indistinguishable
+    from it.
+
+    Built from row `i`'s own two factors and the caller's absolute `dual_tol`, and from nothing
+    else — not from `max|dual|`, not from `max slack`, not from any aggregate over rows.
+    Complementary slackness is the per-row statement `dual_i * slack_i = 0`, so row `i`'s
+    verdict must not move when another row's numbers change.
+
+    The two terms are the two reasons a nonzero product can still be zero in exact arithmetic:
+
+      * `dual_tol * (|dual_i| + slack_i + dual_tol)` — `dual_tol` is the caller's statement
+        that a magnitude that small IS zero, so each factor is only known to within it. A
+        product is zero when EITHER factor is, and `|(d ± t)(s ± t)| >= |d s| - t(|d| + |s| + t)`,
+        so a product under that bound is not distinguishable from a product of a factor that is
+        genuinely zero. This is error propagation through the multiplication, not slop: it is
+        the caller's own absolute tolerance carried into the product's units.
+      * `LP_FEAS_ULP_BUDGET + 1` ulps of the product itself, for the multiplication and the
+        rounding already present in the two stored factors.
+
+    `dual_tol` is the only absolute zero-scale this audit is given, so it stands for the
+    uncertainty of BOTH factors. A caller whose slacks carry a noise floor above `dual_tol`
+    must raise `dual_tol` — which is exactly why it is a parameter and not a constant, and why
+    `binding_constraints` derives it from the solver's own `optimality_tol`.
+    """
+    var budget = dual_tol * (dual_mag + slack_mag + dual_tol)
+    budget += _rounding_budget(1, dual_mag * slack_mag)
+    if not _finite(budget) or budget < 0.0:
+        return 0.0
+    return budget
 
 
 # ── return-only result structs ────────────────────────────────────────────────
@@ -445,25 +540,14 @@ fn slackness_check(
                 MODEL_ERR_NON_FINITE_VALUE, False, m, 0, 0, i, EXPLAIN_GAP_ABSENT
             )
 
-    # The threshold for a complementarity PRODUCT, relative to the largest product the data
-    # could produce — the same "scale taken from the data" rule as `dual_tol`, in the product's
-    # own units. A tight row's slack is pivot rounding, not room, so `|dual_i| * slack_i` on it
-    # is many orders below this; a row with real room and a real price is far above it.
-    var dual_scale: Float64 = 0.0
-    var slack_scale: Float64 = 0.0
-    for i in range(m):
-        if fabs(duals[i]) > dual_scale:
-            dual_scale = fabs(duals[i])
-        if fabs(slack[i]) > slack_scale:
-            slack_scale = fabs(slack[i])
-    var product_tol = EXPLAIN_CERT_SLOP * (1.0 + dual_scale * slack_scale)
-    if not _finite(product_tol):
-        # Two finite extremes can still multiply to inf, and an infinite threshold would
-        # silently switch the second direction off — the exact failure mode this function
-        # refuses everywhere else. Fall back to the absolute slop: a product that overflowed
-        # is not within rounding of zero.
-        product_tol = EXPLAIN_CERT_SLOP
-
+    # There is no threshold computed over the whole vector here, and that is the point. The
+    # product threshold is built PER ROW inside the loop by `_cs_product_budget`, from that
+    # row's own dual and slack. It used to be `EXPLAIN_CERT_SLOP * (1 + max|dual| * max slack)`
+    # — a single number formed from a MAXIMUM over every row — and `duals = [1e6, 0.5]` beside
+    # `slack = [0.0, 10.0]` with both rows flagged binding then came back `complementary` at
+    # `cs_gap = 0.0`, because that threshold was 10.000001 and row 1's product was 5.0. The
+    # same pair with row 0's dual lowered to 1.0 was correctly reported, which is the whole
+    # tell: the verdict on row 1 depended on a number belonging to row 0.
     var n_binding = 0
     var n_degenerate = 0
     var cs_row = -1
@@ -477,13 +561,19 @@ fn slackness_check(
                 # Degeneracy, not a defect: a tight row can be worth nothing at the margin.
                 n_degenerate += 1
             continue
-        var product = fabs(duals[i]) * fabs(slack[i])
+        var dual_mag = fabs(duals[i])
+        var slack_mag = fabs(slack[i])
+        var product = dual_mag * slack_mag
         # Direction one: a row the solver called loose, priced anyway.
         var loose = not binding[i]
         # Direction two: a priced row whose MEASURED slack is room, not rounding. Independent
         # of the flag on purpose — `binding_i = True` beside `slack_i = 5` and a nonzero dual
-        # passes direction one and still puts `5 * |dual_i|` into the duality gap.
-        var not_tight = product > product_tol
+        # passes direction one and still puts `5 * |dual_i|` into the duality gap. Judged
+        # against row `i`'s own budget; a product that overflowed to inf is a violation, not a
+        # comparison to lose (`inf > inf` is False).
+        var not_tight = (
+            not _finite(product)
+        ) or product > _cs_product_budget(dual_mag, slack_mag, dual_tol)
         if loose or not_tight:
             if cs_row < 0 or product > worst:
                 cs_row = i
@@ -559,7 +649,19 @@ fn binding_constraints(
         var magnitude = fabs(solution.duals[i])
         if _finite(magnitude) and magnitude > scale:
             scale = magnitude
-    var dual_tol = EXPLAIN_CERT_SLOP * (1.0 + scale)
+    # The magnitude below which a dual counts as ZERO. The caller's `optimality_tol` is the
+    # absolute part, because that is the caller's own statement about the dual space — the
+    # solver already prices a column as non-profitable below it. The rest is a ROUNDING
+    # allowance: every dual comes out of the same elimination, so an entry that should be
+    # exactly 0 can carry ulps of the largest magnitude that elimination handled. That is the
+    # one place a maximum over rows is admissible, and only because `LP_DBL_EPSILON` keeps it
+    # ~1e-13 relative — a dual that is a real price cannot hide under it, and the audit takes a
+    # single scalar threshold by contract so there is no per-row form available.
+    #
+    # It was `EXPLAIN_CERT_SLOP * (1 + max|dual|)`: with duals of size 1e6 that is 1.000001, so
+    # every dual under a full unit was read as zero and its row was never audited at all. The
+    # new value on that same data is ~2.3e-7, four million times tighter.
+    var dual_tol = optimality_tol + _rounding_budget(0, scale)
     # The VALIDATED entry point, never a private twin of the audit: `slackness_check` is what
     # checks the lengths and the finiteness of every dual and slack, and an audit handed a nan
     # counts zero violations and passes. One audit, one door.
@@ -593,7 +695,20 @@ fn binding_constraints(
         return _no_binding(dual_obj.status, solution.n_vars, m)
     var primal_variable_part = solution.objective - constant
     var gap = fabs(dual_obj.value - primal_variable_part)
-    var strong = gap <= EXPLAIN_CERT_SLOP * (1.0 + fabs(solution.objective))
+    # The judged quantity is that SUBTRACTION, so the budget is sized by its own two operands
+    # and nothing else, plus the caller's absolute `optimality_tol`. `bᵀy` is a `vec_dot` over
+    # `m` terms and `cᵀx` over `n`, hence `m + n` additions on top of the shared 1024 ulps.
+    #
+    # It was `EXPLAIN_CERT_SLOP * (1 + |objective|)`, which at `objective = 1e12` accepted a
+    # primal/dual gap of up to 1.0e6 as `strong_duality = True` and returned `EXPLAIN_OK`. A
+    # gap of a million on an objective of a trillion is not strong duality, it is a solve that
+    # did not converge reported as a theorem. The same data now allows ~0.23 — 1024 + m + n
+    # ulps of 1e12 — which is what the arithmetic can actually account for.
+    var gap_scale = fabs(dual_obj.value)
+    if fabs(primal_variable_part) > gap_scale:
+        gap_scale = fabs(primal_variable_part)
+    var gap_budget = optimality_tol + _rounding_budget(m + solution.n_vars, gap_scale)
+    var strong = _finite(gap) and gap <= gap_budget
 
     var status = EXPLAIN_OK
     if not audit.complementary:
@@ -898,7 +1013,26 @@ fn objective_contributions(
     if not _finite(parts):
         return _no_decomposition(MODEL_ERR_NON_FINITE_VALUE, n, maximize)
     var residual = total.value - (constant + parts)
-    var sums = fabs(residual) <= EXPLAIN_SUM_TOL * (1.0 + fabs(total.value))
+    # The judged quantity is the SUM ITSELF: `residual` is the disagreement between two
+    # summations of one identical set of addends, so what the budget must absorb is the
+    # rounding of those addends' additions — `|constant| + Σ_j |c_j x_j|`, one ulp per addition
+    # plus the shared 1024. This is a sum over items and it is the one place that is right,
+    # for exactly the reason `Σ_i |b_i|` was wrong in `linear.mojo`'s per-ROW feasibility test:
+    # there the judged quantity was a single row, so other rows' magnitudes were foreign to it;
+    # here every addend is a constituent of the very number under test. Cancelling terms
+    # therefore do raise the allowance — that is the true error bound of a naive `vec_dot` —
+    # but only ever by ulps of what was cancelled, never by a fixed fraction of it.
+    #
+    # It was `EXPLAIN_SUM_TOL * (1 + |objective|)`: at an objective of 1e12 that admitted 1e3
+    # of residual, so an itemisation could disagree with its own total by a thousand and still
+    # report `sums_to_objective`. The audit is the only thing standing between a caller and a
+    # decomposition of a different number.
+    var terms_magnitude = fabs(constant)
+    for j in range(n):
+        terms_magnitude += fabs(contribution[j])
+    var sums = _finite(residual) and fabs(residual) <= _rounding_budget(
+        n, terms_magnitude
+    )
 
     var share = List[Float64]()
     var has_share = parts != 0.0
@@ -946,7 +1080,20 @@ fn optimum_contributions(
     if not parts.has_objective:
         return parts^
     var drift = fabs(parts.objective - solution.objective)
-    if drift > EXPLAIN_SUM_TOL * (1.0 + fabs(solution.objective)):
+    # Two computations of the SAME number — `linear_form_value(c, constant, x)` here against
+    # `constant + vec_dot(c, x)` inside the solver — so the budget is the caller's absolute
+    # `optimality_tol` plus ulps of the two operands of this subtraction, and nothing else.
+    #
+    # It was `EXPLAIN_SUM_TOL * (1 + |objective|)`, which at an objective of 1e12 let the
+    # itemisation be of a number 1.0e3 away from the one the solver reported and still returned
+    # it as the itemisation of the vertex.
+    var drift_scale = fabs(parts.objective)
+    if fabs(solution.objective) > drift_scale:
+        drift_scale = fabs(solution.objective)
+    var drift_budget = optimality_tol + _rounding_budget(
+        solution.n_vars, drift_scale
+    )
+    if not _finite(drift) or drift > drift_budget:
         # The itemisation is of a different number than the solver reported. Reported as the
         # sum mismatch it is, never quietly returned as an itemisation of the vertex.
         return ObjectiveDecomposition(

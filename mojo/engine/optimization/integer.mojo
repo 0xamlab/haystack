@@ -110,14 +110,14 @@ with `linear.linear_form_value` rather than taken from the LP. A reported object
 belongs to a slightly different point than the reported `x` is a self-inconsistency a
 caller cannot see, and the two differ by up to `integrality_tol * Σ|c_j|`.
 
-Snapping can also break feasibility: moving each integer coordinate by up to
-`integrality_tol` moves row `i`'s activity by up to `integrality_tol * Σ_j |a_ij|`, which
-for a tight row can exceed `feasibility_tol`. The verification therefore allows exactly
-that much and no more. A point that violates a row by MORE than
-`feasibility_tol*(1+|b_i|) + integrality_tol*Σ_j|a_ij|` means the two tolerances are
-inconsistent with the caller's scaling, and that is reported as
-`MILP_SNAP_INFEASIBLE` — an aborted search with no bound and no gap — rather than
-accepted as an incumbent that would then prune the real optimum.
+Snapping can also break feasibility: moving each SNAPPED coordinate by up to
+`integrality_tol` moves row `i`'s activity by up to `integrality_tol * Σ_j |a_ij|` over the
+integer and binary columns only, which for a tight row can exceed `feasibility_tol`. The
+verification therefore allows exactly that much and no more — see `_verify_row_budget` for
+the three terms and for the two forms that are NOT used. A point that violates a row by
+more than that budget means the two tolerances are inconsistent with the caller's scaling,
+and that is reported as `MILP_SNAP_INFEASIBLE` — an aborted search with no bound and no gap
+— rather than accepted as an incumbent that would then prune the real optimum.
 
 Termination, and the two limits
 -------------------------------
@@ -168,6 +168,8 @@ from std.math import abs as fabs, floor
 
 from linalg import vec_dot
 from optimization.linear import (
+    LP_DBL_EPSILON,
+    LP_FEAS_ULP_BUDGET,
     LP_INFEASIBLE,
     LP_MAX_TABLEAU_CELLS,
     LP_OPTIMAL,
@@ -709,27 +711,85 @@ fn _child(node: _Node, index: Int, bound: Float64, upper: Bool, value: Float64) 
     return _Node(True, bound, node.depth + 1, lo^, has_lo^, up^, has_up^)
 
 
+fn _verify_row_budget(
+    row: List[Float64], x: List[Float64], rhs: Float64, var_kind: List[Int],
+    feasibility_tol: Float64, integrality_tol: Float64,
+) -> Float64:
+    """How far row `i`'s activity may sit past `b_i` and still be the SNAP rather than a defect.
+
+    The judged quantity is `A_i x - b_i` for ONE row, so every term here is built from that
+    row's own magnitudes and from nothing else. Three terms, each with a distinct meaning:
+
+      * `feasibility_tol` — the caller's ABSOLUTE allowance, used absolutely. It is never a
+        multiplier of anything;
+      * `LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * (|b_i| + Σ_j |a_ij x_j|)` — the ROUNDING the
+        recomputed `vec_dot` and the subtraction can carry at this row's own magnitude. The
+        activity term is here because `value` is recomputed from a snapped point, so the sum's
+        own addends are what round; the constants are IMPORTED from `optimization.linear`, so
+        a row this module calls satisfied is a row `linear` calls satisfied;
+      * `integrality_tol * Σ_{j integral} |a_ij|` — the SNAP, and the only reason this budget
+        is looser than `linear._lp_row_gap_budget`. `_nearest_int` moves each integer or
+        binary coordinate by at most `integrality_tol`, so this is the exact displacement
+        bound for this row's activity. Continuous columns are EXCLUDED because they are copied
+        through unchanged: including them added `integrality_tol * |a_ij|` of allowance per
+        column that cannot have moved at all, which at `|a_ij| = 1e9` is a full unit.
+
+    Two forms this is deliberately NOT — both shipped in this package and both returned a
+    confident wrong answer (see `linear._lp_row_gap_budget` for the executed cases):
+
+      * `feasibility_tol * (1 + Σ_i |b_i|)`: an aggregate over rows. One unrelated large-rhs
+        row lifts every other row's threshold without limit;
+      * `feasibility_tol * (1 + |b_i|)`: what this function replaces. Per-row and still wrong
+        twice over — the `1 +` makes it an ABSOLUTE floor of `feasibility_tol` at a scale the
+        caller never chose, and `feasibility_tol` as the RELATIVE multiplier is 4.5 MILLION
+        ulps at magnitude 1e9. MEASURED: a point violating `x <= 1e9` by a full unit came back
+        `MODEL_OK` from `_verify_point`, so the one check standing between a snapped vertex and
+        an incumbent that prunes the real optimum passed it.
+
+    A non-finite relative term contributes 0.0 rather than `inf`: coefficients near 1e308 make
+    `Σ_j |a_ij x_j|` overflow, and an infinite budget switches its own test off — `violation >
+    inf` is False for every violation, so the row would be certified satisfied without being
+    read. The caller's absolute allowance survives that path; the relative terms do not.
+    """
+    var activity_scale = fabs(rhs)
+    var snap_scale: Float64 = 0.0
+    for j in range(len(row)):
+        var coefficient = fabs(row[j])
+        activity_scale += coefficient * fabs(x[j])
+        if var_kind[j] != VAR_CONTINUOUS:
+            snap_scale += coefficient
+    var budget = feasibility_tol
+    if budget < 0.0:
+        budget = 0.0
+    var rounding = LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * activity_scale
+    if _finite(rounding) and rounding > 0.0:
+        budget += rounding
+    var snap = integrality_tol * snap_scale
+    if _finite(snap) and snap > 0.0:
+        budget += snap
+    if not _finite(budget) or budget < 0.0:
+        return 0.0
+    return budget
+
+
 fn _verify_point(
-    a: List[Float64],
-    rows: Int,
-    cols: Int,
-    senses: List[Int],
-    rhs: List[Float64],
-    x: List[Float64],
-    feasibility_tol: Float64,
+    a: List[Float64], rows: Int, cols: Int, senses: List[Int], rhs: List[Float64],
+    x: List[Float64], var_kind: List[Int], feasibility_tol: Float64,
     integrality_tol: Float64,
 ) -> Int:
     """`MODEL_OK` when `x` satisfies the CALLER's rows, allowing for the snap.
 
-    The row tolerance is `feasibility_tol*(1+|b_i|) + integrality_tol*Σ_j|a_ij|`: the second
-    term is exactly how far snapping each integer coordinate onto the grid can move this
-    row's activity, so a violation past it is a genuine inconsistency between the two
-    tolerances and the row scaling rather than the snap.
+    The row budget is `_verify_row_budget`, which states what each of its three terms is for
+    and which two forms it refuses. `var_kind` is taken rather than assumed because the snap
+    term is a statement about the columns `milp_solve` actually snapped, and a continuous
+    column is not one of them.
 
     `sense_violation` is the frozen-side comparison, reused instead of three inline
     branches, and its `MODEL_VIOLATION_ABSENT` return is handled as an arithmetic failure —
     0.0 would read as "satisfied", which is the confusion the whole package removes.
     """
+    if len(var_kind) != cols:
+        return MODEL_ERR_LENGTH_MISMATCH
     for j in range(cols):
         if not _finite(x[j]):
             return MODEL_ERR_NON_FINITE_VALUE
@@ -738,15 +798,14 @@ fn _verify_point(
             return LP_INFEASIBLE
     for i in range(rows):
         var row = List[Float64]()
-        var scale: Float64 = 0.0
         for j in range(cols):
-            var coefficient = a[i * cols + j]
-            row.append(coefficient)
-            scale += fabs(coefficient)
+            row.append(a[i * cols + j])
         var value = vec_dot(row, x)
         if not _finite(value):
             return MODEL_ERR_NON_FINITE_VALUE
-        var tol = feasibility_tol * (1.0 + fabs(rhs[i])) + integrality_tol * scale
+        var tol = _verify_row_budget(
+            row, x, rhs[i], var_kind, feasibility_tol, integrality_tol
+        )
         var violation = sense_violation(value, senses[i], rhs[i], tol)
         if violation == MODEL_VIOLATION_ABSENT:
             return MODEL_ERR_NON_FINITE_VALUE
@@ -913,7 +972,8 @@ fn milp_solve(
                 else:
                     snapped.append(_nearest_int(lp.x[j]))
             var verdict = _verify_point(
-                a, rows, cols, senses, rhs, snapped, feasibility_tol, integrality_tol
+                a, rows, cols, senses, rhs, snapped, var_kind,
+                feasibility_tol, integrality_tol,
             )
             if verdict != MODEL_OK:
                 abort_status = MILP_SNAP_INFEASIBLE
