@@ -258,15 +258,31 @@ def _emit_scalar_parse_function(type_name: str) -> list[str]:
             "",
         ]
     if type_name == "Float64":
+        # Guard the PARSED VALUE, not the token text. A blacklist of `nan`/`inf` spellings misses
+        # the case that actually bites: `1e999` and `1.79e308` are ordinary-looking decimals that
+        # the frozen `conv.parse_float64` turns into +inf, because its `_pow10(308)` multiply
+        # overflows. Measured: `stats_bootstrap.bootstrap_mean_ci([1,2,3], 100, 1.797...e308)`
+        # arrives as +inf with no count relation and no range check anywhere to stop it.
+        #
+        # Only SCALAR float arguments are guarded. List elements deliberately are not:
+        # `stats.sort_values` documents dropping NaN/+/-inf from its input rather than crashing,
+        # and `quantile`/`percentile`/`median` funnel through it, so real non-finite data must keep
+        # flowing through the list and packed-buffer paths.
         return [
             f"fn {fn_name}(token: String) raises -> Float64:",
-            f"{INDENT}return parse_float64(token)",
+            f"{INDENT}var parsed = parse_float64(token)",
+            f"{INDENT}if not _is_finite_f64(parsed):",
+            f'{INDENT * 2}raise Error("non_finite_argument")',
+            f"{INDENT}return parsed",
             "",
         ]
     if type_name == "Float32":
         return [
             f"fn {fn_name}(token: String) raises -> Float32:",
-            f"{INDENT}return Float32(parse_float64(token))",
+            f"{INDENT}var parsed = parse_float64(token)",
+            f"{INDENT}if not _is_finite_f64(parsed):",
+            f'{INDENT * 2}raise Error("non_finite_argument")',
+            f"{INDENT}return Float32(parsed)",
             "",
         ]
     if type_name in {"UInt8", "UInt16", "UInt32", "UInt64"}:
@@ -378,31 +394,44 @@ def _emit_scalar_to_json_function(type_name: str) -> list[str]:
     fn_name = _to_json_fn_name(type_name)
     if type_name == "Bool":
         return [
-            f"fn {fn_name}(value: Bool) -> String:",
+            f"fn {fn_name}(value: Bool) raises -> String:",
             f'{INDENT}return "true" if value else "false"',
             "",
         ]
     if type_name == "String":
         return [
-            f"fn {fn_name}(value: String) -> String:",
+            f"fn {fn_name}(value: String) raises -> String:",
             f'{INDENT}return "\\"" + _escape_json_string(value) + "\\""',
             "",
         ]
     if type_name == "None":
         return [
-            f"fn {fn_name}() -> String:",
+            f"fn {fn_name}() raises -> String:",
             f'{INDENT}return "null"',
             "",
         ]
     if type_name in {"Float32", "Float64"}:
+        # `String(value)` emits the bare tokens `nan` / `inf` / `-inf`, none of which is valid
+        # JSON. Raising here rather than returning them is what keeps the worker alive: every
+        # kernel arm already wraps its call in `try`, so the raise becomes a parseable error
+        # frame that carries an `error_code`, which is exactly the field `batch.mojo` and
+        # `pipeline.mojo` test to decide an item failed. Returning `null` instead would put an
+        # absence in a numeric slot; returning the token destroys the whole frame.
+        #
+        # This is the leaf every container and struct serializer reaches, so guarding it here
+        # covers List[Float64], nested lists, struct fields at any depth, and mutated `mut`
+        # arguments -- 5488 emitted result sites in total -- rather than only bare returns.
+        finite_fn = "_is_finite_f64" if type_name == "Float64" else "_is_finite_f32"
         return [
-            f"fn {fn_name}(value: {type_name}) -> String:",
+            f"fn {fn_name}(value: {type_name}) raises -> String:",
+            f"{INDENT}if not {finite_fn}(value):",
+            f'{INDENT * 2}raise Error("non_finite_result")',
             f"{INDENT}return String(value)",
             "",
         ]
     if type_name in {"Int", "UInt8", "UInt16", "UInt32", "UInt64"}:
         return [
-            f"fn {fn_name}(value: {type_name}) -> String:",
+            f"fn {fn_name}(value: {type_name}) raises -> String:",
             f"{INDENT}return String(value)",
             "",
         ]
@@ -414,7 +443,7 @@ def _emit_list_to_json_function(type_name: str) -> list[str]:
     inner_json = _to_json_fn_name(inner_type)
     fn_name = _to_json_fn_name(type_name)
     return [
-        f"fn {fn_name}(value: {type_name}) -> String:",
+        f"fn {fn_name}(value: {type_name}) raises -> String:",
         f'{INDENT}var result = String("[")',
         f"{INDENT}for i in range(len(value)):",
         f"{INDENT * 2}if i > 0:",
@@ -436,7 +465,7 @@ def _emit_struct_to_json_function(
     fn_name = _to_json_fn_name(type_name)
     display = (display_names or {}).get(type_name, type_name)
     lines = [
-        f"fn {fn_name}(value: {type_name}) -> String:",
+        f"fn {fn_name}(value: {type_name}) raises -> String:",
         f'{INDENT}var result = String("{{\\"{_STRUCT_ENVELOPE_TYPE_KEY}\\":\\"{display}\\",\\"{_STRUCT_ENVELOPE_VALUES_KEY}\\":[")',
     ]
     for index, field in enumerate(spec.fields):
@@ -539,6 +568,24 @@ def _emit_function_dispatch(module_name: str, function: RuntimeFunctionSpec) -> 
         else:
             to_json_fn = _to_json_fn_name(function.return_type)
             lines.append(f"{INDENT * 4}var result = {function_alias}({call_args})")
+            if function.return_type in {"Float64", "Float32"}:
+                # A bare float return is the common case (3606 of the emitted arms), and it is the
+                # one where a precise code is cheap: the module and function are known here, so the
+                # caller is told WHICH kernel produced a non-finite value instead of getting the
+                # arm's generic `mojo_library_execution_failed`. Containers and struct fields still
+                # fall back to that generic code via the raise in the leaf serializer.
+                finite_fn = (
+                    "_is_finite_f64" if function.return_type == "Float64" else "_is_finite_f32"
+                )
+                lines.append(f"{INDENT * 4}if not {finite_fn}(result):")
+                lines.append(f"{INDENT * 5}return _error_json(")
+                lines.append(f'{INDENT * 6}"non_finite_result",')
+                lines.append(
+                    f'{INDENT * 6}"{module_name}.{function.name} produced a non-finite '
+                    'Float64 (nan or +/-inf). JSON has no such value, and emitting it would '
+                    'make the whole response unparseable."'
+                )
+                lines.append(f"{INDENT * 5})")
             lines.append(f"{INDENT * 4}var result_json = {to_json_fn}(result)")
 
         if mutable_param_indices:
@@ -800,6 +847,18 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
                 '+ "\\",\\"error_code\\":\\"" + code + "\\",\\"error_message\\":\\"" '
                 '+ _escape_json_string(message) + "\\"}"'
             ),
+            "",
+            "# `v - v` is 0.0 for every finite Float64, and nan for both nan and +/-inf, so this",
+            "# is a complete finiteness test that needs no import. JSON has no non-finite number,",
+            "# and `String(nan)` emits the bare token `nan` -- which no strict parser accepts, so",
+            "# a non-finite value anywhere in a frame destroys the WHOLE frame rather than the one",
+            "# field holding it. Measured on a compiled worker: the client's json.loads raised, the",
+            "# session layer terminated the process, and every resident dataset went with it.",
+            "fn _is_finite_f64(value: Float64) -> Bool:",
+            f"{INDENT}return (value - value) == 0.0",
+            "",
+            "fn _is_finite_f32(value: Float32) -> Bool:",
+            f"{INDENT}return (value - value) == Float32(0.0)",
             "",
         ]
     )

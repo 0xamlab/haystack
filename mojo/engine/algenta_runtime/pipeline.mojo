@@ -245,6 +245,12 @@ fn run_pipeline_execute[dispatch: Dispatcher](
     var failed = 0
     var continue_on_error = json_get_bool(raw, "continue_on_error", False)
     var last_result = String("null")
+    # Whether the LAST node succeeded, which is a different question from whether any did.
+    # `result` means "the value this pipeline produced", i.e. the terminal node's value. With
+    # `continue_on_error` a failed terminal node used to leave `last_result` holding an EARLIER
+    # node's number, and the envelope carried no `error_code`, so the SDK derived
+    # `success = True` and handed back a plausible number from the wrong node.
+    var final_ok = True
 
     for i in range(len(nodes)):
         var module_name = json_get_string(nodes[i], "module")
@@ -299,6 +305,7 @@ fn run_pipeline_execute[dispatch: Dispatcher](
             + "}"
         )
 
+        final_ok = node_ok
         if node_ok:
             var value = extract_result_json(response)
             results.append(value)
@@ -347,9 +354,28 @@ fn run_pipeline_execute[dispatch: Dispatcher](
         results_json += results[i]
     results_json += "]"
 
+    # A failed terminal node has no value, so `result` is null rather than the last SUCCESSFUL
+    # node's number. And a partial run carries an error_code, because the SDK derives
+    # `success = not error_code` -- without one, "3 of 4 nodes ran" reads as complete success.
+    var terminal = last_result if final_ok else String("null")
+    var partial = String("")
+    if failed > 0:
+        partial = (
+            ',"error":"pipeline_partial: '
+            + String(failed)
+            + ' of '
+            + String(len(nodes))
+            + ' node(s) failed","error_code":"pipeline_partial","error_message":"'
+            + String(failed)
+            + ' of '
+            + String(len(nodes))
+            + ' node(s) failed; per-node outcomes are in results and lineage."'
+        )
+
     return (
         '{"result":'
-        + last_result
+        + terminal
+        + partial
         + ',"results":'
         + results_json
         + ',"lineage":'
