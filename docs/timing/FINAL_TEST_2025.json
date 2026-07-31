@@ -1,0 +1,9 @@
+{
+  "ran_at": "2026-07-30T19:59:22.257685+00:00",
+  "preregistration_commit": "91fd0037a60aa118e98225cf4de6128bc4004605",
+  "season": 2025,
+  "reps": 20000,
+  "returncode": 0,
+  "stdout": "\nmodel           win hit   top-3  pod rec  win Brier  win BSS  win ECE  log loss\noracle            60.0%  100.0%    81.1%    0.03621    0.261   0.0349    0.1216\ngrid_softmax      66.7%   96.7%    77.8%    0.03426    0.300   0.0354    0.1145\ngrid              66.7%   90.0%    57.8%    0.03442    0.297   0.0344    0.7134\nuniform           36.7%   63.3%    45.6%    0.04896    0.000   0.0000    0.2032\n\noracle Murphy (win): BS 0.03621 = REL 0.00523 - RES 0.01765 + UNC 0.04897   base rate 0.0516\noracle mean Spearman rho vs final classification: 0.715\n\nsimulation: 11.4 s for 604,040,000 car-lap updates = 53.0M updates/s\n  30 races x N=20,000 replications, 380 ms per race\n",
+  "stderr": "running the FROZEN 2025 test under the preregistration\n30 races, seasons [2025], N=20,000\ntheta: docs/motorsport/calibration.json\n  20/30 \u2026\npace prior: history (EWMA 0.6), 560 car-races had a prior\n"
+}

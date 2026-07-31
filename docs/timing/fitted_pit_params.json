@@ -1,0 +1,515 @@
+{
+  "per_circuit": {
+    "Belgian Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 204,
+      "pit_loss_p10": 22.7,
+      "pit_loss_median": 24.2,
+      "pit_loss_p90": 30.8,
+      "pit_loss_max": 56.4,
+      "neutralised_n": 19,
+      "neutralised_median": 23.6,
+      "sc_pit_factor_observed": 0.975
+    },
+    "Hungarian Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 187,
+      "pit_loss_p10": 21.3,
+      "pit_loss_median": 22.0,
+      "pit_loss_p90": 29.2,
+      "pit_loss_max": 58.5,
+      "neutralised_n": 4,
+      "neutralised_median": 26.5,
+      "sc_pit_factor_observed": 1.205
+    },
+    "Spanish Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 183,
+      "pit_loss_p10": 21.6,
+      "pit_loss_median": 22.3,
+      "pit_loss_p90": 23.7,
+      "pit_loss_max": 51.6,
+      "neutralised_n": 16,
+      "neutralised_median": 22.7,
+      "sc_pit_factor_observed": 1.018
+    },
+    "Austrian Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 170,
+      "pit_loss_p10": 21.2,
+      "pit_loss_median": 22.2,
+      "pit_loss_p90": 29.9,
+      "pit_loss_max": 50.0,
+      "neutralised_n": 70,
+      "neutralised_median": 21.4,
+      "sc_pit_factor_observed": 0.964
+    },
+    "Dutch Grand Prix": {
+      "seasons": [
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 161,
+      "pit_loss_p10": 19.1,
+      "pit_loss_median": 20.9,
+      "pit_loss_p90": 32.6,
+      "pit_loss_max": 59.8,
+      "neutralised_n": 18,
+      "neutralised_median": 32.8,
+      "sc_pit_factor_observed": 1.569
+    },
+    "United States Grand Prix": {
+      "seasons": [
+        2019,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 149,
+      "pit_loss_p10": 23.6,
+      "pit_loss_median": 24.3,
+      "pit_loss_p90": 32.6,
+      "pit_loss_max": 57.5,
+      "neutralised_n": 2,
+      "neutralised_median": 34.9
+    },
+    "British Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 138,
+      "pit_loss_p10": 28.2,
+      "pit_loss_median": 29.4,
+      "pit_loss_p90": 38.0,
+      "pit_loss_max": 59.7,
+      "neutralised_n": 36,
+      "neutralised_median": 28.9,
+      "sc_pit_factor_observed": 0.983
+    },
+    "Abu Dhabi Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 117,
+      "pit_loss_p10": 21.2,
+      "pit_loss_median": 22.0,
+      "pit_loss_p90": 23.5,
+      "pit_loss_max": 41.1,
+      "neutralised_n": 26,
+      "neutralised_median": 21.9,
+      "sc_pit_factor_observed": 0.995
+    },
+    "Bahrain Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021
+      ],
+      "pit_loss_n": 113,
+      "pit_loss_p10": 24.1,
+      "pit_loss_median": 24.7,
+      "pit_loss_p90": 27.5,
+      "pit_loss_max": 45.5,
+      "neutralised_n": 5,
+      "neutralised_median": 24.9,
+      "sc_pit_factor_observed": 1.008
+    },
+    "Italian Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 108,
+      "pit_loss_p10": 23.9,
+      "pit_loss_median": 24.7,
+      "pit_loss_p90": 32.4,
+      "pit_loss_max": 55.8,
+      "neutralised_n": 28,
+      "neutralised_median": 25.1,
+      "sc_pit_factor_observed": 1.016
+    },
+    "Qatar Grand Prix": {
+      "seasons": [
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 107,
+      "pit_loss_p10": 25.4,
+      "pit_loss_median": 28.3,
+      "pit_loss_p90": 35.0,
+      "pit_loss_max": 42.5,
+      "neutralised_n": 59,
+      "neutralised_median": 28.7,
+      "sc_pit_factor_observed": 1.014
+    },
+    "S\u00e3o Paulo Grand Prix": {
+      "seasons": [
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 105,
+      "pit_loss_p10": 22.8,
+      "pit_loss_median": 24.2,
+      "pit_loss_p90": 31.9,
+      "pit_loss_max": 58.9,
+      "neutralised_n": 70,
+      "neutralised_median": 18.5,
+      "sc_pit_factor_observed": 0.764
+    },
+    "Russian Grand Prix": {
+      "seasons": [
+        2019,
+        2020,
+        2021
+      ],
+      "pit_loss_n": 93,
+      "pit_loss_p10": 29.5,
+      "pit_loss_median": 30.6,
+      "pit_loss_p90": 35.5,
+      "pit_loss_max": 53.8,
+      "neutralised_n": 19,
+      "neutralised_median": 30.1,
+      "sc_pit_factor_observed": 0.984
+    },
+    "Canadian Grand Prix": {
+      "seasons": [
+        2019,
+        2023
+      ],
+      "pit_loss_n": 79,
+      "pit_loss_p10": 23.4,
+      "pit_loss_median": 24.5,
+      "pit_loss_p90": 35.8,
+      "pit_loss_max": 59.0,
+      "neutralised_n": 8,
+      "neutralised_median": 24.4,
+      "sc_pit_factor_observed": 0.996
+    },
+    "Turkish Grand Prix": {
+      "seasons": [
+        2020,
+        2021
+      ],
+      "pit_loss_n": 79,
+      "pit_loss_p10": 22.6,
+      "pit_loss_median": 23.8,
+      "pit_loss_p90": 35.5,
+      "pit_loss_max": 55.5,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "Azerbaijan Grand Prix": {
+      "seasons": [
+        2019,
+        2021,
+        2024
+      ],
+      "pit_loss_n": 71,
+      "pit_loss_p10": 19.8,
+      "pit_loss_median": 20.7,
+      "pit_loss_p90": 22.4,
+      "pit_loss_max": 57.9,
+      "neutralised_n": 25,
+      "neutralised_median": 15.4,
+      "sc_pit_factor_observed": 0.744
+    },
+    "Mexico City Grand Prix": {
+      "seasons": [
+        2021,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 67,
+      "pit_loss_p10": 22.0,
+      "pit_loss_median": 22.8,
+      "pit_loss_p90": 27.4,
+      "pit_loss_max": 58.8,
+      "neutralised_n": 5,
+      "neutralised_median": 22.5,
+      "sc_pit_factor_observed": 0.987
+    },
+    "Japanese Grand Prix": {
+      "seasons": [
+        2019,
+        2023
+      ],
+      "pit_loss_n": 66,
+      "pit_loss_p10": 23.1,
+      "pit_loss_median": 23.5,
+      "pit_loss_p90": 30.5,
+      "pit_loss_max": 53.5,
+      "neutralised_n": 8,
+      "neutralised_median": 41.0,
+      "sc_pit_factor_observed": 1.745
+    },
+    "Las Vegas Grand Prix": {
+      "seasons": [
+        2023,
+        2024
+      ],
+      "pit_loss_n": 63,
+      "pit_loss_p10": 20.6,
+      "pit_loss_median": 21.5,
+      "pit_loss_p90": 26.6,
+      "pit_loss_max": 57.4,
+      "neutralised_n": 15,
+      "neutralised_median": 22.5,
+      "sc_pit_factor_observed": 1.047
+    },
+    "Styrian Grand Prix": {
+      "seasons": [
+        2020,
+        2021
+      ],
+      "pit_loss_n": 61,
+      "pit_loss_p10": 21.2,
+      "pit_loss_median": 22.1,
+      "pit_loss_p90": 35.6,
+      "pit_loss_max": 46.3,
+      "neutralised_n": 1,
+      "neutralised_median": 39.7
+    },
+    "Singapore Grand Prix": {
+      "seasons": [
+        2019,
+        2023,
+        2024
+      ],
+      "pit_loss_n": 53,
+      "pit_loss_p10": 28.9,
+      "pit_loss_median": 29.6,
+      "pit_loss_p90": 32.4,
+      "pit_loss_max": 52.7,
+      "neutralised_n": 26,
+      "neutralised_median": 30.6,
+      "sc_pit_factor_observed": 1.034
+    },
+    "Emilia Romagna Grand Prix": {
+      "seasons": [
+        2020,
+        2021
+      ],
+      "pit_loss_n": 50,
+      "pit_loss_p10": 29.7,
+      "pit_loss_median": 30.6,
+      "pit_loss_p90": 51.2,
+      "pit_loss_max": 57.6,
+      "neutralised_n": 14,
+      "neutralised_median": 30.8,
+      "sc_pit_factor_observed": 1.007
+    },
+    "Portuguese Grand Prix": {
+      "seasons": [
+        2020,
+        2021
+      ],
+      "pit_loss_n": 47,
+      "pit_loss_p10": 26.1,
+      "pit_loss_median": 26.9,
+      "pit_loss_p90": 32.9,
+      "pit_loss_max": 37.4,
+      "neutralised_n": 38,
+      "neutralised_median": 22.1,
+      "sc_pit_factor_observed": 0.822
+    },
+    "French Grand Prix": {
+      "seasons": [
+        2019,
+        2021
+      ],
+      "pit_loss_n": 45,
+      "pit_loss_p10": 29.9,
+      "pit_loss_median": 30.5,
+      "pit_loss_p90": 31.4,
+      "pit_loss_max": 37.4,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "Monaco Grand Prix": {
+      "seasons": [
+        2019,
+        2021
+      ],
+      "pit_loss_n": 42,
+      "pit_loss_p10": 23.7,
+      "pit_loss_median": 24.5,
+      "pit_loss_p90": 26.2,
+      "pit_loss_max": 35.6,
+      "neutralised_n": 9,
+      "neutralised_median": 24.7,
+      "sc_pit_factor_observed": 1.008
+    },
+    "70th Anniversary Grand Prix": {
+      "seasons": [
+        2020
+      ],
+      "pit_loss_n": 41,
+      "pit_loss_p10": 27.9,
+      "pit_loss_median": 28.4,
+      "pit_loss_p90": 29.3,
+      "pit_loss_max": 35.8,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "German Grand Prix": {
+      "seasons": [
+        2019
+      ],
+      "pit_loss_n": 38,
+      "pit_loss_p10": 19.6,
+      "pit_loss_median": 20.8,
+      "pit_loss_p90": 23.2,
+      "pit_loss_max": 28.0,
+      "neutralised_n": 41,
+      "neutralised_median": 21.2,
+      "sc_pit_factor_observed": 1.019
+    },
+    "Chinese Grand Prix": {
+      "seasons": [
+        2019
+      ],
+      "pit_loss_n": 37,
+      "pit_loss_p10": 22.3,
+      "pit_loss_median": 23.5,
+      "pit_loss_p90": 33.6,
+      "pit_loss_max": 50.7,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "Brazilian Grand Prix": {
+      "seasons": [
+        2019
+      ],
+      "pit_loss_n": 34,
+      "pit_loss_p10": 22.7,
+      "pit_loss_median": 23.2,
+      "pit_loss_p90": 23.8,
+      "pit_loss_max": 30.7,
+      "neutralised_n": 11,
+      "neutralised_median": 23.1,
+      "sc_pit_factor_observed": 0.996
+    },
+    "Sakhir Grand Prix": {
+      "seasons": [
+        2020
+      ],
+      "pit_loss_n": 28,
+      "pit_loss_p10": 24.1,
+      "pit_loss_median": 24.6,
+      "pit_loss_p90": 27.6,
+      "pit_loss_max": 28.5,
+      "neutralised_n": 11,
+      "neutralised_median": 24.8,
+      "sc_pit_factor_observed": 1.008
+    },
+    "Mexican Grand Prix": {
+      "seasons": [
+        2019
+      ],
+      "pit_loss_n": 26,
+      "pit_loss_p10": 22.0,
+      "pit_loss_median": 22.5,
+      "pit_loss_p90": 24.6,
+      "pit_loss_max": 43.4,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "Australian Grand Prix": {
+      "seasons": [
+        2019
+      ],
+      "pit_loss_n": 22,
+      "pit_loss_p10": 21.5,
+      "pit_loss_median": 22.0,
+      "pit_loss_p90": 29.9,
+      "pit_loss_max": 33.0,
+      "neutralised_n": 0,
+      "neutralised_median": null
+    },
+    "Eifel Grand Prix": {
+      "seasons": [
+        2020
+      ],
+      "pit_loss_n": 21,
+      "pit_loss_p10": 22.4,
+      "pit_loss_median": 22.8,
+      "pit_loss_p90": 24.3,
+      "pit_loss_max": 30.8,
+      "neutralised_n": 12,
+      "neutralised_median": 22.6,
+      "sc_pit_factor_observed": 0.991
+    },
+    "Tuscan Grand Prix": {
+      "seasons": [
+        2020
+      ],
+      "pit_loss_n": 14,
+      "pit_loss_p10": 22.4,
+      "pit_loss_median": 23.1,
+      "pit_loss_p90": 24.1,
+      "pit_loss_max": 33.2,
+      "neutralised_n": 27,
+      "neutralised_median": 22.4,
+      "sc_pit_factor_observed": 0.97
+    },
+    "Saudi Arabian Grand Prix": {
+      "seasons": [
+        2021
+      ],
+      "pit_loss_n": 8,
+      "pit_loss_p10": 21.0,
+      "pit_loss_median": 26.1,
+      "pit_loss_p90": 35.6,
+      "pit_loss_max": 35.6,
+      "neutralised_n": 9,
+      "neutralised_median": 20.7,
+      "sc_pit_factor_observed": 0.793
+    }
+  },
+  "pooled": {
+    "pit_loss_n": 2827,
+    "pit_loss_median": 24.0,
+    "pit_loss_p90": 32.1,
+    "stationary_n": 116,
+    "stationary_median": 2.8,
+    "sigma_pit_tail": 2.286
+  }
+}

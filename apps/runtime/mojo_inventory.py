@@ -46,7 +46,17 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
 _SKIP_RUNTIME_RELATIVE_PREFIXES = {
     ("vector_kernels", "semantic_micro"),
 }
-_SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism", "numeric", "query"}
+# main's expanded skip list, kept in full: the universal-substrate work in #414 added runtime dirs that
+# are not part of the callable library surface.
+_SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism", "numeric",
+                      "query"}
+# Maximum source lines one function signature may span while still being parsed. This was 10, which
+# silently truncated anything longer -- and a truncated signature parses as ZERO parameters, which the
+# dispatch generator then emits as a zero-argument call to a multi-argument function.
+# ``seq_nn.lstm_cell_backward`` (9 params across 11 lines) hit exactly that. Truncation is now also
+# caught by parenthesis balance and the function skipped rather than recorded with a wrong arity, so
+# the failure mode is a missing inventory entry instead of generated code that cannot compile.
+_SIGNATURE_MAX_LINES = 40
 _BENCHMARK_NON_RUNTIME_LIB_IDS = {
     "engines_column_ranker_table",
     "engines_column_ranker_v2",
@@ -342,10 +352,15 @@ def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]
 
         signature_lines = [stripped]
         lookahead = index + 1
-        while lookahead < min(index + 10, len(lines)) and not (
-            signature_lines[-1].endswith(":")
-            or (re.search(r"->.*:", signature_lines[-1]) and not signature_lines[-1].endswith(","))
-        ):
+        while lookahead < min(index + _SIGNATURE_MAX_LINES, len(lines)):
+            joined = " ".join(signature_lines)
+            last = signature_lines[-1]
+            balanced = joined.count("(") == joined.count(")")
+            terminated = last.endswith(":") or bool(
+                re.search(r"->.*:", last) and not last.endswith(",")
+            )
+            if balanced and terminated:
+                break
             next_line = lines[lookahead].strip()
             if not next_line:
                 lookahead += 1
@@ -356,6 +371,11 @@ def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]
             lookahead += 1
 
         signature = " ".join(signature_lines)
+        if signature.count("(") != signature.count(")"):
+            # Truncated or malformed. Skipping loses one inventory entry; recording it would set
+            # arity to zero and make the dispatch generator emit an uncompilable call.
+            index += 1
+            continue
         params_match = re.search(r"\(([^)]*)\)", signature)
         if params_match is None:
             # Signature never closed within the lookahead window, so the parse is

@@ -1,0 +1,615 @@
+{
+  "source_commit": "f37530c5000bb43a63b946c7c2d446a32e32e327",
+  "search_bounds": {
+    "pace_sigma": [
+      0.0,
+      1.2
+    ],
+    "ot_bias": [
+      -4.0,
+      0.0
+    ],
+    "ot_kpace": [
+      0.0,
+      2.0
+    ],
+    "dirty_loss": [
+      0.0,
+      0.8
+    ],
+    "min_follow": [
+      0.0,
+      2.5
+    ],
+    "sc_bunch": [
+      0.2,
+      3.0
+    ],
+    "lap_noise": [
+      0.05,
+      0.6
+    ],
+    "dnf_prob": [
+      0.0,
+      0.01
+    ],
+    "sc_lambda": [
+      0.0,
+      0.06
+    ],
+    "vsc_lambda": [
+      0.0,
+      0.03
+    ],
+    "stop_jitter": [
+      0.0,
+      0.3
+    ],
+    "sc_dur_max": [
+      1.0,
+      10.0
+    ],
+    "vsc_dur_max": [
+      1.0,
+      5.0
+    ],
+    "ot_kage": [
+      0.0,
+      0.2
+    ],
+    "cliff_age": [
+      5.0,
+      70.0
+    ],
+    "cliff_slope": [
+      0.0,
+      0.3
+    ],
+    "w_grid_centred": [
+      -0.6,
+      1.6
+    ],
+    "w_hist_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_mate_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_team_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_circuit_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_form_trend": [
+      -0.6,
+      1.6
+    ],
+    "w_prior_races": [
+      -0.6,
+      1.6
+    ],
+    "w_practice_pace": [
+      -0.6,
+      1.6
+    ]
+  },
+  "corpus_seasons": [
+    2019,
+    2020,
+    2021,
+    2023,
+    2024
+  ],
+  "corpus_races": 96,
+  "ga_settings": {
+    "pop": 40,
+    "gens": 35,
+    "tournament": 3,
+    "cx_rate": 0.5,
+    "mut_rate": 0.3,
+    "mut_scale": 0.15,
+    "elite": 3
+  },
+  "search_version": "motorsport-search/v1",
+  "objective": "spearman - 2*brier - ece",
+  "frozen_test_season_withheld": 2025,
+  "train_races": 62,
+  "val_races": 34,
+  "pop": 40,
+  "generations": 35,
+  "search_reps": 600,
+  "final_reps": 8000,
+  "master_seed": 7,
+  "parameters": [
+    {
+      "name": "pace_sigma",
+      "param_index": 22,
+      "default": 0.952,
+      "fitted": 0.8962335486308897,
+      "lo": 0.0,
+      "hi": 1.2,
+      "spread": 0.14237156710710758,
+      "relative_spread": 0.11864297258925632,
+      "saturation": 0.05,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "ot_bias",
+      "param_index": 17,
+      "default": -2.44,
+      "fitted": -2.3768727723423684,
+      "lo": -4.0,
+      "hi": 0.0,
+      "spread": 0.7327035255332327,
+      "relative_spread": 0.18317588138330818,
+      "saturation": -0.1,
+      "identifiability": "weak"
+    },
+    {
+      "name": "ot_kpace",
+      "param_index": 18,
+      "default": 0.87,
+      "fitted": 0.0,
+      "lo": 0.0,
+      "hi": 2.0,
+      "spread": 0.16688357871468468,
+      "relative_spread": 0.08344178935734234,
+      "saturation": -0.5,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "dirty_loss",
+      "param_index": 10,
+      "default": 0.35,
+      "fitted": 0.4781702101753593,
+      "lo": 0.0,
+      "hi": 0.8,
+      "spread": 0.1836186594973852,
+      "relative_spread": 0.2295233243717315,
+      "saturation": 0.15,
+      "identifiability": "weak"
+    },
+    {
+      "name": "min_follow",
+      "param_index": 19,
+      "default": 0.35,
+      "fitted": 1.4908232020212768,
+      "lo": 0.0,
+      "hi": 2.5,
+      "spread": 0.6448273147942438,
+      "relative_spread": 0.2579309259176975,
+      "saturation": -0.2,
+      "identifiability": "weak"
+    },
+    {
+      "name": "sc_bunch",
+      "param_index": 20,
+      "default": 0.8,
+      "fitted": 0.4838521597358299,
+      "lo": 0.2,
+      "hi": 3.0,
+      "spread": 0.3869991138490499,
+      "relative_spread": 0.13821396923180354,
+      "saturation": -0.025,
+      "identifiability": "weak"
+    },
+    {
+      "name": "lap_noise",
+      "param_index": 1,
+      "default": 0.18,
+      "fitted": 0.1651212114078745,
+      "lo": 0.05,
+      "hi": 0.6,
+      "spread": 0.08512461789413504,
+      "relative_spread": 0.154772032534791,
+      "saturation": -0.025,
+      "identifiability": "weak"
+    },
+    {
+      "name": "stop_jitter",
+      "param_index": 21,
+      "default": 0.1,
+      "fitted": 0.22566290659559418,
+      "lo": 0.0,
+      "hi": 0.3,
+      "spread": 0.03409673893941957,
+      "relative_spread": 0.11365579646473191,
+      "saturation": 0.1,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "ot_kage",
+      "param_index": 25,
+      "default": 0.046,
+      "fitted": 0.06990769891926446,
+      "lo": 0.0,
+      "hi": 0.2,
+      "spread": 0.0324967439858692,
+      "relative_spread": 0.162483719929346,
+      "saturation": -0.1,
+      "identifiability": "weak"
+    },
+    {
+      "name": "cliff_age",
+      "param_index": 26,
+      "default": 28.0,
+      "fitted": 34.61783551686458,
+      "lo": 5.0,
+      "hi": 70.0,
+      "spread": 11.550165447100476,
+      "relative_spread": 0.177694853032315,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "cliff_slope",
+      "param_index": 27,
+      "default": 0.08,
+      "fitted": 0.07033684346350667,
+      "lo": 0.0,
+      "hi": 0.3,
+      "spread": 0.0491065434467657,
+      "relative_spread": 0.1636884781558857,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "w_grid_centred",
+      "param_index": -100,
+      "default": 0.5,
+      "fitted": 1.5082747082777455,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.29813778324837203,
+      "relative_spread": 0.13551717420380546,
+      "saturation": 0.5,
+      "identifiability": "weak"
+    },
+    {
+      "name": "w_hist_pace",
+      "param_index": -101,
+      "default": 0.5,
+      "fitted": 0.8481447384984548,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.22000432178077284,
+      "relative_spread": 0.10000196444580582,
+      "saturation": 0.0,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "w_mate_pace",
+      "param_index": -102,
+      "default": 0.0,
+      "fitted": -0.4467892364522713,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.2535603814346623,
+      "relative_spread": 0.1152547188339374,
+      "saturation": -0.075,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "w_team_pace",
+      "param_index": -103,
+      "default": 0.0,
+      "fitted": 1.1337781499761033,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.3104546269037868,
+      "relative_spread": 0.14111573950172124,
+      "saturation": 0.05,
+      "identifiability": "weak"
+    },
+    {
+      "name": "w_circuit_pace",
+      "param_index": -104,
+      "default": 0.0,
+      "fitted": -0.020948092975225614,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.2554906165348146,
+      "relative_spread": 0.11613209842491572,
+      "saturation": -0.025,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "w_form_trend",
+      "param_index": -105,
+      "default": 0.0,
+      "fitted": -0.6000000000000002,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.12533274095238675,
+      "relative_spread": 0.056969427705630335,
+      "saturation": -0.45,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "w_prior_races",
+      "param_index": -106,
+      "default": 0.0,
+      "fitted": 0.020798459764219734,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.4378834114404127,
+      "relative_spread": 0.19903791429109666,
+      "saturation": -0.025,
+      "identifiability": "weak"
+    },
+    {
+      "name": "w_practice_pace",
+      "param_index": -107,
+      "default": 0.0,
+      "fitted": 0.05195729044472313,
+      "lo": -0.6,
+      "hi": 1.6,
+      "spread": 0.10412251088730387,
+      "relative_spread": 0.047328414039683575,
+      "saturation": 0.0,
+      "identifiability": "resolved"
+    }
+  ],
+  "measured_pinned": {
+    "sc_lambda": {
+      "value": 0.0191,
+      "source": "1.09 SC events per race over ~57 laps, 131 races"
+    },
+    "vsc_lambda": {
+      "value": 0.0082,
+      "source": "0.47 VSC events per race over ~57 laps"
+    },
+    "sc_dur_max": {
+      "value": 5.0,
+      "source": "mean SC duration 3.17 laps; uniform 1..5 has mean 3.0"
+    },
+    "vsc_dur_max": {
+      "value": 2.0,
+      "source": "mean VSC duration 1.28 laps; uniform 1..2 has mean 1.5"
+    },
+    "dnf_prob": {
+      "value": 0.00273,
+      "source": "0.165 of cars retire over a mean 61-lap race, as a per-lap hazard"
+    }
+  },
+  "searched_measured_too": false,
+  "trace": [
+    {
+      "gen": 0,
+      "best_j": 0.5937351563479122,
+      "mean_j": 0.40153995789490377,
+      "mean_diversity": 1.483329702848993
+    },
+    {
+      "gen": 1,
+      "best_j": 0.5937351563479122,
+      "mean_j": 0.4986679234590904,
+      "mean_diversity": 1.676873161870389
+    },
+    {
+      "gen": 2,
+      "best_j": 0.619365314712674,
+      "mean_j": 0.5576670198036786,
+      "mean_diversity": 1.5381307434818472
+    },
+    {
+      "gen": 3,
+      "best_j": 0.6231369876045822,
+      "mean_j": 0.5761898127963926,
+      "mean_diversity": 1.4234904659301495
+    },
+    {
+      "gen": 4,
+      "best_j": 0.6232585038757434,
+      "mean_j": 0.5774114515290679,
+      "mean_diversity": 1.341239224646132
+    },
+    {
+      "gen": 5,
+      "best_j": 0.631672870494276,
+      "mean_j": 0.5927266443748536,
+      "mean_diversity": 1.4818824620209547
+    },
+    {
+      "gen": 6,
+      "best_j": 0.6323313568026573,
+      "mean_j": 0.6079591965827005,
+      "mean_diversity": 1.6654101161090502
+    },
+    {
+      "gen": 7,
+      "best_j": 0.6331461591519417,
+      "mean_j": 0.6057725735584192,
+      "mean_diversity": 1.5405113818094935
+    },
+    {
+      "gen": 8,
+      "best_j": 0.6368743918843074,
+      "mean_j": 0.6101808486744988,
+      "mean_diversity": 1.5710280734545385
+    },
+    {
+      "gen": 9,
+      "best_j": 0.6374730674646543,
+      "mean_j": 0.6127522027281052,
+      "mean_diversity": 1.194025013992252
+    },
+    {
+      "gen": 10,
+      "best_j": 0.6389281349832687,
+      "mean_j": 0.6203805254569932,
+      "mean_diversity": 1.147810605424896
+    },
+    {
+      "gen": 11,
+      "best_j": 0.6389346994220556,
+      "mean_j": 0.6158649235856217,
+      "mean_diversity": 1.121720881855853
+    },
+    {
+      "gen": 12,
+      "best_j": 0.6389346994220556,
+      "mean_j": 0.6213648852192758,
+      "mean_diversity": 1.0723234331409295
+    },
+    {
+      "gen": 13,
+      "best_j": 0.6390015968143717,
+      "mean_j": 0.6161679466239494,
+      "mean_diversity": 0.9241618965694897
+    },
+    {
+      "gen": 14,
+      "best_j": 0.6390015968143717,
+      "mean_j": 0.6200767387578032,
+      "mean_diversity": 0.7887379540354923
+    },
+    {
+      "gen": 15,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6250680520951816,
+      "mean_diversity": 0.704669815687971
+    },
+    {
+      "gen": 16,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6160923825661502,
+      "mean_diversity": 0.7242237053034868
+    },
+    {
+      "gen": 17,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6219140558614981,
+      "mean_diversity": 0.6678763492473712
+    },
+    {
+      "gen": 18,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6184584310838537,
+      "mean_diversity": 0.7392526129933616
+    },
+    {
+      "gen": 19,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6235510393629751,
+      "mean_diversity": 0.7573008620430398
+    },
+    {
+      "gen": 20,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.624075625299527,
+      "mean_diversity": 0.7739694612558013
+    },
+    {
+      "gen": 21,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6193959975066905,
+      "mean_diversity": 0.7568123031468209
+    },
+    {
+      "gen": 22,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6227869773007098,
+      "mean_diversity": 0.6886241837903404
+    },
+    {
+      "gen": 23,
+      "best_j": 0.6414249171560235,
+      "mean_j": 0.6216932841174819,
+      "mean_diversity": 0.597311511194421
+    },
+    {
+      "gen": 24,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6196938779963268,
+      "mean_diversity": 0.6731766422156459
+    },
+    {
+      "gen": 25,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6221279238613322,
+      "mean_diversity": 0.6167959154630265
+    },
+    {
+      "gen": 26,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.627987466730459,
+      "mean_diversity": 0.6558610591809088
+    },
+    {
+      "gen": 27,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.623998087839937,
+      "mean_diversity": 0.6287182639608172
+    },
+    {
+      "gen": 28,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.619569862017763,
+      "mean_diversity": 0.8226198655707028
+    },
+    {
+      "gen": 29,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6208892090722217,
+      "mean_diversity": 0.8576160602107106
+    },
+    {
+      "gen": 30,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.623853360491947,
+      "mean_diversity": 0.6584999640613213
+    },
+    {
+      "gen": 31,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6228502944771657,
+      "mean_diversity": 0.6862756822148549
+    },
+    {
+      "gen": 32,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6186654435822672,
+      "mean_diversity": 0.828629592699613
+    },
+    {
+      "gen": 33,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6231678286338136,
+      "mean_diversity": 0.9514721010587088
+    },
+    {
+      "gen": 34,
+      "best_j": 0.6416207852418855,
+      "mean_j": 0.6241945977820967,
+      "mean_diversity": 0.842809486528678
+    }
+  ],
+  "held_out": {
+    "shipped defaults": {
+      "j": 0.6479281453754292,
+      "brier": 0.039393587509600606,
+      "ece": 0.036758448540706624,
+      "rho": 0.763473768935337,
+      "bss": 0.20416427780739932,
+      "churn": 4.712696856725146,
+      "n": 651
+    },
+    "fitted theta": {
+      "j": 0.6932127001673709,
+      "brier": 0.030342025777649783,
+      "ece": 0.015493471582181265,
+      "rho": 0.7693902233048517,
+      "bss": 0.3870254139291708,
+      "churn": 3.5508514390973107,
+      "n": 651
+    }
+  },
+  "corpus_churn_target": 2.68,
+  "search_seconds": 1032.7471743330825
+}

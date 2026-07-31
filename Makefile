@@ -705,6 +705,74 @@ test-mojo:
 	@echo '{"runs":500,"variables":[{"name":"rev","distribution":"normal","params":{"mean":100000,"std":20000}}],"objective_function":"rev"}' \
 		| ./mojo_build/simulate | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'✅ engine={d[\"engine_version\"]} mean={d[\"summary\"][\"mean\"]:.0f}')"
 
+# ─── Live timing (Algenta decision board) ──────────────────────────────────────────────
+
+## Build the filtered motorsport kernel binary (fallback denial is pinned inside)
+timing-build:
+	scripts/timing/build_filtered.sh "counter_rng,degradation_state,contest_strategy,forecast_metrics,evolutionary_search,model_selection,model_compare,gbdt,ensembles,conformal,calibration,linear_models,survival,imbalance,explainability"
+
+## Mojo unit suites for the motorsport kernels
+timing-test-mojo:
+	@cd mojo_env && for t in strategy state metrics search; do \
+		pixi run mojo run -I ../mojo/engine ../mojo/tests/libs/test_motorsport_$$t.mojo 2>&1 | tail -1; \
+	done
+
+## Gate 0 boundary guards + the RNG cross-check against numpy's Philox
+timing-guards:
+	PYTHONPATH=. python3 -m pytest tests/test_timing_boundary_guards.py -q
+	python3 scripts/timing/validate_rng.py
+
+## Gate 3A/3B theta calibration, selected on held-out races (2025 withheld)
+timing-calibrate:
+	python3 -m benchmarks.timing.calibrate --json docs/timing/calibration.json
+
+## Monte Carlo against five baselines under purged walk-forward CV
+timing-shootout:
+	python3 -m benchmarks.timing.model_shootout --reps 20000 --json docs/timing/model_shootout.json
+
+## Latency ladder through the production socket transport
+timing-bench:
+	python3 -m benchmarks.timing.bench_ladder --json docs/timing/ladder.json
+
+## Rung 2: controlled same-model comparison against optimised NumPy
+timing-speed:
+	python3 -m benchmarks.timing.numpy_baseline --cars 20 --laps 40 --reps 6000 --json docs/timing/numpy_baseline.json
+
+## In-race decision snapshots against the five mandatory baselines
+timing-inrace:
+	python3 -m benchmarks.timing.inrace_backtest --reps 4000 --theta-json docs/timing/calibration.json --json docs/timing/inrace_backtest.json
+
+## Gate 4: live SignalR ingest (set --out to a session directory)
+timing-live:
+	python3 scripts/timing/live_ingest.py --out $${OUT:-$$HOME/.algenta/f1/live/session}
+
+## Gate 4 rehearsal: the WHOLE chain end to end, with a bit-identity parity gate
+timing-rehearse:
+	scripts/timing/rehearse.sh
+
+## Verify a decision outbox chain and print its head for external publication
+timing-outbox:
+	python3 scripts/timing/decision_outbox.py $${OUTBOX:?set OUTBOX=<outbox.jsonl>}
+
+## Development-validated calibration: propagate the search's own parameter uncertainty
+timing-ensemble:
+	python3 -m benchmarks.timing.backtest --seasons 2019,2020,2021,2023,2024 --session-types Race --reps 16000 --pace-prior history --hist-weight 0.5 --theta-json docs/timing/calibration.json --theta-ensemble 8
+
+## Rung 4: option-contrast stability across a replication ladder
+timing-stability:
+	python3 -m benchmarks.timing.option_stability --snapshots 45 --json docs/timing/option_stability.json
+
+## Gate 3C: freeze and preregister the configuration
+timing-freeze:
+	python3 -m benchmarks.timing.freeze --freeze
+
+## Confirm the tree and corpus still match what was frozen
+timing-verify-freeze:
+	python3 -m benchmarks.timing.freeze --verify
+
+## Everything that must be green before a claim is published
+timing-verify: timing-test-mojo timing-guards timing-shootout timing-speed
+
 # ─── Benchmarks ────────────────────────────────────────────────────────────────
 
 ## Run all 11-engine latency benchmark (requires running API server)

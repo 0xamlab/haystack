@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **506 modules** and **5061 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **511 modules** and **5114 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -79,7 +79,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `optimizer_full` | 10 |
 | `quantization` | 10 |
 | `quantization_stack` | 10 |
-| `seq2_trainer` | 8 |
+| `seq2_trainer` | 11 |
 | `seq_training` | 4 |
 | `state_space_models` | 10 |
 | `training_stability` | 10 |
@@ -109,12 +109,13 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Statistics & probability
 
-19 modules.
+20 modules.
 
 | Module | Functions |
 | --- | --- |
 | `ab_testing` | 10 |
 | `bayesian` | 10 |
+| `degradation_state` | 13 |
 | `distribution_fit` | 10 |
 | `distributions` | 25 |
 | `electrostatics` | 10 |
@@ -290,7 +291,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-331 modules.
+335 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -343,6 +344,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `composites` | 12 |
 | `concrete` | 12 |
 | `conformal` | 6 |
+| `contest_strategy` | 7 |
 | `continuous_batching` | 10 |
 | `contrastive_learning` | 10 |
 | `control` | 9 |
@@ -352,6 +354,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `corrosion` | 12 |
 | `cosmology` | 12 |
 | `cost_router` | 10 |
+| `counter_rng` | 11 |
 | `cryogenics` | 12 |
 | `cryology` | 10 |
 | `cryptanalysis` | 12 |
@@ -392,6 +395,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `ergonomics` | 12 |
 | `etiology` | 10 |
 | `evaluation_feedback` | 10 |
+| `evolutionary_search` | 7 |
 | `execution_planner` | 10 |
 | `explainability` | 4 |
 | `fault_tolerance` | 10 |
@@ -403,6 +407,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `fisheries` | 12 |
 | `fluid` | 12 |
 | `food_science` | 12 |
+| `forecast_metrics` | 10 |
 | `forensics` | 12 |
 | `formal_logic` | 14 |
 | `fused_kernels` | 10 |
@@ -410,7 +415,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `game_physics` | 12 |
 | `game_theory` | 8 |
 | `gaussian_process` | 5 |
-| `gbdt` | 3 |
+| `gbdt` | 4 |
 | `generation_loop` | 10 |
 | `genomics` | 10 |
 | `glaciology` | 10 |
@@ -559,7 +564,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `sedimentology` | 10 |
 | `seismology` | 12 |
 | `semiconductors` | 12 |
-| `seq_nn` | 8 |
+| `seq_nn` | 9 |
 | `series` | 10 |
 | `set_ops` | 12 |
 | `silviculture` | 10 |

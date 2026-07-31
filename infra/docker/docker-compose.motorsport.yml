@@ -1,0 +1,49 @@
+# Motorsport lane — local ClickHouse only.
+#
+# Deliberately a separate compose file rather than a service in docker-compose.yml: the motorsport
+# corpus work needs ClickHouse and nothing else, and bringing up postgres/redis/minio/api alongside it
+# would be noise. Also keeps the main local-dev stack untouched.
+#
+#   docker compose -f infra/docker/docker-compose.motorsport.yml up -d
+#   docker compose -f infra/docker/docker-compose.motorsport.yml down
+#
+# Network capability, per the plan's narrowed-egress rule: ports bind to 127.0.0.1 ONLY, never 0.0.0.0.
+# The ClickHouse write path and the scorer get this capability; the decision runtime does not — it holds
+# no DSN, credentials, client dependency or route, and receives nothing from here (evidence flows the
+# other way, via the outbox shipper).
+#
+# Image is version-pinned. ClickHouse codec behaviour and TTL semantics are part of the reproducibility
+# surface for a preregistered benchmark, so a floating tag would let the storage layer drift under a
+# frozen corpus.
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8.14.39-alpine
+    container_name: algenta-motorsport-clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: f1_current
+      CLICKHOUSE_USER: ${MOTORSPORT_CH_USER:-algenta}
+      CLICKHOUSE_PASSWORD: ${MOTORSPORT_CH_PASSWORD:-algenta_local_dev}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      # loopback-bound on purpose — see the header note
+      - "127.0.0.1:${MOTORSPORT_CH_HTTP_PORT:-8123}:8123"
+      - "127.0.0.1:${MOTORSPORT_CH_NATIVE_PORT:-9000}:9000"
+    volumes:
+      - motorsport_clickhouse_data:/var/lib/clickhouse
+      - motorsport_clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  motorsport_clickhouse_data:
+  motorsport_clickhouse_logs:

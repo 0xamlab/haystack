@@ -1,0 +1,71 @@
+{
+  "engine_version": "motorsport-strategy-crn/v1",
+  "rng_version": "philox4x64-10/v1",
+  "workers": 16,
+  "hardware": {
+    "cpu": "Apple M4 Max",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.5"
+  },
+  "workload": {
+    "cars": 20,
+    "laps_remaining": 30,
+    "options": 4,
+    "bootstrap": 300,
+    "transport": "framed JSON over Unix socket"
+  },
+  "ladder": [
+    {
+      "n": 2000,
+      "wall_ms": 35.94370896462351,
+      "car_lap_updates": 4800000,
+      "updates_per_s": 133542145.15603419,
+      "ci_width_pp": 1.7862557154837255,
+      "delta_pp": 4.050000000000001,
+      "crn_variance_ratio": 0.19513423442288894,
+      "verdict": 1
+    },
+    {
+      "n": 10000,
+      "wall_ms": 176.3419999042526,
+      "car_lap_updates": 24000000,
+      "updates_per_s": 136099171.00311407,
+      "ci_width_pp": 0.8769146587579144,
+      "delta_pp": 3.92,
+      "crn_variance_ratio": 0.2730122480303508,
+      "verdict": 1
+    },
+    {
+      "n": 100000,
+      "wall_ms": 1933.7591669755057,
+      "car_lap_updates": 240000000,
+      "updates_per_s": 124110594.58628026,
+      "ci_width_pp": 0.25600000000011447,
+      "delta_pp": 3.708,
+      "crn_variance_ratio": 0.25419376786306735,
+      "verdict": 1
+    }
+  ],
+  "fixed_budget": {
+    "seconds": 1.0,
+    "n": 54114,
+    "wall_ms": 1015.4650839976966,
+    "car_lap_updates": 129873600,
+    "updates_per_s": 127895682.52678059,
+    "ci_width_pp": 0.3585024208179424,
+    "delta_pp": 3.7347082085966656,
+    "crn_variance_ratio": 0.24709070242692335,
+    "verdict": 1
+  },
+  "fixed_confidence": {
+    "target_ci_pp": 0.5,
+    "n": 30759,
+    "wall_ms": 590.6765830004588,
+    "car_lap_updates": 73821600,
+    "updates_per_s": 124978037.26196246,
+    "ci_width_pp": 0.44974400990658303,
+    "delta_pp": 3.7972625898111123,
+    "crn_variance_ratio": 0.20188867908494645,
+    "verdict": 1
+  }
+}

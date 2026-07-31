@@ -1,0 +1,434 @@
+{
+  "search_version": "motorsport-search/v1",
+  "objective": "spearman - 2*brier - ece",
+  "frozen_test_season_withheld": 2025,
+  "train_races": 71,
+  "val_races": 39,
+  "pop": 32,
+  "generations": 30,
+  "search_reps": 600,
+  "final_reps": 8000,
+  "master_seed": 7,
+  "parameters": [
+    {
+      "name": "pace_sigma",
+      "param_index": 22,
+      "default": 0.952,
+      "fitted": 0.35051231619087114,
+      "lo": 0.0,
+      "hi": 1.2,
+      "spread": 0.0852339676363979,
+      "relative_spread": 0.07102830636366492,
+      "saturation": 0.0,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "ot_bias",
+      "param_index": 17,
+      "default": -2.44,
+      "fitted": -3.0607783184654997,
+      "lo": -4.0,
+      "hi": 0.0,
+      "spread": 0.4938911400471104,
+      "relative_spread": 0.1234727850117776,
+      "saturation": -0.0625,
+      "identifiability": "weak"
+    },
+    {
+      "name": "ot_kpace",
+      "param_index": 18,
+      "default": 0.87,
+      "fitted": 0.5847300895753202,
+      "lo": 0.0,
+      "hi": 2.0,
+      "spread": 0.26153396056138273,
+      "relative_spread": 0.13076698028069136,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "dirty_loss",
+      "param_index": 10,
+      "default": 0.35,
+      "fitted": 0.3248518522065098,
+      "lo": 0.0,
+      "hi": 0.8,
+      "spread": 0.1044759161573688,
+      "relative_spread": 0.130594895196711,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "min_follow",
+      "param_index": 19,
+      "default": 0.35,
+      "fitted": 0.9766191407886461,
+      "lo": 0.0,
+      "hi": 1.0,
+      "spread": 0.06518902719801521,
+      "relative_spread": 0.06518902719801521,
+      "saturation": 0.21875,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "sc_bunch",
+      "param_index": 20,
+      "default": 0.8,
+      "fitted": 2.360821490450422,
+      "lo": 0.2,
+      "hi": 3.0,
+      "spread": 1.055174194429,
+      "relative_spread": 0.3768479265817858,
+      "saturation": -0.28125,
+      "identifiability": "UNIDENTIFIED"
+    },
+    {
+      "name": "lap_noise",
+      "param_index": 1,
+      "default": 0.18,
+      "fitted": 0.6000000000000002,
+      "lo": 0.05,
+      "hi": 0.6,
+      "spread": 0.03034566124118693,
+      "relative_spread": 0.05517392952943079,
+      "saturation": 0.75,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "dnf_prob",
+      "param_index": 2,
+      "default": 0.07,
+      "fitted": 0.06373629110968133,
+      "lo": 0.0,
+      "hi": 0.15,
+      "spread": 0.02078789456500775,
+      "relative_spread": 0.13858596376671833,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "sc_lambda",
+      "param_index": 3,
+      "default": 0.0191,
+      "fitted": 0.0,
+      "lo": 0.0,
+      "hi": 0.06,
+      "spread": 0.0038350594199886966,
+      "relative_spread": 0.06391765699981161,
+      "saturation": -0.625,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "vsc_lambda",
+      "param_index": 6,
+      "default": 0.0082,
+      "fitted": 0.030000000000000013,
+      "lo": 0.0,
+      "hi": 0.03,
+      "spread": 0.0017006620377321112,
+      "relative_spread": 0.05668873459107038,
+      "saturation": 0.625,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "stop_jitter",
+      "param_index": 21,
+      "default": 0.1,
+      "fitted": 0.20750604975504044,
+      "lo": 0.0,
+      "hi": 0.3,
+      "spread": 0.037036557142316635,
+      "relative_spread": 0.12345519047438878,
+      "saturation": 0.0,
+      "identifiability": "weak"
+    },
+    {
+      "name": "slot_spread",
+      "param_index": -1,
+      "default": 0.12,
+      "fitted": 0.06361221327795208,
+      "lo": 0.0,
+      "hi": 0.6,
+      "spread": 0.029421425923559886,
+      "relative_spread": 0.04903570987259981,
+      "saturation": -0.03125,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "hist_weight",
+      "param_index": -2,
+      "default": 0.5,
+      "fitted": 0.46492747121757316,
+      "lo": 0.0,
+      "hi": 1.0,
+      "spread": 0.1073895604147815,
+      "relative_spread": 0.1073895604147815,
+      "saturation": 0.0,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "sc_dur_max",
+      "param_index": 23,
+      "default": 5.0,
+      "fitted": 10.0,
+      "lo": 1.0,
+      "hi": 10.0,
+      "spread": 1.8481665799373221,
+      "relative_spread": 0.205351842215258,
+      "saturation": 0.375,
+      "identifiability": "weak"
+    },
+    {
+      "name": "vsc_dur_max",
+      "param_index": 24,
+      "default": 2.0,
+      "fitted": 1.7762027826212485,
+      "lo": 1.0,
+      "hi": 5.0,
+      "spread": 0.5635055232651817,
+      "relative_spread": 0.14087638081629542,
+      "saturation": -0.1875,
+      "identifiability": "weak"
+    },
+    {
+      "name": "ot_kage",
+      "param_index": 25,
+      "default": 0.046,
+      "fitted": 0.03990375093859188,
+      "lo": 0.0,
+      "hi": 0.2,
+      "spread": 0.015129100921124499,
+      "relative_spread": 0.07564550460562249,
+      "saturation": -0.0625,
+      "identifiability": "resolved"
+    },
+    {
+      "name": "cliff_age",
+      "param_index": 26,
+      "default": 28.0,
+      "fitted": 37.9084186994741,
+      "lo": 5.0,
+      "hi": 40.0,
+      "spread": 7.172099755760587,
+      "relative_spread": 0.20491713587887392,
+      "saturation": 0.375,
+      "identifiability": "weak"
+    },
+    {
+      "name": "cliff_slope",
+      "param_index": 27,
+      "default": 0.08,
+      "fitted": 0.19905341821219108,
+      "lo": 0.0,
+      "hi": 0.3,
+      "spread": 0.037141375768903404,
+      "relative_spread": 0.12380458589634469,
+      "saturation": 0.03125,
+      "identifiability": "weak"
+    }
+  ],
+  "trace": [
+    {
+      "gen": 0,
+      "best_j": 0.6411903974568594,
+      "mean_j": 0.6123643623412816,
+      "mean_diversity": 1.0196550707273986
+    },
+    {
+      "gen": 1,
+      "best_j": 0.6429379171195239,
+      "mean_j": 0.625061387182126,
+      "mean_diversity": 1.0581454134054882
+    },
+    {
+      "gen": 2,
+      "best_j": 0.6429379171195239,
+      "mean_j": 0.6303623321225473,
+      "mean_diversity": 0.9807022079539869
+    },
+    {
+      "gen": 3,
+      "best_j": 0.6455118048560483,
+      "mean_j": 0.6315263213318222,
+      "mean_diversity": 0.9609533232685392
+    },
+    {
+      "gen": 4,
+      "best_j": 0.6455118048560483,
+      "mean_j": 0.6366316199977318,
+      "mean_diversity": 0.9584942933709875
+    },
+    {
+      "gen": 5,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6360077124452531,
+      "mean_diversity": 1.030882688216067
+    },
+    {
+      "gen": 6,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6362174088578574,
+      "mean_diversity": 0.9573176186220387
+    },
+    {
+      "gen": 7,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6381965314984532,
+      "mean_diversity": 0.7903258194469897
+    },
+    {
+      "gen": 8,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6375235137391749,
+      "mean_diversity": 0.7253113436638191
+    },
+    {
+      "gen": 9,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6396587866270572,
+      "mean_diversity": 0.6273665636154812
+    },
+    {
+      "gen": 10,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6387956869401767,
+      "mean_diversity": 0.6961493012591835
+    },
+    {
+      "gen": 11,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6374230467412629,
+      "mean_diversity": 0.7435892891892945
+    },
+    {
+      "gen": 12,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.6369619869434262,
+      "mean_diversity": 0.6612827685712246
+    },
+    {
+      "gen": 13,
+      "best_j": 0.6463436506790788,
+      "mean_j": 0.632860435266973,
+      "mean_diversity": 0.6804932819210745
+    },
+    {
+      "gen": 14,
+      "best_j": 0.6467674946025095,
+      "mean_j": 0.6373132988583968,
+      "mean_diversity": 0.6433863746816713
+    },
+    {
+      "gen": 15,
+      "best_j": 0.6472403963712948,
+      "mean_j": 0.6360478714337097,
+      "mean_diversity": 0.6266823454415277
+    },
+    {
+      "gen": 16,
+      "best_j": 0.6472403963712948,
+      "mean_j": 0.638666942350843,
+      "mean_diversity": 0.5188251693710936
+    },
+    {
+      "gen": 17,
+      "best_j": 0.6472403963712948,
+      "mean_j": 0.6386879164602396,
+      "mean_diversity": 0.5647025204414384
+    },
+    {
+      "gen": 18,
+      "best_j": 0.6472403963712948,
+      "mean_j": 0.6397850621700174,
+      "mean_diversity": 0.574704551404236
+    },
+    {
+      "gen": 19,
+      "best_j": 0.6478572588752373,
+      "mean_j": 0.6396414200245705,
+      "mean_diversity": 0.5320480902352845
+    },
+    {
+      "gen": 20,
+      "best_j": 0.6478572588752373,
+      "mean_j": 0.6391720628803109,
+      "mean_diversity": 0.543908963413565
+    },
+    {
+      "gen": 21,
+      "best_j": 0.6479078109588026,
+      "mean_j": 0.6410338018860623,
+      "mean_diversity": 0.587083985113598
+    },
+    {
+      "gen": 22,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6386144774973529,
+      "mean_diversity": 0.603728661643911
+    },
+    {
+      "gen": 23,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.639186027880933,
+      "mean_diversity": 0.7114644967959651
+    },
+    {
+      "gen": 24,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6401596557413138,
+      "mean_diversity": 0.702780666350908
+    },
+    {
+      "gen": 25,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6381151767367941,
+      "mean_diversity": 0.7171204418487458
+    },
+    {
+      "gen": 26,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6410349299409998,
+      "mean_diversity": 0.7362325095463065
+    },
+    {
+      "gen": 27,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.641559814841788,
+      "mean_diversity": 0.7070726004584155
+    },
+    {
+      "gen": 28,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6408973340218408,
+      "mean_diversity": 0.7043016073709375
+    },
+    {
+      "gen": 29,
+      "best_j": 0.6504073206722494,
+      "mean_j": 0.6411681357028746,
+      "mean_diversity": 0.6628920756903871
+    }
+  ],
+  "held_out": {
+    "shipped defaults": {
+      "j": 0.6739664681045339,
+      "brier": 0.036723883358036884,
+      "ece": 0.03769038208168643,
+      "rho": 0.785104616902294,
+      "bss": 0.2465836378639139,
+      "churn": 4.380176980409797,
+      "n": 759
+    },
+    "fitted theta": {
+      "j": 0.7103596905717351,
+      "brier": 0.02768118260046114,
+      "ece": 0.01850494071146245,
+      "rho": 0.7842269964841199,
+      "bss": 0.4321010201689355,
+      "churn": 3.074684768198778,
+      "n": 759
+    }
+  },
+  "corpus_churn_target": 2.68,
+  "search_seconds": 859.2315552500077
+}

@@ -1,0 +1,19 @@
+{
+  "workload": {
+    "cars": 20,
+    "laps": 40,
+    "reps": 6000,
+    "car_lap_updates": 4800000
+  },
+  "mojo_seconds": 0.10051975003443658,
+  "numpy_seconds": 2.8210114159155637,
+  "speedup": 28.064250209029836,
+  "max_p_win_divergence": 0.012333333333333335,
+  "same_model_valid": true,
+  "hardware": {
+    "cpu": "Apple M4 Max",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "numpy": "1.26.4",
+    "python": "3.12.5"
+  }
+}

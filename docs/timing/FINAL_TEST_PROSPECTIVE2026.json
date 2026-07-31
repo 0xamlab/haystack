@@ -1,0 +1,18 @@
+{
+  "ran_at": "2026-07-30T20:12:54.752635+00:00",
+  "preregistration_commit": "0398e4e88920510deec23864701a7b2384057e70",
+  "test_name": "prospective2026",
+  "seasons": [
+    2026
+  ],
+  "session_types": [
+    "Race"
+  ],
+  "prior_tests_already_read": [
+    "FINAL_TEST_2025.json"
+  ],
+  "reps": 20000,
+  "returncode": 0,
+  "stdout": "\nmodel           win hit   top-3  pod rec  win Brier  win BSS  win ECE  log loss\noracle            72.7%  100.0%    63.6%    0.03190    0.291   0.0362    0.1074\ngrid_softmax      72.7%  100.0%    60.6%    0.02923    0.350   0.0478    0.0977\ngrid              72.7%   72.7%    45.5%    0.02575    0.428   0.0258    0.5336\nuniform            9.1%    9.1%    24.2%    0.04497    0.000   0.0000    0.1901\n\noracle Murphy (win): BS 0.03190 = REL 0.00730 - RES 0.01910 + UNC 0.04498   base rate 0.0472\noracle mean Spearman rho vs final classification: 0.728\n\nsimulation: 9.8 s for 285,520,000 car-lap updates = 29.2M updates/s\n  11 races x N=20,000 replications, 889 ms per race\n",
+  "stderr": "11 races, seasons [2026], N=20,000\ntheta: docs/motorsport/calibration.json\npace prior: history (EWMA 0.6), 211 car-races had a prior\n"
+}

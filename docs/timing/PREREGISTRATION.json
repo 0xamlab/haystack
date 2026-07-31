@@ -1,0 +1,239 @@
+{
+  "preregistered_at": "2026-07-30T19:58:53.250823+00:00",
+  "source_commit": "91fd0037a60aa118e98225cf4de6128bc4004605",
+  "tree_dirty_at_freeze": false,
+  "development_seasons": [
+    2019,
+    2020,
+    2021,
+    2023,
+    2024
+  ],
+  "frozen_test_season": 2025,
+  "corpus": {
+    "files": 539,
+    "digest": "160eb38b3516cca38b1f148e1b4c9cf32c59db8bfc3a5b389b17ac07687955ea"
+  },
+  "rng_version": "philox4x64-10/v1",
+  "objective_version": "ahead-of-target-rival/v1",
+  "search_objective": "spearman - 2*brier - ece",
+  "theta": {
+    "pace_sigma": 0.8962335486308897,
+    "ot_bias": -2.3768727723423684,
+    "ot_kpace": 0.0,
+    "dirty_loss": 0.4781702101753593,
+    "min_follow": 1.4908232020212768,
+    "sc_bunch": 0.4838521597358299,
+    "lap_noise": 0.1651212114078745,
+    "stop_jitter": 0.22566290659559418,
+    "ot_kage": 0.06990769891926446,
+    "cliff_age": 34.61783551686458,
+    "cliff_slope": 0.07033684346350667,
+    "w_grid_centred": 1.5082747082777455,
+    "w_hist_pace": 0.8481447384984548,
+    "w_mate_pace": -0.4467892364522713,
+    "w_team_pace": 1.1337781499761033,
+    "w_circuit_pace": -0.020948092975225614,
+    "w_form_trend": -0.6000000000000002,
+    "w_prior_races": 0.020798459764219734,
+    "w_practice_pace": 0.05195729044472313
+  },
+  "theta_identifiability": {
+    "pace_sigma": "resolved",
+    "ot_bias": "weak",
+    "ot_kpace": "resolved",
+    "dirty_loss": "weak",
+    "min_follow": "weak",
+    "sc_bunch": "weak",
+    "lap_noise": "weak",
+    "stop_jitter": "resolved",
+    "ot_kage": "weak",
+    "cliff_age": "weak",
+    "cliff_slope": "weak",
+    "w_grid_centred": "weak",
+    "w_hist_pace": "resolved",
+    "w_mate_pace": "resolved",
+    "w_team_pace": "weak",
+    "w_circuit_pace": "resolved",
+    "w_form_trend": "resolved",
+    "w_prior_races": "weak",
+    "w_practice_pace": "resolved"
+  },
+  "search_bounds": {
+    "pace_sigma": [
+      0.0,
+      1.2
+    ],
+    "ot_bias": [
+      -4.0,
+      0.0
+    ],
+    "ot_kpace": [
+      0.0,
+      2.0
+    ],
+    "dirty_loss": [
+      0.0,
+      0.8
+    ],
+    "min_follow": [
+      0.0,
+      2.5
+    ],
+    "sc_bunch": [
+      0.2,
+      3.0
+    ],
+    "lap_noise": [
+      0.05,
+      0.6
+    ],
+    "dnf_prob": [
+      0.0,
+      0.01
+    ],
+    "sc_lambda": [
+      0.0,
+      0.06
+    ],
+    "vsc_lambda": [
+      0.0,
+      0.03
+    ],
+    "stop_jitter": [
+      0.0,
+      0.3
+    ],
+    "sc_dur_max": [
+      1.0,
+      10.0
+    ],
+    "vsc_dur_max": [
+      1.0,
+      5.0
+    ],
+    "ot_kage": [
+      0.0,
+      0.2
+    ],
+    "cliff_age": [
+      5.0,
+      70.0
+    ],
+    "cliff_slope": [
+      0.0,
+      0.3
+    ],
+    "w_grid_centred": [
+      -0.6,
+      1.6
+    ],
+    "w_hist_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_mate_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_team_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_circuit_pace": [
+      -0.6,
+      1.6
+    ],
+    "w_form_trend": [
+      -0.6,
+      1.6
+    ],
+    "w_prior_races": [
+      -0.6,
+      1.6
+    ],
+    "w_practice_pace": [
+      -0.6,
+      1.6
+    ]
+  },
+  "measured_pinned": {
+    "sc_lambda": {
+      "value": 0.0191,
+      "source": "1.09 SC events per race over ~57 laps, 131 races"
+    },
+    "vsc_lambda": {
+      "value": 0.0082,
+      "source": "0.47 VSC events per race over ~57 laps"
+    },
+    "sc_dur_max": {
+      "value": 5.0,
+      "source": "mean SC duration 3.17 laps; uniform 1..5 has mean 3.0"
+    },
+    "vsc_dur_max": {
+      "value": 2.0,
+      "source": "mean VSC duration 1.28 laps; uniform 1..2 has mean 1.5"
+    },
+    "dnf_prob": {
+      "value": 0.00273,
+      "source": "0.165 of cars retire over a mean 61-lap race, as a per-lap hazard"
+    }
+  },
+  "ga_settings": {
+    "pop": 40,
+    "gens": 35,
+    "tournament": 3,
+    "cx_rate": 0.5,
+    "mut_rate": 0.3,
+    "mut_scale": 0.15,
+    "elite": 3
+  },
+  "held_out_development": {
+    "shipped defaults": {
+      "j": 0.6479281453754292,
+      "brier": 0.039393587509600606,
+      "ece": 0.036758448540706624,
+      "rho": 0.763473768935337,
+      "bss": 0.20416427780739932,
+      "churn": 4.712696856725146,
+      "n": 651
+    },
+    "fitted theta": {
+      "j": 0.6932127001673709,
+      "brier": 0.030342025777649783,
+      "ece": 0.015493471582181265,
+      "rho": 0.7693902233048517,
+      "bss": 0.3870254139291708,
+      "churn": 3.5508514390973107,
+      "n": 651
+    }
+  },
+  "epsilon_pp": 2.0,
+  "margin_pp": 1.0,
+  "metric_definitions": {
+    "brier": "mean over CAR-RACES of (p_win - is_winner)^2. Binary per car, NOT a summed multiclass Brier. The reference paper's 0.0745 sits above the p(1-p)=0.0484 a constant base-rate forecast scores under this definition, so it is a different quantity and the two are not comparable.",
+    "bss": "1 - brier / brier(constant base-rate forecast). The primary number, because a rare event flatters raw Brier.",
+    "ece": "bin-weighted mean |forecast - observed| over 10 equal-width bins, sharing one binning function with the reliability diagram so the two cannot disagree.",
+    "winner_hit": "fraction of races whose argmax p_win equals the classified winner.",
+    "top3": "fraction of races where the classified winner is in the top 3 by p_win.",
+    "podium_recall": "fraction of the actual top 3 appearing in the predicted top 3.",
+    "spearman": "rank correlation of expected finishing position against classification, average ranks with tie handling.",
+    "murphy": "BS = reliability - resolution + uncertainty over the same 10 bins."
+  },
+  "claim_licence": {
+    "rung_1_replay_fidelity": "SUPPORTED: 22/22 stint parity, DNF matches Jolpica, fault injection and the Invariant-4 leakage tests pass.",
+    "rung_2_same_model_speed": "SUPPORTED: 28.1x over optimised NumPy at |p_win| divergence 0.0123, below the Monte Carlo sampling floor. Withheld automatically if the arms diverge.",
+    "rung_3_outcome_calibration": "PENDING this final test. Reportable only from the 2025 result, and only against the metric definitions above.",
+    "rung_4_option_contrast": "PARTIAL: paired simultaneous CIs and the abstention rule are implemented and tested; stability across N is published in the ladder.",
+    "rung_5_decision_quality": "NOT SUPPORTED and not claimed. The six-row evidence table is not built. We may claim option contrasts; we may not claim better pit decisions.",
+    "rung_6_exploratory_2026": "NOT SUPPORTED. Demonstration only."
+  },
+  "final_test_protocol": {
+    "command": "python3 -m benchmarks.f1.freeze --run-final",
+    "runs_permitted": 1,
+    "seasons": [
+      2025
+    ],
+    "no_configuration_change_after_reading": true
+  }
+}
