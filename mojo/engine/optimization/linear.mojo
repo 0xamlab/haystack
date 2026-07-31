@@ -172,6 +172,21 @@ parallel per-variable columns, `model_from_flat` then builds one `OptVar` per va
 carrying a `String` name, and `extract_linear` adds two more per-variable vectors — about
 200 bytes per declared variable whatever the arenas contain. Measured: `n_vars = 2^22`
 peaked at 1.29 GB and `2^24` at 3.50 GB from a payload of one node plus one integer.
+@capability-module
+deterministic: true
+stateful: false
+batch_capable: true
+stream_capable: false
+seed_requirements: none
+supported_dtypes: float64, int64
+backend: mojo
+surfaces: library_execute, batch_execute
+golden_vectors: mojo/tests/libs/test_optimization_linear.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_optimization.mojo
+docs: none
+version_introduced: pre_manifest
+deprecation_state: active
+@endcapability
 """
 from std.math import abs as fabs
 
@@ -793,7 +808,15 @@ fn linear_extract_flat(
     lefts: List[Int], rights: List[Int], extras: List[Int],
     root: Int, n_vars: Int,
 ) -> LinearForm:
-    """`extract_linear` over the six-column wire form of an arena."""
+    """`extract_linear` over the six-column wire form of an arena.
+
+    @capability linear_extract_flat
+    complexity: O(len(ops) + n_vars)
+    counts:
+    - root + 1 <= len(ops) [kernel_validated]
+    - dim n_vars [kernel_validated]
+    @endcapability
+    """
     var defect = arena_flat_defect(ops, values, var_idx, lefts, rights, extras)
     if defect != MODEL_OK:
         return _form_failure(defect, -1, -1, -1, n_vars, model_status_name(defect))
@@ -1377,6 +1400,14 @@ fn lp_solve(
     `maximize` is a flag, never a negated objective vector: the reported optimum, duals and
     reduced costs are all in the sense the caller asked for, and a caller comparing two
     solutions is not comparing numbers whose sign convention it cannot see.
+
+    @capability lp_solve
+    complexity: O(max_iterations * rows * cols)
+    counts:
+    - rows * cols == len(a) [kernel_validated]
+    - cols == len(c) [kernel_validated]
+    - rows == len(senses, rhs) [kernel_validated]
+    @endcapability
     """
     var defect = _lp_input_defect(
         c, constant, a, rows, cols, senses, rhs, max_iterations,
@@ -1398,7 +1429,16 @@ fn lp_solve_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool,
 ) -> LPSolution:
-    """`lp_solve` with no objective constant and `model.mojo`'s default policy."""
+    """`lp_solve` with no objective constant and `model.mojo`'s default policy.
+
+    @capability lp_solve_default
+    complexity: O(max_iterations * rows * cols)
+    counts:
+    - rows * cols == len(a) [kernel_validated]
+    - cols == len(c) [kernel_validated]
+    - rows == len(senses, rhs) [kernel_validated]
+    @endcapability
+    """
     return lp_solve(
         c, 0.0, a, rows, cols, senses, rhs, maximize,
         DEFAULT_MAX_ITERATIONS, DEFAULT_FEASIBILITY_TOL, DEFAULT_OPTIMALITY_TOL,
@@ -1429,6 +1469,14 @@ fn lp_rhs_ranges(
     with both flags set — not open. `x_B >= 0` is the wrong condition for such a row: a basic
     artificial must stay at EXACTLY zero or the perturbed program has no feasible point, so
     any perturbation that moves it is inadmissible however small. See the loop below.
+
+    @capability lp_rhs_ranges
+    complexity: O(max_iterations * rows * cols)
+    counts:
+    - rows * cols == len(a) [kernel_validated]
+    - cols == len(c) [kernel_validated]
+    - rows == len(senses, rhs) [kernel_validated]
+    @endcapability
     """
     var defect = _lp_input_defect(
         c, constant, a, rows, cols, senses, rhs, max_iterations,
@@ -1601,6 +1649,13 @@ fn lp_from_arenas(
     so dropping it cannot change any answer — which is why this clamps rather than rejects,
     and why the caller's own per-variable data (a `var_kind` column, a start point) is
     length-checked against `n_vars` of the RESULT by whoever consumes it.
+
+    @capability lp_from_arenas
+    complexity: O(len(con_ops) + n_vars * n_constraints)
+    counts:
+    - obj_root + 1 <= len(obj_ops) [kernel_validated]
+    - dim n_vars [kernel_validated]
+    @endcapability
     """
     if n_vars < 0 or n_vars > MAX_CSR_DIM:
         return _matrix_failure(

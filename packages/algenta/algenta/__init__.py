@@ -614,6 +614,16 @@ _LAZY_EXPORTS = {
     "rerank": ("algenta.retrieval", "rerank"),
     "sparse_search": ("algenta.retrieval", "sparse_search"),
     "vector_search": ("algenta.retrieval", "vector_search"),
+    # Declared kernel capabilities. Additive: nothing above changes shape.
+    "UNDECLARED": ("algenta.capabilities", "UNDECLARED"),
+    "Undeclared": ("algenta.capabilities", "Undeclared"),
+    "CapabilityCatalog": ("algenta.capabilities", "CapabilityCatalog"),
+    "CapabilityError": ("algenta.capabilities", "CapabilityError"),
+    "CapabilityRecord": ("algenta.capabilities", "CapabilityRecord"),
+    "CapabilitySearchResult": ("algenta.capabilities", "CapabilitySearchResult"),
+    "CountRelation": ("algenta.capabilities", "CountRelation"),
+    "UndeclaredCapability": ("algenta.capabilities", "UndeclaredCapability"),
+    "capabilities": ("algenta.capabilities", "capabilities"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

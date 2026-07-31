@@ -44,6 +44,21 @@ Every entry point validates its dimension arguments against the real list length
 indexing. A structurally broken matrix has no transpose, no dense image and no canonical
 form, so those return an empty result and the drivers return a status code naming the
 defect — never a plausible-looking wrong matrix.
+@capability-module
+deterministic: true
+stateful: false
+batch_capable: true
+stream_capable: false
+seed_requirements: none
+supported_dtypes: float64, int64
+backend: mojo
+surfaces: library_execute, batch_execute
+golden_vectors: mojo/tests/libs/test_sparse_numerics_csr.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_sparse_and_graph.mojo
+docs: none
+version_introduced: pre_manifest
+deprecation_state: active
+@endcapability
 """
 from sparse import COOEntry, SparseMatrixCOO, sparse_from_dense
 
@@ -346,6 +361,13 @@ fn csr_from_arrays(
     `sorted_indices` start False. Claiming them would let a driver skip the coalesce it
     actually needs, and the cost of being wrong is a wrong number rather than a crash.
     Validate before use: this constructor does not.
+
+    @capability csr_from_arrays
+    complexity: O(nnz)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
     """
     return CSRMatrix(
         indptr.copy(), indices.copy(), values.copy(), nrows, ncols, False, False
@@ -359,7 +381,15 @@ fn csc_from_arrays(
     nrows: Int,
     ncols: Int,
 ) -> CSCMatrix:
-    """Wrap caller-supplied CSC arrays; neither flag is assumed. See csr_from_arrays."""
+    """Wrap caller-supplied CSC arrays; neither flag is assumed. See csr_from_arrays.
+
+    @capability csc_from_arrays
+    complexity: O(nnz)
+    counts:
+    - ncols + 1 == len(colptr) [kernel_validated]
+    - dim nrows <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     return CSCMatrix(
         colptr.copy(),
         row_indices.copy(),
@@ -399,6 +429,13 @@ fn csr_validate_flat(
     `csr_transpose` for an 8 TB pointer array. A shape check cannot catch that — the shape
     is consistent — so a declared ceiling is the only guard, and it belongs here rather
     than in each consumer.
+
+    @capability csr_validate_flat
+    complexity: O(nnz)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
     """
     if nrows < 0 or ncols < 0:
         return CSR_ERR_SHAPE
@@ -670,6 +707,12 @@ fn csr_from_dense(
 
     `rows * cols != len(dense)` is a caller error, not a matrix: the declared shape and
     the data disagree and there is no way to know which is right.
+
+    @capability csr_from_dense
+    complexity: O(rows * cols)
+    counts:
+    - rows * cols == len(dense) [kernel_validated]
+    @endcapability
     """
     if not dims_fit(rows, cols, len(dense)):
         return csr_empty(0, 0)
@@ -794,6 +837,13 @@ fn csr_build_from_triplets(
 
     The range test is repeated here rather than delegated to `csr_from_coo` because the
     caller needs the dropped count, and a `CSRMatrix` has nowhere to put it.
+
+    @capability csr_build_from_triplets
+    complexity: O(nnz log nnz)
+    counts:
+    - dim nrows [kernel_validated]
+    - dim ncols [kernel_validated]
+    @endcapability
     """
     if (
         len(rows) != len(cols)
@@ -815,7 +865,14 @@ fn csr_build_from_triplets(
 fn csr_from_dense_driver(
     dense: List[Float64], rows: Int, cols: Int, tol: Float64
 ) -> CSRResult:
-    """CSR from a flat row-major dense matrix, with a status for a shape mismatch."""
+    """CSR from a flat row-major dense matrix, with a status for a shape mismatch.
+
+    @capability csr_from_dense_driver
+    complexity: O(rows * cols)
+    counts:
+    - rows * cols == len(dense) [kernel_validated]
+    @endcapability
+    """
     if not dims_fit(rows, cols, len(dense)):
         return _result_invalid(CSR_ERR_INVALID_DIMENSIONS, CSR_LAYOUT_ROW)
     return _result_from_csr(csr_from_dense(dense, rows, cols, tol), CSR_OK, 0)
@@ -833,6 +890,13 @@ fn csr_to_dense_driver(
     The typed `csr_to_dense` returns a bare list because its caller has the matrix and
     can validate it; a driver's caller has only the reply, where an empty list would be
     indistinguishable from the dense image of a 0x0 matrix.
+
+    @capability csr_to_dense_driver
+    complexity: O(nrows * ncols)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
     """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
@@ -850,6 +914,15 @@ fn csr_transpose_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRResult:
+    """csr_transpose_driver: declared capability.
+
+    @capability csr_transpose_driver
+    complexity: O(nnz + ncols)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
     if status != CSR_OK:
@@ -864,6 +937,15 @@ fn csr_coalesce_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRResult:
+    """csr_coalesce_driver: declared capability.
+
+    @capability csr_coalesce_driver
+    complexity: O(nnz + nrows)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
     if status != CSR_OK:
@@ -878,6 +960,15 @@ fn csr_sort_indices_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRResult:
+    """csr_sort_indices_driver: declared capability.
+
+    @capability csr_sort_indices_driver
+    complexity: O(nnz log nnz)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
     if status != CSR_OK:
@@ -892,7 +983,15 @@ fn csc_from_csr_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRResult:
-    """CSC of the CSR described by these arrays; `layout` on the result says CSC."""
+    """CSC of the CSR described by these arrays; `layout` on the result says CSC.
+
+    @capability csc_from_csr_driver
+    complexity: O(nnz + ncols)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
     if status != CSR_OK:
@@ -907,6 +1006,15 @@ fn csr_from_csc_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRResult:
+    """csr_from_csc_driver: declared capability.
+
+    @capability csr_from_csc_driver
+    complexity: O(nnz + nrows)
+    counts:
+    - ncols + 1 == len(colptr) [kernel_validated]
+    - dim nrows <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var c = csc_from_arrays(colptr, row_indices, values, nrows, ncols)
     var status = csc_validate(c)
     if status != CSR_OK:
@@ -922,6 +1030,15 @@ fn csr_row_slice_driver(
     ncols: Int,
     row: Int,
 ) -> SparseSlice:
+    """csr_row_slice_driver: declared capability.
+
+    @capability csr_row_slice_driver
+    complexity: O(row_nnz)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     return csr_row_slice(
         csr_from_arrays(indptr, indices, values, nrows, ncols), row
     )
@@ -935,6 +1052,15 @@ fn csc_col_slice_driver(
     ncols: Int,
     col: Int,
 ) -> SparseSlice:
+    """csc_col_slice_driver: declared capability.
+
+    @capability csc_col_slice_driver
+    complexity: O(col_nnz)
+    counts:
+    - ncols + 1 == len(colptr) [kernel_validated]
+    - dim nrows <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     return csc_col_slice(
         csc_from_arrays(colptr, row_indices, values, nrows, ncols), col
     )
@@ -948,6 +1074,16 @@ fn csr_matvec_driver(
     ncols: Int,
     x: List[Float64],
 ) -> CSRVectorResult:
+    """csr_matvec_driver: declared capability.
+
+    @capability csr_matvec_driver
+    complexity: O(nnz)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    - ncols == len(x) [kernel_validated]
+    @endcapability
+    """
     return csr_matvec(
         csr_from_arrays(indptr, indices, values, nrows, ncols), x
     )
@@ -960,6 +1096,15 @@ fn csr_row_counts_driver(
     nrows: Int,
     ncols: Int,
 ) -> CSRIntsResult:
+    """csr_row_counts_driver: declared capability.
+
+    @capability csr_row_counts_driver
+    complexity: O(nrows)
+    counts:
+    - nrows + 1 == len(indptr) [kernel_validated]
+    - dim ncols <= MAX_CSR_DIM [kernel_validated]
+    @endcapability
+    """
     var m = csr_from_arrays(indptr, indices, values, nrows, ncols)
     var status = csr_validate(m)
     if status != CSR_OK:

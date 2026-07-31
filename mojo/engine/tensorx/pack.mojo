@@ -12,7 +12,7 @@ supported_dtypes: float64, int
 backend: mojo
 surfaces: library_execute, batch_execute
 golden_vectors: mojo/tests/libs/test_tensorx_pack.mojo
-benchmark: benchmarks/mojo_benchmarks/bench_tensorx_pack.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_tensorx_and_gemm.mojo
 docs: none
 version_introduced: 0.1.0
 deprecation_state: active

@@ -157,6 +157,8 @@ class _BundledRuntime:
     def run_pipeline(self, nodes: list[dict[str, Any]]) -> dict[str, Any]:
         from algenta.native import worker
         from algenta.pipeline import PipelineShardError
+        from algenta.runtime_library_contract import RuntimeLibraryContractError
+        from algenta.runtime_library_transport import build_worker_request
 
         if not nodes:
             return {
@@ -198,10 +200,62 @@ class _BundledRuntime:
                 "or install a runtime filtered to these modules."
             )
 
+        # Every node goes through the SAME validation as a unary call: signature-checked
+        # arguments AND the declared count relations. A pipeline is the worst place to
+        # skip that — one node whose element count exceeds its list aborts the worker
+        # process, which destroys the rest of the DAG and every dataset the worker is
+        # holding for other callers. There is no later point at which it could be
+        # reported, so it has to be refused here.
+        validated_nodes: list[dict[str, Any]] = []
+        for index, node in enumerate(nodes):
+            checked = dict(node)
+            try:
+                _module_spec, _function_spec, request = build_worker_request(
+                    str(node.get("module", "")),
+                    str(node.get("function", "")),
+                    node.get("args"),
+                )
+            except RuntimeLibraryContractError as exc:
+                # Nothing has run yet, so the whole plan is refused rather than
+                # half-executed — the same choice the shard check above makes.
+                message = (
+                    f"pipeline node {index} "
+                    f"({node.get('module', '')}.{node.get('function', '')}): {exc}"
+                )
+                if exc.details.get("reason") == "unmeasurable_bounded_argument":
+                    # A `$k` reference has no length on this side of the wire, and the
+                    # declared count on this parameter is `[enforced]` — nothing in the
+                    # kernel checks it, so sending the node unchecked would risk the
+                    # process rather than an error. The generic advice ("pass it as a
+                    # list") is not actionable inside a plan, so say what is.
+                    message += (
+                        " Inside a pipeline the length of an earlier node's output is not "
+                        "known until that node runs, so a chained value cannot bound a "
+                        "declared count here: split the plan at this node and pass the "
+                        "measured list, or chain into a function whose count the kernel "
+                        "validates or clamps itself."
+                    )
+                return {
+                    "result": None,
+                    "results": [],
+                    "lineage": [],
+                    "nodes": len(nodes),
+                    "ok": 0,
+                    "failed": len(nodes),
+                    "failed_index": index,
+                    "success": False,
+                    "error": message,
+                    "error_code": exc.code,
+                    "error_details": dict(exc.details),
+                    "latency_ms": 0.0,
+                }
+            checked["args"] = request["args"]
+            validated_nodes.append(checked)
+
         frame = {
             "type": "pipeline_execute",
             "engine_type": "pipeline_execute",
-            "nodes": nodes,
+            "nodes": validated_nodes,
         }
         started = perf_counter()
         try:
@@ -574,6 +628,7 @@ class MojoRuntime:
         }
         self._runtime = None
         self._catalog: LibraryCatalog | None = None
+        self._capabilities: Any = None
 
     def _ensure_runtime(self):
         if self._runtime is None:
@@ -675,6 +730,28 @@ class MojoRuntime:
         if self._catalog is None:
             self._catalog = LibraryCatalog(self)
         return self._catalog
+
+    def capabilities(self) -> Any:
+        """What the kernels have DECLARED — determinism, seeds, state, cost, dtypes.
+
+        A signature cannot say whether a kernel is deterministic, keeps state, may be
+        batched or streamed, or which of its integer parameters counts the elements of
+        which list. Those are declared by the kernel author and read here:
+
+            caps = rt.capabilities()
+            caps.search(module_prefix="stats.", deterministic=True)
+            caps.describe("stats", "mean")
+
+        A function that has declared nothing reports `UNDECLARED`, never
+        `deterministic=False`, and `search()` returns the in-scope functions it could not
+        judge alongside the matches. Raises `algenta.CapabilityError` for an unknown
+        module or function — an empty result would read as "that capability is not here".
+        """
+        if self._capabilities is None:
+            from algenta.capabilities import CapabilityCatalog
+
+            self._capabilities = CapabilityCatalog()
+        return self._capabilities
 
 
 def libraries(**kwargs: Any) -> LibraryCatalog:

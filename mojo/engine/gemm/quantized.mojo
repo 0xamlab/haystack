@@ -11,7 +11,7 @@ supported_dtypes: float64, int
 backend: mojo
 surfaces: library_execute, batch_execute
 golden_vectors: mojo/tests/libs/test_gemm_quantized.mojo
-benchmark: benchmarks/mojo_benchmarks/bench_gemm_quantized.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_tensorx_and_gemm.mojo
 docs: none
 version_introduced: 0.1.0
 deprecation_state: active
@@ -137,8 +137,8 @@ fn gemv_nf4_flat(
     @capability gemv_nf4_flat
     complexity: O(m*n)
     counts:
-    - m * n <= len(w_codes) [enforced]
-    - n <= len(x) [enforced]
+    - m * n <= len(w_codes) [kernel_validated]
+    - n <= len(x) [kernel_validated]
     - dim block <= QGEMM_MAX_BLOCK [kernel_validated]
     @endcapability
     """
@@ -253,8 +253,8 @@ fn gemm_nf4_flat(
     @capability gemm_nf4_flat
     complexity: O(m*n*k)
     counts:
-    - m * k <= len(w_codes) [enforced]
-    - k * n <= len(x) [enforced]
+    - m * k <= len(w_codes) [kernel_validated]
+    - k * n <= len(x) [kernel_validated]
     - dim block <= QGEMM_MAX_BLOCK [kernel_validated]
     @endcapability
     """
@@ -309,8 +309,8 @@ fn gemv_int_flat(
     @capability gemv_int_flat
     complexity: O(m*n)
     counts:
-    - m * n <= len(w_codes) [enforced]
-    - n <= len(x) [enforced]
+    - m * n <= len(w_codes) [kernel_validated]
+    - n <= len(x) [kernel_validated]
     - dim block <= QGEMM_MAX_BLOCK [kernel_validated]
     @endcapability
     """
@@ -378,8 +378,8 @@ fn quantized_gemv_golden_delta(
     @capability quantized_gemv_golden_delta
     complexity: O(m*n)
     counts:
-    - m * n <= len(w_codes) [enforced]
-    - n <= len(x) [enforced]
+    - m * n <= len(w_codes) [kernel_validated]
+    - n <= len(x) [kernel_validated]
     - dim block <= QGEMM_MAX_BLOCK [kernel_validated]
     @endcapability
     """

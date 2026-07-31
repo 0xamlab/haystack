@@ -1,3 +1,19 @@
+"""Discovery of the Mojo kernel tree: signatures, structs, and declared capabilities.
+
+`RuntimeFunctionSpec` / `RuntimeStructSpec` describe what a kernel's SIGNATURE says.
+`RuntimeCapabilitySpec` describes what a signature CANNOT say -- determinism, state,
+complexity, and above all which caller-supplied `Int` is an element count and which list
+it bounds. The block grammar, the reason it exists (an uncatchable process abort) and the
+argument checker all live in `apps.runtime.mojo_capability_manifest`; read that module's
+docstring before writing or changing a block.
+
+The two parses are deliberately separate passes over the same files: the capability parse
+must not be able to change existing signature/struct output, and the on-disk
+runtime-library cache (schema version 8) keeps its key and payload untouched. Capability
+discovery has no on-disk cache -- a single `"@capability" in text` test makes a full-tree
+scan roughly a fifth of the signature parse it would otherwise share.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -7,6 +23,37 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
+from apps.runtime.mojo_capability_manifest import (
+    CapabilityIssue,
+    CapabilityParse,
+    RuntimeCapabilitySpec,
+    RuntimeCountRelation,
+    check_count_relations,
+    parse_capability_blocks,
+)
+
+__all__ = [
+    "CapabilityIssue",
+    "CapabilityParse",
+    "MojoInventoryReport",
+    "RuntimeCapabilityManifest",
+    "RuntimeCapabilitySpec",
+    "RuntimeCountRelation",
+    "RuntimeFunctionSpec",
+    "RuntimeLibraryModule",
+    "RuntimeModuleCapabilities",
+    "RuntimeParamSpec",
+    "RuntimeStructSpec",
+    "build_capability_manifest",
+    "build_inventory_report",
+    "check_count_relations",
+    "discover_runtime_library_modules",
+    "discover_source_modules",
+    "is_runtime_executable_function",
+    "parse_runtime_capability_specs",
+    "parse_runtime_struct_specs",
+]
+
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ENGINE_DIR = _PROJECT_ROOT / "mojo" / "engine"
@@ -920,3 +967,243 @@ def build_inventory_report(
         artifact_benchmark_bench_libs=discover_benchmark_bench_libs(benchmark_mojo_dir),
         threshold_target=threshold_target,
     )
+
+
+# ── declared capabilities ─────────────────────────────────────────────────────
+#
+# A second, independent pass. It reads the same files but writes nothing into the
+# signature/struct output above and does not touch the runtime-library cache, so the
+# contract and the dispatch table are bit-identical with and without this section.
+
+
+class CapabilityManifestError(RuntimeError):
+    """A declared block is unusable. Never downgraded to "nothing was declared"."""
+
+    def __init__(self, issues: tuple[CapabilityIssue, ...]) -> None:
+        self.issues = issues
+        rendered = "\n".join(issue.render() for issue in issues[:20])
+        super().__init__(
+            f"{len(issues)} capability declaration issue(s):\n{rendered}"
+            + ("\n..." if len(issues) > 20 else "")
+        )
+
+
+@dataclass(frozen=True)
+class RuntimeModuleCapabilities:
+    import_path: str
+    lib_id: str
+    path: Path
+    module: RuntimeCapabilitySpec | None
+    functions: tuple[RuntimeCapabilitySpec, ...]
+    issues: tuple[CapabilityIssue, ...]
+    #: Contract functions taking at least one `List` and at least one `Int` -- the shape in
+    #: which a count/length relation can exist at all, declared or not.
+    count_pair_functions: tuple[str, ...]
+
+    @property
+    def by_name(self) -> dict[str, RuntimeCapabilitySpec]:
+        return {spec.target: spec for spec in self.functions}
+
+    @property
+    def declared_count_functions(self) -> tuple[str, ...]:
+        declared = self.by_name
+        return tuple(
+            name
+            for name in self.count_pair_functions
+            if name in declared and declared[name].declares_counts
+        )
+
+    @property
+    def undeclared_count_pair_functions(self) -> tuple[str, ...]:
+        declared = set(self.declared_count_functions)
+        return tuple(name for name in self.count_pair_functions if name not in declared)
+
+    @property
+    def is_fully_declared(self) -> bool:
+        """A module block plus a `counts:` decision on every count-pair function."""
+        return self.module is not None and not self.undeclared_count_pair_functions
+
+
+@dataclass(frozen=True)
+class RuntimeCapabilityManifest:
+    modules: tuple[RuntimeModuleCapabilities, ...]
+
+    @property
+    def issues(self) -> tuple[CapabilityIssue, ...]:
+        return tuple(issue for module in self.modules for issue in module.issues)
+
+    @property
+    def by_import_path(self) -> dict[str, RuntimeModuleCapabilities]:
+        return {module.import_path: module for module in self.modules}
+
+    def function_capability(
+        self,
+        import_path: str,
+        function_name: str,
+    ) -> RuntimeCapabilitySpec | None:
+        module = self.by_import_path.get(import_path)
+        if module is None:
+            return None
+        return module.by_name.get(function_name)
+
+    @property
+    def undeclared_count_pair_function_count(self) -> int:
+        return sum(len(module.undeclared_count_pair_functions) for module in self.modules)
+
+    @property
+    def declared_module_count(self) -> int:
+        return sum(1 for module in self.modules if module.is_fully_declared)
+
+
+def _count_pair_function_names(functions: Iterable[RuntimeFunctionSpec]) -> tuple[str, ...]:
+    names: list[str] = []
+    for spec in functions:
+        has_list = any(_is_list_type(param.typ) for param in spec.params)
+        has_int = any(param.typ == "Int" for param in spec.params)
+        if has_list and has_int:
+            names.append(spec.name)
+    return tuple(names)
+
+
+def _cross_validate_capabilities(
+    parse: CapabilityParse,
+    functions: tuple[RuntimeFunctionSpec, ...],
+) -> tuple[CapabilityIssue, ...]:
+    """Check every name a block mentions against the signature actually in the file.
+
+    This is what stops a declaration from drifting into fiction: a renamed parameter, a
+    count that is not an `Int`, or a bounded argument that is not a `List` all become
+    issues instead of a relation the checker would quietly never evaluate.
+    """
+    issues: list[CapabilityIssue] = []
+    by_name = {spec.name: spec for spec in functions}
+    for spec in parse.functions:
+        signature = by_name.get(spec.target)
+        if signature is None:
+            issues.append(
+                CapabilityIssue(
+                    path=parse.path,
+                    line=spec.line,
+                    code="unknown_function",
+                    message=(
+                        f"capability block declares {spec.target!r}, which is not a public "
+                        "function parsed from this file"
+                    ),
+                )
+            )
+            continue
+        params = {param.name: param for param in signature.params}
+        for relation in spec.count_relations or ():
+            for name in relation.counts:
+                param = params.get(name)
+                if param is None:
+                    issues.append(
+                        CapabilityIssue(
+                            path=parse.path,
+                            line=relation.line,
+                            code="relation_unknown_parameter",
+                            message=(
+                                f"{spec.target}: {name!r} in {relation.raw!r} is not a "
+                                f"parameter of {spec.target}"
+                            ),
+                        )
+                    )
+                elif param.typ != "Int":
+                    issues.append(
+                        CapabilityIssue(
+                            path=parse.path,
+                            line=relation.line,
+                            code="count_parameter_not_int",
+                            message=(
+                                f"{spec.target}: count {name!r} is declared {param.typ}, not Int"
+                            ),
+                        )
+                    )
+            for name in relation.bounded_lists:
+                param = params.get(name)
+                if param is None:
+                    issues.append(
+                        CapabilityIssue(
+                            path=parse.path,
+                            line=relation.line,
+                            code="relation_unknown_parameter",
+                            message=(
+                                f"{spec.target}: {name!r} in {relation.raw!r} is not a "
+                                f"parameter of {spec.target}"
+                            ),
+                        )
+                    )
+                elif not _is_list_type(param.typ):
+                    issues.append(
+                        CapabilityIssue(
+                            path=parse.path,
+                            line=relation.line,
+                            code="bounded_parameter_not_a_list",
+                            message=(
+                                f"{spec.target}: len({name}) is declared {param.typ}, which has no "
+                                "length"
+                            ),
+                        )
+                    )
+    return tuple(issues)
+
+
+def parse_runtime_capability_specs(path: Path) -> CapabilityParse:
+    """Declared capability blocks in one `.mojo` file, cross-checked against its signatures.
+
+    Mirrors `parse_runtime_struct_specs`: one file, no caching, no side effects. Issues are
+    returned, never raised and never swallowed -- see `build_capability_manifest` for the
+    fail-loud aggregation.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    parse = parse_capability_blocks(text, path=path.as_posix())
+    if parse.module is None and not parse.functions:
+        return parse
+    functions = _parse_runtime_function_specs(path)
+    inherited = tuple(spec.inherit(parse.module) for spec in parse.functions)
+    return CapabilityParse(
+        path=parse.path,
+        module=parse.module,
+        functions=inherited,
+        issues=parse.issues + _cross_validate_capabilities(parse, functions),
+    )
+
+
+def build_capability_manifest(
+    engine_root: Path = DEFAULT_ENGINE_DIR,
+    *,
+    strict: bool = True,
+) -> RuntimeCapabilityManifest:
+    """Declared capabilities for every module in the runtime contract.
+
+    `strict=True` (the default, and what every runtime caller must use) raises
+    `CapabilityManifestError` when any block anywhere failed to parse or cross-validate.
+    Returning a partial manifest would present a broken declaration as an absent one, and
+    an absent declaration disables the pre-call guard -- exactly the silent-skip failure
+    this phase exists to remove. The gate passes `strict=False` so it can print every
+    issue at once instead of the first twenty.
+    """
+    modules: list[RuntimeModuleCapabilities] = []
+    library_modules = {
+        module.import_path: module
+        for module in discover_runtime_library_modules(engine_root, executable_only=True)
+    }
+    for path, import_path, lib_id in _iter_runtime_module_targets(engine_root):
+        parse = parse_runtime_capability_specs(path)
+        library_module = library_modules.get(import_path)
+        contract_functions = library_module.functions if library_module is not None else ()
+        modules.append(
+            RuntimeModuleCapabilities(
+                import_path=import_path,
+                lib_id=lib_id,
+                path=path,
+                module=parse.module,
+                functions=parse.functions,
+                issues=parse.issues,
+                count_pair_functions=_count_pair_function_names(contract_functions),
+            )
+        )
+    manifest = RuntimeCapabilityManifest(modules=tuple(modules))
+    if strict and manifest.issues:
+        raise CapabilityManifestError(manifest.issues)
+    return manifest

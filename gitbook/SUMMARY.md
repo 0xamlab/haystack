@@ -17,6 +17,7 @@
 * [Engine catalog](engine/catalog.md)
 * [Runtime libraries](engine/runtime-libraries.md)
 * [Runtime library catalog](engine/runtime-library-catalog.md)
+* [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)

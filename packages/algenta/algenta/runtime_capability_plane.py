@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass, field as dataclass_field
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 import re
@@ -26,6 +27,76 @@ from algenta.runtime_model_capability_plane import (
 
 def _now_text() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+@dataclass(frozen=True)
+class MemoryEngineBindingConfig:
+    """Binding configuration for ``provider.memory_engine.algenta``.
+
+    Captures the AME engine's deployment knobs for a capability binding: which
+    vector backend to use, the embedding model + dimension (a recall MUST NOT mix
+    embeddings across model/dimension), the retention horizon, and the BYOK
+    encryption key reference for at-rest governance. Strict/immutable, mirroring
+    the runtime-model discipline; Algenta passes this through to the AME engine
+    and never re-implements vectors/storage itself.
+    """
+
+    vector_store: str = "faiss"
+    embedding_model: str = "algenta-memory-embed-v1"
+    embedding_dimension: int = 768
+    retention_days: int | None = None
+    encryption_key_ref: str | None = None
+    extra: dict[str, Any] = dataclass_field(default_factory=dict)
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> MemoryEngineBindingConfig:
+        data = dict(payload or {})
+        known = {
+            "vector_store",
+            "embedding_model",
+            "embedding_dimension",
+            "retention_days",
+            "encryption_key_ref",
+        }
+        extra = {k: v for k, v in data.items() if k not in known}
+        return cls(
+            vector_store=str(data.get("vector_store") or "faiss"),
+            embedding_model=str(data.get("embedding_model") or "algenta-memory-embed-v1"),
+            embedding_dimension=int(data.get("embedding_dimension") or 768),
+            retention_days=(
+                int(data["retention_days"])
+                if data.get("retention_days") is not None
+                else None
+            ),
+            encryption_key_ref=data.get("encryption_key_ref"),
+            extra=extra,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "vector_store": self.vector_store,
+            "embedding_model": self.embedding_model,
+            "embedding_dimension": self.embedding_dimension,
+            "retention_days": self.retention_days,
+            "encryption_key_ref": self.encryption_key_ref,
+            **self.extra,
+        }
+
+
+# Memory-engine tool names routed through the capability plane. Must match the
+# UsageRecord.tool_name set + the SDK/MCP surface.
+_MEMORY_PROVIDER_ID = "provider.memory_engine.algenta"
+_MEMORY_TOOL_NAMES = frozenset(
+    {
+        "remember",
+        "recall",
+        "compact",
+        "forget",
+        "supersede",
+        "consolidate",
+        "explain",
+    }
+)
 
 
 def _seed_providers() -> list[dict[str, Any]]:
@@ -133,6 +204,42 @@ def _seed_providers() -> list[dict[str, Any]]:
                     "binding_scope_default": "workspace",
                     "supported_binding_scopes": ["workspace", "organization"],
                 }
+            ],
+        },
+        {
+            "provider_id": "provider.memory_engine.algenta",
+            "provider_type": "memory_service",
+            "name": "Algenta Memory Engine",
+            "description": (
+                "Governed, temporal memory (remember/recall/compact/forget/"
+                "supersede/consolidate/explain) exposed through the capability "
+                "plane. Algenta is thin orchestration; the AME engine does the "
+                "vector/storage work (in-process for mode='local', or the T1 sidecar)."
+            ),
+            "supported_execution_owners": ["algenta_managed"],
+            "policy_summary": {"route_authority": "capability_plane"},
+            "active": True,
+            "profiles": [
+                {
+                    "profile_id": "profile.memory_engine.workspace",
+                    "provider_id": "provider.memory_engine.algenta",
+                    "name": "Workspace Memory",
+                    "description": "Workspace-scoped governed memory collections.",
+                    "auth_kind": "managed",
+                    "default_execution_owner": "algenta_managed",
+                    "binding_scope_default": "workspace",
+                    "supported_binding_scopes": ["workspace", "organization"],
+                },
+                {
+                    "profile_id": "profile.memory_engine.org",
+                    "provider_id": "provider.memory_engine.algenta",
+                    "name": "Organization Memory",
+                    "description": "Org-scoped governed memory collections.",
+                    "auth_kind": "managed",
+                    "default_execution_owner": "algenta_managed",
+                    "binding_scope_default": "organization",
+                    "supported_binding_scopes": ["workspace", "organization"],
+                },
             ],
         },
     ]
@@ -791,6 +898,8 @@ def execute_capability(runtime: Any, request: Mapping[str, Any]) -> CapabilityEx
             "Capability execution requires capability_id.",
         )
     entry = get_capability(runtime, capability_id, include_instruction=True).to_dict()
+    if entry["provider_id"] == _MEMORY_PROVIDER_ID:
+        return _execute_memory_capability(runtime, entry, request_data)
     if entry["execution_owner"] != "client_managed":
         raise RuntimeValidationError(
             "capability_execution_owner_unsupported",
@@ -826,6 +935,84 @@ def execute_capability(runtime: Any, request: Mapping[str, Any]) -> CapabilityEx
         "execution_owner": entry["execution_owner"],
         "status": "succeeded",
         "output": output,
+        "error": None,
+        "started_at": started_at,
+        "completed_at": _now_text(),
+    }
+    runtime._local_capability_executions[execution["execution_session_id"]] = execution
+    return CapabilityExecutionOutput.from_api(execution)
+
+
+def _execute_memory_capability(
+    runtime: Any,
+    entry: Mapping[str, Any],
+    request_data: Mapping[str, Any],
+) -> CapabilityExecutionOutput:
+    """Route a ``provider.memory_engine.algenta`` execution to the AME surface.
+
+    Dispatches by ``tool_name`` (carried in the capability input) to the Runtime
+    memory methods, which do the mode dispatch (in-process AME store for
+    mode='local'; HTTP /v1/memory/* for api/self_hosted). Algenta is thin
+    orchestration here — the AME engine does the storage/vector work.
+    """
+    started_at = _now_text()
+    payload = _coerce_mapping(request_data.get("input") or {}, "input")
+    tool_name = str(payload.get("tool_name") or payload.get("tool") or "").strip()
+    if tool_name not in _MEMORY_TOOL_NAMES:
+        raise RuntimeValidationError(
+            "memory_tool_unsupported",
+            "Memory capability execution requires a supported tool_name.",
+            {"tool_name": tool_name, "supported": sorted(_MEMORY_TOOL_NAMES)},
+        )
+    collection = str(payload.get("collection") or "default")
+    if tool_name == "remember":
+        result = runtime.remember(
+            str(payload.get("content") or ""),
+            collection=collection,
+            source=payload.get("source"),
+            policy=payload.get("policy"),
+        )
+    elif tool_name == "recall":
+        result = runtime.recall(
+            str(payload.get("query") or ""),
+            collection=collection,
+            where=payload.get("where"),
+            as_of=payload.get("as_of"),
+            top_k=int(payload.get("top_k") or 10),
+            explain=bool(payload.get("explain") or False),
+        )
+    elif tool_name == "explain":
+        result = runtime.explain(
+            str(payload.get("query") or ""),
+            collection=collection,
+            where=payload.get("where"),
+            as_of=payload.get("as_of"),
+            top_k=int(payload.get("top_k") or 10),
+        )
+    elif tool_name == "forget":
+        result = runtime.forget(collection=collection, where=payload.get("where"))
+    elif tool_name == "supersede":
+        result = runtime.supersede(
+            str(payload.get("fact_id") or ""),
+            by=str(payload.get("by") or ""),
+            collection=collection,
+        )
+    else:  # compact | consolidate (the SDK exposes consolidate; compact is an alias for it)
+        method = runtime.consolidate
+        result = method(
+            collection=collection,
+            where=payload.get("where"),
+            strategy=payload.get("strategy"),
+        )
+    output = result.to_dict() if hasattr(result, "to_dict") else {"result": result}
+    execution = {
+        "execution_session_id": str(uuid4()),
+        "capability_id": entry["capability_id"],
+        "provider_id": entry["provider_id"],
+        "binding_id": entry["binding_id"],
+        "execution_owner": entry["execution_owner"],
+        "status": "succeeded",
+        "output": {"tool_name": tool_name, **output},
         "error": None,
         "started_at": started_at,
         "completed_at": _now_text(),

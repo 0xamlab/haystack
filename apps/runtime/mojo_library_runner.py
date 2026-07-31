@@ -9,6 +9,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from apps.runtime.mojo_count_relations import (
+    COUNT_RELATION_ERROR_CODE,
+    count_relation_violation,
+    declared_count_spec,
+)
 from apps.runtime.mojo_inventory import (
     RuntimeFunctionSpec,
     RuntimeLibraryModule,
@@ -454,16 +459,60 @@ def _normalize_call_arguments(
     return prep_lines, call_arguments
 
 
+def enforce_declared_count_relations(
+    module_name: str,
+    function_spec: RuntimeFunctionSpec,
+    normalized_args: tuple[Any, ...] | list[Any],
+    *,
+    module_path: Path | None = None,
+) -> None:
+    """Refuse a call whose declared element count exceeds the list it bounds.
+
+    Reading past a List end inside the worker is an uncatchable bounds assertion that ends
+    the process — so this check has to happen HERE, before the frame is sent, or it cannot
+    happen at all. See `apps/runtime/mojo_count_relations.py`.
+
+    Fail-open is per FUNCTION, by construction: a function with no declaration gets a
+    `None` spec and returns immediately, which cannot affect the next function's check.
+
+    Two refusals come back from here, and the code says which: `count_exceeds_list_length`
+    when a declared count or index was compared against a measured list and lost, and
+    `invalid_arguments` when a bounded argument is present in a form whose length cannot be
+    established before the call — that one cannot be deferred to the worker, because the
+    failure it prevents is a process abort rather than an error response.
+    """
+    spec = declared_count_spec(module_name, function_spec.name, module_path=module_path)
+    if spec is None:
+        return
+    violation = count_relation_violation(
+        module=module_name,
+        function=function_spec.name,
+        param_names=tuple(param.name for param in function_spec.params),
+        args=normalized_args,
+        spec=spec,
+    )
+    if violation is None:
+        return
+    raise MojoLibraryError(
+        str(violation.pop("code", COUNT_RELATION_ERROR_CODE)),
+        str(violation.pop("message")),
+        violation,
+    )
+
+
 def build_runtime_library_worker_request(
     module_name: str,
     function_name: str,
     args: Any,
 ) -> tuple[RuntimeFunctionSpec, dict[str, Any]]:
-    _, function_spec = find_runtime_function(module_name, function_name)
+    module, function_spec = find_runtime_function(module_name, function_name)
     normalized_args = _normalize_provided_args(
         args,
         function_spec,
         struct_specs=_module_struct_specs(module_name),
+    )
+    enforce_declared_count_relations(
+        module_name, function_spec, normalized_args, module_path=module.path
     )
     return function_spec, {
         "type": "library_execute",
@@ -775,7 +824,18 @@ async def execute_runtime_library(
     *,
     timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
 ) -> Any:
-    _, function_spec = find_runtime_function(module_name, function_name)
+    module, function_spec = find_runtime_function(module_name, function_name)
+    # The one-shot wrapper path gets the same refusal as the worker path. A crash here
+    # costs only a subprocess rather than a resident worker, but a typed error still beats
+    # "exit code 134 and a stderr blob" for the caller.
+    enforce_declared_count_relations(
+        module_name,
+        function_spec,
+        _normalize_provided_args(
+            args, function_spec, struct_specs=_module_struct_specs(module_name)
+        ),
+        module_path=module.path,
+    )
     wrapper_source = _render_wrapper(module_name, function_spec, args)
     wrapper_path = Path(tempfile.mkstemp(prefix="algenta_runtime_", suffix=".mojo")[1])
     try:

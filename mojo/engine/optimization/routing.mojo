@@ -188,6 +188,21 @@ the arguments: determinism is not traded away for the bound. Measured after the 
 same n = 40 shape asked for 4096 restarts runs 211 of them and returns in 3.07 s, and
 `n_restarts = 1000000` is reported back as the count actually attempted rather than accepted in
 silence.
+@capability-module
+deterministic: true
+stateful: false
+batch_capable: true
+stream_capable: false
+seed_requirements: optional
+supported_dtypes: float64, int64
+backend: mojo
+surfaces: library_execute, batch_execute
+golden_vectors: mojo/tests/libs/test_optimization_routing.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_optimization_tier2.mojo
+docs: none
+version_introduced: pre_manifest
+deprecation_state: active
+@endcapability
 """
 from std.math import abs as fabs
 
@@ -1271,6 +1286,12 @@ fn distance_matrix_check(distance: List[Float64], n: Int) -> RouteMatrixCensus:
     back so a caller knows which regime its instance is in. The triangle inequality is
     tested only up to `ROUTE_TRIANGLE_MAX_N` because the test is O(n^3), and a violation is
     not an error — it changes no guarantee here and a valid permutation still comes back.
+
+    @capability distance_matrix_check
+    complexity: O(n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     var defect = _shape_defect(distance, n)
     if defect != ROUTE_OK:
@@ -1348,6 +1369,12 @@ fn tour_check(tour: List[Int], n: Int) -> RouteTourCheck:
     Recomputed from scratch, so it is usable on a tour this module did not produce. The
     three conditions are reported separately because "wrong length", "not closed" and "not a
     permutation" are three different mistakes at the caller.
+
+    @capability tour_check
+    complexity: O(n)
+    counts:
+    - n + 1 == len(tour) [kernel_validated]
+    @endcapability
     """
     if n <= 0:
         return RouteTourCheck(ROUTE_ERR_SHAPE, n, False, False, False, 0, 0, -1, -1)
@@ -1401,6 +1428,13 @@ fn tour_length_flat(
     tour first and only then calls it, which is the whole reason the wrapper exists. A tour
     that is not a closed permutation has no length: `has_value` is False and `value` is
     padding, never a partial sum.
+
+    @capability tour_length_flat
+    complexity: O(n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    - n + 1 == len(tour) [kernel_validated]
+    @endcapability
     """
     var defect = _shape_defect(distance, n)
     if defect != ROUTE_OK:
@@ -1429,6 +1463,12 @@ fn tsp_greedy_flat(distance: List[Float64], n: Int) -> RouteTour:
     declared moves" — and NOT `ROUTE_OK`, whose name asserts a local optimum this tour has no
     claim to. The rule is the same everywhere in this file: the status is the exact complement
     of `local_optimum`, so no returned value contradicts itself.
+
+    @capability tsp_greedy_flat
+    complexity: O(n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     var defect = _shape_defect(distance, n)
     if defect != ROUTE_OK:
@@ -1562,6 +1602,12 @@ fn tsp_two_opt(distance: List[Float64], n: Int, max_passes: Int) -> RouteTour:
     convex position it is the hull order and therefore the exact optimum — but that is a
     property of THAT instance class, not a guarantee this driver makes. `local_optimum`
     means "no improving 2-opt move exists", and nothing more.
+
+    @capability tsp_two_opt
+    complexity: O(max_passes * n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     return _search_driver(distance, n, max_passes, True, False, 1, 0, 0)
 
@@ -1584,6 +1630,12 @@ fn tsp_or_opt(
     therefore not a relocation of the complement. So a `local_optimum` from an Or-opt run
     means "no improving relocation of a segment not spanning city 0", and no more than that.
     The reversed-insertion variant of Or-opt is also absent rather than approximated.
+
+    @capability tsp_or_opt
+    complexity: O(max_passes * n^2 * max_segment)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     return _search_driver(distance, n, max_passes, False, True, max_segment, 0, 0)
 
@@ -1596,6 +1648,12 @@ fn tsp_local_search(
 
     With both move families disabled this returns the frozen greedy's tour with
     `local_optimum` False — an honest "nothing was searched" rather than a silent no-op.
+
+    @capability tsp_local_search
+    complexity: O(max_passes * n^2 * max_segment)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     return _search_driver(
         distance, n, max_passes, use_two_opt, use_or_opt, max_segment, 0, 0
@@ -1616,6 +1674,12 @@ fn tsp_iterated_local_search(
 
     The same seed gives a bit-identical tour; a different seed gives a different walk. Still
     a heuristic: there is no proven-optimal flag here either.
+
+    @capability tsp_iterated_local_search
+    complexity: O(n_kicks * max_passes * n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    @endcapability
     """
     return _search_driver(
         distance, n, max_passes, True, True, max_segment, n_kicks, seed
@@ -1641,6 +1705,13 @@ fn tsp_perturb_double_bridge(
     nothing, so it cannot be handed the status whose name asserts a local optimum. `ROUTE_OK`
     from this function would have been the same self-contradiction `_tour_result` used to
     produce.
+
+    @capability tsp_perturb_double_bridge
+    complexity: O(n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    - n + 1 == len(tour) [kernel_validated]
+    @endcapability
     """
     var defect = _shape_defect(distance, n)
     if defect != ROUTE_OK:
@@ -2155,6 +2226,13 @@ fn vrp_check(
     `route_start` that is not a non-decreasing cover of `stops`); everything semantic is
     reported with `feasible == False` and the defect indices. `feasible` requires every
     customer served EXACTLY once: a routing that visits a customer twice is not a routing.
+
+    @capability vrp_check
+    complexity: O(n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    - n == len(demand) [kernel_validated]
+    @endcapability
     """
     var windowed = len(ready) == n and len(due) == n and len(service) == n
     var no_windows = len(ready) == 0 and len(due) == 0 and len(service) == 0
@@ -2846,6 +2924,14 @@ fn vrp_capacity_solve(
     Restart 0 inserts customers in demand-descending order — the order the frozen FFD bound
     assumes; restarts 1.. use a keyed permutation of the customers, so the whole solve is a
     pure function of its arguments including `seed`.
+
+    @capability vrp_capacity_solve
+    complexity: O(n_restarts * max_passes * n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    - n == len(demand) [kernel_validated]
+    - dim n_vehicles <= ROUTE_MAX_NODES [kernel_validated]
+    @endcapability
     """
     var no_times = List[Float64]()
     return _solve_core(
@@ -2872,6 +2958,14 @@ fn vrp_time_window_solve(
     and `ROUTE_INFEASIBLE_PROVEN` is reserved for what the data alone proves (a stop that
     cannot be reached before its due time even going straight there, or one that cannot be
     left in time to reach the depot by `due[0]`).
+
+    @capability vrp_time_window_solve
+    complexity: O(n_restarts * max_passes * n^2)
+    counts:
+    - n * n == len(distance) [kernel_validated]
+    - n == len(demand, ready, due, service) [kernel_validated]
+    - dim n_vehicles <= ROUTE_MAX_NODES [kernel_validated]
+    @endcapability
     """
     return _solve_core(
         distance, n, demand, capacity, n_vehicles, ready, due, service, True,

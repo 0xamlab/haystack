@@ -25,10 +25,31 @@ class RuntimeParamSpec:
 
 
 @dataclass(frozen=True)
+class RuntimeCountRelation:
+    """`product(factors) + plus` elements are required in each list named by `bounds`.
+
+    One factor is a plain element count; two are the dimensions of a flat row-major matrix.
+    `plus` is a constant added to the product, which is also how an INDEX parameter is
+    expressed (`plus=1`). `scope` is `length` for the list itself or `element_length` for
+    every element list of a nested list. `role` (`count` or `index`) only shapes the message.
+    """
+
+    factors: tuple[str, ...]
+    bounds: tuple[str, ...]
+    plus: int = 0
+    scope: str = "length"
+    role: str = "count"
+
+
+@dataclass(frozen=True)
 class RuntimeFunctionSpec:
     name: str
     params: tuple[RuntimeParamSpec, ...]
     return_type: str
+    # Empty for every function whose count relations have not been published. An older
+    # contract has no `count_relations` key at all and loads to the same empty tuple, so a
+    # wheel built before this field existed keeps working unchanged.
+    count_relations: tuple[RuntimeCountRelation, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -87,6 +108,51 @@ def _parse_param(value: Any, context: str) -> RuntimeParamSpec:
     )
 
 
+def _parse_count_relation(
+    value: Any, context: str, parameter_names: set[str]
+) -> RuntimeCountRelation:
+    payload = _require_object(value, context)
+    factors = tuple(
+        _require_string(item, f"{context}.factors[{index}]")
+        for index, item in enumerate(_require_list(payload.get("factors"), f"{context}.factors"))
+    )
+    bounds = tuple(
+        _require_string(item, f"{context}.bounds[{index}]")
+        for index, item in enumerate(_require_list(payload.get("bounds"), f"{context}.bounds"))
+    )
+    if not factors or not bounds:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context} must name at least one factor and one bound"
+        )
+    # A relation naming a parameter the signature does not have could never be evaluated, so
+    # it would silently disable itself. Refuse the contract instead: a guard that quietly
+    # does nothing is the failure mode this whole mechanism exists to remove.
+    unknown = sorted((set(factors) | set(bounds)) - parameter_names)
+    if unknown:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract",
+            f"{context} names parameters absent from the signature: {', '.join(unknown)}",
+        )
+    plus = payload.get("plus", 0)
+    if isinstance(plus, bool) or not isinstance(plus, int) or plus < 0:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context}.plus must be a non-negative integer"
+        )
+    scope = _require_string(payload.get("scope", "length"), f"{context}.scope")
+    if scope not in {"length", "element_length"}:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context}.scope must be length or element_length"
+        )
+    role = _require_string(payload.get("role", "count"), f"{context}.role")
+    if role not in {"count", "index"}:
+        raise RuntimeLibraryContractError(
+            "invalid_runtime_contract", f"{context}.role must be count or index"
+        )
+    return RuntimeCountRelation(
+        factors=factors, bounds=bounds, plus=plus, scope=scope, role=role
+    )
+
+
 def _parse_function(value: Any, context: str) -> RuntimeFunctionSpec:
     payload = _require_object(value, context)
     params = tuple(
@@ -97,10 +163,23 @@ def _parse_function(value: Any, context: str) -> RuntimeFunctionSpec:
         raise RuntimeLibraryContractError(
             "invalid_runtime_contract", f"{context} contains duplicate parameter names"
         )
+    parameter_names = {param.name for param in params}
+    raw_relations = payload.get("count_relations")
+    count_relations = (
+        tuple(
+            _parse_count_relation(item, f"{context}.count_relations[{index}]", parameter_names)
+            for index, item in enumerate(
+                _require_list(raw_relations, f"{context}.count_relations")
+            )
+        )
+        if raw_relations is not None
+        else ()
+    )
     return RuntimeFunctionSpec(
         name=_require_string(payload.get("name"), f"{context}.name"),
         params=params,
         return_type=_require_string(payload.get("return_type"), f"{context}.return_type"),
+        count_relations=count_relations,
     )
 
 

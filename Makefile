@@ -19,6 +19,7 @@
         gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check \
         verify-dispatch-compiles bench-runtime-batch bench-runtime-pipeline \
         bench-runtime-session bench-optimization bench-optimization-tier2
+.PHONY: capability-check capability-baseline
 
 # ─── Shell / PATH ──────────────────────────────────────────────────────────────
 SHELL := /bin/bash
@@ -662,6 +663,7 @@ build-mojo:
 ## and its tests pass but the local SDK cannot reach it (module_not_registered).
 inventory-refresh:
 	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py
+	$(REPO_PYTHON) scripts/generate_algenta_capability_manifest.py
 	$(REPO_PYTHON) scripts/generate_runtime_library_dispatch.py --report build/runtime_struct_construction.json
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py
 	@echo "✅ inventory refreshed — review the diff before committing"
@@ -669,7 +671,9 @@ inventory-refresh:
 ## Verify every kernel-inventory artifact is current (CI gate, no writes)
 inventory-check:
 	$(REPO_PYTHON) scripts/generate_algenta_runtime_contract.py --check
+	$(REPO_PYTHON) scripts/generate_algenta_capability_manifest.py --check
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
+	$(MAKE) capability-check
 
 ## Prove the generated dispatch COMPILES for the structs that can only be built
 ## via default-construct + field assignment. This is the gate that was missing:
@@ -919,3 +923,16 @@ bench-optimization-tier2:
 	else \
 		echo "❌ pixi/mojo_env not found. Run: make setup-mojo"; exit 1; \
 	fi
+
+## Gate the DECLARED capability blocks: any block that does not parse fails, a module the
+## baseline does not grandfather must declare a `counts:` decision for every (List, Int)
+## function, and neither ratchet may move backwards. A signature cannot say which Int is an
+## element count, and reading past a List end aborts the whole worker -- this is the gate
+## that makes someone decide instead of shipping the hazard undeclared.
+capability-check:
+	$(REPO_PYTHON) scripts/capability_manifest_gate.py
+
+## Record new capability coverage. Never records a regression, and never grandfathers a module
+## that is not already grandfathered -- so this cannot be used to wave a new kernel through.
+capability-baseline:
+	$(REPO_PYTHON) scripts/capability_manifest_gate.py --update-baseline

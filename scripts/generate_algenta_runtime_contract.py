@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from apps.runtime.mojo_count_relations import declared_count_spec  # noqa: E402
 from apps.runtime.mojo_inventory import (  # noqa: E402
     RuntimeStructSpec,
     discover_runtime_library_modules,
@@ -88,21 +89,28 @@ def build_contract() -> dict[str, Any]:
         for function in sorted(module.functions, key=lambda item: item.name):
             referenced_types.add(function.return_type)
             referenced_types.update(param.typ for param in function.params)
-            functions.append(
-                {
-                    "name": function.name,
-                    "params": [
-                        {
-                            "name": param.name,
-                            "type": param.typ,
-                            "has_default": param.has_default,
-                            "is_mut": param.is_mut,
-                        }
-                        for param in function.params
-                    ],
-                    "return_type": function.return_type,
-                }
-            )
+            payload: dict[str, Any] = {
+                "name": function.name,
+                "params": [
+                    {
+                        "name": param.name,
+                        "type": param.typ,
+                        "has_default": param.has_default,
+                        "is_mut": param.is_mut,
+                    }
+                    for param in function.params
+                ],
+                "return_type": function.return_type,
+            }
+            # The declared count relations travel with the function so the local SDK can
+            # refuse an over-large element count before the frame reaches the worker, where
+            # reading past a List end is an uncatchable process abort. Emitted only when
+            # non-empty: an absent key and an empty list mean the same thing to the loader,
+            # and omitting it keeps the contract diff to the functions actually declared.
+            count_spec = declared_count_spec(module.import_path, function.name)
+            if count_spec is not None and count_spec.relations:
+                payload["count_relations"] = count_spec.to_payload()
+            functions.append(payload)
         resolved_structs = {**global_structs, **module_structs[module.import_path]}
         payload_modules.append(
             {

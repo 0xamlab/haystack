@@ -188,6 +188,21 @@ What this does NOT prove
     mis-scaling in the other direction called a live pivot of 0.5 dead next to a diagonal of
     1e12, so a strictly positive definite `Q = diag(1e12, 0.5)` with `c = (0, -1)` — unique
     minimiser (0, 2) — came back `QP_UNBOUNDED` with a ray whose `Qd` was not zero.
+@capability-module
+deterministic: true
+stateful: false
+batch_capable: true
+stream_capable: false
+seed_requirements: optional
+supported_dtypes: float64, int64
+backend: mojo
+surfaces: library_execute, batch_execute
+golden_vectors: mojo/tests/libs/test_optimization_quadratic.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_optimization_tier2.mojo
+docs: none
+version_introduced: pre_manifest
+deprecation_state: active
+@endcapability
 """
 from std.math import abs as fabs, sqrt
 
@@ -2013,6 +2028,12 @@ fn qp_convexity_flat(q: List[Float64], n: Int) -> QPConvexity:
     `linalg_ext.mat_is_positive_definite`, which is the tree's authority on STRICT
     definiteness; `convex` is semidefiniteness, which is the weaker property convexity
     actually needs and the one the frozen kernel cannot report.
+
+    @capability qp_convexity_flat
+    complexity: O(n^3)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    @endcapability
     """
     if n < 0 or not dims_fit(n, n, len(q)):
         return QPConvexity(
@@ -2073,6 +2094,13 @@ fn qp_objective_flat(
     An overflow to infinity is reported as absent rather than returned as a number, which is
     the whole `numeric/contract.mojo` policy: `0.0` and `inf` are both answers a caller would
     branch on, and neither is the answer here.
+
+    @capability qp_objective_flat
+    complexity: O(n^2)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - n == len(c, x) [kernel_validated]
+    @endcapability
     """
     if n < 0 or not dims_fit(n, n, len(q)):
         return QPValue(MODEL_ERR_DENSE_SHAPE, False, 0.0)
@@ -2100,6 +2128,13 @@ fn qp_gradient_flat(
     disagree about the factor of `0.5`. (It is `Qx + c`, not `0.5 Qx + c`: the derivative of
     `0.5 xᵀQx` is `Qx` for symmetric `Q`, and getting that wrong is the single most common
     QP sign error.)
+
+    @capability qp_gradient_flat
+    complexity: O(n^2)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - n == len(c, x) [kernel_validated]
+    @endcapability
     """
     if n < 0 or not dims_fit(n, n, len(q)):
         return QPVector(MODEL_ERR_DENSE_SHAPE, False, 0, List[Float64]())
@@ -2132,6 +2167,17 @@ fn qp_kkt_check(
     The point does not have to have come from `qp_solve`. That is the purpose: a certificate
     a caller can run on a vendor's answer, or on last week's answer after the data moved, is
     worth more than a status this module produced about its own work.
+
+    @capability qp_kkt_check
+    complexity: O((rows + n) * n)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - rows * n == len(a) [kernel_validated]
+    - n == len(c, lower, upper, bound_flags) [kernel_validated]
+    - rows == len(senses, b) [kernel_validated]
+    - n == len(x, lower_duals, upper_duals) [kernel_validated]
+    - rows == len(duals) [kernel_validated]
+    @endcapability
     """
     var defect = _qp_shape_defect(
         q, n, c, a, rows, senses, b, lower, upper, bound_flags
@@ -2184,6 +2230,16 @@ fn qp_gap_flat(
     Independent of the KKT audit and of this module's own search: it is one `lp_solve` over
     the caller's feasible set. A caller with a point from anywhere can ask "how far from
     optimal can this be?" and get a number that is a theorem rather than an estimate.
+
+    @capability qp_gap_flat
+    complexity: O(max_iterations * (rows + n) * n)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - rows * n == len(a) [kernel_validated]
+    - n == len(c, lower, upper, bound_flags) [kernel_validated]
+    - rows == len(senses, b) [kernel_validated]
+    - n == len(x) [kernel_validated]
+    @endcapability
     """
     var defect = _qp_shape_defect(
         q, n, c, a, rows, senses, b, lower, upper, bound_flags
@@ -2308,6 +2364,15 @@ fn qp_solve(
     linearisation bound not to contradict it. A DISAGREEMENT between the two is
     `QP_NOT_CERTIFIED` with every residual reported — one of them is wrong and this driver
     cannot say which, so it claims neither.
+
+    @capability qp_solve
+    complexity: O(max_iterations * (rows + n) * n)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - rows * n == len(a) [kernel_validated]
+    - n == len(c, lower, upper, bound_flags) [kernel_validated]
+    - rows == len(senses, b) [kernel_validated]
+    @endcapability
     """
     var defect = _qp_shape_defect(q, n, c, a, rows, senses, b, lower, upper, bound_flags)
     if defect != MODEL_OK:
@@ -3037,6 +3102,15 @@ fn qp_solve_default(
     package's, and `model.policy_defect` is the single definition of which ones are usable.
     The SEED does not: a defaulted seed is how a search stops being reproducible without
     anybody deciding that it should.
+
+    @capability qp_solve_default
+    complexity: O(max_iterations * (rows + n) * n)
+    counts:
+    - n * n == len(q) [kernel_validated]
+    - rows * n == len(a) [kernel_validated]
+    - n == len(c, lower, upper, bound_flags) [kernel_validated]
+    - rows == len(senses, b) [kernel_validated]
+    @endcapability
     """
     return qp_solve(
         q, n, c, a, rows, senses, b, lower, upper, bound_flags,

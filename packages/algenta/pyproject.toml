@@ -56,4 +56,11 @@ exclude = ["build*", "tests*"]
 
 [tool.setuptools.package-data]
 # Force the embedded PUBLIC trust anchors past the repo-wide *.pem gitignore (only *_pub.pem).
-algenta = ["_keys/*_pub.pem", "runtime_library_contract.json"]
+# `runtime_capability_manifest.json` carries the DECLARED capabilities that `algenta.capabilities`
+# serves. Leaving it out of the wheel would not raise: the loader would simply answer "undeclared"
+# for every kernel, so the omission reads as "nothing is declared" rather than as a packaging bug.
+algenta = [
+    "_keys/*_pub.pem",
+    "runtime_library_contract.json",
+    "runtime_capability_manifest.json",
+]

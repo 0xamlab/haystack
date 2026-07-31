@@ -11,7 +11,7 @@ supported_dtypes: float64
 backend: mojo
 surfaces: library_execute, batch_execute
 golden_vectors: mojo/tests/libs/test_gemm_blocked.mojo
-benchmark: benchmarks/mojo_benchmarks/bench_gemm_blocked.mojo
+benchmark: benchmarks/mojo_benchmarks/bench_tensorx_and_gemm.mojo
 docs: none
 version_introduced: 0.1.0
 deprecation_state: active
@@ -173,8 +173,8 @@ fn sgemm_flat(
     @capability sgemm_flat
     complexity: O(m*n*k)
     counts:
-    - m * k == len(a) [enforced]
-    - k * n == len(b) [enforced]
+    - m * k == len(a) [kernel_validated]
+    - k * n == len(b) [kernel_validated]
     @endcapability
     """
     var empty = List[Float64]()
@@ -300,7 +300,7 @@ fn gemv_flat(
     @capability gemv_flat
     complexity: O(m*n)
     counts:
-    - m * n == len(a) [enforced]
+    - m * n == len(a) [kernel_validated]
     @endcapability
     """
     var empty = List[Float64]()
@@ -400,8 +400,8 @@ fn gemm_reference_delta_flat(
     @capability gemm_reference_delta_flat
     complexity: O(m*n*k)
     counts:
-    - m * k == len(a) [enforced]
-    - k * n == len(b) [enforced]
+    - m * k == len(a) [kernel_validated]
+    - k * n == len(b) [kernel_validated]
     @endcapability
     """
     var shape = gemm_dims_check(m, n, k, len(a), len(b))

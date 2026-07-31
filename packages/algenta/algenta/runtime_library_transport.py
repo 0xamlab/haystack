@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from algenta.runtime_count_guard import (
+    PACKED_FLOAT64_PREFIX as _PACKED_FLOAT64_PREFIX,
+)
+from algenta.runtime_count_guard import enforce_count_relations
 from algenta.runtime_library_contract import (
     RuntimeFunctionSpec,
     RuntimeLibraryContractError,
@@ -58,7 +62,14 @@ def _normalize_value(
         return float(value)
     inner_type = _list_inner_type(type_name)
     if inner_type is not None:
-        if type_name == "List[Float64]" and isinstance(value, str) and value.startswith("@u8:"):
+        if (
+            type_name == "List[Float64]"
+            and isinstance(value, str)
+            and value.startswith(_PACKED_FLOAT64_PREFIX)
+        ):
+            # A packed uint8 buffer the runtime decodes to one Float64 per byte. It is a LIST,
+            # not a deferred reference: `runtime_count_guard.measured_element_count` reads its
+            # exact length, so every declared count relation still applies to it.
             return value
         if not isinstance(value, list):
             raise _invalid(f"{context} must be {type_name}", expected=type_name)
@@ -105,10 +116,26 @@ def is_deferred_reference(value: Any) -> bool:
     A reference stands in for a value of any declared type, so validating it here
     would reject every legitimate use: `"@ds_1"` is a string where the signature
     says `List[Float64]`. Arity is still enforced, and the worker fails loudly on an
-    unknown handle or an out-of-range node, so deferring the type check does not
+    unknown handle or an out-of-range node, so deferring the TYPE check does not
     lose the error — it moves it to where the value actually exists.
+
+    Deferring a LENGTH check does not have that property, and this docstring used to
+    claim it did. An unknown handle is a loud error; an element count larger than the
+    resolved list is an uncatchable process abort, which is not an error the worker
+    can report at all. So a deferred reference in a position that a declared count
+    relation BOUNDS is refused by ``runtime_count_guard.enforce_count_relations``
+    rather than passed on — measured, ``compute_mean("@ds_1", 5)`` ended the worker
+    process, and ``"@ds_1"`` reaches a unary ``library_execute`` unbound (only
+    ``batch_execute`` and ``pipeline_execute`` bind references), so the kernel saw an
+    empty list and every count above zero was an over-read.
+
+    ``"@u8:<base64>"`` is deliberately NOT a deferred reference: it is a packed
+    ``List[Float64]`` the runtime decodes in place, its element count is exact, and
+    treating it as deferred is what let it skip both the type check and the guard.
     """
     if not isinstance(value, str) or len(value) < 2:
+        return False
+    if value.startswith(_PACKED_FLOAT64_PREFIX):
         return False
     if value[0] == "@":
         return len(value) > 1
@@ -170,12 +197,19 @@ def build_worker_request(
 ) -> tuple[RuntimeLibraryModule, RuntimeFunctionSpec, dict[str, Any]]:
     module, function = find_runtime_function(module_name, function_name)
     structs = {struct.name: struct for struct in module.structs}
+    normalized = _normalize_arguments(args, function, structs)
+    # An element count larger than the list it measures has to be declined here: inside the
+    # runtime the over-read is an uncatchable abort of the whole process, so there is no
+    # later point at which it could be reported. Batched execution builds each item through
+    # this same function, so one bad item is refused on its own and its neighbours — and the
+    # datasets they are holding — are untouched.
+    enforce_count_relations(module_name, function, normalized)
     return module, function, {
         "type": "library_execute",
         "engine_type": "library_execute",
         "module": module_name,
         "function": function_name,
-        "args": _normalize_arguments(args, function, structs),
+        "args": normalized,
     }
 
 
