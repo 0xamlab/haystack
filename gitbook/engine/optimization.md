@@ -483,6 +483,7 @@ saying "invalid input".
 
 ## See also
 
+* [Routing, scheduling & trade-offs](optimization-heuristics.md) — searches that report the bound they have instead of claiming an optimum
 * [Sparse systems & graph analytics](sparse-and-graph.md) — sparse solvers, shortest paths, centrality
 * [Batched and chained execution](coarse-execution.md) — many kernel calls in one frame
 * [Runtime library catalog](runtime-library-catalog.md) — every module and function

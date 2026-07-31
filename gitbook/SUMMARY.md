@@ -21,6 +21,7 @@
 * [Columnar queries](engine/columnar-queries.md)
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
 * [Optimization & decision programs](engine/optimization.md)
+* [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
 * [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Reproducible evolutionary search](engine/reproducible-search.md)
 * [Asset degradation state](engine/degradation-state.md)
