@@ -69,6 +69,11 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     # grouped-query attention rather than sidestepping it: 2 query heads sharing 1 KV head.
     "_lf8_attn": [0.5, 0.6, 0.7, 0.4, 0.3, 0.2, 0.1, 0.8],
     "_li5_cu_seqlens": [0, 1, 2, 3, 4],
+    # normk normalizes ROWS, so its relation is `n_rows * n_cols <= len(x)` — the same product
+    # shape attention has. 2 rows of 4 is the smallest that still makes the reduction mean
+    # something: a single row would not distinguish a per-row statistic from a global one, and
+    # a 1-wide row makes variance identically zero and the gradcheck vacuous.
+    "_lf8_norm2x4": [0.5, -0.6, 0.7, -0.4, 0.3, 0.9, -0.2, 0.1],
     "_lf48_video3x4x4": (
         [10.0 for _ in range(16)]
         + [200.0 if pixel < 4 else 10.0 for pixel in range(16)]
@@ -227,6 +232,75 @@ _RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    # ── normk ─────────────────────────────────────────────────────────────────────────
+    # `gamma`, `beta`, `mean` and `rstd` are all shorter than the activations, so the default
+    # 5-element list already covers them; only the `[n_rows][n_cols]` buffers need sizing. `rstd`
+    # must be POSITIVE — it is a reciprocal standard deviation — which `_lf5` happens to be.
+    ("normk.rmsnorm", "rmsnorm_fwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+        1.0e-6,
+    ],
+    ("normk.rmsnorm", "rmsnorm_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+    ],
+    ("normk.rmsnorm", "rmsnorm_agrees_with_frozen_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+        1.0e-6,
+    ],
+    # The gradcheck runs a full forward per perturbed element, so it is O(cells^2) in forwards.
+    # At 8 cells that is 16 forwards of an 8-element buffer — still trivial, and deliberately not
+    # scaled up here: the A-Z suite is a reachability check, and the real accuracy gate lives in
+    # mojo/tests/libs/test_normk_rmsnorm.mojo where the step size can be chosen per case.
+    ("normk.rmsnorm", "rmsnorm_gradcheck_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+        1.0e-6,
+        1.0e-4,
+    ],
+    ("normk.layernorm", "layernorm_fwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+        1.0e-5,
+    ],
+    ("normk.layernorm", "layernorm_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        _SAMPLE_VARIABLES["_lf5"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+    ],
+    ("normk.layernorm", "layernorm_variance_agrees_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        2,
+        4,
+    ],
+    ("normk.layernorm", "layernorm_gradcheck_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf5"],
+        _SAMPLE_VARIABLES["_lf5"],
+        2,
+        4,
+        1.0e-5,
+        1.0e-4,
+    ],
     # ── attnk ─────────────────────────────────────────────────────────────────────────
     # `cu_seqlens` is a prefix-sum: it holds n_seq + 1 entries and MUST start at 0, so the default
     # `[1, 2, 3, 4, 5]` is malformed twice over. n_seq is 4 here, not 5, because the list length is

@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **535 modules** and **5329 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **538 modules** and **5342 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -56,7 +56,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-25 modules.
+26 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -77,6 +77,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `ml_metrics_extended` | 10 |
 | `nn_layers` | 11 |
 | `normalization_layers` | 10 |
+| `normk.layernorm` | 4 |
 | `optimization_constrained` | 8 |
 | `optimizer_full` | 10 |
 | `quantization` | 10 |
@@ -298,7 +299,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-352 modules.
+354 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -498,6 +499,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `neuropharmacology` | 10 |
 | `neurophysics` | 10 |
 | `nlp` | 11 |
+| `normk.contract` | 5 |
+| `normk.rmsnorm` | 4 |
 | `nuclear` | 12 |
 | `numerical_stability` | 12 |
 | `numismatics` | 12 |

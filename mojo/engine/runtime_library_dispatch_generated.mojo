@@ -3895,6 +3895,28 @@ from normalization_layers import (
     pre_norm_residual as _normalization_layers__pre_norm_residual,
 )
 
+from normk.contract import (
+    norm_status_name as _normk_contract__norm_status_name,
+    norm_work_fits as _normk_contract__norm_work_fits,
+    norm_eps_ok as _normk_contract__norm_eps_ok,
+    norm_dims_check as _normk_contract__norm_dims_check,
+    norm_tol_for as _normk_contract__norm_tol_for,
+)
+
+from normk.layernorm import (
+    layernorm_fwd_flat as _normk_layernorm__layernorm_fwd_flat,
+    layernorm_bwd_flat as _normk_layernorm__layernorm_bwd_flat,
+    layernorm_variance_agrees_flat as _normk_layernorm__layernorm_variance_agrees_flat,
+    layernorm_gradcheck_flat as _normk_layernorm__layernorm_gradcheck_flat,
+)
+
+from normk.rmsnorm import (
+    rmsnorm_fwd_flat as _normk_rmsnorm__rmsnorm_fwd_flat,
+    rmsnorm_bwd_flat as _normk_rmsnorm__rmsnorm_bwd_flat,
+    rmsnorm_agrees_with_frozen_flat as _normk_rmsnorm__rmsnorm_agrees_with_frozen_flat,
+    rmsnorm_gradcheck_flat as _normk_rmsnorm__rmsnorm_gradcheck_flat,
+)
+
 from nuclear import (
     radioactive_decay as _nuclear__radioactive_decay,
     half_life_from_lambda as _nuclear__half_life_from_lambda,
@@ -7223,6 +7245,18 @@ from model_selection import (
 
 from net.url import (
     URL,
+)
+
+from normk.layernorm import (
+    LayerNormAgreement,
+    LayerNormGrad,
+    LayerNormOut,
+)
+
+from normk.rmsnorm import (
+    NormAgreement,
+    NormGrad,
+    NormOut,
 )
 
 from ode import (
@@ -10601,6 +10635,52 @@ fn _to_json_lz77token(value: LZ77Token) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_layernormagreement(value: LayerNormAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LayerNormAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_layernormgrad(value: LayerNormGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LayerNormGrad\",\"v\":[")
+    result += _to_json_list_float64(value.dx)
+    result += ","
+    result += _to_json_list_float64(value.dgamma)
+    result += ","
+    result += _to_json_list_float64(value.dbeta)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_layernormout(value: LayerNormOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LayerNormOut\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_list_float64(value.mean)
+    result += ","
+    result += _to_json_list_float64(value.rstd)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_leakybucket(value: LeakyBucket) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeakyBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
@@ -11106,6 +11186,48 @@ fn _to_json_murphyterms(value: MurphyTerms) raises -> String:
     result += _to_json_int(value.n)
     result += ","
     result += _to_json_float64(value.base_rate)
+    result += "]}"
+    return result
+
+fn _to_json_normagreement(value: NormAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"NormAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_normgrad(value: NormGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"NormGrad\",\"v\":[")
+    result += _to_json_list_float64(value.dx)
+    result += ","
+    result += _to_json_list_float64(value.dgamma)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_normout(value: NormOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"NormOut\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_list_float64(value.rstd)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -79677,6 +79799,282 @@ fn _dispatch_normalization_layers(function_name: String, args_array: String) rai
         "Function '" + function_name + "' is not registered for module normalization_layers."
     )
 
+fn _dispatch_normk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "norm_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _normk_contract__norm_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.contract.norm_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.contract.norm_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "norm_work_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _normk_contract__norm_work_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.contract.norm_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.contract.norm_work_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "norm_eps_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _normk_contract__norm_eps_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.contract.norm_eps_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.contract.norm_eps_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "norm_dims_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _normk_contract__norm_dims_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.contract.norm_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.contract.norm_dims_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "norm_tol_for":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _normk_contract__norm_tol_for(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "normk.contract.norm_tol_for produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.contract.norm_tol_for."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.contract.norm_tol_for expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module normk.contract."
+    )
+
+fn _dispatch_normk__layernorm(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "layernorm_fwd_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _normk_layernorm__layernorm_fwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_layernormout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.layernorm.layernorm_fwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.layernorm.layernorm_fwd_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "layernorm_bwd_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _normk_layernorm__layernorm_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_layernormgrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.layernorm.layernorm_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.layernorm.layernorm_bwd_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "layernorm_variance_agrees_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _normk_layernorm__layernorm_variance_agrees_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_layernormagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.layernorm.layernorm_variance_agrees_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.layernorm.layernorm_variance_agrees_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "layernorm_gradcheck_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _normk_layernorm__layernorm_gradcheck_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_layernormagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.layernorm.layernorm_gradcheck_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.layernorm.layernorm_gradcheck_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module normk.layernorm."
+    )
+
+fn _dispatch_normk__rmsnorm(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "rmsnorm_fwd_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _normk_rmsnorm__rmsnorm_fwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_normout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.rmsnorm.rmsnorm_fwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.rmsnorm.rmsnorm_fwd_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rmsnorm_bwd_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _normk_rmsnorm__rmsnorm_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_normgrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.rmsnorm.rmsnorm_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.rmsnorm.rmsnorm_bwd_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rmsnorm_agrees_with_frozen_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _normk_rmsnorm__rmsnorm_agrees_with_frozen_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_normagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.rmsnorm.rmsnorm_agrees_with_frozen_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.rmsnorm.rmsnorm_agrees_with_frozen_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rmsnorm_gradcheck_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _normk_rmsnorm__rmsnorm_gradcheck_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_normagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for normk.rmsnorm.rmsnorm_gradcheck_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function normk.rmsnorm.rmsnorm_gradcheck_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module normk.rmsnorm."
+    )
+
 fn _dispatch_nuclear(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "radioactive_decay":
@@ -132378,6 +132776,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_nn_layers(function_name, args_array)
     if module_name == "normalization_layers":
         return _dispatch_normalization_layers(function_name, args_array)
+    if module_name == "normk.contract":
+        return _dispatch_normk__contract(function_name, args_array)
+    if module_name == "normk.layernorm":
+        return _dispatch_normk__layernorm(function_name, args_array)
+    if module_name == "normk.rmsnorm":
+        return _dispatch_normk__rmsnorm(function_name, args_array)
     if module_name == "nuclear":
         return _dispatch_nuclear(function_name, args_array)
     if module_name == "number_theory":
