@@ -108,6 +108,12 @@ def pctile(v: List[Float64], n: Int, p: Int) -> Float64:
     - n <= len(v) [enforced]
     @endcapability
     """
+    # The index is clamped to `>= 0`, so an EMPTY list is read at `v[0]` whatever `n` is --
+    # an uncatchable bounds abort that ends the whole worker process. `n <= len(v)` cannot catch
+    # it: `pctile([], 0, 50)` SATISFIES that relation (0 <= 0) and still ended the serving pid,
+    # measured on a compiled shard. 0.0 is what `quantile` already answers for an empty input, so
+    # the empty case gains no second spelling.
+    if len(v) == 0: return 0.0
     return v[max(0, min((n-1)*p//100, n-1))]
 
 def count_below_zero(v: List[Float64], n: Int) -> Int:
@@ -166,6 +172,12 @@ def ins_sort(mut a: List[Float64], lo: Int, hi: Int):
     - hi + 1 <= len(a) [kernel_validated]
     @endcapability
     """
+    # `lo`/`hi` are direct SUBSCRIPTS, not counts, and Mojo does not normalise a negative
+    # index: `a[-1]` is `index -1 is out of bounds` and the process ends. Measured: both
+    # `ins_sort(five, -1, 4)` and `ins_sort(five, 0, 99)` ended the serving pid. A merely EMPTY
+    # range (`hi < lo`) is left alone -- the loop runs zero times, which is already correct and
+    # is what `fast_sort` relies on when it pushes `p-1` / `p+1`.
+    if lo < 0 or lo >= len(a) or hi >= len(a): return
     # `lo >= len(a)` is checked as well as `lo < 0`, because `range(lo+1, ...)` WRAPS at
     # `lo == INT64_MAX` and would then iterate from `-2^63`. Rejecting it costs nothing: with
     # `lo >= len(a) > hi` the loop was already empty.
@@ -230,6 +242,15 @@ def part3(mut a: List[Float64], lo: Int, hi: Int) -> Int:
     - hi + 1 <= len(a) [kernel_validated]
     @endcapability
     """
+    # The same subscript hazard as `ins_sort`, plus one more: this reads `a[hi-1]` and relies
+    # on the pivot sitting there as a SENTINEL so the inner `while a[i] < piv` walk terminates.
+    # With `hi < lo + 2` there is no room for the sentinel and the walk runs off the end.
+    # Measured: `part3(five, -1, 4)`, `part3(five, 0, 99)`, `part3([], 0, 0)` and
+    # `part3(five, 0, 1)` each ended the serving pid. -1 is returned because it is not a valid
+    # partition point, so `fast_sort` cannot mistake it for one (and it only ever calls this with
+    # `hi - lo > 16`, so the guard never fires on its path).
+    if lo < 0 or hi < 0 or lo >= len(a) or hi >= len(a): return -1
+    if hi < lo + 2: return -1
     # Both indices are bracketed BEFORE `lo + 2` is formed, because that addition wraps at
     # `lo == INT64_MAX` and a wrapped comparison would wave the call through. Once both are in
     # `[0, len(a)-1]` no term here can overflow.
