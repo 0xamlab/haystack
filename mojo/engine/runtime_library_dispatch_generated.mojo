@@ -285,6 +285,45 @@ from atmospheric_chemistry import (
     lifetime_from_oh as _atmospheric_chemistry__lifetime_from_oh,
 )
 
+from attnk.contract import (
+    attn_status_name as _attnk_contract__attn_status_name,
+    attn_work_fits as _attnk_contract__attn_work_fits,
+    attn_dims_check as _attnk_contract__attn_dims_check,
+    attn_work_cells_varlen as _attnk_contract__attn_work_cells_varlen,
+    attn_scalars_ok as _attnk_contract__attn_scalars_ok,
+)
+
+from attnk.flash import (
+    flash_block_plan as _attnk_flash__flash_block_plan,
+    flash_forward_flat as _attnk_flash__flash_forward_flat,
+    flash_agrees_with_sdpa as _attnk_flash__flash_agrees_with_sdpa,
+)
+
+from attnk.mask import (
+    mask_convention_agreement as _attnk_mask__mask_convention_agreement,
+    mask_causal_flat as _attnk_mask__mask_causal_flat,
+    mask_sliding_window_flat as _attnk_mask__mask_sliding_window_flat,
+    mask_padding_flat as _attnk_mask__mask_padding_flat,
+    mask_block_diagonal_flat as _attnk_mask__mask_block_diagonal_flat,
+    mask_combine_flat as _attnk_mask__mask_combine_flat,
+    mask_row_fully_masked as _attnk_mask__mask_row_fully_masked,
+)
+
+from attnk.rope import (
+    rope_theta_agreement as _attnk_rope__rope_theta_agreement,
+    rope_theta_for as _attnk_rope__rope_theta_for,
+    rope_inv_freq as _attnk_rope__rope_inv_freq,
+    rope_table as _attnk_rope__rope_table,
+    rope_apply_flat as _attnk_rope__rope_apply_flat,
+    rope_apply_inverse_flat as _attnk_rope__rope_apply_inverse_flat,
+)
+
+from attnk.sdpa import (
+    sdpa_scores_flat as _attnk_sdpa__sdpa_scores_flat,
+    sdpa_softmax_rows_flat as _attnk_sdpa__sdpa_softmax_rows_flat,
+    sdpa_forward_flat as _attnk_sdpa__sdpa_forward_flat,
+)
+
 from auction import (
     first_price_sealed as _auction__first_price_sealed,
     second_price_sealed as _auction__second_price_sealed,
@@ -6905,6 +6944,28 @@ from arima import (
     MAFit,
 )
 
+from attnk.flash import (
+    FlashAgreement,
+    FlashOut,
+    FlashPlan,
+)
+
+from attnk.mask import (
+    MaskConvention,
+    MaskSpec,
+)
+
+from attnk.rope import (
+    RopeAgreement,
+    RopeApplied,
+    RopeTable,
+)
+
+from attnk.sdpa import (
+    SdpaOut,
+    SdpaScores,
+)
+
 from automl import (
     Bracket,
     HalvingRound,
@@ -8105,7 +8166,21 @@ fn _parse_seq2params_token(token: String) raises -> Seq2Params:
     var field_10 = _parse_list_float64_token(json_array_get(values_json, 10))
     var field_11 = _parse_list_float64_token(json_array_get(values_json, 11))
     var field_12 = _parse_list_float64_token(json_array_get(values_json, 12))
-    return Seq2Params(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^, field_11^, field_12^)
+    var decoded = Seq2Params()
+    decoded.input_dim = field_0^
+    decoded.hidden = field_1^
+    decoded.dense_h = field_2^
+    decoded.l1_wx = field_3^
+    decoded.l1_wh = field_4^
+    decoded.l1_b = field_5^
+    decoded.l2_wx = field_6^
+    decoded.l2_wh = field_7^
+    decoded.l2_b = field_8^
+    decoded.d1_w = field_9^
+    decoded.d1_b = field_10^
+    decoded.d2_w = field_11^
+    decoded.d2_b = field_12^
+    return decoded^
 
 fn _parse_simstate_token(token: String) raises -> SimState:
     var values_json = json_get_array(token, "v")
@@ -9439,6 +9514,54 @@ fn _to_json_factorvector(value: FactorVector) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_flashagreement(value: FlashAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FlashAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_out_delta)
+    result += ","
+    result += _to_json_float64(value.max_lse_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_flashout(value: FlashOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FlashOut\",\"v\":[")
+    result += _to_json_list_float64(value.out)
+    result += ","
+    result += _to_json_list_float64(value.lse)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.n_heads)
+    result += ","
+    result += _to_json_int(value.head_dim)
+    result += ","
+    result += _to_json_int(value.blocks_walked)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_flashplan(value: FlashPlan) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FlashPlan\",\"v\":[")
+    result += _to_json_int(value.block_k)
+    result += ","
+    result += _to_json_int(value.n_blocks)
+    result += ","
+    result += _to_json_int(value.working_bytes)
+    result += ","
+    result += _to_json_float64(value.materialized_bytes)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_float32(value: Float32) raises -> String:
     if not _is_finite_f32(value):
         raise Error("non_finite_result")
@@ -10697,6 +10820,32 @@ fn _to_json_mmrselection(value: MMRSelection) raises -> String:
     result += _to_json_list_float64(value.max_sim)
     result += ","
     result += _to_json_list_bool(value.max_sim_known)
+    result += "]}"
+    return result
+
+fn _to_json_maskconvention(value: MaskConvention) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MaskConvention\",\"v\":[")
+    result += _to_json_float64(value.additive_bias)
+    result += ","
+    result += _to_json_float64(value.masked_logit)
+    result += ","
+    result += _to_json_float64(value.input_logit)
+    result += ","
+    result += _to_json_bool(value.same_shape)
+    result += "]}"
+    return result
+
+fn _to_json_maskspec(value: MaskSpec) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MaskSpec\",\"v\":[")
+    result += _to_json_list_float64(value.bias)
+    result += ","
+    result += _to_json_int(value.s_q)
+    result += ","
+    result += _to_json_int(value.s_k)
+    result += ","
+    result += _to_json_int(value.n_masked)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -12048,6 +12197,48 @@ fn _to_json_robustscenarioresult(value: RobustScenarioResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_ropeagreement(value: RopeAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RopeAgreement\",\"v\":[")
+    result += _to_json_float64(value.squared_convention)
+    result += ","
+    result += _to_json_float64(value.linear_convention)
+    result += ","
+    result += _to_json_float64(value.ratio)
+    result += ","
+    result += _to_json_bool(value.agree)
+    result += "]}"
+    return result
+
+fn _to_json_ropeapplied(value: RopeApplied) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RopeApplied\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.n_heads)
+    result += ","
+    result += _to_json_int(value.head_dim)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_ropetable(value: RopeTable) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RopeTable\",\"v\":[")
+    result += _to_json_list_float64(value.cos_table)
+    result += ","
+    result += _to_json_list_float64(value.sin_table)
+    result += ","
+    result += _to_json_int(value.max_pos)
+    result += ","
+    result += _to_json_int(value.n_pairs)
+    result += ","
+    result += _to_json_float64(value.theta)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_routeaudit(value: RouteAudit) raises -> String:
     var result = String("{\"__algenta_struct\":\"RouteAudit\",\"v\":[")
     result += _to_json_int(value.status)
@@ -12357,6 +12548,36 @@ fn _to_json_scenarioset(value: ScenarioSet) raises -> String:
     result += _to_json_string(value.rng)
     result += ","
     result += _to_json_list_float64(value.rhs)
+    result += "]}"
+    return result
+
+fn _to_json_sdpaout(value: SdpaOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SdpaOut\",\"v\":[")
+    result += _to_json_list_float64(value.out)
+    result += ","
+    result += _to_json_list_float64(value.lse)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.n_heads)
+    result += ","
+    result += _to_json_int(value.head_dim)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_sdpascores(value: SdpaScores) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SdpaScores\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_int(value.n_heads)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -18668,6 +18889,527 @@ fn _dispatch_atmospheric_chemistry(function_name: String, args_array: String) ra
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module atmospheric_chemistry."
+    )
+
+fn _dispatch_attnk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "attn_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _attnk_contract__attn_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.contract.attn_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.contract.attn_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "attn_work_fits":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _attnk_contract__attn_work_fits(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.contract.attn_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.contract.attn_work_fits expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "attn_dims_check":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _attnk_contract__attn_dims_check(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.contract.attn_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.contract.attn_dims_check expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "attn_work_cells_varlen":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _attnk_contract__attn_work_cells_varlen(arg_0, arg_1, arg_2, arg_3)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "attnk.contract.attn_work_cells_varlen produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.contract.attn_work_cells_varlen."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.contract.attn_work_cells_varlen expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "attn_scalars_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _attnk_contract__attn_scalars_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.contract.attn_scalars_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.contract.attn_scalars_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.contract."
+    )
+
+fn _dispatch_attnk__flash(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "flash_block_plan":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_flash__flash_block_plan(arg_0, arg_1, arg_2)
+                var result_json = _to_json_flashplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.flash.flash_block_plan."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.flash.flash_block_plan expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flash_forward_flat":
+        if arg_count == 12:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_bool_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var result = _attnk_flash__flash_forward_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11)
+                var result_json = _to_json_flashout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.flash.flash_forward_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.flash.flash_forward_flat expected 12 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flash_agrees_with_sdpa":
+        if arg_count == 12:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_bool_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var result = _attnk_flash__flash_agrees_with_sdpa(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11)
+                var result_json = _to_json_flashagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.flash.flash_agrees_with_sdpa."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.flash.flash_agrees_with_sdpa expected 12 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.flash."
+    )
+
+fn _dispatch_attnk__mask(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "mask_convention_agreement":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _attnk_mask__mask_convention_agreement(arg_0, arg_1, arg_2)
+                var result_json = _to_json_maskconvention(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_convention_agreement."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_convention_agreement expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_causal_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_mask__mask_causal_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_maskspec(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_causal_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_causal_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_sliding_window_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _attnk_mask__mask_sliding_window_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_maskspec(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_sliding_window_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_sliding_window_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_padding_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_mask__mask_padding_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_maskspec(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_padding_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_padding_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_block_diagonal_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _attnk_mask__mask_block_diagonal_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_maskspec(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_block_diagonal_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_block_diagonal_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_combine_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_mask__mask_combine_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_maskspec(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_combine_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_combine_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mask_row_fully_masked":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_mask__mask_row_fully_masked(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.mask.mask_row_fully_masked."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.mask.mask_row_fully_masked expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.mask."
+    )
+
+fn _dispatch_attnk__rope(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "rope_theta_agreement":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _attnk_rope__rope_theta_agreement(arg_0, arg_1, arg_2)
+                var result_json = _to_json_ropeagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_theta_agreement."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_theta_agreement expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_theta_for":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_rope__rope_theta_for(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "attnk.rope.rope_theta_for produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_theta_for."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_theta_for expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_inv_freq":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _attnk_rope__rope_inv_freq(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_inv_freq."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_inv_freq expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_table":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _attnk_rope__rope_table(arg_0, arg_1, arg_2)
+                var result_json = _to_json_ropetable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_table."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_table expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_apply_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _attnk_rope__rope_apply_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_ropeapplied(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_apply_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_apply_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rope_apply_inverse_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var result = _attnk_rope__rope_apply_inverse_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_ropeapplied(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.rope.rope_apply_inverse_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.rope.rope_apply_inverse_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.rope."
+    )
+
+fn _dispatch_attnk__sdpa(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "sdpa_scores_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _attnk_sdpa__sdpa_scores_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_sdpascores(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.sdpa.sdpa_scores_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.sdpa.sdpa_scores_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sdpa_softmax_rows_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _attnk_sdpa__sdpa_softmax_rows_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_sdpascores(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.sdpa.sdpa_softmax_rows_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.sdpa.sdpa_softmax_rows_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sdpa_forward_flat":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_bool_token(json_array_get(args_array, 10))
+                var result = _attnk_sdpa__sdpa_forward_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_sdpaout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.sdpa.sdpa_forward_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.sdpa.sdpa_forward_flat expected 11 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.sdpa."
     )
 
 fn _dispatch_auction(function_name: String, args_array: String) raises -> String:
@@ -131068,6 +131810,16 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_astronomy(function_name, args_array)
     if module_name == "atmospheric_chemistry":
         return _dispatch_atmospheric_chemistry(function_name, args_array)
+    if module_name == "attnk.contract":
+        return _dispatch_attnk__contract(function_name, args_array)
+    if module_name == "attnk.flash":
+        return _dispatch_attnk__flash(function_name, args_array)
+    if module_name == "attnk.mask":
+        return _dispatch_attnk__mask(function_name, args_array)
+    if module_name == "attnk.rope":
+        return _dispatch_attnk__rope(function_name, args_array)
+    if module_name == "attnk.sdpa":
+        return _dispatch_attnk__sdpa(function_name, args_array)
     if module_name == "auction":
         return _dispatch_auction(function_name, args_array)
     if module_name == "audio":

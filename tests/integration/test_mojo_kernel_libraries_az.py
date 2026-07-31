@@ -63,6 +63,12 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     "_lf5": [0.5, 0.6, 0.7, 0.4, 0.3],
     "_lf6_matrix": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
     "_lf8_coalitions": [0.0, 1.0, 2.0, 4.0, 3.0, 5.0, 6.0, 9.0],
+    # Attention is the first surface whose declared relation is a PRODUCT of three counts
+    # (`n_tok * h * d <= len(q)`), so the suite's uniform "5-element list, 5 for every Int"
+    # cannot satisfy it at any size worth calling. These are the smallest shapes that exercise
+    # grouped-query attention rather than sidestepping it: 2 query heads sharing 1 KV head.
+    "_lf8_attn": [0.5, 0.6, 0.7, 0.4, 0.3, 0.2, 0.1, 0.8],
+    "_li5_cu_seqlens": [0, 1, 2, 3, 4],
     "_lf48_video3x4x4": (
         [10.0 for _ in range(16)]
         + [200.0 if pixel < 4 else 10.0 for pixel in range(16)]
@@ -221,6 +227,77 @@ _RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    # ── attnk ─────────────────────────────────────────────────────────────────────────
+    # `cu_seqlens` is a prefix-sum: it holds n_seq + 1 entries and MUST start at 0, so the default
+    # `[1, 2, 3, 4, 5]` is malformed twice over. n_seq is 4 here, not 5, because the list length is
+    # the fixed quantity and the count has to fit inside it.
+    ("attnk.contract", "attn_work_cells_varlen"): [
+        _SAMPLE_VARIABLES["_li5_cu_seqlens"],
+        4,
+        5,
+        5,
+    ],
+    ("attnk.mask", "mask_block_diagonal_flat"): [
+        _SAMPLE_VARIABLES["_li5_cu_seqlens"],
+        4,
+        4,
+        True,
+    ],
+    # 2 query heads over 1 KV head, 2 tokens, head dim 2: q needs n_tok_q * h_q * d = 8, k and v
+    # need n_tok_k * h_kv * d = 4, and the bias is n_tok_q * n_tok_k = 4. One 8-element list covers
+    # all four. h_q % h_kv == 0 holds, so this reaches the GQA path rather than being refused by
+    # the divisibility check before any score is formed.
+    ("attnk.flash", "flash_forward_flat"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+        True,
+        2,
+    ],
+    ("attnk.flash", "flash_agrees_with_sdpa"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+        True,
+        2,
+    ],
+    ("attnk.sdpa", "sdpa_scores_flat"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+    ],
+    ("attnk.sdpa", "sdpa_forward_flat"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+        True,
+    ],
     ("color_check", "dominant_background_rgb255"): [
         _SAMPLE_VARIABLES["_lf12_colorcheck2x2"],
         2,

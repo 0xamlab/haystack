@@ -122,10 +122,15 @@ product, because that is the relation tied to the payload. Rule 1c of
 ceiling is still not bounded by the payload. The ceiling is checkable here; the payload tie
 is not, and the kernel owns it.
 
-A ceiling may NAME a `comptime <NAME>: Int = ...` constant declared in the same file
-(`1 << 12` is understood) instead of copying its value, so the declaration cannot drift from
-the constant the kernel actually tests. A name that does not resolve is an issue, not a
-silently dropped bound.
+A ceiling may NAME a `comptime <NAME>: Int = ...` constant (`1 << 12` is understood) instead
+of copying its value, so the declaration cannot drift from the constant the kernel actually
+tests. The constant may live in the same file, or in a module this file imports it FROM --
+the newer packages keep one ceiling per package in a shared `contract.mojo` (`ATTN_MAX_SEQ`
+in `attnk/contract.mojo`, imported by `attnk/mask.mojo` and `attnk/rope.mojo`) rather than
+redeclaring it per module the way `sparse_numerics/csr.mojo` does. Resolving same-file names
+only would force those modules to copy the literal, which is exactly the drift this check
+exists to prevent. Same-file wins on a clash. A name that does not resolve either way is an
+issue, not a silently dropped bound.
 
 Two deliberate limits, stated so nobody reads more into a block than it says:
 
@@ -181,6 +186,8 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 MODULE_FENCE = "@capability-module"
@@ -240,6 +247,12 @@ _DIM_REL_RE = re.compile(
 #: the kernel actually tests against instead of copying its value and rotting.
 _COMPTIME_INT_RE = re.compile(
     r"^\s*comptime\s+([A-Z_][A-Z0-9_]*)\s*:\s*Int\s*=\s*(\d+)(?:\s*<<\s*(\d+))?\s*$",
+    re.MULTILINE,
+)
+#: `from <module> import (A, B)` — both the single-line and parenthesized spellings. Used only to
+#: follow a ceiling constant back to the package `contract.mojo` that declares it.
+_FROM_IMPORT_RE = re.compile(
+    r"^[ \t]*from[ \t]+([A-Za-z_][A-Za-z0-9_.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n]*)",
     re.MULTILINE,
 )
 _ENFORCEMENT_RE = re.compile(r"^(?P<body>.*?)\s*\[(?P<tag>[a-z_]+)\]$")
@@ -414,6 +427,52 @@ def _comptime_int_constants(text: str) -> dict[str, int]:
     constants: dict[str, int] = {}
     for name, base, shift in _COMPTIME_INT_RE.findall(text):
         constants[name] = int(base) << int(shift) if shift else int(base)
+    return constants
+
+
+@lru_cache(maxsize=None)
+def _module_comptime_int_constants(resolved: Path) -> tuple[tuple[str, int], ...]:
+    try:
+        text = resolved.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ()
+    return tuple(_comptime_int_constants(text).items())
+
+
+def _imported_comptime_int_constants(text: str, path: str) -> dict[str, int]:
+    """Ceiling constants reachable through this file's own imports.
+
+    A ceiling should name the constant the kernel tests against — but the newer packages keep that
+    constant in one `contract.mojo` per package (`ATTN_MAX_SEQ` in `attnk/contract.mojo`, used by
+    `attnk/mask.mojo` and `attnk/rope.mojo`), rather than redeclaring it in every module the way
+    `sparse_numerics/csr.mojo` does. Resolving only same-file constants would force those files to
+    copy the literal, which is precisely the drift this check exists to prevent: two spellings of a
+    ceiling, one of them silently stale.
+
+    So an imported name resolves to the value in the module it is imported FROM. Same-file constants
+    still win, an unresolvable import is simply absent (the caller reports it unresolved as before),
+    and nothing outside the kernel tree is read.
+    """
+    source = Path(path)
+    if not source.is_file():
+        return {}
+
+    constants: dict[str, int] = {}
+    for module_path, names_blob in _FROM_IMPORT_RE.findall(text):
+        imported = {
+            name for name in re.findall(r"[A-Z_][A-Z0-9_]*", names_blob)
+        }
+        if not imported:
+            continue
+        parts = module_path.split(".")
+        for root in list(source.parents)[:4]:
+            candidate = root.joinpath(*parts).with_suffix(".mojo")
+            if not candidate.is_file():
+                continue
+            for name, value in _module_comptime_int_constants(candidate.resolve()):
+                if name in imported:
+                    constants[name] = value
+            break
     return constants
 
 
@@ -836,7 +895,9 @@ def parse_capability_blocks(text: str, *, path: str = "<text>") -> CapabilityPar
     if FENCE_SENTINEL not in text:
         return CapabilityParse(path=path, module=None, functions=(), issues=())
 
-    constants = _comptime_int_constants(text)
+    # Imported first, same-file second: a module that declares its own ceiling always wins.
+    constants = _imported_comptime_int_constants(text, path)
+    constants.update(_comptime_int_constants(text))
     module_spec: RuntimeCapabilitySpec | None = None
     function_specs: list[RuntimeCapabilitySpec] = []
     builder: _BlockBuilder | None = None

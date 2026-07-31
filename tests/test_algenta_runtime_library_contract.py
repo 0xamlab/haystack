@@ -85,7 +85,12 @@ def test_generated_contract_is_sanitized() -> None:
     for module in payload["modules"]:
         assert set(module) == {"name", "engine", "functions", "structs"}
         for function in module["functions"]:
-            assert set(function) == {"name", "params", "return_type"}
+            # `count_relations` is OPTIONAL and present only on functions carrying a declared
+            # `@capability` block (#429). It is part of the shipped contract on purpose — an SDK
+            # needs the count/list relation to reject an aborting call before it reaches the worker
+            # — so this test asserts the closed set of keys a function MAY have, not a fixed one.
+            assert set(function) <= {"name", "params", "return_type", "count_relations"}
+            assert {"name", "params", "return_type"} <= set(function)
             for param in function["params"]:
                 assert set(param) == {"name", "type", "has_default", "is_mut"}
         for struct in module["structs"]:

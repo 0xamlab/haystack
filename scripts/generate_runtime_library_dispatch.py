@@ -195,7 +195,13 @@ def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], str]]:
                     fields.append(
                         (field_match.group(1), _clean_field_type(field_match.group(2)))
                     )
-                if re.match(r"^\s*fn\s+__init__\s*\(", raw):
+                # `def` as well as `fn`. A `def __init__` is just as real a constructor, and missing
+                # it made the struct look like it had none: `Seq2Params` (13 fields, `def
+                # __init__(out self)`) resolved to "none", then picked up the emitter's "positional"
+                # default and produced a 13-argument call against a zero-argument constructor —
+                # `error: no matching function in initialization`, which broke the whole generated
+                # dispatch. It reads as "assign" once the constructor is seen.
+                if re.match(r"^\s*(?:fn|def)\s+__init__\s*\(", raw):
                     has_init = True
                     sig = stripped
                     k = i
@@ -214,6 +220,27 @@ def _parse_struct_defs(path) -> dict[str, tuple[list[tuple[str, str]], str]]:
         result[name] = (fields, construction)
     return result
 
+
+def _require_construction(strategy: str | None, name: str, site: str) -> str:
+    """Resolve a struct's construction strategy, refusing to guess when it is unknown.
+
+    This used to default to "positional", which is the single most dangerous guess available: an
+    unparsed struct would be emitted as `Name(field_0, ..., field_n)` against a constructor that may
+    not exist, and the result is a generated file that does not compile. `Seq2Params` hit exactly
+    that (see `_parse_struct_defs`), and it reached main because CI compiles a *filtered* dispatch
+    with the catalog excluded, so nothing ever type-checked the emitted call.
+
+    Measured, the default fired zero times across all 535 modules — so failing here costs nothing
+    today and converts the next parser gap from a silent miscompile into a generation-time error
+    naming the struct.
+    """
+    if strategy is None:
+        raise SystemExit(
+            f"cannot determine how to construct struct {name!r} (at {site}). The struct parser did "
+            f"not recognise its constructors, and guessing would emit code that does not compile. "
+            f"Teach _parse_struct_defs about it, or exclude the functions that use it."
+        )
+    return strategy
 
 def _register_type(type_name: str, collected: set[str]) -> None:
     collected.add(type_name)
@@ -350,7 +377,9 @@ def _emit_struct_parse_function(
             f"{INDENT}var field_{index} = {_parse_fn_name(field.typ)}(json_array_get(values_json, {index}))"
         )
 
-    construction = struct_construction.get(type_name, "positional")
+    construction = _require_construction(
+        struct_construction.get(type_name), type_name, "struct parse emitter"
+    )
     if construction == "assign":
         # The struct has no field-ordered constructor, only `__init__(out self)`.
         # Default-construct, then assign each decoded field.
@@ -682,8 +711,8 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
                         for fname, ftyp in module_struct_fields.get((module, type_name), [])
                     ),
                 )
-                struct_construction[alias] = module_struct_construction.get(
-                    (module, type_name), "positional"
+                struct_construction[alias] = _require_construction(
+                    module_struct_construction.get((module, type_name)), type_name, f"alias in {module}"
                 )
             return alias
         if type_name in struct_specs or type_name in alias_imports:
@@ -698,8 +727,8 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
                     ),
                 )
                 struct_origin[type_name] = mod
-                struct_construction[type_name] = module_struct_construction.get(
-                    (mod, nm), "positional"
+                struct_construction[type_name] = _require_construction(
+                    module_struct_construction.get((mod, nm)), nm, f"origin {mod}"
                 )
                 break
         return type_name
