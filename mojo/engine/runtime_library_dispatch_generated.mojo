@@ -3288,6 +3288,25 @@ from loss_functions import (
     label_smoothing_loss as _loss_functions__label_smoothing_loss,
 )
 
+from lossk.contract import (
+    loss_status_name as _lossk_contract__loss_status_name,
+    loss_logit_cells as _lossk_contract__loss_logit_cells,
+    loss_chunk_check as _lossk_contract__loss_chunk_check,
+    loss_work_fits as _lossk_contract__loss_work_fits,
+    loss_dims_check as _lossk_contract__loss_dims_check,
+    loss_targets_in_range as _lossk_contract__loss_targets_in_range,
+    loss_scalars_ok as _lossk_contract__loss_scalars_ok,
+    loss_tol_for as _lossk_contract__loss_tol_for,
+)
+
+from lossk.cross_entropy import (
+    ce_peak_logit_cells as _lossk_cross_entropy__ce_peak_logit_cells,
+    ce_from_logits_flat as _lossk_cross_entropy__ce_from_logits_flat,
+    fused_linear_ce_flat as _lossk_cross_entropy__fused_linear_ce_flat,
+    fused_linear_ce_bwd_flat as _lossk_cross_entropy__fused_linear_ce_bwd_flat,
+    ce_chunk_invariance_flat as _lossk_cross_entropy__ce_chunk_invariance_flat,
+)
+
 from lottery import (
     combinations as _lottery__combinations,
     permutations as _lottery__permutations,
@@ -7238,6 +7257,13 @@ from logging.logger import (
     Logger,
 )
 
+from lossk.cross_entropy import (
+    CeAgreement,
+    CeGrad,
+    CeMemory,
+    CeOut,
+)
+
 from metrics_agg import (
     Histogram,
     MetricsCounter,
@@ -9036,6 +9062,62 @@ fn _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_ke
 fn _to_json_candidatetable_vector_kernels_table(value: CandidateTable__vector_kernels_table) raises -> String:
     var result = String("{\"__algenta_struct\":\"CandidateTable\",\"v\":[")
     result += _to_json_list_candidateentry_vector_kernels_table(value.entries)
+    result += "]}"
+    return result
+
+fn _to_json_ceagreement(value: CeAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CeAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_cegrad(value: CeGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CeGrad\",\"v\":[")
+    result += _to_json_list_float64(value.d_hidden)
+    result += ","
+    result += _to_json_list_float64(value.d_weight)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.d_model)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_cememory(value: CeMemory) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CeMemory\",\"v\":[")
+    result += _to_json_float64(value.chunked_cells)
+    result += ","
+    result += _to_json_float64(value.materialized_cells)
+    result += ","
+    result += _to_json_float64(value.ratio)
+    result += ","
+    result += _to_json_int(value.n_chunks)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_ceout(value: CeOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CeOut\",\"v\":[")
+    result += _to_json_float64(value.mean_loss)
+    result += ","
+    result += _to_json_float64(value.sum_loss)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.peak_logit_cells)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -69611,6 +69693,269 @@ fn _dispatch_loss_functions(function_name: String, args_array: String) raises ->
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module loss_functions."
+    )
+
+fn _dispatch_lossk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "loss_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _lossk_contract__loss_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_logit_cells":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _lossk_contract__loss_logit_cells(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "lossk.contract.loss_logit_cells produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_logit_cells."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_logit_cells expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_chunk_check":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _lossk_contract__loss_chunk_check(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_chunk_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_chunk_check expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_work_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _lossk_contract__loss_work_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_work_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_dims_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _lossk_contract__loss_dims_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_dims_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_targets_in_range":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _lossk_contract__loss_targets_in_range(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_targets_in_range."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_targets_in_range expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_scalars_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _lossk_contract__loss_scalars_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_scalars_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_scalars_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "loss_tol_for":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _lossk_contract__loss_tol_for(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "lossk.contract.loss_tol_for produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.contract.loss_tol_for."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.contract.loss_tol_for expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module lossk.contract."
+    )
+
+fn _dispatch_lossk__cross_entropy(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "ce_peak_logit_cells":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _lossk_cross_entropy__ce_peak_logit_cells(arg_0, arg_1, arg_2)
+                var result_json = _to_json_cememory(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.cross_entropy.ce_peak_logit_cells."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.cross_entropy.ce_peak_logit_cells expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ce_from_logits_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _lossk_cross_entropy__ce_from_logits_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ceout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.cross_entropy.ce_from_logits_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.cross_entropy.ce_from_logits_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fused_linear_ce_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _lossk_cross_entropy__fused_linear_ce_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_ceout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.cross_entropy.fused_linear_ce_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.cross_entropy.fused_linear_ce_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fused_linear_ce_bwd_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _lossk_cross_entropy__fused_linear_ce_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_cegrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.cross_entropy.fused_linear_ce_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.cross_entropy.fused_linear_ce_bwd_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ce_chunk_invariance_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _lossk_cross_entropy__ce_chunk_invariance_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_ceagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for lossk.cross_entropy.ce_chunk_invariance_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function lossk.cross_entropy.ce_chunk_invariance_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module lossk.cross_entropy."
     )
 
 fn _dispatch_lottery(function_name: String, args_array: String) raises -> String:
@@ -133134,6 +133479,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_lora_adapters(function_name, args_array)
     if module_name == "loss_functions":
         return _dispatch_loss_functions(function_name, args_array)
+    if module_name == "lossk.contract":
+        return _dispatch_lossk__contract(function_name, args_array)
+    if module_name == "lossk.cross_entropy":
+        return _dispatch_lossk__cross_entropy(function_name, args_array)
     if module_name == "lottery":
         return _dispatch_lottery(function_name, args_array)
     if module_name == "magnetism":

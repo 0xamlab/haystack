@@ -78,6 +78,12 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     # must be vocab*d_model long. `[1,2,3,4,5]` against vocab=5 is an off-by-one on the last id,
     # and `weight[24]` from a 5-element list is the abort the plan flags as most likely.
     "_lf24_embed6x4": [float(i) for i in range(24)],
+    # lossk projects hidden -> vocab, so it needs a hidden buffer AND a weight table whose
+    # shapes agree through d_model. 2 tokens x 3 dims against a 4-word vocabulary: hidden is 6,
+    # weight is 12, and the targets index inside 4.
+    "_lf6_hidden2x3": [0.5, -0.6, 0.7, -0.4, 0.3, 0.9],
+    "_lf12_vocab4x3": [0.2, -0.3, 0.5, 0.7, 0.1, -0.4, -0.6, 0.8, 0.25, 0.35, -0.15, 0.45],
+    "_li2_targets": [2, 0],
     "_li4_ids": [2, 0, 2, 5],
     "_lf48_video3x4x4": (
         [10.0 for _ in range(16)]
@@ -237,6 +243,47 @@ _RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    # ── lossk ─────────────────────────────────────────────────────────────────────────
+    # The chunk is a MEMORY parameter, so the suite's `5` would be both larger than the batch and
+    # meaningless; it is set to 1 here, the smallest legal value, which also exercises the
+    # multi-chunk loop rather than the single-chunk shortcut.
+    ("lossk.cross_entropy", "fused_linear_ce_flat"): [
+        _SAMPLE_VARIABLES["_lf6_hidden2x3"],
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        _SAMPLE_VARIABLES["_li2_targets"],
+        2,
+        3,
+        4,
+        1,
+    ],
+    ("lossk.cross_entropy", "fused_linear_ce_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf6_hidden2x3"],
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        _SAMPLE_VARIABLES["_li2_targets"],
+        2,
+        3,
+        4,
+    ],
+    ("lossk.cross_entropy", "ce_chunk_invariance_flat"): [
+        _SAMPLE_VARIABLES["_lf6_hidden2x3"],
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        _SAMPLE_VARIABLES["_li2_targets"],
+        2,
+        3,
+        4,
+    ],
+    # Logits are already [n_tok][vocab] here, so the 12-element table doubles as 3 tokens x 4 classes.
+    ("lossk.cross_entropy", "ce_from_logits_flat"): [
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        _SAMPLE_VARIABLES["_li2_targets"],
+        2,
+        4,
+    ],
+    ("lossk.contract", "loss_targets_in_range"): [
+        _SAMPLE_VARIABLES["_li2_targets"],
+        2,
+        4,
+    ],
     # ── mlpk ──────────────────────────────────────────────────────────────────────────
     # Gated activations take two projections of the SAME shape, so one 8-element list covers both at
     # 2 tokens x 4 ff-width. The activation selector is passed explicitly — there is no default, and
