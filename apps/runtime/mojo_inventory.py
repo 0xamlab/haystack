@@ -16,7 +16,14 @@ DEFAULT_BENCHMARK_MOJO_DIR = _PROJECT_ROOT / "benchmarks" / "mojo_benchmarks"
 DEFAULT_RUNTIME_LIBRARY_CACHE = (
     _PROJECT_ROOT / ".cache" / "algenta" / "runtime_library_inventory.json"
 )
-_RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION = 7
+# Bump this whenever the PARSE changes shape, not only when the cached record's fields do.
+# The cache fingerprint is built from source mtimes alone, so a parser fix is invisible to it:
+# with a warm cache the old parse is replayed and the fix silently does nothing. That is how
+# the nested-closure fix below first appeared to work while the regenerated dispatch still
+# imported `band` -- the artifacts came from the cache, not the parser.
+# 7 -> 8: module-level functions must start at column 0, so nested closures are no longer
+# discovered (`gemm.blocked.band`, `gemm.blocked.gemv_band`, `gemm.quantized.nf4_band`).
+_RUNTIME_LIBRARY_CACHE_SCHEMA_VERSION = 8
 
 _IMPORT_RE = re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+", re.MULTILINE)
 _FUNCTION_RE = re.compile(r"^\s*(?:fn|def)\s+([A-Za-z][A-Za-z0-9_]*)\s*\(")
@@ -347,6 +354,31 @@ def _parse_runtime_function_specs(path: Path) -> tuple[RuntimeFunctionSpec, ...]
             delimiter = '"""' if stripped.startswith('"""') else "'''"
             if stripped.count(delimiter) % 2 == 1:
                 docstring_delimiter = delimiter
+            index += 1
+            continue
+
+        # Matching against `stripped` throws the indentation away, so a NESTED function is
+        # indistinguishable from a module-level one. A module-level Mojo function starts at
+        # column 0; anything indented is a struct method or a `@parameter fn ... capturing:`
+        # closure inside another function's body, and neither is importable by name.
+        #
+        # Struct methods took `self`, which `_parse_param_specs` rejects, so they never reached
+        # the contract and the missing check went unnoticed. A `parallelize` worker closure is
+        # what slips through: `(tid: Int)` is fully marshalable, so the generated dispatch
+        # emitted `from gemm.blocked import band` for a symbol the module does not export, which
+        # does not compile. That put `make inventory-check` permanently red while
+        # `make inventory-refresh`, its own documented remedy, produced the broken artifact.
+        #
+        # Four exist in the tree, and both spellings count -- `fn ... capturing:` and a plain
+        # nested `def`:
+        #   gemm/blocked.mojo:229   fn band(tid: Int) capturing:
+        #   gemm/blocked.mojo:349   fn gemv_band(tid: Int) capturing:
+        #   gemm/quantized.mojo:203 fn nf4_band(tid: Int) capturing:
+        #   seq2_trainer.mojo:1007  def worker(tid: Int):
+        # The last one has been in the shipped contract and dispatch since long before the
+        # others, so the contract advertised a callable that cannot be imported. Nothing caught
+        # it because CI compiles FILTERED shards, never the whole dispatch.
+        if lines[index][:1].isspace():
             index += 1
             continue
 

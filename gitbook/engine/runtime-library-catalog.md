@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **524 modules** and **5261 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **530 modules** and **5305 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -55,7 +55,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-24 modules.
+25 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -66,6 +66,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `config.yaml_parser` | 5 |
 | `constraint` | 8 |
 | `decision_ml_fusion` | 10 |
+| `gemm.quantized` | 4 |
 | `gradient_descent` | 10 |
 | `inference_cost_latency` | 11 |
 | `inference_engine` | 10 |
@@ -79,14 +80,14 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `optimizer_full` | 10 |
 | `quantization` | 10 |
 | `quantization_stack` | 10 |
-| `seq2_trainer` | 11 |
+| `seq2_trainer` | 10 |
 | `seq_training` | 4 |
 | `state_space_models` | 10 |
 | `training_stability` | 10 |
 
 ## Tensors & linear algebra
 
-16 modules.
+19 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -99,6 +100,9 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `tensor` | 29 |
 | `tensor2d` | 11 |
 | `tensor_ops` | 10 |
+| `tensorx.contract` | 6 |
+| `tensorx.dtype` | 14 |
+| `tensorx.pack` | 12 |
 | `time_series_decompose` | 9 |
 | `vector_kernels.batch_ranker` | 1 |
 | `vector_kernels.dot` | 4 |
@@ -293,7 +297,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-346 modules.
+348 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -418,6 +422,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `game_theory` | 8 |
 | `gaussian_process` | 5 |
 | `gbdt` | 4 |
+| `gemm.blocked` | 4 |
+| `gemm.contract` | 5 |
 | `generation_loop` | 10 |
 | `genomics` | 10 |
 | `glaciology` | 10 |

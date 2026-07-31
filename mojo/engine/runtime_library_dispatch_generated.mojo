@@ -2212,6 +2212,28 @@ from gbdt import (
     gbdt_n_nodes as _gbdt__gbdt_n_nodes,
 )
 
+from gemm.blocked import (
+    gemm_tile_plan as _gemm_blocked__gemm_tile_plan,
+    sgemm_flat as _gemm_blocked__sgemm_flat,
+    gemv_flat as _gemm_blocked__gemv_flat,
+    gemm_reference_delta_flat as _gemm_blocked__gemm_reference_delta_flat,
+)
+
+from gemm.contract import (
+    gemm_status_name as _gemm_contract__gemm_status_name,
+    gemm_backend_name as _gemm_contract__gemm_backend_name,
+    gemm_work_fits as _gemm_contract__gemm_work_fits,
+    gemm_dims_check as _gemm_contract__gemm_dims_check,
+    gemm_scalars_ok as _gemm_contract__gemm_scalars_ok,
+)
+
+from gemm.quantized import (
+    gemv_nf4_flat as _gemm_quantized__gemv_nf4_flat,
+    gemm_nf4_flat as _gemm_quantized__gemm_nf4_flat,
+    gemv_int_flat as _gemm_quantized__gemv_int_flat,
+    quantized_gemv_golden_delta as _gemm_quantized__quantized_gemv_golden_delta,
+)
+
 from generation_loop import (
     temperature_logit_scale as _generation_loop__temperature_logit_scale,
     top_k_accept as _generation_loop__top_k_accept,
@@ -5394,7 +5416,6 @@ from seq2_trainer import (
     seq2_forward as _seq2_trainer__seq2_forward,
     seq2_loss as _seq2_trainer__seq2_loss,
     seq2_grad as _seq2_trainer__seq2_grad,
-    worker as _seq2_trainer__worker,
     seq2_train_workers as _seq2_trainer__seq2_train_workers,
     seq2_train as _seq2_trainer__seq2_train,
     seq2_train_scalar as _seq2_trainer__seq2_train_scalar,
@@ -6128,6 +6149,47 @@ from tensor_ops import (
     tensor_norm_contribution as _tensor_ops__tensor_norm_contribution,
     softmax_stable_element as _tensor_ops__softmax_stable_element,
     tensor_dot_contribution as _tensor_ops__tensor_dot_contribution,
+)
+
+from tensorx.contract import (
+    tx_status_name as _tensorx_contract__tx_status_name,
+    tx_finite as _tensorx_contract__tx_finite,
+    tx_count_ok as _tensorx_contract__tx_count_ok,
+    tx_all_finite as _tensorx_contract__tx_all_finite,
+    tx_dims_fit as _tensorx_contract__tx_dims_fit,
+    tx_shape_ok as _tensorx_contract__tx_shape_ok,
+)
+
+from tensorx.dtype import (
+    dtx_is_supported as _tensorx_dtype__dtx_is_supported,
+    dtx_dtype_name as _tensorx_dtype__dtx_dtype_name,
+    dtx_dtype_from_name as _tensorx_dtype__dtx_dtype_from_name,
+    dtx_bits as _tensorx_dtype__dtx_bits,
+    dtx_bytes_per_1024 as _tensorx_dtype__dtx_bytes_per_1024,
+    dtx_is_float as _tensorx_dtype__dtx_is_float,
+    dtx_is_sub_byte as _tensorx_dtype__dtx_is_sub_byte,
+    dtx_eps as _tensorx_dtype__dtx_eps,
+    dtx_max_finite as _tensorx_dtype__dtx_max_finite,
+    dtx_accum_dtype as _tensorx_dtype__dtx_accum_dtype,
+    dtx_round_trip as _tensorx_dtype__dtx_round_trip,
+    dtx_bf16_frozen_delta as _tensorx_dtype__dtx_bf16_frozen_delta,
+    dtx_tol_for as _tensorx_dtype__dtx_tol_for,
+    dtx_round_trip_list as _tensorx_dtype__dtx_round_trip_list,
+)
+
+from tensorx.pack import (
+    nf4_levels as _tensorx_pack__nf4_levels,
+    calibrate_absmax as _tensorx_pack__calibrate_absmax,
+    calibrate_percentile as _tensorx_pack__calibrate_percentile,
+    quantize_blockwise as _tensorx_pack__quantize_blockwise,
+    dequantize_blockwise as _tensorx_pack__dequantize_blockwise,
+    quantize_nf4 as _tensorx_pack__quantize_nf4,
+    dequantize_nf4 as _tensorx_pack__dequantize_nf4,
+    pack_int4 as _tensorx_pack__pack_int4,
+    unpack_int4 as _tensorx_pack__unpack_int4,
+    double_quant_scales as _tensorx_pack__double_quant_scales,
+    quant_error_report as _tensorx_pack__quant_error_report,
+    int4_error_vs_frozen as _tensorx_pack__int4_error_vs_frozen,
 )
 
 from text.column_scorer import (
@@ -6961,6 +7023,17 @@ from gbdt import (
     GBDTModel,
 )
 
+from gemm.blocked import (
+    GemmResult,
+    RefDelta,
+    TilePlan,
+)
+
+from gemm.quantized import (
+    QDelta,
+    QGemmResult,
+)
+
 from genetic import (
     GAConfig,
     Individual,
@@ -7336,6 +7409,18 @@ from tensor import (
 
 from tensor2d import (
     Matrix2D,
+)
+
+from tensorx.dtype import (
+    DtypeCast,
+    TxTolerance,
+)
+
+from tensorx.pack import (
+    BlockQuant,
+    DoubleQuant,
+    PackedNibbles,
+    QuantError,
 )
 
 from token_bucket import (
@@ -8581,6 +8666,20 @@ fn _to_json_bindingreport(value: BindingReport) -> String:
     result += "]}"
     return result
 
+fn _to_json_blockquant(value: BlockQuant) -> String:
+    var result = String("{\"__algenta_struct\":\"BlockQuant\",\"v\":[")
+    result += _to_json_list_int(value.codes)
+    result += ","
+    result += _to_json_list_float64(value.scales)
+    result += ","
+    result += _to_json_int(value.n_blocks)
+    result += ","
+    result += _to_json_int(value.block)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_bool(value: Bool) -> String:
     return "true" if value else "false"
 
@@ -9170,6 +9269,36 @@ fn _to_json_dominancecheck(value: DominanceCheck) -> String:
     result += "]}"
     return result
 
+fn _to_json_doublequant(value: DoubleQuant) -> String:
+    var result = String("{\"__algenta_struct\":\"DoubleQuant\",\"v\":[")
+    result += _to_json_list_int(value.scale_codes)
+    result += ","
+    result += _to_json_list_float64(value.outer_scales)
+    result += ","
+    result += _to_json_int(value.n_outer)
+    result += ","
+    result += _to_json_int(value.outer_block)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_dtypecast(value: DtypeCast) -> String:
+    var result = String("{\"__algenta_struct\":\"DtypeCast\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_int(value.n_overflow)
+    result += ","
+    result += _to_json_int(value.n_underflow)
+    result += ","
+    result += _to_json_int(value.n_nan)
+    result += ","
+    result += _to_json_float64(value.max_abs_err)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_dualcheck(value: DualCheck) -> String:
     var result = String("{\"__algenta_struct\":\"DualCheck\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9557,6 +9686,22 @@ fn _to_json_grustate(value: GRUState) -> String:
     result += _to_json_list_float64(value.n_cand)
     result += ","
     result += _to_json_list_float64(value.s_reset)
+    result += "]}"
+    return result
+
+fn _to_json_gemmresult(value: GemmResult) -> String:
+    var result = String("{\"__algenta_struct\":\"GemmResult\",\"v\":[")
+    result += _to_json_list_float64(value.c)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.backend_used)
+    result += ","
+    result += _to_json_float64(value.flop_count)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -11031,6 +11176,16 @@ fn _to_json_pacestate(value: PaceState) -> String:
     result += "]}"
     return result
 
+fn _to_json_packednibbles(value: PackedNibbles) -> String:
+    var result = String("{\"__algenta_struct\":\"PackedNibbles\",\"v\":[")
+    result += _to_json_list_int(value.bytes)
+    result += ","
+    result += _to_json_int(value.n_values)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_pagerankresult(value: PageRankResult) -> String:
     var result = String("{\"__algenta_struct\":\"PageRankResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -11214,6 +11369,36 @@ fn _to_json_provenance(value: Provenance) -> String:
     result += _to_json_list_float64(value.fused_scores)
     result += ","
     result += _to_json_list_int(value.fused_positions)
+    result += "]}"
+    return result
+
+fn _to_json_qdelta(value: QDelta) -> String:
+    var result = String("{\"__algenta_struct\":\"QDelta\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_qgemmresult(value: QGemmResult) -> String:
+    var result = String("{\"__algenta_struct\":\"QGemmResult\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.backend_used)
+    result += ","
+    result += _to_json_float64(value.flop_count)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -11445,6 +11630,20 @@ fn _to_json_qrresult(value: QRResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_quanterror(value: QuantError) -> String:
+    var result = String("{\"__algenta_struct\":\"QuantError\",\"v\":[")
+    result += _to_json_float64(value.max_abs_err)
+    result += ","
+    result += _to_json_float64(value.mean_abs_err)
+    result += ","
+    result += _to_json_float64(value.rmse)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_rgb(value: RGB) -> String:
     var result = String("{\"__algenta_struct\":\"RGB\",\"v\":[")
     result += _to_json_float64(value.r)
@@ -11628,6 +11827,20 @@ fn _to_json_rcpspresult(value: RcpspResult) -> String:
     result += _to_json_list_int(value.order)
     result += ","
     result += _to_json_list_int(value.critical_ops)
+    result += "]}"
+    return result
+
+fn _to_json_refdelta(value: RefDelta) -> String:
+    var result = String("{\"__algenta_struct\":\"RefDelta\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -12774,6 +12987,20 @@ fn _to_json_testresult(value: TestResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_tileplan(value: TilePlan) -> String:
+    var result = String("{\"__algenta_struct\":\"TilePlan\",\"v\":[")
+    result += _to_json_int(value.tile_m)
+    result += ","
+    result += _to_json_int(value.tile_n)
+    result += ","
+    result += _to_json_int(value.tile_k)
+    result += ","
+    result += _to_json_float64(value.arithmetic_intensity)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_tokenbucket(value: TokenBucket) -> String:
     var result = String("{\"__algenta_struct\":\"TokenBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
@@ -12827,6 +13054,18 @@ fn _to_json_trie(value: Trie) -> String:
     result += _to_json_list_int(value.nodes_first_child)
     result += ","
     result += _to_json_list_int(value.nodes_next_sibling)
+    result += "]}"
+    return result
+
+fn _to_json_txtolerance(value: TxTolerance) -> String:
+    var result = String("{\"__algenta_struct\":\"TxTolerance\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_float64(value.relative_term)
+    result += ","
+    result += _to_json_float64(value.absolute_term)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -44712,6 +44951,284 @@ fn _dispatch_gbdt(function_name: String, args_array: String) raises -> String:
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module gbdt."
+    )
+
+fn _dispatch_gemm__blocked(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "gemm_tile_plan":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _gemm_blocked__gemm_tile_plan(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_tileplan(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.blocked.gemm_tile_plan."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.blocked.gemm_tile_plan expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sgemm_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_bool_token(json_array_get(args_array, 8))
+                var result = _gemm_blocked__sgemm_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_gemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.blocked.sgemm_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.blocked.sgemm_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemv_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _gemm_blocked__gemv_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_gemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.blocked.gemv_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.blocked.gemv_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_reference_delta_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _gemm_blocked__gemm_reference_delta_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_refdelta(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.blocked.gemm_reference_delta_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.blocked.gemm_reference_delta_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module gemm.blocked."
+    )
+
+fn _dispatch_gemm__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "gemm_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _gemm_contract__gemm_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.contract.gemm_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.contract.gemm_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_backend_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _gemm_contract__gemm_backend_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.contract.gemm_backend_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.contract.gemm_backend_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_work_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _gemm_contract__gemm_work_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.contract.gemm_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.contract.gemm_work_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_dims_check":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _gemm_contract__gemm_dims_check(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.contract.gemm_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.contract.gemm_dims_check expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_scalars_ok":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _gemm_contract__gemm_scalars_ok(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.contract.gemm_scalars_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.contract.gemm_scalars_ok expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module gemm.contract."
+    )
+
+fn _dispatch_gemm__quantized(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "gemv_nf4_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _gemm_quantized__gemv_nf4_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_qgemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.quantized.gemv_nf4_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.quantized.gemv_nf4_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_nf4_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _gemm_quantized__gemm_nf4_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_qgemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.quantized.gemm_nf4_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.quantized.gemm_nf4_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemv_int_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _gemm_quantized__gemv_int_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_qgemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.quantized.gemv_int_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.quantized.gemv_int_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantized_gemv_golden_delta":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _gemm_quantized__quantized_gemv_golden_delta(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_qdelta(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for gemm.quantized.quantized_gemv_golden_delta."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function gemm.quantized.quantized_gemv_golden_delta expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module gemm.quantized."
     )
 
 fn _dispatch_generation_loop(function_name: String, args_array: String) raises -> String:
@@ -90929,22 +91446,6 @@ fn _dispatch_seq2_trainer(function_name: String, args_array: String) raises -> S
             "invalid_arguments",
             "Function seq2_trainer.seq2_grad expected 6 arguments, received " + String(arg_count) + "."
         )
-    if function_name == "worker":
-        if arg_count == 1:
-            try:
-                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
-                _ = _seq2_trainer__worker(arg_0)
-                var result_json = "null"
-                return _success_json(result_json)
-            except:
-                return _error_json(
-                    "mojo_library_execution_failed",
-                    "Mojo library execution failed for seq2_trainer.worker."
-                )
-        return _error_json(
-            "invalid_arguments",
-            "Function seq2_trainer.worker expected 1 arguments, received " + String(arg_count) + "."
-        )
     if function_name == "seq2_train_workers":
         if arg_count == 16:
             try:
@@ -101921,6 +102422,571 @@ fn _dispatch_tensor_ops(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module tensor_ops."
     )
 
+fn _dispatch_tensorx__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tx_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_contract__tx_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _tensorx_contract__tx_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_count_ok":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_contract__tx_count_ok(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_count_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_count_ok expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_all_finite":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_contract__tx_all_finite(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_all_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_all_finite expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_dims_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_contract__tx_dims_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_dims_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_dims_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_ok":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_contract__tx_shape_ok(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_shape_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_shape_ok expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.contract."
+    )
+
+fn _dispatch_tensorx__dtype(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "dtx_is_supported":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_is_supported(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_is_supported."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_is_supported expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_dtype_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_dtype_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_dtype_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_dtype_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_dtype_from_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_dtype_from_name(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_dtype_from_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_dtype_from_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_bits":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_bits(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_bits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_bits expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_bytes_per_1024":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_bytes_per_1024(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_bytes_per_1024."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_bytes_per_1024 expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_is_float":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_is_float(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_is_float."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_is_float expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_is_sub_byte":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_is_sub_byte(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_is_sub_byte."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_is_sub_byte expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_eps":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_eps(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_eps."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_eps expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_max_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_max_finite(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_max_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_max_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_accum_dtype":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_accum_dtype(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_accum_dtype."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_accum_dtype expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_round_trip":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_dtype__dtx_round_trip(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_round_trip."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_round_trip expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_bf16_frozen_delta":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _tensorx_dtype__dtx_bf16_frozen_delta(arg_0)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_bf16_frozen_delta."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_bf16_frozen_delta expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_tol_for":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _tensorx_dtype__dtx_tol_for(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txtolerance(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_tol_for."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_tol_for expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dtx_round_trip_list":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_dtype__dtx_round_trip_list(arg_0, arg_1, arg_2)
+                var result_json = _to_json_dtypecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.dtype.dtx_round_trip_list."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.dtype.dtx_round_trip_list expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.dtype."
+    )
+
+fn _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "nf4_levels":
+        if arg_count == 0:
+            try:
+                var result = _tensorx_pack__nf4_levels()
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.nf4_levels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.nf4_levels expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calibrate_absmax":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_pack__calibrate_absmax(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.calibrate_absmax."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.calibrate_absmax expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calibrate_percentile":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _tensorx_pack__calibrate_percentile(arg_0, arg_1, arg_2)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.calibrate_percentile."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.calibrate_percentile expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantize_blockwise":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_pack__quantize_blockwise(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_blockquant(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.quantize_blockwise."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.quantize_blockwise expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dequantize_blockwise":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _tensorx_pack__dequantize_blockwise(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.dequantize_blockwise."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.dequantize_blockwise expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantize_nf4":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_pack__quantize_nf4(arg_0, arg_1, arg_2)
+                var result_json = _to_json_blockquant(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.quantize_nf4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.quantize_nf4 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dequantize_nf4":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_pack__dequantize_nf4(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.dequantize_nf4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.dequantize_nf4 expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pack_int4":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_pack__pack_int4(arg_0, arg_1)
+                var result_json = _to_json_packednibbles(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.pack_int4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.pack_int4 expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "unpack_int4":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_pack__unpack_int4(arg_0, arg_1)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.unpack_int4."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.unpack_int4 expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "double_quant_scales":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_pack__double_quant_scales(arg_0, arg_1, arg_2)
+                var result_json = _to_json_doublequant(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.double_quant_scales."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.double_quant_scales expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quant_error_report":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_pack__quant_error_report(arg_0, arg_1, arg_2)
+                var result_json = _to_json_quanterror(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.quant_error_report."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.quant_error_report expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "int4_error_vs_frozen":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _tensorx_pack__int4_error_vs_frozen(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.pack.int4_error_vs_frozen."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.pack.int4_error_vs_frozen expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.pack."
+    )
+
 fn _dispatch_text__column_scorer(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "score_token_overlap":
@@ -112216,6 +113282,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_gaussian_process(function_name, args_array)
     if module_name == "gbdt":
         return _dispatch_gbdt(function_name, args_array)
+    if module_name == "gemm.blocked":
+        return _dispatch_gemm__blocked(function_name, args_array)
+    if module_name == "gemm.contract":
+        return _dispatch_gemm__contract(function_name, args_array)
+    if module_name == "gemm.quantized":
+        return _dispatch_gemm__quantized(function_name, args_array)
     if module_name == "generation_loop":
         return _dispatch_generation_loop(function_name, args_array)
     if module_name == "genetic":
@@ -112800,6 +113872,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_tensor2d(function_name, args_array)
     if module_name == "tensor_ops":
         return _dispatch_tensor_ops(function_name, args_array)
+    if module_name == "tensorx.contract":
+        return _dispatch_tensorx__contract(function_name, args_array)
+    if module_name == "tensorx.dtype":
+        return _dispatch_tensorx__dtype(function_name, args_array)
+    if module_name == "tensorx.pack":
+        return _dispatch_tensorx__pack(function_name, args_array)
     if module_name == "text.column_scorer":
         return _dispatch_text__column_scorer(function_name, args_array)
     if module_name == "text.fuzzy":

@@ -142,6 +142,15 @@ jobs:
       - name: Verify generated docs references are current (no drift)
         run: make docs-check
 
+      # The kernel-inventory artifacts: the SDK-facing contract, the generated Mojo dispatch and
+      # the GitBook catalog. `make inventory-check` already existed but NOTHING ran it, and it was
+      # red on main -- the discovery pass published four nested `parallelize` closures as module
+      # functions, so the regenerated dispatch imported symbols that do not exist. CI never saw it
+      # because it compiles FILTERED shards, so a broken import only surfaces for whoever happens
+      # to build the shard that contains it. Gate the artifacts here instead of at build time.
+      - name: Verify kernel inventory artifacts are current (no drift)
+        run: make inventory-check
+
       # Start MinIO (object store) and wait for it + Dragonfly so the s3 / coordination integration
       # runs against ready backends. MinIO needs the `server /data` arg, which GitHub service
       # containers can't pass, so it's launched here via docker run.
