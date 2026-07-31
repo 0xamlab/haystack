@@ -454,8 +454,31 @@ the same way whether you reach it through a query or call the kernel directly.
 The engine holds one accumulator per group rather than every value in each group, so
 memory scales with the number of groups, not the number of rows.
 
+## Column encodings
+
+Two encodings sit under the query surface. Both are lossless — a decoded column equals the column
+that was encoded, asserted elementwise rather than by checksum.
+
+**Dictionary encoding** replaces a column of repeated labels with small integer codes plus one copy
+of each distinct value. It suits low-cardinality columns: statuses, categories, country codes.
+
+{% hint style="warning" %}
+It is not a general win, and the engine does not pretend otherwise. As distinct values approach the
+row count, the codes plus a dictionary holding every value cost **more** than the plain column — a
+measured sweep crosses over and ends up larger than where it started. A free-text or unique-identifier
+column should be left plain.
+{% endhint %}
+
+**Columnar buffers** move a batch as typed buffers rather than as rows of text, so a decode is a
+buffer copy per column instead of a parse per cell. Validity is a separate bitmap, so a null costs a
+bit rather than a token.
+
+Both are internal to how a batch travels; neither changes the results a query returns, and a plan
+written against rows keeps working unchanged.
+
 ## See also
 
+* [Reproducibility](reproducibility.md) — the canonical float form these encodings share
 * [Batched and chained execution](coarse-execution.md) — many kernel calls in one frame
 * [Runtime libraries](runtime-libraries.md) — calling a kernel directly
 * [Verify the bundled engine](bundled-runtime.md) — confirming what is installed

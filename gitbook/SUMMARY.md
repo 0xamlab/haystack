@@ -20,6 +20,7 @@
 * [Declared capabilities](engine/capabilities.md)
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)
+* [Reproducibility](engine/reproducibility.md)
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
 * [Optimization & decision programs](engine/optimization.md)
 * [Routing, scheduling & trade-offs](engine/optimization-heuristics.md)
