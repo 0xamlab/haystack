@@ -18,7 +18,7 @@
         bench-dist-accuracy bench-real-data test-mojo-engines test-mojo-malformed \
         gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check \
         verify-dispatch-compiles bench-runtime-batch bench-runtime-pipeline \
-        bench-runtime-session
+        bench-runtime-session bench-optimization
 
 # ─── Shell / PATH ──────────────────────────────────────────────────────────────
 SHELL := /bin/bash
@@ -905,3 +905,10 @@ rollback:
 ## Show this help message
 help:
 	@grep -E '^## ' Makefile | sed 's/## //' | column -t -s ':' | sort
+
+bench-optimization:
+	@if [ -d mojo_env ] && command -v pixi >/dev/null 2>&1; then \
+		cd mojo_env && pixi run mojo run -I../mojo/engine ../benchmarks/mojo_benchmarks/bench_optimization.mojo; \
+	else \
+		echo "❌ pixi/mojo_env not found. Run: make setup-mojo"; exit 1; \
+	fi

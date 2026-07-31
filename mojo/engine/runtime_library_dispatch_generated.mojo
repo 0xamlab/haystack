@@ -4014,6 +4014,105 @@ from optics import (
     numerical_aperture as _optics__numerical_aperture,
 )
 
+from optimization.assignment import (
+    assign_status_name as _optimization_assignment__assign_status_name,
+    assignment_solve as _optimization_assignment__assignment_solve,
+    assignment_solve_masked as _optimization_assignment__assignment_solve_masked,
+    greedy_assignment_flat as _optimization_assignment__greedy_assignment_flat,
+    assignment_cost_of as _optimization_assignment__assignment_cost_of,
+    assignment_dual_check as _optimization_assignment__assignment_dual_check,
+    assignment_dual_check_masked as _optimization_assignment__assignment_dual_check_masked,
+)
+
+from optimization.explain import (
+    explain_status_name as _optimization_explain__explain_status_name,
+    slackness_check as _optimization_explain__slackness_check,
+    binding_constraints as _optimization_explain__binding_constraints,
+    binding_constraints_default as _optimization_explain__binding_constraints_default,
+    infeasibility_core as _optimization_explain__infeasibility_core,
+    infeasibility_core_default as _optimization_explain__infeasibility_core_default,
+    objective_contributions as _optimization_explain__objective_contributions,
+    optimum_contributions as _optimization_explain__optimum_contributions,
+    optimum_contributions_default as _optimization_explain__optimum_contributions_default,
+    model_binding_constraints as _optimization_explain__model_binding_constraints,
+    model_infeasibility_core as _optimization_explain__model_infeasibility_core,
+    model_contributions as _optimization_explain__model_contributions,
+)
+
+from optimization.flow import (
+    flow_status_name as _optimization_flow__flow_status_name,
+    max_flow_dinic as _optimization_flow__max_flow_dinic,
+    min_cost_flow as _optimization_flow__min_cost_flow,
+    min_cost_max_flow as _optimization_flow__min_cost_max_flow,
+    flow_audit_flat as _optimization_flow__flow_audit_flat,
+    flow_network_check as _optimization_flow__flow_network_check,
+    edge_residuals as _optimization_flow__edge_residuals,
+    path_bottleneck as _optimization_flow__path_bottleneck,
+    cut_capacity_of as _optimization_flow__cut_capacity_of,
+    is_saturated as _optimization_flow__is_saturated,
+)
+
+from optimization.integer import (
+    milp_status_name as _optimization_integer__milp_status_name,
+    branch_choice as _optimization_integer__branch_choice,
+    milp_solve as _optimization_integer__milp_solve,
+    milp_solve_default as _optimization_integer__milp_solve_default,
+    milp_from_arenas as _optimization_integer__milp_from_arenas,
+    milp_knapsack as _optimization_integer__milp_knapsack,
+)
+
+from optimization.linear import (
+    lin_status_name as _optimization_linear__lin_status_name,
+    lp_status_name as _optimization_linear__lp_status_name,
+    linear_extract_flat as _optimization_linear__linear_extract_flat,
+    linear_form_value as _optimization_linear__linear_form_value,
+    lp_dual_objective as _optimization_linear__lp_dual_objective,
+    lp_solve as _optimization_linear__lp_solve,
+    lp_solve_default as _optimization_linear__lp_solve_default,
+    lp_rhs_ranges as _optimization_linear__lp_rhs_ranges,
+    lp_from_arenas as _optimization_linear__lp_from_arenas,
+)
+
+from optimization.model import (
+    model_status_name as _optimization_model__model_status_name,
+    var_kind_name as _optimization_model__var_kind_name,
+    constraint_sense_name as _optimization_model__constraint_sense_name,
+    has_lower_bound as _optimization_model__has_lower_bound,
+    has_upper_bound as _optimization_model__has_upper_bound,
+    has_warm_start as _optimization_model__has_warm_start,
+    var_flags_valid as _optimization_model__var_flags_valid,
+    model_op_arity as _optimization_model__model_op_arity,
+    is_model_op as _optimization_model__is_model_op,
+    model_finite as _optimization_model__model_finite,
+    integer_in_interval as _optimization_model__integer_in_interval,
+    minimization_value as _optimization_model__minimization_value,
+    sense_violation as _optimization_model__sense_violation,
+    opt_policy_new as _optimization_model__opt_policy_new,
+    default_policy as _optimization_model__default_policy,
+    policy_defect as _optimization_model__policy_defect,
+    opt_var as _optimization_model__opt_var,
+    opt_var_free as _optimization_model__opt_var_free,
+    opt_var_lower_bounded as _optimization_model__opt_var_lower_bounded,
+    opt_var_binary as _optimization_model__opt_var_binary,
+    opt_var_warm as _optimization_model__opt_var_warm,
+    arena_flat_defect as _optimization_model__arena_flat_defect,
+    arena_roundtrip as _optimization_model__arena_roundtrip,
+    linear_arena as _optimization_model__linear_arena,
+    expr_validate_flat as _optimization_model__expr_validate_flat,
+    expr_evaluate_flat as _optimization_model__expr_evaluate_flat,
+    check_variables as _optimization_model__check_variables,
+    variables_defect_flat as _optimization_model__variables_defect_flat,
+    variables_validate_flat as _optimization_model__variables_validate_flat,
+    project_point as _optimization_model__project_point,
+    project_point_flat as _optimization_model__project_point_flat,
+    warm_start_point as _optimization_model__warm_start_point,
+    flat_defect as _optimization_model__flat_defect,
+    model_validate as _optimization_model__model_validate,
+    model_evaluate as _optimization_model__model_evaluate,
+    model_objective as _optimization_model__model_objective,
+    linear_model_flat as _optimization_model__linear_model_flat,
+)
+
 from optimization_constrained import (
     eval_objective_c as _optimization_constrained__eval_objective_c,
     eval_constraint as _optimization_constrained__eval_constraint,
@@ -6909,6 +7008,56 @@ from ode import (
     ODEResult,
 )
 
+from optimization.assignment import (
+    Assignment,
+    CostReport,
+    DualCheck,
+    GreedyAssignment,
+)
+
+from optimization.explain import (
+    BindingReport,
+    InfeasibilityCore,
+    ObjectiveDecomposition,
+    SlacknessCheck,
+)
+
+from optimization.flow import (
+    FlowAudit,
+    FlowReport,
+    FlowScalar,
+    FlowVector,
+    MaxFlow,
+    MinCostFlow,
+)
+
+from optimization.integer import (
+    BranchChoice,
+    MILPResult,
+)
+
+from optimization.linear import (
+    FormValue,
+    LPMatrix,
+    LPSolution,
+    LinearForm,
+    RhsSensitivity,
+)
+
+from optimization.model import (
+    ArenaFlat,
+    ExprCheck,
+    LinearModel,
+    ModelEvaluation,
+    ModelFlat,
+    ModelValidation,
+    OptPolicy,
+    OptVar,
+    PointResult,
+    ScalarResult,
+    VarCheck,
+)
+
 from optimize import (
     LinRegResult,
     OptResult,
@@ -7467,6 +7616,65 @@ fn _parse_metricscounter_token(token: String) raises -> MetricsCounter:
     var field_1 = _parse_float64_token(json_array_get(values_json, 1))
     return MetricsCounter(field_0^, field_1^)
 
+fn _parse_modelflat_token(token: String) raises -> ModelFlat:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 28:
+        raise Error("Expected 28 fields for ModelFlat, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
+    var field_1 = _parse_list_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_list_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_list_float64_token(json_array_get(values_json, 4))
+    var field_5 = _parse_bool_token(json_array_get(values_json, 5))
+    var field_6 = _parse_int_token(json_array_get(values_json, 6))
+    var field_7 = _parse_list_int_token(json_array_get(values_json, 7))
+    var field_8 = _parse_list_float64_token(json_array_get(values_json, 8))
+    var field_9 = _parse_list_int_token(json_array_get(values_json, 9))
+    var field_10 = _parse_list_int_token(json_array_get(values_json, 10))
+    var field_11 = _parse_list_int_token(json_array_get(values_json, 11))
+    var field_12 = _parse_list_int_token(json_array_get(values_json, 12))
+    var field_13 = _parse_list_int_token(json_array_get(values_json, 13))
+    var field_14 = _parse_list_int_token(json_array_get(values_json, 14))
+    var field_15 = _parse_list_int_token(json_array_get(values_json, 15))
+    var field_16 = _parse_list_float64_token(json_array_get(values_json, 16))
+    var field_17 = _parse_list_int_token(json_array_get(values_json, 17))
+    var field_18 = _parse_list_float64_token(json_array_get(values_json, 18))
+    var field_19 = _parse_list_int_token(json_array_get(values_json, 19))
+    var field_20 = _parse_list_int_token(json_array_get(values_json, 20))
+    var field_21 = _parse_list_int_token(json_array_get(values_json, 21))
+    var field_22 = _parse_list_int_token(json_array_get(values_json, 22))
+    var field_23 = _parse_int_token(json_array_get(values_json, 23))
+    var field_24 = _parse_float64_token(json_array_get(values_json, 24))
+    var field_25 = _parse_float64_token(json_array_get(values_json, 25))
+    var field_26 = _parse_float64_token(json_array_get(values_json, 26))
+    var field_27 = _parse_float64_token(json_array_get(values_json, 27))
+    return ModelFlat(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^, field_11^, field_12^, field_13^, field_14^, field_15^, field_16^, field_17^, field_18^, field_19^, field_20^, field_21^, field_22^, field_23^, field_24^, field_25^, field_26^, field_27^)
+
+fn _parse_optpolicy_token(token: String) raises -> OptPolicy:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 5:
+        raise Error("Expected 5 fields for OptPolicy, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_float64_token(json_array_get(values_json, 2))
+    var field_3 = _parse_float64_token(json_array_get(values_json, 3))
+    var field_4 = _parse_float64_token(json_array_get(values_json, 4))
+    return OptPolicy(field_0^, field_1^, field_2^, field_3^, field_4^)
+
+fn _parse_optvar_token(token: String) raises -> OptVar:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 8:
+        raise Error("Expected 8 fields for OptVar, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_string_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_float64_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_bool_token(json_array_get(values_json, 4))
+    var field_5 = _parse_bool_token(json_array_get(values_json, 5))
+    var field_6 = _parse_bool_token(json_array_get(values_json, 6))
+    var field_7 = _parse_float64_token(json_array_get(values_json, 7))
+    return OptVar(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^)
+
 fn _parse_pcaresult_token(token: String) raises -> PCAResult:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
@@ -7963,6 +8171,15 @@ fn _parse_list_lz77token_token(token: String) raises -> List[LZ77Token]:
         result.append(_parse_lz77token_token(_elem_tokens[_i]))
     return result^
 
+fn _parse_list_optvar_token(token: String) raises -> List[OptVar]:
+    var wrapped = "{\"v\":" + token + "}"
+    var array_json = json_get_array(wrapped, "v")
+    var _elem_tokens = json_array_tokens(array_json)
+    var result = List[OptVar]()
+    for _i in range(len(_elem_tokens)):
+        result.append(_parse_optvar_token(_elem_tokens[_i]))
+    return result^
+
 fn _parse_list_point_token(token: String) raises -> List[Point]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
@@ -8082,6 +8299,70 @@ fn _to_json_arfit(value: ARFit) -> String:
     result += "]}"
     return result
 
+fn _to_json_arenaflat(value: ArenaFlat) -> String:
+    var result = String("{\"__algenta_struct\":\"ArenaFlat\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.root)
+    result += ","
+    result += _to_json_list_int(value.ops)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_int(value.var_idx)
+    result += ","
+    result += _to_json_list_int(value.lefts)
+    result += ","
+    result += _to_json_list_int(value.rights)
+    result += ","
+    result += _to_json_list_int(value.extras)
+    result += "]}"
+    return result
+
+fn _to_json_assignment(value: Assignment) -> String:
+    var result = String("{\"__algenta_struct\":\"Assignment\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.perfect)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.n_assigned)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.total_cost)
+    result += ","
+    result += _to_json_list_int(value.col_of_row)
+    result += ","
+    result += _to_json_list_int(value.row_of_col)
+    result += ","
+    result += _to_json_list_float64(value.u)
+    result += ","
+    result += _to_json_list_float64(value.v)
+    result += ","
+    result += _to_json_bool(value.dual_certified)
+    result += ","
+    result += _to_json_float64(value.max_dual_violation)
+    result += ","
+    result += _to_json_float64(value.max_tight_gap)
+    result += ","
+    result += _to_json_bool(value.has_greedy_cost)
+    result += ","
+    result += _to_json_float64(value.greedy_cost)
+    result += ","
+    result += _to_json_float64(value.improvement)
+    result += ","
+    result += _to_json_int(value.warm_started)
+    result += ","
+    result += _to_json_int(value.augmentations)
+    result += "]}"
+    return result
+
 fn _to_json_betweennessresult(value: BetweennessResult) -> String:
     var result = String("{\"__algenta_struct\":\"BetweennessResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -8106,6 +8387,54 @@ fn _to_json_betweennessresult(value: BetweennessResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_bindingreport(value: BindingReport) -> String:
+    var result = String("{\"__algenta_struct\":\"BindingReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_float64(value.dual_objective)
+    result += ","
+    result += _to_json_float64(value.duality_gap)
+    result += ","
+    result += _to_json_bool(value.strong_duality)
+    result += ","
+    result += _to_json_bool(value.complementary)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_int(value.n_binding)
+    result += ","
+    result += _to_json_int(value.n_degenerate)
+    result += ","
+    result += _to_json_int(value.cs_row)
+    result += ","
+    result += _to_json_float64(value.cs_gap)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += ","
+    result += _to_json_list_float64(value.duals)
+    result += ","
+    result += _to_json_list_float64(value.slack)
+    result += ","
+    result += _to_json_list_float64(value.activity)
+    result += ","
+    result += _to_json_list_bool(value.binding)
+    result += ","
+    result += _to_json_list_int(value.binding_rows)
+    result += ","
+    result += _to_json_list_float64(value.binding_duals)
+    result += ","
+    result += _to_json_list_int(value.binding_senses)
+    result += ","
+    result += _to_json_list_float64(value.binding_rhs)
+    result += "]}"
+    return result
+
 fn _to_json_bool(value: Bool) -> String:
     return "true" if value else "false"
 
@@ -8118,6 +8447,28 @@ fn _to_json_bracket(value: Bracket) -> String:
     result += _to_json_int(value.min_budget)
     result += ","
     result += _to_json_list_halvinground(value.rounds)
+    result += "]}"
+    return result
+
+fn _to_json_branchchoice(value: BranchChoice) -> String:
+    var result = String("{\"__algenta_struct\":\"BranchChoice\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_branch)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_float64(value.fractionality)
+    result += ","
+    result += _to_json_float64(value.floor_bound)
+    result += ","
+    result += _to_json_float64(value.ceil_bound)
+    result += ","
+    result += _to_json_int(value.n_fractional)
+    result += ","
+    result += _to_json_int(value.n_discrete)
     result += "]}"
     return result
 
@@ -8495,6 +8846,24 @@ fn _to_json_corrresult(value: CorrResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_costreport(value: CostReport) -> String:
+    var result = String("{\"__algenta_struct\":\"CostReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.n_assigned)
+    result += ","
+    result += _to_json_bool(value.perfect)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.total_cost)
+    result += "]}"
+    return result
+
 fn _to_json_countminsketch(value: CountMinSketch) -> String:
     var result = String("{\"__algenta_struct\":\"CountMinSketch\",\"v\":[")
     result += _to_json_list_list_int(value.table)
@@ -8569,6 +8938,34 @@ fn _to_json_diffci(value: DiffCI) -> String:
     result += "]}"
     return result
 
+fn _to_json_dualcheck(value: DualCheck) -> String:
+    var result = String("{\"__algenta_struct\":\"DualCheck\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.certified)
+    result += ","
+    result += _to_json_bool(value.dual_feasible)
+    result += ","
+    result += _to_json_bool(value.slack_tight)
+    result += ","
+    result += _to_json_int(value.n_pairs_checked)
+    result += ","
+    result += _to_json_int(value.n_tight)
+    result += ","
+    result += _to_json_int(value.n_idle_nonzero)
+    result += ","
+    result += _to_json_int(value.n_agent_sign_violations)
+    result += ","
+    result += _to_json_float64(value.max_dual_violation)
+    result += ","
+    result += _to_json_float64(value.max_tight_gap)
+    result += ","
+    result += _to_json_bool(value.has_dual_objective)
+    result += ","
+    result += _to_json_float64(value.dual_objective)
+    result += "]}"
+    return result
+
 fn _to_json_eigresult2x2(value: EigResult2x2) -> String:
     var result = String("{\"__algenta_struct\":\"EigResult2x2\",\"v\":[")
     result += _to_json_float64(value.lambda1)
@@ -8635,6 +9032,22 @@ fn _to_json_event(value: Event) -> String:
     result += "]}"
     return result
 
+fn _to_json_exprcheck(value: ExprCheck) -> String:
+    var result = String("{\"__algenta_struct\":\"ExprCheck\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.root)
+    result += ","
+    result += _to_json_int(value.n_var_refs)
+    result += ","
+    result += _to_json_string(value.message)
+    result += "]}"
+    return result
+
 fn _to_json_factorvector(value: FactorVector) -> String:
     var result = String("{\"__algenta_struct\":\"FactorVector\",\"v\":[")
     result += _to_json_int(value.status)
@@ -8652,6 +9065,92 @@ fn _to_json_float32(value: Float32) -> String:
 
 fn _to_json_float64(value: Float64) -> String:
     return String(value)
+
+fn _to_json_flowaudit(value: FlowAudit) -> String:
+    var result = String("{\"__algenta_struct\":\"FlowAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.feasible)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.cost)
+    result += ","
+    result += _to_json_int(value.capacity_violations)
+    result += ","
+    result += _to_json_int(value.conservation_violations)
+    result += ","
+    result += _to_json_float64(value.worst_capacity_violation)
+    result += ","
+    result += _to_json_float64(value.worst_conservation_violation)
+    result += ","
+    result += _to_json_int(value.first_bad_edge)
+    result += ","
+    result += _to_json_int(value.first_bad_node)
+    result += "]}"
+    return result
+
+fn _to_json_flowreport(value: FlowReport) -> String:
+    var result = String("{\"__algenta_struct\":\"FlowReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.n_arcs)
+    result += ","
+    result += _to_json_int(value.out_of_range_edges)
+    result += ","
+    result += _to_json_int(value.self_loops)
+    result += ","
+    result += _to_json_int(value.parallel_edges)
+    result += ","
+    result += _to_json_int(value.negative_capacities)
+    result += ","
+    result += _to_json_int(value.non_finite_capacities)
+    result += ","
+    result += _to_json_int(value.zero_capacity_edges)
+    result += ","
+    result += _to_json_float64(value.total_capacity)
+    result += "]}"
+    return result
+
+fn _to_json_flowscalar(value: FlowScalar) -> String:
+    var result = String("{\"__algenta_struct\":\"FlowScalar\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_int(value.index)
+    result += "]}"
+    return result
+
+fn _to_json_flowvector(value: FlowVector) -> String:
+    var result = String("{\"__algenta_struct\":\"FlowVector\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.length)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_formvalue(value: FormValue) -> String:
+    var result = String("{\"__algenta_struct\":\"FormValue\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += "]}"
+    return result
 
 fn _to_json_gbdtmodel(value: GBDTModel) -> String:
     var result = String("{\"__algenta_struct\":\"GBDTModel\",\"v\":[")
@@ -8943,6 +9442,26 @@ fn _to_json_graphvectorresult(value: GraphVectorResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_greedyassignment(value: GreedyAssignment) -> String:
+    var result = String("{\"__algenta_struct\":\"GreedyAssignment\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.n_assigned)
+    result += ","
+    result += _to_json_bool(value.covers_all_tasks)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.total_cost)
+    result += ","
+    result += _to_json_list_int(value.col_of_row)
+    result += "]}"
+    return result
+
 fn _to_json_hmmforward(value: HMMForward) -> String:
     var result = String("{\"__algenta_struct\":\"HMMForward\",\"v\":[")
     result += _to_json_list_list_float64(value.log_alpha)
@@ -9049,6 +9568,42 @@ fn _to_json_individual(value: Individual) -> String:
     result += "]}"
     return result
 
+fn _to_json_infeasibilitycore(value: InfeasibilityCore) -> String:
+    var result = String("{\"__algenta_struct\":\"InfeasibilityCore\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.is_infeasible)
+    result += ","
+    result += _to_json_bool(value.core_verified)
+    result += ","
+    result += _to_json_bool(value.minimal)
+    result += ","
+    result += _to_json_bool(value.minimality_verified)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_int(value.core_size)
+    result += ","
+    result += _to_json_int(value.n_solves)
+    result += ","
+    result += _to_json_int(value.n_inconclusive)
+    result += ","
+    result += _to_json_float64(value.infeasibility)
+    result += ","
+    result += _to_json_float64(value.core_infeasibility)
+    result += ","
+    result += _to_json_list_int(value.core)
+    result += ","
+    result += _to_json_list_bool(value.in_core)
+    result += ","
+    result += _to_json_list_int(value.core_senses)
+    result += ","
+    result += _to_json_list_float64(value.core_rhs)
+    result += ","
+    result += _to_json_list_bool(value.necessary)
+    result += "]}"
+    return result
+
 fn _to_json_int(value: Int) -> String:
     return String(value)
 
@@ -9137,6 +9692,76 @@ fn _to_json_kalmanstate(value: KalmanState) -> String:
     result += _to_json_list_float64(value.x)
     result += ","
     result += _to_json_list_list_float64(value.P)
+    result += "]}"
+    return result
+
+fn _to_json_lpmatrix(value: LPMatrix) -> String:
+    var result = String("{\"__algenta_struct\":\"LPMatrix\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_float64(value.constant)
+    result += ","
+    result += _to_json_int(value.row_index)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_int(value.op)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_list_float64(value.c)
+    result += ","
+    result += _to_json_list_float64(value.a)
+    result += ","
+    result += _to_json_list_int(value.senses)
+    result += ","
+    result += _to_json_list_float64(value.rhs)
+    result += ","
+    result += _to_json_string(value.message)
+    result += "]}"
+    return result
+
+fn _to_json_lpsolution(value: LPSolution) -> String:
+    var result = String("{\"__algenta_struct\":\"LPSolution\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_int(value.iterations)
+    result += ","
+    result += _to_json_int(value.phase1_iterations)
+    result += ","
+    result += _to_json_int(value.degenerate_pivots)
+    result += ","
+    result += _to_json_bool(value.used_bland)
+    result += ","
+    result += _to_json_float64(value.infeasibility)
+    result += ","
+    result += _to_json_int(value.unbounded_variable)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += ","
+    result += _to_json_list_float64(value.duals)
+    result += ","
+    result += _to_json_list_float64(value.reduced_costs)
+    result += ","
+    result += _to_json_list_float64(value.activity)
+    result += ","
+    result += _to_json_list_float64(value.slack)
+    result += ","
+    result += _to_json_list_bool(value.binding)
+    result += ","
+    result += _to_json_list_int(value.basis)
     result += "]}"
     return result
 
@@ -9238,6 +9863,42 @@ fn _to_json_linregresult(value: LinRegResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_linearform(value: LinearForm) -> String:
+    var result = String("{\"__algenta_struct\":\"LinearForm\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.is_linear)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_terms)
+    result += ","
+    result += _to_json_float64(value.constant)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_int(value.op)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_list_float64(value.coeffs)
+    result += ","
+    result += _to_json_string(value.message)
+    result += "]}"
+    return result
+
+fn _to_json_linearmodel(value: LinearModel) -> String:
+    var result = String("{\"__algenta_struct\":\"LinearModel\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_modelflat(value.model)
+    result += "]}"
+    return result
+
 fn _to_json_logger(value: Logger) -> String:
     var result = String("{\"__algenta_struct\":\"Logger\",\"v\":[")
     result += _to_json_string(value.name)
@@ -9268,6 +9929,62 @@ fn _to_json_mafit(value: MAFit) -> String:
     result += "]}"
     return result
 
+fn _to_json_milpresult(value: MILPResult) -> String:
+    var result = String("{\"__algenta_struct\":\"MILPResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.feasible)
+    result += ","
+    result += _to_json_bool(value.proven_optimal)
+    result += ","
+    result += _to_json_bool(value.search_complete)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_bool(value.has_bound)
+    result += ","
+    result += _to_json_float64(value.best_bound)
+    result += ","
+    result += _to_json_bool(value.has_gap)
+    result += ","
+    result += _to_json_float64(value.gap)
+    result += ","
+    result += _to_json_bool(value.has_relaxation_objective)
+    result += ","
+    result += _to_json_float64(value.relaxation_objective)
+    result += ","
+    result += _to_json_int(value.relaxation_status)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_int(value.n_integer)
+    result += ","
+    result += _to_json_int(value.n_binary)
+    result += ","
+    result += _to_json_int(value.nodes_explored)
+    result += ","
+    result += _to_json_int(value.nodes_pruned)
+    result += ","
+    result += _to_json_int(value.nodes_infeasible)
+    result += ","
+    result += _to_json_int(value.nodes_integral)
+    result += ","
+    result += _to_json_int(value.nodes_branched)
+    result += ","
+    result += _to_json_int(value.nodes_open)
+    result += ","
+    result += _to_json_int(value.max_depth)
+    result += ","
+    result += _to_json_int(value.lp_iterations)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += "]}"
+    return result
+
 fn _to_json_matrix(value: Matrix) -> String:
     var result = String("{\"__algenta_struct\":\"Matrix\",\"v\":[")
     result += _to_json_list_float64(value.data)
@@ -9288,11 +10005,203 @@ fn _to_json_matrix2d(value: Matrix2D) -> String:
     result += "]}"
     return result
 
+fn _to_json_maxflow(value: MaxFlow) -> String:
+    var result = String("{\"__algenta_struct\":\"MaxFlow\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.sink)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_float64(value.cut_capacity)
+    result += ","
+    result += _to_json_int(value.cut_edge_count)
+    result += ","
+    result += _to_json_int(value.source_side_count)
+    result += ","
+    result += _to_json_int(value.phases)
+    result += ","
+    result += _to_json_int(value.augmentations)
+    result += ","
+    result += _to_json_list_float64(value.edge_flow)
+    result += ","
+    result += _to_json_list_bool(value.source_side)
+    result += ","
+    result += _to_json_list_int(value.cut_edges)
+    result += "]}"
+    return result
+
 fn _to_json_metricscounter(value: MetricsCounter) -> String:
     var result = String("{\"__algenta_struct\":\"MetricsCounter\",\"v\":[")
     result += _to_json_string(value.name)
     result += ","
     result += _to_json_float64(value.value)
+    result += "]}"
+    return result
+
+fn _to_json_mincostflow(value: MinCostFlow) -> String:
+    var result = String("{\"__algenta_struct\":\"MinCostFlow\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.source)
+    result += ","
+    result += _to_json_int(value.sink)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.cost)
+    result += ","
+    result += _to_json_float64(value.target)
+    result += ","
+    result += _to_json_bool(value.target_met)
+    result += ","
+    result += _to_json_int(value.augmentations)
+    result += ","
+    result += _to_json_list_float64(value.edge_flow)
+    result += ","
+    result += _to_json_list_float64(value.potential)
+    result += "]}"
+    return result
+
+fn _to_json_modelevaluation(value: ModelEvaluation) -> String:
+    var result = String("{\"__algenta_struct\":\"ModelEvaluation\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_float64(value.minimization_objective)
+    result += ","
+    result += _to_json_bool(value.maximize)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_bool(value.feasible)
+    result += ","
+    result += _to_json_float64(value.max_violation)
+    result += ","
+    result += _to_json_int(value.worst_constraint)
+    result += ","
+    result += _to_json_int(value.n_violated)
+    result += ","
+    result += _to_json_int(value.failed_constraint)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_list_float64(value.constraint_value)
+    result += ","
+    result += _to_json_list_float64(value.violation)
+    result += ","
+    result += _to_json_list_bool(value.satisfied)
+    result += "]}"
+    return result
+
+fn _to_json_modelflat(value: ModelFlat) -> String:
+    var result = String("{\"__algenta_struct\":\"ModelFlat\",\"v\":[")
+    result += _to_json_list_float64(value.var_lower)
+    result += ","
+    result += _to_json_list_float64(value.var_upper)
+    result += ","
+    result += _to_json_list_int(value.var_kind)
+    result += ","
+    result += _to_json_list_int(value.var_flags)
+    result += ","
+    result += _to_json_list_float64(value.var_start)
+    result += ","
+    result += _to_json_bool(value.maximize)
+    result += ","
+    result += _to_json_int(value.obj_root)
+    result += ","
+    result += _to_json_list_int(value.obj_ops)
+    result += ","
+    result += _to_json_list_float64(value.obj_values)
+    result += ","
+    result += _to_json_list_int(value.obj_var_idx)
+    result += ","
+    result += _to_json_list_int(value.obj_lefts)
+    result += ","
+    result += _to_json_list_int(value.obj_rights)
+    result += ","
+    result += _to_json_list_int(value.obj_extras)
+    result += ","
+    result += _to_json_list_int(value.con_ptr)
+    result += ","
+    result += _to_json_list_int(value.con_roots)
+    result += ","
+    result += _to_json_list_int(value.con_senses)
+    result += ","
+    result += _to_json_list_float64(value.con_rhs)
+    result += ","
+    result += _to_json_list_int(value.con_ops)
+    result += ","
+    result += _to_json_list_float64(value.con_values)
+    result += ","
+    result += _to_json_list_int(value.con_var_idx)
+    result += ","
+    result += _to_json_list_int(value.con_lefts)
+    result += ","
+    result += _to_json_list_int(value.con_rights)
+    result += ","
+    result += _to_json_list_int(value.con_extras)
+    result += ","
+    result += _to_json_int(value.max_iterations)
+    result += ","
+    result += _to_json_float64(value.max_time_ms)
+    result += ","
+    result += _to_json_float64(value.feasibility_tol)
+    result += ","
+    result += _to_json_float64(value.optimality_tol)
+    result += ","
+    result += _to_json_float64(value.integrality_tol)
+    result += "]}"
+    return result
+
+fn _to_json_modelvalidation(value: ModelValidation) -> String:
+    var result = String("{\"__algenta_struct\":\"ModelValidation\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.ok)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_int(value.n_objective_nodes)
+    result += ","
+    result += _to_json_int(value.n_constraint_nodes)
+    result += ","
+    result += _to_json_int(value.n_integer)
+    result += ","
+    result += _to_json_int(value.n_binary)
+    result += ","
+    result += _to_json_bool(value.maximize)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_int(value.constraint_index)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_string(value.message)
     result += "]}"
     return result
 
@@ -9344,6 +10253,58 @@ fn _to_json_oderesult(value: ODEResult) -> String:
     result += "]}"
     return result
 
+fn _to_json_objectivedecomposition(value: ObjectiveDecomposition) -> String:
+    var result = String("{\"__algenta_struct\":\"ObjectiveDecomposition\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_float64(value.minimization_objective)
+    result += ","
+    result += _to_json_bool(value.maximize)
+    result += ","
+    result += _to_json_float64(value.constant)
+    result += ","
+    result += _to_json_float64(value.parts_total)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.sums_to_objective)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_active)
+    result += ","
+    result += _to_json_int(value.largest_index)
+    result += ","
+    result += _to_json_float64(value.largest_contribution)
+    result += ","
+    result += _to_json_bool(value.has_share)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += ","
+    result += _to_json_list_float64(value.contribution)
+    result += ","
+    result += _to_json_list_float64(value.share)
+    result += "]}"
+    return result
+
+fn _to_json_optpolicy(value: OptPolicy) -> String:
+    var result = String("{\"__algenta_struct\":\"OptPolicy\",\"v\":[")
+    result += _to_json_int(value.max_iterations)
+    result += ","
+    result += _to_json_float64(value.max_time_ms)
+    result += ","
+    result += _to_json_float64(value.feasibility_tol)
+    result += ","
+    result += _to_json_float64(value.optimality_tol)
+    result += ","
+    result += _to_json_float64(value.integrality_tol)
+    result += "]}"
+    return result
+
 fn _to_json_optresult(value: OptResult) -> String:
     var result = String("{\"__algenta_struct\":\"OptResult\",\"v\":[")
     result += _to_json_float64(value.x)
@@ -9353,6 +10314,26 @@ fn _to_json_optresult(value: OptResult) -> String:
     result += _to_json_int(value.iterations)
     result += ","
     result += _to_json_bool(value.converged)
+    result += "]}"
+    return result
+
+fn _to_json_optvar(value: OptVar) -> String:
+    var result = String("{\"__algenta_struct\":\"OptVar\",\"v\":[")
+    result += _to_json_string(value.name)
+    result += ","
+    result += _to_json_float64(value.lower)
+    result += ","
+    result += _to_json_float64(value.upper)
+    result += ","
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_bool(value.has_lower)
+    result += ","
+    result += _to_json_bool(value.has_upper)
+    result += ","
+    result += _to_json_bool(value.has_start)
+    result += ","
+    result += _to_json_float64(value.start)
     result += "]}"
     return result
 
@@ -9564,6 +10545,20 @@ fn _to_json_point(value: Point) -> String:
     result += "]}"
     return result
 
+fn _to_json_pointresult(value: PointResult) -> String:
+    var result = String("{\"__algenta_struct\":\"PointResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.length)
+    result += ","
+    result += _to_json_int(value.n_clamped)
+    result += ","
+    result += _to_json_int(value.n_rounded)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += "]}"
+    return result
+
 fn _to_json_poweriterresult(value: PowerIterResult) -> String:
     var result = String("{\"__algenta_struct\":\"PowerIterResult\",\"v\":[")
     result += _to_json_float64(value.eigenvalue)
@@ -9684,6 +10679,34 @@ fn _to_json_reliabilitybins(value: ReliabilityBins) -> String:
     result += "]}"
     return result
 
+fn _to_json_rhssensitivity(value: RhsSensitivity) -> String:
+    var result = String("{\"__algenta_struct\":\"RhsSensitivity\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_int(value.n_constraints)
+    result += ","
+    result += _to_json_list_float64(value.duals)
+    result += ","
+    result += _to_json_list_float64(value.rhs)
+    result += ","
+    result += _to_json_list_float64(value.lower)
+    result += ","
+    result += _to_json_list_float64(value.upper)
+    result += ","
+    result += _to_json_list_bool(value.has_lower)
+    result += ","
+    result += _to_json_list_bool(value.has_upper)
+    result += ","
+    result += _to_json_list_float64(value.slack)
+    result += ","
+    result += _to_json_list_bool(value.binding)
+    result += "]}"
+    return result
+
 fn _to_json_svdresult(value: SVDResult) -> String:
     var result = String("{\"__algenta_struct\":\"SVDResult\",\"v\":[")
     result += _to_json_list_float64(value.u)
@@ -9715,6 +10738,20 @@ fn _to_json_svmmodel(value: SVMModel) -> String:
     result += _to_json_list_float64(value.support_coef)
     result += ","
     result += _to_json_int(value.n_support)
+    result += "]}"
+    return result
+
+fn _to_json_scalarresult(value: ScalarResult) -> String:
+    var result = String("{\"__algenta_struct\":\"ScalarResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_int(value.node_index)
+    result += ","
+    result += _to_json_int(value.nodes_evaluated)
     result += "]}"
     return result
 
@@ -9791,6 +10828,24 @@ fn _to_json_simstate(value: SimState) -> String:
     result += _to_json_list_int(value.comp_id)
     result += ","
     result += _to_json_int(value.next_id)
+    result += "]}"
+    return result
+
+fn _to_json_slacknesscheck(value: SlacknessCheck) -> String:
+    var result = String("{\"__algenta_struct\":\"SlacknessCheck\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.complementary)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_binding)
+    result += ","
+    result += _to_json_int(value.n_degenerate)
+    result += ","
+    result += _to_json_int(value.cs_row)
+    result += ","
+    result += _to_json_float64(value.cs_gap)
     result += "]}"
     return result
 
@@ -10410,6 +11465,26 @@ fn _to_json_url(value: URL) -> String:
     result += _to_json_string(value.query)
     result += ","
     result += _to_json_string(value.fragment)
+    result += "]}"
+    return result
+
+fn _to_json_varcheck(value: VarCheck) -> String:
+    var result = String("{\"__algenta_struct\":\"VarCheck\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_continuous)
+    result += ","
+    result += _to_json_int(value.n_integer)
+    result += ","
+    result += _to_json_int(value.n_binary)
+    result += ","
+    result += _to_json_int(value.n_free)
+    result += ","
+    result += _to_json_int(value.n_warm_started)
     result += "]}"
     return result
 
@@ -68054,6 +69129,1627 @@ fn _dispatch_optics(function_name: String, args_array: String) raises -> String:
         "Function '" + function_name + "' is not registered for module optics."
     )
 
+fn _dispatch_optimization__assignment(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "assign_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_assignment__assign_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assign_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assign_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "assignment_solve":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _optimization_assignment__assignment_solve(arg_0, arg_1, arg_2)
+                var result_json = _to_json_assignment(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assignment_solve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assignment_solve expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "assignment_solve_masked":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var result = _optimization_assignment__assignment_solve_masked(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_assignment(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assignment_solve_masked."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assignment_solve_masked expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "greedy_assignment_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _optimization_assignment__greedy_assignment_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_greedyassignment(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.greedy_assignment_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.greedy_assignment_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "assignment_cost_of":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var result = _optimization_assignment__assignment_cost_of(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_costreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assignment_cost_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assignment_cost_of expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "assignment_dual_check":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var result = _optimization_assignment__assignment_dual_check(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_dualcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assignment_dual_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assignment_dual_check expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "assignment_dual_check_masked":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_bool_token(json_array_get(args_array, 6))
+                var result = _optimization_assignment__assignment_dual_check_masked(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_dualcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.assignment.assignment_dual_check_masked."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.assignment.assignment_dual_check_masked expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.assignment."
+    )
+
+fn _dispatch_optimization__explain(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "explain_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_explain__explain_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.explain_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.explain_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "slackness_check":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _optimization_explain__slackness_check(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_slacknesscheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.slackness_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.slackness_check expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binding_constraints":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var result = _optimization_explain__binding_constraints(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_bindingreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.binding_constraints."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.binding_constraints expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "binding_constraints_default":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _optimization_explain__binding_constraints_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_bindingreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.binding_constraints_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.binding_constraints_default expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "infeasibility_core":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _optimization_explain__infeasibility_core(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_infeasibilitycore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.infeasibility_core."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.infeasibility_core expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "infeasibility_core_default":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var result = _optimization_explain__infeasibility_core_default(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_infeasibilitycore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.infeasibility_core_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.infeasibility_core_default expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "objective_contributions":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _optimization_explain__objective_contributions(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_objectivedecomposition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.objective_contributions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.objective_contributions expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "optimum_contributions":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var result = _optimization_explain__optimum_contributions(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_objectivedecomposition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.optimum_contributions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.optimum_contributions expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "optimum_contributions_default":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _optimization_explain__optimum_contributions_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_objectivedecomposition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.optimum_contributions_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.optimum_contributions_default expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_binding_constraints":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var result = _optimization_explain__model_binding_constraints(arg_0)
+                var result_json = _to_json_bindingreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.model_binding_constraints."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.model_binding_constraints expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_infeasibility_core":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var result = _optimization_explain__model_infeasibility_core(arg_0)
+                var result_json = _to_json_infeasibilitycore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.model_infeasibility_core."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.model_infeasibility_core expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_contributions":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var result = _optimization_explain__model_contributions(arg_0)
+                var result_json = _to_json_objectivedecomposition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.explain.model_contributions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.explain.model_contributions expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.explain."
+    )
+
+fn _dispatch_optimization__flow(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "flow_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_flow__flow_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.flow_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.flow_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "max_flow_dinic":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _optimization_flow__max_flow_dinic(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_maxflow(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.max_flow_dinic."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.max_flow_dinic expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "min_cost_flow":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _optimization_flow__min_cost_flow(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_mincostflow(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.min_cost_flow."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.min_cost_flow expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "min_cost_max_flow":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _optimization_flow__min_cost_max_flow(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_mincostflow(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.min_cost_max_flow."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.min_cost_max_flow expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flow_audit_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var result = _optimization_flow__flow_audit_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_flowaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.flow_audit_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.flow_audit_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flow_network_check":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _optimization_flow__flow_network_check(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_flowreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.flow_network_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.flow_network_check expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "edge_residuals":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_flow__edge_residuals(arg_0, arg_1)
+                var result_json = _to_json_flowvector(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.edge_residuals."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.edge_residuals expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "path_bottleneck":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var result = _optimization_flow__path_bottleneck(arg_0, arg_1, arg_2)
+                var result_json = _to_json_flowscalar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.path_bottleneck."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.path_bottleneck expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cut_capacity_of":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_bool_token(json_array_get(args_array, 4))
+                var result = _optimization_flow__cut_capacity_of(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_flowscalar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.cut_capacity_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.cut_capacity_of expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_saturated":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _optimization_flow__is_saturated(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.flow.is_saturated."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.flow.is_saturated expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.flow."
+    )
+
+fn _dispatch_optimization__integer(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "milp_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_integer__milp_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.milp_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.milp_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "branch_choice":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _optimization_integer__branch_choice(arg_0, arg_1, arg_2)
+                var result_json = _to_json_branchchoice(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.branch_choice."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.branch_choice expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "milp_solve":
+        if arg_count == 14:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_float64_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_float64_token(json_array_get(args_array, 13))
+                var result = _optimization_integer__milp_solve(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13)
+                var result_json = _to_json_milpresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.milp_solve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.milp_solve expected 14 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "milp_solve_default":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _optimization_integer__milp_solve_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_milpresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.milp_solve_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.milp_solve_default expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "milp_from_arenas":
+        if arg_count == 24:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_list_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_list_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_list_int_token(json_array_get(args_array, 14))
+                var arg_15 = _parse_list_int_token(json_array_get(args_array, 15))
+                var arg_16 = _parse_list_int_token(json_array_get(args_array, 16))
+                var arg_17 = _parse_int_token(json_array_get(args_array, 17))
+                var arg_18 = _parse_list_int_token(json_array_get(args_array, 18))
+                var arg_19 = _parse_list_float64_token(json_array_get(args_array, 19))
+                var arg_20 = _parse_list_float64_token(json_array_get(args_array, 20))
+                var arg_21 = _parse_list_int_token(json_array_get(args_array, 21))
+                var arg_22 = _parse_bool_token(json_array_get(args_array, 22))
+                var arg_23 = _parse_int_token(json_array_get(args_array, 23))
+                var result = _optimization_integer__milp_from_arenas(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14, arg_15, arg_16, arg_17, arg_18, arg_19, arg_20, arg_21, arg_22, arg_23)
+                var result_json = _to_json_milpresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.milp_from_arenas."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.milp_from_arenas expected 24 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "milp_knapsack":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _optimization_integer__milp_knapsack(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_milpresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.integer.milp_knapsack."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.integer.milp_knapsack expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.integer."
+    )
+
+fn _dispatch_optimization__linear(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "lin_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_linear__lin_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lin_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lin_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_linear__lp_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "linear_extract_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _optimization_linear__linear_extract_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_linearform(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.linear_extract_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.linear_extract_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "linear_form_value":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var result = _optimization_linear__linear_form_value(arg_0, arg_1, arg_2)
+                var result_json = _to_json_formvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.linear_form_value."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.linear_form_value expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_dual_objective":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_linear__lp_dual_objective(arg_0, arg_1)
+                var result_json = _to_json_formvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_dual_objective."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_dual_objective expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_solve":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var result = _optimization_linear__lp_solve(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_lpsolution(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_solve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_solve expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_solve_default":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _optimization_linear__lp_solve_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_lpsolution(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_solve_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_solve_default expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_rhs_ranges":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var result = _optimization_linear__lp_rhs_ranges(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_rhssensitivity(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_rhs_ranges."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_rhs_ranges expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lp_from_arenas":
+        if arg_count == 18:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_list_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_list_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_list_int_token(json_array_get(args_array, 14))
+                var arg_15 = _parse_list_int_token(json_array_get(args_array, 15))
+                var arg_16 = _parse_list_int_token(json_array_get(args_array, 16))
+                var arg_17 = _parse_int_token(json_array_get(args_array, 17))
+                var result = _optimization_linear__lp_from_arenas(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14, arg_15, arg_16, arg_17)
+                var result_json = _to_json_lpmatrix(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.linear.lp_from_arenas."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.linear.lp_from_arenas expected 18 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.linear."
+    )
+
+fn _dispatch_optimization__model(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "model_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__model_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "var_kind_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__var_kind_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.var_kind_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.var_kind_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "constraint_sense_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__constraint_sense_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.constraint_sense_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.constraint_sense_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "has_lower_bound":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__has_lower_bound(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.has_lower_bound."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.has_lower_bound expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "has_upper_bound":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__has_upper_bound(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.has_upper_bound."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.has_upper_bound expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "has_warm_start":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__has_warm_start(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.has_warm_start."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.has_warm_start expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "var_flags_valid":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__var_flags_valid(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.var_flags_valid."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.var_flags_valid expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_op_arity":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__model_op_arity(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_op_arity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_op_arity expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_model_op":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optimization_model__is_model_op(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.is_model_op."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.is_model_op expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _optimization_model__model_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "integer_in_interval":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__integer_in_interval(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.integer_in_interval."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.integer_in_interval expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "minimization_value":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_bool_token(json_array_get(args_array, 1))
+                var result = _optimization_model__minimization_value(arg_0, arg_1)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.minimization_value."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.minimization_value expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sense_violation":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _optimization_model__sense_violation(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.sense_violation."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.sense_violation expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_policy_new":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _optimization_model__opt_policy_new(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_optpolicy(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_policy_new."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_policy_new expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "default_policy":
+        if arg_count == 0:
+            try:
+                var result = _optimization_model__default_policy()
+                var result_json = _to_json_optpolicy(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.default_policy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.default_policy expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_optpolicy_token(json_array_get(args_array, 0))
+                var result = _optimization_model__policy_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.policy_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.policy_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_var":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _optimization_model__opt_var(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_optvar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_var."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_var expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_var_free":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _optimization_model__opt_var_free(arg_0, arg_1)
+                var result_json = _to_json_optvar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_var_free."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_var_free expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_var_lower_bounded":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _optimization_model__opt_var_lower_bounded(arg_0, arg_1, arg_2)
+                var result_json = _to_json_optvar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_var_lower_bounded."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_var_lower_bounded expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_var_binary":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _optimization_model__opt_var_binary(arg_0)
+                var result_json = _to_json_optvar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_var_binary."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_var_binary expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "opt_var_warm":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _optimization_model__opt_var_warm(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_optvar(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.opt_var_warm."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.opt_var_warm expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "arena_flat_defect":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var result = _optimization_model__arena_flat_defect(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.arena_flat_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.arena_flat_defect expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "arena_roundtrip":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _optimization_model__arena_roundtrip(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_arenaflat(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.arena_roundtrip."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.arena_roundtrip expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "linear_arena":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__linear_arena(arg_0, arg_1)
+                var result_json = _to_json_arenaflat(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.linear_arena."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.linear_arena expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expr_validate_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _optimization_model__expr_validate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_exprcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.expr_validate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.expr_validate_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expr_evaluate_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var result = _optimization_model__expr_evaluate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_scalarresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.expr_evaluate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.expr_evaluate_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "check_variables":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_optvar_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__check_variables(arg_0, arg_1)
+                var result_json = _to_json_varcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.check_variables."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.check_variables expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "variables_defect_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var result = _optimization_model__variables_defect_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.variables_defect_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.variables_defect_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "variables_validate_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _optimization_model__variables_validate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_varcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.variables_validate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.variables_validate_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "project_point":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_optvar_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _optimization_model__project_point(arg_0, arg_1, arg_2)
+                var result_json = _to_json_pointresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.project_point."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.project_point expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "project_point_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _optimization_model__project_point_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_pointresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.project_point_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.project_point_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "warm_start_point":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_optvar_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__warm_start_point(arg_0, arg_1)
+                var result_json = _to_json_pointresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.warm_start_point."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.warm_start_point expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "flat_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var result = _optimization_model__flat_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.flat_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.flat_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_validate":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var result = _optimization_model__model_validate(arg_0)
+                var result_json = _to_json_modelvalidation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_validate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_validate expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_evaluate":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__model_evaluate(arg_0, arg_1)
+                var result_json = _to_json_modelevaluation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_evaluate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_evaluate expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "model_objective":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_modelflat_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _optimization_model__model_objective(arg_0, arg_1)
+                var result_json = _to_json_scalarresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.model_objective."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.model_objective expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "linear_model_flat":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_bool_token(json_array_get(args_array, 10))
+                var result = _optimization_model__linear_model_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_linearmodel(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optimization.model.linear_model_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optimization.model.linear_model_flat expected 11 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optimization.model."
+    )
+
 fn _dispatch_optimization_constrained(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "eval_objective_c":
@@ -106985,6 +109681,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_ophthalmology(function_name, args_array)
     if module_name == "optics":
         return _dispatch_optics(function_name, args_array)
+    if module_name == "optimization.assignment":
+        return _dispatch_optimization__assignment(function_name, args_array)
+    if module_name == "optimization.explain":
+        return _dispatch_optimization__explain(function_name, args_array)
+    if module_name == "optimization.flow":
+        return _dispatch_optimization__flow(function_name, args_array)
+    if module_name == "optimization.integer":
+        return _dispatch_optimization__integer(function_name, args_array)
+    if module_name == "optimization.linear":
+        return _dispatch_optimization__linear(function_name, args_array)
+    if module_name == "optimization.model":
+        return _dispatch_optimization__model(function_name, args_array)
     if module_name == "optimization_constrained":
         return _dispatch_optimization_constrained(function_name, args_array)
     if module_name == "optimization_meta":

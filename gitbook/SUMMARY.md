@@ -20,6 +20,7 @@
 * [Batched and chained execution](engine/coarse-execution.md)
 * [Columnar queries](engine/columnar-queries.md)
 * [Sparse systems & graph analytics](engine/sparse-and-graph.md)
+* [Optimization & decision programs](engine/optimization.md)
 * [Forecast scoring & Murphy decomposition](engine/forecast-scoring.md)
 * [Reproducible evolutionary search](engine/reproducible-search.md)
 * [Asset degradation state](engine/degradation-state.md)

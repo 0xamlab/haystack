@@ -71,6 +71,40 @@ Two consequences:
    (`tests/integration/test_query_plane_e2e.py` is the model). That suite is what caught
    this; the 46-assertion kernel suite could not have.
 
+## 1c. A per-item ceiling is not a bound on total allocation.
+
+`sparse_numerics.csr.MAX_CSR_DIM` (`1 << 26`) is the one shared dimension ceiling, and
+`csr.mojo` justifies that number precisely: the worst-case row-pointer array is ~512 MB,
+which is what the 512 MiB resident-dataset budget already treats as the outer limit **for
+one object**. One object — not seven.
+
+A driver that allocates *k* arrays of length `n_nodes` is therefore bounded at `k × 512 MB`,
+not 512 MB. Measured on `optimization/flow.mojo`: `max_flow_dinic`, `flow_audit_flat` and
+`min_cost_max_flow` each allocate three to seven independent `n_nodes`-length arrays, so an
+**empty edge list** with `n_nodes` at the ceiling allocated several times the ceiling's own
+budget.
+
+Worse, a dimension can be bounded by the ceiling and still be tied to nothing in the
+payload. `optimization/linear.lp_from_arenas` took `n_vars` as a bare `Int`, then
+materialised five `n_vars`-length columns, one `OptVar` per variable each carrying a
+`String` name, and two more vectors in the linearity extractor — about 200 bytes per
+variable **regardless of how many variables the expression arena actually references**.
+Measured: `n_vars = 2^22` peaked at 1.29 GB RSS and `2^24` at 3.50 GB, from a request
+payload of a one-node arena plus one integer (~60 bytes).
+
+So, for every declared dimension:
+
+1. Bound it against the ceiling — necessary, not sufficient.
+2. Bound it against **what the payload actually contains**. A variable no expression
+   mentions cannot change any answer; a node no edge mentions cannot carry flow. Derive
+   the dimension from the data, or reject a mismatch — do not trust the caller's integer.
+3. Count the arrays your entry point allocates per unit of that dimension, and state the
+   arithmetic in a comment. If the product exceeds the budget, scale the local ceiling
+   down. Never raise or lower `MAX_CSR_DIM` itself; other packages depend on it.
+
+Neither of the above was reachable past a length guard — both requests were *structurally
+valid*. Shape validation and resource bounding are two separate checks.
+
 ## 2. Export flat-list functions, and the package is reachable for free.
 
 `_SKIP_RUNTIME_DIRS` in `apps/runtime/mojo_inventory.py` excludes a package from the
@@ -156,6 +190,32 @@ by the generated table — memberwise, `@fieldwise_init`, or a no-arg `__init__`
 per-field assignment. A struct that is only ever *returned* needs no constructor beyond
 whatever the kernel itself uses. Prefer return-only structs and keep parameters flat.
 
+### A signature must close within NINE lines, or the function vanishes
+
+`apps/runtime/mojo_inventory.py` matches a signature inside a **nine-line lookahead
+window**. A signature whose closing paren lands on the tenth line or later is not parsed,
+so the function never enters the contract and never enters dispatch — with no error
+anywhere. `make inventory-refresh` succeeds, the counts simply come out one lower.
+
+This is a live hazard, not a theoretical one. `optimization/model.mojo`'s
+`expr_validate_flat` and `expr_evaluate_flat` both closed on **exactly** the ninth line.
+Adding one parameter on its own line, or letting a formatter reflow either signature by a
+single line, would have silently dropped two registered public functions.
+
+So: pack several parameters per line to leave real headroom, and put a comment above any
+signature near the limit saying the packing is load-bearing. After **any** signature
+change, re-check the per-module function counts — a drop is the only symptom:
+
+```bash
+python3 -c "
+import sys; sys.path.insert(0,'.')
+from pathlib import Path
+from apps.runtime import mojo_inventory as mi
+for m in mi.discover_runtime_library_modules(Path('mojo/engine')):
+    if m.import_path.startswith('<your_package>.'):
+        print(m.import_path, len(m.functions))"
+```
+
 ## 3. Never reimplement a frozen kernel. Call it.
 
 From the project constraint: *"Existing Mojo kernels are frozen dependencies. Missing
@@ -209,6 +269,25 @@ Wrapping them means turning that into a status, per rule 4.
   process on a mismatch; `tensor2d.mojo` `m2_matvec` returns an empty list instead. Follow
   the second.
 
+### The rule applies inside your own package too
+
+A new package built by several agents in parallel duplicates helpers the same way, and the
+copies then drift. Found in `optimization/` on its first review:
+
+- `_finite` written **six times**, byte-identical, private in every file — so no file could
+  import it even though five already import from `optimization.model`.
+- `_round_f` / `_floor_f` / `_ceil_f` reimplementing `integer._nearest_int`, where **only
+  the copy documenting the hazard actually avoided it** (rule 4c).
+- One declared input invariant enforced at **three different strengths under three
+  different status codes** in `linear`, `integer` and `explain`.
+- Two contradictory definitions of a valid solver policy, so `model_validate` returned OK
+  for a policy other code in the same package rejected.
+
+A duplicated guard is worse than a missing one: it reads as defence-in-depth while
+providing one arbitrary behaviour per call site. Make the helper public in the package's
+base module — `model.mojo` here — and have the rest call it. When a check appears twice at
+different strengths, the weaker one is a bug even if it never fires today.
+
 ## 4. An answer that does not exist must be absent, not zero.
 
 `numeric/contract.mojo` is the policy for new surfaces: `count` and `sum` of nothing are
@@ -226,6 +305,99 @@ right one:
 
 Every such driver returns a status alongside its numbers, and the status is asserted in
 its test.
+
+## 4b. A tolerance must scale with the thing it judges, never with the whole problem.
+
+This is the single worst defect found in this work, and it hid behind 145 passing
+assertions and a docstring that promised the opposite.
+
+`optimization/linear.mojo` accepted a phase-1 simplex result when
+
+```mojo
+residual > feasibility_tol * scale     # scale = 1 + Σ_i |b_i|   over ALL rows
+```
+
+`Σ|b_i|` is a sum over every row in the model, so **any** unrelated row with a large
+right-hand side inflates the infeasibility tolerance without limit. Executed:
+200 rows of `x0 <= 1e7` — ordinary capacity scaling, nothing pathological — plus the
+flatly contradictory pair `x1 >= 3`, `x1 <= 2` returned `LP_OPTIMAL` with a full solution
+vector, duals, reduced costs and a basis, for a program with no feasible point. The
+returned `x` violated a row by a full unit. It reproduced on a single row too:
+`{x >= 5, x <= 4.5, x <= 1e9}` returned optimal with `x = [5.0]`.
+
+The residual was measured correctly and stored in the result; only the *threshold* was
+wrong, so nothing in the answer said so.
+
+Feasibility is not a global property to be averaged. A row is satisfied or it is not, and
+its tolerance must come from **its own** magnitude — a per-row relative test, or a maximum
+violation against a per-row scale. Any aggregate over rows lets one row's units pay for
+another row's contradiction.
+
+The blast radius is the reason this rule is stated separately: `explain.infeasibility_core`
+runs a zero-objective trial solve to decide whether a model is infeasible at all, so it
+inherited the bug and reported `EXPLAIN_FEASIBLE_NO_CORE` with `is_infeasible = False` for
+an infeasible model. **A wrong status propagates further than a wrong number, because
+downstream code branches on it.**
+
+Generally: whenever a comparison mixes a tolerance with a scale, check what the scale sums
+over. It must span exactly the quantity being judged and nothing else.
+
+## 4c. `Float64(Int(v))` past the integer grid is poison, not truncation.
+
+`fptosi` on a double outside `Int`'s range is undefined, so it yields an arbitrary value
+rather than a clamped or truncated one — and a `_finite()` guard does not catch it, because
+`1e300` is perfectly finite.
+
+`optimization/model.mojo` rounded with `Float64(Int(v + 0.5))`, reachable from three
+registered public functions. Executed: `project_point_flat(x=[1e300],
+var_kind=[VAR_INTEGER])` passed every validation and returned an **arbitrary coordinate**
+with status `MODEL_OK` and `rounded` counting 1 — a number returned where none exists,
+which is exactly what rule 4 exists to prevent.
+
+Build rounding, flooring and ceiling from `std.math.floor` / `ceil`, which are total over
+every finite `Float64`, and guard the conversion separately. `integer.mojo`'s
+`_nearest_int` already documented this hazard in its own comments — 700 lines from a second
+implementation that still had the bug. See rule 3: the duplicate is how it survived.
+
+## 4d. A certificate must check every condition it claims, not only the ones the current answer exercises.
+
+A driver that returns "verified" is making a stronger promise than one that returns a
+number, and the promise is only as good as the weakest condition checked.
+
+`optimization/assignment.mojo` exported `assignment_dual_check` so a caller could validate
+a matching **somebody else produced**. Its `certified` flag required dual feasibility,
+tightness on the chosen pairs, and zero duals on agents idle *in the matching being
+checked* — but not `u[i] <= 0` for every agent, which is what the capacity constraint
+`Σ_j x_ij <= 1` actually implies. Executed: `assignment_dual_check(cost=[5.0, 1.0],
+rows=2, cols=1, col_of_row=[0, -1], u=[4.0, 0.0], v=[1.0])` returned `certified = True`
+with a dual objective of 5.0 matching a total cost of 5.0 — apparent strong duality — while
+the true optimum was 1.0.
+
+The omitted condition was invisible because no test exercised the shape that needs it
+(`rows > cols`), and the test helper written to prove the duals had the same gap as the
+code. Two related traps:
+
+- **Complementary slackness is two conditions**, not one. Positive slack implies a zero
+  dual, *and* a nonzero dual implies a tight row. `explain.binding_constraints` audited one
+  direction and presented the result as justifying its shadow prices.
+- **A `nan` defeats an unvalidated threshold silently.** With a `nan` dual,
+  `dual_tol = SLOP * (1 + nan)` is `nan`, every `fabs(d) > nan` is `False`, and the audit
+  passes having counted zero violations. Validate finiteness before computing any tolerance
+  from the inputs, and route internal paths through the same validation as the public one.
+
+State in the docstring which conditions the certificate covers. A certificate that omits
+one is worse than no certificate, because a caller stops looking.
+
+## 4e. Allocate status-code ranges per package, not per file.
+
+`optimization/integer.mojo` and `optimization/explain.mojo` independently claimed codes
+80–84, so `milp_status_name(81)` was `"node_limit"` while `explain_status_name(81)` was
+`"feasible_so_there_is_no_infeasibility_core"` — one integer, two meanings, one package. A
+caller that logs a status code cannot tell which vocabulary produced it, and neither can a
+test.
+
+Record the ranges a package has handed out in a comment beside each block, and pick from
+what is left.
 
 ## 5. Mojo dialect, as actually used here
 
