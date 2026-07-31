@@ -122,8 +122,15 @@ def audit_page(path: str, archetype: str, all_paths: set) -> list:
         adv("a single landing card grid has >6 choices; group by outcome")
 
     # archetype-specific
-    has_next = bool(re.search(r"(?im)^#{2,3}\s*(next|next steps|where to go|what.s next)\b", text)) \
-        or "content-ref" in text or text.lower().count("next:") > 0
+    # "See also" and "Related" are next actions too. The rule is zero-dead-end — a page must not
+    # leave the reader with nowhere to go — and a heading full of onward links satisfies that whatever
+    # it is called. Omitting them flagged six pages that each end in a list of links, which trains
+    # authors to ignore the warning rather than fix real dead ends.
+    has_next = bool(
+        re.search(
+            r"(?im)^#{2,3}\s*(next|next steps|where to go|what.s next|see also|related)\b", text
+        )
+    ) or "content-ref" in text or text.lower().count("next:") > 0
     has_cards = 'data-view="cards"' in text or "{% content-ref" in text
     outline_off = re.search(r"outline:\s*\n?\s*(visible:\s*false|\{[^}]*visible:\s*false)", text) \
         or re.search(r"outline:\s*\{?\s*visible:\s*false", text)

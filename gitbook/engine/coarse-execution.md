@@ -120,7 +120,7 @@ resident dataset is sent once and then addressed by handle, so per-call payload
 becomes O(1) in rows rather than O(rows) — a larger effect than batching can reach,
 and with no FFI or protocol change.
 
-```
+```text title="dataset handle"
 {"type":"dataset_open","name":"sales","value":[...]}  -> {"handle":"ds_1","bytes":...}
 {"type":"dataset_list"}                               -> {"datasets":[...],"bytes":...}
 {"type":"dataset_close","handle":"ds_1"}              -> {"closed":true}
@@ -143,7 +143,7 @@ output. The caller asks for the next chunk when it is ready, which is backpressu
 with no extra machinery — your next call *is* the credit. Stopping early is free:
 close the cursor and the remainder is never encoded.
 
-```
+```text title="streaming a resident dataset"
 {"type":"stream_open","handle":"ds_1","chunk_rows":1000}
   -> {"cursor":"st_1","total":100000,"remaining":100000}
 {"type":"stream_next","cursor":"st_1"}

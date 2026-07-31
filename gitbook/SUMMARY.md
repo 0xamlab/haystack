@@ -196,6 +196,11 @@
 * [Code repositories](connectors/code-repositories.md)
 * [REST API](connectors/rest-api.md)
 
+## Benchmarks
+
+* [Benchmarks](benchmarks/overview.md)
+* [Compute kernels](benchmarks/compute-kernels.md)
+
 ## Help
 
 * [Troubleshooting](troubleshooting.md)

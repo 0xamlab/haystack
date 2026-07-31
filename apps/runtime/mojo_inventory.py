@@ -48,8 +48,11 @@ _SKIP_RUNTIME_RELATIVE_PREFIXES = {
 }
 # main's expanded skip list, kept in full: the universal-substrate work in #414 added runtime dirs that
 # are not part of the callable library surface.
-_SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism", "numeric",
-                      "query"}
+# "hostio" is infrastructure, not a kernel, and its exclusion is security-relevant rather than
+# cosmetic: sn_socket_unix() takes no arguments and returns an Int, which is a *valid* runtime
+# contract signature, so without this entry any SDK caller could open sockets inside the worker.
+_SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism",
+                      "hostio", "numeric", "query"}
 # Maximum source lines one function signature may span while still being parsed. This was 10, which
 # silently truncated anything longer -- and a truncated signature parses as ZERO parameters, which the
 # dispatch generator then emits as a zero-argument call to a multi-argument function.
@@ -87,12 +90,19 @@ _NON_STRING_RUNTIME_TYPES = {
     "UInt64",
     "UInt8",
 }
+# NOTE: during full-tree discovery this set is currently inert, because the call site merges
+# `global_struct_specs` (every struct in the tree) into `struct_specs`, and
+# `is_runtime_executable_function` reads a non-empty `struct_specs` as "strings allowed". Modules are
+# still listed here when they deliberately return `String`, so the intent is recorded rather than
+# resting on that emergent behaviour.
 _STRING_RETURN_RUNTIME_IMPORT_PATHS = {
     "color_check",
     "column_rank",
     "crypto.base64",
     "crypto.uuid",
     "json.writer",
+    "tensorx.contract",
+    "tensorx.dtype",
     "text.tokenizer",
     "vector_kernels.ranker",
     "vector_kernels.repo_ranker",

@@ -1,6 +1,6 @@
 ---
 icon: route
-description: Vehicle routes, factory and project schedules, convex quadratic programs, Pareto fronts and decisions under uncertainty — searched on your own machine, with the bound you actually have instead of a claim of optimality.
+description: Vehicle routes, schedules, convex quadratic programs, Pareto fronts and decisions under uncertainty — searched on your own machine, reporting the bound you have rather than claiming an optimum.
 ---
 
 # Routing, scheduling, trade-offs and uncertainty

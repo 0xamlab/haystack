@@ -231,9 +231,20 @@ Freeze verification, which must stay empty for existing kernel files:
 
 ```bash
 git diff --stat eea8e045 -- mojo/engine/ \
-  | grep -v -E 'algenta_runtime/|columnar/|query/|determinism/|canonical/|numeric/|sparse_numerics/|optimization/|dispatch_generated|main\.mojo'
+  | grep -v -E 'algenta_runtime/|columnar/|query/|determinism/|canonical/|numeric/|sparse_numerics/|optimization/|graph_analytics/|retrieval/|hostio/|tensorx/|gemm/|dispatch_generated|main\.mojo'
 git diff eea8e045 -- mojo/tests/libs/ | grep '^-' | grep -v '^---'
 ```
+
+**The gate is deceptively green for untracked namespaces.** `git diff` does not see untracked files,
+so a brand-new package directory passes this check trivially until it is `git add`ed — at which point
+it appears and the gate goes red unless its name was added to the alternation above. That is a
+footgun in the wrong direction: it reads as "protected" during exactly the window when nothing is
+being checked. `graph_analytics/`, `optimization/` and `retrieval/` were all untracked when this was
+found on 2026-07-31.
+
+So: **add the namespace to the alternation in the same commit that adds the package.**
+`scripts/reliability_guards/guards/mojo_freeze_namespaces.py` enforces it — a directory under
+`mojo/engine/` that is neither frozen nor listed above fails the build.
 
 ### Frozen kernels an optimization or numerics driver WILL be tempted to rewrite
 

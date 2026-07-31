@@ -136,6 +136,7 @@ SUMMARY_HEADING_ROUTE_SLUGS = {
     "Deploy & Operate": "deploy-and-operate",
     "HTTP API": "http-api",
     "Connectors": "connectors",
+    "Benchmarks": "benchmarks",
     "Help": "help",
 }
 
@@ -149,6 +150,7 @@ SUMMARY_ROUTE_PREFIX_STRIPS = {
     "deploy-and-operate": ("operate/",),
     "http-api": ("api/",),
     "connectors": ("connectors/",),
+    "benchmarks": ("benchmarks/",),
     "help": ("help/",),
 }
 
