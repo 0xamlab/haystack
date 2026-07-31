@@ -74,6 +74,11 @@ _SAMPLE_VARIABLES: dict[str, Any] = {
     # something: a single row would not distinguish a per-row statistic from a global one, and
     # a 1-wide row makes variance identically zero and the gradcheck vacuous.
     "_lf8_norm2x4": [0.5, -0.6, 0.7, -0.4, 0.3, 0.9, -0.2, 0.1],
+    # mlpk gathers by TOKEN ID, so its ids must index inside the vocabulary and its weight table
+    # must be vocab*d_model long. `[1,2,3,4,5]` against vocab=5 is an off-by-one on the last id,
+    # and `weight[24]` from a 5-element list is the abort the plan flags as most likely.
+    "_lf24_embed6x4": [float(i) for i in range(24)],
+    "_li4_ids": [2, 0, 2, 5],
     "_lf48_video3x4x4": (
         [10.0 for _ in range(16)]
         + [200.0 if pixel < 4 else 10.0 for pixel in range(16)]
@@ -232,6 +237,54 @@ _RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    # ── mlpk ──────────────────────────────────────────────────────────────────────────
+    # Gated activations take two projections of the SAME shape, so one 8-element list covers both at
+    # 2 tokens x 4 ff-width. The activation selector is passed explicitly — there is no default, and
+    # the suite's `5` is not a valid kind.
+    ("mlpk.activation", "gated_ffn_fwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        2,
+        4,
+        0,
+    ],
+    ("mlpk.activation", "gated_ffn_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        2,
+        4,
+        0,
+    ],
+    ("mlpk.activation", "swiglu_gradcheck_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        2,
+        4,
+        0,
+        1.0e-4,
+    ],
+    # A 6-row x 4-dim table with ids inside it. vocab=6 so id 5 is the last valid row, which makes
+    # this cover the off-by-one boundary rather than sitting comfortably inside it.
+    ("mlpk.embedding", "embedding_fwd_flat"): [
+        _SAMPLE_VARIABLES["_lf24_embed6x4"],
+        _SAMPLE_VARIABLES["_li4_ids"],
+        4,
+        6,
+        4,
+    ],
+    ("mlpk.embedding", "embedding_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf24_embed6x4"],
+        _SAMPLE_VARIABLES["_li4_ids"],
+        4,
+        6,
+        4,
+    ],
+    ("mlpk.embedding", "embedding_ids_in_range"): [
+        _SAMPLE_VARIABLES["_li4_ids"],
+        4,
+        6,
+    ],
     # ── normk ─────────────────────────────────────────────────────────────────────────
     # `gamma`, `beta`, `mean` and `rstd` are all shorter than the activations, so the default
     # 5-element list already covers them; only the `[n_rows][n_cols]` buffers need sizing. `rstd`

@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **538 modules** and **5342 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **541 modules** and **5359 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -36,7 +36,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## LLM & attention
 
-13 modules.
+14 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -46,6 +46,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `flash_attention` | 10 |
 | `kv_cache` | 10 |
 | `llm_sampling` | 11 |
+| `mlpk.embedding` | 3 |
 | `paged_kv_cache` | 10 |
 | `propensity` | 9 |
 | `sparse_attention` | 10 |
@@ -56,7 +57,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-26 modules.
+27 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -75,6 +76,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `latency_optimizer` | 10 |
 | `loss_functions` | 11 |
 | `ml_metrics_extended` | 10 |
+| `mlpk.activation` | 7 |
 | `nn_layers` | 11 |
 | `normalization_layers` | 10 |
 | `normk.layernorm` | 4 |
@@ -299,7 +301,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-354 modules.
+355 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -481,6 +483,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `ml.metrics` | 7 |
 | `ml.preprocessing` | 6 |
 | `ml.random_forest` | 8 |
+| `mlpk.contract` | 7 |
 | `model_abi` | 10 |
 | `model_compare` | 4 |
 | `model_interop` | 10 |

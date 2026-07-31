@@ -3590,6 +3590,32 @@ from ml_metrics_extended import (
     brier_score_term as _ml_metrics_extended__brier_score_term,
 )
 
+from mlpk.activation import (
+    mlp_gelu_erf as _mlpk_activation__mlp_gelu_erf,
+    mlp_gelu_erf_grad as _mlpk_activation__mlp_gelu_erf_grad,
+    mlp_gelu_tanh_grad as _mlpk_activation__mlp_gelu_tanh_grad,
+    mlp_gelu_agreement as _mlpk_activation__mlp_gelu_agreement,
+    gated_ffn_fwd_flat as _mlpk_activation__gated_ffn_fwd_flat,
+    gated_ffn_bwd_flat as _mlpk_activation__gated_ffn_bwd_flat,
+    swiglu_gradcheck_flat as _mlpk_activation__swiglu_gradcheck_flat,
+)
+
+from mlpk.contract import (
+    mlp_status_name as _mlpk_contract__mlp_status_name,
+    mlp_work_fits as _mlpk_contract__mlp_work_fits,
+    mlp_dims_check as _mlpk_contract__mlp_dims_check,
+    mlp_vocab_check as _mlpk_contract__mlp_vocab_check,
+    mlp_activation_known as _mlpk_contract__mlp_activation_known,
+    mlp_scalars_ok as _mlpk_contract__mlp_scalars_ok,
+    mlp_tol_for as _mlpk_contract__mlp_tol_for,
+)
+
+from mlpk.embedding import (
+    embedding_ids_in_range as _mlpk_embedding__embedding_ids_in_range,
+    embedding_fwd_flat as _mlpk_embedding__embedding_fwd_flat,
+    embedding_bwd_flat as _mlpk_embedding__embedding_bwd_flat,
+)
+
 from model_abi import (
     tensor_layout_stride as _model_abi__tensor_layout_stride,
     dtype_byte_width as _model_abi__dtype_byte_width,
@@ -7234,6 +7260,17 @@ from ml.preprocessing import (
     SplitResult,
 )
 
+from mlpk.activation import (
+    ActGrad,
+    ActOut,
+    GeluAgreement,
+)
+
+from mlpk.embedding import (
+    EmbedGrad,
+    EmbedOut,
+)
+
 from model_compare import (
     DMResult,
     DiffCI,
@@ -8657,6 +8694,34 @@ fn _to_json_arfit(value: ARFit) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_actgrad(value: ActGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ActGrad\",\"v\":[")
+    result += _to_json_list_float64(value.d_value)
+    result += ","
+    result += _to_json_list_float64(value.d_gate)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.d_ff)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_actout(value: ActOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ActOut\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.d_ff)
+    result += ","
+    result += _to_json_int(value.activation)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_arenaflat(value: ArenaFlat) raises -> String:
     var result = String("{\"__algenta_struct\":\"ArenaFlat\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9510,6 +9575,32 @@ fn _to_json_elasticnetresult(value: ElasticNetResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_embedgrad(value: EmbedGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EmbedGrad\",\"v\":[")
+    result += _to_json_list_float64(value.d_weight)
+    result += ","
+    result += _to_json_int(value.n_touched)
+    result += ","
+    result += _to_json_int(value.vocab)
+    result += ","
+    result += _to_json_int(value.d_model)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_embedout(value: EmbedOut) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EmbedOut\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_int(value.n_tok)
+    result += ","
+    result += _to_json_int(value.d_model)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_event(value: Event) raises -> String:
     var result = String("{\"__algenta_struct\":\"Event\",\"v\":[")
     result += _to_json_float64(value.time)
@@ -9865,6 +9956,22 @@ fn _to_json_grustate(value: GRUState) raises -> String:
     result += _to_json_list_float64(value.n_cand)
     result += ","
     result += _to_json_list_float64(value.s_reset)
+    result += "]}"
+    return result
+
+fn _to_json_geluagreement(value: GeluAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeluAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_float64(value.argmax_input)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -74636,6 +74743,353 @@ fn _dispatch_ml_metrics_extended(function_name: String, args_array: String) rais
         "Function '" + function_name + "' is not registered for module ml_metrics_extended."
     )
 
+fn _dispatch_mlpk__activation(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "mlp_gelu_erf":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _mlpk_activation__mlp_gelu_erf(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "mlpk.activation.mlp_gelu_erf produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.mlp_gelu_erf."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.mlp_gelu_erf expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_gelu_erf_grad":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _mlpk_activation__mlp_gelu_erf_grad(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "mlpk.activation.mlp_gelu_erf_grad produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.mlp_gelu_erf_grad."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.mlp_gelu_erf_grad expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_gelu_tanh_grad":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _mlpk_activation__mlp_gelu_tanh_grad(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "mlpk.activation.mlp_gelu_tanh_grad produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.mlp_gelu_tanh_grad."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.mlp_gelu_tanh_grad expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_gelu_agreement":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _mlpk_activation__mlp_gelu_agreement(arg_0, arg_1, arg_2)
+                var result_json = _to_json_geluagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.mlp_gelu_agreement."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.mlp_gelu_agreement expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gated_ffn_fwd_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _mlpk_activation__gated_ffn_fwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_actout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.gated_ffn_fwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.gated_ffn_fwd_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gated_ffn_bwd_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _mlpk_activation__gated_ffn_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_actgrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.gated_ffn_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.gated_ffn_bwd_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "swiglu_gradcheck_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _mlpk_activation__swiglu_gradcheck_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_geluagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.activation.swiglu_gradcheck_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.activation.swiglu_gradcheck_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module mlpk.activation."
+    )
+
+fn _dispatch_mlpk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "mlp_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _mlpk_contract__mlp_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_work_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _mlpk_contract__mlp_work_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_work_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_dims_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _mlpk_contract__mlp_dims_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_dims_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_vocab_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _mlpk_contract__mlp_vocab_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_vocab_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_vocab_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_activation_known":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _mlpk_contract__mlp_activation_known(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_activation_known."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_activation_known expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_scalars_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _mlpk_contract__mlp_scalars_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_scalars_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_scalars_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mlp_tol_for":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _mlpk_contract__mlp_tol_for(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "mlpk.contract.mlp_tol_for produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.contract.mlp_tol_for."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.contract.mlp_tol_for expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module mlpk.contract."
+    )
+
+fn _dispatch_mlpk__embedding(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "embedding_ids_in_range":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _mlpk_embedding__embedding_ids_in_range(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.embedding.embedding_ids_in_range."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.embedding.embedding_ids_in_range expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "embedding_fwd_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _mlpk_embedding__embedding_fwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_embedout(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.embedding.embedding_fwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.embedding.embedding_fwd_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "embedding_bwd_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _mlpk_embedding__embedding_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_embedgrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for mlpk.embedding.embedding_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function mlpk.embedding.embedding_bwd_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module mlpk.embedding."
+    )
+
 fn _dispatch_model_abi(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tensor_layout_stride":
@@ -132728,6 +133182,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_ml__random_forest(function_name, args_array)
     if module_name == "ml_metrics_extended":
         return _dispatch_ml_metrics_extended(function_name, args_array)
+    if module_name == "mlpk.activation":
+        return _dispatch_mlpk__activation(function_name, args_array)
+    if module_name == "mlpk.contract":
+        return _dispatch_mlpk__contract(function_name, args_array)
+    if module_name == "mlpk.embedding":
+        return _dispatch_mlpk__embedding(function_name, args_array)
     if module_name == "model_abi":
         return _dispatch_model_abi(function_name, args_array)
     if module_name == "model_compare":
