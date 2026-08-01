@@ -171,18 +171,40 @@ probe window lied); otherwise the cardinality probe picks BANDED or RADIX as
 in round 2. The route is a public, testable function so a routing mistake is
 a failing table entry, and the H2O bench gates round 3 against the best of
 rounds 1 and 2 per question — a routing regression cannot ship silently.
+
+`group_by_int64` — grouping without the Float64 detour (2026-08, round 4, int64-columnar-fidelity)
+----------------------------------------------------------------------------------------------------
+Every entry point above groups on `Float64Array`, because `columnar.batch.RecordBatch`
+is Float64-only by design (see its own header). That is fine for a genuinely Float64
+key. It is silently wrong for a caller holding a real Int64 key column
+(`columnar.array.Int64Array`) above 2^53: two distinct Int64 values there can share one
+double (`9007199254740992` and `9007199254740993` both round to the same bit pattern),
+so `group_by(batch, ...)` on a key column that was widened to Float64 upstream merges
+them into one group — `test_query_aggregate.mojo` proves the merge (count and sum both
+silently double) through this exact path, on the value that pair actually collides at.
+
+`group_by_int64` is the fix, not a rewrite of `group_by`: it takes the key as an
+`Int64Array` and never widens it. Grouping runs through
+`columnar.hash_index.Int64HashIndex` — `Int -> Int`, no Float64 anywhere — so two
+distinct Int64 keys stay two groups at every magnitude the type can hold. Value-side
+accumulation is unchanged: the same frozen `pandas_groupby` primitives via
+`GroupAccumulator.observe`, and the same null policy `group_by` already has (a null key
+excludes its row and is counted in `null_key_rows`; a null value joins its group's row
+count but moves no accumulator). Serial only, matching where `group_by` itself started —
+parallelizing this path is a possible follow-up, not a correctness requirement.
 """
 from std.algorithm import parallelize
 from std.memory import alloc, bitcast
 from std.sys import info
 
-from columnar.array import Float64Array, float64_with_nulls
+from columnar.array import Float64Array, Int64Array, float64_with_nulls
 from columnar.batch import RecordBatch
 from columnar.hash_index import (
     CANONICAL_NAN_BITS,
     CompositeKeyIndex,
     FNV_OFFSET_BASIS,
     HashIndex,
+    Int64HashIndex,
     fnv_fold,
     hash_bits,
     hash_composite,
@@ -692,6 +714,138 @@ fn group_by_parallel(
             accumulators[slot].merge_from(w_accs[w][i])
 
     return _finish_groups(keys, accumulators, opcode, null_key_rows)
+
+
+struct IntGroupedResult(Copyable, Movable):
+    """`GroupedResult`'s Int64-key analog: groups keyed by an EXACT Int, never a
+    Float64 bit pattern.
+
+    Exists because `GroupedResult.keys: List[Float64]` is precisely the coercion
+    `group_by_int64` exists to avoid — a second `keys` type would defeat the whole
+    point if this struct reused it. Everything else (`values`/`present`/`counts`,
+    aligned by index; `opcode`; `null_key_rows`) mirrors `GroupedResult` exactly.
+    """
+
+    var keys: List[Int]
+    var values: List[Float64]
+    var present: List[Bool]
+    var counts: List[Float64]
+    var opcode: Int
+    var null_key_rows: Int
+
+    fn __init__(
+        out self,
+        var keys: List[Int],
+        var values: List[Float64],
+        var present: List[Bool],
+        var counts: List[Float64],
+        opcode: Int,
+        null_key_rows: Int,
+    ):
+        self.keys = keys^
+        self.values = values^
+        self.present = present^
+        self.counts = counts^
+        self.opcode = opcode
+        self.null_key_rows = null_key_rows
+
+    fn n_groups(self) -> Int:
+        return len(self.keys)
+
+    fn describe(self) -> String:
+        return (
+            aggregation_token(self.opcode)
+            + " over "
+            + String(len(self.keys))
+            + " int64-keyed groups"
+            + (
+                " (" + String(self.null_key_rows) + " rows had a null key)"
+                if self.null_key_rows > 0
+                else ""
+            )
+        )
+
+
+fn find_group_int64(keys: List[Int], key: Int) -> Int:
+    """Linear scan for an exact Int key — `find_group`'s Int64 analog.
+
+    Same role as `find_group`: a small-cardinality fast path, and what the tests use
+    to locate a group without depending on insertion order. No precision concern here
+    either way (`Int` equality is exact), so this exists for parallel structure with
+    the Float64 path, not because it is fixing anything of its own.
+    """
+    for i in range(len(keys)):
+        if keys[i] == key:
+            return i
+    return -1
+
+
+fn _finish_groups_int64(
+    keys: List[Int],
+    accumulators: List[GroupAccumulator],
+    opcode: Int,
+    null_key_rows: Int,
+) -> IntGroupedResult:
+    """`_finish_groups`'s Int64-key analog — identical extraction, Int keys untouched."""
+    var out_keys = keys.copy()
+    var values = List[Float64]()
+    var present = List[Bool]()
+    var counts = List[Float64]()
+    for i in range(len(accumulators)):
+        ref acc = accumulators[i]
+        var answerable = acc.has_answer(opcode)
+        values.append(acc.value_for(opcode) if answerable else 0.0)
+        present.append(answerable)
+        counts.append(acc.count)
+    return IntGroupedResult(out_keys^, values^, present^, counts^, opcode, null_key_rows)
+
+
+fn group_by_int64(keys: Int64Array, values: Float64Array, opcode: Int) -> IntGroupedResult:
+    """Aggregate `values` grouped by `keys`, with the key held as an exact Int64 the
+    whole way through — never widened to Float64. See the module header
+    ("`group_by_int64` — grouping without the Float64 detour") for why `group_by`
+    itself cannot be used for this: its key column is a `Float64Array`, and getting an
+    Int64 id into one already lost the distinction this function exists to keep.
+
+    `keys` and `values` are not required to share one `RecordBatch` (there is no
+    Int64-carrying batch type to share — see `columnar.batch`'s header), so neither
+    array's length is trusted over the other: rows run over `[0, n)` where
+    `n = min(keys.length, values.length)`, the same "derive the bound from what is
+    actually there" rule the frozen-kernel-package rules require for any dimension
+    that is not itself the caller's to assert. A caller that built both columns from
+    one already-consistent source gets `n = keys.length` for free.
+
+    Null policy matches `group_by` exactly: a null key excludes its row from every
+    group and is tallied in `null_key_rows`; a null value still joins its group (its
+    row is counted) but moves no accumulator.
+    """
+    var n = keys.length
+    if values.length < n:
+        n = values.length
+
+    var out_keys = List[Int]()
+    var accumulators = List[GroupAccumulator]()
+    var index = Int64HashIndex(64)
+    var null_key_rows = 0
+
+    for r in range(n):
+        if not keys.is_valid_at(r):
+            null_key_rows += 1
+            continue
+        var key = keys.get(r)
+        var next_slot = len(out_keys)
+        var slot = index.get_or_assign(key, next_slot)
+        if slot == next_slot:
+            # A newly assigned slot; the accumulator array grows with it. `0.0` is a
+            # placeholder for `GroupAccumulator.key`, which nothing in this module
+            # reads back (see `GroupAccumulator.__init__` — the field is write-only
+            # today); the group's real, exact key lives in `out_keys`, not here.
+            out_keys.append(key)
+            accumulators.append(GroupAccumulator(0.0))
+        if values.is_valid_at(r):
+            accumulators[slot].observe(values.get(r))
+
+    return _finish_groups_int64(out_keys, accumulators, opcode, null_key_rows)
 
 
 struct MultiGroupedResult(Copyable, Movable):

@@ -13,9 +13,11 @@ from columnar.hash_index import (
     CANONICAL_NAN_BITS,
     CompositeKeyIndex,
     HashIndex,
+    Int64HashIndex,
     hash_bits,
     hash_float,
     hash_indices,
+    hash_int64,
     hash_row,
     normalize_bits,
     row_indices,
@@ -319,5 +321,101 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ hash_row and the two-step form disagree")
+
+    # ── int64-columnar-fidelity: TODAY's corruption, proven on this HashIndex ────
+    # `HashIndex` is Float64-keyed by design — correct for that job. The bug is a
+    # caller with a real Int64 key column above 2^53 having nowhere to go but through
+    # this table, because `9007199254740992` (2^53) and `9007199254740993` (2^53+1)
+    # are two distinct Int64 values that share ONE Float64 bit pattern: a double's
+    # mantissa holds only 53 bits of integer precision. This is not a defect in
+    # `HashIndex` to fix — it demonstrates the actual failure mode `Int64HashIndex`
+    # below exists to avoid, and it must keep passing exactly as written for as long
+    # as Float64 is IEEE-754 binary64.
+    var collide_a = Float64(9007199254740992)  # 2^53
+    var collide_b = Float64(9007199254740993)  # 2^53 + 1, rounds to the same double
+    var float_key_index = HashIndex(8)
+    var slot_a = float_key_index.get_or_assign(collide_a, 0)
+    var slot_b = float_key_index.get_or_assign(collide_b, 1)
+    if (
+        collide_a == collide_b
+        and slot_a == 0
+        and slot_b == 0
+        and float_key_index.size() == 1
+    ):
+        passed += 1
+        print("  ✅ TODAY: HashIndex merges 2^53 and 2^53+1 into ONE slot — the corruption, measured")
+    else:
+        failed += 1
+        print("  ❌ HashIndex did not collide at 2^53/2^53+1 — has the Float64 grid changed?", slot_a, slot_b, float_key_index.size())
+
+    # ── the fix: Int64HashIndex keeps the same pair in two slots ─────────────────
+    var int_key_index = Int64HashIndex(8)
+    var int_slot_a = int_key_index.get_or_assign(9007199254740992, 0)
+    var int_slot_b = int_key_index.get_or_assign(9007199254740993, 1)
+    if int_slot_a == 0 and int_slot_b == 1 and int_key_index.size() == 2:
+        passed += 1
+        print("  ✅ FIXED: Int64HashIndex keeps 2^53 and 2^53+1 in distinct slots")
+    else:
+        failed += 1
+        print("  ❌ Int64HashIndex merged 2^53 and 2^53+1:", int_slot_a, int_slot_b, int_key_index.size())
+
+    # ── boundary sweep: 2^53-1, 2^53, 2^53+1 and Int.MIN/Int.MAX all resolve exactly ──
+    var boundary = Int64HashIndex(8)
+    var b_lo = boundary.get_or_assign(9007199254740991, 0)   # 2^53 - 1
+    var b_mid = boundary.get_or_assign(9007199254740992, 1)  # 2^53
+    var b_hi = boundary.get_or_assign(9007199254740993, 2)   # 2^53 + 1
+    var b_max = boundary.get_or_assign(9223372036854775807, 3)   # Int64.MAX
+    var b_min = boundary.get_or_assign(-9223372036854775808, 4)  # Int64.MIN
+    if (
+        b_lo == 0 and b_mid == 1 and b_hi == 2 and b_max == 3 and b_min == 4
+        and boundary.size() == 5
+        and boundary.find(9007199254740991) == 0
+        and boundary.find(9007199254740992) == 1
+        and boundary.find(9007199254740993) == 2
+        and boundary.find(9223372036854775807) == 3
+        and boundary.find(-9223372036854775808) == 4
+    ):
+        passed += 1
+        print("  ✅ Int64HashIndex resolves the 2^53 boundary and Int64.MIN/MAX exactly, none merged")
+    else:
+        failed += 1
+        print("  ❌ Int64HashIndex boundary sweep wrong:", b_lo, b_mid, b_hi, b_max, b_min)
+
+    # ── Int64HashIndex resize preserves every key, including negatives ──────────
+    var growing_ints = Int64HashIndex(4)
+    var start_cap = growing_ints.capacity()
+    for i in range(100):
+        var signed_key = i - 50  # sweeps negative through positive
+        var _s = growing_ints.get_or_assign(signed_key, i)
+    var ints_all_found = True
+    for i in range(100):
+        if growing_ints.find(i - 50) != i:
+            ints_all_found = False
+    if ints_all_found and growing_ints.capacity() > start_cap and growing_ints.size() == 100:
+        passed += 1
+        print("  ✅ Int64HashIndex resize preserves 100 keys spanning negative and positive")
+    else:
+        failed += 1
+        print("  ❌ Int64HashIndex resize lost keys:", growing_ints.size())
+
+    # ── an absent Int64 key is -1, never a slot ──────────────────────────────────
+    if int_key_index.find(42) == -1 and not int_key_index.contains(42):
+        passed += 1
+        print("  ✅ Int64HashIndex: an absent key reports -1 rather than an occupied slot")
+    else:
+        failed += 1
+        print("  ❌ Int64HashIndex resolved an absent key to a slot")
+
+    # ── hash_int64 is a pure function, and separates near neighbours ────────────
+    if (
+        hash_int64(9007199254740992) == hash_int64(9007199254740992)
+        and hash_int64(9007199254740992) != hash_int64(9007199254740993)
+        and hash_int64(0) != hash_int64(-1)
+    ):
+        passed += 1
+        print("  ✅ hash_int64 is deterministic and separates near-neighbour Int64s")
+    else:
+        failed += 1
+        print("  ❌ hash_int64 wrong")
 
     print("  [columnar.hash_index] Passed:", passed, "Failed:", failed)

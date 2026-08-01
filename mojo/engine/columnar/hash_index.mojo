@@ -39,8 +39,27 @@ Growth
 Open addressing, linear probing, power-of-two capacity, resize at 0.7 load. Linear
 probing rather than quadratic because group counts are small enough that cache
 locality beats clustering resistance, and the probe sequence stays trivially correct.
+
+`Int64HashIndex`: keying without the Float64 detour (round 4, int64-columnar-fidelity)
+----------------------------------------------------------------------------------------
+`HashIndex` above is `Float64 -> Int`, which is exactly right for a Float64 key column
+and silently wrong for an Int64 one: two DISTINCT Int64 values above 2^53 can share one
+IEEE-754 double (`9007199254740992` and `9007199254740993` both round to the same bit
+pattern), so any caller who first widens an Int64 key to Float64 and then probes
+`HashIndex` has already lost the distinction before this module sees it —
+`test_columnar_hash_index.mojo` proves that collision directly, and
+`test_query_aggregate.mojo` proves it turns into a silently-merged group (count and sum
+both double) through the real aggregate path.
+
+`Int64HashIndex` is the fix: `Int -> Int`, keyed and compared on the Int the whole way
+through, with no Float64 anywhere in the type. It needs neither of `HashIndex`'s
+normalizations — an Int64 has no signed zero and no NaN — so it hashes the key's zigzag
+encoding (`canonical.encode.zigzag`, frozen, reused rather than re-derived per rule 3 of
+`docs/mojo/new-kernel-package-rules.md`) directly.
 """
 from std.memory import bitcast
+
+from canonical.encode import zigzag
 
 comptime EMPTY_SLOT: Int = -1
 comptime DEFAULT_CAPACITY: Int = 64
@@ -400,3 +419,115 @@ struct CompositeKeyIndex(Copyable, Movable):
             if base + i < len(self.key_store):
                 out.append(self.key_store[base + i])
         return out^
+
+
+fn hash_int64(key: Int) -> UInt64:
+    """FNV-1a over `key`'s zigzag encoding — `Int64HashIndex`'s probe hash.
+
+    `zigzag` (from `canonical.encode`, frozen) is the one signed-Int-to-UInt64 mapping
+    this tree already committed to as a value's canonical identity, including at
+    `Int.MIN`: `zigzag` computes `-(value + 1)` for a negative value, and
+    `Int.MIN + 1` is one more than `Int.MIN`, so it is representable, and its negation
+    (`Int.MAX`) is too — no overflow at the one Int a naive `-value` would trap on.
+    Reusing it rather than a second bit-reinterpretation means a key's hash here can
+    never disagree with what `canonical.hash` would compute for the same Int, and rule
+    3 of `docs/mojo/new-kernel-package-rules.md` is exactly this: call the frozen
+    encoding, do not re-derive it.
+    """
+    return fnv_fold(FNV_OFFSET_BASIS, zigzag(key))
+
+
+struct Int64HashIndex(Copyable, Movable):
+    """`Int -> Int` slot lookup — `HashIndex`'s exact-Int64 analog.
+
+    Built for `query.aggregate.group_by_int64`: a group-by whose key column is a real
+    Int64 (`columnar.array.Int64Array`) must never coerce that key to Float64, because
+    `HashIndex` (Float64-keyed) cannot distinguish `9007199254740992` from
+    `9007199254740993` — both share one double. This table hashes and compares the Int
+    itself, at every position `slots`/`slot_keys` mirror `HashIndex`'s, so two distinct
+    Int64 keys stay two groups at every magnitude the type can hold, no matter how
+    close together or how far from zero.
+
+    No `-0.0`/NaN normalization: an Int64 key has neither, so `HashIndex`'s two
+    normalizations do not apply and are not reproduced here.
+    """
+
+    var slots: List[Int]
+    var slot_keys: List[Int]
+    var mask: Int
+    var count: Int
+
+    fn __init__(out self, initial_capacity: Int = DEFAULT_CAPACITY):
+        var cap = _next_power_of_two(initial_capacity if initial_capacity > 4 else 4)
+        self.slots = List[Int]()
+        self.slot_keys = List[Int]()
+        for _ in range(cap):
+            self.slots.append(EMPTY_SLOT)
+            self.slot_keys.append(0)
+        self.mask = cap - 1
+        self.count = 0
+
+    fn capacity(self) -> Int:
+        return len(self.slots)
+
+    fn size(self) -> Int:
+        return self.count
+
+    fn _probe(self, key: Int, h: UInt64) -> Int:
+        """Table position holding `key`, or the first empty position for it.
+
+        One function for lookup and insert, same reason as `HashIndex._probe`: the two
+        must never walk different probe sequences.
+        """
+        var pos = Int(h) & self.mask
+        while self.slots[pos] != EMPTY_SLOT:
+            if self.slot_keys[pos] == key:
+                return pos
+            pos = (pos + 1) & self.mask
+        return pos
+
+    fn find(self, key: Int) -> Int:
+        """Slot for `key`, or -1. Never inserts."""
+        var pos = self._probe(key, hash_int64(key))
+        if self.slots[pos] == EMPTY_SLOT:
+            return -1
+        return self.slots[pos]
+
+    fn contains(self, key: Int) -> Bool:
+        return self.find(key) >= 0
+
+    fn _grow(mut self):
+        """Double and rehash. Every live key is reinserted, none dropped."""
+        var old_slots = self.slots.copy()
+        var old_keys = self.slot_keys.copy()
+        var new_cap = len(old_slots) << 1
+        self.slots = List[Int]()
+        self.slot_keys = List[Int]()
+        for _ in range(new_cap):
+            self.slots.append(EMPTY_SLOT)
+            self.slot_keys.append(0)
+        self.mask = new_cap - 1
+        for i in range(len(old_slots)):
+            if old_slots[i] == EMPTY_SLOT:
+                continue
+            var pos = Int(hash_int64(old_keys[i])) & self.mask
+            while self.slots[pos] != EMPTY_SLOT:
+                pos = (pos + 1) & self.mask
+            self.slots[pos] = old_slots[i]
+            self.slot_keys[pos] = old_keys[i]
+
+    fn get_or_assign(mut self, key: Int, next_slot: Int) -> Int:
+        """The existing slot for `key`, or `next_slot` after assigning it.
+
+        Same contract as `HashIndex.get_or_assign`: the caller supplies the slot
+        number, so the index and the caller's accumulator array cannot drift.
+        """
+        var pos = self._probe(key, hash_int64(key))
+        if self.slots[pos] != EMPTY_SLOT:
+            return self.slots[pos]
+        self.slots[pos] = next_slot
+        self.slot_keys[pos] = key
+        self.count += 1
+        if Float64(self.count) > MAX_LOAD * Float64(len(self.slots)):
+            self._grow()
+        return next_slot

@@ -193,6 +193,20 @@ fn int64_from_list(var values: List[Int]) -> Int64Array:
     return Int64Array(ArcPointer(values^), new_all_valid(n), 0, n)
 
 
+fn int64_with_nulls(var values: List[Int], mask: List[Bool]) -> Int64Array:
+    """An Int64 column whose presence comes from `mask` — `float64_with_nulls`'s
+    exact analog, added for `query.aggregate.group_by_int64` (int64-columnar-fidelity):
+    that function needs a nullable Int64 key column to keep `group_by`'s null-key
+    policy, and there was previously no way to build one without hand-assembling a
+    validity bitmap outside `columnar.validity`."""
+    var n = len(values)
+    var bitmap = new_all_null(n)
+    for i in range(n):
+        if i < len(mask) and mask[i]:
+            set_valid(bitmap, i)
+    return Int64Array(ArcPointer(values^), bitmap^, 0, n)
+
+
 struct BoolArray(Copyable, Movable):
     """Nullable boolean column — a filter mask with three states, not two.
 

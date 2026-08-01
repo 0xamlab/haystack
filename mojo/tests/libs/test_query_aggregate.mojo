@@ -9,7 +9,14 @@ than 0.0.
 from std.math import isnan, sqrt
 from std.memory import bitcast
 
-from columnar.array import Float64Array, float64_from_list, float64_with_nulls
+from columnar.array import (
+    Float64Array,
+    Int64Array,
+    float64_from_list,
+    float64_with_nulls,
+    int64_from_list,
+    int64_with_nulls,
+)
 from columnar.batch import RecordBatch, schema_of
 from numeric.contract import (
     AGG_AVG,
@@ -23,10 +30,13 @@ from numeric.contract import (
 from query.aggregate import (
     GroupAccumulator,
     GroupedResult,
+    IntGroupedResult,
     aggregate_column,
     aggregate_column_present,
     find_group,
+    find_group_int64,
     group_by,
+    group_by_int64,
     group_by_multi,
     grouped_to_column,
 )
@@ -521,5 +531,114 @@ fn main() raises:
             all_nan_min,
             acc_nan.value_for(AGG_MIN),
         )
+
+    # ── int64-columnar-fidelity: TODAY's corruption, through the real aggregate path ──
+    # This is what ingest already produces for two distinct Int64 ids above 2^53: both
+    # collapse to the SAME Float64 (`9007199254740992.0`) before `group_by` ever sees
+    # them, because a double's mantissa holds only 53 bits of integer precision. Two
+    # source rows that should be two groups become one. This is `group_by` working
+    # exactly as designed on a Float64 key column — the bug is upstream of this
+    # function, in whatever coerced an Int64 id to Float64 before it arrived — but the
+    # visible, measurable damage happens here: a silently doubled count and sum.
+    var collided_key = List[Float64]()
+    collided_key.append(9007199254740992.0)  # what 2^53   widens to
+    collided_key.append(9007199254740992.0)  # what 2^53+1 widens to — SAME double
+    var collided_value = List[Float64]()
+    collided_value.append(1.0)
+    collided_value.append(1.0)
+    var collided_names = List[String]()
+    collided_names.append("id")
+    collided_names.append("amount")
+    var collided_cols = List[Float64Array]()
+    collided_cols.append(float64_from_list(collided_key^))
+    collided_cols.append(float64_from_list(collided_value^))
+    var collided_batch = RecordBatch(schema_of(collided_names^), collided_cols^, 2)
+    var corrupted = group_by(collided_batch, 0, 1, AGG_SUM)
+    var corrupted_count = group_by(collided_batch, 0, 1, AGG_COUNT)
+    if (
+        corrupted.n_groups() == 1
+        and corrupted.values[0] == 2.0            # sum silently doubled: 1.0 + 1.0
+        and corrupted_count.values[0] == 2.0      # two distinct ids counted as one
+    ):
+        passed += 1
+        print("  ✅ TODAY: two distinct Int64 ids widened to Float64 merge into 1 group, sum doubles — the corruption, measured")
+    else:
+        failed += 1
+        print("  ❌ the Float64-keyed collision did not reproduce — has group_by's keying changed?", corrupted.n_groups(), corrupted.values[0])
+
+    # ── the fix: group_by_int64 keeps the same two ids as two groups ────────────────
+    var exact_keys = List[Int]()
+    exact_keys.append(9007199254740992)  # 2^53
+    exact_keys.append(9007199254740993)  # 2^53 + 1 — DISTINCT from the row above
+    var exact_values = List[Float64]()
+    exact_values.append(1.0)
+    exact_values.append(1.0)
+    var exact_keys_2 = List[Int]()
+    exact_keys_2.append(9007199254740992)
+    exact_keys_2.append(9007199254740993)
+    var exact_values_2 = List[Float64]()
+    exact_values_2.append(1.0)
+    exact_values_2.append(1.0)
+    var fixed = group_by_int64(int64_from_list(exact_keys^), float64_from_list(exact_values^), AGG_SUM)
+    var fixed_count = group_by_int64(
+        int64_from_list(exact_keys_2^), float64_from_list(exact_values_2^), AGG_COUNT
+    )
+    var fg1 = find_group_int64(fixed.keys, 9007199254740992)
+    var fg2 = find_group_int64(fixed.keys, 9007199254740993)
+    if (
+        fixed.n_groups() == 2
+        and fg1 != -1 and fg2 != -1 and fg1 != fg2
+        and fixed.values[fg1] == 1.0
+        and fixed.values[fg2] == 1.0
+        and fixed.keys[fg1] == 9007199254740992
+        and fixed.keys[fg2] == 9007199254740993
+        and fixed_count.n_groups() == 2
+        and fixed_count.values[find_group_int64(fixed_count.keys, 9007199254740992)] == 1.0
+        and fixed_count.values[find_group_int64(fixed_count.keys, 9007199254740993)] == 1.0
+    ):
+        passed += 1
+        print("  ✅ FIXED: group_by_int64 keeps 2^53 and 2^53+1 as two groups, sum/count exact")
+    else:
+        failed += 1
+        print("  ❌ group_by_int64 merged the two ids:", fixed.n_groups(), fg1, fg2)
+
+    # ── group_by_int64 keeps group_by's null-key / null-value policy ────────────────
+    var null_keys = List[Int]()
+    null_keys.append(1)
+    null_keys.append(2)
+    null_keys.append(2)
+    var key_mask = List[Bool]()
+    key_mask.append(False)  # null key: excluded from every group
+    key_mask.append(True)
+    key_mask.append(True)
+    var null_key_col = int64_with_nulls(null_keys^, key_mask)
+    var val_list = List[Float64]()
+    val_list.append(100.0)  # sits behind the null key; must not join any group
+    val_list.append(10.0)
+    val_list.append(0.0)
+    var val_mask = List[Bool]()
+    val_mask.append(True)
+    val_mask.append(True)
+    val_mask.append(False)  # null value: row still joins the group, contributes nothing
+    var value_col2 = float64_with_nulls(val_list^, val_mask)
+    var with_nulls = group_by_int64(null_key_col, value_col2, AGG_SUM)
+    var with_nulls_count = group_by_int64(null_key_col, value_col2, AGG_COUNT)
+    var wg2 = find_group_int64(with_nulls.keys, 2)
+    if (
+        with_nulls.n_groups() == 1               # key 1 excluded (null); only key 2 remains
+        and with_nulls.null_key_rows == 1
+        and find_group_int64(with_nulls.keys, 1) == -1
+        and wg2 != -1
+        and with_nulls.values[wg2] == 10.0         # the null value contributes nothing
+        # matches group_by exactly (see this file's first test, "group 2 counts 2, not
+        # 3 — the null value is not counted"): AGG_COUNT counts valid VALUES observed,
+        # not rows in the group, so key 2's null-value row (row 2) is excluded from 1.0.
+        and with_nulls_count.values[find_group_int64(with_nulls_count.keys, 2)] == 1.0
+    ):
+        passed += 1
+        print("  ✅ group_by_int64: null key excluded, null value counted but not summed — matches group_by")
+    else:
+        failed += 1
+        print("  ❌ group_by_int64 null policy wrong:", with_nulls.n_groups(), with_nulls.null_key_rows)
 
     print("  [query.aggregate] Passed:", passed, "Failed:", failed)

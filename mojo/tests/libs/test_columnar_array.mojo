@@ -171,6 +171,49 @@ fn main() raises:
         failed += 1
         print("  ❌ widening wrong")
 
+    # ── int64-columnar-fidelity: the documented floor, proven at the exact pair ──
+    # `to_float64`'s own docstring already says this is lossy above 2^53; this proves
+    # it AT the specific pair the bug report named, so the floor is not merely
+    # asserted, it is measured. Two DISTINCT Int64 values collapse to ONE Float64 bit
+    # pattern: `9007199254740992` (2^53) and `9007199254740993` (2^53+1) both round to
+    # the same double, because a double's mantissa holds only 53 bits of integer
+    # precision. This is inherent to Float64 and not something `to_float64` can fix —
+    # it is exactly the reason `group_by_int64` (query.aggregate) exists: a caller
+    # that needs both of these to stay distinct through a group-by must never route
+    # them through this function.
+    var pair = List[Int]()
+    pair.append(9007199254740992)  # 2^53
+    pair.append(9007199254740993)  # 2^53 + 1
+    var pair_widened = int64_from_list(pair^).to_float64()
+    if (
+        pair_widened.get(0) == pair_widened.get(1)
+        and pair_widened.get(0) == 9007199254740992.0
+    ):
+        passed += 1
+        print("  ✅ to_float64(2^53) and to_float64(2^53+1) collide — the documented floor, measured")
+    else:
+        failed += 1
+        print("  ❌ 2^53 and 2^53+1 did not collide under to_float64 — floor claim is stale:", pair_widened.get(0), pair_widened.get(1))
+
+    # ── ...and Int64Array itself never loses that distinction ────────────────────
+    # The corruption is strictly downstream of the WIDEN, not the storage: read back
+    # from the Int64Array directly (no to_float64 in the path) and the two values are
+    # still exact and still distinct.
+    var pair2 = List[Int]()
+    pair2.append(9007199254740992)
+    pair2.append(9007199254740993)
+    var pair_ints = int64_from_list(pair2^)
+    if (
+        pair_ints.get(0) == 9007199254740992
+        and pair_ints.get(1) == 9007199254740993
+        and pair_ints.get(0) != pair_ints.get(1)
+    ):
+        passed += 1
+        print("  ✅ Int64Array keeps 2^53 and 2^53+1 exact and distinct — the fidelity to preserve downstream")
+    else:
+        failed += 1
+        print("  ❌ Int64Array itself lost the distinction:", pair_ints.get(0), pair_ints.get(1))
+
     # ── a bool column distinguishes false from unknown ──────────────────────
     var flags = List[Bool]()
     flags.append(True)
