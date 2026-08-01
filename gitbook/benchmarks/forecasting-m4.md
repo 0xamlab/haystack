@@ -59,6 +59,8 @@ The fitted rows are also compared against statsforecast 2.1.1 running its equiva
 
 The Holt totals agree to the third decimal and the damped totals differ by 0.024 sMAPE. Two independent implementations landing on the same value, both well below the official 0.971 and 0.907 rows, means the margin over the official rows comes from the quality of the fitted initial state, not from scorer drift.
 
+The seasonal fitted variant, ETS(A,A,A), runs on the raw series rather than through the deseasonalised pipeline, and it is validated per series rather than by row. Its smoothing parameters and its full initial state — level, trend and the seasonal indices — are fitted jointly, matching the statsforecast 2.1.1 formulation, and its forecasts agree with a same-environment statsforecast `AutoETS(model="AAA")` run on every seasonal M4 series: all 24,000 Quarterly, all 48,000 Monthly and all 414 Hourly series within a scaled tolerance of 1e-6, with row sMAPE and MASE equal to four decimals. Its OWA is 0.903 on Quarterly, 0.952 on Monthly and 0.703 on Hourly. One caution on reproducing this comparison: on Quarterly the fitted optimum is basin-degenerate, and statsforecast runs from two different numpy and statsmodels builds disagree with each other on 3,280 of the 24,000 series (0.10 sMAPE at row level, with equal in-sample objectives), so the per-series agreement is meaningful only against a statsforecast run from the same environment.
+
 ## Method
 
 ### Dataset
@@ -97,12 +99,12 @@ These are accuracy results: they contain no timings, and the values do not depen
 
 * **The comparison set is the competition's statistical benchmarks.** SelectBest at 0.874 is below all eight official statistical benchmark rows and above the competition's top entrants — the winner, a hybrid method, scored 0.821 Total OWA and the runner-up, a combination method, 0.838. This page claims the statistical-benchmark result and nothing further.
 * **The official Hourly Holt, Damped and Comb values are not reproducible from the published method.** The workbook lists Hourly OWA 2.749 (Holt), 1.141 (Damped) and 1.556 (Comb); this pipeline obtains 1.045, 0.989 and 1.005, and statsforecast 2.1.1 on the same series agrees with this pipeline (1.045 and 0.989), not with the workbook — a known discrepancy of the official benchmark code on the Hourly subset. The anchor rows, including their Hourly cells, do reproduce. The headline margins do not depend on this: excluding Hourly entirely, Holt is 7.2%, Damped 3.1% and Comb 2.1% below the official rows.
-* **The seasonal fitted variant, ETS(A,A,A), is currently behind statsforecast.** On Quarterly it trails statsforecast `AutoETS(model="AAA")` by 0.397 sMAPE (10.873 against 10.476), and on Monthly by 0.024 MASE (0.974 against 0.950, with a Monthly sMAPE 0.056 lower). Its seasonal initial states come from the decomposition rather than a joint fit. It is not a row in the tables above.
+* **ETS(A,A,A) is cross-checked per series, not benchmarked.** The competition's statistical benchmark set contains no seasonal ETS row, so ETS(A,A,A) does not appear in the results tables. Its validation is the per-series agreement with statsforecast in [Cross-check against statsforecast on the same series](#cross-check-against-statsforecast-on-the-same-series).
 * **One competition, one metric family.** These results are M4 under sMAPE, MASE and OWA. They say nothing about other datasets, other horizons, probabilistic accuracy, or speed.
 
 ## Reproduce
 
-The entry points behind every fitted row are `holt_fitted`, `damped_fitted` and `fitted_init_solve` in `forecasting.fitted`, and `select_best_fitted` in `forecasting.select`, over the baseline, SES, Theta and deseasonalisation kernels in `forecasting.point`. Their unit suites are `mojo/tests/libs/test_forecasting_fitted.mojo` and `mojo/tests/libs/test_forecasting_select.mojo`, and the package's scaling gate runs from the repository:
+The entry points behind the fitted rows and the seasonal cross-check are `holt_fitted`, `damped_fitted`, `ets_aaa_fitted` and `fitted_init_solve` in `forecasting.fitted`, and `select_best_fitted` in `forecasting.select`, over the baseline, SES, Theta and deseasonalisation kernels in `forecasting.point`. Their unit suites are `mojo/tests/libs/test_forecasting_fitted.mojo` and `mojo/tests/libs/test_forecasting_select.mojo`, and the package's scaling gate runs from the repository:
 
 ```text title="benchmark"
 mojo run benchmarks/mojo_benchmarks/bench_forecasting.mojo
