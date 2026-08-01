@@ -84,6 +84,32 @@ fn hash_float(value: Float64) -> UInt64:
     return hash_bits(normalize_bits(value))
 
 
+fn hash_composite(key: List[Float64], width: Int) -> UInt64:
+    """One FNV-1a hash over a `width`-wide key tuple, elements normalized.
+
+    This is THE hash `CompositeKeyIndex` probes with — its `_hash_key` delegates
+    here — exported so a caller that routes rows by hash (the radix-partitioned
+    aggregate path) provably uses the same function the table it later probes
+    uses. Two implementations of "the key's hash" would let a row land in one
+    partition and be looked up under another, which is a lost group, silently.
+
+    For `width == 1` this equals `hash_float(key[0])`: same normalization, same
+    FNV fold over the same eight bytes — so `HashIndex` (which probes with
+    `hash_bits(normalize_bits(k))`) and a width-1 `CompositeKeyIndex` route
+    identically. A position past `len(key)` hashes as 0.0, matching
+    `CompositeKeyIndex._keys_equal`'s treatment of a short key.
+    """
+    var h = _FNV_OFFSET
+    for i in range(width):
+        var bits = normalize_bits(key[i] if i < len(key) else 0.0)
+        var remaining = bits
+        for _ in range(8):
+            h = h ^ (remaining & 0xFF)
+            h = h * _FNV_PRIME
+            remaining = remaining >> 8
+    return h
+
+
 fn _next_power_of_two(n: Int) -> Int:
     var cap = 1
     while cap < n:
@@ -267,15 +293,9 @@ struct CompositeKeyIndex(Copyable, Movable):
         return len(self.slots)
 
     fn _hash_key(self, key: List[Float64]) -> UInt64:
-        var h = _FNV_OFFSET
-        for i in range(self.key_width):
-            var bits = normalize_bits(key[i] if i < len(key) else 0.0)
-            var remaining = bits
-            for _ in range(8):
-                h = h ^ (remaining & 0xFF)
-                h = h * _FNV_PRIME
-                remaining = remaining >> 8
-        return h
+        # Delegates to the module-level `hash_composite` so the table and any
+        # hash-router (the radix aggregate path) cannot disagree about a key's hash.
+        return hash_composite(key, self.key_width)
 
     fn _keys_equal(self, slot: Int, key: List[Float64]) -> Bool:
         var base = slot * self.key_width

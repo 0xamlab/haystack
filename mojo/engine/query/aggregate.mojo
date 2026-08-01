@@ -56,13 +56,53 @@ What the merge preserves, exactly and provably:
 `group_by_parallel` / `group_by_multi_parallel` take the worker count explicitly
 (that is what the suite uses to compare 1 worker against N); the unsuffixed
 entry points plan it via `planned_workers`, which is where the crossover lives.
+
+Fused, radix-partitioned and code-indexed grouping (2026-08, round 2)
+---------------------------------------------------------------------
+Round 1 parallelized the scan; the remaining measured gap to polars/duckdb on
+the H2O groupby tier had two causes, plus one cheap win, addressed by three new
+entry points that COMPOSE the machinery above rather than replacing it:
+
+  * `group_by_many` — one scan, one key hash and one probe per row, N
+    accumulators updated per group. A question like "mean of v1..v3 by id4"
+    was three full `group_by` passes (three hashings, three probes per row);
+    now the per-group state is a contiguous STRIPE of `n_aggs` accumulators
+    (`stripes[slot * n_aggs + j]`), so the per-row update walks one cache-line
+    region instead of three separate tables. Same frozen `group_*_update`
+    primitives, same `GroupAccumulator` — this is a driver, not new arithmetic.
+  * `group_by_many_radix` — above `RADIX_MIN_GROUPS` distinct keys the round-1
+    band merge is O(workers x groups) and each worker's table spans the FULL
+    key space. Radix instead: pass 1 hashes each key ONCE (the same
+    `hash_composite` the tables probe with), routes the row by the top
+    `RADIX_BITS` bits into a worker-private bucket per partition; pass 2 builds
+    each partition's table in ONE task from all workers' buckets, concatenated
+    in band order — which is ascending global row order, so every group's
+    accumulator is folded in exactly the serial order (bit-identical to one
+    worker, stronger than the band path's merge-tolerance) and per-partition
+    group lists ascend in first-appearance row. A final P-way merge on those
+    first-row indices — O(groups x partitions), never rows — restores the
+    module's global first-appearance order promise exactly.
+  * `group_by_coded` — a single key column that is already dictionary CODES
+    (`columnar.dictionary` hands them out dense from 0) with small known
+    cardinality skips hashing entirely: the accumulator array is indexed by
+    the code itself. Every present key is validated to be an integral value in
+    [0, cardinality) BEFORE it indexes anything — an out-of-range code is a
+    typed refusal (`GROUP_CODED_KEY_NOT_A_CODE`), never an out-of-bounds write,
+    which in Mojo is an uncatchable abort that takes the worker process with it.
+
+`group_by_many_parallel` picks band vs radix per call via `probe_cardinality`
+over the first `CARDINALITY_PROBE_ROWS` rows. When the probe under-reads the
+true cardinality the data is necessarily clustered (a group absent from the
+probe window is concentrated later in the batch), which is exactly the shape
+where each group touches few bands and the band merge is cheap anyway — the
+probe's failure mode and the band path's cheap case coincide.
 """
 from std.algorithm import parallelize
 from std.sys import info
 
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch
-from columnar.hash_index import CompositeKeyIndex, HashIndex
+from columnar.hash_index import CompositeKeyIndex, HashIndex, hash_composite
 from numeric.contract import (
     AGG_AVG,
     AGG_COUNT,
@@ -741,3 +781,999 @@ fn grouped_to_column(result: GroupedResult) -> Float64Array:
         values.append(result.values[i])
         mask.append(result.present[i])
     return float64_with_nulls(values^, mask)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fused multi-aggregate grouping — one scan, one probe per row, N accumulators
+# ═══════════════════════════════════════════════════════════════════════════════
+
+comptime RADIX_BITS: Int = 4
+"""Partition count exponent: 16 partitions from the hash's top 4 bits.
+
+Top bits rather than bottom because the open-addressed tables index with
+`hash & mask` — the BOTTOM bits. Partitioning on the top bits keeps the two
+uses of the one hash independent: within a partition the low bits still spread
+keys across the whole table."""
+
+comptime RADIX_PARTITIONS: Int = 1 << RADIX_BITS
+
+comptime CARDINALITY_PROBE_ROWS: Int = 1 << 16
+"""How many leading rows `probe_cardinality` reads before the band/radix choice.
+
+The same 64k the parallel crossover uses: cheap against a >= PARALLEL_MIN_ROWS
+scan (one hash per row, no accumulators), and on uniformly-mixed data — the
+shape where the band merge is expensive — 64k rows saturate well past
+`RADIX_MIN_GROUPS` distinct keys whenever the true count does."""
+
+comptime RADIX_MIN_GROUPS: Int = 32768
+"""PROBED distinct-key count at which `group_by_many_parallel` switches from
+the band-merge path to the radix path.
+
+Measured on this host (16 physical cores, 1e7 rows, 2 aggregates, load ~8;
+sweep in bench_groupby_fused.mojo). `probed` is what `probe_cardinality`
+reports over its 64k window for that true cardinality — the number this
+threshold actually sees:
+
+    true groups   probed   banded    radix     radix advantage
+        10 000     9 986   0.075s    0.067s    ~par (0.97-1.13x across runs)
+        16 384    16 076   0.062s    0.072s    0.86x
+        32 768    28 352   0.088s    0.093s    0.95x
+        50 000    36 594   0.119s    0.076s    1.57x
+        65 536    41 466   0.142s    0.083s    1.72x
+       100 000    48 154   0.210s    0.083s    2.54x
+
+Below ~30k probed the paths are within noise of each other (the scatter's
+bucket materialisation buys back roughly what the merge costs); from ~36k
+probed the radix win is unambiguous and grows with cardinality. 32768 is the
+first power of two above the measured par zone."""
+
+comptime MAX_FUSED_AGGS: Int = 32
+"""Ceiling on aggregates per fused call. The radix scatter packs per-row value
+validity into one Int bitmask, so the ceiling keeps that total; a report
+wanting more than 32 aggregates of one grouping can call twice."""
+
+comptime MAX_CODED_CARDINALITY: Int = 4096
+"""Ceiling on `group_by_coded`'s dense accumulator array, PER WORKER.
+
+4096 stripes x up to 32 accumulators x ~64 bytes is ~8 MiB per worker at the
+widest — bounded before allocation, not discovered by it. Beyond this the
+dense array stops fitting cache and the hash path stops losing; DuckDB's
+equivalent (perfect-hash grouping) draws the same order-of-magnitude line."""
+
+# ── status codes: query.aggregate owns 330-339 (rule 4e: one integer, one
+#    meaning per package; 300-329 are taken by columnar) ──────────────────────
+comptime GROUP_CODED_OK: Int = 330
+comptime GROUP_CODED_CARDINALITY_INVALID: Int = 331
+comptime GROUP_CODED_KEY_NOT_A_CODE: Int = 332
+comptime GROUP_CODED_BAD_REQUEST: Int = 333
+
+
+struct ManyGroupedResult(Copyable, Movable):
+    """Group keys and SEVERAL aggregated columns from one scan, aligned by index.
+
+    `key_tuples` is flat, `key_width` wide per group — the `MultiGroupedResult`
+    layout. `values`/`present`/`counts` are flat and GROUP-MAJOR: aggregate `j`
+    of group `g` sits at `g * n_aggs + j`. Group-major because one group's
+    aggregates are the unit a report row reads, so they should be contiguous —
+    the same reason the accumulator stripes are laid out this way during the
+    scan.
+
+    `counts` is per (group, aggregate), not per group: each value column has
+    its own nulls, so "how many observations fed this number" is a property of
+    the pair, and one shared count would be wrong for every column but one.
+    """
+
+    var key_tuples: List[Float64]
+    var key_width: Int
+    var n_aggs: Int
+    var opcodes: List[Int]
+    var values: List[Float64]
+    var present: List[Bool]
+    var counts: List[Float64]
+    var null_key_rows: Int
+
+    fn __init__(
+        out self,
+        var key_tuples: List[Float64],
+        key_width: Int,
+        n_aggs: Int,
+        var opcodes: List[Int],
+        var values: List[Float64],
+        var present: List[Bool],
+        var counts: List[Float64],
+        null_key_rows: Int,
+    ):
+        self.key_tuples = key_tuples^
+        self.key_width = key_width
+        self.n_aggs = n_aggs
+        self.opcodes = opcodes^
+        self.values = values^
+        self.present = present^
+        self.counts = counts^
+        self.null_key_rows = null_key_rows
+
+    fn n_groups(self) -> Int:
+        if self.key_width <= 0:
+            return 0
+        return len(self.key_tuples) // self.key_width
+
+    fn key_at(self, group: Int) -> List[Float64]:
+        var out = List[Float64]()
+        if group < 0 or group >= self.n_groups():
+            return out^
+        var base = group * self.key_width
+        for i in range(self.key_width):
+            out.append(self.key_tuples[base + i])
+        return out^
+
+    fn _flat(self, group: Int, agg: Int) -> Int:
+        """Flat position, or -1 out of range — the bounds check every accessor shares."""
+        if agg < 0 or agg >= self.n_aggs:
+            return -1
+        var flat = group * self.n_aggs + agg
+        if group < 0 or flat >= len(self.values):
+            return -1
+        return flat
+
+    fn value_at(self, group: Int, agg: Int) -> Float64:
+        var flat = self._flat(group, agg)
+        return self.values[flat] if flat >= 0 else 0.0
+
+    fn present_at(self, group: Int, agg: Int) -> Bool:
+        var flat = self._flat(group, agg)
+        return self.present[flat] if flat >= 0 else False
+
+    fn count_at(self, group: Int, agg: Int) -> Float64:
+        var flat = self._flat(group, agg)
+        return self.counts[flat] if flat >= 0 else 0.0
+
+
+struct CodedGroupedResult(Copyable, Movable):
+    """A `ManyGroupedResult` plus the status that says whether it exists.
+
+    `group_by_coded` can REFUSE (bad cardinality, a key that is not a code, a
+    malformed request), and a refusal must not look like an empty answer to a
+    real question — so the status rides with the result. On any status other
+    than `GROUP_CODED_OK` the result is EMPTY: zero groups, zero aggregates.
+    """
+
+    var status: Int
+    var result: ManyGroupedResult
+
+    fn __init__(out self, status: Int, var result: ManyGroupedResult):
+        self.status = status
+        self.result = result^
+
+    fn ok(self) -> Bool:
+        return self.status == GROUP_CODED_OK
+
+
+fn coded_status_name(status: Int) -> String:
+    """The vocabulary for 330-339."""
+    if status == GROUP_CODED_OK:
+        return "ok"
+    if status == GROUP_CODED_CARDINALITY_INVALID:
+        return "cardinality_invalid"
+    if status == GROUP_CODED_KEY_NOT_A_CODE:
+        return "key_not_a_code"
+    if status == GROUP_CODED_BAD_REQUEST:
+        return "bad_request"
+    return "unknown"
+
+
+fn _empty_many() -> ManyGroupedResult:
+    """Zero groups, zero aggregates — what a malformed request gets back."""
+    return ManyGroupedResult(
+        List[Float64](), 0, 0, List[Int](), List[Float64](), List[Bool](), List[Float64](), 0
+    )
+
+
+fn _many_request_ok(value_columns: List[Int], opcodes: List[Int]) -> Bool:
+    """Whether the (value column, opcode) pairing is well-formed.
+
+    One opcode per value column, at least one, at most `MAX_FUSED_AGGS`. A
+    mismatch is a caller bug with no right answer — pairing by position would
+    silently aggregate the wrong column — so the entry points return the empty
+    result rather than guessing.
+    """
+    var n_aggs = len(value_columns)
+    if n_aggs < 1 or n_aggs > MAX_FUSED_AGGS:
+        return False
+    return len(opcodes) == n_aggs
+
+
+fn _finish_many(
+    key_tuples: List[Float64],
+    width: Int,
+    stripes: List[GroupAccumulator],
+    n_aggs: Int,
+    opcodes: List[Int],
+    null_key_rows: Int,
+) -> ManyGroupedResult:
+    """Accumulator stripes to a result — one extraction shared by every fused
+    path, so serial, banded, radix and coded cannot disagree about answerability."""
+    var out_tuples = key_tuples.copy()
+    var out_ops = opcodes.copy()
+    var values = List[Float64]()
+    var present = List[Bool]()
+    var counts = List[Float64]()
+    var n_groups = 0
+    if n_aggs > 0:
+        n_groups = len(stripes) // n_aggs
+    for g in range(n_groups):
+        for j in range(n_aggs):
+            ref acc = stripes[g * n_aggs + j]
+            var op = opcodes[j]
+            var answerable = acc.has_answer(op)
+            values.append(acc.value_for(op) if answerable else 0.0)
+            present.append(answerable)
+            counts.append(acc.count)
+    return ManyGroupedResult(
+        out_tuples^, width, n_aggs, out_ops^, values^, present^, counts^, null_key_rows
+    )
+
+
+fn _group_many_width0(
+    batch: RecordBatch, value_columns: List[Int], opcodes: List[Int]
+) -> ManyGroupedResult:
+    """No key columns is one group over everything — `group_by_multi`'s rule,
+    with a stripe of aggregates instead of one."""
+    var n_aggs = len(value_columns)
+    var value_cols = List[Float64Array]()
+    for j in range(n_aggs):
+        value_cols.append(batch.column(value_columns[j]))
+    var stripes = List[GroupAccumulator]()
+    for _ in range(n_aggs):
+        stripes.append(GroupAccumulator(0.0))
+    for r in range(batch.n_rows):
+        for j in range(n_aggs):
+            if value_cols[j].is_valid_at(r):
+                stripes[j].observe(value_cols[j].get(r))
+    return _finish_many(List[Float64](), 0, stripes, n_aggs, opcodes, 0)
+
+
+fn probe_cardinality(batch: RecordBatch, key_columns: List[Int], probe_rows: Int) -> Int:
+    """Distinct keys among the first `min(probe_rows, n_rows)` rows. Null keys skipped.
+
+    The band/radix dispatch input. An ESTIMATE of the batch's cardinality, and a
+    deliberate one-sided one: it can only under-count (a probe window cannot
+    contain more distinct keys than the batch), and the under-count case implies
+    clustering, which is the band path's cheap case — see the module header.
+    """
+    var width = len(key_columns)
+    if width == 0:
+        return 1
+    var n = batch.n_rows
+    if probe_rows < n:
+        n = probe_rows
+    if n <= 0:
+        return 0
+    if width == 1:
+        var key_col = batch.column(key_columns[0])
+        var index = HashIndex(64)
+        for r in range(n):
+            if not key_col.is_valid_at(r):
+                continue
+            _ = index.get_or_assign(key_col.get(r), index.size())
+        return index.size()
+    var key_cols = List[Float64Array]()
+    for i in range(width):
+        key_cols.append(batch.column(key_columns[i]))
+    var index = CompositeKeyIndex(width, 64)
+    var key = List[Float64](capacity=width)
+    for _ in range(width):
+        key.append(0.0)
+    for r in range(n):
+        var any_null = False
+        for c in range(width):
+            if not key_cols[c].is_valid_at(r):
+                any_null = True
+                break
+            key[c] = key_cols[c].get(r)
+        if any_null:
+            continue
+        _ = index.get_or_assign(key, index.size())
+    return index.size()
+
+
+fn group_by_many(
+    batch: RecordBatch,
+    key_columns: List[Int],
+    value_columns: List[Int],
+    opcodes: List[Int],
+) -> ManyGroupedResult:
+    """Aggregate SEVERAL value columns grouped by `key_columns`, in ONE pass.
+
+    `opcodes[j]` applies to `value_columns[j]` — flat parallel lists, one
+    result column per pair. The same column may appear twice with different
+    opcodes. Key hashing and the group probe happen once per row however many
+    aggregates are requested; that is the entire point (a three-aggregate
+    question was three full scans).
+
+    Everything `group_by`/`group_by_multi` promise holds here: rows with any
+    null KEY column are excluded and tallied, a null VALUE joins its group but
+    moves only its own accumulator, groups come back in global first-appearance
+    order on every path and worker count.
+
+    A malformed request — zero value columns, more than `MAX_FUSED_AGGS`, or
+    `len(opcodes) != len(value_columns)` — returns the EMPTY result (zero
+    groups, zero aggregates): pairing by position would silently aggregate the
+    wrong column, and there is no status channel on this result on purpose
+    (the coded path, which can refuse on DATA, carries one; a malformed
+    request is a caller bug visible at the call site).
+    """
+    return group_by_many_parallel(
+        batch,
+        key_columns,
+        value_columns,
+        opcodes,
+        planned_workers(batch.n_rows, info.num_physical_cores()),
+    )
+
+
+fn group_by_many_parallel(
+    batch: RecordBatch,
+    key_columns: List[Int],
+    value_columns: List[Int],
+    opcodes: List[Int],
+    n_workers: Int,
+) -> ManyGroupedResult:
+    """`group_by_many` on an explicit worker count, band/radix chosen by probe.
+
+    1 worker is exactly the serial path. Above 1, `probe_cardinality` over the
+    first `CARDINALITY_PROBE_ROWS` rows picks the band-merge path (small key
+    spaces: the merge is trivial and the scatter would be pure overhead) or the
+    radix path (large key spaces: the O(workers x groups) merge and the
+    full-key-space per-worker tables are what kill 100k-group questions).
+    `group_by_many_banded` / `group_by_many_radix` pin either path directly —
+    that is what the suite and the gate use to compare them on identical data.
+    """
+    if not _many_request_ok(value_columns, opcodes):
+        return _empty_many()
+    if len(key_columns) == 0:
+        return _group_many_width0(batch, value_columns, opcodes)
+    var workers = n_workers
+    if workers < 1:
+        workers = 1
+    if workers > batch.n_rows:
+        workers = batch.n_rows
+    if workers <= 1:
+        return _group_many_serial(batch, key_columns, value_columns, opcodes)
+    if probe_cardinality(batch, key_columns, CARDINALITY_PROBE_ROWS) >= RADIX_MIN_GROUPS:
+        return group_by_many_radix(batch, key_columns, value_columns, opcodes, workers)
+    return group_by_many_banded(batch, key_columns, value_columns, opcodes, workers)
+
+
+fn _group_many_serial(
+    batch: RecordBatch,
+    key_columns: List[Int],
+    value_columns: List[Int],
+    opcodes: List[Int],
+) -> ManyGroupedResult:
+    """The one-thread fused scan: one probe per row, a stripe update per group.
+
+    Callers have already validated the request and handled width 0. Fold order
+    is row order, so for a single value column this produces accumulator states
+    bit-identical to `group_by`'s serial path — the equivalence the suite pins
+    per opcode.
+    """
+    var width = len(key_columns)
+    var n_aggs = len(value_columns)
+    var n_rows = batch.n_rows
+    var value_cols = List[Float64Array]()
+    for j in range(n_aggs):
+        value_cols.append(batch.column(value_columns[j]))
+
+    var key_tuples = List[Float64]()
+    var stripes = List[GroupAccumulator]()
+    var null_key_rows = 0
+    var group_count = 0
+
+    if width == 1:
+        var key_col = batch.column(key_columns[0])
+        var index = HashIndex(64)
+        for r in range(n_rows):
+            if not key_col.is_valid_at(r):
+                null_key_rows += 1
+                continue
+            var key = key_col.get(r)
+            var slot = index.get_or_assign(key, group_count)
+            if slot == group_count:
+                group_count += 1
+                key_tuples.append(key)
+                for _ in range(n_aggs):
+                    stripes.append(GroupAccumulator(key))
+            for j in range(n_aggs):
+                if value_cols[j].is_valid_at(r):
+                    stripes[slot * n_aggs + j].observe(value_cols[j].get(r))
+        return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
+
+    var key_cols = List[Float64Array]()
+    for i in range(width):
+        key_cols.append(batch.column(key_columns[i]))
+    var index = CompositeKeyIndex(width, 64)
+    # One key buffer per scan, overwritten per row — round 1's allocation fix.
+    var key = List[Float64](capacity=width)
+    for _ in range(width):
+        key.append(0.0)
+    for r in range(n_rows):
+        var any_null = False
+        for c in range(width):
+            if not key_cols[c].is_valid_at(r):
+                any_null = True
+                break
+            key[c] = key_cols[c].get(r)
+        if any_null:
+            null_key_rows += 1
+            continue
+        var slot = index.get_or_assign(key, group_count)
+        if slot == group_count:
+            group_count += 1
+            for c in range(width):
+                key_tuples.append(key[c])
+            for _ in range(n_aggs):
+                stripes.append(GroupAccumulator(key[0]))
+        for j in range(n_aggs):
+            if value_cols[j].is_valid_at(r):
+                stripes[slot * n_aggs + j].observe(value_cols[j].get(r))
+    return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
+
+
+fn group_by_many_banded(
+    batch: RecordBatch,
+    key_columns: List[Int],
+    value_columns: List[Int],
+    opcodes: List[Int],
+    n_workers: Int,
+) -> ManyGroupedResult:
+    """The fused scan on round 1's shape: private tables per contiguous row band,
+    sequential merge in worker-index order.
+
+    Right when groups are FEW: each worker's table is small, and the merge —
+    O(workers x groups), `merge_from` per stripe entry with the Chan m2 combine —
+    is trivial. Order survives by round 1's argument verbatim: bands are
+    contiguous and merged in band order, so first-band-containing-a-group is
+    first-appearance. Wrong when groups are MANY; that is `group_by_many_radix`.
+    """
+    if not _many_request_ok(value_columns, opcodes):
+        return _empty_many()
+    var width = len(key_columns)
+    if width == 0:
+        return _group_many_width0(batch, value_columns, opcodes)
+    var n_aggs = len(value_columns)
+    var n_rows = batch.n_rows
+    var workers = n_workers
+    if workers < 1:
+        workers = 1
+    if workers > n_rows:
+        workers = n_rows
+    if workers <= 1:
+        return _group_many_serial(batch, key_columns, value_columns, opcodes)
+
+    var key_cols = List[Float64Array]()
+    for i in range(width):
+        key_cols.append(batch.column(key_columns[i]))
+    var value_cols = List[Float64Array]()
+    for j in range(n_aggs):
+        value_cols.append(batch.column(value_columns[j]))
+
+    var band = (n_rows + workers - 1) // workers
+    var w_tuples = List[List[Float64]](capacity=workers)
+    var w_stripes = List[List[GroupAccumulator]](capacity=workers)
+    var w_nulls = List[Int](capacity=workers)
+    for _ in range(workers):
+        w_tuples.append(List[Float64]())
+        w_stripes.append(List[GroupAccumulator]())
+        w_nulls.append(0)
+    var tp = w_tuples.unsafe_ptr()
+    var sp = w_stripes.unsafe_ptr()
+    var np = w_nulls.unsafe_ptr()
+
+    @parameter
+    fn band_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var nulls = 0
+        var group_count = 0
+        if width == 1:
+            var index = HashIndex(64)
+            for r in range(lo, hi):
+                if not key_cols[0].is_valid_at(r):
+                    nulls += 1
+                    continue
+                var key = key_cols[0].get(r)
+                var slot = index.get_or_assign(key, group_count)
+                if slot == group_count:
+                    group_count += 1
+                    tp[w].append(key)
+                    for _ in range(n_aggs):
+                        sp[w].append(GroupAccumulator(key))
+                for j in range(n_aggs):
+                    if value_cols[j].is_valid_at(r):
+                        sp[w][slot * n_aggs + j].observe(value_cols[j].get(r))
+        else:
+            var index = CompositeKeyIndex(width, 64)
+            var key = List[Float64](capacity=width)
+            for _ in range(width):
+                key.append(0.0)
+            for r in range(lo, hi):
+                var any_null = False
+                for c in range(width):
+                    if not key_cols[c].is_valid_at(r):
+                        any_null = True
+                        break
+                    key[c] = key_cols[c].get(r)
+                if any_null:
+                    nulls += 1
+                    continue
+                var slot = index.get_or_assign(key, group_count)
+                if slot == group_count:
+                    group_count += 1
+                    for c in range(width):
+                        tp[w].append(key[c])
+                    for _ in range(n_aggs):
+                        sp[w].append(GroupAccumulator(key[0]))
+                for j in range(n_aggs):
+                    if value_cols[j].is_valid_at(r):
+                        sp[w][slot * n_aggs + j].observe(value_cols[j].get(r))
+        np[w] = nulls
+
+    parallelize[band_worker](workers)
+
+    # Sequential merge in worker-index order — round 1's order argument verbatim.
+    var key_tuples = List[Float64]()
+    var stripes = List[GroupAccumulator]()
+    var h_merged = HashIndex(64)
+    var c_merged = CompositeKeyIndex(width, 64)
+    var null_key_rows = 0
+    var group_count = 0
+    var key = List[Float64](capacity=width)
+    for _ in range(width):
+        key.append(0.0)
+    for w in range(workers):
+        null_key_rows += w_nulls[w]
+        var local_groups = len(w_tuples[w]) // width
+        for g in range(local_groups):
+            for c in range(width):
+                key[c] = w_tuples[w][g * width + c]
+            var slot = (
+                h_merged.get_or_assign(key[0], group_count) if width == 1
+                else c_merged.get_or_assign(key, group_count)
+            )
+            if slot == group_count:
+                group_count += 1
+                for c in range(width):
+                    key_tuples.append(key[c])
+                for _ in range(n_aggs):
+                    stripes.append(GroupAccumulator(key[0]))
+            for j in range(n_aggs):
+                stripes[slot * n_aggs + j].merge_from(w_stripes[w][g * n_aggs + j])
+
+    return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
+
+
+fn group_by_many_radix(
+    batch: RecordBatch,
+    key_columns: List[Int],
+    value_columns: List[Int],
+    opcodes: List[Int],
+    n_workers: Int,
+) -> ManyGroupedResult:
+    """The fused scan radix-partitioned: hash once, scatter, build partitions
+    independently, restore first-appearance order by first-row index.
+
+    Design (b) of the two viable shapes — scatter over two-pass ownership —
+    because its memory traffic is CONSTANT in the worker count: pass 1 reads
+    the batch once and writes each surviving row once into a worker-private
+    bucket per partition; pass 2 reads the buckets once. The two-pass
+    alternative re-reads the batch (or a materialised hash array) once PER
+    WORKER — W x traffic at exactly the row counts where this path is chosen.
+    Scatter also gets the order argument for free, see below.
+
+    What each pass does:
+
+      pass 1 (parallel over `workers` contiguous bands): per surviving row,
+        gather the key ONCE into the reused buffer, `hash_composite` it ONCE —
+        the same hash every table here probes with, exported from
+        `columnar.hash_index` precisely so routing and probing cannot diverge —
+        route by the top `RADIX_BITS` bits, and append (keys, values, global
+        row index, value-validity bitmask) to bucket[w][p]. No worker touches
+        another's buckets.
+
+      pass 2 (parallel over `RADIX_PARTITIONS`): partition p's table is built
+        by ONE task from buckets [0][p], [1][p], ... in band order. Bands are
+        contiguous ascending row ranges and each bucket preserves scan order,
+        so that concatenation is ascending GLOBAL row order — every group's
+        accumulator folds its rows in exactly the serial path's order (results
+        are bit-identical to 1 worker, no merge tolerance anywhere), each
+        group's recorded first row IS its global first appearance, and each
+        partition's group list ascends in that index.
+
+      order restore (sequential): P cursors, repeatedly emit the partition
+        whose head has the smallest first-row index — a P-way merge of sorted
+        lists, O(groups x partitions) on GROUPS, never rows. The result is
+        global first-appearance order, exactly; the suite asserts it against
+        the serial path element by element, which is what makes this shippable.
+    """
+    if not _many_request_ok(value_columns, opcodes):
+        return _empty_many()
+    var width = len(key_columns)
+    if width == 0:
+        return _group_many_width0(batch, value_columns, opcodes)
+    var n_aggs = len(value_columns)
+    var n_rows = batch.n_rows
+    var workers = n_workers
+    if workers < 1:
+        workers = 1
+    if workers > n_rows:
+        workers = n_rows
+    if workers <= 1:
+        return _group_many_serial(batch, key_columns, value_columns, opcodes)
+
+    var key_cols = List[Float64Array]()
+    for i in range(width):
+        key_cols.append(batch.column(key_columns[i]))
+    var value_cols = List[Float64Array]()
+    for j in range(n_aggs):
+        value_cols.append(batch.column(value_columns[j]))
+
+    var band = (n_rows + workers - 1) // workers
+    var row_floats = width + n_aggs
+
+    # ── pass 1: scatter into worker-owned partition buckets ───────────────────
+    # bucket (w, p) lives at w * RADIX_PARTITIONS + p. Floats carry the row's
+    # keys then values (0.0 where the value is null — never read, the bitmask
+    # says so); meta carries (global row index, validity bitmask) pairs.
+    var expect = band // RADIX_PARTITIONS + band // (RADIX_PARTITIONS * 4) + 16
+    var b_floats = List[List[Float64]](capacity=workers * RADIX_PARTITIONS)
+    var b_meta = List[List[Int]](capacity=workers * RADIX_PARTITIONS)
+    var w_nulls = List[Int](capacity=workers)
+    for _ in range(workers * RADIX_PARTITIONS):
+        b_floats.append(List[Float64](capacity=expect * row_floats))
+        b_meta.append(List[Int](capacity=expect * 2))
+    for _ in range(workers):
+        w_nulls.append(0)
+    var fp = b_floats.unsafe_ptr()
+    var mp = b_meta.unsafe_ptr()
+    var np = w_nulls.unsafe_ptr()
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var key = List[Float64](capacity=width)
+        for _ in range(width):
+            key.append(0.0)
+        var nulls = 0
+        for r in range(lo, hi):
+            var any_null = False
+            for c in range(width):
+                if not key_cols[c].is_valid_at(r):
+                    any_null = True
+                    break
+                key[c] = key_cols[c].get(r)
+            if any_null:
+                nulls += 1
+                continue
+            var h = hash_composite(key, width)
+            var b = w * RADIX_PARTITIONS + Int(h >> (64 - RADIX_BITS))
+            for c in range(width):
+                fp[b].append(key[c])
+            var vmask = 0
+            for j in range(n_aggs):
+                if value_cols[j].is_valid_at(r):
+                    vmask = vmask | (1 << j)
+                    fp[b].append(value_cols[j].get(r))
+                else:
+                    fp[b].append(0.0)
+            mp[b].append(r)
+            mp[b].append(vmask)
+        np[w] = nulls
+
+    parallelize[scatter_worker](workers)
+
+    # ── pass 2: one task per partition, buckets concatenated in band order ─────
+    var p_tuples = List[List[Float64]](capacity=RADIX_PARTITIONS)
+    var p_stripes = List[List[GroupAccumulator]](capacity=RADIX_PARTITIONS)
+    var p_first = List[List[Int]](capacity=RADIX_PARTITIONS)
+    for _ in range(RADIX_PARTITIONS):
+        p_tuples.append(List[Float64]())
+        p_stripes.append(List[GroupAccumulator]())
+        p_first.append(List[Int]())
+    var ptp = p_tuples.unsafe_ptr()
+    var psp = p_stripes.unsafe_ptr()
+    var pfp = p_first.unsafe_ptr()
+
+    @parameter
+    fn partition_worker(p: Int):
+        var group_count = 0
+        if width == 1:
+            var index = HashIndex(64)
+            for w in range(workers):
+                var b = w * RADIX_PARTITIONS + p
+                var bucket_rows = len(mp[b]) // 2
+                for i in range(bucket_rows):
+                    var base = i * row_floats
+                    var key = fp[b][base]
+                    var slot = index.get_or_assign(key, group_count)
+                    if slot == group_count:
+                        group_count += 1
+                        ptp[p].append(key)
+                        for _ in range(n_aggs):
+                            psp[p].append(GroupAccumulator(key))
+                        pfp[p].append(mp[b][2 * i])
+                    var vmask = mp[b][2 * i + 1]
+                    for j in range(n_aggs):
+                        if ((vmask >> j) & 1) == 1:
+                            psp[p][slot * n_aggs + j].observe(fp[b][base + 1 + j])
+        else:
+            var index = CompositeKeyIndex(width, 64)
+            var key = List[Float64](capacity=width)
+            for _ in range(width):
+                key.append(0.0)
+            for w in range(workers):
+                var b = w * RADIX_PARTITIONS + p
+                var bucket_rows = len(mp[b]) // 2
+                for i in range(bucket_rows):
+                    var base = i * row_floats
+                    for c in range(width):
+                        key[c] = fp[b][base + c]
+                    var slot = index.get_or_assign(key, group_count)
+                    if slot == group_count:
+                        group_count += 1
+                        for c in range(width):
+                            ptp[p].append(key[c])
+                        for _ in range(n_aggs):
+                            psp[p].append(GroupAccumulator(key[0]))
+                        pfp[p].append(mp[b][2 * i])
+                    var vmask = mp[b][2 * i + 1]
+                    for j in range(n_aggs):
+                        if ((vmask >> j) & 1) == 1:
+                            psp[p][slot * n_aggs + j].observe(fp[b][base + width + j])
+
+    parallelize[partition_worker](RADIX_PARTITIONS)
+
+    # ── order restore: P-way merge on ascending first-row lists ────────────────
+    var null_key_rows = 0
+    for w in range(workers):
+        null_key_rows += w_nulls[w]
+    var total_groups = 0
+    for p in range(RADIX_PARTITIONS):
+        total_groups += len(p_first[p])
+
+    var cursors = List[Int](capacity=RADIX_PARTITIONS)
+    for _ in range(RADIX_PARTITIONS):
+        cursors.append(0)
+    var key_tuples = List[Float64](capacity=total_groups * width)
+    var stripes = List[GroupAccumulator](capacity=total_groups * n_aggs)
+    for _ in range(total_groups):
+        var best_p = -1
+        var best_row = n_rows  # every recorded first row is < n_rows
+        for p in range(RADIX_PARTITIONS):
+            if cursors[p] < len(p_first[p]) and p_first[p][cursors[p]] < best_row:
+                best_p = p
+                best_row = p_first[p][cursors[p]]
+        if best_p < 0:
+            break  # unreachable: total_groups is the sum of the list lengths
+        var g = cursors[best_p]
+        cursors[best_p] = g + 1
+        for c in range(width):
+            key_tuples.append(p_tuples[best_p][g * width + c])
+        for j in range(n_aggs):
+            stripes.append(p_stripes[best_p][g * n_aggs + j].copy())
+
+    return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Code-indexed grouping — no hash table when the key is already a small code
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+fn group_by_coded(
+    batch: RecordBatch,
+    key_column: Int,
+    cardinality: Int,
+    value_columns: List[Int],
+    opcodes: List[Int],
+) -> CodedGroupedResult:
+    """Fused grouping for a key column of dictionary CODES: the accumulator
+    array is indexed by the code itself, no hash, no probe.
+
+    For whom: a column `columnar.dictionary` encoded (codes are dense from 0 in
+    first-appearance order; `cardinality` = `n_distinct`, read from the
+    dictionary), or any integer-coded column whose ceiling the caller knows.
+    On such data this returns EXACTLY what `group_by_many` returns — same
+    groups, same first-appearance order, same values — it is only faster.
+
+    The guard is the point: every PRESENT key must be an integral value in
+    [0, cardinality). The range check runs in FLOAT domain first — NaN and
+    negatives fail `k >= 0.0`, +inf and oversized fail `k < cardinality` — so
+    `Int(k)` is only reached where it is total (`fptosi` outside range is
+    undefined, not clamped; same discipline as `arrow_wire.packed_floats_to_bytes`).
+    A violation is a TYPED REFUSAL (`GROUP_CODED_KEY_NOT_A_CODE`, empty result):
+    indexing the array with a bad code would be an out-of-bounds write, which
+    is an uncatchable abort that kills the worker process and every resident
+    dataset with it. A null key is not a violation — it is exclusion, tallied,
+    exactly as on the hash paths.
+    """
+    return group_by_coded_parallel(
+        batch,
+        key_column,
+        cardinality,
+        value_columns,
+        opcodes,
+        planned_workers(batch.n_rows, info.num_physical_cores()),
+    )
+
+
+fn group_by_coded_parallel(
+    batch: RecordBatch,
+    key_column: Int,
+    cardinality: Int,
+    value_columns: List[Int],
+    opcodes: List[Int],
+    n_workers: Int,
+) -> CodedGroupedResult:
+    """`group_by_coded` on an explicit worker count. 1 is exactly the serial path.
+
+    Parallel shape: round 1's contiguous bands, but the per-worker state is a
+    DENSE stripe array indexed by code plus a band-local first-appearance list.
+    The merge is `merge_from` per (code, aggregate) in worker-index order — the
+    same association as `group_by_parallel`'s band merge over identical bands,
+    which is why the suite can assert bit-equality against it — and the order
+    merge walks workers' local lists in band order, round 1's argument again.
+    """
+    if cardinality <= 0 or cardinality > MAX_CODED_CARDINALITY:
+        return CodedGroupedResult(GROUP_CODED_CARDINALITY_INVALID, _empty_many())
+    if not _many_request_ok(value_columns, opcodes):
+        return CodedGroupedResult(GROUP_CODED_BAD_REQUEST, _empty_many())
+
+    var n_aggs = len(value_columns)
+    var n_rows = batch.n_rows
+    var key_col = batch.column(key_column)
+    var value_cols = List[Float64Array]()
+    for j in range(n_aggs):
+        value_cols.append(batch.column(value_columns[j]))
+    var bound = Float64(cardinality)
+
+    var workers = n_workers
+    if workers < 1:
+        workers = 1
+    if workers > n_rows:
+        workers = n_rows
+
+    if workers <= 1:
+        var stripes = List[GroupAccumulator](capacity=cardinality * n_aggs)
+        for _ in range(cardinality * n_aggs):
+            stripes.append(GroupAccumulator(0.0))
+        var seen = List[Bool](capacity=cardinality)
+        for _ in range(cardinality):
+            seen.append(False)
+        var order = List[Int]()
+        var null_key_rows = 0
+        for r in range(n_rows):
+            if not key_col.is_valid_at(r):
+                null_key_rows += 1
+                continue
+            var k = key_col.get(r)
+            if not (k >= 0.0) or k >= bound:
+                return CodedGroupedResult(GROUP_CODED_KEY_NOT_A_CODE, _empty_many())
+            var code = Int(k)
+            if Float64(code) != k:
+                return CodedGroupedResult(GROUP_CODED_KEY_NOT_A_CODE, _empty_many())
+            if not seen[code]:
+                seen[code] = True
+                order.append(code)
+            for j in range(n_aggs):
+                if value_cols[j].is_valid_at(r):
+                    stripes[code * n_aggs + j].observe(value_cols[j].get(r))
+        # Emit in first-appearance order — NOT code order. Codes from
+        # `columnar.dictionary` happen to be assigned in first-appearance order
+        # of the encoding pass, but this batch may be a filtered or reordered
+        # view of that pass, and the module's promise is about THIS batch.
+        var key_tuples = List[Float64](capacity=len(order))
+        var out_stripes = List[GroupAccumulator](capacity=len(order) * n_aggs)
+        for i in range(len(order)):
+            var code = order[i]
+            key_tuples.append(Float64(code))
+            for j in range(n_aggs):
+                out_stripes.append(stripes[code * n_aggs + j].copy())
+        return CodedGroupedResult(
+            GROUP_CODED_OK,
+            _finish_many(key_tuples, 1, out_stripes, n_aggs, opcodes, null_key_rows),
+        )
+
+    # ── parallel: dense private arrays per band, merge in worker-index order ──
+    var band = (n_rows + workers - 1) // workers
+    var w_stripes = List[List[GroupAccumulator]](capacity=workers)
+    var w_seen = List[List[Bool]](capacity=workers)
+    var w_order = List[List[Int]](capacity=workers)
+    var w_nulls = List[Int](capacity=workers)
+    var w_bad = List[Bool](capacity=workers)
+    for _ in range(workers):
+        var stripes_w = List[GroupAccumulator](capacity=cardinality * n_aggs)
+        for _ in range(cardinality * n_aggs):
+            stripes_w.append(GroupAccumulator(0.0))
+        w_stripes.append(stripes_w^)
+        var seen_w = List[Bool](capacity=cardinality)
+        for _ in range(cardinality):
+            seen_w.append(False)
+        w_seen.append(seen_w^)
+        w_order.append(List[Int]())
+        w_nulls.append(0)
+        w_bad.append(False)
+    var sp = w_stripes.unsafe_ptr()
+    var ep = w_seen.unsafe_ptr()
+    var op = w_order.unsafe_ptr()
+    var np = w_nulls.unsafe_ptr()
+    var bp = w_bad.unsafe_ptr()
+
+    @parameter
+    fn coded_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var nulls = 0
+        for r in range(lo, hi):
+            if not key_col.is_valid_at(r):
+                nulls += 1
+                continue
+            var k = key_col.get(r)
+            if not (k >= 0.0) or k >= bound:
+                bp[w] = True
+                break  # the whole call refuses; nothing this band saw survives
+            var code = Int(k)
+            if Float64(code) != k:
+                bp[w] = True
+                break
+            if not ep[w][code]:
+                ep[w][code] = True
+                op[w].append(code)
+            for j in range(n_aggs):
+                if value_cols[j].is_valid_at(r):
+                    sp[w][code * n_aggs + j].observe(value_cols[j].get(r))
+        np[w] = nulls
+
+    parallelize[coded_worker](workers)
+
+    for w in range(workers):
+        if w_bad[w]:
+            return CodedGroupedResult(GROUP_CODED_KEY_NOT_A_CODE, _empty_many())
+
+    # Global first-appearance order: walk workers in band order, appending each
+    # code the first time any band's local (already first-appearance) list
+    # yields it — the same composition round 1's merge uses for its keys.
+    var g_seen = List[Bool](capacity=cardinality)
+    for _ in range(cardinality):
+        g_seen.append(False)
+    var g_order = List[Int]()
+    var null_key_rows = 0
+    for w in range(workers):
+        null_key_rows += w_nulls[w]
+        for i in range(len(w_order[w])):
+            var code = w_order[w][i]
+            if not g_seen[code]:
+                g_seen[code] = True
+                g_order.append(code)
+
+    var key_tuples = List[Float64](capacity=len(g_order))
+    var out_stripes = List[GroupAccumulator](capacity=len(g_order) * n_aggs)
+    for i in range(len(g_order)):
+        var code = g_order[i]
+        key_tuples.append(Float64(code))
+        for j in range(n_aggs):
+            var acc = GroupAccumulator(Float64(code))
+            for w in range(workers):
+                if w_seen[w][code]:
+                    acc.merge_from(w_stripes[w][code * n_aggs + j])
+            out_stripes.append(acc^)
+    return CodedGroupedResult(
+        GROUP_CODED_OK,
+        _finish_many(key_tuples, 1, out_stripes, n_aggs, opcodes, null_key_rows),
+    )
