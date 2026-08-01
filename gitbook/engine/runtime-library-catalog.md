@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **566 modules** and **5508 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **605 modules** and **5851 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -239,7 +239,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Serialization & data
 
-12 modules.
+17 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -250,6 +250,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `data.csv_parser` | 4 |
 | `data_feedback_loop` | 10 |
 | `data_pipeline` | 10 |
+| `data_quality.contract` | 18 |
+| `data_quality.duplicates` | 4 |
+| `data_quality.expect` | 6 |
+| `data_quality.leakage` | 3 |
+| `data_quality.profile` | 5 |
 | `json.parser` | 15 |
 | `json.writer` | 12 |
 | `model_serialization` | 10 |
@@ -258,20 +263,21 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Bits, numbers & time
 
-6 modules.
+7 modules.
 
 | Module | Functions |
 | --- | --- |
 | `agent_runtime` | 10 |
 | `bitops` | 13 |
 | `datetime` | 14 |
+| `discrete_event.calendar` | 4 |
 | `number_theory` | 12 |
 | `sentiment` | 10 |
 | `time_zone` | 10 |
 
 ## Geometry & spatial
 
-7 modules.
+13 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -280,6 +286,12 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `geodesy` | 10 |
 | `geometry` | 9 |
 | `geophysics` | 10 |
+| `geospatial.contract` | 19 |
+| `geospatial.frame` | 8 |
+| `geospatial.index` | 6 |
+| `geospatial.join` | 4 |
+| `geospatial.mapmatch` | 2 |
+| `geospatial.polygon` | 6 |
 | `geotechnical` | 12 |
 | `hydrogeology` | 10 |
 
@@ -318,7 +330,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-363 modules.
+390 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -406,6 +418,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `diffusion_models` | 10 |
 | `dimensionality` | 8 |
 | `dimensions` | 10 |
+| `discrete_event.contract` | 18 |
+| `discrete_event.queue_sim` | 5 |
+| `discrete_event.replicate` | 2 |
+| `discrete_event.resource` | 2 |
+| `discrete_event.warmup` | 2 |
 | `distillation` | 12 |
 | `distributed_collectives` | 10 |
 | `document_layout` | 7 |
@@ -428,6 +445,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `epidemiology` | 10 |
 | `ergonomics` | 12 |
 | `etiology` | 10 |
+| `evaluation.binning` | 4 |
+| `evaluation.contract` | 13 |
+| `evaluation.gates` | 3 |
+| `evaluation.resample` | 3 |
+| `evaluation.scores` | 6 |
 | `evaluation_feedback` | 10 |
 | `evolutionary_search` | 7 |
 | `execution_planner` | 10 |
@@ -641,11 +663,28 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `speleology` | 10 |
 | `sports_analytics` | 12 |
 | `stochastic` | 10 |
+| `strategy.contract` | 42 |
+| `strategy.crn` | 17 |
+| `strategy.equilibrium` | 22 |
+| `strategy.policy` | 8 |
+| `strategy.tournament` | 8 |
+| `streaming.contract` | 21 |
+| `streaming.distinct` | 11 |
+| `streaming.drift` | 8 |
+| `streaming.frequency` | 16 |
+| `streaming.quantiles` | 15 |
+| `streaming.windows` | 10 |
 | `structs.containers` | 2 |
 | `structural` | 12 |
 | `structured_output` | 10 |
 | `supply_chain` | 12 |
 | `survival` | 8 |
+| `survival_analysis.base` | 9 |
+| `survival_analysis.competing` | 3 |
+| `survival_analysis.cox` | 3 |
+| `survival_analysis.hazard` | 2 |
+| `survival_analysis.km` | 3 |
+| `survival_analysis.parametric` | 2 |
 | `sustainability` | 12 |
 | `svm_kernel` | 9 |
 | `svm_solver` | 5 |

@@ -1425,6 +1425,57 @@ from data_pipeline import (
     data_augmentation_weight as _data_pipeline__data_augmentation_weight,
 )
 
+from data_quality.contract import (
+    dq_status_name as _data_quality_contract__dq_status_name,
+    dq_is_finite as _data_quality_contract__dq_is_finite,
+    dq_relative_tolerance as _data_quality_contract__dq_relative_tolerance,
+    dq_ulp_tolerance as _data_quality_contract__dq_ulp_tolerance,
+    dq_values_equal as _data_quality_contract__dq_values_equal,
+    dq_decimal_scale as _data_quality_contract__dq_decimal_scale,
+    dq_quantize_exact as _data_quality_contract__dq_quantize_exact,
+    dq_quantize as _data_quality_contract__dq_quantize,
+    dq_table_defect as _data_quality_contract__dq_table_defect,
+    dq_work_fits as _data_quality_contract__dq_work_fits,
+    dq_rows_within_budget as _data_quality_contract__dq_rows_within_budget,
+    dq_mask_defect as _data_quality_contract__dq_mask_defect,
+    dq_mask_all_valid as _data_quality_contract__dq_mask_all_valid,
+    dq_column as _data_quality_contract__dq_column,
+    dq_column_mask as _data_quality_contract__dq_column_mask,
+    dq_column_prefix as _data_quality_contract__dq_column_prefix,
+    dq_column_mask_prefix as _data_quality_contract__dq_column_mask_prefix,
+    dq_live_and_finite as _data_quality_contract__dq_live_and_finite,
+)
+
+from data_quality.duplicates import (
+    duplicate_status_name as _data_quality_duplicates__duplicate_status_name,
+    duplicate_key_defect as _data_quality_duplicates__duplicate_key_defect,
+    duplicate_scan_flat as _data_quality_duplicates__duplicate_scan_flat,
+    duplicate_rows_of_group as _data_quality_duplicates__duplicate_rows_of_group,
+)
+
+from data_quality.expect import (
+    expect_status_name as _data_quality_expect__expect_status_name,
+    expect_op_name as _data_quality_expect__expect_op_name,
+    expect_failure_line as _data_quality_expect__expect_failure_line,
+    expect_column_flat as _data_quality_expect__expect_column_flat,
+    expect_suite_flat as _data_quality_expect__expect_suite_flat,
+    expect_plan_flat as _data_quality_expect__expect_plan_flat,
+)
+
+from data_quality.leakage import (
+    leakage_status_name as _data_quality_leakage__leakage_status_name,
+    leakage_scan_flat as _data_quality_leakage__leakage_scan_flat,
+    leakage_timing_flat as _data_quality_leakage__leakage_timing_flat,
+)
+
+from data_quality.profile import (
+    profile_status_name as _data_quality_profile__profile_status_name,
+    profile_column as _data_quality_profile__profile_column,
+    profile_column_at as _data_quality_profile__profile_column_at,
+    profile_table as _data_quality_profile__profile_table,
+    profile_is_constant as _data_quality_profile__profile_is_constant,
+)
+
 from database import (
     table_create as _database__table_create,
     table_insert_row as _database__table_insert_row,
@@ -1609,6 +1660,57 @@ from dimensions import (
     role_for_dimension as _dimensions__role_for_dimension,
     dimension_name as _dimensions__dimension_name,
     dimension_from_role as _dimensions__dimension_from_role,
+)
+
+from discrete_event.calendar import (
+    de_key_less as _discrete_event_calendar__de_key_less,
+    calendar_replay_flat as _discrete_event_calendar__calendar_replay_flat,
+    calendar_order_audit as _discrete_event_calendar__calendar_order_audit,
+    calendar_stress_flat as _discrete_event_calendar__calendar_stress_flat,
+)
+
+from discrete_event.contract import (
+    de_status_name as _discrete_event_contract__de_status_name,
+    de_finite as _discrete_event_contract__de_finite,
+    de_absent as _discrete_event_contract__de_absent,
+    de_scaled_tol as _discrete_event_contract__de_scaled_tol,
+    de_scaled_tol_additions as _discrete_event_contract__de_scaled_tol_additions,
+    de_event_order as _discrete_event_contract__de_event_order,
+    de_rng_version as _discrete_event_contract__de_rng_version,
+    de_stream_arrival as _discrete_event_contract__de_stream_arrival,
+    de_stream_service as _discrete_event_contract__de_stream_service,
+    de_heap_levels as _discrete_event_contract__de_heap_levels,
+    de_product_fits as _discrete_event_contract__de_product_fits,
+    de_product3_fits as _discrete_event_contract__de_product3_fits,
+    de_heap_work_fits as _discrete_event_contract__de_heap_work_fits,
+    de_heap_work as _discrete_event_contract__de_heap_work,
+    de_ceilings as _discrete_event_contract__de_ceilings,
+    de_all_finite as _discrete_event_contract__de_all_finite,
+    de_nondecreasing as _discrete_event_contract__de_nondecreasing,
+    de_agrees as _discrete_event_contract__de_agrees,
+)
+
+from discrete_event.queue_sim import (
+    qs_interarrivals as _discrete_event_queue_sim__qs_interarrivals,
+    qs_service_times as _discrete_event_queue_sim__qs_service_times,
+    qs_arrival_times as _discrete_event_queue_sim__qs_arrival_times,
+    qs_closed_form_flat as _discrete_event_queue_sim__qs_closed_form_flat,
+    qs_run_flat as _discrete_event_queue_sim__qs_run_flat,
+)
+
+from discrete_event.replicate import (
+    replicate_ci_flat as _discrete_event_replicate__replicate_ci_flat,
+    replicate_mm1_flat as _discrete_event_replicate__replicate_mm1_flat,
+)
+
+from discrete_event.resource import (
+    resource_work_charge as _discrete_event_resource__resource_work_charge,
+    resource_serve_flat as _discrete_event_resource__resource_serve_flat,
+)
+
+from discrete_event.warmup import (
+    warmup_mser_flat as _discrete_event_warmup__warmup_mser_flat,
+    warmup_bias_audit as _discrete_event_warmup__warmup_bias_audit,
 )
 
 from distillation import (
@@ -2008,6 +2110,50 @@ from etiology import (
     positive_predictive_value as _etiology__positive_predictive_value,
     negative_predictive_value as _etiology__negative_predictive_value,
     likelihood_ratio_positive as _etiology__likelihood_ratio_positive,
+)
+
+from evaluation.binning import (
+    eval_bins_build as _evaluation_binning__eval_bins_build,
+    eval_bin_counts_flat as _evaluation_binning__eval_bin_counts_flat,
+    eval_bin_assign_flat as _evaluation_binning__eval_bin_assign_flat,
+    eval_bin_edges_flat as _evaluation_binning__eval_bin_edges_flat,
+)
+
+from evaluation.contract import (
+    eval_status_name as _evaluation_contract__eval_status_name,
+    eval_status_is_ok as _evaluation_contract__eval_status_is_ok,
+    eval_bin_policy_name as _evaluation_contract__eval_bin_policy_name,
+    eval_metric_name as _evaluation_contract__eval_metric_name,
+    eval_metric_higher_is_better as _evaluation_contract__eval_metric_higher_is_better,
+    eval_finite as _evaluation_contract__eval_finite,
+    eval_pairs_status as _evaluation_contract__eval_pairs_status,
+    eval_scores_status as _evaluation_contract__eval_scores_status,
+    eval_bins_status as _evaluation_contract__eval_bins_status,
+    eval_ece_comparable as _evaluation_contract__eval_ece_comparable,
+    eval_log2_ceil as _evaluation_contract__eval_log2_ceil,
+    eval_work_fits as _evaluation_contract__eval_work_fits,
+    eval_resample_work_fits as _evaluation_contract__eval_resample_work_fits,
+)
+
+from evaluation.gates import (
+    metric_gate as _evaluation_gates__metric_gate,
+    metric_regression_gate_flat as _evaluation_gates__metric_regression_gate_flat,
+    psi_drift_gate_flat as _evaluation_gates__psi_drift_gate_flat,
+)
+
+from evaluation.resample import (
+    bootstrap_draw_index as _evaluation_resample__bootstrap_draw_index,
+    bootstrap_min_replicates as _evaluation_resample__bootstrap_min_replicates,
+    bootstrap_metric_ci_flat as _evaluation_resample__bootstrap_metric_ci_flat,
+)
+
+from evaluation.scores import (
+    brier_decomposition_flat as _evaluation_scores__brier_decomposition_flat,
+    log_loss_flat as _evaluation_scores__log_loss_flat,
+    calibration_error_flat as _evaluation_scores__calibration_error_flat,
+    reliability_diagram_flat as _evaluation_scores__reliability_diagram_flat,
+    metric_value_flat as _evaluation_scores__metric_value_flat,
+    evaluate_flat as _evaluation_scores__evaluate_flat,
 )
 
 from evaluation_feedback import (
@@ -2516,6 +2662,69 @@ from geophysics import (
     earth_radius_at_latitude as _geophysics__earth_radius_at_latitude,
     free_air_correction as _geophysics__free_air_correction,
     isostasy_airy as _geophysics__isostasy_airy,
+)
+
+from geospatial.contract import (
+    geo_status_name as _geospatial_contract__geo_status_name,
+    geo_frame_name as _geospatial_contract__geo_frame_name,
+    geo_metric_name as _geospatial_contract__geo_metric_name,
+    geo_finite as _geospatial_contract__geo_finite,
+    geo_finite_or_zero as _geospatial_contract__geo_finite_or_zero,
+    geo_is_degree_frame as _geospatial_contract__geo_is_degree_frame,
+    geo_frame_defect as _geospatial_contract__geo_frame_defect,
+    geo_metric_defect as _geospatial_contract__geo_metric_defect,
+    geo_lat_of as _geospatial_contract__geo_lat_of,
+    geo_lon_of as _geospatial_contract__geo_lon_of,
+    geo_pair_range_defect as _geospatial_contract__geo_pair_range_defect,
+    geo_points_defect as _geospatial_contract__geo_points_defect,
+    geo_normalise_lon as _geospatial_contract__geo_normalise_lon,
+    geo_lon_delta as _geospatial_contract__geo_lon_delta,
+    geo_m_per_deg_lon_lower as _geospatial_contract__geo_m_per_deg_lon_lower,
+    geo_gap_lower_m as _geospatial_contract__geo_gap_lower_m,
+    geo_degree_box_half as _geospatial_contract__geo_degree_box_half,
+    geo_offsets_defect as _geospatial_contract__geo_offsets_defect,
+    geo_cells_fit as _geospatial_contract__geo_cells_fit,
+)
+
+from geospatial.frame import (
+    frame_metric_distance as _geospatial_frame__frame_metric_distance,
+    frame_metric_undefined as _geospatial_frame__frame_metric_undefined,
+    frame_distance_flat as _geospatial_frame__frame_distance_flat,
+    frame_census_flat as _geospatial_frame__frame_census_flat,
+    frame_ring_census_flat as _geospatial_frame__frame_ring_census_flat,
+    frame_path_length_flat as _geospatial_frame__frame_path_length_flat,
+    frame_project_flat as _geospatial_frame__frame_project_flat,
+    frame_pair_defect as _geospatial_frame__frame_pair_defect,
+)
+
+from geospatial.index import (
+    grid_build_flat as _geospatial_index__grid_build_flat,
+    grid_validate_flat as _geospatial_index__grid_validate_flat,
+    window_scan_flat as _geospatial_index__window_scan_flat,
+    grid_window_flat as _geospatial_index__grid_window_flat,
+    knn_scan_flat as _geospatial_index__knn_scan_flat,
+    grid_knn_flat as _geospatial_index__grid_knn_flat,
+)
+
+from geospatial.join import (
+    join_within_flat as _geospatial_join__join_within_flat,
+    join_point_in_rings_flat as _geospatial_join__join_point_in_rings_flat,
+    route_matrix_flat as _geospatial_join__route_matrix_flat,
+    network_route_matrix_flat as _geospatial_join__network_route_matrix_flat,
+)
+
+from geospatial.mapmatch import (
+    point_to_segment_flat as _geospatial_mapmatch__point_to_segment_flat,
+    map_match_flat as _geospatial_mapmatch__map_match_flat,
+)
+
+from geospatial.polygon import (
+    ring_planar_defect_flat as _geospatial_polygon__ring_planar_defect_flat,
+    ring_report_flat as _geospatial_polygon__ring_report_flat,
+    point_in_ring_flat as _geospatial_polygon__point_in_ring_flat,
+    points_in_ring_flat as _geospatial_polygon__points_in_ring_flat,
+    ring_area_flat as _geospatial_polygon__ring_area_flat,
+    ring_intersect_convex_flat as _geospatial_polygon__ring_intersect_convex_flat,
 )
 
 from geotechnical import (
@@ -6255,6 +6464,118 @@ from stochastic import (
     first_passage_time as _stochastic__first_passage_time,
 )
 
+from strategy.contract import (
+    strat_status_name as _strategy_contract__strat_status_name,
+    strat_status_is_ok as _strategy_contract__strat_status_is_ok,
+    strat_verdict_name as _strategy_contract__strat_verdict_name,
+    strat_verdict_is_decided as _strategy_contract__strat_verdict_is_decided,
+    strat_exactness_name as _strategy_contract__strat_exactness_name,
+    strat_policy_kind_name as _strategy_contract__strat_policy_kind_name,
+    strat_factor_kind_name as _strategy_contract__strat_factor_kind_name,
+    strat_draws_per_cell as _strategy_contract__strat_draws_per_cell,
+    strat_finite as _strategy_contract__strat_finite,
+    strat_absent as _strategy_contract__strat_absent,
+    strat_scaled_tol as _strategy_contract__strat_scaled_tol,
+    strat_scaled_tol_additions as _strategy_contract__strat_scaled_tol_additions,
+    strat_agrees as _strategy_contract__strat_agrees,
+    strat_tolerance_status as _strategy_contract__strat_tolerance_status,
+    strat_level_status as _strategy_contract__strat_level_status,
+    strat_discount_status as _strategy_contract__strat_discount_status,
+    strat_all_finite as _strategy_contract__strat_all_finite,
+    strat_ints_in_range as _strategy_contract__strat_ints_in_range,
+    strat_distribution_status as _strategy_contract__strat_distribution_status,
+    strat_product_fits as _strategy_contract__strat_product_fits,
+    strat_product3_fits as _strategy_contract__strat_product3_fits,
+    strat_product4_fits as _strategy_contract__strat_product4_fits,
+    strat_dims_fit as _strategy_contract__strat_dims_fit,
+    strat_policy_arity as _strategy_contract__strat_policy_arity,
+    strat_policy_block_status as _strategy_contract__strat_policy_block_status,
+    strat_policy_row_start as _strategy_contract__strat_policy_row_start,
+    strat_scenario_cells as _strategy_contract__strat_scenario_cells,
+    strat_scenario_cell as _strategy_contract__strat_scenario_cell,
+    strat_scenario_status as _strategy_contract__strat_scenario_status,
+    strat_rng_version as _strategy_contract__strat_rng_version,
+    strat_crn_contract as _strategy_contract__strat_crn_contract,
+    strat_stream_scenario as _strategy_contract__strat_stream_scenario,
+    strat_stream_policy as _strategy_contract__strat_stream_policy,
+    strat_stream_tiebreak as _strategy_contract__strat_stream_tiebreak,
+    strat_stream_status as _strategy_contract__strat_stream_status,
+    strat_coord_status as _strategy_contract__strat_coord_status,
+    strat_crn_address as _strategy_contract__strat_crn_address,
+    strat_crn_fold as _strategy_contract__strat_crn_fold,
+    strat_shape_status as _strategy_contract__strat_shape_status,
+    strat_work_charge as _strategy_contract__strat_work_charge,
+    strat_budget as _strategy_contract__strat_budget,
+    strat_ceilings as _strategy_contract__strat_ceilings,
+)
+
+from strategy.crn import (
+    crn_contract_id as _strategy_crn__crn_contract_id,
+    crn_generator_version as _strategy_crn__crn_generator_version,
+    crn_environment_id as _strategy_crn__crn_environment_id,
+    crn_scenario_stream as _strategy_crn__crn_scenario_stream,
+    crn_policy_stream as _strategy_crn__crn_policy_stream,
+    crn_policy_arity as _strategy_crn__crn_policy_arity,
+    crn_factor_status as _strategy_crn__crn_factor_status,
+    crn_policy_status as _strategy_crn__crn_policy_status,
+    crn_request_status as _strategy_crn__crn_request_status,
+    crn_cell_draw as _strategy_crn__crn_cell_draw,
+    crn_scenario_tape as _strategy_crn__crn_scenario_tape,
+    crn_scenario_digest as _strategy_crn__crn_scenario_digest,
+    crn_evaluate_on_tape as _strategy_crn__crn_evaluate_on_tape,
+    crn_evaluate_policies as _strategy_crn__crn_evaluate_policies,
+    crn_evaluate_policy as _strategy_crn__crn_evaluate_policy,
+    crn_pairing_audit as _strategy_crn__crn_pairing_audit,
+    crn_independence_audit as _strategy_crn__crn_independence_audit,
+)
+
+from strategy.equilibrium import (
+    eq_method_name as _strategy_equilibrium__eq_method_name,
+    eq_tiebreak_rule as _strategy_equilibrium__eq_tiebreak_rule,
+    eq_game_shape_status as _strategy_equilibrium__eq_game_shape_status,
+    eq_profile_count as _strategy_equilibrium__eq_profile_count,
+    eq_payoff_cells as _strategy_equilibrium__eq_payoff_cells,
+    eq_profile_stride as _strategy_equilibrium__eq_profile_stride,
+    eq_profile_action as _strategy_equilibrium__eq_profile_action,
+    eq_profile_index as _strategy_equilibrium__eq_profile_index,
+    eq_game_status as _strategy_equilibrium__eq_game_status,
+    eq_enumeration_charge as _strategy_equilibrium__eq_enumeration_charge,
+    eq_iteration_charge as _strategy_equilibrium__eq_iteration_charge,
+    eq_best_response_charge as _strategy_equilibrium__eq_best_response_charge,
+    eq_pure_gains_flat as _strategy_equilibrium__eq_pure_gains_flat,
+    eq_pure_nash_flat as _strategy_equilibrium__eq_pure_nash_flat,
+    eq_exploitability_flat as _strategy_equilibrium__eq_exploitability_flat,
+    eq_nash_2x2_flat as _strategy_equilibrium__eq_nash_2x2_flat,
+    eq_regret_matching_flat as _strategy_equilibrium__eq_regret_matching_flat,
+    eq_fictitious_play_flat as _strategy_equilibrium__eq_fictitious_play_flat,
+    eq_best_response_flat as _strategy_equilibrium__eq_best_response_flat,
+    eq_solve_flat as _strategy_equilibrium__eq_solve_flat,
+    eq_zero_sum_bounds_flat as _strategy_equilibrium__eq_zero_sum_bounds_flat,
+    eq_dominated_actions_flat as _strategy_equilibrium__eq_dominated_actions_flat,
+)
+
+from strategy.policy import (
+    policy_tie_rule as _strategy_policy__policy_tie_rule,
+    policy_validate_flat as _strategy_policy__policy_validate_flat,
+    policy_action_flat as _strategy_policy__policy_action_flat,
+    policy_tabular_actions as _strategy_policy__policy_tabular_actions,
+    policy_linear_action as _strategy_policy__policy_linear_action,
+    policy_sample_mixed as _strategy_policy__policy_sample_mixed,
+    policy_from_q_flat as _strategy_policy__policy_from_q_flat,
+    policy_evaluate_tabular as _strategy_policy__policy_evaluate_tabular,
+)
+
+from strategy.tournament import (
+    tourney_method_name as _strategy_tournament__tourney_method_name,
+    tourney_pair_count as _strategy_tournament__tourney_pair_count,
+    tourney_outcome_cell as _strategy_tournament__tourney_outcome_cell,
+    tourney_outcome_status as _strategy_tournament__tourney_outcome_status,
+    tourney_work_charge as _strategy_tournament__tourney_work_charge,
+    tourney_paired_diff_flat as _strategy_tournament__tourney_paired_diff_flat,
+    tourney_paired_bootstrap_flat as _strategy_tournament__tourney_paired_bootstrap_flat,
+    tourney_rank_flat as _strategy_tournament__tourney_rank_flat,
+)
+
 from stratigraphy import (
     sedimentation_rate as _stratigraphy__sedimentation_rate,
     age_from_depth as _stratigraphy__age_from_depth,
@@ -6266,6 +6587,105 @@ from stratigraphy import (
     thermal_maturity_vitrinite as _stratigraphy__thermal_maturity_vitrinite,
     compaction_correction as _stratigraphy__compaction_correction,
     sea_level_proxy as _stratigraphy__sea_level_proxy,
+)
+
+from streaming.contract import (
+    stm_status_name as _streaming_contract__stm_status_name,
+    stm_version as _streaming_contract__stm_version,
+    stm_finite as _streaming_contract__stm_finite,
+    stm_tolerance as _streaming_contract__stm_tolerance,
+    stm_work_fits as _streaming_contract__stm_work_fits,
+    stm_cells_fit as _streaming_contract__stm_cells_fit,
+    stm_seed_ok as _streaming_contract__stm_seed_ok,
+    stm_items_ok as _streaming_contract__stm_items_ok,
+    stm_u64_of as _streaming_contract__stm_u64_of,
+    stm_key_word as _streaming_contract__stm_key_word,
+    stm_key_hash31 as _streaming_contract__stm_key_hash31,
+    stm_key_bucket as _streaming_contract__stm_key_bucket,
+    stm_coin as _streaming_contract__stm_coin,
+    stm_stream_id as _streaming_contract__stm_stream_id,
+    stm_no_claim as _streaming_contract__stm_no_claim,
+    stm_hll_relative_error as _streaming_contract__stm_hll_relative_error,
+    stm_cms_epsilon as _streaming_contract__stm_cms_epsilon,
+    stm_cms_delta as _streaming_contract__stm_cms_delta,
+    stm_kll_rank_error as _streaming_contract__stm_kll_rank_error,
+    stm_hll_registers as _streaming_contract__stm_hll_registers,
+    stm_log2_floor as _streaming_contract__stm_log2_floor,
+)
+
+from streaming.distinct import (
+    distinct_empty as _streaming_distinct__distinct_empty,
+    distinct_add as _streaming_distinct__distinct_add,
+    distinct_ingest as _streaming_distinct__distinct_ingest,
+    distinct_ingest_prefix as _streaming_distinct__distinct_ingest_prefix,
+    distinct_merge as _streaming_distinct__distinct_merge,
+    distinct_estimate as _streaming_distinct__distinct_estimate,
+    distinct_snapshot as _streaming_distinct__distinct_snapshot,
+    distinct_from_snapshot as _streaming_distinct__distinct_from_snapshot,
+    distinct_merge_snapshots as _streaming_distinct__distinct_merge_snapshots,
+    distinct_register_count as _streaming_distinct__distinct_register_count,
+    distinct_nonzero_registers as _streaming_distinct__distinct_nonzero_registers,
+)
+
+from streaming.drift import (
+    page_hinkley_init as _streaming_drift__page_hinkley_init,
+    page_hinkley_step as _streaming_drift__page_hinkley_step,
+    page_hinkley_verdict as _streaming_drift__page_hinkley_verdict,
+    page_hinkley_resume as _streaming_drift__page_hinkley_resume,
+    page_hinkley_scan as _streaming_drift__page_hinkley_scan,
+    page_hinkley_scan_prefix as _streaming_drift__page_hinkley_scan_prefix,
+    ddm_scan as _streaming_drift__ddm_scan,
+    ddm_levels as _streaming_drift__ddm_levels,
+)
+
+from streaming.frequency import (
+    frequency_empty as _streaming_frequency__frequency_empty,
+    frequency_add as _streaming_frequency__frequency_add,
+    frequency_ingest as _streaming_frequency__frequency_ingest,
+    frequency_ingest_prefix as _streaming_frequency__frequency_ingest_prefix,
+    frequency_ingest_weighted as _streaming_frequency__frequency_ingest_weighted,
+    frequency_merge as _streaming_frequency__frequency_merge,
+    frequency_query as _streaming_frequency__frequency_query,
+    frequency_query_many as _streaming_frequency__frequency_query_many,
+    frequency_heavy_hitters as _streaming_frequency__frequency_heavy_hitters,
+    frequency_cell as _streaming_frequency__frequency_cell,
+    frequency_snapshot as _streaming_frequency__frequency_snapshot,
+    frequency_from_snapshot as _streaming_frequency__frequency_from_snapshot,
+    frequency_merge_snapshots as _streaming_frequency__frequency_merge_snapshots,
+    frequency_suggested_depth as _streaming_frequency__frequency_suggested_depth,
+    frequency_frozen_row_collisions as _streaming_frequency__frequency_frozen_row_collisions,
+    frequency_keyed_row_collisions as _streaming_frequency__frequency_keyed_row_collisions,
+)
+
+from streaming.quantiles import (
+    quantile_empty as _streaming_quantiles__quantile_empty,
+    quantile_add as _streaming_quantiles__quantile_add,
+    quantile_ingest as _streaming_quantiles__quantile_ingest,
+    quantile_ingest_prefix as _streaming_quantiles__quantile_ingest_prefix,
+    quantile_merge as _streaming_quantiles__quantile_merge,
+    quantile_profile as _streaming_quantiles__quantile_profile,
+    quantile_at as _streaming_quantiles__quantile_at,
+    quantile_batch as _streaming_quantiles__quantile_batch,
+    quantile_rank as _streaming_quantiles__quantile_rank,
+    quantile_minimum as _streaming_quantiles__quantile_minimum,
+    quantile_maximum as _streaming_quantiles__quantile_maximum,
+    quantile_total_weight as _streaming_quantiles__quantile_total_weight,
+    quantile_snapshot as _streaming_quantiles__quantile_snapshot,
+    quantile_from_snapshot as _streaming_quantiles__quantile_from_snapshot,
+    quantile_merge_snapshots as _streaming_quantiles__quantile_merge_snapshots,
+)
+
+from streaming.windows import (
+    window_positions as _streaming_windows__window_positions,
+    window_mean as _streaming_windows__window_mean,
+    window_std as _streaming_windows__window_std,
+    window_max as _streaming_windows__window_max,
+    window_min as _streaming_windows__window_min,
+    window_range as _streaming_windows__window_range,
+    ewma_series as _streaming_windows__ewma_series,
+    ewmvar_series as _streaming_windows__ewmvar_series,
+    window_summary_prefix as _streaming_windows__window_summary_prefix,
+    window_summary_std as _streaming_windows__window_summary_std,
 )
 
 from string_distance import (
@@ -6338,6 +6758,46 @@ from survival import (
     restricted_mean as _survival__restricted_mean,
     life_table as _survival__life_table,
     survival_at_time as _survival__survival_at_time,
+)
+
+from survival_analysis.base import (
+    sa_status_name as _survival_analysis_base__sa_status_name,
+    sa_is_finite as _survival_analysis_base__sa_is_finite,
+    sa_work_fits as _survival_analysis_base__sa_work_fits,
+    sa_validate_observations as _survival_analysis_base__sa_validate_observations,
+    sa_validate_confidence as _survival_analysis_base__sa_validate_confidence,
+    sa_z_for_confidence as _survival_analysis_base__sa_z_for_confidence,
+    sa_sort_observations as _survival_analysis_base__sa_sort_observations,
+    sa_risk_table as _survival_analysis_base__sa_risk_table,
+    sa_greenwood_terms as _survival_analysis_base__sa_greenwood_terms,
+)
+
+from survival_analysis.competing import (
+    cif_validate_causes as _survival_analysis_competing__cif_validate_causes,
+    cif_fit as _survival_analysis_competing__cif_fit,
+    cif_at_time as _survival_analysis_competing__cif_at_time,
+)
+
+from survival_analysis.cox import (
+    cox_fit as _survival_analysis_cox__cox_fit,
+    cox_linear_predictor as _survival_analysis_cox__cox_linear_predictor,
+    cox_baseline_cumhaz as _survival_analysis_cox__cox_baseline_cumhaz,
+)
+
+from survival_analysis.hazard import (
+    na_fit as _survival_analysis_hazard__na_fit,
+    na_smoothed_hazard as _survival_analysis_hazard__na_smoothed_hazard,
+)
+
+from survival_analysis.km import (
+    km_fit as _survival_analysis_km__km_fit,
+    km_rmst as _survival_analysis_km__km_rmst,
+    km_survival_at as _survival_analysis_km__km_survival_at,
+)
+
+from survival_analysis.parametric import (
+    weibull_mle as _survival_analysis_parametric__weibull_mle,
+    lognormal_mle as _survival_analysis_parametric__lognormal_mle,
 )
 
 from sustainability import (
@@ -7364,6 +7824,24 @@ from data.dataframe import (
     DataFrame,
 )
 
+from data_quality.duplicates import (
+    DuplicateReport,
+)
+
+from data_quality.expect import (
+    ExpectationReport,
+)
+
+from data_quality.leakage import (
+    LeakageReport,
+    LeakageTimingReport,
+)
+
+from data_quality.profile import (
+    ColumnProfile,
+    TableProfile,
+)
+
 from database import (
     Table,
 )
@@ -7376,9 +7854,57 @@ from dimensionality import (
     PCAResult,
 )
 
+from discrete_event.calendar import (
+    CalendarTrace,
+    OrderAudit,
+)
+
+from discrete_event.queue_sim import (
+    ClosedForm,
+    QueueRun,
+)
+
+from discrete_event.replicate import (
+    Mm1Validation,
+    ReplicationCI,
+)
+
+from discrete_event.resource import (
+    ResourceRun,
+)
+
+from discrete_event.warmup import (
+    BiasAudit,
+    WarmupReport,
+)
+
 from eigen_full import (
     EighResult,
     SVDResult,
+)
+
+from evaluation.binning import (
+    BinAssignment,
+    BinCounts,
+    EvalBins,
+)
+
+from evaluation.gates import (
+    DriftResult,
+    GateResult,
+)
+
+from evaluation.resample import (
+    MetricCI,
+)
+
+from evaluation.scores import (
+    BrierDecomposition,
+    CalibrationErrorResult,
+    EvalReport,
+    LogLossResult,
+    MetricValue,
+    ReliabilityDiagram,
 )
 
 from explainability import (
@@ -7452,6 +7978,39 @@ from genetic import (
 
 from geometry import (
     Point,
+)
+
+from geospatial.frame import (
+    FrameCensus,
+    GeoDistance,
+    PathLength,
+    ProjectedPoints,
+    RingFrameCensus,
+)
+
+from geospatial.index import (
+    GeoGrid,
+    GeoKnn,
+    GeoWindow,
+)
+
+from geospatial.join import (
+    GeoJoin,
+    GeoRingJoin,
+    GeoRouteMatrix,
+)
+
+from geospatial.mapmatch import (
+    GeoMatch,
+    SegmentDistance,
+)
+
+from geospatial.polygon import (
+    ClipResult,
+    PipResult,
+    RingArea,
+    RingClassification,
+    RingReport,
 )
 
 from graph.algorithms import (
@@ -7872,8 +8431,110 @@ from stat_tests import (
     TestResult,
 )
 
+from strategy.contract import (
+    CrnAddress,
+    WorkBudget,
+)
+
+from strategy.crn import (
+    CellDraw,
+    IndependenceAudit,
+    PairingAudit,
+    PolicyOutcome,
+    PolicyRun,
+    PolicySetRun,
+)
+
+from strategy.equilibrium import (
+    BestResponsePath,
+    DominanceReport,
+    Exploitability,
+    MixedEquilibrium,
+    PureNashReport,
+    ZeroSumBounds,
+)
+
+from strategy.policy import (
+    LinearScore,
+    PolicyAction,
+    PolicyAudit,
+    PolicyTable,
+    PolicyValues,
+)
+
+from strategy.tournament import (
+    PairedBootstrap,
+    PairedDiff,
+    Tournament,
+)
+
+from streaming.contract import (
+    StmClaim,
+)
+
+from streaming.distinct import (
+    DistinctEstimate,
+    DistinctSketch,
+)
+
+from streaming.drift import (
+    DriftVerdict,
+    PageHinkleyState,
+)
+
+from streaming.frequency import (
+    FrequencyEstimate,
+    FrequencyList,
+    FrequencySketch,
+)
+
+from streaming.quantiles import (
+    QuantileEstimate,
+    QuantileProfile,
+    QuantileSeries,
+    QuantileSketch,
+    QuantileSnapshot,
+)
+
+from streaming.windows import (
+    WindowSeries,
+    WindowSummary,
+)
+
 from survival import (
     SurvivalPoint,
+)
+
+from survival_analysis.base import (
+    RiskTable,
+    SortedObs,
+)
+
+from survival_analysis.competing import (
+    CIFAtTime,
+    CIFFit,
+)
+
+from survival_analysis.cox import (
+    CoxBaseline,
+    CoxFit,
+    CoxRisk,
+)
+
+from survival_analysis.hazard import (
+    NAFit,
+    SmoothedHazard,
+)
+
+from survival_analysis.km import (
+    KMFit,
+    KMLookup,
+    KMRmst,
+)
+
+from survival_analysis.parametric import (
+    LognormalFit,
+    WeibullFit,
 )
 
 from svm_solver import (
@@ -8088,6 +8749,18 @@ fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     return CountingBloom(field_0^, field_1^, field_2^, field_3^)
 
+fn _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 6:
+        raise Error("Expected 6 fields for DistinctSketch, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_bool_token(json_array_get(values_json, 5))
+    return DistinctSketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
+
 fn _parse_float32_token(token: String) raises -> Float32:
     var parsed = parse_float64(token)
     if not _is_finite_f64(parsed):
@@ -8099,6 +8772,19 @@ fn _parse_float64_token(token: String) raises -> Float64:
     if not _is_finite_f64(parsed):
         raise Error("non_finite_argument")
     return parsed
+
+fn _parse_frequencysketch_token(token: String) raises -> FrequencySketch:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 7:
+        raise Error("Expected 7 fields for FrequencySketch, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_bool_token(json_array_get(values_json, 6))
+    return FrequencySketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
 fn _parse_gaconfig_token(token: String) raises -> GAConfig:
     var values_json = json_get_array(token, "v")
@@ -8474,6 +9160,23 @@ fn _parse_pacestate_token(token: String) raises -> PaceState:
     var field_6 = _parse_int_token(json_array_get(values_json, 6))
     return PaceState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
+fn _parse_pagehinkleystate_token(token: String) raises -> PageHinkleyState:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 11:
+        raise Error("Expected 11 fields for PageHinkleyState, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_float64_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_float64_token(json_array_get(values_json, 2))
+    var field_3 = _parse_float64_token(json_array_get(values_json, 3))
+    var field_4 = _parse_float64_token(json_array_get(values_json, 4))
+    var field_5 = _parse_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_bool_token(json_array_get(values_json, 6))
+    var field_7 = _parse_int_token(json_array_get(values_json, 7))
+    var field_8 = _parse_float64_token(json_array_get(values_json, 8))
+    var field_9 = _parse_int_token(json_array_get(values_json, 9))
+    var field_10 = _parse_bool_token(json_array_get(values_json, 10))
+    return PageHinkleyState(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^)
+
 fn _parse_pipelinestate_token(token: String) raises -> PipelineState:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 5:
@@ -8506,6 +9209,22 @@ fn _parse_priorityqueue_token(token: String) raises -> PriorityQueue:
     var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
     var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
     return PriorityQueue(field_0^, field_1^)
+
+fn _parse_quantilesketch_token(token: String) raises -> QuantileSketch:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 10:
+        raise Error("Expected 10 fields for QuantileSketch, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_float64_token(json_array_get(values_json, 0))
+    var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_list_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_float64_token(json_array_get(values_json, 6))
+    var field_7 = _parse_float64_token(json_array_get(values_json, 7))
+    var field_8 = _parse_int_token(json_array_get(values_json, 8))
+    var field_9 = _parse_bool_token(json_array_get(values_json, 9))
+    return QuantileSketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^)
 
 fn _parse_rgb_token(token: String) raises -> RGB:
     var values_json = json_get_array(token, "v")
@@ -8793,6 +9512,19 @@ fn _parse_weightededge_token(token: String) raises -> WeightedEdge:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     var field_2 = _parse_float64_token(json_array_get(values_json, 2))
     return WeightedEdge(field_0^, field_1^, field_2^)
+
+fn _parse_windowsummary_token(token: String) raises -> WindowSummary:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 7:
+        raise Error("Expected 7 fields for WindowSummary, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_float64_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_float64_token(json_array_get(values_json, 2))
+    var field_3 = _parse_float64_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_bool_token(json_array_get(values_json, 5))
+    var field_6 = _parse_int_token(json_array_get(values_json, 6))
+    return WindowSummary(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
 fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
     var values_json = json_get_array(token, "v")
@@ -9281,6 +10013,30 @@ fn _to_json_backtestreport(value: BacktestReport) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_bestresponsepath(value: BestResponsePath) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BestResponsePath\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.exactness)
+    result += ","
+    result += _to_json_int(value.method)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_int(value.rounds)
+    result += ","
+    result += _to_json_int(value.n_switches)
+    result += ","
+    result += _to_json_int(value.start_profile)
+    result += ","
+    result += _to_json_int(value.final_profile)
+    result += ","
+    result += _to_json_bool(value.has_residual)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += "]}"
+    return result
+
 fn _to_json_betweennessresult(value: BetweennessResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"BetweennessResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9302,6 +10058,70 @@ fn _to_json_betweennessresult(value: BetweennessResult) raises -> String:
     result += _to_json_float64(value.max_value)
     result += ","
     result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_biasaudit(value: BiasAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BiasAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_discarded)
+    result += ","
+    result += _to_json_int(value.n_retained)
+    result += ","
+    result += _to_json_bool(value.has_full_mean)
+    result += ","
+    result += _to_json_float64(value.full_mean)
+    result += ","
+    result += _to_json_bool(value.has_truncated_mean)
+    result += ","
+    result += _to_json_float64(value.truncated_mean)
+    result += ","
+    result += _to_json_bool(value.has_bias)
+    result += ","
+    result += _to_json_float64(value.bias_removed)
+    result += ","
+    result += _to_json_bool(value.has_relative_bias)
+    result += ","
+    result += _to_json_float64(value.relative_bias)
+    result += "]}"
+    return result
+
+fn _to_json_binassignment(value: BinAssignment) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BinAssignment\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.n_bins)
+    result += ","
+    result += _to_json_int(value.policy)
+    result += ","
+    result += _to_json_int(value.occupied)
+    result += ","
+    result += _to_json_list_int(value.index)
+    result += "]}"
+    return result
+
+fn _to_json_bincounts(value: BinCounts) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BinCounts\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.n_bins)
+    result += ","
+    result += _to_json_int(value.policy)
+    result += ","
+    result += _to_json_int(value.occupied)
+    result += ","
+    result += _to_json_list_float64(value.lo)
+    result += ","
+    result += _to_json_list_float64(value.hi)
+    result += ","
+    result += _to_json_list_int(value.count)
     result += "]}"
     return result
 
@@ -9470,6 +10290,96 @@ fn _to_json_branchchoice(value: BranchChoice) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_brierdecomposition(value: BrierDecomposition) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BrierDecomposition\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.brier)
+    result += ","
+    result += _to_json_float64(value.reliability)
+    result += ","
+    result += _to_json_float64(value.resolution)
+    result += ","
+    result += _to_json_float64(value.uncertainty)
+    result += ","
+    result += _to_json_float64(value.base_rate)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.decomposition_closes)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bins_occupied)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += "]}"
+    return result
+
+fn _to_json_cifattime(value: CIFAtTime) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CIFAtTime\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.cause)
+    result += ","
+    result += _to_json_int(value.n_queries)
+    result += ","
+    result += _to_json_float64(value.max_observed_time)
+    result += ","
+    result += _to_json_int(value.n_beyond_support)
+    result += ","
+    result += _to_json_list_float64(value.query_time)
+    result += ","
+    result += _to_json_list_float64(value.incidence)
+    result += ","
+    result += _to_json_list_bool(value.has_value)
+    result += "]}"
+    return result
+
+fn _to_json_ciffit(value: CIFFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CIFFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.n_causes)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_bool(value.monotone)
+    result += ","
+    result += _to_json_bool(value.partition_holds)
+    result += ","
+    result += _to_json_float64(value.partition_max_error)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_int(value.at_risk)
+    result += ","
+    result += _to_json_list_int(value.events_total)
+    result += ","
+    result += _to_json_list_float64(value.overall_survival)
+    result += ","
+    result += _to_json_list_int(value.cause_events)
+    result += ","
+    result += _to_json_list_float64(value.incidence)
+    result += ","
+    result += _to_json_list_float64(value.cause_cum_hazard)
+    result += ","
+    result += _to_json_list_float64(value.cause_cum_hazard_se)
+    result += ","
+    result += _to_json_list_int(value.cause_event_count)
+    result += "]}"
+    return result
+
 fn _to_json_cooentry(value: COOEntry) raises -> String:
     var result = String("{\"__algenta_struct\":\"COOEntry\",\"v\":[")
     result += _to_json_int(value.row)
@@ -9570,6 +10480,34 @@ fn _to_json_csrvectorresult(value: CSRVectorResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_calendartrace(value: CalendarTrace) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CalendarTrace\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_pushed)
+    result += ","
+    result += _to_json_int(value.n_popped)
+    result += ","
+    result += _to_json_int(value.max_heap_size)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_bool(value.time_nondecreasing)
+    result += ","
+    result += _to_json_bool(value.total_order_held)
+    result += ","
+    result += _to_json_list_float64(value.pop_time)
+    result += ","
+    result += _to_json_list_int(value.pop_priority)
+    result += ","
+    result += _to_json_list_int(value.pop_sequence)
+    result += ","
+    result += _to_json_list_int(value.pop_kind)
+    result += ","
+    result += _to_json_list_int(value.pop_entity)
+    result += "]}"
+    return result
+
 fn _to_json_calibrationcurve(value: CalibrationCurve) raises -> String:
     var result = String("{\"__algenta_struct\":\"CalibrationCurve\",\"v\":[")
     result += _to_json_list_float64(value.bin_centers)
@@ -9577,6 +10515,26 @@ fn _to_json_calibrationcurve(value: CalibrationCurve) raises -> String:
     result += _to_json_list_float64(value.observed_freq)
     result += ","
     result += _to_json_list_int(value.counts)
+    result += "]}"
+    return result
+
+fn _to_json_calibrationerrorresult(value: CalibrationErrorResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CalibrationErrorResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.ece)
+    result += ","
+    result += _to_json_float64(value.mce)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bins_occupied)
+    result += ","
+    result += _to_json_int(value.bin_policy)
     result += "]}"
     return result
 
@@ -9703,6 +10661,22 @@ fn _to_json_cellcountverdict(value: CellCountVerdict) raises -> String:
     result += _to_json_bool(value.totals_match)
     result += ","
     result += _to_json_bool(value.satisfied)
+    result += "]}"
+    return result
+
+fn _to_json_celldraw(value: CellDraw) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CellDraw\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_int(value.stream)
+    result += ","
+    result += _to_json_int(value.draws_per_cell)
+    result += ","
+    result += _to_json_int(value.cell)
     result += "]}"
     return result
 
@@ -9872,6 +10846,52 @@ fn _to_json_classweights(value: ClassWeights) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_clipresult(value: ClipResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ClipResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_vertices)
+    result += ","
+    result += _to_json_bool(value.is_empty)
+    result += ","
+    result += _to_json_bool(value.has_area)
+    result += ","
+    result += _to_json_float64(value.area)
+    result += ","
+    result += _to_json_bool(value.subject_convex)
+    result += ","
+    result += _to_json_bool(value.clip_convex)
+    result += ","
+    result += _to_json_list_float64(value.xs)
+    result += ","
+    result += _to_json_list_float64(value.ys)
+    result += "]}"
+    return result
+
+fn _to_json_closedform(value: ClosedForm) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ClosedForm\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.exists)
+    result += ","
+    result += _to_json_int(value.capacity)
+    result += ","
+    result += _to_json_float64(value.rho)
+    result += ","
+    result += _to_json_float64(value.wait_in_queue)
+    result += ","
+    result += _to_json_float64(value.time_in_system)
+    result += ","
+    result += _to_json_float64(value.number_in_system)
+    result += ","
+    result += _to_json_float64(value.number_in_queue)
+    result += ","
+    result += _to_json_bool(value.has_prob_wait)
+    result += ","
+    result += _to_json_float64(value.prob_wait)
+    result += "]}"
+    return result
+
 fn _to_json_closenessresult(value: ClosenessResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ClosenessResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9931,6 +10951,62 @@ fn _to_json_column(value: Column) raises -> String:
     result += _to_json_list_float64(value.data)
     result += ","
     result += _to_json_int(value.n)
+    result += "]}"
+    return result
+
+fn _to_json_columnprofile(value: ColumnProfile) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ColumnProfile\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_present)
+    result += ","
+    result += _to_json_int(value.n_null)
+    result += ","
+    result += _to_json_int(value.n_nan)
+    result += ","
+    result += _to_json_int(value.n_pos_inf)
+    result += ","
+    result += _to_json_int(value.n_neg_inf)
+    result += ","
+    result += _to_json_int(value.n_finite)
+    result += ","
+    result += _to_json_int(value.n_zero)
+    result += ","
+    result += _to_json_int(value.n_negative)
+    result += ","
+    result += _to_json_int(value.n_positive)
+    result += ","
+    result += _to_json_int(value.n_distinct_finite)
+    result += ","
+    result += _to_json_bool(value.has_null_fraction)
+    result += ","
+    result += _to_json_float64(value.null_fraction)
+    result += ","
+    result += _to_json_bool(value.has_mean)
+    result += ","
+    result += _to_json_float64(value.mean)
+    result += ","
+    result += _to_json_bool(value.has_stddev)
+    result += ","
+    result += _to_json_float64(value.stddev)
+    result += ","
+    result += _to_json_bool(value.has_min)
+    result += ","
+    result += _to_json_float64(value.min_value)
+    result += ","
+    result += _to_json_bool(value.has_max)
+    result += ","
+    result += _to_json_float64(value.max_value)
+    result += ","
+    result += _to_json_bool(value.has_median)
+    result += ","
+    result += _to_json_float64(value.median_value)
+    result += ","
+    result += _to_json_bool(value.has_monotonic_direction)
+    result += ","
+    result += _to_json_int(value.monotonic_direction)
     result += "]}"
     return result
 
@@ -10216,6 +11292,108 @@ fn _to_json_coveragereport(value: CoverageReport) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_coxbaseline(value: CoxBaseline) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CoxBaseline\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_float64(value.cum_hazard)
+    result += ","
+    result += _to_json_list_float64(value.baseline_survival)
+    result += ","
+    result += _to_json_list_bool(value.has_value)
+    result += ","
+    result += _to_json_bool(value.monotone)
+    result += "]}"
+    return result
+
+fn _to_json_coxfit(value: CoxFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CoxFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_covariates)
+    result += ","
+    result += _to_json_int(value.iterations)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.loglik_monotone)
+    result += ","
+    result += _to_json_list_float64(value.beta)
+    result += ","
+    result += _to_json_list_float64(value.std_error)
+    result += ","
+    result += _to_json_list_bool(value.has_std_error)
+    result += ","
+    result += _to_json_list_float64(value.z_score)
+    result += ","
+    result += _to_json_list_float64(value.covariate_mean)
+    result += ","
+    result += _to_json_list_float64(value.score)
+    result += ","
+    result += _to_json_float64(value.loglik)
+    result += ","
+    result += _to_json_float64(value.loglik_null)
+    result += ","
+    result += _to_json_float64(value.lr_statistic)
+    result += ","
+    result += _to_json_bool(value.has_loglik)
+    result += ","
+    result += _to_json_float64(value.max_abs_score)
+    result += ","
+    result += _to_json_float64(value.last_step_max)
+    result += "]}"
+    return result
+
+fn _to_json_coxrisk(value: CoxRisk) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CoxRisk\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_float64(value.mean_linear_predictor)
+    result += ","
+    result += _to_json_bool(value.has_mean)
+    result += ","
+    result += _to_json_list_float64(value.linear_predictor)
+    result += ","
+    result += _to_json_list_float64(value.relative_risk)
+    result += ","
+    result += _to_json_list_bool(value.has_value)
+    result += "]}"
+    return result
+
+fn _to_json_crnaddress(value: CrnAddress) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CrnAddress\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.usable)
+    result += ","
+    result += _to_json_int(value.master_seed)
+    result += ","
+    result += _to_json_int(value.scenario_family)
+    result += ","
+    result += _to_json_int(value.scenario)
+    result += ","
+    result += _to_json_int(value.step)
+    result += ","
+    result += _to_json_int(value.factor)
+    result += ","
+    result += _to_json_int(value.stream)
+    result += ","
+    result += _to_json_int(value.draw_index)
+    result += "]}"
+    return result
+
 fn _to_json_crowding(value: Crowding) raises -> String:
     var result = String("{\"__algenta_struct\":\"Crowding\",\"v\":[")
     result += _to_json_int(value.status)
@@ -10420,6 +11598,38 @@ fn _to_json_diffci(value: DiffCI) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_distinctestimate(value: DistinctEstimate) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DistinctEstimate\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.relative_error)
+    result += ","
+    result += _to_json_int(value.n_registers)
+    result += ","
+    result += _to_json_int(value.n_ingested)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_distinctsketch(value: DistinctSketch) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DistinctSketch\",\"v\":[")
+    result += _to_json_list_int(value.registers)
+    result += ","
+    result += _to_json_int(value.precision)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.n_ingested)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
 fn _to_json_dominancecheck(value: DominanceCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"DominanceCheck\",\"v\":[")
     result += _to_json_int(value.status)
@@ -10439,6 +11649,22 @@ fn _to_json_dominancecheck(value: DominanceCheck) raises -> String:
     result += _to_json_bool(value.incomparable)
     result += ","
     result += _to_json_int(value.first_difference)
+    result += "]}"
+    return result
+
+fn _to_json_dominancereport(value: DominanceReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DominanceReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method)
+    result += ","
+    result += _to_json_int(value.player)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_int(value.n_dominated)
+    result += ","
+    result += _to_json_list_bool(value.dominated)
     result += "]}"
     return result
 
@@ -10496,6 +11722,54 @@ fn _to_json_drestimate(value: DrEstimate) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_driftresult(value: DriftResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DriftResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.psi)
+    result += ","
+    result += _to_json_float64(value.psi_lower_bound)
+    result += ","
+    result += _to_json_float64(value.threshold)
+    result += ","
+    result += _to_json_bool(value.decided)
+    result += ","
+    result += _to_json_bool(value.drifted)
+    result += ","
+    result += _to_json_int(value.n_reference)
+    result += ","
+    result += _to_json_int(value.n_candidate)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bins_matched)
+    result += ","
+    result += _to_json_int(value.bins_unmatched)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += "]}"
+    return result
+
+fn _to_json_driftverdict(value: DriftVerdict) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DriftVerdict\",\"v\":[")
+    result += _to_json_bool(value.detected)
+    result += ","
+    result += _to_json_int(value.change_index)
+    result += ","
+    result += _to_json_float64(value.statistic)
+    result += ","
+    result += _to_json_float64(value.threshold)
+    result += ","
+    result += _to_json_int(value.n_seen)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_dtypecast(value: DtypeCast) raises -> String:
     var result = String("{\"__algenta_struct\":\"DtypeCast\",\"v\":[")
     result += _to_json_list_float64(value.values)
@@ -10537,6 +11811,44 @@ fn _to_json_dualcheck(value: DualCheck) raises -> String:
     result += _to_json_bool(value.has_dual_objective)
     result += ","
     result += _to_json_float64(value.dual_objective)
+    result += "]}"
+    return result
+
+fn _to_json_duplicatereport(value: DuplicateReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DuplicateReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_key_cols)
+    result += ","
+    result += _to_json_int(value.decimals)
+    result += ","
+    result += _to_json_int(value.n_comparable_rows)
+    result += ","
+    result += _to_json_int(value.n_null_key_rows)
+    result += ","
+    result += _to_json_int(value.n_non_finite_key_rows)
+    result += ","
+    result += _to_json_int(value.n_groups)
+    result += ","
+    result += _to_json_int(value.n_duplicate_rows)
+    result += ","
+    result += _to_json_int(value.n_duplicated_groups)
+    result += ","
+    result += _to_json_int(value.largest_group_size)
+    result += ","
+    result += _to_json_int(value.first_duplicate_row)
+    result += ","
+    result += _to_json_list_int(value.group_of_row)
+    result += ","
+    result += _to_json_int(value.n_reported)
+    result += ","
+    result += _to_json_bool(value.reports_truncated)
+    result += ","
+    result += _to_json_list_int(value.duplicate_group_first_rows)
+    result += ","
+    result += _to_json_list_int(value.duplicate_group_sizes)
     result += "]}"
     return result
 
@@ -10686,6 +11998,78 @@ fn _to_json_errorreport(value: ErrorReport) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_evalbins(value: EvalBins) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EvalBins\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.n_bins)
+    result += ","
+    result += _to_json_int(value.policy)
+    result += ","
+    result += _to_json_int(value.occupied)
+    result += ","
+    result += _to_json_list_float64(value.lo)
+    result += ","
+    result += _to_json_list_float64(value.hi)
+    result += ","
+    result += _to_json_list_int(value.count)
+    result += ","
+    result += _to_json_list_float64(value.mean_prob)
+    result += ","
+    result += _to_json_list_float64(value.mean_label)
+    result += "]}"
+    return result
+
+fn _to_json_evalreport(value: EvalReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EvalReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bins_occupied)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += ","
+    result += _to_json_float64(value.base_rate)
+    result += ","
+    result += _to_json_float64(value.accuracy)
+    result += ","
+    result += _to_json_float64(value.accuracy_threshold)
+    result += ","
+    result += _to_json_float64(value.brier)
+    result += ","
+    result += _to_json_bool(value.brier_present)
+    result += ","
+    result += _to_json_float64(value.reliability)
+    result += ","
+    result += _to_json_float64(value.resolution)
+    result += ","
+    result += _to_json_float64(value.uncertainty)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.decomposition_closes)
+    result += ","
+    result += _to_json_float64(value.log_loss)
+    result += ","
+    result += _to_json_bool(value.log_loss_present)
+    result += ","
+    result += _to_json_float64(value.log_loss_eps)
+    result += ","
+    result += _to_json_int(value.log_loss_clamped)
+    result += ","
+    result += _to_json_float64(value.ece)
+    result += ","
+    result += _to_json_float64(value.mce)
+    result += ","
+    result += _to_json_bool(value.ece_present)
+    result += "]}"
+    return result
+
 fn _to_json_event(value: Event) raises -> String:
     var result = String("{\"__algenta_struct\":\"Event\",\"v\":[")
     result += _to_json_float64(value.time)
@@ -10693,6 +12077,78 @@ fn _to_json_event(value: Event) raises -> String:
     result += _to_json_int(value.event_type)
     result += ","
     result += _to_json_int(value.entity_id)
+    result += "]}"
+    return result
+
+fn _to_json_expectationreport(value: ExpectationReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ExpectationReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_rows_checked)
+    result += ","
+    result += _to_json_int(value.n_rows_not_checked)
+    result += ","
+    result += _to_json_bool(value.work_truncated)
+    result += ","
+    result += _to_json_int(value.n_checks_per_row)
+    result += ","
+    result += _to_json_int(value.n_violations)
+    result += ","
+    result += _to_json_int(value.n_failing_rows)
+    result += ","
+    result += _to_json_int(value.n_passing_rows)
+    result += ","
+    result += _to_json_int(value.n_unknown)
+    result += ","
+    result += _to_json_int(value.n_unknown_rows)
+    result += ","
+    result += _to_json_int(value.n_reported)
+    result += ","
+    result += _to_json_bool(value.reports_truncated)
+    result += ","
+    result += _to_json_int(value.first_fail_row)
+    result += ","
+    result += _to_json_list_int(value.fail_rows)
+    result += ","
+    result += _to_json_list_int(value.fail_columns)
+    result += ","
+    result += _to_json_list_int(value.fail_ops)
+    result += ","
+    result += _to_json_list_float64(value.fail_expected)
+    result += ","
+    result += _to_json_list_float64(value.fail_observed)
+    result += ","
+    result += _to_json_list_bool(value.fail_observed_present)
+    result += ","
+    result += _to_json_list_bool(value.fail_observed_finite)
+    result += "]}"
+    return result
+
+fn _to_json_exploitability(value: Exploitability) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Exploitability\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_players)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_bool(value.has_residual)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_int(value.worst_player)
+    result += ","
+    result += _to_json_bool(value.is_equilibrium)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_list_float64(value.gains)
+    result += ","
+    result += _to_json_list_float64(value.values)
     result += "]}"
     return result
 
@@ -10884,6 +12340,90 @@ fn _to_json_formvalue(value: FormValue) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_framecensus(value: FrameCensus) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FrameCensus\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_bool(value.has_extent)
+    result += ","
+    result += _to_json_float64(value.min_x)
+    result += ","
+    result += _to_json_float64(value.min_y)
+    result += ","
+    result += _to_json_float64(value.max_x)
+    result += ","
+    result += _to_json_float64(value.max_y)
+    result += ","
+    result += _to_json_bool(value.has_span)
+    result += ","
+    result += _to_json_float64(value.lon_span_deg)
+    result += ","
+    result += _to_json_float64(value.lat_span_deg)
+    result += ","
+    result += _to_json_bool(value.order_ambiguous)
+    result += ","
+    result += _to_json_bool(value.extent_spans_antimeridian)
+    result += ","
+    result += _to_json_bool(value.touches_pole)
+    result += ","
+    result += _to_json_bool(value.has_metre_scale)
+    result += ","
+    result += _to_json_float64(value.m_per_deg_lon_lower)
+    result += "]}"
+    return result
+
+fn _to_json_frequencyestimate(value: FrequencyEstimate) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FrequencyEstimate\",\"v\":[")
+    result += _to_json_int(value.count)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.epsilon)
+    result += ","
+    result += _to_json_float64(value.delta)
+    result += ","
+    result += _to_json_float64(value.slack)
+    result += ","
+    result += _to_json_int(value.total)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_frequencylist(value: FrequencyList) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FrequencyList\",\"v\":[")
+    result += _to_json_list_int(value.items)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.n_items)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_frequencysketch(value: FrequencySketch) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FrequencySketch\",\"v\":[")
+    result += _to_json_list_int(value.cells)
+    result += ","
+    result += _to_json_int(value.width)
+    result += ","
+    result += _to_json_int(value.depth)
+    result += ","
+    result += _to_json_int(value.total)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
 fn _to_json_frontsort(value: FrontSort) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrontSort\",\"v\":[")
     result += _to_json_int(value.status)
@@ -11060,6 +12600,34 @@ fn _to_json_grustate(value: GRUState) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_gateresult(value: GateResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GateResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.decided)
+    result += ","
+    result += _to_json_bool(value.passed)
+    result += ","
+    result += _to_json_float64(value.baseline)
+    result += ","
+    result += _to_json_float64(value.candidate)
+    result += ","
+    result += _to_json_float64(value.delta)
+    result += ","
+    result += _to_json_float64(value.margin)
+    result += ","
+    result += _to_json_float64(value.abs_tolerance)
+    result += ","
+    result += _to_json_bool(value.higher_is_better)
+    result += ","
+    result += _to_json_int(value.metric_id)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += "]}"
+    return result
+
 fn _to_json_geluagreement(value: GeluAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"GeluAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
@@ -11089,6 +12657,230 @@ fn _to_json_gemmresult(value: GemmResult) raises -> String:
     result += _to_json_float64(value.flop_count)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_geodistance(value: GeoDistance) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoDistance\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_distance)
+    result += ","
+    result += _to_json_float64(value.distance_m)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_int(value.metric)
+    result += "]}"
+    return result
+
+fn _to_json_geogrid(value: GeoGrid) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoGrid\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_int(value.side)
+    result += ","
+    result += _to_json_int(value.n_cells)
+    result += ","
+    result += _to_json_int(value.occupied_cells)
+    result += ","
+    result += _to_json_int(value.max_cell_occupancy)
+    result += ","
+    result += _to_json_int(value.skipped)
+    result += ","
+    result += _to_json_bool(value.has_extent)
+    result += ","
+    result += _to_json_float64(value.min_x)
+    result += ","
+    result += _to_json_float64(value.min_y)
+    result += ","
+    result += _to_json_float64(value.max_x)
+    result += ","
+    result += _to_json_float64(value.max_y)
+    result += ","
+    result += _to_json_float64(value.cell_w)
+    result += ","
+    result += _to_json_float64(value.cell_h)
+    result += ","
+    result += _to_json_list_int(value.cell_start)
+    result += ","
+    result += _to_json_list_int(value.cell_items)
+    result += "]}"
+    return result
+
+fn _to_json_geojoin(value: GeoJoin) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoJoin\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_left)
+    result += ","
+    result += _to_json_int(value.n_right)
+    result += ","
+    result += _to_json_int(value.n_pairs)
+    result += ","
+    result += _to_json_bool(value.truncated)
+    result += ","
+    result += _to_json_int(value.candidates_examined)
+    result += ","
+    result += _to_json_int(value.cells_examined)
+    result += ","
+    result += _to_json_int(value.full_scan_cost)
+    result += ","
+    result += _to_json_bool(value.has_selectivity)
+    result += ","
+    result += _to_json_float64(value.selectivity)
+    result += ","
+    result += _to_json_int(value.seam_point)
+    result += ","
+    result += _to_json_list_int(value.left_ids)
+    result += ","
+    result += _to_json_list_int(value.right_ids)
+    result += ","
+    result += _to_json_list_float64(value.distance_m)
+    result += "]}"
+    return result
+
+fn _to_json_geoknn(value: GeoKnn) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoKnn\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.k_requested)
+    result += ","
+    result += _to_json_int(value.k_returned)
+    result += ","
+    result += _to_json_bool(value.exact)
+    result += ","
+    result += _to_json_int(value.cells_examined)
+    result += ","
+    result += _to_json_int(value.candidates_examined)
+    result += ","
+    result += _to_json_int(value.rings_expanded)
+    result += ","
+    result += _to_json_bool(value.has_max_distance)
+    result += ","
+    result += _to_json_float64(value.max_distance_m)
+    result += ","
+    result += _to_json_list_int(value.ids)
+    result += ","
+    result += _to_json_list_float64(value.distance_m)
+    result += "]}"
+    return result
+
+fn _to_json_geomatch(value: GeoMatch) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoMatch\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_track)
+    result += ","
+    result += _to_json_int(value.n_lines)
+    result += ","
+    result += _to_json_int(value.n_segments)
+    result += ","
+    result += _to_json_bool(value.pruned)
+    result += ","
+    result += _to_json_int(value.first_unmatched)
+    result += ","
+    result += _to_json_int(value.candidates_examined)
+    result += ","
+    result += _to_json_int(value.cells_examined)
+    result += ","
+    result += _to_json_int(value.dp_transitions)
+    result += ","
+    result += _to_json_bool(value.has_cost)
+    result += ","
+    result += _to_json_float64(value.total_cost)
+    result += ","
+    result += _to_json_bool(value.has_offsets)
+    result += ","
+    result += _to_json_float64(value.max_offset_m)
+    result += ","
+    result += _to_json_list_int(value.segment_of_point)
+    result += ","
+    result += _to_json_list_int(value.line_of_point)
+    result += ","
+    result += _to_json_list_float64(value.offset_m)
+    result += ","
+    result += _to_json_list_float64(value.matched_xs)
+    result += ","
+    result += _to_json_list_float64(value.matched_ys)
+    result += "]}"
+    return result
+
+fn _to_json_georingjoin(value: GeoRingJoin) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoRingJoin\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.n_rings)
+    result += ","
+    result += _to_json_int(value.n_matched)
+    result += ","
+    result += _to_json_int(value.n_boundary)
+    result += ","
+    result += _to_json_int(value.n_multi)
+    result += ","
+    result += _to_json_int(value.candidates_examined)
+    result += ","
+    result += _to_json_int(value.cells_examined)
+    result += ","
+    result += _to_json_int(value.full_scan_cost)
+    result += ","
+    result += _to_json_int(value.rings_refused)
+    result += ","
+    result += _to_json_list_int(value.ring_of_point)
+    result += ","
+    result += _to_json_list_int(value.code_of_point)
+    result += "]}"
+    return result
+
+fn _to_json_georoutematrix(value: GeoRouteMatrix) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoRouteMatrix\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_int(value.n_cells)
+    result += ","
+    result += _to_json_int(value.n_unreachable)
+    result += ","
+    result += _to_json_bool(value.network)
+    result += ","
+    result += _to_json_bool(value.has_extremes)
+    result += ","
+    result += _to_json_float64(value.min_distance_m)
+    result += ","
+    result += _to_json_float64(value.max_distance_m)
+    result += ","
+    result += _to_json_list_float64(value.distance_m)
+    result += ","
+    result += _to_json_list_bool(value.reachable)
+    result += "]}"
+    return result
+
+fn _to_json_geowindow(value: GeoWindow) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GeoWindow\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_found)
+    result += ","
+    result += _to_json_int(value.cells_examined)
+    result += ","
+    result += _to_json_int(value.candidates_examined)
+    result += ","
+    result += _to_json_int(value.full_scan_cost)
+    result += ","
+    result += _to_json_bool(value.has_selectivity)
+    result += ","
+    result += _to_json_float64(value.selectivity)
+    result += ","
+    result += _to_json_list_int(value.ids)
     result += "]}"
     return result
 
@@ -11478,6 +13270,48 @@ fn _to_json_hypervolume(value: Hypervolume) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_independenceaudit(value: IndependenceAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"IndependenceAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_scenarios)
+    result += ","
+    result += _to_json_int(value.lag)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.cells_per_scenario)
+    result += ","
+    result += _to_json_int(value.n_scenario_pairs)
+    result += ","
+    result += _to_json_int(value.n_draw_pairs)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_bool(value.has_correlation)
+    result += ","
+    result += _to_json_float64(value.correlation)
+    result += ","
+    result += _to_json_bool(value.has_noise_scale)
+    result += ","
+    result += _to_json_float64(value.noise_scale)
+    result += ","
+    result += _to_json_bool(value.has_z_score)
+    result += ","
+    result += _to_json_float64(value.z_score)
+    result += ","
+    result += _to_json_bool(value.has_p_value)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.z_band)
+    result += ","
+    result += _to_json_bool(value.indistinguishable_from_zero)
+    result += "]}"
+    return result
+
 fn _to_json_individual(value: Individual) raises -> String:
     var result = String("{\"__algenta_struct\":\"Individual\",\"v\":[")
     result += _to_json_list_float64(value.genes)
@@ -11831,6 +13665,88 @@ fn _to_json_jobshopschedule(value: JobShopSchedule) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_kmfit(value: KMFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"KMFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_float64(value.conf_level)
+    result += ","
+    result += _to_json_float64(value.z)
+    result += ","
+    result += _to_json_bool(value.monotone)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_float64(value.survival)
+    result += ","
+    result += _to_json_list_int(value.at_risk)
+    result += ","
+    result += _to_json_list_int(value.events)
+    result += ","
+    result += _to_json_list_float64(value.std_error)
+    result += ","
+    result += _to_json_list_bool(value.has_std_error)
+    result += ","
+    result += _to_json_list_float64(value.lower)
+    result += ","
+    result += _to_json_list_float64(value.upper)
+    result += ","
+    result += _to_json_list_bool(value.has_band)
+    result += ","
+    result += _to_json_float64(value.median_time)
+    result += ","
+    result += _to_json_bool(value.has_median)
+    result += ","
+    result += _to_json_float64(value.median_strict_time)
+    result += ","
+    result += _to_json_bool(value.has_median_strict)
+    result += "]}"
+    return result
+
+fn _to_json_kmlookup(value: KMLookup) raises -> String:
+    var result = String("{\"__algenta_struct\":\"KMLookup\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_queries)
+    result += ","
+    result += _to_json_float64(value.max_observed_time)
+    result += ","
+    result += _to_json_int(value.n_beyond_support)
+    result += ","
+    result += _to_json_list_float64(value.query_time)
+    result += ","
+    result += _to_json_list_float64(value.survival)
+    result += ","
+    result += _to_json_list_bool(value.has_value)
+    result += "]}"
+    return result
+
+fn _to_json_kmrmst(value: KMRmst) raises -> String:
+    var result = String("{\"__algenta_struct\":\"KMRmst\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_float64(value.tau)
+    result += ","
+    result += _to_json_float64(value.rmst)
+    result += ","
+    result += _to_json_bool(value.has_rmst)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_float64(value.max_observed_time)
+    result += "]}"
+    return result
+
 fn _to_json_kmeansresult(value: KMeansResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMeansResult\",\"v\":[")
     result += _to_json_list_list_float64(value.centroids)
@@ -12031,6 +13947,80 @@ fn _to_json_layernormout(value: LayerNormOut) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_leakagereport(value: LeakageReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LeakageReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.verdict)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.n_present_pairs)
+    result += ","
+    result += _to_json_bool(value.target_constant_on_compared)
+    result += ","
+    result += _to_json_bool(value.feature_constant_on_compared)
+    result += ","
+    result += _to_json_bool(value.proven_target_copy)
+    result += ","
+    result += _to_json_bool(value.proven_affine)
+    result += ","
+    result += _to_json_bool(value.has_affine)
+    result += ","
+    result += _to_json_float64(value.affine_slope)
+    result += ","
+    result += _to_json_float64(value.affine_intercept)
+    result += ","
+    result += _to_json_bool(value.has_affine_residual)
+    result += ","
+    result += _to_json_float64(value.affine_max_residual)
+    result += ","
+    result += _to_json_int(value.affine_worst_row)
+    result += ","
+    result += _to_json_bool(value.has_pearson)
+    result += ","
+    result += _to_json_float64(value.abs_pearson)
+    result += ","
+    result += _to_json_bool(value.suspicious_correlation)
+    result += ","
+    result += _to_json_bool(value.has_missingness_agreement)
+    result += ","
+    result += _to_json_float64(value.missingness_agreement)
+    result += ","
+    result += _to_json_bool(value.suspicious_missingness)
+    result += ","
+    result += _to_json_bool(value.temporal_checked)
+    result += "]}"
+    return result
+
+fn _to_json_leakagetimingreport(value: LeakageTimingReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LeakageTimingReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.verdict)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.n_future_rows)
+    result += ","
+    result += _to_json_int(value.n_simultaneous_rows)
+    result += ","
+    result += _to_json_int(value.n_unrepresentable_lead_rows)
+    result += ","
+    result += _to_json_int(value.first_future_row)
+    result += ","
+    result += _to_json_bool(value.proven_future_information)
+    result += ","
+    result += _to_json_bool(value.has_max_future_lead)
+    result += ","
+    result += _to_json_float64(value.max_future_lead)
+    result += "]}"
+    return result
+
 fn _to_json_leakybucket(value: LeakyBucket) raises -> String:
     var result = String("{\"__algenta_struct\":\"LeakyBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
@@ -12145,6 +14135,46 @@ fn _to_json_linearmodel(value: LinearModel) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_linearscore(value: LinearScore) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LinearScore\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_bool(value.has_action)
+    result += ","
+    result += _to_json_int(value.action)
+    result += ","
+    result += _to_json_bool(value.at_tie)
+    result += ","
+    result += _to_json_int(value.n_tied)
+    result += ","
+    result += _to_json_bool(value.has_best)
+    result += ","
+    result += _to_json_float64(value.best_score)
+    result += ","
+    result += _to_json_list_float64(value.scores)
+    result += "]}"
+    return result
+
+fn _to_json_loglossresult(value: LogLossResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LogLossResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.log_loss)
+    result += ","
+    result += _to_json_float64(value.eps_used)
+    result += ","
+    result += _to_json_int(value.clamped_count)
+    result += ","
+    result += _to_json_int(value.n)
+    result += "]}"
+    return result
+
 fn _to_json_logger(value: Logger) raises -> String:
     var result = String("{\"__algenta_struct\":\"Logger\",\"v\":[")
     result += _to_json_string(value.name)
@@ -12164,6 +14194,40 @@ fn _to_json_logisticresult(value: LogisticResult) raises -> String:
     result += _to_json_int(value.n_iter)
     result += ","
     result += _to_json_float64(value.log_likelihood)
+    result += "]}"
+    return result
+
+fn _to_json_lognormalfit(value: LognormalFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LognormalFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.iterations)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.loglik_monotone)
+    result += ","
+    result += _to_json_float64(value.mu)
+    result += ","
+    result += _to_json_float64(value.sigma)
+    result += ","
+    result += _to_json_float64(value.loglik)
+    result += ","
+    result += _to_json_float64(value.aic)
+    result += ","
+    result += _to_json_float64(value.loglik_worst_decrease)
+    result += ","
+    result += _to_json_float64(value.loglik_decrease_budget)
+    result += ","
+    result += _to_json_float64(value.ks_distance_vs_km)
+    result += ","
+    result += _to_json_bool(value.has_ks)
     result += "]}"
     return result
 
@@ -12397,6 +14461,60 @@ fn _to_json_metalgemmresult(value: MetalGemmResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_metricci(value: MetricCI) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MetricCI\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.point)
+    result += ","
+    result += _to_json_float64(value.lo)
+    result += ","
+    result += _to_json_float64(value.hi)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_int(value.metric_id)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.n_boot)
+    result += ","
+    result += _to_json_int(value.n_boot_min)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += ","
+    result += _to_json_int(value.n_draws)
+    result += ","
+    result += _to_json_int(value.distinct_replicates)
+    result += ","
+    result += _to_json_bool(value.point_inside)
+    result += "]}"
+    return result
+
+fn _to_json_metricvalue(value: MetricValue) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MetricValue\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_int(value.metric_id)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += "]}"
+    return result
+
 fn _to_json_metricscounter(value: MetricsCounter) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetricsCounter\",\"v\":[")
     result += _to_json_string(value.name)
@@ -12434,6 +14552,124 @@ fn _to_json_mincostflow(value: MinCostFlow) raises -> String:
     result += _to_json_list_float64(value.edge_flow)
     result += ","
     result += _to_json_list_float64(value.potential)
+    result += "]}"
+    return result
+
+fn _to_json_mixedequilibrium(value: MixedEquilibrium) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MixedEquilibrium\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.exactness)
+    result += ","
+    result += _to_json_int(value.method)
+    result += ","
+    result += _to_json_int(value.n_players)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_int(value.iterations)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.has_residual)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_float64(value.abs_tol)
+    result += ","
+    result += _to_json_bool(value.default_mix_used)
+    result += ","
+    result += _to_json_list_float64(value.strategy)
+    result += "]}"
+    return result
+
+fn _to_json_mm1validation(value: Mm1Validation) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Mm1Validation\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_reps_requested)
+    result += ","
+    result += _to_json_int(value.n_reps_run)
+    result += ","
+    result += _to_json_int(value.n_reps_refused)
+    result += ","
+    result += _to_json_int(value.n_customers)
+    result += ","
+    result += _to_json_int(value.capacity)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_bool(value.has_t_critical)
+    result += ","
+    result += _to_json_float64(value.t_critical)
+    result += ","
+    result += _to_json_int(value.pilot_batch_size)
+    result += ","
+    result += _to_json_int(value.pilot_n_batches)
+    result += ","
+    result += _to_json_int(value.pilot_tail_dropped)
+    result += ","
+    result += _to_json_int(value.warmup_jobs_used)
+    result += ","
+    result += _to_json_float64(value.closed_form_rho)
+    result += ","
+    result += _to_json_float64(value.closed_form_wait)
+    result += ","
+    result += _to_json_float64(value.closed_form_system)
+    result += ","
+    result += _to_json_float64(value.closed_form_number)
+    result += ","
+    result += _to_json_bool(value.has_wait_ci)
+    result += ","
+    result += _to_json_float64(value.wait_mean)
+    result += ","
+    result += _to_json_float64(value.wait_ci_lower)
+    result += ","
+    result += _to_json_float64(value.wait_ci_upper)
+    result += ","
+    result += _to_json_bool(value.wait_covered)
+    result += ","
+    result += _to_json_bool(value.has_system_ci)
+    result += ","
+    result += _to_json_float64(value.system_mean)
+    result += ","
+    result += _to_json_float64(value.system_ci_lower)
+    result += ","
+    result += _to_json_float64(value.system_ci_upper)
+    result += ","
+    result += _to_json_bool(value.system_covered)
+    result += ","
+    result += _to_json_bool(value.has_number_ci)
+    result += ","
+    result += _to_json_float64(value.number_mean)
+    result += ","
+    result += _to_json_float64(value.number_ci_lower)
+    result += ","
+    result += _to_json_float64(value.number_ci_upper)
+    result += ","
+    result += _to_json_bool(value.number_covered)
+    result += ","
+    result += _to_json_bool(value.has_util_ci)
+    result += ","
+    result += _to_json_float64(value.util_mean)
+    result += ","
+    result += _to_json_float64(value.util_ci_lower)
+    result += ","
+    result += _to_json_float64(value.util_ci_upper)
+    result += ","
+    result += _to_json_bool(value.util_covered)
+    result += ","
+    result += _to_json_int(value.n_metrics_checked)
+    result += ","
+    result += _to_json_int(value.n_metrics_covered)
+    result += ","
+    result += _to_json_int(value.work_charged)
     result += "]}"
     return result
 
@@ -12600,6 +14836,44 @@ fn _to_json_murphyterms(value: MurphyTerms) raises -> String:
     result += _to_json_int(value.n)
     result += ","
     result += _to_json_float64(value.base_rate)
+    result += "]}"
+    return result
+
+fn _to_json_nafit(value: NAFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"NAFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_float64(value.conf_level)
+    result += ","
+    result += _to_json_float64(value.z)
+    result += ","
+    result += _to_json_bool(value.frozen_rows_aligned)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_float64(value.hazard)
+    result += ","
+    result += _to_json_list_int(value.at_risk)
+    result += ","
+    result += _to_json_list_int(value.events)
+    result += ","
+    result += _to_json_list_float64(value.std_error)
+    result += ","
+    result += _to_json_list_bool(value.has_std_error)
+    result += ","
+    result += _to_json_list_float64(value.lower)
+    result += ","
+    result += _to_json_list_float64(value.upper)
+    result += ","
+    result += _to_json_list_bool(value.has_band)
     result += "]}"
     return result
 
@@ -12819,6 +15093,26 @@ fn _to_json_oracleboard(value: OracleBoard) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_orderaudit(value: OrderAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OrderAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_checked)
+    result += ","
+    result += _to_json_bool(value.is_ordered)
+    result += ","
+    result += _to_json_bool(value.has_violation)
+    result += ","
+    result += _to_json_int(value.first_violation)
+    result += ","
+    result += _to_json_int(value.n_duplicate_keys)
+    result += ","
+    result += _to_json_int(value.n_time_ties)
+    result += ","
+    result += _to_json_int(value.n_priority_ties)
+    result += "]}"
+    return result
+
 fn _to_json_outcomemodel(value: OutcomeModel) raises -> String:
     var result = String("{\"__algenta_struct\":\"OutcomeModel\",\"v\":[")
     result += _to_json_int(value.status)
@@ -13015,6 +15309,32 @@ fn _to_json_packednibbles(value: PackedNibbles) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_pagehinkleystate(value: PageHinkleyState) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PageHinkleyState\",\"v\":[")
+    result += _to_json_float64(value.mean)
+    result += ","
+    result += _to_json_float64(value.cum_up)
+    result += ","
+    result += _to_json_float64(value.min_up)
+    result += ","
+    result += _to_json_float64(value.cum_down)
+    result += ","
+    result += _to_json_float64(value.max_down)
+    result += ","
+    result += _to_json_int(value.count)
+    result += ","
+    result += _to_json_bool(value.detected)
+    result += ","
+    result += _to_json_int(value.change_index)
+    result += ","
+    result += _to_json_float64(value.statistic)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
 fn _to_json_pagerankresult(value: PageRankResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PageRankResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -13036,6 +15356,198 @@ fn _to_json_pagerankresult(value: PageRankResult) raises -> String:
     result += _to_json_float64(value.residual)
     result += ","
     result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_pairedbootstrap(value: PairedBootstrap) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PairedBootstrap\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.index_a)
+    result += ","
+    result += _to_json_int(value.index_b)
+    result += ","
+    result += _to_json_int(value.n_replications)
+    result += ","
+    result += _to_json_int(value.n_boot)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.point)
+    result += ","
+    result += _to_json_float64(value.lo)
+    result += ","
+    result += _to_json_float64(value.hi)
+    result += ","
+    result += _to_json_bool(value.excludes_zero)
+    result += ","
+    result += _to_json_bool(value.point_inside)
+    result += ","
+    result += _to_json_int(value.n_draws)
+    result += ","
+    result += _to_json_string(value.rng_version)
+    result += "]}"
+    return result
+
+fn _to_json_paireddiff(value: PairedDiff) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PairedDiff\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.verdict)
+    result += ","
+    result += _to_json_bool(value.decided)
+    result += ","
+    result += _to_json_bool(value.multiplicity_corrected)
+    result += ","
+    result += _to_json_int(value.index_a)
+    result += ","
+    result += _to_json_int(value.index_b)
+    result += ","
+    result += _to_json_int(value.n_replications)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_bool(value.higher_is_better)
+    result += ","
+    result += _to_json_bool(value.has_means)
+    result += ","
+    result += _to_json_float64(value.mean_a)
+    result += ","
+    result += _to_json_float64(value.mean_b)
+    result += ","
+    result += _to_json_float64(value.variance_a)
+    result += ","
+    result += _to_json_float64(value.variance_b)
+    result += ","
+    result += _to_json_bool(value.has_mean_diff)
+    result += ","
+    result += _to_json_float64(value.mean_diff)
+    result += ","
+    result += _to_json_bool(value.has_paired_variance)
+    result += ","
+    result += _to_json_float64(value.paired_variance)
+    result += ","
+    result += _to_json_float64(value.unpaired_variance)
+    result += ","
+    result += _to_json_bool(value.has_variance_ratio)
+    result += ","
+    result += _to_json_float64(value.variance_ratio)
+    result += ","
+    result += _to_json_bool(value.paired_variance_lower)
+    result += ","
+    result += _to_json_bool(value.has_std_error)
+    result += ","
+    result += _to_json_float64(value.std_error)
+    result += ","
+    result += _to_json_bool(value.has_t_stat)
+    result += ","
+    result += _to_json_float64(value.t_stat)
+    result += ","
+    result += _to_json_bool(value.has_p)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_bool(value.deterministic)
+    result += ","
+    result += _to_json_bool(value.has_t_critical)
+    result += ","
+    result += _to_json_float64(value.t_critical)
+    result += ","
+    result += _to_json_bool(value.has_ci)
+    result += ","
+    result += _to_json_float64(value.ci_lower)
+    result += ","
+    result += _to_json_float64(value.ci_upper)
+    result += ","
+    result += _to_json_bool(value.has_half_width)
+    result += ","
+    result += _to_json_float64(value.half_width)
+    result += ","
+    result += _to_json_bool(value.ci_excludes_zero)
+    result += ","
+    result += _to_json_int(value.work_charge)
+    result += "]}"
+    return result
+
+fn _to_json_pairingaudit(value: PairingAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PairingAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_scenarios)
+    result += ","
+    result += _to_json_int(value.n_scenarios_used)
+    result += ","
+    result += _to_json_int(value.n_scenarios_bit_identical)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.strategy_a)
+    result += ","
+    result += _to_json_int(value.strategy_b)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_int(value.n_tapes_built)
+    result += ","
+    result += _to_json_int(value.shared_digest)
+    result += ","
+    result += _to_json_int(value.independent_digest)
+    result += ","
+    result += _to_json_bool(value.scenario_sets_differ)
+    result += ","
+    result += _to_json_bool(value.has_paired)
+    result += ","
+    result += _to_json_float64(value.paired_mean)
+    result += ","
+    result += _to_json_float64(value.paired_variance)
+    result += ","
+    result += _to_json_bool(value.has_paired_ci)
+    result += ","
+    result += _to_json_float64(value.paired_ci_lower)
+    result += ","
+    result += _to_json_float64(value.paired_ci_upper)
+    result += ","
+    result += _to_json_bool(value.paired_excludes_zero)
+    result += ","
+    result += _to_json_bool(value.has_paired_p)
+    result += ","
+    result += _to_json_float64(value.paired_p_value)
+    result += ","
+    result += _to_json_bool(value.has_unpaired)
+    result += ","
+    result += _to_json_float64(value.unpaired_mean)
+    result += ","
+    result += _to_json_float64(value.unpaired_variance)
+    result += ","
+    result += _to_json_bool(value.has_unpaired_ci)
+    result += ","
+    result += _to_json_float64(value.unpaired_ci_lower)
+    result += ","
+    result += _to_json_float64(value.unpaired_ci_upper)
+    result += ","
+    result += _to_json_bool(value.unpaired_excludes_zero)
+    result += ","
+    result += _to_json_bool(value.has_unpaired_p)
+    result += ","
+    result += _to_json_float64(value.unpaired_p_value)
+    result += ","
+    result += _to_json_bool(value.has_variance_ratio)
+    result += ","
+    result += _to_json_float64(value.variance_ratio)
+    result += ","
+    result += _to_json_bool(value.pairing_reduces_variance)
+    result += ","
+    result += _to_json_bool(value.conclusions_differ)
     result += "]}"
     return result
 
@@ -13068,6 +15580,28 @@ fn _to_json_partialdependence(value: PartialDependence) raises -> String:
     result += _to_json_list_float64(value.mean)
     result += ","
     result += _to_json_list_float64(value.std)
+    result += "]}"
+    return result
+
+fn _to_json_pathlength(value: PathLength) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PathLength\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_segments)
+    result += ","
+    result += _to_json_bool(value.has_length)
+    result += ","
+    result += _to_json_float64(value.length_m)
+    result += ","
+    result += _to_json_bool(value.has_extremes)
+    result += ","
+    result += _to_json_float64(value.min_segment_m)
+    result += ","
+    result += _to_json_float64(value.max_segment_m)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_int(value.metric)
     result += "]}"
     return result
 
@@ -13116,6 +15650,26 @@ fn _to_json_philoxblock(value: PhiloxBlock) raises -> String:
     result += _to_json_uint64(value.w2)
     result += ","
     result += _to_json_uint64(value.w3)
+    result += "]}"
+    return result
+
+fn _to_json_pipresult(value: PipResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PipResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.classification)
+    result += ","
+    result += _to_json_bool(value.on_boundary)
+    result += ","
+    result += _to_json_bool(value.inside_even_odd)
+    result += ","
+    result += _to_json_bool(value.inside_nonzero)
+    result += ","
+    result += _to_json_int(value.crossings)
+    result += ","
+    result += _to_json_int(value.winding_number)
+    result += ","
+    result += _to_json_int(value.boundary_edge)
     result += "]}"
     return result
 
@@ -13211,6 +15765,214 @@ fn _to_json_pointresult(value: PointResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_policyaction(value: PolicyAction) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyAction\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_int(value.strategy)
+    result += ","
+    result += _to_json_int(value.state)
+    result += ","
+    result += _to_json_bool(value.has_action)
+    result += ","
+    result += _to_json_int(value.action)
+    result += ","
+    result += _to_json_bool(value.has_score)
+    result += ","
+    result += _to_json_float64(value.score)
+    result += ","
+    result += _to_json_bool(value.at_tie)
+    result += ","
+    result += _to_json_int(value.n_tied)
+    result += "]}"
+    return result
+
+fn _to_json_policyaudit(value: PolicyAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.evaluable)
+    result += ","
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_int(value.arity)
+    result += ","
+    result += _to_json_int(value.n_strategies)
+    result += ","
+    result += _to_json_int(value.n_params)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_int(value.n_states)
+    result += ","
+    result += _to_json_int(value.n_action_cells)
+    result += ","
+    result += _to_json_bool(value.has_row_error)
+    result += ","
+    result += _to_json_float64(value.max_row_error)
+    result += "]}"
+    return result
+
+fn _to_json_policyoutcome(value: PolicyOutcome) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyOutcome\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_payoff)
+    result += ","
+    result += _to_json_float64(value.payoff)
+    result += ","
+    result += _to_json_int(value.n_acted)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.policy_kind)
+    result += ","
+    result += _to_json_int(value.strategy)
+    result += ","
+    result += _to_json_bool(value.has_digest)
+    result += ","
+    result += _to_json_int(value.digest)
+    result += "]}"
+    return result
+
+fn _to_json_policyrun(value: PolicyRun) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyRun\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_scenarios)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.policy_kind)
+    result += ","
+    result += _to_json_int(value.arity)
+    result += ","
+    result += _to_json_int(value.draws_per_cell)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_int(value.n_tapes_built)
+    result += ","
+    result += _to_json_int(value.n_acted)
+    result += ","
+    result += _to_json_int(value.n_absent)
+    result += ","
+    result += _to_json_list_float64(value.payoffs)
+    result += ","
+    result += _to_json_list_bool(value.payoff_present)
+    result += ","
+    result += _to_json_bool(value.has_mean)
+    result += ","
+    result += _to_json_float64(value.mean)
+    result += ","
+    result += _to_json_bool(value.has_variance)
+    result += ","
+    result += _to_json_float64(value.variance)
+    result += ","
+    result += _to_json_int(value.first_digest)
+    result += ","
+    result += _to_json_int(value.last_digest)
+    result += "]}"
+    return result
+
+fn _to_json_policysetrun(value: PolicySetRun) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicySetRun\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_strategies)
+    result += ","
+    result += _to_json_int(value.n_scenarios)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.factor_kind)
+    result += ","
+    result += _to_json_int(value.policy_kind)
+    result += ","
+    result += _to_json_int(value.arity)
+    result += ","
+    result += _to_json_int(value.draws_per_cell)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_int(value.cells_per_scenario)
+    result += ","
+    result += _to_json_int(value.n_tapes_built)
+    result += ","
+    result += _to_json_int(value.n_absent)
+    result += ","
+    result += _to_json_list_float64(value.payoffs)
+    result += ","
+    result += _to_json_list_bool(value.payoff_present)
+    result += ","
+    result += _to_json_list_int(value.n_acted)
+    result += ","
+    result += _to_json_list_bool(value.has_mean)
+    result += ","
+    result += _to_json_list_float64(value.means)
+    result += ","
+    result += _to_json_list_bool(value.has_variance)
+    result += ","
+    result += _to_json_list_float64(value.variances)
+    result += ","
+    result += _to_json_int(value.first_digest)
+    result += ","
+    result += _to_json_int(value.last_digest)
+    result += "]}"
+    return result
+
+fn _to_json_policytable(value: PolicyTable) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyTable\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.exactness)
+    result += ","
+    result += _to_json_int(value.n_states)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_bool(value.has_actions)
+    result += ","
+    result += _to_json_list_int(value.actions)
+    result += "]}"
+    return result
+
+fn _to_json_policyvalues(value: PolicyValues) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PolicyValues\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.exactness)
+    result += ","
+    result += _to_json_int(value.n_states)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_float64(value.gamma)
+    result += ","
+    result += _to_json_float64(value.tol)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.has_residual)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.has_values)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += "]}"
+    return result
+
 fn _to_json_poweriterresult(value: PowerIterResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PowerIterResult\",\"v\":[")
     result += _to_json_float64(value.eigenvalue)
@@ -13256,6 +16018,28 @@ fn _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
     result += _to_json_float64(value.priority)
     result += ","
     result += _to_json_int(value.value)
+    result += "]}"
+    return result
+
+fn _to_json_projectedpoints(value: ProjectedPoints) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ProjectedPoints\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_bool(value.has_result)
+    result += ","
+    result += _to_json_float64(value.ref_lat_deg)
+    result += ","
+    result += _to_json_float64(value.ref_lon_deg)
+    result += ","
+    result += _to_json_float64(value.lon_span_deg)
+    result += ","
+    result += _to_json_float64(value.lat_span_deg)
+    result += ","
+    result += _to_json_list_float64(value.xs_m)
+    result += ","
+    result += _to_json_list_float64(value.ys_m)
     result += "]}"
     return result
 
@@ -13322,6 +16106,38 @@ fn _to_json_provenance(value: Provenance) raises -> String:
     result += _to_json_list_float64(value.fused_scores)
     result += ","
     result += _to_json_list_int(value.fused_positions)
+    result += "]}"
+    return result
+
+fn _to_json_purenashreport(value: PureNashReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PureNashReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.exactness)
+    result += ","
+    result += _to_json_int(value.method)
+    result += ","
+    result += _to_json_int(value.n_players)
+    result += ","
+    result += _to_json_int(value.n_actions)
+    result += ","
+    result += _to_json_int(value.n_profiles)
+    result += ","
+    result += _to_json_int(value.n_equilibria)
+    result += ","
+    result += _to_json_bool(value.has_first)
+    result += ","
+    result += _to_json_int(value.first_profile)
+    result += ","
+    result += _to_json_bool(value.has_residual)
+    result += ","
+    result += _to_json_float64(value.residual)
+    result += ","
+    result += _to_json_int(value.best_profile)
+    result += ","
+    result += _to_json_bool(value.listed_truncated)
+    result += ","
+    result += _to_json_list_int(value.equilibria)
     result += "]}"
     return result
 
@@ -13635,6 +16451,150 @@ fn _to_json_quanterror(value: QuantError) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_quantileestimate(value: QuantileEstimate) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QuantileEstimate\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.rank_error)
+    result += ","
+    result += _to_json_float64(value.rank_slack)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_quantileprofile(value: QuantileProfile) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QuantileProfile\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_int(value.cumulative)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
+fn _to_json_quantileseries(value: QuantileSeries) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QuantileSeries\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_bool(value.present)
+    result += ","
+    result += _to_json_float64(value.rank_error)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
+fn _to_json_quantilesketch(value: QuantileSketch) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QuantileSketch\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_int(value.level_sizes)
+    result += ","
+    result += _to_json_list_int(value.compactions)
+    result += ","
+    result += _to_json_int(value.k)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_float64(value.minimum)
+    result += ","
+    result += _to_json_float64(value.maximum)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
+fn _to_json_quantilesnapshot(value: QuantileSnapshot) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QuantileSnapshot\",\"v\":[")
+    result += _to_json_list_int(value.header)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_queuerun(value: QueueRun) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QueueRun\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_customers)
+    result += ","
+    result += _to_json_int(value.capacity)
+    result += ","
+    result += _to_json_int(value.n_discarded)
+    result += ","
+    result += _to_json_int(value.n_retained)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.replication)
+    result += ","
+    result += _to_json_int(value.events_processed)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_int(value.max_queue_length)
+    result += ","
+    result += _to_json_float64(value.horizon)
+    result += ","
+    result += _to_json_float64(value.observed_from)
+    result += ","
+    result += _to_json_float64(value.observed_span)
+    result += ","
+    result += _to_json_float64(value.total_interarrival_time)
+    result += ","
+    result += _to_json_float64(value.total_service_time)
+    result += ","
+    result += _to_json_bool(value.has_mean_wait)
+    result += ","
+    result += _to_json_float64(value.mean_wait)
+    result += ","
+    result += _to_json_bool(value.has_mean_system)
+    result += ","
+    result += _to_json_float64(value.mean_system)
+    result += ","
+    result += _to_json_bool(value.has_time_avg_number)
+    result += ","
+    result += _to_json_float64(value.time_avg_number)
+    result += ","
+    result += _to_json_bool(value.has_utilization)
+    result += ","
+    result += _to_json_float64(value.utilization)
+    result += ","
+    result += _to_json_bool(value.has_closed_form)
+    result += ","
+    result += _to_json_float64(value.closed_form_rho)
+    result += ","
+    result += _to_json_float64(value.closed_form_wait)
+    result += ","
+    result += _to_json_float64(value.closed_form_system)
+    result += ","
+    result += _to_json_float64(value.closed_form_number)
+    result += ","
+    result += _to_json_bool(value.has_little_law_check)
+    result += ","
+    result += _to_json_bool(value.little_law_consistent)
+    result += ","
+    result += _to_json_float64(value.little_law_gap)
+    result += "]}"
+    return result
+
 fn _to_json_rgb(value: RGB) raises -> String:
     var result = String("{\"__algenta_struct\":\"RGB\",\"v\":[")
     result += _to_json_float64(value.r)
@@ -13909,6 +16869,124 @@ fn _to_json_reliabilitybins(value: ReliabilityBins) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_reliabilitydiagram(value: ReliabilityDiagram) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ReliabilityDiagram\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.bins_used)
+    result += ","
+    result += _to_json_int(value.bins_occupied)
+    result += ","
+    result += _to_json_int(value.bin_policy)
+    result += ","
+    result += _to_json_list_float64(value.bin_lo)
+    result += ","
+    result += _to_json_list_float64(value.bin_hi)
+    result += ","
+    result += _to_json_list_float64(value.bin_conf)
+    result += ","
+    result += _to_json_list_float64(value.bin_freq)
+    result += ","
+    result += _to_json_list_int(value.bin_count)
+    result += ","
+    result += _to_json_list_bool(value.bin_present)
+    result += "]}"
+    return result
+
+fn _to_json_replicationci(value: ReplicationCI) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ReplicationCI\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_reps)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_bool(value.has_mean)
+    result += ","
+    result += _to_json_float64(value.mean)
+    result += ","
+    result += _to_json_bool(value.has_variance)
+    result += ","
+    result += _to_json_float64(value.variance)
+    result += ","
+    result += _to_json_bool(value.has_std_error)
+    result += ","
+    result += _to_json_float64(value.std_error)
+    result += ","
+    result += _to_json_bool(value.has_t_critical)
+    result += ","
+    result += _to_json_float64(value.t_critical)
+    result += ","
+    result += _to_json_bool(value.has_ci)
+    result += ","
+    result += _to_json_float64(value.ci_lower)
+    result += ","
+    result += _to_json_float64(value.ci_upper)
+    result += ","
+    result += _to_json_bool(value.has_half_width)
+    result += ","
+    result += _to_json_float64(value.half_width)
+    result += "]}"
+    return result
+
+fn _to_json_resourcerun(value: ResourceRun) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ResourceRun\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_jobs)
+    result += ","
+    result += _to_json_int(value.n_served)
+    result += ","
+    result += _to_json_int(value.n_discarded)
+    result += ","
+    result += _to_json_int(value.n_retained)
+    result += ","
+    result += _to_json_int(value.capacity)
+    result += ","
+    result += _to_json_int(value.events_processed)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_int(value.max_queue_length)
+    result += ","
+    result += _to_json_float64(value.horizon)
+    result += ","
+    result += _to_json_float64(value.observed_from)
+    result += ","
+    result += _to_json_float64(value.observed_span)
+    result += ","
+    result += _to_json_bool(value.has_mean_wait)
+    result += ","
+    result += _to_json_float64(value.mean_wait)
+    result += ","
+    result += _to_json_bool(value.has_mean_system)
+    result += ","
+    result += _to_json_float64(value.mean_system)
+    result += ","
+    result += _to_json_bool(value.has_time_avg_number)
+    result += ","
+    result += _to_json_float64(value.time_avg_number)
+    result += ","
+    result += _to_json_bool(value.has_utilization)
+    result += ","
+    result += _to_json_float64(value.utilization)
+    result += ","
+    result += _to_json_bool(value.has_little_law_check)
+    result += ","
+    result += _to_json_bool(value.little_law_consistent)
+    result += ","
+    result += _to_json_float64(value.little_law_gap)
+    result += ","
+    result += _to_json_list_float64(value.wait)
+    result += ","
+    result += _to_json_list_float64(value.start)
+    result += ","
+    result += _to_json_list_float64(value.depart)
+    result += "]}"
+    return result
+
 fn _to_json_retrievalquality(value: RetrievalQuality) raises -> String:
     var result = String("{\"__algenta_struct\":\"RetrievalQuality\",\"v\":[")
     result += _to_json_int(value.status)
@@ -13956,6 +17034,154 @@ fn _to_json_rhssensitivity(value: RhsSensitivity) raises -> String:
     result += _to_json_list_float64(value.slack)
     result += ","
     result += _to_json_list_bool(value.binding)
+    result += "]}"
+    return result
+
+fn _to_json_ringarea(value: RingArea) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RingArea\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_area)
+    result += ","
+    result += _to_json_float64(value.area_m2)
+    result += ","
+    result += _to_json_float64(value.signed_area_m2)
+    result += ","
+    result += _to_json_int(value.orientation)
+    result += ","
+    result += _to_json_bool(value.projected)
+    result += ","
+    result += _to_json_float64(value.ref_lat_deg)
+    result += ","
+    result += _to_json_float64(value.ref_lon_deg)
+    result += ","
+    result += _to_json_float64(value.lon_span_deg)
+    result += ","
+    result += _to_json_float64(value.lat_span_deg)
+    result += "]}"
+    return result
+
+fn _to_json_ringclassification(value: RingClassification) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RingClassification\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.n_inside)
+    result += ","
+    result += _to_json_int(value.n_boundary)
+    result += ","
+    result += _to_json_int(value.n_outside)
+    result += ","
+    result += _to_json_int(value.edge_tests)
+    result += ","
+    result += _to_json_list_int(value.codes)
+    result += "]}"
+    return result
+
+fn _to_json_ringframecensus(value: RingFrameCensus) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RingFrameCensus\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_vertices)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_bool(value.explicitly_closed)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_int(value.antimeridian_edges)
+    result += ","
+    result += _to_json_bool(value.has_winding)
+    result += ","
+    result += _to_json_float64(value.lon_winding_deg)
+    result += ","
+    result += _to_json_bool(value.encircles_pole)
+    result += ","
+    result += _to_json_bool(value.touches_pole)
+    result += ","
+    result += _to_json_bool(value.has_extent)
+    result += ","
+    result += _to_json_float64(value.min_x)
+    result += ","
+    result += _to_json_float64(value.min_y)
+    result += ","
+    result += _to_json_float64(value.max_x)
+    result += ","
+    result += _to_json_float64(value.max_y)
+    result += "]}"
+    return result
+
+fn _to_json_ringreport(value: RingReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RingReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_vertices)
+    result += ","
+    result += _to_json_int(value.frame)
+    result += ","
+    result += _to_json_bool(value.explicitly_closed)
+    result += ","
+    result += _to_json_bool(value.has_area)
+    result += ","
+    result += _to_json_float64(value.area)
+    result += ","
+    result += _to_json_float64(value.signed_area)
+    result += ","
+    result += _to_json_int(value.orientation)
+    result += ","
+    result += _to_json_bool(value.magnitude_matches_frozen)
+    result += ","
+    result += _to_json_bool(value.has_perimeter)
+    result += ","
+    result += _to_json_float64(value.perimeter)
+    result += ","
+    result += _to_json_bool(value.simplicity_checked)
+    result += ","
+    result += _to_json_bool(value.self_intersecting)
+    result += ","
+    result += _to_json_int(value.bad_edge_a)
+    result += ","
+    result += _to_json_int(value.bad_edge_b)
+    result += ","
+    result += _to_json_int(value.duplicate_vertices)
+    result += ","
+    result += _to_json_bool(value.is_convex)
+    result += ","
+    result += _to_json_bool(value.has_extent)
+    result += ","
+    result += _to_json_float64(value.min_x)
+    result += ","
+    result += _to_json_float64(value.min_y)
+    result += ","
+    result += _to_json_float64(value.max_x)
+    result += ","
+    result += _to_json_float64(value.max_y)
+    result += "]}"
+    return result
+
+fn _to_json_risktable(value: RiskTable) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RiskTable\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_int(value.at_risk)
+    result += ","
+    result += _to_json_list_int(value.events)
+    result += ","
+    result += _to_json_list_float64(value.survival)
+    result += ","
+    result += _to_json_bool(value.monotone)
     result += "]}"
     return result
 
@@ -14569,6 +17795,32 @@ fn _to_json_seasonaladjust(value: SeasonalAdjust) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_segmentdistance(value: SegmentDistance) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SegmentDistance\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_distance)
+    result += ","
+    result += _to_json_float64(value.distance_m)
+    result += ","
+    result += _to_json_int(value.where)
+    result += ","
+    result += _to_json_bool(value.has_foot)
+    result += ","
+    result += _to_json_float64(value.foot_x)
+    result += ","
+    result += _to_json_float64(value.foot_y)
+    result += ","
+    result += _to_json_bool(value.has_fraction)
+    result += ","
+    result += _to_json_float64(value.t_fraction)
+    result += ","
+    result += _to_json_bool(value.has_leg_length)
+    result += ","
+    result += _to_json_float64(value.leg_length_m)
+    result += "]}"
+    return result
+
 fn _to_json_selection(value: Selection) raises -> String:
     var result = String("{\"__algenta_struct\":\"Selection\",\"v\":[")
     result += _to_json_int(value.status)
@@ -14714,6 +17966,58 @@ fn _to_json_slidingwindow(value: SlidingWindow) raises -> String:
     result += _to_json_float64(value.window_size)
     result += ","
     result += _to_json_int(value.max_requests)
+    result += "]}"
+    return result
+
+fn _to_json_smoothedhazard(value: SmoothedHazard) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SmoothedHazard\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_float64(value.bandwidth)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_event_times)
+    result += ","
+    result += _to_json_int(value.kernel_pairs)
+    result += ","
+    result += _to_json_float64(value.increment_sum)
+    result += ","
+    result += _to_json_float64(value.frozen_cumulative_hazard)
+    result += ","
+    result += _to_json_float64(value.frozen_residual)
+    result += ","
+    result += _to_json_bool(value.frozen_agrees)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_float64(value.rate)
+    result += ","
+    result += _to_json_list_bool(value.has_rate)
+    result += ","
+    result += _to_json_list_float64(value.increment)
+    result += ","
+    result += _to_json_list_bool(value.boundary)
+    result += "]}"
+    return result
+
+fn _to_json_sortedobs(value: SortedObs) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SortedObs\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_list_int(value.order)
+    result += ","
+    result += _to_json_list_float64(value.time)
+    result += ","
+    result += _to_json_list_bool(value.is_event)
     result += "]}"
     return result
 
@@ -14953,6 +18257,16 @@ fn _to_json_spmvvector(value: SpmvVector) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_stmclaim(value: StmClaim) raises -> String:
+    var result = String("{\"__algenta_struct\":\"StmClaim\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_strataate(value: StrataAte) raises -> String:
     var result = String("{\"__algenta_struct\":\"StrataAte\",\"v\":[")
     result += _to_json_int(value.status)
@@ -15109,6 +18423,32 @@ fn _to_json_table(value: Table) raises -> String:
     result += _to_json_int(value.n_rows)
     result += ","
     result += _to_json_list_list_float64(value.data)
+    result += "]}"
+    return result
+
+fn _to_json_tableprofile(value: TableProfile) raises -> String:
+    var result = String("{\"__algenta_struct\":\"TableProfile\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_rows)
+    result += ","
+    result += _to_json_int(value.n_cols)
+    result += ","
+    result += _to_json_list_int(value.null_counts)
+    result += ","
+    result += _to_json_list_int(value.nan_counts)
+    result += ","
+    result += _to_json_list_int(value.infinite_counts)
+    result += ","
+    result += _to_json_list_int(value.zero_counts)
+    result += ","
+    result += _to_json_list_int(value.finite_counts)
+    result += ","
+    result += _to_json_list_int(value.distinct_counts)
+    result += ","
+    result += _to_json_list_int(value.all_absent_columns)
+    result += ","
+    result += _to_json_list_int(value.constant_columns)
     result += "]}"
     return result
 
@@ -15360,6 +18700,96 @@ fn _to_json_tomlnode(value: TomlNode) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_tournament(value: Tournament) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Tournament\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.ranked)
+    result += ","
+    result += _to_json_int(value.verdict)
+    result += ","
+    result += _to_json_bool(value.decided)
+    result += ","
+    result += _to_json_bool(value.has_winner)
+    result += ","
+    result += _to_json_int(value.winner)
+    result += ","
+    result += _to_json_int(value.n_strategies)
+    result += ","
+    result += _to_json_int(value.n_replications)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.abs_tolerance)
+    result += ","
+    result += _to_json_bool(value.higher_is_better)
+    result += ","
+    result += _to_json_int(value.method)
+    result += ","
+    result += _to_json_string(value.method_name)
+    result += ","
+    result += _to_json_int(value.n_comparisons)
+    result += ","
+    result += _to_json_int(value.n_significant)
+    result += ","
+    result += _to_json_int(value.n_significant_uncorrected)
+    result += ","
+    result += _to_json_int(value.n_undecided_pairs)
+    result += ","
+    result += _to_json_int(value.n_deterministic_pairs)
+    result += ","
+    result += _to_json_int(value.n_at_rank_1)
+    result += ","
+    result += _to_json_int(value.n_distinct_ranks)
+    result += ","
+    result += _to_json_list_float64(value.mean)
+    result += ","
+    result += _to_json_list_float64(value.variance)
+    result += ","
+    result += _to_json_list_bool(value.has_ci)
+    result += ","
+    result += _to_json_list_float64(value.ci_lower)
+    result += ","
+    result += _to_json_list_float64(value.ci_upper)
+    result += ","
+    result += _to_json_list_int(value.rank)
+    result += ","
+    result += _to_json_list_int(value.n_better)
+    result += ","
+    result += _to_json_list_int(value.n_worse)
+    result += ","
+    result += _to_json_list_int(value.pair_a)
+    result += ","
+    result += _to_json_list_int(value.pair_b)
+    result += ","
+    result += _to_json_list_float64(value.pair_mean_diff)
+    result += ","
+    result += _to_json_list_float64(value.pair_p)
+    result += ","
+    result += _to_json_list_float64(value.pair_adjusted)
+    result += ","
+    result += _to_json_list_bool(value.pair_rejected)
+    result += ","
+    result += _to_json_list_int(value.pair_verdict)
+    result += ","
+    result += _to_json_list_float64(value.pair_paired_variance)
+    result += ","
+    result += _to_json_list_float64(value.pair_unpaired_variance)
+    result += ","
+    result += _to_json_bool(value.has_min_variance_ratio)
+    result += ","
+    result += _to_json_float64(value.min_variance_ratio)
+    result += ","
+    result += _to_json_bool(value.all_pairs_paired_lower)
+    result += ","
+    result += _to_json_bool(value.multiplicity_corrected)
+    result += ","
+    result += _to_json_int(value.work_charge)
+    result += "]}"
+    return result
+
 fn _to_json_trainresult(value: TrainResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"TrainResult\",\"v\":[")
     result += _to_json_list_float64(value.weights)
@@ -15476,6 +18906,82 @@ fn _to_json_varcheck(value: VarCheck) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_warmupreport(value: WarmupReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WarmupReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.batch_size)
+    result += ","
+    result += _to_json_int(value.n_batches)
+    result += ","
+    result += _to_json_int(value.n_discarded_batches)
+    result += ","
+    result += _to_json_int(value.n_discarded_obs)
+    result += ","
+    result += _to_json_int(value.n_retained_batches)
+    result += ","
+    result += _to_json_int(value.n_retained_obs)
+    result += ","
+    result += _to_json_int(value.n_tail_dropped)
+    result += ","
+    result += _to_json_int(value.search_boundary)
+    result += ","
+    result += _to_json_bool(value.at_search_boundary)
+    result += ","
+    result += _to_json_bool(value.has_mser)
+    result += ","
+    result += _to_json_float64(value.mser_value)
+    result += ","
+    result += _to_json_bool(value.has_estimate)
+    result += ","
+    result += _to_json_float64(value.steady_mean)
+    result += ","
+    result += _to_json_bool(value.has_batch_variance)
+    result += ","
+    result += _to_json_float64(value.batch_mean_variance)
+    result += ","
+    result += _to_json_int(value.work_charged)
+    result += ","
+    result += _to_json_list_float64(value.batch_means)
+    result += "]}"
+    return result
+
+fn _to_json_weibullfit(value: WeibullFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WeibullFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_events)
+    result += ","
+    result += _to_json_int(value.n_censored)
+    result += ","
+    result += _to_json_int(value.iterations)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_float64(value.shape)
+    result += ","
+    result += _to_json_float64(value.scale)
+    result += ","
+    result += _to_json_float64(value.loglik)
+    result += ","
+    result += _to_json_float64(value.aic)
+    result += ","
+    result += _to_json_float64(value.shape_equation_residual)
+    result += ","
+    result += _to_json_float64(value.scale_identity_residual)
+    result += ","
+    result += _to_json_float64(value.bracket_width)
+    result += ","
+    result += _to_json_float64(value.ks_distance_vs_km)
+    result += ","
+    result += _to_json_bool(value.has_ks)
+    result += "]}"
+    return result
+
 fn _to_json_weightededge(value: WeightedEdge) raises -> String:
     var result = String("{\"__algenta_struct\":\"WeightedEdge\",\"v\":[")
     result += _to_json_int(value.src)
@@ -15493,6 +18999,40 @@ fn _to_json_weightsbundle(value: WeightsBundle) raises -> String:
     result += _to_json_list_string(value.names)
     result += ","
     result += _to_json_list_list_float64(value.arrays)
+    result += "]}"
+    return result
+
+fn _to_json_windowseries(value: WindowSeries) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WindowSeries\",\"v\":[")
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_list_bool(value.present)
+    result += ","
+    result += _to_json_int(value.window)
+    result += ","
+    result += _to_json_int(value.n_positions)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.valid)
+    result += "]}"
+    return result
+
+fn _to_json_windowsummary(value: WindowSummary) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WindowSummary\",\"v\":[")
+    result += _to_json_float64(value.mean)
+    result += ","
+    result += _to_json_float64(value.variance)
+    result += ","
+    result += _to_json_float64(value.minimum)
+    result += ","
+    result += _to_json_float64(value.maximum)
+    result += ","
+    result += _to_json_int(value.count)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -15522,6 +19062,32 @@ fn _to_json_wlssolution(value: WlsSolution) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_workbudget(value: WorkBudget) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WorkBudget\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.fits)
+    result += ","
+    result += _to_json_int(value.n_strategies)
+    result += ","
+    result += _to_json_int(value.n_replications)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_factors)
+    result += ","
+    result += _to_json_int(value.draws_per_cell)
+    result += ","
+    result += _to_json_int(value.draw_charge)
+    result += ","
+    result += _to_json_int(value.replay_charge)
+    result += ","
+    result += _to_json_int(value.total_charge)
+    result += ","
+    result += _to_json_int(value.work_ceiling)
+    result += "]}"
+    return result
+
 fn _to_json_yamldoc(value: YamlDoc) raises -> String:
     var result = String("{\"__algenta_struct\":\"YamlDoc\",\"v\":[")
     result += _to_json_yamlpool(value.pool)
@@ -15541,6 +19107,34 @@ fn _to_json_yamlnode(value: YamlNode) raises -> String:
     result += _to_json_list_int(value.map_vals)
     result += ","
     result += _to_json_list_int(value.list_vals)
+    result += "]}"
+    return result
+
+fn _to_json_zerosumbounds(value: ZeroSumBounds) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ZeroSumBounds\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_bool(value.has_lower)
+    result += ","
+    result += _to_json_float64(value.lower_value)
+    result += ","
+    result += _to_json_bool(value.has_upper)
+    result += ","
+    result += _to_json_float64(value.upper_value)
+    result += ","
+    result += _to_json_bool(value.has_gap)
+    result += ","
+    result += _to_json_float64(value.gap)
+    result += ","
+    result += _to_json_bool(value.saddle)
+    result += ","
+    result += _to_json_bool(value.has_sum_defect)
+    result += ","
+    result += _to_json_float64(value.sum_defect)
     result += "]}"
     return result
 
@@ -39427,6 +43021,721 @@ fn _dispatch_data_pipeline(function_name: String, args_array: String) raises -> 
         "Function '" + function_name + "' is not registered for module data_pipeline."
     )
 
+fn _dispatch_data_quality__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "dq_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_contract__dq_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_is_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _data_quality_contract__dq_is_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_is_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_is_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_relative_tolerance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_relative_tolerance(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "data_quality.contract.dq_relative_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_relative_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_relative_tolerance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_ulp_tolerance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_ulp_tolerance(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "data_quality.contract.dq_ulp_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_ulp_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_ulp_tolerance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_values_equal":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_values_equal(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_values_equal."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_values_equal expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_decimal_scale":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_contract__dq_decimal_scale(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "data_quality.contract.dq_decimal_scale produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_decimal_scale."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_decimal_scale expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_quantize_exact":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_quantize_exact(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_quantize_exact."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_quantize_exact expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_quantize":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_quantize(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "data_quality.contract.dq_quantize produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_quantize."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_quantize expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_table_defect":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _data_quality_contract__dq_table_defect(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_table_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_table_defect expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_work_fits":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_work_fits(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_work_fits expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_rows_within_budget":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_rows_within_budget(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_rows_within_budget."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_rows_within_budget expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_mask_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_bool_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_mask_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_mask_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_mask_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_mask_all_valid":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_contract__dq_mask_all_valid(arg_0)
+                var result_json = _to_json_list_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_mask_all_valid."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_mask_all_valid expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_column":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _data_quality_contract__dq_column(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_column."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_column expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_column_mask":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_bool_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _data_quality_contract__dq_column_mask(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_column_mask."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_column_mask expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_column_prefix":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _data_quality_contract__dq_column_prefix(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_column_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_column_prefix expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_column_mask_prefix":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_bool_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _data_quality_contract__dq_column_mask_prefix(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_column_mask_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_column_mask_prefix expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dq_live_and_finite":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_bool_token(json_array_get(args_array, 1))
+                var result = _data_quality_contract__dq_live_and_finite(arg_0, arg_1)
+                var result_json = _to_json_list_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.contract.dq_live_and_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.contract.dq_live_and_finite expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module data_quality.contract."
+    )
+
+fn _dispatch_data_quality__duplicates(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "duplicate_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_duplicates__duplicate_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.duplicates.duplicate_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.duplicates.duplicate_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "duplicate_key_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _data_quality_duplicates__duplicate_key_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.duplicates.duplicate_key_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.duplicates.duplicate_key_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "duplicate_scan_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _data_quality_duplicates__duplicate_scan_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_duplicatereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.duplicates.duplicate_scan_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.duplicates.duplicate_scan_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "duplicate_rows_of_group":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _data_quality_duplicates__duplicate_rows_of_group(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.duplicates.duplicate_rows_of_group."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.duplicates.duplicate_rows_of_group expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module data_quality.duplicates."
+    )
+
+fn _dispatch_data_quality__expect(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "expect_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_expect__expect_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expect_op_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_expect__expect_op_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_op_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_op_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expect_failure_line":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var result = _data_quality_expect__expect_failure_line(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_failure_line."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_failure_line expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expect_column_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _data_quality_expect__expect_column_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_expectationreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_column_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_column_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expect_suite_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _data_quality_expect__expect_suite_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_expectationreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_suite_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_suite_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expect_plan_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _data_quality_expect__expect_plan_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_expectationreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.expect.expect_plan_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.expect.expect_plan_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module data_quality.expect."
+    )
+
+fn _dispatch_data_quality__leakage(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "leakage_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_leakage__leakage_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.leakage.leakage_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.leakage.leakage_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "leakage_scan_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _data_quality_leakage__leakage_scan_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_leakagereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.leakage.leakage_scan_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.leakage.leakage_scan_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "leakage_timing_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _data_quality_leakage__leakage_timing_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_leakagetimingreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.leakage.leakage_timing_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.leakage.leakage_timing_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module data_quality.leakage."
+    )
+
+fn _dispatch_data_quality__profile(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "profile_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _data_quality_profile__profile_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.profile.profile_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.profile.profile_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "profile_column":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _data_quality_profile__profile_column(arg_0, arg_1, arg_2)
+                var result_json = _to_json_columnprofile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.profile.profile_column."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.profile.profile_column expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "profile_column_at":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_bool_token(json_array_get(args_array, 4))
+                var result = _data_quality_profile__profile_column_at(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_columnprofile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.profile.profile_column_at."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.profile.profile_column_at expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "profile_table":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_bool_token(json_array_get(args_array, 3))
+                var result = _data_quality_profile__profile_table(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_tableprofile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.profile.profile_table."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.profile.profile_table expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "profile_is_constant":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_bool_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _data_quality_profile__profile_is_constant(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for data_quality.profile.profile_is_constant."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function data_quality.profile.profile_is_constant expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module data_quality.profile."
+    )
+
 fn _dispatch_database(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "table_create":
@@ -42403,6 +46712,647 @@ fn _dispatch_dimensions(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module dimensions."
+    )
+
+fn _dispatch_discrete_event__calendar(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "de_key_less":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _discrete_event_calendar__de_key_less(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.calendar.de_key_less."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.calendar.de_key_less expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calendar_replay_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _discrete_event_calendar__calendar_replay_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_calendartrace(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.calendar.calendar_replay_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.calendar.calendar_replay_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calendar_order_audit":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_calendar__calendar_order_audit(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_orderaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.calendar.calendar_order_audit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.calendar.calendar_order_audit expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calendar_stress_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_calendar__calendar_stress_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_calendartrace(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.calendar.calendar_stress_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.calendar.calendar_stress_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.calendar."
+    )
+
+fn _dispatch_discrete_event__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "de_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _discrete_event_contract__de_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _discrete_event_contract__de_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_absent":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_absent()
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "discrete_event.contract.de_absent produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_absent."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_absent expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_scaled_tol":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _discrete_event_contract__de_scaled_tol(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "discrete_event.contract.de_scaled_tol produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_scaled_tol."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_scaled_tol expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_scaled_tol_additions":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_contract__de_scaled_tol_additions(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "discrete_event.contract.de_scaled_tol_additions produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_scaled_tol_additions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_scaled_tol_additions expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_event_order":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_event_order()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_event_order."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_event_order expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_rng_version":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_rng_version()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_rng_version."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_rng_version expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_stream_arrival":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_stream_arrival()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_stream_arrival."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_stream_arrival expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_stream_service":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_stream_service()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_stream_service."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_stream_service expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_heap_levels":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _discrete_event_contract__de_heap_levels(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_heap_levels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_heap_levels expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_product_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_contract__de_product_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_product_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_product_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_product3_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_contract__de_product3_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_product3_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_product3_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_heap_work_fits":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _discrete_event_contract__de_heap_work_fits(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_heap_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_heap_work_fits expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_heap_work":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _discrete_event_contract__de_heap_work(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_heap_work."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_heap_work expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_ceilings":
+        if arg_count == 0:
+            try:
+                var result = _discrete_event_contract__de_ceilings()
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_ceilings."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_ceilings expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_all_finite":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _discrete_event_contract__de_all_finite(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_all_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_all_finite expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_nondecreasing":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _discrete_event_contract__de_nondecreasing(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_nondecreasing."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_nondecreasing expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "de_agrees":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_contract__de_agrees(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.contract.de_agrees."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.contract.de_agrees expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.contract."
+    )
+
+fn _dispatch_discrete_event__queue_sim(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "qs_interarrivals":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_queue_sim__qs_interarrivals(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.queue_sim.qs_interarrivals."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.queue_sim.qs_interarrivals expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qs_service_times":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_queue_sim__qs_service_times(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.queue_sim.qs_service_times."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.queue_sim.qs_service_times expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qs_arrival_times":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _discrete_event_queue_sim__qs_arrival_times(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.queue_sim.qs_arrival_times."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.queue_sim.qs_arrival_times expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qs_closed_form_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_queue_sim__qs_closed_form_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_closedform(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.queue_sim.qs_closed_form_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.queue_sim.qs_closed_form_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qs_run_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _discrete_event_queue_sim__qs_run_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_queuerun(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.queue_sim.qs_run_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.queue_sim.qs_run_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.queue_sim."
+    )
+
+fn _dispatch_discrete_event__replicate(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "replicate_ci_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _discrete_event_replicate__replicate_ci_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_replicationci(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.replicate.replicate_ci_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.replicate.replicate_ci_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "replicate_mm1_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _discrete_event_replicate__replicate_mm1_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_mm1validation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.replicate.replicate_mm1_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.replicate.replicate_mm1_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.replicate."
+    )
+
+fn _dispatch_discrete_event__resource(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "resource_work_charge":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _discrete_event_resource__resource_work_charge(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.resource.resource_work_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.resource.resource_work_charge expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resource_serve_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _discrete_event_resource__resource_serve_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_resourcerun(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.resource.resource_serve_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.resource.resource_serve_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.resource."
+    )
+
+fn _dispatch_discrete_event__warmup(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "warmup_mser_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_warmup__warmup_mser_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_warmupreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.warmup.warmup_mser_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.warmup.warmup_mser_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "warmup_bias_audit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _discrete_event_warmup__warmup_bias_audit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_biasaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for discrete_event.warmup.warmup_bias_audit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function discrete_event.warmup.warmup_bias_audit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module discrete_event.warmup."
     )
 
 fn _dispatch_distillation(function_name: String, args_array: String) raises -> String:
@@ -49365,6 +54315,581 @@ fn _dispatch_etiology(function_name: String, args_array: String) raises -> Strin
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module etiology."
+    )
+
+fn _dispatch_evaluation__binning(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "eval_bins_build":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_binning__eval_bins_build(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_evalbins(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.binning.eval_bins_build."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.binning.eval_bins_build expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_bin_counts_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _evaluation_binning__eval_bin_counts_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bincounts(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.binning.eval_bin_counts_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.binning.eval_bin_counts_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_bin_assign_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _evaluation_binning__eval_bin_assign_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_binassignment(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.binning.eval_bin_assign_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.binning.eval_bin_assign_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_bin_edges_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _evaluation_binning__eval_bin_edges_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.binning.eval_bin_edges_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.binning.eval_bin_edges_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module evaluation.binning."
+    )
+
+fn _dispatch_evaluation__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "eval_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_status_is_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_status_is_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_status_is_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_status_is_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_bin_policy_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_bin_policy_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_bin_policy_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_bin_policy_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_metric_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_metric_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_metric_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_metric_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_metric_higher_is_better":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_metric_higher_is_better(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_metric_higher_is_better."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_metric_higher_is_better expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_pairs_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _evaluation_contract__eval_pairs_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_pairs_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_pairs_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_scores_status":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _evaluation_contract__eval_scores_status(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_scores_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_scores_status expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_bins_status":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _evaluation_contract__eval_bins_status(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_bins_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_bins_status expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_ece_comparable":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _evaluation_contract__eval_ece_comparable(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_ece_comparable."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_ece_comparable expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_log2_ceil":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _evaluation_contract__eval_log2_ceil(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_log2_ceil."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_log2_ceil expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_work_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _evaluation_contract__eval_work_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_work_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eval_resample_work_fits":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_contract__eval_resample_work_fits(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.contract.eval_resample_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.contract.eval_resample_work_fits expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module evaluation.contract."
+    )
+
+fn _dispatch_evaluation__gates(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "metric_gate":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _evaluation_gates__metric_gate(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_gateresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.gates.metric_gate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.gates.metric_gate expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "metric_regression_gate_flat":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var result = _evaluation_gates__metric_regression_gate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_gateresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.gates.metric_regression_gate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.gates.metric_regression_gate_flat expected 10 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "psi_drift_gate_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _evaluation_gates__psi_drift_gate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_driftresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.gates.psi_drift_gate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.gates.psi_drift_gate_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module evaluation.gates."
+    )
+
+fn _dispatch_evaluation__resample(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "bootstrap_draw_index":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _evaluation_resample__bootstrap_draw_index(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.resample.bootstrap_draw_index."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.resample.bootstrap_draw_index expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bootstrap_min_replicates":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _evaluation_resample__bootstrap_min_replicates(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.resample.bootstrap_min_replicates."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.resample.bootstrap_min_replicates expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bootstrap_metric_ci_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _evaluation_resample__bootstrap_metric_ci_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_metricci(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.resample.bootstrap_metric_ci_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.resample.bootstrap_metric_ci_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module evaluation.resample."
+    )
+
+fn _dispatch_evaluation__scores(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "brier_decomposition_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_scores__brier_decomposition_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_brierdecomposition(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.brier_decomposition_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.brier_decomposition_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "log_loss_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _evaluation_scores__log_loss_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_loglossresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.log_loss_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.log_loss_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "calibration_error_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_scores__calibration_error_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_calibrationerrorresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.calibration_error_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.calibration_error_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "reliability_diagram_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_scores__reliability_diagram_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_reliabilitydiagram(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.reliability_diagram_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.reliability_diagram_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "metric_value_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _evaluation_scores__metric_value_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_metricvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.metric_value_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.metric_value_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "evaluate_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _evaluation_scores__evaluate_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_evalreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for evaluation.scores.evaluate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function evaluation.scores.evaluate_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module evaluation.scores."
     )
 
 fn _dispatch_evaluation_feedback(function_name: String, args_array: String) raises -> String:
@@ -57821,6 +63346,994 @@ fn _dispatch_geophysics(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module geophysics."
+    )
+
+fn _dispatch_geospatial__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "geo_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_frame_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_frame_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_frame_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_frame_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_metric_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_metric_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_metric_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_metric_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_finite_or_zero":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_finite_or_zero(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_finite_or_zero produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_finite_or_zero."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_finite_or_zero expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_is_degree_frame":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_is_degree_frame(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_is_degree_frame."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_is_degree_frame expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_frame_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_frame_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_frame_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_frame_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_metric_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _geospatial_contract__geo_metric_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_metric_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_metric_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_lat_of":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _geospatial_contract__geo_lat_of(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_lat_of produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_lat_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_lat_of expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_lon_of":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _geospatial_contract__geo_lon_of(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_lon_of produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_lon_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_lon_of expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_pair_range_defect":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _geospatial_contract__geo_pair_range_defect(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_pair_range_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_pair_range_defect expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_points_defect":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _geospatial_contract__geo_points_defect(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_points_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_points_defect expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_normalise_lon":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _geospatial_contract__geo_normalise_lon(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_normalise_lon produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_normalise_lon."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_normalise_lon expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_lon_delta":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _geospatial_contract__geo_lon_delta(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_lon_delta produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_lon_delta."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_lon_delta expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_m_per_deg_lon_lower":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _geospatial_contract__geo_m_per_deg_lon_lower(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_m_per_deg_lon_lower produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_m_per_deg_lon_lower."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_m_per_deg_lon_lower expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_gap_lower_m":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _geospatial_contract__geo_gap_lower_m(arg_0, arg_1, arg_2, arg_3)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_gap_lower_m produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_gap_lower_m."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_gap_lower_m expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_degree_box_half":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _geospatial_contract__geo_degree_box_half(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.contract.geo_degree_box_half produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_degree_box_half."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_degree_box_half expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_offsets_defect":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_contract__geo_offsets_defect(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_offsets_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_offsets_defect expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "geo_cells_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _geospatial_contract__geo_cells_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.contract.geo_cells_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.contract.geo_cells_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.contract."
+    )
+
+fn _dispatch_geospatial__frame(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frame_metric_distance":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _geospatial_frame__frame_metric_distance(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "geospatial.frame.frame_metric_distance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_metric_distance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_metric_distance expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_metric_undefined":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _geospatial_frame__frame_metric_undefined(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_metric_undefined."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_metric_undefined expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_distance_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _geospatial_frame__frame_distance_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_geodistance(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_distance_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_distance_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_census_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_frame__frame_census_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_framecensus(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_census_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_census_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_ring_census_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_frame__frame_ring_census_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ringframecensus(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_ring_census_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_ring_census_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_path_length_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _geospatial_frame__frame_path_length_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_pathlength(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_path_length_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_path_length_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_project_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _geospatial_frame__frame_project_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_projectedpoints(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_project_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_project_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frame_pair_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _geospatial_frame__frame_pair_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.frame.frame_pair_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.frame.frame_pair_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.frame."
+    )
+
+fn _dispatch_geospatial__index(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "grid_build_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _geospatial_index__grid_build_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_geogrid(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.grid_build_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.grid_build_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "grid_validate_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_index__grid_validate_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.grid_validate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.grid_validate_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_scan_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _geospatial_index__window_scan_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_geowindow(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.window_scan_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.window_scan_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "grid_window_flat":
+        if arg_count == 15:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_float64_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_float64_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_int_token(json_array_get(args_array, 14))
+                var result = _geospatial_index__grid_window_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14)
+                var result_json = _to_json_geowindow(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.grid_window_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.grid_window_flat expected 15 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "knn_scan_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _geospatial_index__knn_scan_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_geoknn(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.knn_scan_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.knn_scan_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "grid_knn_flat":
+        if arg_count == 15:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_float64_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_int_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_int_token(json_array_get(args_array, 14))
+                var result = _geospatial_index__grid_knn_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14)
+                var result_json = _to_json_geoknn(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.index.grid_knn_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.index.grid_knn_flat expected 15 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.index."
+    )
+
+fn _dispatch_geospatial__join(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "join_within_flat":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_int_token(json_array_get(args_array, 9))
+                var result = _geospatial_join__join_within_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_geojoin(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.join.join_within_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.join.join_within_flat expected 10 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "join_point_in_rings_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _geospatial_join__join_point_in_rings_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_georingjoin(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.join.join_point_in_rings_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.join.join_point_in_rings_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "route_matrix_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _geospatial_join__route_matrix_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_georoutematrix(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.join.route_matrix_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.join.route_matrix_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "network_route_matrix_flat":
+        if arg_count == 12:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var result = _geospatial_join__network_route_matrix_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11)
+                var result_json = _to_json_georoutematrix(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.join.network_route_matrix_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.join.network_route_matrix_flat expected 12 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.join."
+    )
+
+fn _dispatch_geospatial__mapmatch(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "point_to_segment_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _geospatial_mapmatch__point_to_segment_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_segmentdistance(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.mapmatch.point_to_segment_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.mapmatch.point_to_segment_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "map_match_flat":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_int_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var result = _geospatial_mapmatch__map_match_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_geomatch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.mapmatch.map_match_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.mapmatch.map_match_flat expected 11 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.mapmatch."
+    )
+
+fn _dispatch_geospatial__polygon(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "ring_planar_defect_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_polygon__ring_planar_defect_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.ring_planar_defect_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.ring_planar_defect_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ring_report_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_polygon__ring_report_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ringreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.ring_report_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.ring_report_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "point_in_ring_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _geospatial_polygon__point_in_ring_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_pipresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.point_in_ring_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.point_in_ring_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "points_in_ring_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _geospatial_polygon__points_in_ring_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_ringclassification(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.points_in_ring_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.points_in_ring_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ring_area_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _geospatial_polygon__ring_area_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ringarea(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.ring_area_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.ring_area_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ring_intersect_convex_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _geospatial_polygon__ring_intersect_convex_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_clipresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for geospatial.polygon.ring_intersect_convex_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function geospatial.polygon.ring_intersect_convex_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module geospatial.polygon."
     )
 
 fn _dispatch_geotechnical(function_name: String, args_array: String) raises -> String:
@@ -121494,6 +128007,1862 @@ fn _dispatch_stochastic(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module stochastic."
     )
 
+fn _dispatch_strategy__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "strat_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_status_is_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_status_is_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_status_is_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_status_is_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_verdict_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_verdict_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_verdict_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_verdict_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_verdict_is_decided":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_verdict_is_decided(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_verdict_is_decided."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_verdict_is_decided expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_exactness_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_exactness_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_exactness_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_exactness_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_policy_kind_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_policy_kind_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_policy_kind_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_policy_kind_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_factor_kind_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_factor_kind_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_factor_kind_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_factor_kind_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_draws_per_cell":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_draws_per_cell(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_draws_per_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_draws_per_cell expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_absent":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_absent()
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "strategy.contract.strat_absent produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_absent."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_absent expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_scaled_tol":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _strategy_contract__strat_scaled_tol(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "strategy.contract.strat_scaled_tol produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_scaled_tol."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_scaled_tol expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_scaled_tol_additions":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_scaled_tol_additions(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "strategy.contract.strat_scaled_tol_additions produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_scaled_tol_additions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_scaled_tol_additions expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_agrees":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_contract__strat_agrees(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_agrees."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_agrees expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_tolerance_status":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_tolerance_status(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_tolerance_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_tolerance_status expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_level_status":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_level_status(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_level_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_level_status expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_discount_status":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_discount_status(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_discount_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_discount_status expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_all_finite":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_contract__strat_all_finite(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_all_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_all_finite expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_ints_in_range":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_contract__strat_ints_in_range(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_ints_in_range."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_ints_in_range expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_distribution_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_distribution_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_distribution_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_distribution_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_product_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_product_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_product_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_product_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_product3_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_contract__strat_product3_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_product3_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_product3_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_product4_fits":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _strategy_contract__strat_product4_fits(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_product4_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_product4_fits expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_dims_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_dims_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_dims_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_dims_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_policy_arity":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_contract__strat_policy_arity(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_policy_arity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_policy_arity expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_policy_block_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_policy_block_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_policy_block_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_policy_block_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_policy_row_start":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_contract__strat_policy_row_start(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_policy_row_start."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_policy_row_start expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_scenario_cells":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_contract__strat_scenario_cells(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_scenario_cells."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_scenario_cells expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_scenario_cell":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_scenario_cell(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_scenario_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_scenario_cell expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_scenario_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_contract__strat_scenario_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_scenario_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_scenario_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_rng_version":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_rng_version()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_rng_version."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_rng_version expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_crn_contract":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_crn_contract()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_crn_contract."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_crn_contract expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_stream_scenario":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_stream_scenario()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_stream_scenario."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_stream_scenario expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_stream_policy":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_stream_policy()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_stream_policy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_stream_policy expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_stream_tiebreak":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_stream_tiebreak()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_stream_tiebreak."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_stream_tiebreak expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_stream_status":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_contract__strat_stream_status(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_stream_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_stream_status expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_coord_status":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _strategy_contract__strat_coord_status(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_coord_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_coord_status expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_crn_address":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _strategy_contract__strat_crn_address(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_crnaddress(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_crn_address."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_crn_address expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_crn_fold":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_contract__strat_crn_fold(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_crn_fold."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_crn_fold expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_shape_status":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_contract__strat_shape_status(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_shape_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_shape_status expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_work_charge":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _strategy_contract__strat_work_charge(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_work_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_work_charge expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_budget":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _strategy_contract__strat_budget(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_workbudget(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_budget."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_budget expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strat_ceilings":
+        if arg_count == 0:
+            try:
+                var result = _strategy_contract__strat_ceilings()
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.contract.strat_ceilings."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.contract.strat_ceilings expected 0 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module strategy.contract."
+    )
+
+fn _dispatch_strategy__crn(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "crn_contract_id":
+        if arg_count == 0:
+            try:
+                var result = _strategy_crn__crn_contract_id()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_contract_id."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_contract_id expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_generator_version":
+        if arg_count == 0:
+            try:
+                var result = _strategy_crn__crn_generator_version()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_generator_version."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_generator_version expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_environment_id":
+        if arg_count == 0:
+            try:
+                var result = _strategy_crn__crn_environment_id()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_environment_id."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_environment_id expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_scenario_stream":
+        if arg_count == 0:
+            try:
+                var result = _strategy_crn__crn_scenario_stream()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_scenario_stream."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_scenario_stream expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_policy_stream":
+        if arg_count == 0:
+            try:
+                var result = _strategy_crn__crn_policy_stream()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_policy_stream."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_policy_stream expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_policy_arity":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_crn__crn_policy_arity(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_policy_arity."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_policy_arity expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_factor_status":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _strategy_crn__crn_factor_status(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_factor_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_factor_status expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_policy_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_crn__crn_policy_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_policy_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_policy_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_request_status":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var result = _strategy_crn__crn_request_status(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_request_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_request_status expected 10 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_cell_draw":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _strategy_crn__crn_cell_draw(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_celldraw(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_cell_draw."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_cell_draw expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_scenario_tape":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _strategy_crn__crn_scenario_tape(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_scenario_tape."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_scenario_tape expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_scenario_digest":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _strategy_crn__crn_scenario_digest(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_scenario_digest."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_scenario_digest expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_evaluate_on_tape":
+        if arg_count == 13:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_int_token(json_array_get(args_array, 12))
+                var result = _strategy_crn__crn_evaluate_on_tape(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12)
+                var result_json = _to_json_policyoutcome(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_evaluate_on_tape."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_evaluate_on_tape expected 13 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_evaluate_policies":
+        if arg_count == 13:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var result = _strategy_crn__crn_evaluate_policies(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12)
+                var result_json = _to_json_policysetrun(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_evaluate_policies."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_evaluate_policies expected 13 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_evaluate_policy":
+        if arg_count == 12:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_float64_token(json_array_get(args_array, 11))
+                var result = _strategy_crn__crn_evaluate_policy(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11)
+                var result_json = _to_json_policyrun(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_evaluate_policy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_evaluate_policy expected 12 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_pairing_audit":
+        if arg_count == 16:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_int_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_float64_token(json_array_get(args_array, 14))
+                var arg_15 = _parse_float64_token(json_array_get(args_array, 15))
+                var result = _strategy_crn__crn_pairing_audit(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14, arg_15)
+                var result_json = _to_json_pairingaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_pairing_audit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_pairing_audit expected 16 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_independence_audit":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _strategy_crn__crn_independence_audit(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_independenceaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.crn.crn_independence_audit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.crn.crn_independence_audit expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module strategy.crn."
+    )
+
+fn _dispatch_strategy__equilibrium(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "eq_method_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_equilibrium__eq_method_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_method_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_method_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_tiebreak_rule":
+        if arg_count == 0:
+            try:
+                var result = _strategy_equilibrium__eq_tiebreak_rule()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_tiebreak_rule."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_tiebreak_rule expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_game_shape_status":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_equilibrium__eq_game_shape_status(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_game_shape_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_game_shape_status expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_profile_count":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_equilibrium__eq_profile_count(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_profile_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_profile_count expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_payoff_cells":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_equilibrium__eq_payoff_cells(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_payoff_cells."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_payoff_cells expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_profile_stride":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_profile_stride(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_profile_stride."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_profile_stride expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_profile_action":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_equilibrium__eq_profile_action(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_profile_action."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_profile_action expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_profile_index":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_profile_index(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_profile_index."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_profile_index expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_game_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_game_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_game_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_game_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_enumeration_charge":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_equilibrium__eq_enumeration_charge(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_enumeration_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_enumeration_charge expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_iteration_charge":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_iteration_charge(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_iteration_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_iteration_charge expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_best_response_charge":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_best_response_charge(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_best_response_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_best_response_charge expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_pure_gains_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_equilibrium__eq_pure_gains_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_exploitability(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_pure_gains_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_pure_gains_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_pure_nash_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _strategy_equilibrium__eq_pure_nash_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_purenashreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_pure_nash_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_pure_nash_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_exploitability_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_equilibrium__eq_exploitability_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_exploitability(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_exploitability_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_exploitability_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_nash_2x2_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _strategy_equilibrium__eq_nash_2x2_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_mixedequilibrium(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_nash_2x2_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_nash_2x2_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_regret_matching_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_equilibrium__eq_regret_matching_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_mixedequilibrium(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_regret_matching_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_regret_matching_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_fictitious_play_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_equilibrium__eq_fictitious_play_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_mixedequilibrium(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_fictitious_play_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_fictitious_play_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_best_response_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _strategy_equilibrium__eq_best_response_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_bestresponsepath(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_best_response_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_best_response_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_solve_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _strategy_equilibrium__eq_solve_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_mixedequilibrium(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_solve_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_solve_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_zero_sum_bounds_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_equilibrium__eq_zero_sum_bounds_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_zerosumbounds(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_zero_sum_bounds_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_zero_sum_bounds_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eq_dominated_actions_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _strategy_equilibrium__eq_dominated_actions_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_dominancereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.equilibrium.eq_dominated_actions_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.equilibrium.eq_dominated_actions_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module strategy.equilibrium."
+    )
+
+fn _dispatch_strategy__policy(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "policy_tie_rule":
+        if arg_count == 0:
+            try:
+                var result = _strategy_policy__policy_tie_rule()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_tie_rule."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_tie_rule expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_validate_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _strategy_policy__policy_validate_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_policyaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_validate_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_validate_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_action_flat":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var result = _strategy_policy__policy_action_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_policyaction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_action_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_action_flat expected 10 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_tabular_actions":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _strategy_policy__policy_tabular_actions(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_policytable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_tabular_actions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_tabular_actions expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_linear_action":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _strategy_policy__policy_linear_action(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_linearscore(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_linear_action."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_linear_action expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_sample_mixed":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var result = _strategy_policy__policy_sample_mixed(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_policyaction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_sample_mixed."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_sample_mixed expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_from_q_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_policy__policy_from_q_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_policytable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_from_q_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_from_q_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "policy_evaluate_tabular":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _strategy_policy__policy_evaluate_tabular(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_policyvalues(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.policy.policy_evaluate_tabular."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.policy.policy_evaluate_tabular expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module strategy.policy."
+    )
+
+fn _dispatch_strategy__tournament(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tourney_method_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_tournament__tourney_method_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_method_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_method_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_pair_count":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _strategy_tournament__tourney_pair_count(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_pair_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_pair_count expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_outcome_cell":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_tournament__tourney_outcome_cell(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_outcome_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_outcome_cell expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_outcome_status":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _strategy_tournament__tourney_outcome_status(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_outcome_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_outcome_status expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_work_charge":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _strategy_tournament__tourney_work_charge(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_work_charge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_work_charge expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_paired_diff_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_bool_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var result = _strategy_tournament__tourney_paired_diff_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_paireddiff(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_paired_diff_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_paired_diff_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_paired_bootstrap_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _strategy_tournament__tourney_paired_bootstrap_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_pairedbootstrap(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_paired_bootstrap_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_paired_bootstrap_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tourney_rank_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_bool_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _strategy_tournament__tourney_rank_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_tournament(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for strategy.tournament.tourney_rank_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function strategy.tournament.tourney_rank_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module strategy.tournament."
+    )
+
 fn _dispatch_stratigraphy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "sedimentation_rate":
@@ -121722,6 +130091,1444 @@ fn _dispatch_stratigraphy(function_name: String, args_array: String) raises -> S
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module stratigraphy."
+    )
+
+fn _dispatch_streaming__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "stm_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_version":
+        if arg_count == 0:
+            try:
+                var result = _streaming_contract__stm_version()
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_version."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_version expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_tolerance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_contract__stm_tolerance(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "streaming.contract.stm_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_tolerance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_work_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_contract__stm_work_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_work_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_cells_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_contract__stm_cells_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_cells_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_cells_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_seed_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_seed_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_seed_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_seed_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_items_ok":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_items_ok(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_items_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_items_ok expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_u64_of":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_u64_of(arg_0)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_u64_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_u64_of expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_key_word":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_contract__stm_key_word(arg_0, arg_1, arg_2)
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_key_word."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_key_word expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_key_hash31":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_contract__stm_key_hash31(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_key_hash31."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_key_hash31 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_key_bucket":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _streaming_contract__stm_key_bucket(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_key_bucket."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_key_bucket expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_coin":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_contract__stm_coin(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_coin."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_coin expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_stream_id":
+        if arg_count == 0:
+            try:
+                var result = _streaming_contract__stm_stream_id()
+                var result_json = _to_json_uint64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_stream_id."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_stream_id expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_no_claim":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_no_claim(arg_0)
+                var result_json = _to_json_stmclaim(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_no_claim."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_no_claim expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_hll_relative_error":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_hll_relative_error(arg_0)
+                var result_json = _to_json_stmclaim(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_hll_relative_error."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_hll_relative_error expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_cms_epsilon":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_cms_epsilon(arg_0)
+                var result_json = _to_json_stmclaim(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_cms_epsilon."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_cms_epsilon expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_cms_delta":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_cms_delta(arg_0)
+                var result_json = _to_json_stmclaim(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_cms_delta."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_cms_delta expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_kll_rank_error":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_kll_rank_error(arg_0)
+                var result_json = _to_json_stmclaim(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_kll_rank_error."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_kll_rank_error expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_hll_registers":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_hll_registers(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_hll_registers."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_hll_registers expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "stm_log2_floor":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _streaming_contract__stm_log2_floor(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.contract.stm_log2_floor."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.contract.stm_log2_floor expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.contract."
+    )
+
+fn _dispatch_streaming__distinct(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "distinct_empty":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_distinct__distinct_empty(arg_0, arg_1)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_empty."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_empty expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_add":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_distinct__distinct_add(arg_0, arg_1)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_add expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_ingest":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_distinct__distinct_ingest(arg_0, arg_1, arg_2)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_ingest."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_ingest expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_ingest_prefix":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _streaming_distinct__distinct_ingest_prefix(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_ingest_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_ingest_prefix expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_merge":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_distinctsketch_token(json_array_get(args_array, 1))
+                var result = _streaming_distinct__distinct_merge(arg_0, arg_1)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_merge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_merge expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_estimate":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var result = _streaming_distinct__distinct_estimate(arg_0)
+                var result_json = _to_json_distinctestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_estimate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_estimate expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_snapshot":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var result = _streaming_distinct__distinct_snapshot(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_snapshot expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_from_snapshot":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var result = _streaming_distinct__distinct_from_snapshot(arg_0)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_from_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_from_snapshot expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_merge_snapshots":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _streaming_distinct__distinct_merge_snapshots(arg_0, arg_1)
+                var result_json = _to_json_distinctsketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_merge_snapshots."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_merge_snapshots expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_register_count":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var result = _streaming_distinct__distinct_register_count(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_register_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_register_count expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "distinct_nonzero_registers":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_distinctsketch_token(json_array_get(args_array, 0))
+                var result = _streaming_distinct__distinct_nonzero_registers(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.distinct.distinct_nonzero_registers."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.distinct.distinct_nonzero_registers expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.distinct."
+    )
+
+fn _dispatch_streaming__drift(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "page_hinkley_init":
+        if arg_count == 0:
+            try:
+                var result = _streaming_drift__page_hinkley_init()
+                var result_json = _to_json_pagehinkleystate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_init."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_init expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "page_hinkley_step":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_pagehinkleystate_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _streaming_drift__page_hinkley_step(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_pagehinkleystate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_step."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_step expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "page_hinkley_verdict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_pagehinkleystate_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_drift__page_hinkley_verdict(arg_0, arg_1)
+                var result_json = _to_json_driftverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_verdict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_verdict expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "page_hinkley_resume":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_pagehinkleystate_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _streaming_drift__page_hinkley_resume(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_pagehinkleystate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_resume."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_resume expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "page_hinkley_scan":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _streaming_drift__page_hinkley_scan(arg_0, arg_1, arg_2)
+                var result_json = _to_json_driftverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_scan."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_scan expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "page_hinkley_scan_prefix":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _streaming_drift__page_hinkley_scan_prefix(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_driftverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.page_hinkley_scan_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.page_hinkley_scan_prefix expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ddm_scan":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_bool_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _streaming_drift__ddm_scan(arg_0, arg_1, arg_2)
+                var result_json = _to_json_driftverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.ddm_scan."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.ddm_scan expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ddm_levels":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_bool_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _streaming_drift__ddm_levels(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.drift.ddm_levels."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.drift.ddm_levels expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.drift."
+    )
+
+fn _dispatch_streaming__frequency(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "frequency_empty":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_frequency__frequency_empty(arg_0, arg_1, arg_2)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_empty."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_empty expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_add":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_frequency__frequency_add(arg_0, arg_1, arg_2)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_add expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_ingest":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _streaming_frequency__frequency_ingest(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_ingest."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_ingest expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_ingest_prefix":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _streaming_frequency__frequency_ingest_prefix(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_ingest_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_ingest_prefix expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_ingest_weighted":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _streaming_frequency__frequency_ingest_weighted(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_ingest_weighted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_ingest_weighted expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_merge":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_frequencysketch_token(json_array_get(args_array, 1))
+                var result = _streaming_frequency__frequency_merge(arg_0, arg_1)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_merge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_merge expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_query":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_frequency__frequency_query(arg_0, arg_1)
+                var result_json = _to_json_frequencyestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_query."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_query expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_query_many":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _streaming_frequency__frequency_query_many(arg_0, arg_1)
+                var result_json = _to_json_frequencylist(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_query_many."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_query_many expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_heavy_hitters":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _streaming_frequency__frequency_heavy_hitters(arg_0, arg_1, arg_2)
+                var result_json = _to_json_frequencylist(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_heavy_hitters."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_heavy_hitters expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_cell":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_frequency__frequency_cell(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_cell expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_snapshot":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_frequencysketch_token(json_array_get(args_array, 0))
+                var result = _streaming_frequency__frequency_snapshot(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_snapshot expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_from_snapshot":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var result = _streaming_frequency__frequency_from_snapshot(arg_0)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_from_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_from_snapshot expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_merge_snapshots":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _streaming_frequency__frequency_merge_snapshots(arg_0, arg_1)
+                var result_json = _to_json_frequencysketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_merge_snapshots."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_merge_snapshots expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_suggested_depth":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_frequency__frequency_suggested_depth(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_suggested_depth."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_suggested_depth expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_frozen_row_collisions":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_frequency__frequency_frozen_row_collisions(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_frozen_row_collisions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_frozen_row_collisions expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "frequency_keyed_row_collisions":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _streaming_frequency__frequency_keyed_row_collisions(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.frequency.frequency_keyed_row_collisions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.frequency.frequency_keyed_row_collisions expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.frequency."
+    )
+
+fn _dispatch_streaming__quantiles(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "quantile_empty":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_empty(arg_0, arg_1)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_empty."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_empty expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_add":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_add(arg_0, arg_1)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_add expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_ingest":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_quantiles__quantile_ingest(arg_0, arg_1, arg_2)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_ingest."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_ingest expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_ingest_prefix":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _streaming_quantiles__quantile_ingest_prefix(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_ingest_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_ingest_prefix expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_merge":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_quantilesketch_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_merge(arg_0, arg_1)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_merge."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_merge expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_profile":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var result = _streaming_quantiles__quantile_profile(arg_0)
+                var result_json = _to_json_quantileprofile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_profile."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_profile expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_at":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_at(arg_0, arg_1)
+                var result_json = _to_json_quantileestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_at."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_at expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_batch":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_batch(arg_0, arg_1)
+                var result_json = _to_json_quantileseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_batch."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_batch expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_rank":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_rank(arg_0, arg_1)
+                var result_json = _to_json_quantileestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_rank."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_rank expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_minimum":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var result = _streaming_quantiles__quantile_minimum(arg_0)
+                var result_json = _to_json_quantileestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_minimum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_minimum expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_maximum":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var result = _streaming_quantiles__quantile_maximum(arg_0)
+                var result_json = _to_json_quantileestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_maximum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_maximum expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_total_weight":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var result = _streaming_quantiles__quantile_total_weight(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_total_weight."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_total_weight expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_snapshot":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_quantilesketch_token(json_array_get(args_array, 0))
+                var result = _streaming_quantiles__quantile_snapshot(arg_0)
+                var result_json = _to_json_quantilesnapshot(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_snapshot expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_from_snapshot":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_quantiles__quantile_from_snapshot(arg_0, arg_1)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_from_snapshot."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_from_snapshot expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "quantile_merge_snapshots":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var result = _streaming_quantiles__quantile_merge_snapshots(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_quantilesketch(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.quantiles.quantile_merge_snapshots."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.quantiles.quantile_merge_snapshots expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.quantiles."
+    )
+
+fn _dispatch_streaming__windows(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "window_positions":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_positions(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_positions."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_positions expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_mean":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_mean(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_mean."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_mean expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_std":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_std(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_std."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_std expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_max":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_max(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_max."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_max expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_min":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_min(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_min."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_min expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_range":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__window_range(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_range."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_range expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ewma_series":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__ewma_series(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.ewma_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.ewma_series expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ewmvar_series":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _streaming_windows__ewmvar_series(arg_0, arg_1)
+                var result_json = _to_json_windowseries(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.ewmvar_series."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.ewmvar_series expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_summary_prefix":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _streaming_windows__window_summary_prefix(arg_0, arg_1, arg_2)
+                var result_json = _to_json_windowsummary(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_summary_prefix."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_summary_prefix expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "window_summary_std":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_windowsummary_token(json_array_get(args_array, 0))
+                var result = _streaming_windows__window_summary_std(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "streaming.windows.window_summary_std produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for streaming.windows.window_summary_std."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function streaming.windows.window_summary_std expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module streaming.windows."
     )
 
 fn _dispatch_string_distance(function_name: String, args_array: String) raises -> String:
@@ -122894,6 +132701,448 @@ fn _dispatch_survival(function_name: String, args_array: String) raises -> Strin
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module survival."
+    )
+
+fn _dispatch_survival_analysis__base(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "sa_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _survival_analysis_base__sa_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_is_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _survival_analysis_base__sa_is_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_is_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_is_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_work_fits":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _survival_analysis_base__sa_work_fits(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_work_fits expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_validate_observations":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _survival_analysis_base__sa_validate_observations(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_validate_observations."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_validate_observations expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_validate_confidence":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _survival_analysis_base__sa_validate_confidence(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_validate_confidence."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_validate_confidence expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_z_for_confidence":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _survival_analysis_base__sa_z_for_confidence(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "survival_analysis.base.sa_z_for_confidence produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_z_for_confidence."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_z_for_confidence expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_sort_observations":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _survival_analysis_base__sa_sort_observations(arg_0, arg_1)
+                var result_json = _to_json_sortedobs(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_sort_observations."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_sort_observations expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_risk_table":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _survival_analysis_base__sa_risk_table(arg_0, arg_1)
+                var result_json = _to_json_risktable(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_risk_table."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_risk_table expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sa_greenwood_terms":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _survival_analysis_base__sa_greenwood_terms(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.base.sa_greenwood_terms."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.base.sa_greenwood_terms expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.base."
+    )
+
+fn _dispatch_survival_analysis__competing(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "cif_validate_causes":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_competing__cif_validate_causes(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.competing.cif_validate_causes."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.competing.cif_validate_causes expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cif_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_competing__cif_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_ciffit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.competing.cif_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.competing.cif_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cif_at_time":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var result = _survival_analysis_competing__cif_at_time(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_cifattime(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.competing.cif_at_time."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.competing.cif_at_time expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.competing."
+    )
+
+fn _dispatch_survival_analysis__cox(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "cox_fit":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _survival_analysis_cox__cox_fit(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_coxfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.cox.cox_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.cox.cox_fit expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cox_linear_predictor":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var result = _survival_analysis_cox__cox_linear_predictor(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_coxrisk(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.cox.cox_linear_predictor."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.cox.cox_linear_predictor expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cox_baseline_cumhaz":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var result = _survival_analysis_cox__cox_baseline_cumhaz(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_coxbaseline(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.cox.cox_baseline_cumhaz."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.cox.cox_baseline_cumhaz expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.cox."
+    )
+
+fn _dispatch_survival_analysis__hazard(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "na_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_hazard__na_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_nafit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.hazard.na_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.hazard.na_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "na_smoothed_hazard":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_hazard__na_smoothed_hazard(arg_0, arg_1, arg_2)
+                var result_json = _to_json_smoothedhazard(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.hazard.na_smoothed_hazard."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.hazard.na_smoothed_hazard expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.hazard."
+    )
+
+fn _dispatch_survival_analysis__km(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "km_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_km__km_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_kmfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.km.km_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.km.km_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "km_rmst":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_km__km_rmst(arg_0, arg_1, arg_2)
+                var result_json = _to_json_kmrmst(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.km.km_rmst."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.km.km_rmst expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "km_survival_at":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var result = _survival_analysis_km__km_survival_at(arg_0, arg_1, arg_2)
+                var result_json = _to_json_kmlookup(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.km.km_survival_at."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.km.km_survival_at expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.km."
+    )
+
+fn _dispatch_survival_analysis__parametric(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "weibull_mle":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _survival_analysis_parametric__weibull_mle(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_weibullfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.parametric.weibull_mle."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.parametric.weibull_mle expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lognormal_mle":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _survival_analysis_parametric__lognormal_mle(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_lognormalfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for survival_analysis.parametric.lognormal_mle."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function survival_analysis.parametric.lognormal_mle expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module survival_analysis.parametric."
     )
 
 fn _dispatch_sustainability(function_name: String, args_array: String) raises -> String:
@@ -137726,6 +147975,16 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_data_feedback_loop(function_name, args_array)
     if module_name == "data_pipeline":
         return _dispatch_data_pipeline(function_name, args_array)
+    if module_name == "data_quality.contract":
+        return _dispatch_data_quality__contract(function_name, args_array)
+    if module_name == "data_quality.duplicates":
+        return _dispatch_data_quality__duplicates(function_name, args_array)
+    if module_name == "data_quality.expect":
+        return _dispatch_data_quality__expect(function_name, args_array)
+    if module_name == "data_quality.leakage":
+        return _dispatch_data_quality__leakage(function_name, args_array)
+    if module_name == "data_quality.profile":
+        return _dispatch_data_quality__profile(function_name, args_array)
     if module_name == "database":
         return _dispatch_database(function_name, args_array)
     if module_name == "datetime":
@@ -137754,6 +148013,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_dimensionality(function_name, args_array)
     if module_name == "dimensions":
         return _dispatch_dimensions(function_name, args_array)
+    if module_name == "discrete_event.calendar":
+        return _dispatch_discrete_event__calendar(function_name, args_array)
+    if module_name == "discrete_event.contract":
+        return _dispatch_discrete_event__contract(function_name, args_array)
+    if module_name == "discrete_event.queue_sim":
+        return _dispatch_discrete_event__queue_sim(function_name, args_array)
+    if module_name == "discrete_event.replicate":
+        return _dispatch_discrete_event__replicate(function_name, args_array)
+    if module_name == "discrete_event.resource":
+        return _dispatch_discrete_event__resource(function_name, args_array)
+    if module_name == "discrete_event.warmup":
+        return _dispatch_discrete_event__warmup(function_name, args_array)
     if module_name == "distillation":
         return _dispatch_distillation(function_name, args_array)
     if module_name == "distributed_collectives":
@@ -137814,6 +148085,16 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_ergonomics(function_name, args_array)
     if module_name == "etiology":
         return _dispatch_etiology(function_name, args_array)
+    if module_name == "evaluation.binning":
+        return _dispatch_evaluation__binning(function_name, args_array)
+    if module_name == "evaluation.contract":
+        return _dispatch_evaluation__contract(function_name, args_array)
+    if module_name == "evaluation.gates":
+        return _dispatch_evaluation__gates(function_name, args_array)
+    if module_name == "evaluation.resample":
+        return _dispatch_evaluation__resample(function_name, args_array)
+    if module_name == "evaluation.scores":
+        return _dispatch_evaluation__scores(function_name, args_array)
     if module_name == "evaluation_feedback":
         return _dispatch_evaluation_feedback(function_name, args_array)
     if module_name == "evolutionary_search":
@@ -137900,6 +148181,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_geomorphology(function_name, args_array)
     if module_name == "geophysics":
         return _dispatch_geophysics(function_name, args_array)
+    if module_name == "geospatial.contract":
+        return _dispatch_geospatial__contract(function_name, args_array)
+    if module_name == "geospatial.frame":
+        return _dispatch_geospatial__frame(function_name, args_array)
+    if module_name == "geospatial.index":
+        return _dispatch_geospatial__index(function_name, args_array)
+    if module_name == "geospatial.join":
+        return _dispatch_geospatial__join(function_name, args_array)
+    if module_name == "geospatial.mapmatch":
+        return _dispatch_geospatial__mapmatch(function_name, args_array)
+    if module_name == "geospatial.polygon":
+        return _dispatch_geospatial__polygon(function_name, args_array)
     if module_name == "geotechnical":
         return _dispatch_geotechnical(function_name, args_array)
     if module_name == "glaciology":
@@ -138468,8 +148761,30 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_stats_bootstrap(function_name, args_array)
     if module_name == "stochastic":
         return _dispatch_stochastic(function_name, args_array)
+    if module_name == "strategy.contract":
+        return _dispatch_strategy__contract(function_name, args_array)
+    if module_name == "strategy.crn":
+        return _dispatch_strategy__crn(function_name, args_array)
+    if module_name == "strategy.equilibrium":
+        return _dispatch_strategy__equilibrium(function_name, args_array)
+    if module_name == "strategy.policy":
+        return _dispatch_strategy__policy(function_name, args_array)
+    if module_name == "strategy.tournament":
+        return _dispatch_strategy__tournament(function_name, args_array)
     if module_name == "stratigraphy":
         return _dispatch_stratigraphy(function_name, args_array)
+    if module_name == "streaming.contract":
+        return _dispatch_streaming__contract(function_name, args_array)
+    if module_name == "streaming.distinct":
+        return _dispatch_streaming__distinct(function_name, args_array)
+    if module_name == "streaming.drift":
+        return _dispatch_streaming__drift(function_name, args_array)
+    if module_name == "streaming.frequency":
+        return _dispatch_streaming__frequency(function_name, args_array)
+    if module_name == "streaming.quantiles":
+        return _dispatch_streaming__quantiles(function_name, args_array)
+    if module_name == "streaming.windows":
+        return _dispatch_streaming__windows(function_name, args_array)
     if module_name == "string_distance":
         return _dispatch_string_distance(function_name, args_array)
     if module_name == "structs.containers":
@@ -138482,6 +148797,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_supply_chain(function_name, args_array)
     if module_name == "survival":
         return _dispatch_survival(function_name, args_array)
+    if module_name == "survival_analysis.base":
+        return _dispatch_survival_analysis__base(function_name, args_array)
+    if module_name == "survival_analysis.competing":
+        return _dispatch_survival_analysis__competing(function_name, args_array)
+    if module_name == "survival_analysis.cox":
+        return _dispatch_survival_analysis__cox(function_name, args_array)
+    if module_name == "survival_analysis.hazard":
+        return _dispatch_survival_analysis__hazard(function_name, args_array)
+    if module_name == "survival_analysis.km":
+        return _dispatch_survival_analysis__km(function_name, args_array)
+    if module_name == "survival_analysis.parametric":
+        return _dispatch_survival_analysis__parametric(function_name, args_array)
     if module_name == "sustainability":
         return _dispatch_sustainability(function_name, args_array)
     if module_name == "svm_kernel":

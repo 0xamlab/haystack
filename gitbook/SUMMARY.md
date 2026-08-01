@@ -57,6 +57,14 @@
 * [Causal inference](engine/causal-inference.md)
 * [Batched chain greeks](engine/ml-chain-greeks.md)
 * [How the engine works](concepts/engine.md)
+* [Survival analysis](engine/survival-analysis.md)
+* [Data quality & feature hygiene](engine/data-quality.md)
+* [Geospatial indexing & joins](engine/geospatial.md)
+* [Streaming sketches](engine/streaming-sketches.md)
+* [Windowed aggregates](engine/streaming-windows.md)
+* [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
+* [Evaluation & calibration gates](engine/evaluation-calibration.md)
+* [Strategy comparison & simulation](engine/strategy-simulation.md)
 
 ## Concepts
 
