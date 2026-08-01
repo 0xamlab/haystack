@@ -132,6 +132,12 @@ HANDWRITTEN_TESTS = frozenset(
         "test_sparse_numerics_iterative.mojo",
         "test_sparse_numerics_factor.mojo",
         "test_canonical_float_repr.mojo",
+        # exactnum: error-free transformations + compensated Householder QR least squares.
+        # The goldens are exact-rational / mpmath values from
+        # benchmarks/external_baselines/strd_lstsq/gen_goldens.py, so a generated replacement
+        # would delete the only independently-sourced expectations in the package.
+        "test_exactnum_eft.mojo",
+        "test_exactnum_lstsq.mojo",
         "test_columnar_arrow_wire.mojo",
         "test_columnar_dictionary.mojo",
         "test_determinism_manifest.mojo",

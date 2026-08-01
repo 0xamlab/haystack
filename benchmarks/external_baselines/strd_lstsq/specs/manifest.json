@@ -1,0 +1,266 @@
+{
+  "Filip": {
+    "certified": [
+      "-1467.4896142298",
+      "-2772.17959193342",
+      "-2316.37108160893",
+      "-1127.97394098372",
+      "-354.478233703349",
+      "-75.1242017393757",
+      "-10.8753180355343",
+      "-1.06221498588947",
+      "-0.0670191154593408",
+      "-0.00246781078275479",
+      "-4.02962525080404e-05"
+    ],
+    "certified_hex": [
+      "c096edf55d6ec297",
+      "c0a5a85bf3795154",
+      "c0a218bdfe689d01",
+      "c0919fe550c9053f",
+      "c07627a6d8623baa",
+      "c052c7f2ebda2e66",
+      "c025c029af807005",
+      "bff0fed5241b7646",
+      "bfb1282a2d1aceb8",
+      "bf64375fd35946bb",
+      "bf052078b181d1af"
+    ],
+    "dat_sha256": "403b34689e401d915cb28bd69311d3ca5c3007d88d3b670b00e3203042315072",
+    "hi_degree": 10,
+    "lo_degree": 0,
+    "params": 11,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 82,
+    "spec_sha256": "c1b2192cfe82b90f62be878561d043b14cce965fe81511bcbd0f7f5e393475b4"
+  },
+  "Longley": {
+    "certified": [
+      "-3482258.63459582",
+      "15.0618722713733",
+      "-0.035819179292591",
+      "-2.02022980381683",
+      "-1.03322686717359",
+      "-0.0511041056535807",
+      "1829.15146461355"
+    ],
+    "certified_hex": [
+      "c14a9149513a6f93",
+      "402e1fadb8ec27b6",
+      "bfa256e4374331ba",
+      "c000296e3e4e61db",
+      "bff08818e53dbee5",
+      "bfaa2a513cf26910",
+      "409c949b198a26cb"
+    ],
+    "dat_sha256": "fc4b0c824f8f0b834eb8e7d1c4c7e0b3cebdd7987bcb085e8f5e1007582480ea",
+    "hi_degree": 0,
+    "lo_degree": 0,
+    "params": 7,
+    "polynomial": false,
+    "raw_predictor_cols": 6,
+    "rows": 16,
+    "spec_sha256": "c37928e4534446cf35eb9ac586f40407eff58aa1b9345be74500965a3ebbbef9"
+  },
+  "NoInt1": {
+    "certified": [
+      "2.07438016528926"
+    ],
+    "certified_hex": [
+      "40009854a0cb1b8a"
+    ],
+    "dat_sha256": "d8234c428dedaa9de23b67df7d04aeee83befae73ceb6b38321b224955a9b667",
+    "hi_degree": 1,
+    "lo_degree": 1,
+    "params": 1,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 11,
+    "spec_sha256": "0ba0267cfb20dceba940f8de49eacfab348717cde61f3dd59a4cf1735ce7205b"
+  },
+  "NoInt2": {
+    "certified": [
+      "0.727272727272727"
+    ],
+    "certified_hex": [
+      "3fe745d1745d1743"
+    ],
+    "dat_sha256": "a71c2810b1edcef8fec6b864c20c5f9d9908e530282a174772ce610999ca7c69",
+    "hi_degree": 1,
+    "lo_degree": 1,
+    "params": 1,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 3,
+    "spec_sha256": "0755e4e22b7030dc5779ff5f12390d5be56f0d21cb7e22fe17b2db47217c7f40"
+  },
+  "Norris": {
+    "certified": [
+      "-0.262323073774029",
+      "1.00211681802045"
+    ],
+    "certified_hex": [
+      "bfd0c9e6b7b61f21",
+      "3ff008aba502b5ee"
+    ],
+    "dat_sha256": "5ab6906c68a9c4b2eb1661c0cd7d2a09f5a469a6d4e05b6b691f190f5f7b944f",
+    "hi_degree": 1,
+    "lo_degree": 0,
+    "params": 2,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 36,
+    "spec_sha256": "34d762de26bbf236dc325a63a8218dbdf688495abfcf9654d29f1df53f3717c1"
+  },
+  "Pontius": {
+    "certified": [
+      "0.000673565789473684",
+      "7.32059160401003e-07",
+      "-3.16081871345029e-15"
+    ],
+    "certified_hex": [
+      "3f46124784cc9994",
+      "3ea890571e3fd7fc",
+      "bcec785a0b39f4f0"
+    ],
+    "dat_sha256": "de60baa5dc66fd804f9316f895bc5aa2b8f791c09d1ecc1ec39f8b199b8c15c7",
+    "hi_degree": 2,
+    "lo_degree": 0,
+    "params": 3,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 40,
+    "spec_sha256": "4b3e883f254e3ccb869bb33fdafe5c7b5f7078bcc2c28e5b2c617b2f86c5f282"
+  },
+  "Wampler1": {
+    "certified": [
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0"
+    ],
+    "certified_hex": [
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000"
+    ],
+    "dat_sha256": "8bcd6f00dbe8c307ebc5c971e12b950eb3cdb75afbc2b38573082b5fcb0d7fbc",
+    "hi_degree": 5,
+    "lo_degree": 0,
+    "params": 6,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 21,
+    "spec_sha256": "40f79b6d54573c38ace5f6d634883d4949acc11e7b2916b156377bf89bef11f5"
+  },
+  "Wampler2": {
+    "certified": [
+      "1.0",
+      "0.1",
+      "0.01",
+      "0.001",
+      "0.0001",
+      "1e-05"
+    ],
+    "certified_hex": [
+      "3ff0000000000000",
+      "3fb999999999999a",
+      "3f847ae147ae147b",
+      "3f50624dd2f1a9fc",
+      "3f1a36e2eb1c432d",
+      "3ee4f8b588e368f1"
+    ],
+    "dat_sha256": "01ba5f08b5b9f84431f3754216e006939a80264a1caa69fe08b3cbc543f9ee3e",
+    "hi_degree": 5,
+    "lo_degree": 0,
+    "params": 6,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 21,
+    "spec_sha256": "381554ee57ba1af6f60314ca35d92df340a6b2999433e336aa2398fce2704263"
+  },
+  "Wampler3": {
+    "certified": [
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0"
+    ],
+    "certified_hex": [
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000"
+    ],
+    "dat_sha256": "c5b025f6ebf0365de92d80e478ad826b01a6dfdafb71964ea8bae7eec993ce53",
+    "hi_degree": 5,
+    "lo_degree": 0,
+    "params": 6,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 21,
+    "spec_sha256": "1816ac9cf1766d207d68481895163ed3487ed9dcfa5172bb9a95dd29ff8f84e4"
+  },
+  "Wampler4": {
+    "certified": [
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0"
+    ],
+    "certified_hex": [
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000"
+    ],
+    "dat_sha256": "dcff32075a52ecf31af70dad340776237544b1a29b5034a40f8b3e6b607cf9c1",
+    "hi_degree": 5,
+    "lo_degree": 0,
+    "params": 6,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 21,
+    "spec_sha256": "22681ecf53b0f9fc3b86f5598cd852677923399f79c2cbbbc79dd928d669c4a0"
+  },
+  "Wampler5": {
+    "certified": [
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0",
+      "1.0"
+    ],
+    "certified_hex": [
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000",
+      "3ff0000000000000"
+    ],
+    "dat_sha256": "c4e260a6638db61287bfea75a2dd3b324c86c5d40931ddc6d8fab0c0305ffa39",
+    "hi_degree": 5,
+    "lo_degree": 0,
+    "params": 6,
+    "polynomial": true,
+    "raw_predictor_cols": 1,
+    "rows": 21,
+    "spec_sha256": "9f923491a1281ae548ed0d3ab0f4e1aebc6329e2c951116d0d8c004e49d2cd98"
+  }
+}

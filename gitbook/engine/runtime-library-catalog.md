@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **617 modules** and **5906 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **619 modules** and **5939 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -330,7 +330,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-402 modules.
+404 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -453,6 +453,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `evaluation.scores` | 6 |
 | `evaluation_feedback` | 10 |
 | `evolutionary_search` | 7 |
+| `exactnum.eft` | 24 |
+| `exactnum.lstsq` | 9 |
 | `execution_planner` | 10 |
 | `explainability` | 4 |
 | `fault_tolerance` | 10 |

@@ -15,6 +15,7 @@ This section is the index. Each benchmark family has its own page with its own c
 <thead><tr><th></th><th></th><th data-hidden data-card-target data-type="content-ref"></th></tr></thead>
 <tbody>
 <tr><td><strong>Compute kernels</strong></td><td>Dense and quantized matrix kernels, measured against the engine's own prior implementations.</td><td><a href="compute-kernels.md">compute-kernels.md</a></td></tr>
+<tr><td><strong>Least-squares accuracy</strong></td><td>Correct digits on the NIST StRD linear-regression suite, against fourteen numpy, scipy and statsmodels arms on the same data.</td><td><a href="least-squares-accuracy.md">least-squares-accuracy.md</a></td></tr>
 </tbody>
 </table>
 

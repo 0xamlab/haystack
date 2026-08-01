@@ -2184,6 +2184,45 @@ from evolutionary_search import (
     search_selftest as _evolutionary_search__search_selftest,
 )
 
+from exactnum.eft import (
+    eft_status_name as _exactnum_eft__eft_status_name,
+    eft_two_sum as _exactnum_eft__eft_two_sum,
+    eft_fast_two_sum as _exactnum_eft__eft_fast_two_sum,
+    eft_two_product as _exactnum_eft__eft_two_product,
+    eft_two_product_dekker as _exactnum_eft__eft_two_product_dekker,
+    dd_from as _exactnum_eft__dd_from,
+    dd_neg as _exactnum_eft__dd_neg,
+    dd_add as _exactnum_eft__dd_add,
+    dd_sub as _exactnum_eft__dd_sub,
+    dd_add_d as _exactnum_eft__dd_add_d,
+    dd_mul as _exactnum_eft__dd_mul,
+    dd_mul_d as _exactnum_eft__dd_mul_d,
+    dd_div as _exactnum_eft__dd_div,
+    dd_sqrt as _exactnum_eft__dd_sqrt,
+    eft_selfcheck_code as _exactnum_eft__eft_selfcheck_code,
+    eft_two_sum_pair as _exactnum_eft__eft_two_sum_pair,
+    eft_two_product_pair as _exactnum_eft__eft_two_product_pair,
+    eft_dd_add as _exactnum_eft__eft_dd_add,
+    eft_dd_mul as _exactnum_eft__eft_dd_mul,
+    eft_dd_div as _exactnum_eft__eft_dd_div,
+    eft_dd_sqrt as _exactnum_eft__eft_dd_sqrt,
+    eft_dot2 as _exactnum_eft__eft_dot2,
+    eft_sum2 as _exactnum_eft__eft_sum2,
+    eft_kahan_sum_f64 as _exactnum_eft__eft_kahan_sum_f64,
+)
+
+from exactnum.lstsq import (
+    lstsq_status_name as _exactnum_lstsq__lstsq_status_name,
+    lstsq_cells_fit as _exactnum_lstsq__lstsq_cells_fit,
+    lstsq_work_fits as _exactnum_lstsq__lstsq_work_fits,
+    lstsq_pivot_floor as _exactnum_lstsq__lstsq_pivot_floor,
+    dd_lstsq_flat as _exactnum_lstsq__dd_lstsq_flat,
+    f64_lstsq_flat as _exactnum_lstsq__f64_lstsq_flat,
+    dd_poly_lstsq as _exactnum_lstsq__dd_poly_lstsq,
+    f64_poly_lstsq as _exactnum_lstsq__f64_poly_lstsq,
+    dd_poly_lstsq_scaled as _exactnum_lstsq__dd_poly_lstsq_scaled,
+)
+
 from execution_planner import (
     fusion_opportunity_score as _execution_planner__fusion_opportunity_score,
     device_placement_score as _execution_planner__device_placement_score,
@@ -8003,6 +8042,15 @@ from evaluation.scores import (
     ReliabilityDiagram,
 )
 
+from exactnum.eft import (
+    DD,
+    EftReduction,
+)
+
+from exactnum.lstsq import (
+    DDLstsq,
+)
+
 from explainability import (
     PartialDependence,
     PermutationImportance,
@@ -8921,6 +8969,14 @@ fn _parse_countingbloom_token(token: String) raises -> CountingBloom:
     var field_2 = _parse_int_token(json_array_get(values_json, 2))
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     return CountingBloom(field_0^, field_1^, field_2^, field_3^)
+
+fn _parse_dd_token(token: String) raises -> DD:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 2:
+        raise Error("Expected 2 fields for DD, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_float64_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    return DD(field_0^, field_1^)
 
 fn _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
     var values_json = json_get_array(token, "v")
@@ -11778,6 +11834,34 @@ fn _to_json_crowding(value: Crowding) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_dd(value: DD) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DD\",\"v\":[")
+    result += _to_json_float64(value.hi)
+    result += ","
+    result += _to_json_float64(value.lo)
+    result += "]}"
+    return result
+
+fn _to_json_ddlstsq(value: DDLstsq) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DDLstsq\",\"v\":[")
+    result += _to_json_list_float64(value.coefficients)
+    result += ","
+    result += _to_json_list_float64(value.coefficients_lo)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.rank)
+    result += ","
+    result += _to_json_float64(value.r_diag_min)
+    result += ","
+    result += _to_json_float64(value.pivot_ratio_min)
+    result += ","
+    result += _to_json_float64(value.residual_norm)
+    result += ","
+    result += _to_json_int(value.refine_steps)
+    result += "]}"
+    return result
+
 fn _to_json_dmresult(value: DMResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"DMResult\",\"v\":[")
     result += _to_json_float64(value.dm_stat)
@@ -12259,6 +12343,18 @@ fn _to_json_evalue(value: EValue) raises -> String:
     result += _to_json_float64(value.evalue_ci_limit)
     result += ","
     result += _to_json_bool(value.ci_limit_crosses_null)
+    result += "]}"
+    return result
+
+fn _to_json_eftreduction(value: EftReduction) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EftReduction\",\"v\":[")
+    result += _to_json_float64(value.hi)
+    result += ","
+    result += _to_json_float64(value.lo)
+    result += ","
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.terms)
     result += "]}"
     return result
 
@@ -56182,6 +56278,610 @@ fn _dispatch_evolutionary_search(function_name: String, args_array: String) rais
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module evolutionary_search."
+    )
+
+fn _dispatch_exactnum__eft(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "eft_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _exactnum_eft__eft_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_two_sum":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_two_sum(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_two_sum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_two_sum expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_fast_two_sum":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_fast_two_sum(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_fast_two_sum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_fast_two_sum expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_two_product":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_two_product(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_two_product."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_two_product expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_two_product_dekker":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_two_product_dekker(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_two_product_dekker."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_two_product_dekker expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_from":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _exactnum_eft__dd_from(arg_0)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_from."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_from expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_neg":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var result = _exactnum_eft__dd_neg(arg_0)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_neg."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_neg expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_add":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_dd_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_add(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_add expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_sub":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_dd_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_sub(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_sub."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_sub expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_add_d":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_add_d(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_add_d."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_add_d expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_mul":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_dd_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_mul(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_mul."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_mul expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_mul_d":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_mul_d(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_mul_d."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_mul_d expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_div":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_dd_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__dd_div(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_div."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_div expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_sqrt":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_dd_token(json_array_get(args_array, 0))
+                var result = _exactnum_eft__dd_sqrt(arg_0)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.dd_sqrt."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.dd_sqrt expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_selfcheck_code":
+        if arg_count == 0:
+            try:
+                var result = _exactnum_eft__eft_selfcheck_code()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_selfcheck_code."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_selfcheck_code expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_two_sum_pair":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_two_sum_pair(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_two_sum_pair."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_two_sum_pair expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_two_product_pair":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_two_product_pair(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_two_product_pair."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_two_product_pair expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_dd_add":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _exactnum_eft__eft_dd_add(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_dd_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_dd_add expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_dd_mul":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _exactnum_eft__eft_dd_mul(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_dd_mul."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_dd_mul expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_dd_div":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _exactnum_eft__eft_dd_div(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_dd_div."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_dd_div expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_dd_sqrt":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_dd_sqrt(arg_0, arg_1)
+                var result_json = _to_json_dd(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_dd_sqrt."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_dd_sqrt expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_dot2":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _exactnum_eft__eft_dot2(arg_0, arg_1, arg_2)
+                var result_json = _to_json_eftreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_dot2."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_dot2 expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_sum2":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _exactnum_eft__eft_sum2(arg_0, arg_1)
+                var result_json = _to_json_eftreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_sum2."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_sum2 expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "eft_kahan_sum_f64":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _exactnum_eft__eft_kahan_sum_f64(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "exactnum.eft.eft_kahan_sum_f64 produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.eft.eft_kahan_sum_f64."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.eft.eft_kahan_sum_f64 expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module exactnum.eft."
+    )
+
+fn _dispatch_exactnum__lstsq(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "lstsq_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _exactnum_lstsq__lstsq_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.lstsq_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.lstsq_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lstsq_cells_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _exactnum_lstsq__lstsq_cells_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.lstsq_cells_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.lstsq_cells_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lstsq_work_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _exactnum_lstsq__lstsq_work_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.lstsq_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.lstsq_work_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "lstsq_pivot_floor":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _exactnum_lstsq__lstsq_pivot_floor(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "exactnum.lstsq.lstsq_pivot_floor produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.lstsq_pivot_floor."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.lstsq_pivot_floor expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_lstsq_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _exactnum_lstsq__dd_lstsq_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_ddlstsq(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.dd_lstsq_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.dd_lstsq_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "f64_lstsq_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var result = _exactnum_lstsq__f64_lstsq_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_ddlstsq(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.f64_lstsq_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.f64_lstsq_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_poly_lstsq":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _exactnum_lstsq__dd_poly_lstsq(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_ddlstsq(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.dd_poly_lstsq."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.dd_poly_lstsq expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "f64_poly_lstsq":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var result = _exactnum_lstsq__f64_poly_lstsq(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_ddlstsq(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.f64_poly_lstsq."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.f64_poly_lstsq expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dd_poly_lstsq_scaled":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _exactnum_lstsq__dd_poly_lstsq_scaled(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_ddlstsq(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for exactnum.lstsq.dd_poly_lstsq_scaled."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function exactnum.lstsq.dd_poly_lstsq_scaled expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module exactnum.lstsq."
     )
 
 fn _dispatch_execution_planner(function_name: String, args_array: String) raises -> String:
@@ -150016,6 +150716,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_evaluation_feedback(function_name, args_array)
     if module_name == "evolutionary_search":
         return _dispatch_evolutionary_search(function_name, args_array)
+    if module_name == "exactnum.eft":
+        return _dispatch_exactnum__eft(function_name, args_array)
+    if module_name == "exactnum.lstsq":
+        return _dispatch_exactnum__lstsq(function_name, args_array)
     if module_name == "execution_planner":
         return _dispatch_execution_planner(function_name, args_array)
     if module_name == "explainability":

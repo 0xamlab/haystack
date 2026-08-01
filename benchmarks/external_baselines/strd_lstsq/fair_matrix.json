@@ -1,0 +1,353 @@
+{
+  "arms": {
+    "Filip": {
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 5.572569196927221,
+        "recipe": 5.901816799461244
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 0.0,
+        "recipe": 0.0
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 7.183706486599249,
+        "recipe": 7.354950494355923
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 5.572569196927221,
+        "recipe": 5.901816799461244
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 5.572569196801476,
+        "recipe": 5.9018167991391985
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 7.254459645442464,
+        "recipe": 7.546534526766911
+      },
+      "statsmodels.OLS": {
+        "exactpow": 0.0,
+        "recipe": 0.0
+      }
+    },
+    "NoInt1": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      },
+      "statsmodels.OLS": {
+        "exactpow": 14.715175620588305,
+        "recipe": 14.715175620588305
+      }
+    },
+    "NoInt2": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 15.51525707636074,
+        "recipe": 15.51525707636074
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 15.038135821641077,
+        "recipe": 15.038135821641077
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 15.038135821641077,
+        "recipe": 15.038135821641077
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 15.117317067688703,
+        "recipe": 15.117317067688703
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 15.038135821641077,
+        "recipe": 15.038135821641077
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 15.038135821641077,
+        "recipe": 15.038135821641077
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 15.038135821641077,
+        "recipe": 15.038135821641077
+      },
+      "statsmodels.OLS": {
+        "exactpow": 15.117317067688703,
+        "recipe": 15.117317067688703
+      }
+    },
+    "Norris": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 12.27512872623867,
+        "recipe": 12.27512872623867
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 12.037868074667506,
+        "recipe": 12.037868074667506
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 12.037868074667506,
+        "recipe": 12.037868074667506
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 12.27512872623867,
+        "recipe": 12.27512872623867
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 12.037868074667506,
+        "recipe": 12.037868074667506
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 12.037968362043983,
+        "recipe": 12.037968362043983
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 12.759584440857298,
+        "recipe": 12.759584440857298
+      },
+      "statsmodels.OLS": {
+        "exactpow": 11.973320192304822,
+        "recipe": 11.973320192304822
+      }
+    },
+    "Pontius": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 11.008239038397349,
+        "recipe": 11.008239038397349
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 7.105873501403579,
+        "recipe": 7.105873501403579
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 7.105873501403579,
+        "recipe": 7.105873501403579
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 12.39359602650749,
+        "recipe": 12.39359602650749
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 7.105873501403579,
+        "recipe": 7.105873501403579
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 7.105873500511532,
+        "recipe": 7.105873500511532
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 12.6274321232984,
+        "recipe": 12.6274321232984
+      },
+      "statsmodels.OLS": {
+        "exactpow": 7.105869296311206,
+        "recipe": 7.105869296311206
+      }
+    },
+    "Wampler1": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 6.221490811741722,
+        "recipe": 6.221490811741722
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 9.543684712823747,
+        "recipe": 9.543684712823747
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 9.543684712823747,
+        "recipe": 9.543684712823747
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 9.565596374369438,
+        "recipe": 9.565596374369438
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 9.543684712823747,
+        "recipe": 9.543684712823747
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 9.783195671644318,
+        "recipe": 9.783195671644318
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 9.228305066156976,
+        "recipe": 9.228305066156976
+      },
+      "statsmodels.OLS": {
+        "exactpow": 9.536049848239342,
+        "recipe": 9.536049848239342
+      }
+    },
+    "Wampler2": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 9.566745474068934,
+        "recipe": 9.566745474068934
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 10.381786394741928,
+        "recipe": 10.381786394741928
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 10.381786394741928,
+        "recipe": 10.381786394741928
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 12.814440317369934,
+        "recipe": 12.814440317369934
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 10.381786394741928,
+        "recipe": 10.381786394741928
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 10.38176171574348,
+        "recipe": 10.38176171574348
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 13.201461733267879,
+        "recipe": 13.201461733267879
+      },
+      "statsmodels.OLS": {
+        "exactpow": 10.38277907159768,
+        "recipe": 10.38277907159768
+      }
+    },
+    "Wampler3": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 6.221490811741722,
+        "recipe": 6.221490811741722
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 9.571146405704402,
+        "recipe": 9.571146405704402
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 9.571146405704402,
+        "recipe": 9.571146405704402
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 10.096036933489478,
+        "recipe": 10.096036933489478
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 9.571146405704402,
+        "recipe": 9.571146405704402
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 9.68120139583164,
+        "recipe": 9.68120139583164
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 9.666021314640707,
+        "recipe": 9.666021314640707
+      },
+      "statsmodels.OLS": {
+        "exactpow": 9.504641383987718,
+        "recipe": 9.504641383987718
+      }
+    },
+    "Wampler4": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 6.221490811741722,
+        "recipe": 6.221490811741722
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 8.447082215530994,
+        "recipe": 8.447082215530994
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 8.447082215530994,
+        "recipe": 8.447082215530994
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 8.41736352018757,
+        "recipe": 8.41736352018757
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 8.447082215530994,
+        "recipe": 8.447082215530994
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 8.447082229029222,
+        "recipe": 8.447082229029222
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 8.18994315041237,
+        "recipe": 8.18994315041237
+      },
+      "statsmodels.OLS": {
+        "exactpow": 8.408945049874534,
+        "recipe": 8.408945049874534
+      }
+    },
+    "Wampler5": {
+      "[control] numpy normal-eq+Cholesky": {
+        "exactpow": 6.221490811741722,
+        "recipe": 6.221490811741722
+      },
+      "np.linalg.lstsq(rcond=-1)": {
+        "exactpow": 6.403189689917907,
+        "recipe": 6.403189689917907
+      },
+      "np.linalg.lstsq(rcond=None)": {
+        "exactpow": 6.403189689917907,
+        "recipe": 6.403189689917907
+      },
+      "np.linalg.qr+solve_triangular": {
+        "exactpow": 6.4200751537523555,
+        "recipe": 6.4200751537523555
+      },
+      "scipy.lstsq(gelsd)": {
+        "exactpow": 6.403189689917907,
+        "recipe": 6.403189689917907
+      },
+      "scipy.lstsq(gelss)": {
+        "exactpow": 6.403189690649948,
+        "recipe": 6.403189690649948
+      },
+      "scipy.lstsq(gelsy)": {
+        "exactpow": 6.158930129607613,
+        "recipe": 6.158930129607613
+      },
+      "statsmodels.OLS": {
+        "exactpow": 6.419176561912094,
+        "recipe": 6.419176561912094
+      }
+    }
+  },
+  "improved": 0,
+  "no_arm_overtakes": true,
+  "total": 79,
+  "versions": {
+    "blas": "accelerate",
+    "lapack": "accelerate",
+    "mpmath": "1.3.0",
+    "numpy": "2.5.1",
+    "python": "3.14",
+    "python_full": "3.14.6",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6"
+  }
+}
