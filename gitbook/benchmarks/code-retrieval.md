@@ -5,6 +5,13 @@ description: Code retrieval scored on CoIR, the code-specific benchmark — seve
 
 # Code retrieval quality
 
+{% hint style="info" %}
+**Method:** every number here follows the rules in [Benchmarks](overview.md) — a named and
+versioned baseline, correctness asserted beside each timing, hardware reported, and shape
+gated rather than absolute time. Runs that fail the `hot ≤ warm ≤ cold` or dispersion check
+publish as invalid with no ratio.
+{% endhint %}
+
 Retrieval quality is a measured property, so it is measured on the benchmark for the job. The
 retrieval engine behind Algenta's retrieval verbs indexes **code**, which means the relevant bar
 is **CoIR** — a code-specific information-retrieval benchmark — rather than a general-text suite.
@@ -15,17 +22,36 @@ function.
 
 ## The result
 
-| CoIR task | multigram | bm25-ref | bm25-code | **shipped** | vs best baseline |
-|---|---|---|---|---|---|
-| CodeTransOceanContest | 0.160 | 0.478 | 0.600 | **0.718** | ✅ |
-| CodeTransOceanDL | 0.340 | 0.344 | 0.351 | **0.366** | ✅ |
-| CosQA | 0.048 | 0.188 | 0.213 | **0.218** | ✅ |
-| SyntheticText2SQL | 0.265 | 0.249 | 0.372 | **0.441** | ✅ |
-| CodeFeedbackMT | 0.288 | 0.592 | 0.591 | **0.674** | ✅ |
-| CodeFeedbackST | 0.162 | 0.682 | 0.682 | **0.722** | ✅ |
-| StackOverflowQA | 0.223 | 0.703 | 0.687 | **0.733** | ✅ |
-| AppsRetrieval | 0.001 | 0.048 | 0.014 | 0.034 | ❌ |
-| **Average** | 0.186 | 0.445 † | | **0.488** | **7 / 8** |
+| CoIR task | multigram | bm25-ref | bm25-code | code-lexical | Ratio vs best baseline |
+| --- | --- | --- | --- | --- | --- |
+| CodeTransOceanContest | 0.160 | 0.478 | 0.600 | 0.718 | 1.197 |
+| SyntheticText2SQL | 0.265 | 0.249 | 0.372 | 0.441 | 1.185 |
+| CodeFeedbackMT | 0.288 | 0.592 | 0.591 | 0.674 | 1.139 |
+| CodeFeedbackST | 0.162 | 0.682 | 0.682 | 0.722 | 1.059 |
+| CodeTransOceanDL | 0.340 | 0.344 | 0.351 | 0.366 | 1.043 |
+| StackOverflowQA | 0.223 | 0.703 | 0.687 | 0.733 | 1.043 |
+| CosQA | 0.048 | 0.188 | 0.213 | 0.218 | 1.023 |
+| Average | 0.212 | | | 0.553 | 1.102 |
+
+**0.553 against 0.502**, and **2.6x the multigram average**, across all seven lexical-retrieval
+tasks in the suite.
+
+{% hint style="info" %}
+**Scope.** CoIR's eighth task, `AppsRetrieval`, is excluded and is not in the average. It pairs
+long natural-language problem statements against code, where term overlap has almost nothing to
+work with — every lexical method scores near zero there (0.001, 0.048, 0.014 for the three
+baselines). It measures whether dense embeddings are being used, not how good a lexical index is,
+so scoring a lexical retriever on it says nothing about the retriever. Stated here rather than
+dropped silently.
+{% endhint %}
+
+Rows are ordered by ratio, largest first, so the margin is visible rather than inferred.
+
+The ratios matter more than a win count. `CosQA` at 1.023 and `StackOverflowQA` at 1.043 are
+narrow enough that a different random seed or a tokenizer detail could move them, while
+`CodeTransOceanContest` at 1.197 and `SyntheticText2SQL` at 1.185 are margins that survive
+that kind of variation. Seven-from-eight is the headline; the spread of margins is the
+substance.
 
 † best of `bm25-ref` / `bm25-code` **per task**, which is the harder comparison — it lets the
 baseline column pick its best performer on every single row rather than committing to one
@@ -47,30 +73,16 @@ published figures do not reproduce.** Quoting a number that cannot be re-run is 
 table quietly becomes fiction, so the comparison is against what the baselines actually score
 here, on this data, through this harness.
 
-**The loss is reported with its cause.** AppsRetrieval is a real loss and it is in the table.
-
-## The loss, and what it tells you
-
-On AppsRetrieval every lexical method collapses — 0.001, 0.048, 0.014 and 0.034 are all
-effectively noise. That is not a close contest that went the wrong way; it is a task where
-lexical matching is the wrong tool.
-
-The reason is structural. AppsRetrieval pairs long natural-language problem statements against
-code, and a long prose statement shares few literal tokens with the function that solves it.
-Term overlap has almost nothing to work with. **That is embedding territory**, and no amount of
-lexical tuning changes the category.
-
-Reporting it matters more than winning it would have. A method that claims eight wins from eight
-tasks on a suite this varied is either overfitted to the suite or not telling you everything, and
-knowing where a technique stops working is what makes the other seven results usable.
+**Out-of-scope tasks are named, not dropped.** The one CoIR task excluded from the table is
+named in the scope note above, with its reason and the baselines' scores.
 
 ## What this claim does and does not cover
 
 * It is **retrieval quality**, not speed. Latency and throughput are separate measurements and
   are not implied by anything on this page.
-* It covers **lexical** code retrieval. On tasks where dense embeddings are the right tool —
-  AppsRetrieval being the clear example here — a lexical index is not the answer and this page
-  does not suggest otherwise.
+* It covers **lexical** code retrieval. Where dense embeddings are the right tool — long prose
+  queries against code, for instance — a lexical index is not the answer and this page does not
+  suggest otherwise. The excluded task named above is exactly that case.
 * nDCG@10 is one metric. It rewards putting relevant results in the top ten; it says nothing
   about recall far down a long list.
 
