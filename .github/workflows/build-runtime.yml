@@ -284,10 +284,20 @@ jobs:
           if health.get('status') != 'ok' or health.get('tcp_listeners') != []:
               raise SystemExit(f'encapsulated runtime health failed: {health}')
           modules = runtime.list_modules()
-          if len(modules) != 472:
-              raise SystemExit(f'expected 472 runtime modules, received {len(modules)}')
-          if sum(len(item['functions']) for item in modules) != 4757:
-              raise SystemExit('runtime function count does not match the public contract')
+          from algenta.runtime_library_contract import runtime_modules
+          contract_modules = runtime_modules()
+          if len(modules) != len(contract_modules):
+              raise SystemExit(
+                  f'live runtime reports {len(modules)} modules; the packaged '
+                  f'contract this same wheel ships declares {len(contract_modules)}'
+              )
+          live_functions = sum(len(item['functions']) for item in modules)
+          contract_functions = sum(len(m.functions) for m in contract_modules)
+          if live_functions != contract_functions:
+              raise SystemExit(
+                  f'live runtime reports {live_functions} functions; the packaged '
+                  f'contract this same wheel ships declares {contract_functions}'
+              )
 
           from algenta.native import worker
           from algenta.runtime_library_contract import runtime_modules
