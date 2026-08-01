@@ -17,6 +17,7 @@ Set means present. That polarity matters: a freshly zeroed buffer then reads as
 all-null, so a caller who allocates and forgets to populate gets "no data" rather
 than "all zeros are real values". Failing toward absence is the safer default.
 """
+from std.bit import pop_count
 
 comptime BITS_PER_BYTE: Int = 8
 
@@ -77,28 +78,31 @@ fn set_null(mut bitmap: List[UInt8], index: Int):
     bitmap[byte] = bitmap[byte] & ~(UInt8(1) << UInt8(index % BITS_PER_BYTE))
 
 
-fn _popcount(value: UInt8) -> Int:
-    var v = value
-    var n = 0
-    while v != 0:
-        n += Int(v & 1)
-        v = v >> 1
-    return n
-
-
 fn count_valid(bitmap: List[UInt8], length: Int) -> Int:
     """Present slots among the first `length`.
 
-    Whole bytes are counted with popcount and only the final partial byte is walked
-    bit by bit, so this is ~8x cheaper than a per-slot loop.
+    Whole 64-bit words go through the popcount instruction, leftover whole
+    bytes through a byte popcount, and only the final partial byte is walked
+    bit by bit. Round 3 hoisted "does this column have nulls at all?" to the
+    front of every grouped scan, which put this function on the serial prefix
+    of 1e7-row questions — the old per-byte bit-loop popcount was costing
+    milliseconds per column there, so it became word-wise. Same answer for
+    every (bitmap, length), including bitmaps shorter than the length (absent
+    bytes count nothing, exactly as before).
     """
     if length <= 0:
         return 0
     var full_bytes = length // BITS_PER_BYTE
+    var counted_bytes = full_bytes
+    if counted_bytes > len(bitmap):
+        counted_bytes = len(bitmap)
     var total = 0
-    for i in range(full_bytes):
-        if i < len(bitmap):
-            total += _popcount(bitmap[i])
+    var words = counted_bytes // 8
+    var wp = bitmap.unsafe_ptr().bitcast[UInt64]()
+    for i in range(words):
+        total += Int(pop_count(wp[i]))
+    for i in range(words * 8, counted_bytes):
+        total += Int(pop_count(bitmap[i]))
     var remainder = length % BITS_PER_BYTE
     if remainder > 0 and full_bytes < len(bitmap):
         for bit in range(remainder):

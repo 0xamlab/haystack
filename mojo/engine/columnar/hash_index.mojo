@@ -49,8 +49,31 @@ comptime MAX_LOAD: Float64 = 0.7
 # One quiet NaN, so every NaN lands in one group instead of one group per row.
 comptime CANONICAL_NAN_BITS: UInt64 = 0x7FF8000000000000
 
-comptime _FNV_OFFSET: UInt64 = 0xCBF29CE484222325
+comptime FNV_OFFSET_BASIS: UInt64 = 0xCBF29CE484222325
+"""The FNV-1a starting state. Public (round 3) so a batched hasher can run the
+fold itself: `fnv_fold(FNV_OFFSET_BASIS, bits)` for one element, then further
+`fnv_fold` calls for the rest of a composite key. Was `_FNV_OFFSET`; same value,
+same uses — only the visibility changed."""
 comptime _FNV_PRIME: UInt64 = 0x100000001B3
+
+
+@always_inline
+fn fnv_fold(h0: UInt64, bits: UInt64) -> UInt64:
+    """Fold eight bytes into a running FNV-1a state, low byte first.
+
+    This is THE byte loop `hash_bits`, `hash_composite` and `hash_indices` have
+    always run — hoisted so a caller that hashes rows in blocks (the batched
+    key hasher in `query.aggregate`) provably runs the same fold the tables
+    probe with. `hash_bits(b) == fnv_fold(FNV_OFFSET_BASIS, b)` by definition,
+    and a width-N composite hash is N chained folds over normalized elements.
+    """
+    var h = h0
+    var remaining = bits
+    for _ in range(8):
+        h = h ^ (remaining & 0xFF)
+        h = h * _FNV_PRIME
+        remaining = remaining >> 8
+    return h
 
 
 fn normalize_bits(value: Float64) -> UInt64:
@@ -71,13 +94,7 @@ fn hash_bits(bits: UInt64) -> UInt64:
     hash family across the tree means a stream id and a group slot cannot silently
     disagree about what "the same key" means.
     """
-    var h = _FNV_OFFSET
-    var remaining = bits
-    for _ in range(8):
-        h = h ^ (remaining & 0xFF)
-        h = h * _FNV_PRIME
-        remaining = remaining >> 8
-    return h
+    return fnv_fold(FNV_OFFSET_BASIS, bits)
 
 
 fn hash_float(value: Float64) -> UInt64:
@@ -99,14 +116,9 @@ fn hash_composite(key: List[Float64], width: Int) -> UInt64:
     identically. A position past `len(key)` hashes as 0.0, matching
     `CompositeKeyIndex._keys_equal`'s treatment of a short key.
     """
-    var h = _FNV_OFFSET
+    var h = FNV_OFFSET_BASIS
     for i in range(width):
-        var bits = normalize_bits(key[i] if i < len(key) else 0.0)
-        var remaining = bits
-        for _ in range(8):
-            h = h ^ (remaining & 0xFF)
-            h = h * _FNV_PRIME
-            remaining = remaining >> 8
+        h = fnv_fold(h, normalize_bits(key[i] if i < len(key) else 0.0))
     return h
 
 
@@ -207,6 +219,28 @@ struct HashIndex(Copyable, Movable):
             self._grow()
         return next_slot
 
+    fn get_or_assign_bits(mut self, bits: UInt64, h: UInt64, next_slot: Int) -> Int:
+        """`get_or_assign` for a caller that already normalized and hashed.
+
+        `bits` MUST be `normalize_bits(key)` and `h` MUST be `hash_bits(bits)`;
+        the batched hasher in `query.aggregate` computes both in a block loop
+        and probes here without re-deriving either. A mismatched pair would
+        probe one chain and compare another — the suite pins this entry
+        slot-for-slot against `get_or_assign` over the same key stream,
+        including -0.0 and NaN, which is what makes the split shippable.
+        """
+        var pos = Int(h) & self.mask
+        while self.slots[pos] != EMPTY_SLOT:
+            if self.slot_keys[pos] == bits:
+                return self.slots[pos]
+            pos = (pos + 1) & self.mask
+        self.slots[pos] = next_slot
+        self.slot_keys[pos] = bits
+        self.count += 1
+        if Float64(self.count) > MAX_LOAD * Float64(len(self.slots)):
+            self._grow()
+        return next_slot
+
 
 fn hash_indices(values: List[Float64], indices: List[Int]) -> UInt64:
     """One hash over several positions of a flat list — a composite key, no concat.
@@ -223,17 +257,12 @@ fn hash_indices(values: List[Float64], indices: List[Int]) -> UInt64:
     An out-of-range index is skipped rather than read: reading past the end of a List
     is an uncatchable crash, not an exception.
     """
-    var h = _FNV_OFFSET
+    var h = FNV_OFFSET_BASIS
     for i in range(len(indices)):
         var index = indices[i]
         if index < 0 or index >= len(values):
             continue
-        var bits = normalize_bits(values[index])
-        var remaining = bits
-        for _ in range(8):
-            h = h ^ (remaining & 0xFF)
-            h = h * _FNV_PRIME
-            remaining = remaining >> 8
+        h = fnv_fold(h, normalize_bits(values[index]))
     return h
 
 
@@ -335,7 +364,18 @@ struct CompositeKeyIndex(Copyable, Movable):
             self.slot_hashes[pos] = old_hashes[i]
 
     fn get_or_assign(mut self, key: List[Float64], next_slot: Int) -> Int:
-        var h = self._hash_key(key)
+        return self.get_or_assign_hashed(key, self._hash_key(key), next_slot)
+
+    fn get_or_assign_hashed(mut self, key: List[Float64], h: UInt64, next_slot: Int) -> Int:
+        """`get_or_assign` for a caller that already ran `hash_composite`.
+
+        `h` MUST be `hash_composite(key, self.key_width)` — the batched hasher
+        and the radix scatter in `query.aggregate` compute it once per row and
+        probe here without recomputing. Equality still compares the FULL key
+        tuple, so a wrong `h` cannot merge two different keys; it can only
+        split one key across slots, and the suite pins this entry
+        slot-for-slot against `get_or_assign` to rule that out.
+        """
         var pos = Int(h) & self.mask
         while self.slots[pos] != EMPTY_SLOT:
             if self.slot_hashes[pos] == h and self._keys_equal(self.slots[pos], key):

@@ -126,14 +126,68 @@ true cardinality the data is necessarily clustered (a group absent from the
 probe window is concentrated later in the batch), which is exactly the shape
 where each group touches few bands and the band merge is cheap anyway — the
 probe's failure mode and the band path's cheap case coincide.
+
+Opcode-specialized updates, counted scatter, batched hashing (2026-08, round 3)
+-------------------------------------------------------------------------------
+Round 2's measured residuals against polars/duckdb had three named causes; each
+gets one mechanism, and none of them changes what any entry point RETURNS —
+that is the round's contract, pinned by the suites:
+
+  * `observe()` maintains count/sum/mean/m2/min/max whatever the caller asked
+    for. `observe_op` dispatches to a per-opcode update that touches only the
+    fields that opcode's `value_for`/`has_answer` read — same frozen
+    `group_*_update` primitives, same call sequence for the fields kept, so a
+    specialized accumulator's answer is BIT-EQUAL to the full one's for its
+    opcode (mean included: it keeps the Welford recurrence, not sum/count).
+    VAR/STD need everything and keep the full `observe`.
+  * The radix scatter appended each surviving row into a per-(worker,
+    partition) List — an amortized-growth store plus bounds logic per element,
+    the dominant cost at 1e7 rows. Now: pass A hashes each key once (hash
+    kept in a row-indexed buffer) and COUNTS rows per (worker, partition);
+    a serial prefix sum turns counts into segment offsets over ONE
+    preallocated payload buffer; pass B re-walks the band and writes each
+    row's payload at its cursor with raw stores. Safety argument for the raw
+    stores: cursor(w,p) starts at offset(w,p) and is bumped once per counted
+    row, so every write index is < offset(w,p) + count(w,p) <= survivors by
+    the prefix-sum construction; the final cursors are CHECKED against the
+    counts after the pass, and a mismatch falls back to the independent
+    banded engine (loudly) rather than trusting a broken scatter. Partition
+    segments hold workers' rows in band order, each ascending, so fold order
+    is still ascending global row order — the bit-equal-to-serial promise and
+    the first-appearance order restore are unchanged.
+  * Key hashing ran one FNV fold per row inside the probe call. The scan
+    fast path (no nulls in any key column) now hashes `HASH_BLOCK` rows into
+    a preallocated buffer in a tight loop — independent chains the CPU can
+    overlap, no per-row method dispatch — then probes with
+    `get_or_assign_bits`/`get_or_assign_hashed`, which take the precomputed
+    hash instead of re-deriving it. Key columns WITH nulls keep the exact
+    per-row path; both paths are pinned to the same references.
+
+Routing (`plan_many_route`) now covers all four engines: a single key column
+whose probed window holds only integral codes in [0, MAX_CODED_CARDINALITY)
+routes CODED and falls back to the hash engines if rows beyond the window
+refuse (correct, one wasted partial pass, and only reachable on data whose
+probe window lied); otherwise the cardinality probe picks BANDED or RADIX as
+in round 2. The route is a public, testable function so a routing mistake is
+a failing table entry, and the H2O bench gates round 3 against the best of
+rounds 1 and 2 per question — a routing regression cannot ship silently.
 """
 from std.algorithm import parallelize
-from std.memory import bitcast
+from std.memory import alloc, bitcast
 from std.sys import info
 
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch
-from columnar.hash_index import CANONICAL_NAN_BITS, CompositeKeyIndex, HashIndex, hash_composite
+from columnar.hash_index import (
+    CANONICAL_NAN_BITS,
+    CompositeKeyIndex,
+    FNV_OFFSET_BASIS,
+    HashIndex,
+    fnv_fold,
+    hash_bits,
+    hash_composite,
+    normalize_bits,
+)
 from numeric.contract import (
     AGG_AVG,
     AGG_COUNT,
@@ -244,6 +298,80 @@ struct GroupAccumulator(Copyable, Movable):
         else:
             self.minimum = group_min_update(self.minimum, value)
             self.maximum = group_max_update(self.maximum, value)
+
+    # ── opcode-specialized updates (round 3) ──────────────────────────────────
+    # Each maintains EXACTLY the fields its opcode's `value_for`/`has_answer`
+    # read (plus `count`, which every result reports), with the same frozen
+    # primitive in the same sequence `observe` runs — so per opcode the answer
+    # is bit-equal to the full update's, and `merge_from` still composes: the
+    # fields an opcode never reads stay 0.0/False on both sides of a merge,
+    # and the fields it does read are maintained identically. The suite pins
+    # this field-for-field per opcode, on random and adversarial data.
+
+    @always_inline
+    fn observe_count(mut self):
+        self.count = group_count_update(self.count)
+
+    @always_inline
+    fn observe_sum(mut self, value: Float64):
+        self.count = group_count_update(self.count)
+        self.total = group_sum_update(self.total, value)
+
+    @always_inline
+    fn observe_mean(mut self, value: Float64):
+        # The Welford recurrence, NOT sum-then-divide: bit-equal to `observe`'s
+        # mean, which is what lets the fused paths specialize without moving
+        # any answer by even an ulp.
+        self.count = group_count_update(self.count)
+        self.mean = group_mean_update(self.mean, value, self.count)
+
+    @always_inline
+    fn observe_min(mut self, value: Float64):
+        self.count = group_count_update(self.count)
+        # Same NaN policy as `observe`, or the #459 defect returns through this
+        # path: a NaN contributes to NO extremum, because seeding or comparing
+        # with one makes min/max depend on where the NaN sits in the scan order,
+        # which no parallel merge can reproduce.
+        if value != value:
+            return
+        if not self.seen:
+            self.minimum = value
+            self.seen = True
+        else:
+            self.minimum = group_min_update(self.minimum, value)
+
+    @always_inline
+    fn observe_max(mut self, value: Float64):
+        self.count = group_count_update(self.count)
+        # Same NaN policy as `observe` — see `observe_min`.
+        if value != value:
+            return
+        if not self.seen:
+            self.maximum = value
+            self.seen = True
+        else:
+            self.maximum = group_max_update(self.maximum, value)
+
+    @always_inline
+    fn observe_op(mut self, opcode: Int, value: Float64):
+        """`observe`, but paying only for what `opcode` will read.
+
+        VAR/STD — and any opcode this dispatch does not recognise — fall
+        through to the full `observe`: correctness never depends on the
+        specialization list being complete.
+        """
+        if opcode == AGG_SUM:
+            self.observe_sum(value)
+        elif opcode == AGG_AVG:
+            self.observe_mean(value)
+        elif opcode == AGG_MIN:
+            self.observe_min(value)
+        elif opcode == AGG_MAX:
+            self.observe_max(value)
+        elif opcode == AGG_COUNT:
+            self.observe_count()
+        else:
+            self.observe(value)
 
     fn merge_from(mut self, other: GroupAccumulator):
         """Fold another accumulator's state in — the parallel-merge combine.
@@ -878,27 +1006,37 @@ scan (one hash per row, no accumulators), and on uniformly-mixed data — the
 shape where the band merge is expensive — 64k rows saturate well past
 `RADIX_MIN_GROUPS` distinct keys whenever the true count does."""
 
-comptime RADIX_MIN_GROUPS: Int = 32768
+comptime RADIX_MIN_GROUPS: Int = 16384
 """PROBED distinct-key count at which `group_by_many_parallel` switches from
 the band-merge path to the radix path.
 
-Measured on this host (16 physical cores, 1e7 rows, 2 aggregates, load ~8;
-sweep in bench_groupby_fused.mojo). `probed` is what `probe_cardinality`
+Round 2 measured this crossover at 32768; round 3's counted scatter removed
+the radix path's per-element append cost, which moved it DOWN. Re-measured on
+this host (16 physical cores, 1e7 rows, 2 aggregates, load ~8.5; sweep in
+bench_groupby_fused.mojo plus a 2k-12k fill-in). `probed` is what the probe
 reports over its 64k window for that true cardinality — the number this
 threshold actually sees:
 
     true groups   probed   banded    radix     radix advantage
-        10 000     9 986   0.075s    0.067s    ~par (0.97-1.13x across runs)
-        16 384    16 076   0.062s    0.072s    0.86x
-        32 768    28 352   0.088s    0.093s    0.95x
-        50 000    36 594   0.119s    0.076s    1.57x
-        65 536    41 466   0.142s    0.083s    1.72x
-       100 000    48 154   0.210s    0.083s    2.54x
+         1 000     1 000   0.022s    0.029s    0.77x
+         2 000     2 000   0.040s    0.053s    0.75x
+         4 000     4 000   0.044s    0.055s    0.80x
+         6 000     6 000   0.057s    0.052s    1.08x
+         8 000     7 997   0.066s    0.056s    1.18x
+        10 000     9 986   0.039s    0.032s    1.20x  (0.83x on a later run)
+        12 000    11 948   0.060s    0.062s    0.97x
+        32 768    28 352   0.059s    0.044s    1.34x
+       100 000    48 154   0.137s    0.044s    3.14x
 
-Below ~30k probed the paths are within noise of each other (the scatter's
-bucket materialisation buys back roughly what the merge costs); from ~36k
-probed the radix win is unambiguous and grows with cardinality. 32768 is the
-first power of two above the measured par zone."""
+Below ~4k probed banded wins clearly. From ~6k to ~12k the two are a
+COIN FLIP under load — the same 10k-group shape measured 1.20x radix-favor
+in one session and 0.83x in the next, which the H2O q2 routing gate caught
+when the threshold briefly sat at 8192. A dispatcher must not gamble: the
+threshold sits at the first power of two ABOVE the measured coin-flip zone,
+where the radix lean is consistent across runs and grows with cardinality
+(1.34x at 28k probed, 3.1x at 48k). The H2O bench gates the routed time
+against both explicit engines per question, so a mistuned threshold fails a
+gate instead of shipping."""
 
 comptime MAX_FUSED_AGGS: Int = 32
 """Ceiling on aggregates per fused call. The radix scatter packs per-row value
@@ -912,6 +1050,40 @@ comptime MAX_CODED_CARDINALITY: Int = 4096
 widest — bounded before allocation, not discovered by it. Beyond this the
 dense array stops fitting cache and the hash path stops losing; DuckDB's
 equivalent (perfect-hash grouping) draws the same order-of-magnitude line."""
+
+comptime HASH_BLOCK: Int = 1024
+"""Rows hashed per block on the no-null-keys scan fast path.
+
+The FNV fold is a serial chain of ~8 dependent ops per element; hashed one row
+at a time inside the probe call, each chain's latency is exposed. Hashing a
+block into a preallocated buffer makes consecutive rows' chains independent —
+the CPU overlaps them — and the buffer is 8 KiB (16 KiB with the width-1 bits
+buffer), L1-resident. 1024 is comfortably past where the loop overhead
+amortizes; the win is flat from ~256 up, so the exact value is not sensitive."""
+
+# ── group_by_many routing (round 3): one testable table, four engines ────────
+comptime ROUTE_SERIAL: Int = 0
+comptime ROUTE_CODED: Int = 1
+comptime ROUTE_BANDED: Int = 2
+comptime ROUTE_RADIX: Int = 3
+
+
+struct ManyRoutePlan(Copyable, Movable):
+    """Where `group_by_many_parallel` will send a request, decided up front.
+
+    `route` is one of the ROUTE_* codes; `coded_bound` carries the dense-array
+    cardinality the CODED route needs (max probed code + 1) and is 0 on every
+    other route. A struct rather than a bare Int so the entry point runs the
+    probes ONCE and the suite can assert the whole decision, not just its
+    first coordinate.
+    """
+
+    var route: Int
+    var coded_bound: Int
+
+    fn __init__(out self, route: Int, coded_bound: Int):
+        self.route = route
+        self.coded_bound = coded_bound
 
 # ── status codes: query.aggregate owns 330-339 (rule 4e: one integer, one
 #    meaning per package; 300-329 are taken by columnar) ──────────────────────
@@ -1149,6 +1321,144 @@ fn probe_cardinality(batch: RecordBatch, key_columns: List[Int], probe_rows: Int
     return index.size()
 
 
+fn probe_at_least(
+    batch: RecordBatch, key_columns: List[Int], probe_rows: Int, threshold: Int
+) -> Bool:
+    """Whether the probe window holds at least `threshold` distinct keys —
+    `probe_cardinality(...) >= threshold`, with an early exit at the answer.
+
+    The routing probe on a high-cardinality batch reaches the radix threshold
+    within the first few thousand rows; scanning the rest of the 64k window
+    would hash-insert tens of thousands more keys for a decision already
+    made — a measurable tax on exactly the questions the radix engine wins
+    (the H2O routing gate caught it at ~6% of q3/q5). Low-cardinality windows
+    scan fully and answer False, exactly as the full count would. The table
+    is preallocated past the threshold so the early-exit path never pays a
+    resize.
+    """
+    if threshold <= 0:
+        return True
+    var width = len(key_columns)
+    if width == 0:
+        return 1 >= threshold
+    var n = batch.n_rows
+    if probe_rows < n:
+        n = probe_rows
+    if n <= 0:
+        return False
+    var capacity = threshold * 2
+    if width == 1:
+        var key_col = batch.column(key_columns[0])
+        var index = HashIndex(capacity)
+        for r in range(n):
+            if not key_col.is_valid_at(r):
+                continue
+            _ = index.get_or_assign(key_col.get(r), index.size())
+            if index.size() >= threshold:
+                return True
+        return False
+    var key_cols = List[Float64Array]()
+    for i in range(width):
+        key_cols.append(batch.column(key_columns[i]))
+    var index = CompositeKeyIndex(width, capacity)
+    var key = List[Float64](length=width, fill=0.0)
+    for r in range(n):
+        var any_null = False
+        for c in range(width):
+            if not key_cols[c].is_valid_at(r):
+                any_null = True
+                break
+            key[c] = key_cols[c].get(r)
+        if any_null:
+            continue
+        _ = index.get_or_assign(key, index.size())
+        if index.size() >= threshold:
+            return True
+    return False
+
+
+fn probe_coded_bound(batch: RecordBatch, key_column: Int, probe_rows: Int) -> Int:
+    """The `group_by_coded` cardinality this key column supports, judged from
+    the first `min(probe_rows, n_rows)` rows: max integral code + 1 when EVERY
+    present probed key is an integral float in [0, MAX_CODED_CARDINALITY),
+    else -1. A window with no present keys is -1 — no evidence, no route.
+
+    One-sided like `probe_cardinality`, and in the same direction: rows past
+    the window can only make the answer MORE conservative at scan time, never
+    less — a non-code beyond the window is a typed refusal from the coded
+    engine, which `group_by_many_parallel` treats as its fallback signal. A
+    lying window therefore costs one partial pass, never a wrong answer.
+
+    Deliberately hash-free (compares and a truncation per row, no table): it
+    runs in front of questions the coded engine answers in single-digit
+    milliseconds, where `probe_cardinality`'s hash insertions would be a
+    measurable tax.
+    """
+    var key_col = batch.column(key_column)
+    var n = batch.n_rows
+    if probe_rows < n:
+        n = probe_rows
+    if n <= 0:
+        return -1
+    var bound = Float64(MAX_CODED_CARDINALITY)
+    var kp = key_col.values[].unsafe_ptr() + key_col.offset
+    # A column shorter than the window keeps the per-row check: is_valid_at
+    # reads out-of-range as absent, which is what a ragged batch always meant.
+    var has_nulls = key_col.null_count() > 0 or key_col.length < n
+    var max_code = -1
+    for r in range(n):
+        if has_nulls and not key_col.is_valid_at(r):
+            continue
+        var k = kp[r]
+        # Float-domain first, exactly as the coded engine itself validates:
+        # NaN and negatives fail `k >= 0.0`, +inf and oversized fail the bound,
+        # so Int(k) is only reached where fptosi is defined.
+        if not (k >= 0.0) or k >= bound:
+            return -1
+        var code = Int(k)
+        if Float64(code) != k:
+            return -1
+        if code > max_code:
+            max_code = code
+    if max_code < 0:
+        return -1
+    return max_code + 1
+
+
+fn plan_many_route(
+    batch: RecordBatch, key_columns: List[Int], n_workers: Int
+) -> ManyRoutePlan:
+    """The `group_by_many_parallel` routing table, in one testable place.
+
+    SERIAL for width 0 or a worker count that clamps to <= 1. CODED for a
+    single key column whose probe window holds only small integral codes
+    (`coded_bound` carries the dense-array cardinality). Otherwise round 2's
+    cardinality dispatch: RADIX at or above `RADIX_MIN_GROUPS` probed groups,
+    BANDED below. The CODED route can still be refused at scan time by a
+    non-code beyond the window; the entry point then falls back to BANDED —
+    necessarily BANDED, because a window whose every key fit under
+    `MAX_CODED_CARDINALITY` probed at most 4096 distinct keys, far below the
+    radix threshold.
+
+    Thresholds are measured on the H2O shapes (see `RADIX_MIN_GROUPS` and the
+    bench sweep), and the H2O bench gates the routed time against the best
+    explicit engine per question — a routing mistake fails the gate rather
+    than shipping as a silent regression.
+    """
+    var workers = n_workers
+    if workers > batch.n_rows:
+        workers = batch.n_rows
+    if workers <= 1 or len(key_columns) == 0:
+        return ManyRoutePlan(ROUTE_SERIAL, 0)
+    if len(key_columns) == 1:
+        var bound = probe_coded_bound(batch, key_columns[0], CARDINALITY_PROBE_ROWS)
+        if bound > 0:
+            return ManyRoutePlan(ROUTE_CODED, bound)
+    if probe_at_least(batch, key_columns, CARDINALITY_PROBE_ROWS, RADIX_MIN_GROUPS):
+        return ManyRoutePlan(ROUTE_RADIX, 0)
+    return ManyRoutePlan(ROUTE_BANDED, 0)
+
+
 fn group_by_many(
     batch: RecordBatch,
     key_columns: List[Int],
@@ -1191,15 +1501,19 @@ fn group_by_many_parallel(
     opcodes: List[Int],
     n_workers: Int,
 ) -> ManyGroupedResult:
-    """`group_by_many` on an explicit worker count, band/radix chosen by probe.
+    """`group_by_many` on an explicit worker count, engine chosen by
+    `plan_many_route`.
 
-    1 worker is exactly the serial path. Above 1, `probe_cardinality` over the
-    first `CARDINALITY_PROBE_ROWS` rows picks the band-merge path (small key
-    spaces: the merge is trivial and the scatter would be pure overhead) or the
-    radix path (large key spaces: the O(workers x groups) merge and the
-    full-key-space per-worker tables are what kill 100k-group questions).
-    `group_by_many_banded` / `group_by_many_radix` pin either path directly —
-    that is what the suite and the gate use to compare them on identical data.
+    1 worker is exactly the serial path. Above 1 the routing table picks
+    CODED (single small-integral-code key: dense array, no hash), RADIX
+    (large key spaces, where the O(workers x groups) merge and full-key-space
+    per-worker tables kill 100k-group questions) or BANDED (everything else:
+    the merge is trivial and a scatter would be pure overhead). A CODED
+    refusal — a non-code beyond the probe window — falls back to BANDED,
+    which is correct on any data and costs one partial pass, only on data
+    whose window lied. `group_by_many_banded` / `group_by_many_radix` /
+    `group_by_coded_parallel` pin each engine directly — that is what the
+    suite and the gates use to compare them on identical data.
     """
     if not _many_request_ok(value_columns, opcodes):
         return _empty_many()
@@ -1212,9 +1526,209 @@ fn group_by_many_parallel(
         workers = batch.n_rows
     if workers <= 1:
         return _group_many_serial(batch, key_columns, value_columns, opcodes)
-    if probe_cardinality(batch, key_columns, CARDINALITY_PROBE_ROWS) >= RADIX_MIN_GROUPS:
+    var plan = plan_many_route(batch, key_columns, workers)
+    if plan.route == ROUTE_CODED:
+        var coded = group_by_coded_parallel(
+            batch, key_columns[0], plan.coded_bound, value_columns, opcodes, workers
+        )
+        if coded.ok():
+            return coded.result.copy()
+        # The window lied: a row past it is not a code. Fall back to BANDED —
+        # see plan_many_route for why radix is unreachable from here.
+        return group_by_many_banded(batch, key_columns, value_columns, opcodes, workers)
+    if plan.route == ROUTE_RADIX:
         return group_by_many_radix(batch, key_columns, value_columns, opcodes, workers)
     return group_by_many_banded(batch, key_columns, value_columns, opcodes, workers)
+
+
+fn _col_guard_flags(cols: List[Float64Array], n_rows: Int) -> List[Bool]:
+    """Whether each column needs its per-row validity check, hoisted once.
+
+    True when the column has any null OR is shorter than the scan (`n_rows`
+    is authoritative on a RecordBatch, and `is_consistent` is advisory — a
+    ragged batch has always read its missing tail as null through
+    `is_valid_at`'s bounds check, and must keep doing so). When the flag is
+    False, every scanned slot is present AND in range, so a raw
+    values-pointer read is exactly `get(r)` — that is the entire license for
+    the pointer fast paths below, which is why the flag must fail toward
+    True.
+    """
+    var flags = List[Bool](capacity=len(cols))
+    for i in range(len(cols)):
+        flags.append(cols[i].null_count() > 0 or cols[i].length < n_rows)
+    return flags^
+
+
+fn _fused_scan_w1(
+    key_col: Float64Array,
+    value_cols: List[Float64Array],
+    opcodes: List[Int],
+    key_nulls: Bool,
+    value_nulls: List[Bool],
+    lo: Int,
+    hi: Int,
+    mut index: HashIndex,
+    mut key_tuples: List[Float64],
+    mut stripes: List[GroupAccumulator],
+) -> Int:
+    """One single-key fused scan over rows [lo, hi) into caller-owned state.
+    Returns the null-key rows seen.
+
+    THE shared inner loop (round 3): the serial path scans [0, n) with its one
+    table, each band worker scans its own band with its private table — one
+    body, so the two cannot diverge, which is what the banded-8 ==
+    `group_by_parallel`-8 bit-equality rides on.
+
+    Fast path (`key_nulls == False`): hash `HASH_BLOCK` rows at a time into a
+    preallocated buffer — `normalize_bits` + `fnv_fold`, a loop of independent
+    chains with no method dispatch — then probe with the precomputed
+    (bits, hash) pair via `get_or_assign_bits`. With null keys: round 2's
+    per-row loop, unchanged. Values are read through the raw pointer exactly
+    where validity is already established (column-level no-nulls, or the
+    per-row check passed) — positions where `get(r)` returns the same number.
+    Updates go through `observe_op`, the opcode-specialized update.
+    """
+    var n_aggs = len(value_cols)
+    var nulls = 0
+    var group_count = len(key_tuples)
+    var kp = key_col.values[].unsafe_ptr() + key_col.offset
+    var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
+    for j in range(n_aggs):
+        vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+
+    if not key_nulls:
+        var hbuf = List[UInt64](length=HASH_BLOCK, fill=0)
+        var bbuf = List[UInt64](length=HASH_BLOCK, fill=0)
+        var hp = hbuf.unsafe_ptr()
+        var bp = bbuf.unsafe_ptr()
+        var r = lo
+        while r < hi:
+            var blk = hi - r
+            if blk > HASH_BLOCK:
+                blk = HASH_BLOCK
+            for i in range(blk):
+                var bits = normalize_bits(kp[r + i])
+                bp[i] = bits
+                hp[i] = fnv_fold(FNV_OFFSET_BASIS, bits)
+            for i in range(blk):
+                var slot = index.get_or_assign_bits(bp[i], hp[i], group_count)
+                if slot == group_count:
+                    group_count += 1
+                    key_tuples.append(kp[r + i])
+                    for _ in range(n_aggs):
+                        stripes.append(GroupAccumulator(kp[r + i]))
+                var sbase = slot * n_aggs
+                for j in range(n_aggs):
+                    if not value_nulls[j] or value_cols[j].is_valid_at(r + i):
+                        stripes[sbase + j].observe_op(opcodes[j], vps[j][r + i])
+            r += blk
+        return 0
+
+    for r in range(lo, hi):
+        if not key_col.is_valid_at(r):
+            nulls += 1
+            continue
+        var key = kp[r]
+        var slot = index.get_or_assign(key, group_count)
+        if slot == group_count:
+            group_count += 1
+            key_tuples.append(key)
+            for _ in range(n_aggs):
+                stripes.append(GroupAccumulator(key))
+        var sbase = slot * n_aggs
+        for j in range(n_aggs):
+            if not value_nulls[j] or value_cols[j].is_valid_at(r):
+                stripes[sbase + j].observe_op(opcodes[j], vps[j][r])
+    return nulls
+
+
+fn _fused_scan_wn(
+    key_cols: List[Float64Array],
+    value_cols: List[Float64Array],
+    opcodes: List[Int],
+    key_nulls: Bool,
+    value_nulls: List[Bool],
+    lo: Int,
+    hi: Int,
+    mut index: CompositeKeyIndex,
+    mut key_tuples: List[Float64],
+    mut stripes: List[GroupAccumulator],
+) -> Int:
+    """`_fused_scan_w1` for a composite key. Returns the null-key rows seen.
+
+    The block loop chains `fnv_fold` over the normalized elements exactly as
+    `hash_composite` does — same seed, same order — and probes with
+    `get_or_assign_hashed`, so the batched hash and the table's own hash
+    cannot disagree (the table's `get_or_assign` delegates to the same probe).
+    """
+    var width = len(key_cols)
+    var n_aggs = len(value_cols)
+    var nulls = 0
+    var group_count = 0
+    if width > 0:
+        group_count = len(key_tuples) // width
+    var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
+    for c in range(width):
+        kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+    var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
+    for j in range(n_aggs):
+        vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+    # One key buffer per scan, overwritten per row — round 1's allocation fix.
+    var key = List[Float64](length=width, fill=0.0)
+    var kb = key.unsafe_ptr()
+
+    if not key_nulls:
+        var hbuf = List[UInt64](length=HASH_BLOCK, fill=0)
+        var hp = hbuf.unsafe_ptr()
+        var r = lo
+        while r < hi:
+            var blk = hi - r
+            if blk > HASH_BLOCK:
+                blk = HASH_BLOCK
+            for i in range(blk):
+                var h = FNV_OFFSET_BASIS
+                for c in range(width):
+                    h = fnv_fold(h, normalize_bits(kps[c][r + i]))
+                hp[i] = h
+            for i in range(blk):
+                for c in range(width):
+                    kb[c] = kps[c][r + i]
+                var slot = index.get_or_assign_hashed(key, hp[i], group_count)
+                if slot == group_count:
+                    group_count += 1
+                    for c in range(width):
+                        key_tuples.append(kb[c])
+                    for _ in range(n_aggs):
+                        stripes.append(GroupAccumulator(kb[0]))
+                var sbase = slot * n_aggs
+                for j in range(n_aggs):
+                    if not value_nulls[j] or value_cols[j].is_valid_at(r + i):
+                        stripes[sbase + j].observe_op(opcodes[j], vps[j][r + i])
+            r += blk
+        return 0
+
+    for r in range(lo, hi):
+        var any_null = False
+        for c in range(width):
+            if not key_cols[c].is_valid_at(r):
+                any_null = True
+                break
+            kb[c] = kps[c][r]
+        if any_null:
+            nulls += 1
+            continue
+        var slot = index.get_or_assign(key, group_count)
+        if slot == group_count:
+            group_count += 1
+            for c in range(width):
+                key_tuples.append(kb[c])
+            for _ in range(n_aggs):
+                stripes.append(GroupAccumulator(kb[0]))
+        var sbase = slot * n_aggs
+        for j in range(n_aggs):
+            if not value_nulls[j] or value_cols[j].is_valid_at(r):
+                stripes[sbase + j].observe_op(opcodes[j], vps[j][r])
+    return nulls
 
 
 fn _group_many_serial(
@@ -1228,7 +1742,8 @@ fn _group_many_serial(
     Callers have already validated the request and handled width 0. Fold order
     is row order, so for a single value column this produces accumulator states
     bit-identical to `group_by`'s serial path — the equivalence the suite pins
-    per opcode.
+    per opcode. Since round 3 the body is `_fused_scan_w1`/`_fused_scan_wn`
+    over [0, n): the same shared loop the band workers run.
     """
     var width = len(key_columns)
     var n_aggs = len(value_columns)
@@ -1236,59 +1751,49 @@ fn _group_many_serial(
     var value_cols = List[Float64Array]()
     for j in range(n_aggs):
         value_cols.append(batch.column(value_columns[j]))
+    var value_nulls = _col_guard_flags(value_cols, n_rows)
 
     var key_tuples = List[Float64]()
     var stripes = List[GroupAccumulator]()
-    var null_key_rows = 0
-    var group_count = 0
 
     if width == 1:
         var key_col = batch.column(key_columns[0])
         var index = HashIndex(64)
-        for r in range(n_rows):
-            if not key_col.is_valid_at(r):
-                null_key_rows += 1
-                continue
-            var key = key_col.get(r)
-            var slot = index.get_or_assign(key, group_count)
-            if slot == group_count:
-                group_count += 1
-                key_tuples.append(key)
-                for _ in range(n_aggs):
-                    stripes.append(GroupAccumulator(key))
-            for j in range(n_aggs):
-                if value_cols[j].is_valid_at(r):
-                    stripes[slot * n_aggs + j].observe(value_cols[j].get(r))
+        var null_key_rows = _fused_scan_w1(
+            key_col,
+            value_cols,
+            opcodes,
+            key_col.null_count() > 0 or key_col.length < n_rows,
+            value_nulls,
+            0,
+            n_rows,
+            index,
+            key_tuples,
+            stripes,
+        )
         return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
 
     var key_cols = List[Float64Array]()
     for i in range(width):
         key_cols.append(batch.column(key_columns[i]))
+    var key_null_flags = _col_guard_flags(key_cols, n_rows)
+    var key_nulls = False
+    for i in range(width):
+        if key_null_flags[i]:
+            key_nulls = True
     var index = CompositeKeyIndex(width, 64)
-    # One key buffer per scan, overwritten per row — round 1's allocation fix.
-    var key = List[Float64](capacity=width)
-    for _ in range(width):
-        key.append(0.0)
-    for r in range(n_rows):
-        var any_null = False
-        for c in range(width):
-            if not key_cols[c].is_valid_at(r):
-                any_null = True
-                break
-            key[c] = key_cols[c].get(r)
-        if any_null:
-            null_key_rows += 1
-            continue
-        var slot = index.get_or_assign(key, group_count)
-        if slot == group_count:
-            group_count += 1
-            for c in range(width):
-                key_tuples.append(key[c])
-            for _ in range(n_aggs):
-                stripes.append(GroupAccumulator(key[0]))
-        for j in range(n_aggs):
-            if value_cols[j].is_valid_at(r):
-                stripes[slot * n_aggs + j].observe(value_cols[j].get(r))
+    var null_key_rows = _fused_scan_wn(
+        key_cols,
+        value_cols,
+        opcodes,
+        key_nulls,
+        value_nulls,
+        0,
+        n_rows,
+        index,
+        key_tuples,
+        stripes,
+    )
     return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
 
 
@@ -1329,6 +1834,12 @@ fn group_by_many_banded(
     var value_cols = List[Float64Array]()
     for j in range(n_aggs):
         value_cols.append(batch.column(value_columns[j]))
+    var value_nulls = _col_guard_flags(value_cols, n_rows)
+    var key_null_flags = _col_guard_flags(key_cols, n_rows)
+    var key_nulls = False
+    for i in range(width):
+        if key_null_flags[i]:
+            key_nulls = True
 
     var band = (n_rows + workers - 1) // workers
     var w_tuples = List[List[Float64]](capacity=workers)
@@ -1348,50 +1859,20 @@ fn group_by_many_banded(
         var hi = lo + band
         if hi > n_rows:
             hi = n_rows
-        var nulls = 0
-        var group_count = 0
+        # The SAME scan body the serial path runs, over this worker's band and
+        # private state — one loop, so serial and banded cannot diverge.
         if width == 1:
             var index = HashIndex(64)
-            for r in range(lo, hi):
-                if not key_cols[0].is_valid_at(r):
-                    nulls += 1
-                    continue
-                var key = key_cols[0].get(r)
-                var slot = index.get_or_assign(key, group_count)
-                if slot == group_count:
-                    group_count += 1
-                    tp[w].append(key)
-                    for _ in range(n_aggs):
-                        sp[w].append(GroupAccumulator(key))
-                for j in range(n_aggs):
-                    if value_cols[j].is_valid_at(r):
-                        sp[w][slot * n_aggs + j].observe(value_cols[j].get(r))
+            np[w] = _fused_scan_w1(
+                key_cols[0], value_cols, opcodes, key_nulls, value_nulls,
+                lo, hi, index, tp[w], sp[w],
+            )
         else:
             var index = CompositeKeyIndex(width, 64)
-            var key = List[Float64](capacity=width)
-            for _ in range(width):
-                key.append(0.0)
-            for r in range(lo, hi):
-                var any_null = False
-                for c in range(width):
-                    if not key_cols[c].is_valid_at(r):
-                        any_null = True
-                        break
-                    key[c] = key_cols[c].get(r)
-                if any_null:
-                    nulls += 1
-                    continue
-                var slot = index.get_or_assign(key, group_count)
-                if slot == group_count:
-                    group_count += 1
-                    for c in range(width):
-                        tp[w].append(key[c])
-                    for _ in range(n_aggs):
-                        sp[w].append(GroupAccumulator(key[0]))
-                for j in range(n_aggs):
-                    if value_cols[j].is_valid_at(r):
-                        sp[w][slot * n_aggs + j].observe(value_cols[j].get(r))
-        np[w] = nulls
+            np[w] = _fused_scan_wn(
+                key_cols, value_cols, opcodes, key_nulls, value_nulls,
+                lo, hi, index, tp[w], sp[w],
+            )
 
     parallelize[band_worker](workers)
 
@@ -1434,35 +1915,46 @@ fn group_by_many_radix(
     opcodes: List[Int],
     n_workers: Int,
 ) -> ManyGroupedResult:
-    """The fused scan radix-partitioned: hash once, scatter, build partitions
-    independently, restore first-appearance order by first-row index.
+    """The fused scan radix-partitioned: hash once, counted two-phase scatter,
+    build partitions independently, restore first-appearance order by
+    first-row index.
 
-    Design (b) of the two viable shapes — scatter over two-pass ownership —
-    because its memory traffic is CONSTANT in the worker count: pass 1 reads
-    the batch once and writes each surviving row once into a worker-private
-    bucket per partition; pass 2 reads the buckets once. The two-pass
-    alternative re-reads the batch (or a materialised hash array) once PER
-    WORKER — W x traffic at exactly the row counts where this path is chosen.
-    Scatter also gets the order argument for free, see below.
+    Round 3 replaced round 2's per-element `List.append` bucket build — an
+    amortized-growth store plus bounds logic per surviving row, the measured
+    dominant cost at 1e7 rows — with a counted scatter over ONE preallocated
+    payload buffer. The partition CONTENTS and their order are exactly what
+    the appends produced; only the store machinery changed, which is why the
+    round-2 suite (radix == serial bit-for-bit, order included) still pins it.
 
     What each pass does:
 
-      pass 1 (parallel over `workers` contiguous bands): per surviving row,
-        gather the key ONCE into the reused buffer, `hash_composite` it ONCE —
-        the same hash every table here probes with, exported from
-        `columnar.hash_index` precisely so routing and probing cannot diverge —
-        route by the top `RADIX_BITS` bits, and append (keys, values, global
-        row index, value-validity bitmask) to bucket[w][p]. No worker touches
-        another's buckets.
+      pass A (parallel over `workers` contiguous bands): per surviving row,
+        chain `fnv_fold` over the normalized key elements ONCE — the same
+        fold every table here probes with, from `columnar.hash_index`, so
+        routing and probing cannot diverge — keep the hash in a row-indexed
+        buffer, and COUNT the row into (worker, top-`RADIX_BITS` partition).
+
+      prefix sum (serial, workers x partitions entries): counts become
+        segment offsets, partition-major with band order inside a partition —
+        so partition p's region holds ascending global row order.
+
+      pass B (parallel over the same bands): re-walk the band, re-apply pass
+        A's null test (deterministic, so the same rows survive), and write
+        (keys, values-or-0.0, row index, validity bitmask, stored hash) at
+        the (worker, partition) cursor with raw stores. Bounds argument:
+        each cursor starts at its offset and bumps once per counted row, so
+        every index stays under offset + count <= survivors by construction —
+        and the final cursors are CHECKED; a mismatch falls back to the
+        independent banded engine loudly instead of trusting the scatter.
 
       pass 2 (parallel over `RADIX_PARTITIONS`): partition p's table is built
-        by ONE task from buckets [0][p], [1][p], ... in band order. Bands are
-        contiguous ascending row ranges and each bucket preserves scan order,
-        so that concatenation is ascending GLOBAL row order — every group's
-        accumulator folds its rows in exactly the serial path's order (results
-        are bit-identical to 1 worker, no merge tolerance anywhere), each
-        group's recorded first row IS its global first appearance, and each
-        partition's group list ascends in that index.
+        by ONE task over its contiguous segment, probing with the STORED hash
+        (`get_or_assign_bits`/`get_or_assign_hashed`). The segment ascends in
+        global row order, so every group's accumulator folds its rows in
+        exactly the serial path's order (results bit-identical to 1 worker,
+        no merge tolerance anywhere), each group's recorded first row IS its
+        global first appearance, and each partition's group list ascends in
+        that index. Updates are opcode-specialized (`observe_op`).
 
       order restore (sequential): P cursors, repeatedly emit the partition
         whose head has the smallest first-row index — a P-way merge of sorted
@@ -1491,26 +1983,100 @@ fn group_by_many_radix(
     var value_cols = List[Float64Array]()
     for j in range(n_aggs):
         value_cols.append(batch.column(value_columns[j]))
+    var value_nulls = _col_guard_flags(value_cols, n_rows)
+    var key_null_flags = _col_guard_flags(key_cols, n_rows)
+    var key_nulls = False
+    for i in range(width):
+        if key_null_flags[i]:
+            key_nulls = True
 
     var band = (n_rows + workers - 1) // workers
     var row_floats = width + n_aggs
 
-    # ── pass 1: scatter into worker-owned partition buckets ───────────────────
-    # bucket (w, p) lives at w * RADIX_PARTITIONS + p. Floats carry the row's
-    # keys then values (0.0 where the value is null — never read, the bitmask
-    # says so); meta carries (global row index, validity bitmask) pairs.
-    var expect = band // RADIX_PARTITIONS + band // (RADIX_PARTITIONS * 4) + 16
-    var b_floats = List[List[Float64]](capacity=workers * RADIX_PARTITIONS)
-    var b_meta = List[List[Int]](capacity=workers * RADIX_PARTITIONS)
-    var w_nulls = List[Int](capacity=workers)
-    for _ in range(workers * RADIX_PARTITIONS):
-        b_floats.append(List[Float64](capacity=expect * row_floats))
-        b_meta.append(List[Int](capacity=expect * 2))
-    for _ in range(workers):
-        w_nulls.append(0)
-    var fp = b_floats.unsafe_ptr()
-    var mp = b_meta.unsafe_ptr()
+    # ── pass A: hash every surviving row ONCE, count rows per (worker,
+    #    partition). No stores but the hash and a 16-counter bump — round 2's
+    #    per-element List.append bucket build is what this pass replaces. ─────
+    var hrow = alloc[UInt64](n_rows)
+    var counts = List[Int](length=workers * RADIX_PARTITIONS, fill=0)
+    var w_nulls = List[Int](length=workers, fill=0)
+    var cp = counts.unsafe_ptr()
     var np = w_nulls.unsafe_ptr()
+
+    @parameter
+    fn count_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
+        for c in range(width):
+            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+        # Worker-local counters, copied out once: adjacent workers' slices of
+        # the shared counts array share cache lines, and a per-row bump there
+        # would be false sharing on the hottest store in the pass.
+        var local = List[Int](length=RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        var nulls = 0
+        if width == 1 and not key_nulls:
+            # The H2O q3/q5/q7 shape: one key column, no nulls — worth its own
+            # loop so the width loop's per-row branch disappears.
+            var kp0 = kps[0]
+            for r in range(lo, hi):
+                var h = fnv_fold(FNV_OFFSET_BASIS, normalize_bits(kp0[r]))
+                hrow[r] = h
+                lp[Int(h >> (64 - RADIX_BITS))] += 1
+        else:
+            for r in range(lo, hi):
+                if key_nulls:
+                    var any_null = False
+                    for c in range(width):
+                        if not key_cols[c].is_valid_at(r):
+                            any_null = True
+                            break
+                    if any_null:
+                        nulls += 1
+                        continue
+                var h = FNV_OFFSET_BASIS
+                for c in range(width):
+                    h = fnv_fold(h, normalize_bits(kps[c][r]))
+                hrow[r] = h
+                lp[Int(h >> (64 - RADIX_BITS))] += 1
+        for p in range(RADIX_PARTITIONS):
+            cp[w * RADIX_PARTITIONS + p] = lp[p]
+        np[w] = nulls
+
+    parallelize[count_worker](workers)
+
+    # ── prefix sum: counts to segment offsets, partition-major, band order
+    #    within a partition. Segment (w, p) therefore holds ascending global
+    #    rows, and partition p's whole region is ascending too — the fold
+    #    order the bit-equal-to-serial promise needs. ─────────────────────────
+    var offsets = List[Int](length=workers * RADIX_PARTITIONS, fill=0)
+    var part_start = List[Int](length=RADIX_PARTITIONS + 1, fill=0)
+    var running = 0
+    for p in range(RADIX_PARTITIONS):
+        part_start[p] = running
+        for w in range(workers):
+            offsets[w * RADIX_PARTITIONS + p] = running
+            running += counts[w * RADIX_PARTITIONS + p]
+    part_start[RADIX_PARTITIONS] = running
+    var survivors = running
+
+    # ── pass B: write each surviving row's payload at its cursor, raw stores.
+    #    SAFETY: cursor(w, p) starts at offset(w, p) and bumps once per row
+    #    pass A counted for (w, p) — pass A and pass B run the SAME null test
+    #    and the SAME stored hash, so the row sets are identical and every
+    #    write index is < offset(w, p) + count(w, p) <= survivors by the
+    #    prefix-sum construction. The final cursors are CHECKED below; a
+    #    mismatch abandons the scatter for the independent banded engine
+    #    rather than trusting it. ─────────────────────────────────────────────
+    var pf = alloc[Float64](survivors * row_floats if survivors > 0 else 1)
+    var pm = alloc[Int](survivors * 2 if survivors > 0 else 1)
+    var ph = alloc[UInt64](survivors if survivors > 0 else 1)
+    var cursors = List[Int](length=workers * RADIX_PARTITIONS, fill=0)
+    for i in range(workers * RADIX_PARTITIONS):
+        cursors[i] = offsets[i]
+    var up = cursors.unsafe_ptr()
 
     @parameter
     fn scatter_worker(w: Int):
@@ -1518,38 +2084,89 @@ fn group_by_many_radix(
         var hi = lo + band
         if hi > n_rows:
             hi = n_rows
-        var key = List[Float64](capacity=width)
-        for _ in range(width):
-            key.append(0.0)
-        var nulls = 0
-        for r in range(lo, hi):
-            var any_null = False
-            for c in range(width):
-                if not key_cols[c].is_valid_at(r):
-                    any_null = True
-                    break
-                key[c] = key_cols[c].get(r)
-            if any_null:
-                nulls += 1
-                continue
-            var h = hash_composite(key, width)
-            var b = w * RADIX_PARTITIONS + Int(h >> (64 - RADIX_BITS))
-            for c in range(width):
-                fp[b].append(key[c])
-            var vmask = 0
-            for j in range(n_aggs):
-                if value_cols[j].is_valid_at(r):
-                    vmask = vmask | (1 << j)
-                    fp[b].append(value_cols[j].get(r))
-                else:
-                    fp[b].append(0.0)
-            mp[b].append(r)
-            mp[b].append(vmask)
-        np[w] = nulls
+        var kps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=width)
+        for c in range(width):
+            kps.append(key_cols[c].values[].unsafe_ptr() + key_cols[c].offset)
+        var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
+        for j in range(n_aggs):
+            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
+        var local = List[Int](length=RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        for p in range(RADIX_PARTITIONS):
+            lp[p] = up[w * RADIX_PARTITIONS + p]
+        var any_value_nulls = False
+        for j in range(n_aggs):
+            if value_nulls[j]:
+                any_value_nulls = True
+        if width == 1 and not key_nulls and not any_value_nulls:
+            # The all-present single-key shape, again worth its own loop: no
+            # validity anywhere, the full bitmask is a constant.
+            var kp0 = kps[0]
+            var full_mask = (1 << n_aggs) - 1
+            for r in range(lo, hi):
+                var h = hrow[r]
+                var part = Int(h >> (64 - RADIX_BITS))
+                var s = lp[part]
+                lp[part] = s + 1
+                var base = s * row_floats
+                pf[base] = kp0[r]
+                for j in range(n_aggs):
+                    pf[base + 1 + j] = vps[j][r]
+                pm[2 * s] = r
+                pm[2 * s + 1] = full_mask
+                ph[s] = h
+        else:
+            for r in range(lo, hi):
+                if key_nulls:
+                    # The same test pass A ran; deterministic, so the same rows skip.
+                    var any_null = False
+                    for c in range(width):
+                        if not key_cols[c].is_valid_at(r):
+                            any_null = True
+                            break
+                    if any_null:
+                        continue
+                var h = hrow[r]
+                var part = Int(h >> (64 - RADIX_BITS))
+                var s = lp[part]
+                lp[part] = s + 1
+                var base = s * row_floats
+                for c in range(width):
+                    pf[base + c] = kps[c][r]
+                var vmask = 0
+                for j in range(n_aggs):
+                    if not value_nulls[j] or value_cols[j].is_valid_at(r):
+                        vmask = vmask | (1 << j)
+                        pf[base + width + j] = vps[j][r]
+                    else:
+                        pf[base + width + j] = 0.0
+                pm[2 * s] = r
+                pm[2 * s + 1] = vmask
+                ph[s] = h
+        for p in range(RADIX_PARTITIONS):
+            up[w * RADIX_PARTITIONS + p] = lp[p]
 
     parallelize[scatter_worker](workers)
+    hrow.free()
 
-    # ── pass 2: one task per partition, buckets concatenated in band order ─────
+    # The raw stores' bounds argument, checked rather than trusted.
+    var scatter_ok = True
+    for i in range(workers * RADIX_PARTITIONS):
+        if cursors[i] != offsets[i] + counts[i]:
+            scatter_ok = False
+    if not scatter_ok:
+        pf.free()
+        pm.free()
+        ph.free()
+        print(
+            "group_by_many_radix: scatter cursor invariant violated;"
+            " falling back to the banded engine"
+        )
+        return group_by_many_banded(batch, key_columns, value_columns, opcodes, n_workers)
+
+    # ── pass 2: one task per partition, over its contiguous payload segment.
+    #    Probes reuse pass A's stored hash; fold order is ascending global row
+    #    order by the prefix-sum layout, exactly as round 2's concatenation. ──
     var p_tuples = List[List[Float64]](capacity=RADIX_PARTITIONS)
     var p_stripes = List[List[GroupAccumulator]](capacity=RADIX_PARTITIONS)
     var p_first = List[List[Int]](capacity=RADIX_PARTITIONS)
@@ -1564,51 +2181,53 @@ fn group_by_many_radix(
     @parameter
     fn partition_worker(p: Int):
         var group_count = 0
+        var s0 = part_start[p]
+        var s1 = part_start[p + 1]
         if width == 1:
             var index = HashIndex(64)
-            for w in range(workers):
-                var b = w * RADIX_PARTITIONS + p
-                var bucket_rows = len(mp[b]) // 2
-                for i in range(bucket_rows):
-                    var base = i * row_floats
-                    var key = fp[b][base]
-                    var slot = index.get_or_assign(key, group_count)
-                    if slot == group_count:
-                        group_count += 1
-                        ptp[p].append(key)
-                        for _ in range(n_aggs):
-                            psp[p].append(GroupAccumulator(key))
-                        pfp[p].append(mp[b][2 * i])
-                    var vmask = mp[b][2 * i + 1]
-                    for j in range(n_aggs):
-                        if ((vmask >> j) & 1) == 1:
-                            psp[p][slot * n_aggs + j].observe(fp[b][base + 1 + j])
+            for s in range(s0, s1):
+                var base = s * row_floats
+                var key = pf[base]
+                var slot = index.get_or_assign_bits(
+                    normalize_bits(key), ph[s], group_count
+                )
+                if slot == group_count:
+                    group_count += 1
+                    ptp[p].append(key)
+                    for _ in range(n_aggs):
+                        psp[p].append(GroupAccumulator(key))
+                    pfp[p].append(pm[2 * s])
+                var vmask = pm[2 * s + 1]
+                var sbase = slot * n_aggs
+                for j in range(n_aggs):
+                    if ((vmask >> j) & 1) == 1:
+                        psp[p][sbase + j].observe_op(opcodes[j], pf[base + 1 + j])
         else:
             var index = CompositeKeyIndex(width, 64)
-            var key = List[Float64](capacity=width)
-            for _ in range(width):
-                key.append(0.0)
-            for w in range(workers):
-                var b = w * RADIX_PARTITIONS + p
-                var bucket_rows = len(mp[b]) // 2
-                for i in range(bucket_rows):
-                    var base = i * row_floats
+            var key = List[Float64](length=width, fill=0.0)
+            var kb = key.unsafe_ptr()
+            for s in range(s0, s1):
+                var base = s * row_floats
+                for c in range(width):
+                    kb[c] = pf[base + c]
+                var slot = index.get_or_assign_hashed(key, ph[s], group_count)
+                if slot == group_count:
+                    group_count += 1
                     for c in range(width):
-                        key[c] = fp[b][base + c]
-                    var slot = index.get_or_assign(key, group_count)
-                    if slot == group_count:
-                        group_count += 1
-                        for c in range(width):
-                            ptp[p].append(key[c])
-                        for _ in range(n_aggs):
-                            psp[p].append(GroupAccumulator(key[0]))
-                        pfp[p].append(mp[b][2 * i])
-                    var vmask = mp[b][2 * i + 1]
-                    for j in range(n_aggs):
-                        if ((vmask >> j) & 1) == 1:
-                            psp[p][slot * n_aggs + j].observe(fp[b][base + width + j])
+                        ptp[p].append(kb[c])
+                    for _ in range(n_aggs):
+                        psp[p].append(GroupAccumulator(kb[0]))
+                    pfp[p].append(pm[2 * s])
+                var vmask = pm[2 * s + 1]
+                var sbase = slot * n_aggs
+                for j in range(n_aggs):
+                    if ((vmask >> j) & 1) == 1:
+                        psp[p][sbase + j].observe_op(opcodes[j], pf[base + width + j])
 
     parallelize[partition_worker](RADIX_PARTITIONS)
+    pf.free()
+    pm.free()
+    ph.free()
 
     # ── order restore: P-way merge on ascending first-row lists ────────────────
     var null_key_rows = 0
@@ -1618,22 +2237,22 @@ fn group_by_many_radix(
     for p in range(RADIX_PARTITIONS):
         total_groups += len(p_first[p])
 
-    var cursors = List[Int](capacity=RADIX_PARTITIONS)
+    var heads = List[Int](capacity=RADIX_PARTITIONS)
     for _ in range(RADIX_PARTITIONS):
-        cursors.append(0)
+        heads.append(0)
     var key_tuples = List[Float64](capacity=total_groups * width)
     var stripes = List[GroupAccumulator](capacity=total_groups * n_aggs)
     for _ in range(total_groups):
         var best_p = -1
         var best_row = n_rows  # every recorded first row is < n_rows
         for p in range(RADIX_PARTITIONS):
-            if cursors[p] < len(p_first[p]) and p_first[p][cursors[p]] < best_row:
+            if heads[p] < len(p_first[p]) and p_first[p][heads[p]] < best_row:
                 best_p = p
-                best_row = p_first[p][cursors[p]]
+                best_row = p_first[p][heads[p]]
         if best_p < 0:
             break  # unreachable: total_groups is the sum of the list lengths
-        var g = cursors[best_p]
-        cursors[best_p] = g + 1
+        var g = heads[best_p]
+        heads[best_p] = g + 1
         for c in range(width):
             key_tuples.append(p_tuples[best_p][g * width + c])
         for j in range(n_aggs):
@@ -1712,6 +2331,8 @@ fn group_by_coded_parallel(
     var value_cols = List[Float64Array]()
     for j in range(n_aggs):
         value_cols.append(batch.column(value_columns[j]))
+    var value_nulls = _col_guard_flags(value_cols, n_rows)
+    var key_has_nulls = key_col.null_count() > 0 or key_col.length < n_rows
     var bound = Float64(cardinality)
 
     var workers = n_workers
@@ -1729,11 +2350,15 @@ fn group_by_coded_parallel(
             seen.append(False)
         var order = List[Int]()
         var null_key_rows = 0
+        var kp = key_col.values[].unsafe_ptr() + key_col.offset
+        var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
+        for j in range(n_aggs):
+            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
         for r in range(n_rows):
-            if not key_col.is_valid_at(r):
+            if key_has_nulls and not key_col.is_valid_at(r):
                 null_key_rows += 1
                 continue
-            var k = key_col.get(r)
+            var k = kp[r]
             if not (k >= 0.0) or k >= bound:
                 return CodedGroupedResult(GROUP_CODED_KEY_NOT_A_CODE, _empty_many())
             var code = Int(k)
@@ -1742,9 +2367,10 @@ fn group_by_coded_parallel(
             if not seen[code]:
                 seen[code] = True
                 order.append(code)
+            var sbase = code * n_aggs
             for j in range(n_aggs):
-                if value_cols[j].is_valid_at(r):
-                    stripes[code * n_aggs + j].observe(value_cols[j].get(r))
+                if not value_nulls[j] or value_cols[j].is_valid_at(r):
+                    stripes[sbase + j].observe_op(opcodes[j], vps[j][r])
         # Emit in first-appearance order — NOT code order. Codes from
         # `columnar.dictionary` happen to be assigned in first-appearance order
         # of the encoding pass, but this batch may be a filtered or reordered
@@ -1793,11 +2419,15 @@ fn group_by_coded_parallel(
         if hi > n_rows:
             hi = n_rows
         var nulls = 0
+        var kp = key_col.values[].unsafe_ptr() + key_col.offset
+        var vps = List[UnsafePointer[Float64, origin=MutAnyOrigin]](capacity=n_aggs)
+        for j in range(n_aggs):
+            vps.append(value_cols[j].values[].unsafe_ptr() + value_cols[j].offset)
         for r in range(lo, hi):
-            if not key_col.is_valid_at(r):
+            if key_has_nulls and not key_col.is_valid_at(r):
                 nulls += 1
                 continue
-            var k = key_col.get(r)
+            var k = kp[r]
             if not (k >= 0.0) or k >= bound:
                 bp[w] = True
                 break  # the whole call refuses; nothing this band saw survives
@@ -1808,9 +2438,10 @@ fn group_by_coded_parallel(
             if not ep[w][code]:
                 ep[w][code] = True
                 op[w].append(code)
+            var sbase = code * n_aggs
             for j in range(n_aggs):
-                if value_cols[j].is_valid_at(r):
-                    sp[w][code * n_aggs + j].observe(value_cols[j].get(r))
+                if not value_nulls[j] or value_cols[j].is_valid_at(r):
+                    sp[w][sbase + j].observe_op(opcodes[j], vps[j][r])
         np[w] = nulls
 
     parallelize[coded_worker](workers)
