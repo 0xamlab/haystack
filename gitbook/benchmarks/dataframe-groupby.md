@@ -55,5 +55,4 @@ The benchmark asserts its cross-engine checksums in-process and gates the dispat
 
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Compute kernels](compute-kernels.md) — the matrix kernel results.
-* [M4 forecasting accuracy](forecasting-m4.md) — accuracy on all 100,000 M4 series.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.
