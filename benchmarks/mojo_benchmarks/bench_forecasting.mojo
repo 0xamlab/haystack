@@ -44,6 +44,13 @@ What is measured, and why each one is the claim that matters
    evaluation-count drift), quadratic lands at 16x and beyond. The 10x limit separates
    the hypotheses while tolerating the drift.
 
+8. **Paired-origin selection is K bounded refits, O(K x n) total.** `crn_origin_select`
+   at a FIXED K across a 4x rise in n inherits gate 7's shape and its 10x limit; growth
+   past that means the origin loop rescans or refits something it should not.
+
+9. **A moving-block resample is one O(n) pass.** ns per element flat across a 4x rise
+   in n, because this cost multiplies into every replicate of every bagged fit.
+
 Gate
 ----
 Fails on the SCALING properties, not on absolute nanoseconds, which vary by machine:
@@ -54,6 +61,8 @@ Fails on the SCALING properties, not on absolute nanoseconds, which vary by mach
   * reconciliation ns per cell must not grow more than 3x across a 16x rise in cells
   * initial-state-solve ns per observation must not grow more than 3x across a 4x rise in n
   * holt_fitted total cost must not grow more than 10x across a 4x rise in n
+  * crn_origin_select total cost at fixed K must not grow more than 10x across a 4x rise in n
+  * mbb_replicate ns per element must not grow more than 3x across a 4x rise in n
   * every timed call must return FC_OK — a refusal is instant and would "win" every timing
 Absolute numbers are printed for tracking.
 
@@ -70,7 +79,9 @@ from forecasting.contract import (
     FC_OK,
     FC_MAX_QUANTILE_SAMPLES,
 )
+from forecasting.bagging import mbb_replicate
 from forecasting.fitted import fitted_init_solve, holt_fitted
+from forecasting.origin_select import crn_origin_select
 from forecasting.hierarchy import reconcile_bottom_up_flat, reconcile_top_down_flat
 from forecasting.interval import interval_empirical_flat
 
@@ -437,6 +448,86 @@ fn main() raises:
             failures += 1
             print("  ❌ holt_fitted cost is super-linear per evaluation:", fit_total[0],
                   "->", fit_total[1])
+
+    # ══ 8. paired-origin selection is K bounded refits, O(K x n) total ═════════════
+    #
+    # `crn_origin_select` runs `max_origins + 1` three-candidate refits (K origins plus
+    # the full series), each the bounded O(n) fit gate 7 measures. At a FIXED K across a
+    # 4x rise in n, total cost must therefore grow like the fits themselves — the same
+    # 10x separation between the linear and quadratic hypotheses as gate 7, tolerating
+    # the same evaluation-count drift. If it grows past that, the origin loop is
+    # rescanning or refitting something it should not.
+    var org_total = List[Float64]()
+    var org_ns_list = List[Int]()
+    org_ns_list.append(512)
+    org_ns_list.append(2048)
+    for i in range(len(org_ns_list)):
+        var n_org = org_ns_list[i]
+        var yo = _series(n_org, 12)
+        var best_org: Float64 = 0.0
+        var refused_org = False
+        for rep in range(GATE_REPS):
+            var t16 = perf_counter_ns()
+            var sel = crn_origin_select(yo, 8, 4)
+            var t17 = perf_counter_ns()
+            if sel.status != FC_OK or sel.n_origins != 4:
+                refused_org = True
+                print("  ❌ crn_origin_select refused at n =", n_org, sel.status_name)
+                break
+            if rep == 0 or _ns(t16, t17) < best_org:
+                best_org = _ns(t16, t17)
+        if refused_org:
+            failures += 1
+            continue
+        org_total.append(best_org)
+        print("  n =", n_org, "K = 4, min of", GATE_REPS,
+              "crn_origin_select total ns", best_org)
+    if len(org_total) == 2:
+        if org_total[1] <= 10.0 * org_total[0]:
+            print("  ✅ paired-origin selection grew sub-quadratically across 4x n at fixed K")
+        else:
+            failures += 1
+            print("  ❌ paired-origin selection is super-linear:", org_total[0], "->",
+                  org_total[1])
+
+    # ══ 9. a moving-block resample is one O(n) pass ════════════════════════════════
+    #
+    # `mbb_replicate` draws ceil(n / block) keyed block starts and copies n values; ns
+    # per element must stay flat across a 4x rise in n, or the resample is doing
+    # per-element work that grows with the series — which would multiply into every
+    # replicate of every bagged fit.
+    var mbb_unit = List[Float64]()
+    var mbb_ns_list = List[Int]()
+    mbb_ns_list.append(4096)
+    mbb_ns_list.append(16384)
+    for i in range(len(mbb_ns_list)):
+        var n_mbb = mbb_ns_list[i]
+        var rem = _series(n_mbb, 12)
+        var best_mbb: Float64 = 0.0
+        var bad_mbb = False
+        for rep in range(GATE_REPS):
+            var t18 = perf_counter_ns()
+            var rs = mbb_replicate(rem, 32, 7, 11, rep)
+            var t19 = perf_counter_ns()
+            if len(rs) != n_mbb:
+                bad_mbb = True
+                print("  ❌ mbb_replicate refused at n =", n_mbb)
+                break
+            if rep == 0 or _ns(t18, t19) < best_mbb:
+                best_mbb = _ns(t18, t19)
+        if bad_mbb:
+            failures += 1
+            continue
+        mbb_unit.append(best_mbb / Float64(n_mbb))
+        print("  n =", n_mbb, "min of", GATE_REPS, "mbb ns/element",
+              best_mbb / Float64(n_mbb))
+    if len(mbb_unit) == 2:
+        if mbb_unit[1] <= 3.0 * mbb_unit[0]:
+            print("  ✅ moving-block resample cost per element stayed flat across 4x n")
+        else:
+            failures += 1
+            print("  ❌ moving-block resample is super-linear:", mbb_unit[0], "->",
+                  mbb_unit[1])
 
     print("  [bench_forecasting] scaling failures:", failures)
 

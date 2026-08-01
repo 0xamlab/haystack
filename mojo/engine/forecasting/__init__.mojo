@@ -90,6 +90,11 @@ Modules
                  state (the closed-form 2x2 initial-state solve plus the reference
                  Nelder-Mead), closing the measured M4 fixed-init defect
   select       — per-series selection and inverse-MAE combination over {SES, Damped, Theta}
+  origin_select — CRN-paired rolling-origin selection and the tournament tie gate:
+                 K paired origins inside the training series decide select-vs-combine
+                 per series, through `strategy.tournament`'s paired-t verdict
+  bagging      — moving-block-bootstrap bagged forecasts (Bergmeir-Hyndman on this
+                 substrate), keyed through `determinism.counter_rng`
   backtest     — rolling-origin backtest and the honest error measures
   intermittent — Croston / SBA / SBJ and demand classification
   hierarchy    — bottom-up and top-down reconciliation, plus a coherence audit

@@ -2391,6 +2391,12 @@ from forecasting.backtest import (
     forecast_errors_flat as _forecasting_backtest__forecast_errors_flat,
 )
 
+from forecasting.bagging import (
+    shrinking_ma_trend as _forecasting_bagging__shrinking_ma_trend,
+    mbb_replicate as _forecasting_bagging__mbb_replicate,
+    bagged_candidate_forecast as _forecasting_bagging__bagged_candidate_forecast,
+)
+
 from forecasting.contract import (
     fc_status_name as _forecasting_contract__fc_status_name,
     fc_method_name as _forecasting_contract__fc_method_name,
@@ -2438,6 +2444,12 @@ from forecasting.interval import (
     interval_empirical_flat as _forecasting_interval__interval_empirical_flat,
     interval_bootstrap_flat as _forecasting_interval__interval_bootstrap_flat,
     interval_coverage_flat as _forecasting_interval__interval_coverage_flat,
+)
+
+from forecasting.origin_select import (
+    origin_schedule as _forecasting_origin_select__origin_schedule,
+    crn_origin_select as _forecasting_origin_select__crn_origin_select,
+    tournament_gated_select as _forecasting_origin_select__tournament_gated_select,
 )
 
 from forecasting.point import (
@@ -7949,6 +7961,10 @@ from forecasting.backtest import (
     ErrorReport,
 )
 
+from forecasting.bagging import (
+    BaggedForecast,
+)
+
 from forecasting.contract import (
     FcQuantile,
 )
@@ -7971,6 +7987,10 @@ from forecasting.intermittent import (
 from forecasting.interval import (
     CoverageReport,
     IntervalBand,
+)
+
+from forecasting.origin_select import (
+    OriginSelected,
 )
 
 from forecasting.point import (
@@ -10039,6 +10059,44 @@ fn _to_json_backtestreport(value: BacktestReport) raises -> String:
     result += _to_json_int(value.worst_origin)
     result += ","
     result += _to_json_float64(value.worst_origin_mae)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
+fn _to_json_baggedforecast(value: BaggedForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BaggedForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.candidate_index)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_int(value.n_boot_requested)
+    result += ","
+    result += _to_json_int(value.n_boot_used)
+    result += ","
+    result += _to_json_int(value.n_boot_refused)
+    result += ","
+    result += _to_json_int(value.block_len)
+    result += ","
+    result += _to_json_int(value.trend_window)
+    result += ","
+    result += _to_json_int(value.master_seed)
+    result += ","
+    result += _to_json_int(value.series_id)
+    result += ","
+    result += _to_json_int(value.stream)
+    result += ","
+    result += _to_json_string(value.rng_version)
     result += ","
     result += _to_json_string(value.status_name)
     result += "]}"
@@ -15221,6 +15279,44 @@ fn _to_json_orderaudit(value: OrderAudit) raises -> String:
     result += _to_json_int(value.n_time_ties)
     result += ","
     result += _to_json_int(value.n_priority_ties)
+    result += "]}"
+    return result
+
+fn _to_json_originselected(value: OriginSelected) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OriginSelected\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_int(value.n_origins)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_int(value.chosen_method_id)
+    result += ","
+    result += _to_json_bool(value.is_combination)
+    result += ","
+    result += _to_json_int(value.n_tied)
+    result += ","
+    result += _to_json_list_int(value.method_ids)
+    result += ","
+    result += _to_json_list_int(value.component_status)
+    result += ","
+    result += _to_json_list_float64(value.mean_origin_maes)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_list_float64(value.p_values)
+    result += ","
+    result += _to_json_list_int(value.origin_index)
+    result += ","
+    result += _to_json_list_float64(value.origin_maes)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -59093,6 +59189,73 @@ fn _dispatch_forecasting__backtest(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module forecasting.backtest."
     )
 
+fn _dispatch_forecasting__bagging(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "shrinking_ma_trend":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_bagging__shrinking_ma_trend(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.bagging.shrinking_ma_trend."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.bagging.shrinking_ma_trend expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "mbb_replicate":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _forecasting_bagging__mbb_replicate(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.bagging.mbb_replicate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.bagging.mbb_replicate expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bagged_candidate_forecast":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _forecasting_bagging__bagged_candidate_forecast(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_baggedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.bagging.bagged_candidate_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.bagging.bagged_candidate_forecast expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.bagging."
+    )
+
 fn _dispatch_forecasting__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "fc_status_name":
@@ -59728,6 +59891,68 @@ fn _dispatch_forecasting__interval(function_name: String, args_array: String) ra
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module forecasting.interval."
+    )
+
+fn _dispatch_forecasting__origin_select(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "origin_schedule":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_origin_select__origin_schedule(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.origin_select.origin_schedule."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.origin_select.origin_schedule expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "crn_origin_select":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_origin_select__crn_origin_select(arg_0, arg_1, arg_2)
+                var result_json = _to_json_originselected(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.origin_select.crn_origin_select."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.origin_select.crn_origin_select expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tournament_gated_select":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _forecasting_origin_select__tournament_gated_select(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_originselected(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.origin_select.tournament_gated_select."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.origin_select.tournament_gated_select expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.origin_select."
     )
 
 fn _dispatch_forecasting__point(function_name: String, args_array: String) raises -> String:
@@ -148466,6 +148691,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_forecast_metrics(function_name, args_array)
     if module_name == "forecasting.backtest":
         return _dispatch_forecasting__backtest(function_name, args_array)
+    if module_name == "forecasting.bagging":
+        return _dispatch_forecasting__bagging(function_name, args_array)
     if module_name == "forecasting.contract":
         return _dispatch_forecasting__contract(function_name, args_array)
     if module_name == "forecasting.fitted":
@@ -148476,6 +148703,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_forecasting__intermittent(function_name, args_array)
     if module_name == "forecasting.interval":
         return _dispatch_forecasting__interval(function_name, args_array)
+    if module_name == "forecasting.origin_select":
+        return _dispatch_forecasting__origin_select(function_name, args_array)
     if module_name == "forecasting.point":
         return _dispatch_forecasting__point(function_name, args_array)
     if module_name == "forecasting.select":

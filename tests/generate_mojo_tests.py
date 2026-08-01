@@ -178,8 +178,10 @@ HANDWRITTEN_TESTS = frozenset(
         "test_tensor2d.mojo",
         # Forecasting package: hand-written known-value suites.
         "test_forecasting_backtest.mojo",
+        "test_forecasting_bagging.mojo",
         "test_forecasting_contract.mojo",
         "test_forecasting_fitted.mojo",
+        "test_forecasting_origin_select.mojo",
         "test_forecasting_hierarchy.mojo",
         "test_forecasting_intermittent.mojo",
         "test_forecasting_interval.mojo",
