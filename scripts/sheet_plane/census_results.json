@@ -1,0 +1,3644 @@
+{
+ "per_corpus": {
+  "spreadsheetbench_912": {
+   "workbooks": 5458,
+   "failed": 0,
+   "failures": [],
+   "sheets": 7859,
+   "cells": 16980309,
+   "formula_cells": 1264323,
+   "formula_cells_no_cached_value": 579175,
+   "shared_masters": 27523,
+   "shared_followers": 482536,
+   "shared_followers_no_master": 0,
+   "array_formulas": 72343,
+   "datatable_formulas": 0,
+   "inline_str_cells": 2266259,
+   "defined_names": 11755,
+   "external_links": 502,
+   "date1904_workbooks": 0,
+   "shared_strings_workbooks": 4082,
+   "cell_t": {
+    "s": 2357516,
+    "n": 11479167,
+    "str": 594310,
+    "inlineStr": 2266259,
+    "e": 33329,
+    "b": 249728
+   },
+   "func_cells": {
+    "IF": 534698,
+    "COUNTIFS": 226175,
+    "TIME": 221241,
+    "VLOOKUP": 175834,
+    "TEXTAFTER": 126126,
+    "IFERROR": 103648,
+    "AND": 66875,
+    "COUNTIF": 53542,
+    "YEAR": 48093,
+    "INDEX": 47850,
+    "MATCH": 44422,
+    "SUM": 41769,
+    "TODAY": 36310,
+    "INT": 34787,
+    "LEFT": 33410,
+    "SUBSTITUTE": 31753,
+    "MONTH": 29736,
+    "ROUNDUP": 20643,
+    "VALUE": 20497,
+    "TEXT": 19725,
+    "MAX": 17955,
+    "ROW": 16586,
+    "SUMPRODUCT": 16540,
+    "SUMIFS": 16477,
+    "DAYS": 16371,
+    "LOOKUP": 15999,
+    "LARGE": 15481,
+    "RIGHT": 14047,
+    "LEN": 14027,
+    "MIN": 13227,
+    "OR": 12041,
+    "EOMONTH": 11268,
+    "ROWS": 9650,
+    "ISNUMBER": 8339,
+    "ISBLANK": 7503,
+    "SUMIF": 7308,
+    "AGGREGATE": 6414,
+    "MOD": 6288,
+    "ROUNDDOWN": 6276,
+    "TRIM": 5179,
+    "ISNA": 4845,
+    "SMALL": 4316,
+    "SEARCH": 4020,
+    "DAY": 3639,
+    "EXACT": 3624,
+    "XLOOKUP": 3593,
+    "COLUMNS": 3562,
+    "COUNT": 3543,
+    "DATE": 3536,
+    "DATEDIF": 3492,
+    "FIND": 2945,
+    "YEARFRAC": 2652,
+    "RAND": 2292,
+    "MID": 2007,
+    "CEILING": 1968,
+    "COUNTA": 1905,
+    "TEXTJOIN": 1878,
+    "SORT": 1648,
+    "EDATE": 1524,
+    "AVERAGEIFS": 1452,
+    "ISODD": 1428,
+    "FREQUENCY": 1323,
+    "ISTEXT": 1287,
+    "ROUND": 1080,
+    "NOT": 1020,
+    "ABS": 1008,
+    "MINIFS": 959,
+    "REPT": 910,
+    "IFNA": 903,
+    "AVERAGE": 882,
+    "CONCATENATE": 852,
+    "WEEKNUM": 780,
+    "RANDBETWEEN": 780,
+    "ISEVEN": 705,
+    "WEEKDAY": 698,
+    "CHAR": 617,
+    "OFFSET": 612,
+    "WORKDAY": 588,
+    "INDIRECT": 583,
+    "UPPER": 582,
+    "COLUMN": 575,
+    "__XLUDF.DUMMYFUNCTION": 540,
+    "TRANSPOSE": 501,
+    "FILTER": 435,
+    "SECOND": 324,
+    "HOUR": 324,
+    "MINUTE": 324,
+    "REPLACE": 313,
+    "RANK": 311,
+    "TRIMMEAN": 300,
+    "ISERROR": 285,
+    "LET": 267,
+    "SUBTOTAL": 243,
+    "AVERAGEIF": 225,
+    "UNIQUE": 211,
+    "CHOOSE": 204,
+    "MAXIFS": 168,
+    "CODE": 138,
+    "ISERR": 132,
+    "NOW": 119,
+    "N": 99,
+    "DATEVALUE": 81,
+    "SIGN": 81,
+    "HLOOKUP": 63,
+    "CELL": 57,
+    "CONCAT": 48,
+    "MMULT": 48,
+    "SQRT": 45,
+    "CLRCNT": 42,
+    "TJDAY": 36,
+    "EOM": 36,
+    "SWITCH": 33,
+    "TEXTSPLIT": 30,
+    "T": 30,
+    "TRUE": 27,
+    "MEDIAN": 24,
+    "FILTERXML": 24,
+    "ARRAYFORMULA": 24,
+    "ERROR.TYPE": 21,
+    "DB": 18,
+    "DOLLARFR": 18,
+    "HYPERLINK": 16,
+    "COUNTBLANK": 15,
+    "XMATCH": 15,
+    "SEQUENCE": 15,
+    "PROPER": 14,
+    "NPV": 12,
+    "IFS": 9,
+    "FORMULATEXT": 9,
+    "STDEV": 8,
+    "SINGLE": 6,
+    "IMAGE": 6,
+    "HSTACK": 6,
+    "SORTBY": 6,
+    "TRUNC": 6,
+    "MROUND": 6,
+    "CLEAN": 6,
+    "DROP": 3
+   },
+   "cached_error_values": {
+    "#VALUE!": 20003,
+    "#REF!": 7968,
+    "#N/A": 2003,
+    "#NUM!": 639,
+    "#DIV/0!": 473,
+    "#NAME?": 33
+   },
+   "coverage_curve": [
+    {
+     "func": "<core: refs+operators, no functions>",
+     "cells": 145537,
+     "cum_covered": 145537,
+     "cum_pct": 11.5111
+    },
+    {
+     "func": "IF",
+     "cells": 534698,
+     "cum_covered": 283748,
+     "cum_pct": 22.4427
+    },
+    {
+     "func": "COUNTIFS",
+     "cells": 226175,
+     "cum_covered": 285938,
+     "cum_pct": 22.6159
+    },
+    {
+     "func": "TIME",
+     "cells": 221241,
+     "cum_covered": 505835,
+     "cum_pct": 40.0084
+    },
+    {
+     "func": "VLOOKUP",
+     "cells": 175834,
+     "cum_covered": 618660,
+     "cum_pct": 48.9321
+    },
+    {
+     "func": "TEXTAFTER",
+     "cells": 126126,
+     "cum_covered": 744786,
+     "cum_pct": 58.9079
+    },
+    {
+     "func": "IFERROR",
+     "cells": 103648,
+     "cum_covered": 808159,
+     "cum_pct": 63.9203
+    },
+    {
+     "func": "AND",
+     "cells": 66875,
+     "cum_covered": 827249,
+     "cum_pct": 65.4302
+    },
+    {
+     "func": "COUNTIF",
+     "cells": 53542,
+     "cum_covered": 864701,
+     "cum_pct": 68.3924
+    },
+    {
+     "func": "YEAR",
+     "cells": 48093,
+     "cum_covered": 885215,
+     "cum_pct": 70.0149
+    },
+    {
+     "func": "INDEX",
+     "cells": 47850,
+     "cum_covered": 885491,
+     "cum_pct": 70.0368
+    },
+    {
+     "func": "MATCH",
+     "cells": 44422,
+     "cum_covered": 902931,
+     "cum_pct": 71.4162
+    },
+    {
+     "func": "SUM",
+     "cells": 41769,
+     "cum_covered": 937206,
+     "cum_pct": 74.1271
+    },
+    {
+     "func": "TODAY",
+     "cells": 36310,
+     "cum_covered": 938956,
+     "cum_pct": 74.2655
+    },
+    {
+     "func": "INT",
+     "cells": 34787,
+     "cum_covered": 972393,
+     "cum_pct": 76.9102
+    },
+    {
+     "func": "LEFT",
+     "cells": 33410,
+     "cum_covered": 1002776,
+     "cum_pct": 79.3133
+    },
+    {
+     "func": "SUBSTITUTE",
+     "cells": 31753,
+     "cum_covered": 1009625,
+     "cum_pct": 79.855
+    },
+    {
+     "func": "MONTH",
+     "cells": 29736,
+     "cum_covered": 1010003,
+     "cum_pct": 79.8849
+    },
+    {
+     "func": "ROUNDUP",
+     "cells": 20643,
+     "cum_covered": 1030532,
+     "cum_pct": 81.5086
+    },
+    {
+     "func": "VALUE",
+     "cells": 20497,
+     "cum_covered": 1050404,
+     "cum_pct": 83.0804
+    },
+    {
+     "func": "TEXT",
+     "cells": 19725,
+     "cum_covered": 1066901,
+     "cum_pct": 84.3852
+    },
+    {
+     "func": "MAX",
+     "cells": 17955,
+     "cum_covered": 1074818,
+     "cum_pct": 85.0113
+    },
+    {
+     "func": "ROW",
+     "cells": 16586,
+     "cum_covered": 1075838,
+     "cum_pct": 85.092
+    },
+    {
+     "func": "SUMPRODUCT",
+     "cells": 16540,
+     "cum_covered": 1089715,
+     "cum_pct": 86.1896
+    },
+    {
+     "func": "SUMIFS",
+     "cells": 16477,
+     "cum_covered": 1092537,
+     "cum_pct": 86.4128
+    },
+    {
+     "func": "DAYS",
+     "cells": 16371,
+     "cum_covered": 1102494,
+     "cum_pct": 87.2003
+    },
+    {
+     "func": "LOOKUP",
+     "cells": 15999,
+     "cum_covered": 1116666,
+     "cum_pct": 88.3213
+    },
+    {
+     "func": "LARGE",
+     "cells": 15481,
+     "cum_covered": 1129753,
+     "cum_pct": 89.3564
+    },
+    {
+     "func": "RIGHT",
+     "cells": 14047,
+     "cum_covered": 1130098,
+     "cum_pct": 89.3836
+    },
+    {
+     "func": "LEN",
+     "cells": 14027,
+     "cum_covered": 1143816,
+     "cum_pct": 90.4687
+    },
+    {
+     "func": "MIN",
+     "cells": 13227,
+     "cum_covered": 1149816,
+     "cum_pct": 90.9432
+    },
+    {
+     "func": "OR",
+     "cells": 12041,
+     "cum_covered": 1160690,
+     "cum_pct": 91.8033
+    },
+    {
+     "func": "EOMONTH",
+     "cells": 11268,
+     "cum_covered": 1163039,
+     "cum_pct": 91.9891
+    },
+    {
+     "func": "ROWS",
+     "cells": 9650,
+     "cum_covered": 1164710,
+     "cum_pct": 92.1212
+    },
+    {
+     "func": "ISNUMBER",
+     "cells": 8339,
+     "cum_covered": 1168300,
+     "cum_pct": 92.4052
+    },
+    {
+     "func": "ISBLANK",
+     "cells": 7503,
+     "cum_covered": 1174282,
+     "cum_pct": 92.8783
+    },
+    {
+     "func": "SUMIF",
+     "cells": 7308,
+     "cum_covered": 1181563,
+     "cum_pct": 93.4542
+    },
+    {
+     "func": "AGGREGATE",
+     "cells": 6414,
+     "cum_covered": 1186437,
+     "cum_pct": 93.8397
+    },
+    {
+     "func": "MOD",
+     "cells": 6288,
+     "cum_covered": 1187817,
+     "cum_pct": 93.9489
+    },
+    {
+     "func": "ROUNDDOWN",
+     "cells": 6276,
+     "cum_covered": 1194093,
+     "cum_pct": 94.4452
+    },
+    {
+     "func": "TRIM",
+     "cells": 5179,
+     "cum_covered": 1198470,
+     "cum_pct": 94.7914
+    },
+    {
+     "func": "ISNA",
+     "cells": 4845,
+     "cum_covered": 1203255,
+     "cum_pct": 95.1699
+    },
+    {
+     "func": "SMALL",
+     "cells": 4316,
+     "cum_covered": 1204869,
+     "cum_pct": 95.2976
+    },
+    {
+     "func": "SEARCH",
+     "cells": 4020,
+     "cum_covered": 1208730,
+     "cum_pct": 95.6029
+    },
+    {
+     "func": "DAY",
+     "cells": 3639,
+     "cum_covered": 1211253,
+     "cum_pct": 95.8025
+    },
+    {
+     "func": "EXACT",
+     "cells": 3624,
+     "cum_covered": 1214865,
+     "cum_pct": 96.0882
+    },
+    {
+     "func": "XLOOKUP",
+     "cells": 3593,
+     "cum_covered": 1218293,
+     "cum_pct": 96.3593
+    },
+    {
+     "func": "COLUMNS",
+     "cells": 3562,
+     "cum_covered": 1219587,
+     "cum_pct": 96.4617
+    },
+    {
+     "func": "COUNT",
+     "cells": 3543,
+     "cum_covered": 1223103,
+     "cum_pct": 96.7398
+    },
+    {
+     "func": "DATE",
+     "cells": 3536,
+     "cum_covered": 1226093,
+     "cum_pct": 96.9762
+    },
+    {
+     "func": "DATEDIF",
+     "cells": 3492,
+     "cum_covered": 1229585,
+     "cum_pct": 97.2524
+    },
+    {
+     "func": "FIND",
+     "cells": 2945,
+     "cum_covered": 1231571,
+     "cum_pct": 97.4095
+    },
+    {
+     "func": "YEARFRAC",
+     "cells": 2652,
+     "cum_covered": 1232783,
+     "cum_pct": 97.5054
+    },
+    {
+     "func": "RAND",
+     "cells": 2292,
+     "cum_covered": 1234925,
+     "cum_pct": 97.6748
+    },
+    {
+     "func": "MID",
+     "cells": 2007,
+     "cum_covered": 1236155,
+     "cum_pct": 97.7721
+    },
+    {
+     "func": "CEILING",
+     "cells": 1968,
+     "cum_covered": 1238081,
+     "cum_pct": 97.9244
+    },
+    {
+     "func": "COUNTA",
+     "cells": 1905,
+     "cum_covered": 1239926,
+     "cum_pct": 98.0704
+    },
+    {
+     "func": "TEXTJOIN",
+     "cells": 1878,
+     "cum_covered": 1239944,
+     "cum_pct": 98.0718
+    },
+    {
+     "func": "SORT",
+     "cells": 1648,
+     "cum_covered": 1241579,
+     "cum_pct": 98.2011
+    },
+    {
+     "func": "EDATE",
+     "cells": 1524,
+     "cum_covered": 1243079,
+     "cum_pct": 98.3197
+    },
+    {
+     "func": "AVERAGEIFS",
+     "cells": 1452,
+     "cum_covered": 1244531,
+     "cum_pct": 98.4346
+    },
+    {
+     "func": "ISODD",
+     "cells": 1428,
+     "cum_covered": 1245206,
+     "cum_pct": 98.488
+    },
+    {
+     "func": "FREQUENCY",
+     "cells": 1323,
+     "cum_covered": 1245233,
+     "cum_pct": 98.4901
+    },
+    {
+     "func": "ISTEXT",
+     "cells": 1287,
+     "cum_covered": 1246520,
+     "cum_pct": 98.5919
+    },
+    {
+     "func": "ROUND",
+     "cells": 1080,
+     "cum_covered": 1247600,
+     "cum_pct": 98.6773
+    },
+    {
+     "func": "NOT",
+     "cells": 1020,
+     "cum_covered": 1248617,
+     "cum_pct": 98.7578
+    },
+    {
+     "func": "ABS",
+     "cells": 1008,
+     "cum_covered": 1249595,
+     "cum_pct": 98.8351
+    },
+    {
+     "func": "MINIFS",
+     "cells": 959,
+     "cum_covered": 1250554,
+     "cum_pct": 98.911
+    },
+    {
+     "func": "REPT",
+     "cells": 910,
+     "cum_covered": 1250897,
+     "cum_pct": 98.9381
+    },
+    {
+     "func": "IFNA",
+     "cells": 903,
+     "cum_covered": 1251725,
+     "cum_pct": 99.0036
+    },
+    {
+     "func": "AVERAGE",
+     "cells": 882,
+     "cum_covered": 1252587,
+     "cum_pct": 99.0718
+    },
+    {
+     "func": "CONCATENATE",
+     "cells": 852,
+     "cum_covered": 1253439,
+     "cum_pct": 99.1391
+    },
+    {
+     "func": "WEEKNUM",
+     "cells": 780,
+     "cum_covered": 1254219,
+     "cum_pct": 99.2008
+    },
+    {
+     "func": "RANDBETWEEN",
+     "cells": 780,
+     "cum_covered": 1254999,
+     "cum_pct": 99.2625
+    },
+    {
+     "func": "ISEVEN",
+     "cells": 705,
+     "cum_covered": 1255704,
+     "cum_pct": 99.3183
+    },
+    {
+     "func": "WEEKDAY",
+     "cells": 698,
+     "cum_covered": 1256384,
+     "cum_pct": 99.3721
+    },
+    {
+     "func": "CHAR",
+     "cells": 617,
+     "cum_covered": 1256863,
+     "cum_pct": 99.41
+    },
+    {
+     "func": "OFFSET",
+     "cells": 612,
+     "cum_covered": 1257256,
+     "cum_pct": 99.441
+    },
+    {
+     "func": "WORKDAY",
+     "cells": 588,
+     "cum_covered": 1257844,
+     "cum_pct": 99.4876
+    },
+    {
+     "func": "INDIRECT",
+     "cells": 583,
+     "cum_covered": 1258331,
+     "cum_pct": 99.5261
+    },
+    {
+     "func": "UPPER",
+     "cells": 582,
+     "cum_covered": 1258913,
+     "cum_pct": 99.5721
+    },
+    {
+     "func": "COLUMN",
+     "cells": 575,
+     "cum_covered": 1259362,
+     "cum_pct": 99.6076
+    },
+    {
+     "func": "__XLUDF.DUMMYFUNCTION",
+     "cells": 540,
+     "cum_covered": 1259902,
+     "cum_pct": 99.6503
+    },
+    {
+     "func": "TRANSPOSE",
+     "cells": 501,
+     "cum_covered": 1260088,
+     "cum_pct": 99.665
+    },
+    {
+     "func": "FILTER",
+     "cells": 435,
+     "cum_covered": 1260199,
+     "cum_pct": 99.6738
+    },
+    {
+     "func": "SECOND",
+     "cells": 324,
+     "cum_covered": 1260199,
+     "cum_pct": 99.6738
+    },
+    {
+     "func": "HOUR",
+     "cells": 324,
+     "cum_covered": 1260199,
+     "cum_pct": 99.6738
+    },
+    {
+     "func": "MINUTE",
+     "cells": 324,
+     "cum_covered": 1260523,
+     "cum_pct": 99.6994
+    },
+    {
+     "func": "REPLACE",
+     "cells": 313,
+     "cum_covered": 1260836,
+     "cum_pct": 99.7242
+    },
+    {
+     "func": "RANK",
+     "cells": 311,
+     "cum_covered": 1261147,
+     "cum_pct": 99.7488
+    },
+    {
+     "func": "TRIMMEAN",
+     "cells": 300,
+     "cum_covered": 1261447,
+     "cum_pct": 99.7725
+    },
+    {
+     "func": "ISERROR",
+     "cells": 285,
+     "cum_covered": 1261732,
+     "cum_pct": 99.7951
+    },
+    {
+     "func": "LET",
+     "cells": 267,
+     "cum_covered": 1261975,
+     "cum_pct": 99.8143
+    },
+    {
+     "func": "SUBTOTAL",
+     "cells": 243,
+     "cum_covered": 1262188,
+     "cum_pct": 99.8311
+    },
+    {
+     "func": "AVERAGEIF",
+     "cells": 225,
+     "cum_covered": 1262383,
+     "cum_pct": 99.8466
+    },
+    {
+     "func": "UNIQUE",
+     "cells": 211,
+     "cum_covered": 1262588,
+     "cum_pct": 99.8628
+    },
+    {
+     "func": "CHOOSE",
+     "cells": 204,
+     "cum_covered": 1262738,
+     "cum_pct": 99.8746
+    },
+    {
+     "func": "MAXIFS",
+     "cells": 168,
+     "cum_covered": 1262906,
+     "cum_pct": 99.8879
+    },
+    {
+     "func": "CODE",
+     "cells": 138,
+     "cum_covered": 1263044,
+     "cum_pct": 99.8988
+    },
+    {
+     "func": "ISERR",
+     "cells": 132,
+     "cum_covered": 1263176,
+     "cum_pct": 99.9093
+    },
+    {
+     "func": "NOW",
+     "cells": 119,
+     "cum_covered": 1263295,
+     "cum_pct": 99.9187
+    },
+    {
+     "func": "N",
+     "cells": 99,
+     "cum_covered": 1263394,
+     "cum_pct": 99.9265
+    },
+    {
+     "func": "DATEVALUE",
+     "cells": 81,
+     "cum_covered": 1263475,
+     "cum_pct": 99.9329
+    },
+    {
+     "func": "SIGN",
+     "cells": 81,
+     "cum_covered": 1263556,
+     "cum_pct": 99.9393
+    },
+    {
+     "func": "HLOOKUP",
+     "cells": 63,
+     "cum_covered": 1263619,
+     "cum_pct": 99.9443
+    },
+    {
+     "func": "CELL",
+     "cells": 57,
+     "cum_covered": 1263676,
+     "cum_pct": 99.9488
+    },
+    {
+     "func": "CONCAT",
+     "cells": 48,
+     "cum_covered": 1263724,
+     "cum_pct": 99.9526
+    },
+    {
+     "func": "MMULT",
+     "cells": 48,
+     "cum_covered": 1263772,
+     "cum_pct": 99.9564
+    },
+    {
+     "func": "SQRT",
+     "cells": 45,
+     "cum_covered": 1263817,
+     "cum_pct": 99.96
+    },
+    {
+     "func": "CLRCNT",
+     "cells": 42,
+     "cum_covered": 1263859,
+     "cum_pct": 99.9633
+    },
+    {
+     "func": "TJDAY",
+     "cells": 36,
+     "cum_covered": 1263895,
+     "cum_pct": 99.9661
+    },
+    {
+     "func": "EOM",
+     "cells": 36,
+     "cum_covered": 1263931,
+     "cum_pct": 99.969
+    },
+    {
+     "func": "SWITCH",
+     "cells": 33,
+     "cum_covered": 1263964,
+     "cum_pct": 99.9716
+    },
+    {
+     "func": "TEXTSPLIT",
+     "cells": 30,
+     "cum_covered": 1263979,
+     "cum_pct": 99.9728
+    },
+    {
+     "func": "T",
+     "cells": 30,
+     "cum_covered": 1264009,
+     "cum_pct": 99.9752
+    },
+    {
+     "func": "TRUE",
+     "cells": 27,
+     "cum_covered": 1264036,
+     "cum_pct": 99.9773
+    },
+    {
+     "func": "MEDIAN",
+     "cells": 24,
+     "cum_covered": 1264060,
+     "cum_pct": 99.9792
+    },
+    {
+     "func": "FILTERXML",
+     "cells": 24,
+     "cum_covered": 1264084,
+     "cum_pct": 99.9811
+    },
+    {
+     "func": "ARRAYFORMULA",
+     "cells": 24,
+     "cum_covered": 1264108,
+     "cum_pct": 99.983
+    },
+    {
+     "func": "ERROR.TYPE",
+     "cells": 21,
+     "cum_covered": 1264129,
+     "cum_pct": 99.9847
+    },
+    {
+     "func": "DB",
+     "cells": 18,
+     "cum_covered": 1264147,
+     "cum_pct": 99.9861
+    },
+    {
+     "func": "DOLLARFR",
+     "cells": 18,
+     "cum_covered": 1264165,
+     "cum_pct": 99.9875
+    },
+    {
+     "func": "HYPERLINK",
+     "cells": 16,
+     "cum_covered": 1264181,
+     "cum_pct": 99.9888
+    },
+    {
+     "func": "COUNTBLANK",
+     "cells": 15,
+     "cum_covered": 1264196,
+     "cum_pct": 99.99
+    },
+    {
+     "func": "XMATCH",
+     "cells": 15,
+     "cum_covered": 1264211,
+     "cum_pct": 99.9911
+    },
+    {
+     "func": "SEQUENCE",
+     "cells": 15,
+     "cum_covered": 1264226,
+     "cum_pct": 99.9923
+    },
+    {
+     "func": "PROPER",
+     "cells": 14,
+     "cum_covered": 1264240,
+     "cum_pct": 99.9934
+    },
+    {
+     "func": "NPV",
+     "cells": 12,
+     "cum_covered": 1264252,
+     "cum_pct": 99.9944
+    },
+    {
+     "func": "IFS",
+     "cells": 9,
+     "cum_covered": 1264261,
+     "cum_pct": 99.9951
+    },
+    {
+     "func": "FORMULATEXT",
+     "cells": 9,
+     "cum_covered": 1264270,
+     "cum_pct": 99.9958
+    },
+    {
+     "func": "STDEV",
+     "cells": 8,
+     "cum_covered": 1264278,
+     "cum_pct": 99.9964
+    },
+    {
+     "func": "SINGLE",
+     "cells": 6,
+     "cum_covered": 1264284,
+     "cum_pct": 99.9969
+    },
+    {
+     "func": "IMAGE",
+     "cells": 6,
+     "cum_covered": 1264290,
+     "cum_pct": 99.9974
+    },
+    {
+     "func": "HSTACK",
+     "cells": 6,
+     "cum_covered": 1264296,
+     "cum_pct": 99.9979
+    },
+    {
+     "func": "SORTBY",
+     "cells": 6,
+     "cum_covered": 1264302,
+     "cum_pct": 99.9983
+    },
+    {
+     "func": "TRUNC",
+     "cells": 6,
+     "cum_covered": 1264308,
+     "cum_pct": 99.9988
+    },
+    {
+     "func": "MROUND",
+     "cells": 6,
+     "cum_covered": 1264314,
+     "cum_pct": 99.9993
+    },
+    {
+     "func": "CLEAN",
+     "cells": 6,
+     "cum_covered": 1264320,
+     "cum_pct": 99.9998
+    },
+    {
+     "func": "DROP",
+     "cells": 3,
+     "cum_covered": 1264323,
+     "cum_pct": 100.0
+    }
+   ],
+   "distinct_funcsets": 571
+  },
+  "spreadsheetbench_v2": {
+   "workbooks": 472,
+   "failed": 0,
+   "failures": [],
+   "sheets": 4415,
+   "cells": 66109262,
+   "formula_cells": 4664326,
+   "formula_cells_no_cached_value": 258882,
+   "shared_masters": 180922,
+   "shared_followers": 2867863,
+   "shared_followers_no_master": 0,
+   "array_formulas": 304873,
+   "datatable_formulas": 108,
+   "inline_str_cells": 47047,
+   "defined_names": 563098,
+   "external_links": 49,
+   "date1904_workbooks": 0,
+   "shared_strings_workbooks": 382,
+   "cell_t": {
+    "inlineStr": 47047,
+    "n": 65511441,
+    "s": 304912,
+    "str": 226413,
+    "e": 19309,
+    "b": 140
+   },
+   "func_cells": {
+    "IF": 290645,
+    "SUM": 220006,
+    "INDIRECT": 208320,
+    "IFERROR": 126400,
+    "AVERAGE": 105024,
+    "OFFSET": 97747,
+    "STDEV": 88548,
+    "SUMIF": 33214,
+    "YEAR": 31207,
+    "EDATE": 27763,
+    "AND": 25675,
+    "MONTH": 20038,
+    "EOMONTH": 17122,
+    "VLOOKUP": 17019,
+    "CHOOSE": 7603,
+    "INDEX": 6300,
+    "MIN": 6217,
+    "MAX": 6069,
+    "MATCH": 5754,
+    "DATE": 3703,
+    "MEDIAN": 3675,
+    "HLOOKUP": 2442,
+    "TEXT": 2285,
+    "NA": 1923,
+    "ROUNDDOWN": 1254,
+    "RANK": 858,
+    "PPMT": 802,
+    "IPMT": 802,
+    "PMT": 760,
+    "ROUND": 759,
+    "SUMPRODUCT": 716,
+    "SUMIFS": 618,
+    "XLOOKUP": 510,
+    "ISNUMBER": 483,
+    "SIGN": 483,
+    "NOT": 482,
+    "COUNTIF": 360,
+    "LEFT": 312,
+    "COLUMNS": 300,
+    "TABLE": 250,
+    "COUNT": 197,
+    "MOD": 154,
+    "PROPER": 126,
+    "PERCENTILE": 121,
+    "CELL": 120,
+    "RATE": 110,
+    "__DATATABLE__": 108,
+    "XIRR": 98,
+    "IRR": 97,
+    "SUBSTITUTE": 96,
+    "ABS": 92,
+    "FALSE": 87,
+    "RRI": 85,
+    "TRUE": 85,
+    "VAR": 60,
+    "COVAR": 60,
+    "AVERAGEIF": 60,
+    "POWER": 50,
+    "CONCAT": 48,
+    "AGGREGATE": 40,
+    "PV": 38,
+    "_XLL.BDH": 36,
+    "LOOKUP": 36,
+    "PERCENTILE.EXC": 33,
+    "TODAY": 29,
+    "SQRT": 22,
+    "NORMSDIST": 22,
+    "MINIFS": 16,
+    "OR": 12,
+    "LN": 11,
+    "EXP": 11,
+    "TRANSPOSE": 11,
+    "_XLUDF.RRI": 8,
+    "LET": 6,
+    "FILTER": 6,
+    "DAY": 6,
+    "FORECAST": 5,
+    "CONCATENATE": 2,
+    "ROUNDUP": 2
+   },
+   "cached_error_values": {
+    "#REF!": 6027,
+    "#DIV/0!": 4081,
+    "#N/A": 2676,
+    "#VALUE!": 1328,
+    "#NAME?": 320,
+    "#NUM!": 140
+   },
+   "coverage_curve": [
+    {
+     "func": "<core: refs+operators, no functions>",
+     "cells": 3411022,
+     "cum_covered": 3411022,
+     "cum_pct": 73.13
+    },
+    {
+     "func": "IF",
+     "cells": 290645,
+     "cum_covered": 3652773,
+     "cum_pct": 78.313
+    },
+    {
+     "func": "SUM",
+     "cells": 220006,
+     "cum_covered": 3866867,
+     "cum_pct": 82.903
+    },
+    {
+     "func": "INDIRECT",
+     "cells": 208320,
+     "cum_covered": 4074767,
+     "cum_pct": 87.3603
+    },
+    {
+     "func": "IFERROR",
+     "cells": 126400,
+     "cum_covered": 4183384,
+     "cum_pct": 89.6889
+    },
+    {
+     "func": "AVERAGE",
+     "cells": 105024,
+     "cum_covered": 4288312,
+     "cum_pct": 91.9385
+    },
+    {
+     "func": "OFFSET",
+     "cells": 97747,
+     "cum_covered": 4386052,
+     "cum_pct": 94.034
+    },
+    {
+     "func": "STDEV",
+     "cells": 88548,
+     "cum_covered": 4474600,
+     "cum_pct": 95.9324
+    },
+    {
+     "func": "SUMIF",
+     "cells": 33214,
+     "cum_covered": 4507561,
+     "cum_pct": 96.6391
+    },
+    {
+     "func": "YEAR",
+     "cells": 31207,
+     "cum_covered": 4535878,
+     "cum_pct": 97.2462
+    },
+    {
+     "func": "EDATE",
+     "cells": 27763,
+     "cum_covered": 4539639,
+     "cum_pct": 97.3268
+    },
+    {
+     "func": "AND",
+     "cells": 25675,
+     "cum_covered": 4564809,
+     "cum_pct": 97.8664
+    },
+    {
+     "func": "MONTH",
+     "cells": 20038,
+     "cum_covered": 4583551,
+     "cum_pct": 98.2682
+    },
+    {
+     "func": "EOMONTH",
+     "cells": 17122,
+     "cum_covered": 4600583,
+     "cum_pct": 98.6334
+    },
+    {
+     "func": "VLOOKUP",
+     "cells": 17019,
+     "cum_covered": 4617215,
+     "cum_pct": 98.99
+    },
+    {
+     "func": "CHOOSE",
+     "cells": 7603,
+     "cum_covered": 4624818,
+     "cum_pct": 99.153
+    },
+    {
+     "func": "INDEX",
+     "cells": 6300,
+     "cum_covered": 4625372,
+     "cum_pct": 99.1649
+    },
+    {
+     "func": "MIN",
+     "cells": 6217,
+     "cum_covered": 4630911,
+     "cum_pct": 99.2836
+    },
+    {
+     "func": "MAX",
+     "cells": 6069,
+     "cum_covered": 4636555,
+     "cum_pct": 99.4046
+    },
+    {
+     "func": "MATCH",
+     "cells": 5754,
+     "cum_covered": 4641451,
+     "cum_pct": 99.5096
+    },
+    {
+     "func": "DATE",
+     "cells": 3703,
+     "cum_covered": 4643678,
+     "cum_pct": 99.5573
+    },
+    {
+     "func": "MEDIAN",
+     "cells": 3675,
+     "cum_covered": 4647351,
+     "cum_pct": 99.6361
+    },
+    {
+     "func": "HLOOKUP",
+     "cells": 2442,
+     "cum_covered": 4649708,
+     "cum_pct": 99.6866
+    },
+    {
+     "func": "TEXT",
+     "cells": 2285,
+     "cum_covered": 4651953,
+     "cum_pct": 99.7347
+    },
+    {
+     "func": "NA",
+     "cells": 1923,
+     "cum_covered": 4653636,
+     "cum_pct": 99.7708
+    },
+    {
+     "func": "ROUNDDOWN",
+     "cells": 1254,
+     "cum_covered": 4654890,
+     "cum_pct": 99.7977
+    },
+    {
+     "func": "RANK",
+     "cells": 858,
+     "cum_covered": 4655748,
+     "cum_pct": 99.8161
+    },
+    {
+     "func": "PPMT",
+     "cells": 802,
+     "cum_covered": 4656550,
+     "cum_pct": 99.8333
+    },
+    {
+     "func": "IPMT",
+     "cells": 802,
+     "cum_covered": 4657352,
+     "cum_pct": 99.8505
+    },
+    {
+     "func": "PMT",
+     "cells": 760,
+     "cum_covered": 4658112,
+     "cum_pct": 99.8668
+    },
+    {
+     "func": "ROUND",
+     "cells": 759,
+     "cum_covered": 4658788,
+     "cum_pct": 99.8813
+    },
+    {
+     "func": "SUMPRODUCT",
+     "cells": 716,
+     "cum_covered": 4659504,
+     "cum_pct": 99.8966
+    },
+    {
+     "func": "SUMIFS",
+     "cells": 618,
+     "cum_covered": 4660122,
+     "cum_pct": 99.9099
+    },
+    {
+     "func": "XLOOKUP",
+     "cells": 510,
+     "cum_covered": 4660632,
+     "cum_pct": 99.9208
+    },
+    {
+     "func": "ISNUMBER",
+     "cells": 483,
+     "cum_covered": 4660632,
+     "cum_pct": 99.9208
+    },
+    {
+     "func": "SIGN",
+     "cells": 483,
+     "cum_covered": 4660633,
+     "cum_pct": 99.9208
+    },
+    {
+     "func": "NOT",
+     "cells": 482,
+     "cum_covered": 4661115,
+     "cum_pct": 99.9312
+    },
+    {
+     "func": "COUNTIF",
+     "cells": 360,
+     "cum_covered": 4661475,
+     "cum_pct": 99.9389
+    },
+    {
+     "func": "LEFT",
+     "cells": 312,
+     "cum_covered": 4661787,
+     "cum_pct": 99.9456
+    },
+    {
+     "func": "COLUMNS",
+     "cells": 300,
+     "cum_covered": 4662087,
+     "cum_pct": 99.952
+    },
+    {
+     "func": "TABLE",
+     "cells": 250,
+     "cum_covered": 4662337,
+     "cum_pct": 99.9574
+    },
+    {
+     "func": "COUNT",
+     "cells": 197,
+     "cum_covered": 4662534,
+     "cum_pct": 99.9616
+    },
+    {
+     "func": "MOD",
+     "cells": 154,
+     "cum_covered": 4662688,
+     "cum_pct": 99.9649
+    },
+    {
+     "func": "PROPER",
+     "cells": 126,
+     "cum_covered": 4662814,
+     "cum_pct": 99.9676
+    },
+    {
+     "func": "PERCENTILE",
+     "cells": 121,
+     "cum_covered": 4662935,
+     "cum_pct": 99.9702
+    },
+    {
+     "func": "CELL",
+     "cells": 120,
+     "cum_covered": 4662959,
+     "cum_pct": 99.9707
+    },
+    {
+     "func": "RATE",
+     "cells": 110,
+     "cum_covered": 4663069,
+     "cum_pct": 99.9731
+    },
+    {
+     "func": "__DATATABLE__",
+     "cells": 108,
+     "cum_covered": 4663177,
+     "cum_pct": 99.9754
+    },
+    {
+     "func": "XIRR",
+     "cells": 98,
+     "cum_covered": 4663269,
+     "cum_pct": 99.9773
+    },
+    {
+     "func": "IRR",
+     "cells": 97,
+     "cum_covered": 4663366,
+     "cum_pct": 99.9794
+    },
+    {
+     "func": "SUBSTITUTE",
+     "cells": 96,
+     "cum_covered": 4663462,
+     "cum_pct": 99.9815
+    },
+    {
+     "func": "ABS",
+     "cells": 92,
+     "cum_covered": 4663506,
+     "cum_pct": 99.9824
+    },
+    {
+     "func": "FALSE",
+     "cells": 87,
+     "cum_covered": 4663593,
+     "cum_pct": 99.9843
+    },
+    {
+     "func": "RRI",
+     "cells": 85,
+     "cum_covered": 4663678,
+     "cum_pct": 99.9861
+    },
+    {
+     "func": "TRUE",
+     "cells": 85,
+     "cum_covered": 4663763,
+     "cum_pct": 99.9879
+    },
+    {
+     "func": "VAR",
+     "cells": 60,
+     "cum_covered": 4663775,
+     "cum_pct": 99.9882
+    },
+    {
+     "func": "COVAR",
+     "cells": 60,
+     "cum_covered": 4663835,
+     "cum_pct": 99.9895
+    },
+    {
+     "func": "AVERAGEIF",
+     "cells": 60,
+     "cum_covered": 4663895,
+     "cum_pct": 99.9908
+    },
+    {
+     "func": "POWER",
+     "cells": 50,
+     "cum_covered": 4663945,
+     "cum_pct": 99.9918
+    },
+    {
+     "func": "CONCAT",
+     "cells": 48,
+     "cum_covered": 4663993,
+     "cum_pct": 99.9929
+    },
+    {
+     "func": "AGGREGATE",
+     "cells": 40,
+     "cum_covered": 4664033,
+     "cum_pct": 99.9937
+    },
+    {
+     "func": "PV",
+     "cells": 38,
+     "cum_covered": 4664071,
+     "cum_pct": 99.9945
+    },
+    {
+     "func": "_XLL.BDH",
+     "cells": 36,
+     "cum_covered": 4664107,
+     "cum_pct": 99.9953
+    },
+    {
+     "func": "LOOKUP",
+     "cells": 36,
+     "cum_covered": 4664143,
+     "cum_pct": 99.9961
+    },
+    {
+     "func": "PERCENTILE.EXC",
+     "cells": 33,
+     "cum_covered": 4664176,
+     "cum_pct": 99.9968
+    },
+    {
+     "func": "TODAY",
+     "cells": 29,
+     "cum_covered": 4664203,
+     "cum_pct": 99.9974
+    },
+    {
+     "func": "SQRT",
+     "cells": 22,
+     "cum_covered": 4664214,
+     "cum_pct": 99.9976
+    },
+    {
+     "func": "NORMSDIST",
+     "cells": 22,
+     "cum_covered": 4664236,
+     "cum_pct": 99.9981
+    },
+    {
+     "func": "MINIFS",
+     "cells": 16,
+     "cum_covered": 4664252,
+     "cum_pct": 99.9984
+    },
+    {
+     "func": "OR",
+     "cells": 12,
+     "cum_covered": 4664264,
+     "cum_pct": 99.9987
+    },
+    {
+     "func": "LN",
+     "cells": 11,
+     "cum_covered": 4664275,
+     "cum_pct": 99.9989
+    },
+    {
+     "func": "EXP",
+     "cells": 11,
+     "cum_covered": 4664286,
+     "cum_pct": 99.9991
+    },
+    {
+     "func": "TRANSPOSE",
+     "cells": 11,
+     "cum_covered": 4664297,
+     "cum_pct": 99.9994
+    },
+    {
+     "func": "_XLUDF.RRI",
+     "cells": 8,
+     "cum_covered": 4664305,
+     "cum_pct": 99.9995
+    },
+    {
+     "func": "LET",
+     "cells": 6,
+     "cum_covered": 4664305,
+     "cum_pct": 99.9995
+    },
+    {
+     "func": "FILTER",
+     "cells": 6,
+     "cum_covered": 4664311,
+     "cum_pct": 99.9997
+    },
+    {
+     "func": "DAY",
+     "cells": 6,
+     "cum_covered": 4664317,
+     "cum_pct": 99.9998
+    },
+    {
+     "func": "FORECAST",
+     "cells": 5,
+     "cum_covered": 4664322,
+     "cum_pct": 99.9999
+    },
+    {
+     "func": "CONCATENATE",
+     "cells": 2,
+     "cum_covered": 4664324,
+     "cum_pct": 100.0
+    },
+    {
+     "func": "ROUNDUP",
+     "cells": 2,
+     "cum_covered": 4664326,
+     "cum_pct": 100.0
+    }
+   ],
+   "distinct_funcsets": 137
+  },
+  "finch": {
+   "workbooks": 301,
+   "failed": 0,
+   "failures": [],
+   "sheets": 1699,
+   "cells": 9437015,
+   "formula_cells": 3697300,
+   "formula_cells_no_cached_value": 530,
+   "shared_masters": 42967,
+   "shared_followers": 3341950,
+   "shared_followers_no_master": 0,
+   "array_formulas": 843,
+   "datatable_formulas": 20,
+   "inline_str_cells": 1016,
+   "defined_names": 3880,
+   "external_links": 148,
+   "date1904_workbooks": 0,
+   "shared_strings_workbooks": 297,
+   "cell_t": {
+    "n": 8605804,
+    "s": 489704,
+    "str": 100581,
+    "e": 239909,
+    "inlineStr": 1016,
+    "b": 1
+   },
+   "func_cells": {
+    "ROW": 2121753,
+    "OFFSET": 2067604,
+    "MIN": 1939443,
+    "IF": 352727,
+    "MAX": 183094,
+    "VLOOKUP": 122299,
+    "ABS": 121491,
+    "AND": 114750,
+    "AVERAGE": 80820,
+    "RANK": 45540,
+    "WEEKDAY": 40318,
+    "SUM": 20711,
+    "MATCH": 4066,
+    "INDEX": 2935,
+    "SUMIF": 2354,
+    "LN": 2025,
+    "EOMONTH": 1810,
+    "INDGENCOST": 1150,
+    "ISERROR": 948,
+    "CORREL": 793,
+    "COLUMN": 720,
+    "SUBTOTAL": 694,
+    "ROUND": 604,
+    "COUNTIF": 478,
+    "SUMPRODUCT": 368,
+    "SQRT": 317,
+    "STDEV.P": 308,
+    "LOOKUP": 285,
+    "COUNTA": 154,
+    "EDATE": 118,
+    "CONCATENATE": 67,
+    "ISTEXT": 48,
+    "TODAY": 27,
+    "ROWS": 24,
+    "GENCOST": 24,
+    "OR": 24,
+    "CEILING.MATH": 23,
+    "AGGREGATE": 22,
+    "__DATATABLE__": 20,
+    "STDEV": 18,
+    "NOW": 17,
+    "XNPV": 15,
+    "NPV": 14,
+    "COUNT": 12,
+    "LINEST": 12,
+    "CELL": 6,
+    "TRUNC": 4,
+    "ISNA": 4,
+    "CORRELATION": 4,
+    "IRR": 1
+   },
+   "cached_error_values": {
+    "#VALUE!": 156696,
+    "#DIV/0!": 61649,
+    "#N/A": 15668,
+    "#REF!": 2463,
+    "#NAME?": 1978
+   },
+   "coverage_curve": [
+    {
+     "func": "<core: refs+operators, no functions>",
+     "cells": 853475,
+     "cum_covered": 853475,
+     "cum_pct": 23.0837
+    },
+    {
+     "func": "ROW",
+     "cells": 2121753,
+     "cum_covered": 853487,
+     "cum_pct": 23.0841
+    },
+    {
+     "func": "OFFSET",
+     "cells": 2067604,
+     "cum_covered": 854080,
+     "cum_pct": 23.1001
+    },
+    {
+     "func": "MIN",
+     "cells": 1939443,
+     "cum_covered": 2793383,
+     "cum_pct": 75.552
+    },
+    {
+     "func": "IF",
+     "cells": 352727,
+     "cum_covered": 3014040,
+     "cum_pct": 81.52
+    },
+    {
+     "func": "MAX",
+     "cells": 183094,
+     "cum_covered": 3136390,
+     "cum_pct": 84.8292
+    },
+    {
+     "func": "VLOOKUP",
+     "cells": 122299,
+     "cum_covered": 3258689,
+     "cum_pct": 88.137
+    },
+    {
+     "func": "ABS",
+     "cells": 121491,
+     "cum_covered": 3380179,
+     "cum_pct": 91.4229
+    },
+    {
+     "func": "AND",
+     "cells": 114750,
+     "cum_covered": 3494929,
+     "cum_pct": 94.5265
+    },
+    {
+     "func": "AVERAGE",
+     "cells": 80820,
+     "cum_covered": 3575739,
+     "cum_pct": 96.7122
+    },
+    {
+     "func": "RANK",
+     "cells": 45540,
+     "cum_covered": 3621279,
+     "cum_pct": 97.9439
+    },
+    {
+     "func": "WEEKDAY",
+     "cells": 40318,
+     "cum_covered": 3661597,
+     "cum_pct": 99.0343
+    },
+    {
+     "func": "SUM",
+     "cells": 20711,
+     "cum_covered": 3682222,
+     "cum_pct": 99.5922
+    },
+    {
+     "func": "MATCH",
+     "cells": 4066,
+     "cum_covered": 3682224,
+     "cum_pct": 99.5922
+    },
+    {
+     "func": "INDEX",
+     "cells": 2935,
+     "cum_covered": 3684211,
+     "cum_pct": 99.646
+    },
+    {
+     "func": "SUMIF",
+     "cells": 2354,
+     "cum_covered": 3686549,
+     "cum_pct": 99.7092
+    },
+    {
+     "func": "LN",
+     "cells": 2025,
+     "cum_covered": 3688574,
+     "cum_pct": 99.764
+    },
+    {
+     "func": "EOMONTH",
+     "cells": 1810,
+     "cum_covered": 3690384,
+     "cum_pct": 99.8129
+    },
+    {
+     "func": "INDGENCOST",
+     "cells": 1150,
+     "cum_covered": 3691534,
+     "cum_pct": 99.844
+    },
+    {
+     "func": "ISERROR",
+     "cells": 948,
+     "cum_covered": 3692482,
+     "cum_pct": 99.8697
+    },
+    {
+     "func": "CORREL",
+     "cells": 793,
+     "cum_covered": 3693275,
+     "cum_pct": 99.8911
+    },
+    {
+     "func": "COLUMN",
+     "cells": 720,
+     "cum_covered": 3693995,
+     "cum_pct": 99.9106
+    },
+    {
+     "func": "SUBTOTAL",
+     "cells": 694,
+     "cum_covered": 3694689,
+     "cum_pct": 99.9294
+    },
+    {
+     "func": "ROUND",
+     "cells": 604,
+     "cum_covered": 3695237,
+     "cum_pct": 99.9442
+    },
+    {
+     "func": "COUNTIF",
+     "cells": 478,
+     "cum_covered": 3695715,
+     "cum_pct": 99.9571
+    },
+    {
+     "func": "SUMPRODUCT",
+     "cells": 368,
+     "cum_covered": 3696083,
+     "cum_pct": 99.9671
+    },
+    {
+     "func": "SQRT",
+     "cells": 317,
+     "cum_covered": 3696083,
+     "cum_pct": 99.9671
+    },
+    {
+     "func": "STDEV.P",
+     "cells": 308,
+     "cum_covered": 3696391,
+     "cum_pct": 99.9754
+    },
+    {
+     "func": "LOOKUP",
+     "cells": 285,
+     "cum_covered": 3696670,
+     "cum_pct": 99.983
+    },
+    {
+     "func": "COUNTA",
+     "cells": 154,
+     "cum_covered": 3696824,
+     "cum_pct": 99.9871
+    },
+    {
+     "func": "EDATE",
+     "cells": 118,
+     "cum_covered": 3696942,
+     "cum_pct": 99.9903
+    },
+    {
+     "func": "CONCATENATE",
+     "cells": 67,
+     "cum_covered": 3697009,
+     "cum_pct": 99.9921
+    },
+    {
+     "func": "ISTEXT",
+     "cells": 48,
+     "cum_covered": 3697033,
+     "cum_pct": 99.9928
+    },
+    {
+     "func": "TODAY",
+     "cells": 27,
+     "cum_covered": 3697060,
+     "cum_pct": 99.9935
+    },
+    {
+     "func": "ROWS",
+     "cells": 24,
+     "cum_covered": 3697084,
+     "cum_pct": 99.9942
+    },
+    {
+     "func": "GENCOST",
+     "cells": 24,
+     "cum_covered": 3697108,
+     "cum_pct": 99.9948
+    },
+    {
+     "func": "OR",
+     "cells": 24,
+     "cum_covered": 3697132,
+     "cum_pct": 99.9955
+    },
+    {
+     "func": "CEILING.MATH",
+     "cells": 23,
+     "cum_covered": 3697155,
+     "cum_pct": 99.9961
+    },
+    {
+     "func": "AGGREGATE",
+     "cells": 22,
+     "cum_covered": 3697177,
+     "cum_pct": 99.9967
+    },
+    {
+     "func": "__DATATABLE__",
+     "cells": 20,
+     "cum_covered": 3697197,
+     "cum_pct": 99.9972
+    },
+    {
+     "func": "STDEV",
+     "cells": 18,
+     "cum_covered": 3697215,
+     "cum_pct": 99.9977
+    },
+    {
+     "func": "NOW",
+     "cells": 17,
+     "cum_covered": 3697228,
+     "cum_pct": 99.9981
+    },
+    {
+     "func": "XNPV",
+     "cells": 15,
+     "cum_covered": 3697243,
+     "cum_pct": 99.9985
+    },
+    {
+     "func": "NPV",
+     "cells": 14,
+     "cum_covered": 3697257,
+     "cum_pct": 99.9988
+    },
+    {
+     "func": "COUNT",
+     "cells": 12,
+     "cum_covered": 3697269,
+     "cum_pct": 99.9992
+    },
+    {
+     "func": "LINEST",
+     "cells": 12,
+     "cum_covered": 3697281,
+     "cum_pct": 99.9995
+    },
+    {
+     "func": "CELL",
+     "cells": 6,
+     "cum_covered": 3697287,
+     "cum_pct": 99.9996
+    },
+    {
+     "func": "TRUNC",
+     "cells": 4,
+     "cum_covered": 3697291,
+     "cum_pct": 99.9998
+    },
+    {
+     "func": "ISNA",
+     "cells": 4,
+     "cum_covered": 3697295,
+     "cum_pct": 99.9999
+    },
+    {
+     "func": "CORRELATION",
+     "cells": 4,
+     "cum_covered": 3697299,
+     "cum_pct": 100.0
+    },
+    {
+     "func": "IRR",
+     "cells": 1,
+     "cum_covered": 3697300,
+     "cum_pct": 100.0
+    }
+   ],
+   "distinct_funcsets": 73
+  },
+  "bluefin": {
+   "workbooks": 17,
+   "failed": 0,
+   "failures": [],
+   "sheets": 108,
+   "cells": 959305,
+   "formula_cells": 222668,
+   "formula_cells_no_cached_value": 595,
+   "shared_masters": 9330,
+   "shared_followers": 152401,
+   "shared_followers_no_master": 0,
+   "array_formulas": 482,
+   "datatable_formulas": 20,
+   "inline_str_cells": 0,
+   "defined_names": 3470,
+   "external_links": 2,
+   "date1904_workbooks": 0,
+   "shared_strings_workbooks": 17,
+   "cell_t": {
+    "n": 945470,
+    "s": 9583,
+    "str": 3801,
+    "e": 10,
+    "b": 441
+   },
+   "func_cells": {
+    "SUM": 49122,
+    "IF": 37832,
+    "OFFSET": 21910,
+    "COUNTIF": 21672,
+    "SLN": 21600,
+    "IFERROR": 10575,
+    "VLOOKUP": 4966,
+    "SUMIF": 4940,
+    "EDATE": 3634,
+    "MONTH": 2048,
+    "YEAR": 1438,
+    "AND": 1152,
+    "ROUNDUP": 922,
+    "CHOOSE": 913,
+    "MIN": 894,
+    "MATCH": 622,
+    "INDEX": 622,
+    "INT": 606,
+    "ROUND": 599,
+    "EOMONTH": 490,
+    "DAY": 420,
+    "MAX": 397,
+    "COLUMN": 384,
+    "NOT": 302,
+    "ISERROR": 225,
+    "SUMPRODUCT": 188,
+    "OR": 134,
+    "TEXT": 104,
+    "AVERAGE": 60,
+    "PMT": 60,
+    "AVERAGEIF": 40,
+    "DATE": 36,
+    "SUBSTITUTE": 36,
+    "MEDIAN": 26,
+    "XIRR": 24,
+    "QUARTILE": 24,
+    "__DATATABLE__": 20,
+    "MAXIFS": 14,
+    "MINIFS": 14,
+    "TODAY": 13,
+    "PERCENTILE": 12,
+    "ROW": 10,
+    "IRR": 10,
+    "SUMIFS": 7,
+    "XNPV": 4,
+    "RATE": 4,
+    "__XLUDF.DUMMYFUNCTION": 2,
+    "NPV": 2,
+    "PV": 1,
+    "ABS": 1
+   },
+   "cached_error_values": {
+    "#DIV/0!": 9,
+    "#NUM!": 1
+   },
+   "coverage_curve": [
+    {
+     "func": "<core: refs+operators, no functions>",
+     "cells": 141893,
+     "cum_covered": 141893,
+     "cum_pct": 63.724
+    },
+    {
+     "func": "SUM",
+     "cells": 49122,
+     "cum_covered": 161045,
+     "cum_pct": 72.3252
+    },
+    {
+     "func": "IF",
+     "cells": 37832,
+     "cum_covered": 173001,
+     "cum_pct": 77.6946
+    },
+    {
+     "func": "OFFSET",
+     "cells": 21910,
+     "cum_covered": 173301,
+     "cum_pct": 77.8293
+    },
+    {
+     "func": "COUNTIF",
+     "cells": 21672,
+     "cum_covered": 173379,
+     "cum_pct": 77.8644
+    },
+    {
+     "func": "SLN",
+     "cells": 21600,
+     "cum_covered": 194977,
+     "cum_pct": 87.564
+    },
+    {
+     "func": "IFERROR",
+     "cells": 10575,
+     "cum_covered": 200538,
+     "cum_pct": 90.0614
+    },
+    {
+     "func": "VLOOKUP",
+     "cells": 4966,
+     "cum_covered": 205504,
+     "cum_pct": 92.2917
+    },
+    {
+     "func": "SUMIF",
+     "cells": 4940,
+     "cum_covered": 210444,
+     "cum_pct": 94.5102
+    },
+    {
+     "func": "EDATE",
+     "cells": 3634,
+     "cum_covered": 212926,
+     "cum_pct": 95.6249
+    },
+    {
+     "func": "MONTH",
+     "cells": 2048,
+     "cum_covered": 213110,
+     "cum_pct": 95.7075
+    },
+    {
+     "func": "YEAR",
+     "cells": 1438,
+     "cum_covered": 214502,
+     "cum_pct": 96.3327
+    },
+    {
+     "func": "AND",
+     "cells": 1152,
+     "cum_covered": 215654,
+     "cum_pct": 96.85
+    },
+    {
+     "func": "ROUNDUP",
+     "cells": 922,
+     "cum_covered": 216576,
+     "cum_pct": 97.2641
+    },
+    {
+     "func": "CHOOSE",
+     "cells": 913,
+     "cum_covered": 217489,
+     "cum_pct": 97.6741
+    },
+    {
+     "func": "MIN",
+     "cells": 894,
+     "cum_covered": 218313,
+     "cum_pct": 98.0442
+    },
+    {
+     "func": "MATCH",
+     "cells": 622,
+     "cum_covered": 218313,
+     "cum_pct": 98.0442
+    },
+    {
+     "func": "INDEX",
+     "cells": 622,
+     "cum_covered": 218935,
+     "cum_pct": 98.3235
+    },
+    {
+     "func": "INT",
+     "cells": 606,
+     "cum_covered": 219541,
+     "cum_pct": 98.5957
+    },
+    {
+     "func": "ROUND",
+     "cells": 599,
+     "cum_covered": 220139,
+     "cum_pct": 98.8642
+    },
+    {
+     "func": "EOMONTH",
+     "cells": 490,
+     "cum_covered": 220245,
+     "cum_pct": 98.9118
+    },
+    {
+     "func": "DAY",
+     "cells": 420,
+     "cum_covered": 220629,
+     "cum_pct": 99.0843
+    },
+    {
+     "func": "MAX",
+     "cells": 397,
+     "cum_covered": 220966,
+     "cum_pct": 99.2356
+    },
+    {
+     "func": "COLUMN",
+     "cells": 384,
+     "cum_covered": 221350,
+     "cum_pct": 99.4081
+    },
+    {
+     "func": "NOT",
+     "cells": 302,
+     "cum_covered": 221652,
+     "cum_pct": 99.5437
+    },
+    {
+     "func": "ISERROR",
+     "cells": 225,
+     "cum_covered": 221865,
+     "cum_pct": 99.6394
+    },
+    {
+     "func": "SUMPRODUCT",
+     "cells": 188,
+     "cum_covered": 222053,
+     "cum_pct": 99.7238
+    },
+    {
+     "func": "OR",
+     "cells": 134,
+     "cum_covered": 222155,
+     "cum_pct": 99.7696
+    },
+    {
+     "func": "TEXT",
+     "cells": 104,
+     "cum_covered": 222248,
+     "cum_pct": 99.8114
+    },
+    {
+     "func": "AVERAGE",
+     "cells": 60,
+     "cum_covered": 222308,
+     "cum_pct": 99.8383
+    },
+    {
+     "func": "PMT",
+     "cells": 60,
+     "cum_covered": 222368,
+     "cum_pct": 99.8653
+    },
+    {
+     "func": "AVERAGEIF",
+     "cells": 40,
+     "cum_covered": 222408,
+     "cum_pct": 99.8832
+    },
+    {
+     "func": "DATE",
+     "cells": 36,
+     "cum_covered": 222444,
+     "cum_pct": 99.8994
+    },
+    {
+     "func": "SUBSTITUTE",
+     "cells": 36,
+     "cum_covered": 222480,
+     "cum_pct": 99.9156
+    },
+    {
+     "func": "MEDIAN",
+     "cells": 26,
+     "cum_covered": 222506,
+     "cum_pct": 99.9272
+    },
+    {
+     "func": "XIRR",
+     "cells": 24,
+     "cum_covered": 222530,
+     "cum_pct": 99.938
+    },
+    {
+     "func": "QUARTILE",
+     "cells": 24,
+     "cum_covered": 222554,
+     "cum_pct": 99.9488
+    },
+    {
+     "func": "__DATATABLE__",
+     "cells": 20,
+     "cum_covered": 222574,
+     "cum_pct": 99.9578
+    },
+    {
+     "func": "MAXIFS",
+     "cells": 14,
+     "cum_covered": 222588,
+     "cum_pct": 99.9641
+    },
+    {
+     "func": "MINIFS",
+     "cells": 14,
+     "cum_covered": 222602,
+     "cum_pct": 99.9704
+    },
+    {
+     "func": "TODAY",
+     "cells": 13,
+     "cum_covered": 222615,
+     "cum_pct": 99.9762
+    },
+    {
+     "func": "PERCENTILE",
+     "cells": 12,
+     "cum_covered": 222627,
+     "cum_pct": 99.9816
+    },
+    {
+     "func": "ROW",
+     "cells": 10,
+     "cum_covered": 222637,
+     "cum_pct": 99.9861
+    },
+    {
+     "func": "IRR",
+     "cells": 10,
+     "cum_covered": 222647,
+     "cum_pct": 99.9906
+    },
+    {
+     "func": "SUMIFS",
+     "cells": 7,
+     "cum_covered": 222654,
+     "cum_pct": 99.9937
+    },
+    {
+     "func": "XNPV",
+     "cells": 4,
+     "cum_covered": 222658,
+     "cum_pct": 99.9955
+    },
+    {
+     "func": "RATE",
+     "cells": 4,
+     "cum_covered": 222662,
+     "cum_pct": 99.9973
+    },
+    {
+     "func": "__XLUDF.DUMMYFUNCTION",
+     "cells": 2,
+     "cum_covered": 222664,
+     "cum_pct": 99.9982
+    },
+    {
+     "func": "NPV",
+     "cells": 2,
+     "cum_covered": 222666,
+     "cum_pct": 99.9991
+    },
+    {
+     "func": "PV",
+     "cells": 1,
+     "cum_covered": 222667,
+     "cum_pct": 99.9996
+    },
+    {
+     "func": "ABS",
+     "cells": 1,
+     "cum_covered": 222668,
+     "cum_pct": 100.0
+    }
+   ],
+   "distinct_funcsets": 77
+  }
+ },
+ "overall": {
+  "workbooks": 6248,
+  "failed": 0,
+  "failures": [],
+  "sheets": 14081,
+  "cells": 93485891,
+  "formula_cells": 9848617,
+  "formula_cells_no_cached_value": 839182,
+  "shared_masters": 260742,
+  "shared_followers": 6844750,
+  "shared_followers_no_master": 0,
+  "array_formulas": 378541,
+  "datatable_formulas": 148,
+  "inline_str_cells": 2314322,
+  "defined_names": 582203,
+  "external_links": 701,
+  "date1904_workbooks": 0,
+  "shared_strings_workbooks": 4778,
+  "cell_t": {
+   "s": 3161715,
+   "n": 86541882,
+   "str": 925105,
+   "inlineStr": 2314322,
+   "e": 292557,
+   "b": 250310
+  },
+  "func_cells": {
+   "OFFSET": 2187873,
+   "ROW": 2138349,
+   "MIN": 1959781,
+   "IF": 1215902,
+   "SUM": 331608,
+   "VLOOKUP": 320118,
+   "IFERROR": 240623,
+   "COUNTIFS": 226175,
+   "TIME": 221241,
+   "INDIRECT": 208903,
+   "AND": 208452,
+   "MAX": 207515,
+   "AVERAGE": 186786,
+   "TEXTAFTER": 126126,
+   "ABS": 122592,
+   "STDEV": 88574,
+   "YEAR": 80738,
+   "COUNTIF": 76052,
+   "INDEX": 57707,
+   "MATCH": 54864,
+   "MONTH": 51822,
+   "SUMIF": 47816,
+   "RANK": 46709,
+   "WEEKDAY": 41016,
+   "TODAY": 36379,
+   "INT": 35393,
+   "LEFT": 33722,
+   "EDATE": 33039,
+   "SUBSTITUTE": 31885,
+   "EOMONTH": 30690,
+   "TEXT": 22114,
+   "SLN": 21600,
+   "ROUNDUP": 21567,
+   "VALUE": 20497,
+   "SUMPRODUCT": 17812,
+   "SUMIFS": 17102,
+   "DAYS": 16371,
+   "LOOKUP": 16320,
+   "LARGE": 15481,
+   "RIGHT": 14047,
+   "LEN": 14027,
+   "OR": 12211,
+   "ROWS": 9674,
+   "ISNUMBER": 8822,
+   "CHOOSE": 8720,
+   "ROUNDDOWN": 7530,
+   "ISBLANK": 7503,
+   "DATE": 7275,
+   "AGGREGATE": 6476,
+   "MOD": 6442,
+   "TRIM": 5179,
+   "ISNA": 4849,
+   "SMALL": 4316,
+   "XLOOKUP": 4103,
+   "DAY": 4065,
+   "SEARCH": 4020,
+   "COLUMNS": 3862,
+   "COUNT": 3752,
+   "MEDIAN": 3725,
+   "EXACT": 3624,
+   "DATEDIF": 3492,
+   "ROUND": 3042,
+   "FIND": 2945,
+   "YEARFRAC": 2652,
+   "HLOOKUP": 2505,
+   "RAND": 2292,
+   "COUNTA": 2059,
+   "LN": 2036,
+   "MID": 2007,
+   "CEILING": 1968,
+   "NA": 1923,
+   "TEXTJOIN": 1878,
+   "NOT": 1804,
+   "COLUMN": 1679,
+   "SORT": 1648,
+   "ISERROR": 1458,
+   "AVERAGEIFS": 1452,
+   "ISODD": 1428,
+   "ISTEXT": 1335,
+   "FREQUENCY": 1323,
+   "INDGENCOST": 1150,
+   "MINIFS": 989,
+   "SUBTOTAL": 937,
+   "CONCATENATE": 921,
+   "REPT": 910,
+   "IFNA": 903,
+   "PMT": 820,
+   "PPMT": 802,
+   "IPMT": 802,
+   "CORREL": 793,
+   "WEEKNUM": 780,
+   "RANDBETWEEN": 780,
+   "ISEVEN": 705,
+   "CHAR": 617,
+   "WORKDAY": 588,
+   "UPPER": 582,
+   "SIGN": 564,
+   "__XLUDF.DUMMYFUNCTION": 542,
+   "TRANSPOSE": 512,
+   "FILTER": 441,
+   "SQRT": 384,
+   "AVERAGEIF": 325,
+   "SECOND": 324,
+   "HOUR": 324,
+   "MINUTE": 324,
+   "REPLACE": 313,
+   "STDEV.P": 308,
+   "TRIMMEAN": 300,
+   "LET": 273,
+   "TABLE": 250,
+   "UNIQUE": 211,
+   "CELL": 183,
+   "MAXIFS": 182,
+   "__DATATABLE__": 148,
+   "PROPER": 140,
+   "CODE": 138,
+   "NOW": 136,
+   "PERCENTILE": 133,
+   "ISERR": 132,
+   "XIRR": 122,
+   "RATE": 114,
+   "TRUE": 112,
+   "IRR": 108,
+   "N": 99,
+   "CONCAT": 96,
+   "FALSE": 87,
+   "RRI": 85,
+   "DATEVALUE": 81,
+   "VAR": 60,
+   "COVAR": 60,
+   "POWER": 50,
+   "MMULT": 48,
+   "CLRCNT": 42,
+   "PV": 39,
+   "TJDAY": 36,
+   "EOM": 36,
+   "_XLL.BDH": 36,
+   "SWITCH": 33,
+   "PERCENTILE.EXC": 33,
+   "TEXTSPLIT": 30,
+   "T": 30,
+   "NPV": 28,
+   "FILTERXML": 24,
+   "ARRAYFORMULA": 24,
+   "GENCOST": 24,
+   "QUARTILE": 24,
+   "CEILING.MATH": 23,
+   "NORMSDIST": 22,
+   "ERROR.TYPE": 21,
+   "XNPV": 19,
+   "DB": 18,
+   "DOLLARFR": 18,
+   "HYPERLINK": 16,
+   "COUNTBLANK": 15,
+   "XMATCH": 15,
+   "SEQUENCE": 15,
+   "LINEST": 12,
+   "EXP": 11,
+   "TRUNC": 10,
+   "IFS": 9,
+   "FORMULATEXT": 9,
+   "_XLUDF.RRI": 8,
+   "SINGLE": 6,
+   "IMAGE": 6,
+   "HSTACK": 6,
+   "SORTBY": 6,
+   "MROUND": 6,
+   "CLEAN": 6,
+   "FORECAST": 5,
+   "CORRELATION": 4,
+   "DROP": 3
+  },
+  "cached_error_values": {
+   "#VALUE!": 178027,
+   "#DIV/0!": 66212,
+   "#N/A": 20347,
+   "#REF!": 16458,
+   "#NAME?": 2331,
+   "#NUM!": 780
+  },
+  "coverage_curve": [
+   {
+    "func": "<core: refs+operators, no functions>",
+    "cells": 4551927,
+    "cum_covered": 4551927,
+    "cum_pct": 46.2189
+   },
+   {
+    "func": "OFFSET",
+    "cells": 2187873,
+    "cum_covered": 4648015,
+    "cum_pct": 47.1946
+   },
+   {
+    "func": "ROW",
+    "cells": 2138349,
+    "cum_covered": 4648912,
+    "cum_pct": 47.2037
+   },
+   {
+    "func": "MIN",
+    "cells": 1959781,
+    "cum_covered": 6595242,
+    "cum_pct": 66.9662
+   },
+   {
+    "func": "IF",
+    "cells": 1215902,
+    "cum_covered": 7202644,
+    "cum_pct": 73.1336
+   },
+   {
+    "func": "SUM",
+    "cells": 331608,
+    "cum_covered": 7500078,
+    "cum_pct": 76.1536
+   },
+   {
+    "func": "VLOOKUP",
+    "cells": 320118,
+    "cum_covered": 7742173,
+    "cum_pct": 78.6118
+   },
+   {
+    "func": "IFERROR",
+    "cells": 240623,
+    "cum_covered": 7933353,
+    "cum_pct": 80.553
+   },
+   {
+    "func": "COUNTIFS",
+    "cells": 226175,
+    "cum_covered": 7936524,
+    "cum_pct": 80.5852
+   },
+   {
+    "func": "TIME",
+    "cells": 221241,
+    "cum_covered": 8156421,
+    "cum_pct": 82.8179
+   },
+   {
+    "func": "INDIRECT",
+    "cells": 208903,
+    "cum_covered": 8364420,
+    "cum_pct": 84.9299
+   },
+   {
+    "func": "AND",
+    "cells": 208452,
+    "cum_covered": 8499941,
+    "cum_pct": 86.3059
+   },
+   {
+    "func": "MAX",
+    "cells": 207515,
+    "cum_covered": 8636360,
+    "cum_pct": 87.6911
+   },
+   {
+    "func": "AVERAGE",
+    "cells": 186786,
+    "cum_covered": 8823005,
+    "cum_pct": 89.5862
+   },
+   {
+    "func": "TEXTAFTER",
+    "cells": 126126,
+    "cum_covered": 8949131,
+    "cum_pct": 90.8669
+   },
+   {
+    "func": "ABS",
+    "cells": 122592,
+    "cum_covered": 9070630,
+    "cum_pct": 92.1005
+   },
+   {
+    "func": "STDEV",
+    "cells": 88574,
+    "cum_covered": 9159195,
+    "cum_pct": 92.9998
+   },
+   {
+    "func": "YEAR",
+    "cells": 80738,
+    "cum_covered": 9208276,
+    "cum_pct": 93.4982
+   },
+   {
+    "func": "COUNTIF",
+    "cells": 76052,
+    "cum_covered": 9246731,
+    "cum_pct": 93.8886
+   },
+   {
+    "func": "INDEX",
+    "cells": 57707,
+    "cum_covered": 9247648,
+    "cum_pct": 93.8979
+   },
+   {
+    "func": "MATCH",
+    "cells": 54864,
+    "cum_covered": 9273295,
+    "cum_pct": 94.1583
+   },
+   {
+    "func": "MONTH",
+    "cells": 51822,
+    "cum_covered": 9293751,
+    "cum_pct": 94.3661
+   },
+   {
+    "func": "SUMIF",
+    "cells": 47816,
+    "cum_covered": 9341543,
+    "cum_pct": 94.8513
+   },
+   {
+    "func": "RANK",
+    "cells": 46709,
+    "cum_covered": 9388252,
+    "cum_pct": 95.3256
+   },
+   {
+    "func": "WEEKDAY",
+    "cells": 41016,
+    "cum_covered": 9428701,
+    "cum_pct": 95.7363
+   },
+   {
+    "func": "TODAY",
+    "cells": 36379,
+    "cum_covered": 9430525,
+    "cum_pct": 95.7548
+   },
+   {
+    "func": "INT",
+    "cells": 35393,
+    "cum_covered": 9464568,
+    "cum_pct": 96.1005
+   },
+   {
+    "func": "LEFT",
+    "cells": 33722,
+    "cum_covered": 9495263,
+    "cum_pct": 96.4121
+   },
+   {
+    "func": "EDATE",
+    "cells": 33039,
+    "cum_covered": 9526802,
+    "cum_pct": 96.7324
+   },
+   {
+    "func": "SUBSTITUTE",
+    "cells": 31885,
+    "cum_covered": 9533655,
+    "cum_pct": 96.802
+   },
+   {
+    "func": "EOMONTH",
+    "cells": 30690,
+    "cum_covered": 9553803,
+    "cum_pct": 97.0065
+   },
+   {
+    "func": "TEXT",
+    "cells": 22114,
+    "cum_covered": 9572651,
+    "cum_pct": 97.1979
+   },
+   {
+    "func": "SLN",
+    "cells": 21600,
+    "cum_covered": 9594251,
+    "cum_pct": 97.4172
+   },
+   {
+    "func": "ROUNDUP",
+    "cells": 21567,
+    "cum_covered": 9615710,
+    "cum_pct": 97.6351
+   },
+   {
+    "func": "VALUE",
+    "cells": 20497,
+    "cum_covered": 9635612,
+    "cum_pct": 97.8372
+   },
+   {
+    "func": "SUMPRODUCT",
+    "cells": 17812,
+    "cum_covered": 9651037,
+    "cum_pct": 97.9938
+   },
+   {
+    "func": "SUMIFS",
+    "cells": 17102,
+    "cum_covered": 9654982,
+    "cum_pct": 98.0339
+   },
+   {
+    "func": "DAYS",
+    "cells": 16371,
+    "cum_covered": 9664939,
+    "cum_pct": 98.135
+   },
+   {
+    "func": "LOOKUP",
+    "cells": 16320,
+    "cum_covered": 9679462,
+    "cum_pct": 98.2824
+   },
+   {
+    "func": "LARGE",
+    "cells": 15481,
+    "cum_covered": 9694835,
+    "cum_pct": 98.4385
+   },
+   {
+    "func": "RIGHT",
+    "cells": 14047,
+    "cum_covered": 9695195,
+    "cum_pct": 98.4422
+   },
+   {
+    "func": "LEN",
+    "cells": 14027,
+    "cum_covered": 9708913,
+    "cum_pct": 98.5815
+   },
+   {
+    "func": "OR",
+    "cells": 12211,
+    "cum_covered": 9720749,
+    "cum_pct": 98.7017
+   },
+   {
+    "func": "ROWS",
+    "cells": 9674,
+    "cum_covered": 9722444,
+    "cum_pct": 98.7189
+   },
+   {
+    "func": "ISNUMBER",
+    "cells": 8822,
+    "cum_covered": 9726040,
+    "cum_pct": 98.7554
+   },
+   {
+    "func": "CHOOSE",
+    "cells": 8720,
+    "cum_covered": 9734676,
+    "cum_pct": 98.8431
+   },
+   {
+    "func": "ROUNDDOWN",
+    "cells": 7530,
+    "cum_covered": 9742206,
+    "cum_pct": 98.9195
+   },
+   {
+    "func": "ISBLANK",
+    "cells": 7503,
+    "cum_covered": 9748188,
+    "cum_pct": 98.9803
+   },
+   {
+    "func": "DATE",
+    "cells": 7275,
+    "cum_covered": 9753309,
+    "cum_pct": 99.0323
+   },
+   {
+    "func": "AGGREGATE",
+    "cells": 6476,
+    "cum_covered": 9758269,
+    "cum_pct": 99.0826
+   },
+   {
+    "func": "MOD",
+    "cells": 6442,
+    "cum_covered": 9759839,
+    "cum_pct": 99.0986
+   },
+   {
+    "func": "TRIM",
+    "cells": 5179,
+    "cum_covered": 9764216,
+    "cum_pct": 99.143
+   },
+   {
+    "func": "ISNA",
+    "cells": 4849,
+    "cum_covered": 9769005,
+    "cum_pct": 99.1916
+   },
+   {
+    "func": "SMALL",
+    "cells": 4316,
+    "cum_covered": 9770625,
+    "cum_pct": 99.2081
+   },
+   {
+    "func": "XLOOKUP",
+    "cells": 4103,
+    "cum_covered": 9774563,
+    "cum_pct": 99.2481
+   },
+   {
+    "func": "DAY",
+    "cells": 4065,
+    "cum_covered": 9778148,
+    "cum_pct": 99.2845
+   },
+   {
+    "func": "SEARCH",
+    "cells": 4020,
+    "cum_covered": 9782009,
+    "cum_pct": 99.3237
+   },
+   {
+    "func": "COLUMNS",
+    "cells": 3862,
+    "cum_covered": 9783363,
+    "cum_pct": 99.3374
+   },
+   {
+    "func": "COUNT",
+    "cells": 3752,
+    "cum_covered": 9787088,
+    "cum_pct": 99.3753
+   },
+   {
+    "func": "MEDIAN",
+    "cells": 3725,
+    "cum_covered": 9790796,
+    "cum_pct": 99.4129
+   },
+   {
+    "func": "EXACT",
+    "cells": 3624,
+    "cum_covered": 9794408,
+    "cum_pct": 99.4496
+   },
+   {
+    "func": "DATEDIF",
+    "cells": 3492,
+    "cum_covered": 9797900,
+    "cum_pct": 99.485
+   },
+   {
+    "func": "ROUND",
+    "cells": 3042,
+    "cum_covered": 9800796,
+    "cum_pct": 99.5144
+   },
+   {
+    "func": "FIND",
+    "cells": 2945,
+    "cum_covered": 9802782,
+    "cum_pct": 99.5346
+   },
+   {
+    "func": "YEARFRAC",
+    "cells": 2652,
+    "cum_covered": 9805434,
+    "cum_pct": 99.5615
+   },
+   {
+    "func": "HLOOKUP",
+    "cells": 2505,
+    "cum_covered": 9807800,
+    "cum_pct": 99.5856
+   },
+   {
+    "func": "RAND",
+    "cells": 2292,
+    "cum_covered": 9809942,
+    "cum_pct": 99.6073
+   },
+   {
+    "func": "COUNTA",
+    "cells": 2059,
+    "cum_covered": 9811941,
+    "cum_pct": 99.6276
+   },
+   {
+    "func": "LN",
+    "cells": 2036,
+    "cum_covered": 9813966,
+    "cum_pct": 99.6482
+   },
+   {
+    "func": "MID",
+    "cells": 2007,
+    "cum_covered": 9815196,
+    "cum_pct": 99.6607
+   },
+   {
+    "func": "CEILING",
+    "cells": 1968,
+    "cum_covered": 9817164,
+    "cum_pct": 99.6806
+   },
+   {
+    "func": "NA",
+    "cells": 1923,
+    "cum_covered": 9819087,
+    "cum_pct": 99.7002
+   },
+   {
+    "func": "TEXTJOIN",
+    "cells": 1878,
+    "cum_covered": 9819105,
+    "cum_pct": 99.7003
+   },
+   {
+    "func": "NOT",
+    "cells": 1804,
+    "cum_covered": 9820427,
+    "cum_pct": 99.7138
+   },
+   {
+    "func": "COLUMN",
+    "cells": 1679,
+    "cum_covered": 9821890,
+    "cum_pct": 99.7286
+   },
+   {
+    "func": "SORT",
+    "cells": 1648,
+    "cum_covered": 9823525,
+    "cum_pct": 99.7452
+   },
+   {
+    "func": "ISERROR",
+    "cells": 1458,
+    "cum_covered": 9824869,
+    "cum_pct": 99.7589
+   },
+   {
+    "func": "AVERAGEIFS",
+    "cells": 1452,
+    "cum_covered": 9826321,
+    "cum_pct": 99.7736
+   },
+   {
+    "func": "ISODD",
+    "cells": 1428,
+    "cum_covered": 9827044,
+    "cum_pct": 99.781
+   },
+   {
+    "func": "ISTEXT",
+    "cells": 1335,
+    "cum_covered": 9828379,
+    "cum_pct": 99.7945
+   },
+   {
+    "func": "FREQUENCY",
+    "cells": 1323,
+    "cum_covered": 9829462,
+    "cum_pct": 99.8055
+   },
+   {
+    "func": "INDGENCOST",
+    "cells": 1150,
+    "cum_covered": 9830612,
+    "cum_pct": 99.8172
+   },
+   {
+    "func": "MINIFS",
+    "cells": 989,
+    "cum_covered": 9831601,
+    "cum_pct": 99.8272
+   },
+   {
+    "func": "SUBTOTAL",
+    "cells": 937,
+    "cum_covered": 9832538,
+    "cum_pct": 99.8367
+   },
+   {
+    "func": "CONCATENATE",
+    "cells": 921,
+    "cum_covered": 9833459,
+    "cum_pct": 99.8461
+   },
+   {
+    "func": "REPT",
+    "cells": 910,
+    "cum_covered": 9833886,
+    "cum_pct": 99.8504
+   },
+   {
+    "func": "IFNA",
+    "cells": 903,
+    "cum_covered": 9834768,
+    "cum_pct": 99.8594
+   },
+   {
+    "func": "PMT",
+    "cells": 820,
+    "cum_covered": 9835588,
+    "cum_pct": 99.8677
+   },
+   {
+    "func": "PPMT",
+    "cells": 802,
+    "cum_covered": 9836390,
+    "cum_pct": 99.8759
+   },
+   {
+    "func": "IPMT",
+    "cells": 802,
+    "cum_covered": 9837192,
+    "cum_pct": 99.884
+   },
+   {
+    "func": "CORREL",
+    "cells": 793,
+    "cum_covered": 9837985,
+    "cum_pct": 99.892
+   },
+   {
+    "func": "WEEKNUM",
+    "cells": 780,
+    "cum_covered": 9838765,
+    "cum_pct": 99.9
+   },
+   {
+    "func": "RANDBETWEEN",
+    "cells": 780,
+    "cum_covered": 9839545,
+    "cum_pct": 99.9079
+   },
+   {
+    "func": "ISEVEN",
+    "cells": 705,
+    "cum_covered": 9840250,
+    "cum_pct": 99.915
+   },
+   {
+    "func": "CHAR",
+    "cells": 617,
+    "cum_covered": 9840729,
+    "cum_pct": 99.9199
+   },
+   {
+    "func": "WORKDAY",
+    "cells": 588,
+    "cum_covered": 9841317,
+    "cum_pct": 99.9259
+   },
+   {
+    "func": "UPPER",
+    "cells": 582,
+    "cum_covered": 9841899,
+    "cum_pct": 99.9318
+   },
+   {
+    "func": "SIGN",
+    "cells": 564,
+    "cum_covered": 9842463,
+    "cum_pct": 99.9375
+   },
+   {
+    "func": "__XLUDF.DUMMYFUNCTION",
+    "cells": 542,
+    "cum_covered": 9843005,
+    "cum_pct": 99.943
+   },
+   {
+    "func": "TRANSPOSE",
+    "cells": 512,
+    "cum_covered": 9843202,
+    "cum_pct": 99.945
+   },
+   {
+    "func": "FILTER",
+    "cells": 441,
+    "cum_covered": 9843328,
+    "cum_pct": 99.9463
+   },
+   {
+    "func": "SQRT",
+    "cells": 384,
+    "cum_covered": 9843374,
+    "cum_pct": 99.9468
+   },
+   {
+    "func": "AVERAGEIF",
+    "cells": 325,
+    "cum_covered": 9843699,
+    "cum_pct": 99.9501
+   },
+   {
+    "func": "SECOND",
+    "cells": 324,
+    "cum_covered": 9843699,
+    "cum_pct": 99.9501
+   },
+   {
+    "func": "HOUR",
+    "cells": 324,
+    "cum_covered": 9843699,
+    "cum_pct": 99.9501
+   },
+   {
+    "func": "MINUTE",
+    "cells": 324,
+    "cum_covered": 9844023,
+    "cum_pct": 99.9534
+   },
+   {
+    "func": "REPLACE",
+    "cells": 313,
+    "cum_covered": 9844336,
+    "cum_pct": 99.9565
+   },
+   {
+    "func": "STDEV.P",
+    "cells": 308,
+    "cum_covered": 9844644,
+    "cum_pct": 99.9597
+   },
+   {
+    "func": "TRIMMEAN",
+    "cells": 300,
+    "cum_covered": 9844944,
+    "cum_pct": 99.9627
+   },
+   {
+    "func": "LET",
+    "cells": 273,
+    "cum_covered": 9845187,
+    "cum_pct": 99.9652
+   },
+   {
+    "func": "TABLE",
+    "cells": 250,
+    "cum_covered": 9845437,
+    "cum_pct": 99.9677
+   },
+   {
+    "func": "UNIQUE",
+    "cells": 211,
+    "cum_covered": 9845642,
+    "cum_pct": 99.9698
+   },
+   {
+    "func": "CELL",
+    "cells": 183,
+    "cum_covered": 9845825,
+    "cum_pct": 99.9717
+   },
+   {
+    "func": "MAXIFS",
+    "cells": 182,
+    "cum_covered": 9846007,
+    "cum_pct": 99.9735
+   },
+   {
+    "func": "__DATATABLE__",
+    "cells": 148,
+    "cum_covered": 9846155,
+    "cum_pct": 99.975
+   },
+   {
+    "func": "PROPER",
+    "cells": 140,
+    "cum_covered": 9846295,
+    "cum_pct": 99.9764
+   },
+   {
+    "func": "CODE",
+    "cells": 138,
+    "cum_covered": 9846433,
+    "cum_pct": 99.9778
+   },
+   {
+    "func": "NOW",
+    "cells": 136,
+    "cum_covered": 9846565,
+    "cum_pct": 99.9792
+   },
+   {
+    "func": "PERCENTILE",
+    "cells": 133,
+    "cum_covered": 9846698,
+    "cum_pct": 99.9805
+   },
+   {
+    "func": "ISERR",
+    "cells": 132,
+    "cum_covered": 9846830,
+    "cum_pct": 99.9819
+   },
+   {
+    "func": "XIRR",
+    "cells": 122,
+    "cum_covered": 9846952,
+    "cum_pct": 99.9831
+   },
+   {
+    "func": "RATE",
+    "cells": 114,
+    "cum_covered": 9847066,
+    "cum_pct": 99.9843
+   },
+   {
+    "func": "TRUE",
+    "cells": 112,
+    "cum_covered": 9847178,
+    "cum_pct": 99.9854
+   },
+   {
+    "func": "IRR",
+    "cells": 108,
+    "cum_covered": 9847286,
+    "cum_pct": 99.9865
+   },
+   {
+    "func": "N",
+    "cells": 99,
+    "cum_covered": 9847385,
+    "cum_pct": 99.9875
+   },
+   {
+    "func": "CONCAT",
+    "cells": 96,
+    "cum_covered": 9847481,
+    "cum_pct": 99.9885
+   },
+   {
+    "func": "FALSE",
+    "cells": 87,
+    "cum_covered": 9847568,
+    "cum_pct": 99.9893
+   },
+   {
+    "func": "RRI",
+    "cells": 85,
+    "cum_covered": 9847653,
+    "cum_pct": 99.9902
+   },
+   {
+    "func": "DATEVALUE",
+    "cells": 81,
+    "cum_covered": 9847734,
+    "cum_pct": 99.991
+   },
+   {
+    "func": "VAR",
+    "cells": 60,
+    "cum_covered": 9847746,
+    "cum_pct": 99.9912
+   },
+   {
+    "func": "COVAR",
+    "cells": 60,
+    "cum_covered": 9847806,
+    "cum_pct": 99.9918
+   },
+   {
+    "func": "POWER",
+    "cells": 50,
+    "cum_covered": 9847856,
+    "cum_pct": 99.9923
+   },
+   {
+    "func": "MMULT",
+    "cells": 48,
+    "cum_covered": 9847904,
+    "cum_pct": 99.9928
+   },
+   {
+    "func": "CLRCNT",
+    "cells": 42,
+    "cum_covered": 9847946,
+    "cum_pct": 99.9932
+   },
+   {
+    "func": "PV",
+    "cells": 39,
+    "cum_covered": 9847985,
+    "cum_pct": 99.9936
+   },
+   {
+    "func": "TJDAY",
+    "cells": 36,
+    "cum_covered": 9848021,
+    "cum_pct": 99.9939
+   },
+   {
+    "func": "EOM",
+    "cells": 36,
+    "cum_covered": 9848057,
+    "cum_pct": 99.9943
+   },
+   {
+    "func": "_XLL.BDH",
+    "cells": 36,
+    "cum_covered": 9848093,
+    "cum_pct": 99.9947
+   },
+   {
+    "func": "SWITCH",
+    "cells": 33,
+    "cum_covered": 9848126,
+    "cum_pct": 99.995
+   },
+   {
+    "func": "PERCENTILE.EXC",
+    "cells": 33,
+    "cum_covered": 9848159,
+    "cum_pct": 99.9953
+   },
+   {
+    "func": "TEXTSPLIT",
+    "cells": 30,
+    "cum_covered": 9848174,
+    "cum_pct": 99.9955
+   },
+   {
+    "func": "T",
+    "cells": 30,
+    "cum_covered": 9848204,
+    "cum_pct": 99.9958
+   },
+   {
+    "func": "NPV",
+    "cells": 28,
+    "cum_covered": 9848232,
+    "cum_pct": 99.9961
+   },
+   {
+    "func": "FILTERXML",
+    "cells": 24,
+    "cum_covered": 9848256,
+    "cum_pct": 99.9963
+   },
+   {
+    "func": "ARRAYFORMULA",
+    "cells": 24,
+    "cum_covered": 9848280,
+    "cum_pct": 99.9966
+   },
+   {
+    "func": "GENCOST",
+    "cells": 24,
+    "cum_covered": 9848304,
+    "cum_pct": 99.9968
+   },
+   {
+    "func": "QUARTILE",
+    "cells": 24,
+    "cum_covered": 9848328,
+    "cum_pct": 99.9971
+   },
+   {
+    "func": "CEILING.MATH",
+    "cells": 23,
+    "cum_covered": 9848351,
+    "cum_pct": 99.9973
+   },
+   {
+    "func": "NORMSDIST",
+    "cells": 22,
+    "cum_covered": 9848373,
+    "cum_pct": 99.9975
+   },
+   {
+    "func": "ERROR.TYPE",
+    "cells": 21,
+    "cum_covered": 9848394,
+    "cum_pct": 99.9977
+   },
+   {
+    "func": "XNPV",
+    "cells": 19,
+    "cum_covered": 9848413,
+    "cum_pct": 99.9979
+   },
+   {
+    "func": "DB",
+    "cells": 18,
+    "cum_covered": 9848431,
+    "cum_pct": 99.9981
+   },
+   {
+    "func": "DOLLARFR",
+    "cells": 18,
+    "cum_covered": 9848449,
+    "cum_pct": 99.9983
+   },
+   {
+    "func": "HYPERLINK",
+    "cells": 16,
+    "cum_covered": 9848465,
+    "cum_pct": 99.9985
+   },
+   {
+    "func": "COUNTBLANK",
+    "cells": 15,
+    "cum_covered": 9848480,
+    "cum_pct": 99.9986
+   },
+   {
+    "func": "XMATCH",
+    "cells": 15,
+    "cum_covered": 9848495,
+    "cum_pct": 99.9988
+   },
+   {
+    "func": "SEQUENCE",
+    "cells": 15,
+    "cum_covered": 9848510,
+    "cum_pct": 99.9989
+   },
+   {
+    "func": "LINEST",
+    "cells": 12,
+    "cum_covered": 9848522,
+    "cum_pct": 99.999
+   },
+   {
+    "func": "EXP",
+    "cells": 11,
+    "cum_covered": 9848533,
+    "cum_pct": 99.9991
+   },
+   {
+    "func": "TRUNC",
+    "cells": 10,
+    "cum_covered": 9848543,
+    "cum_pct": 99.9992
+   },
+   {
+    "func": "IFS",
+    "cells": 9,
+    "cum_covered": 9848552,
+    "cum_pct": 99.9993
+   },
+   {
+    "func": "FORMULATEXT",
+    "cells": 9,
+    "cum_covered": 9848561,
+    "cum_pct": 99.9994
+   },
+   {
+    "func": "_XLUDF.RRI",
+    "cells": 8,
+    "cum_covered": 9848569,
+    "cum_pct": 99.9995
+   },
+   {
+    "func": "SINGLE",
+    "cells": 6,
+    "cum_covered": 9848575,
+    "cum_pct": 99.9996
+   },
+   {
+    "func": "IMAGE",
+    "cells": 6,
+    "cum_covered": 9848581,
+    "cum_pct": 99.9996
+   },
+   {
+    "func": "HSTACK",
+    "cells": 6,
+    "cum_covered": 9848587,
+    "cum_pct": 99.9997
+   },
+   {
+    "func": "SORTBY",
+    "cells": 6,
+    "cum_covered": 9848593,
+    "cum_pct": 99.9998
+   },
+   {
+    "func": "MROUND",
+    "cells": 6,
+    "cum_covered": 9848599,
+    "cum_pct": 99.9998
+   },
+   {
+    "func": "CLEAN",
+    "cells": 6,
+    "cum_covered": 9848605,
+    "cum_pct": 99.9999
+   },
+   {
+    "func": "FORECAST",
+    "cells": 5,
+    "cum_covered": 9848610,
+    "cum_pct": 99.9999
+   },
+   {
+    "func": "CORRELATION",
+    "cells": 4,
+    "cum_covered": 9848614,
+    "cum_pct": 100.0
+   },
+   {
+    "func": "DROP",
+    "cells": 3,
+    "cum_covered": 9848617,
+    "cum_pct": 100.0
+   }
+  ],
+  "distinct_funcsets": 720
+ }
+}

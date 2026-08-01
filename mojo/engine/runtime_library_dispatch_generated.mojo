@@ -6047,6 +6047,57 @@ from set_ops import (
     set_cardinality as _set_ops__set_cardinality,
 )
 
+from sheet.api import (
+    sheet_recalc_report as _sheet_api__sheet_recalc_report,
+    sheet_eval_cell as _sheet_api__sheet_eval_cell,
+)
+
+from sheet.engine import (
+    recalc_workbook as _sheet_engine__recalc_workbook,
+)
+
+from sheet.formula import (
+    function_id_of as _sheet_formula__function_id_of,
+    tokenize as _sheet_formula__tokenize,
+    parse_formula as _sheet_formula__parse_formula,
+)
+
+from sheet.grid import (
+    load_workbook as _sheet_grid__load_workbook,
+)
+
+from sheet.refs import (
+    pack_coord as _sheet_refs__pack_coord,
+    coord_row as _sheet_refs__coord_row,
+    coord_col as _sheet_refs__coord_col,
+    col_name as _sheet_refs__col_name,
+    a1_of as _sheet_refs__a1_of,
+    parse_a1_cell as _sheet_refs__parse_a1_cell,
+    parse_ref_text as _sheet_refs__parse_ref_text,
+)
+
+from sheet.values import (
+    error_name as _sheet_values__error_name,
+    error_code_of as _sheet_values__error_code_of,
+    cv_empty as _sheet_values__cv_empty,
+    cv_num as _sheet_values__cv_num,
+    cv_text as _sheet_values__cv_text,
+    cv_bool as _sheet_values__cv_bool,
+    cv_err as _sheet_values__cv_err,
+    cv_unsup as _sheet_values__cv_unsup,
+    cv_pending as _sheet_values__cv_pending,
+    cv_cycle as _sheet_values__cv_cycle,
+    cv_range as _sheet_values__cv_range,
+    is_taint as _sheet_values__is_taint,
+    fold_ascii as _sheet_values__fold_ascii,
+    text_equal_ci as _sheet_values__text_equal_ci,
+    text_cmp_ci as _sheet_values__text_cmp_ci,
+    wildcard_match as _sheet_values__wildcard_match,
+    has_wildcard as _sheet_values__has_wildcard,
+    num_to_text as _sheet_values__num_to_text,
+    value_to_display as _sheet_values__value_to_display,
+)
+
 from signal.dsp import (
     moving_average as _signal_dsp__moving_average,
     exponential_moving_average as _signal_dsp__exponential_moving_average,
@@ -8446,6 +8497,34 @@ from serialization_io import (
     WeightsBundle,
 )
 
+from sheet.api import (
+    SheetCellResult,
+    SheetRecalcReport,
+)
+
+from sheet.engine import (
+    RecalcOutcome,
+)
+
+from sheet.formula import (
+    FNode,
+    Token,
+)
+
+from sheet.grid import (
+    LoadResult,
+    Workbook,
+)
+
+from sheet.refs import (
+    A1Parse,
+    RefParse,
+)
+
+from sheet.values import (
+    CellValue,
+)
+
 from simulation import (
     Event,
     SimState,
@@ -8780,6 +8859,31 @@ fn _parse_csvrow_token(token: String) raises -> CSVRow:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return CSVRow(field_0^, field_1^)
 
+fn _parse_cellvalue_token(token: String) raises -> CellValue:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 9:
+        raise Error("Expected 9 fields for CellValue, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_string_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_int_token(json_array_get(values_json, 6))
+    var field_7 = _parse_int_token(json_array_get(values_json, 7))
+    var field_8 = _parse_int_token(json_array_get(values_json, 8))
+    var decoded = CellValue()
+    decoded.kind = field_0^
+    decoded.num = field_1^
+    decoded.text = field_2^
+    decoded.err = field_3^
+    decoded.a = field_4^
+    decoded.b = field_5^
+    decoded.c = field_6^
+    decoded.d = field_7^
+    decoded.e = field_8^
+    return decoded^
+
 fn _parse_circularbuffer_token(token: String) raises -> CircularBuffer:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
@@ -8829,6 +8933,23 @@ fn _parse_distinctsketch_token(token: String) raises -> DistinctSketch:
     var field_4 = _parse_int_token(json_array_get(values_json, 4))
     var field_5 = _parse_bool_token(json_array_get(values_json, 5))
     return DistinctSketch(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^)
+
+fn _parse_fnode_token(token: String) raises -> FNode:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 11:
+        raise Error("Expected 11 fields for FNode, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_string_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_int_token(json_array_get(values_json, 6))
+    var field_7 = _parse_int_token(json_array_get(values_json, 7))
+    var field_8 = _parse_int_token(json_array_get(values_json, 8))
+    var field_9 = _parse_int_token(json_array_get(values_json, 9))
+    var field_10 = _parse_int_token(json_array_get(values_json, 10))
+    return FNode(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^, field_7^, field_8^, field_9^, field_10^)
 
 fn _parse_float32_token(token: String) raises -> Float32:
     var parsed = parse_float64(token)
@@ -9487,6 +9608,15 @@ fn _parse_tensor1d_token(token: String) raises -> Tensor1D:
     var field_1 = _parse_int_token(json_array_get(values_json, 1))
     return Tensor1D(field_0^, field_1^)
 
+fn _parse_token_token(token: String) raises -> Token:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 3:
+        raise Error("Expected 3 fields for Token, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_int_token(json_array_get(values_json, 0))
+    var field_1 = _parse_float64_token(json_array_get(values_json, 1))
+    var field_2 = _parse_string_token(json_array_get(values_json, 2))
+    return Token(field_0^, field_1^, field_2^)
+
 fn _parse_tokenbucket_token(token: String) raises -> TokenBucket:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 4:
@@ -9595,6 +9725,65 @@ fn _parse_windowsummary_token(token: String) raises -> WindowSummary:
     var field_6 = _parse_int_token(json_array_get(values_json, 6))
     return WindowSummary(field_0^, field_1^, field_2^, field_3^, field_4^, field_5^, field_6^)
 
+fn _parse_workbook_token(token: String) raises -> Workbook:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 26:
+        raise Error("Expected 26 fields for Workbook, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_string_token(json_array_get(values_json, 0))
+    var field_1 = _parse_list_string_token(json_array_get(values_json, 1))
+    var field_2 = _parse_list_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
+    var field_5 = _parse_list_int_token(json_array_get(values_json, 5))
+    var field_6 = _parse_list_int_token(json_array_get(values_json, 6))
+    var field_7 = _parse_list_float64_token(json_array_get(values_json, 7))
+    var field_8 = _parse_list_string_token(json_array_get(values_json, 8))
+    var field_9 = _parse_list_int_token(json_array_get(values_json, 9))
+    var field_10 = _parse_list_int_token(json_array_get(values_json, 10))
+    var field_11 = _parse_list_int_token(json_array_get(values_json, 11))
+    var field_12 = _parse_list_int_token(json_array_get(values_json, 12))
+    var field_13 = _parse_list_int_token(json_array_get(values_json, 13))
+    var field_14 = _parse_list_string_token(json_array_get(values_json, 14))
+    var field_15 = _parse_list_int_token(json_array_get(values_json, 15))
+    var field_16 = _parse_list_float64_token(json_array_get(values_json, 16))
+    var field_17 = _parse_list_string_token(json_array_get(values_json, 17))
+    var field_18 = _parse_list_int_token(json_array_get(values_json, 18))
+    var field_19 = _parse_list_fnode_token(json_array_get(values_json, 19))
+    var field_20 = _parse_list_int_token(json_array_get(values_json, 20))
+    var field_21 = _parse_list_int_token(json_array_get(values_json, 21))
+    var field_22 = _parse_list_int_token(json_array_get(values_json, 22))
+    var field_23 = _parse_list_int_token(json_array_get(values_json, 23))
+    var field_24 = _parse_list_int_token(json_array_get(values_json, 24))
+    var field_25 = _parse_list_int_token(json_array_get(values_json, 25))
+    var decoded = Workbook()
+    decoded.sheet_names = field_0^
+    decoded.name_folded = field_1^
+    decoded.name_scope = field_2^
+    decoded.name_root = field_3^
+    decoded.c_sheet = field_4^
+    decoded.c_coord = field_5^
+    decoded.c_kind = field_6^
+    decoded.c_num = field_7^
+    decoded.c_text = field_8^
+    decoded.c_err = field_9^
+    decoded.c_froot = field_10^
+    decoded.c_ftype = field_11^
+    decoded.c_fdr = field_12^
+    decoded.c_fdc = field_13^
+    decoded.c_ftext = field_14^
+    decoded.c_ct = field_15^
+    decoded.c_cnum = field_16^
+    decoded.c_ctext = field_17^
+    decoded.c_cerr = field_18^
+    decoded.nodes = field_19^
+    decoded.pool = field_20^
+    decoded.perm_row = field_21^
+    decoded.perm_col = field_22^
+    decoded.sheet_row_start = field_23^
+    decoded.sheet_col_start = field_24^
+    decoded.formula_cells = field_25^
+    return decoded^
+
 fn _parse_yamldoc_token(token: String) raises -> YamlDoc:
     var values_json = json_get_array(token, "v")
     if json_array_len(values_json) != 2:
@@ -9662,6 +9851,15 @@ fn _parse_list_complex_token(token: String) raises -> List[Complex]:
     var result = List[Complex]()
     for _i in range(len(_elem_tokens)):
         result.append(_parse_complex_token(_elem_tokens[_i]))
+    return result^
+
+fn _parse_list_fnode_token(token: String) raises -> List[FNode]:
+    var wrapped = "{\"v\":" + token + "}"
+    var array_json = json_get_array(wrapped, "v")
+    var _elem_tokens = json_array_tokens(array_json)
+    var result = List[FNode]()
+    for _i in range(len(_elem_tokens)):
+        result.append(_parse_fnode_token(_elem_tokens[_i]))
     return result^
 
 fn _parse_list_float32_token(token: String) raises -> List[Float32]:
@@ -9757,6 +9955,15 @@ fn _parse_list_ttlcacheentry_token(token: String) raises -> List[TTLCacheEntry]:
         result.append(_parse_ttlcacheentry_token(_elem_tokens[_i]))
     return result^
 
+fn _parse_list_token_token(token: String) raises -> List[Token]:
+    var wrapped = "{\"v\":" + token + "}"
+    var array_json = json_get_array(wrapped, "v")
+    var _elem_tokens = json_array_tokens(array_json)
+    var result = List[Token]()
+    for _i in range(len(_elem_tokens)):
+        result.append(_parse_token_token(_elem_tokens[_i]))
+    return result^
+
 fn _parse_list_tomlnode_token(token: String) raises -> List[TomlNode]:
     var wrapped = "{\"v\":" + token + "}"
     var array_json = json_get_array(wrapped, "v")
@@ -9831,6 +10038,20 @@ fn _parse_list_list_string_token(token: String) raises -> List[List[String]]:
 
 fn _to_json_none() raises -> String:
     return "null"
+
+fn _to_json_a1parse(value: A1Parse) raises -> String:
+    var result = String("{\"__algenta_struct\":\"A1Parse\",\"v\":[")
+    result += _to_json_bool(value.ok)
+    result += ","
+    result += _to_json_int(value.row)
+    result += ","
+    result += _to_json_int(value.col)
+    result += ","
+    result += _to_json_bool(value.row_rel)
+    result += ","
+    result += _to_json_bool(value.col_rel)
+    result += "]}"
+    return result
 
 fn _to_json_arfit(value: ARFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"ARFit\",\"v\":[")
@@ -10798,6 +11019,28 @@ fn _to_json_celldraw(value: CellDraw) raises -> String:
     result += _to_json_int(value.draws_per_cell)
     result += ","
     result += _to_json_int(value.cell)
+    result += "]}"
+    return result
+
+fn _to_json_cellvalue(value: CellValue) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CellValue\",\"v\":[")
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_float64(value.num)
+    result += ","
+    result += _to_json_string(value.text)
+    result += ","
+    result += _to_json_int(value.err)
+    result += ","
+    result += _to_json_int(value.a)
+    result += ","
+    result += _to_json_int(value.b)
+    result += ","
+    result += _to_json_int(value.c)
+    result += ","
+    result += _to_json_int(value.d)
+    result += ","
+    result += _to_json_int(value.e)
     result += "]}"
     return result
 
@@ -12312,6 +12555,32 @@ fn _to_json_exprcheck(value: ExprCheck) raises -> String:
     result += _to_json_int(value.n_var_refs)
     result += ","
     result += _to_json_string(value.message)
+    result += "]}"
+    return result
+
+fn _to_json_fnode(value: FNode) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FNode\",\"v\":[")
+    result += _to_json_int(value.k)
+    result += ","
+    result += _to_json_float64(value.num)
+    result += ","
+    result += _to_json_string(value.text)
+    result += ","
+    result += _to_json_int(value.a)
+    result += ","
+    result += _to_json_int(value.b)
+    result += ","
+    result += _to_json_int(value.c)
+    result += ","
+    result += _to_json_int(value.d)
+    result += ","
+    result += _to_json_int(value.e)
+    result += ","
+    result += _to_json_int(value.f)
+    result += ","
+    result += _to_json_int(value.arg_start)
+    result += ","
+    result += _to_json_int(value.argc)
     result += "]}"
     return result
 
@@ -14369,6 +14638,16 @@ fn _to_json_linearscore(value: LinearScore) raises -> String:
     result += _to_json_float64(value.best_score)
     result += ","
     result += _to_json_list_float64(value.scores)
+    result += "]}"
+    return result
+
+fn _to_json_loadresult(value: LoadResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LoadResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.line_no)
+    result += ","
+    result += _to_json_workbook(value.wb)
     result += "]}"
     return result
 
@@ -17092,6 +17371,28 @@ fn _to_json_rcpspresult(value: RcpspResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_recalcoutcome(value: RecalcOutcome) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RecalcOutcome\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.evaluated)
+    result += ","
+    result += _to_json_int(value.not_evaluated)
+    result += ","
+    result += _to_json_int(value.ops)
+    result += ","
+    result += _to_json_int(value.max_stack)
+    result += ","
+    result += _to_json_int(value.cycle_count)
+    result += ","
+    result += _to_json_int(value.cycle_cells)
+    result += ","
+    result += _to_json_list_string(value.cycle_names)
+    result += ","
+    result += _to_json_list_cellvalue(value.values)
+    result += "]}"
+    return result
+
 fn _to_json_reconciliation(value: Reconciliation) raises -> String:
     var result = String("{\"__algenta_struct\":\"Reconciliation\",\"v\":[")
     result += _to_json_int(value.status)
@@ -17137,6 +17438,28 @@ fn _to_json_refdelta(value: RefDelta) raises -> String:
     result += _to_json_int(value.n_compared)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_refparse(value: RefParse) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RefParse\",\"v\":[")
+    result += _to_json_bool(value.ok)
+    result += ","
+    result += _to_json_bool(value.has_sheet)
+    result += ","
+    result += _to_json_string(value.sheet_name)
+    result += ","
+    result += _to_json_bool(value.is_range)
+    result += ","
+    result += _to_json_int(value.r0)
+    result += ","
+    result += _to_json_int(value.c0)
+    result += ","
+    result += _to_json_int(value.r1)
+    result += ","
+    result += _to_json_int(value.c1)
+    result += ","
+    result += _to_json_int(value.flags)
     result += "]}"
     return result
 
@@ -18276,6 +18599,74 @@ fn _to_json_shapleysamples(value: ShapleySamples) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_sheetcellresult(value: SheetCellResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SheetCellResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.found)
+    result += ","
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_float64(value.num)
+    result += ","
+    result += _to_json_string(value.text)
+    result += ","
+    result += _to_json_string(value.err_name)
+    result += "]}"
+    return result
+
+fn _to_json_sheetrecalcreport(value: SheetRecalcReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SheetRecalcReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.load_line)
+    result += ","
+    result += _to_json_int(value.sheets)
+    result += ","
+    result += _to_json_int(value.cells)
+    result += ","
+    result += _to_json_int(value.formula_cells)
+    result += ","
+    result += _to_json_int(value.evaluated)
+    result += ","
+    result += _to_json_int(value.not_evaluated)
+    result += ","
+    result += _to_json_int(value.no_cached)
+    result += ","
+    result += _to_json_int(value.matched_exact)
+    result += ","
+    result += _to_json_int(value.matched_tol)
+    result += ","
+    result += _to_json_int(value.matched_snap)
+    result += ","
+    result += _to_json_int(value.error_matched)
+    result += ","
+    result += _to_json_int(value.mismatched)
+    result += ","
+    result += _to_json_int(value.error_mismatched)
+    result += ","
+    result += _to_json_int(value.unsupported)
+    result += ","
+    result += _to_json_int(value.volatile_cells)
+    result += ","
+    result += _to_json_int(value.cycle_cells)
+    result += ","
+    result += _to_json_int(value.cycle_count)
+    result += ","
+    result += _to_json_int(value.unsupported_compare)
+    result += ","
+    result += _to_json_int(value.ops)
+    result += ","
+    result += _to_json_int(value.max_chain)
+    result += ","
+    result += _to_json_string(value.cycle_names)
+    result += ","
+    result += _to_json_string(value.unsupported_names)
+    result += ","
+    result += _to_json_string(value.mismatch_samples)
+    result += "]}"
+    return result
+
 fn _to_json_simstate(value: SimState) raises -> String:
     var result = String("{\"__algenta_struct\":\"SimState\",\"v\":[")
     result += _to_json_float64(value.clock)
@@ -19045,6 +19436,16 @@ fn _to_json_tileplan(value: TilePlan) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_token(value: Token) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Token\",\"v\":[")
+    result += _to_json_int(value.kind)
+    result += ","
+    result += _to_json_float64(value.num)
+    result += ","
+    result += _to_json_string(value.text)
+    result += "]}"
+    return result
+
 fn _to_json_tokenbucket(value: TokenBucket) raises -> String:
     var result = String("{\"__algenta_struct\":\"TokenBucket\",\"v\":[")
     result += _to_json_float64(value.capacity)
@@ -19467,6 +19868,62 @@ fn _to_json_workbudget(value: WorkBudget) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_workbook(value: Workbook) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Workbook\",\"v\":[")
+    result += _to_json_list_string(value.sheet_names)
+    result += ","
+    result += _to_json_list_string(value.name_folded)
+    result += ","
+    result += _to_json_list_int(value.name_scope)
+    result += ","
+    result += _to_json_list_int(value.name_root)
+    result += ","
+    result += _to_json_list_int(value.c_sheet)
+    result += ","
+    result += _to_json_list_int(value.c_coord)
+    result += ","
+    result += _to_json_list_int(value.c_kind)
+    result += ","
+    result += _to_json_list_float64(value.c_num)
+    result += ","
+    result += _to_json_list_string(value.c_text)
+    result += ","
+    result += _to_json_list_int(value.c_err)
+    result += ","
+    result += _to_json_list_int(value.c_froot)
+    result += ","
+    result += _to_json_list_int(value.c_ftype)
+    result += ","
+    result += _to_json_list_int(value.c_fdr)
+    result += ","
+    result += _to_json_list_int(value.c_fdc)
+    result += ","
+    result += _to_json_list_string(value.c_ftext)
+    result += ","
+    result += _to_json_list_int(value.c_ct)
+    result += ","
+    result += _to_json_list_float64(value.c_cnum)
+    result += ","
+    result += _to_json_list_string(value.c_ctext)
+    result += ","
+    result += _to_json_list_int(value.c_cerr)
+    result += ","
+    result += _to_json_list_fnode(value.nodes)
+    result += ","
+    result += _to_json_list_int(value.pool)
+    result += ","
+    result += _to_json_list_int(value.perm_row)
+    result += ","
+    result += _to_json_list_int(value.perm_col)
+    result += ","
+    result += _to_json_list_int(value.sheet_row_start)
+    result += ","
+    result += _to_json_list_int(value.sheet_col_start)
+    result += ","
+    result += _to_json_list_int(value.formula_cells)
+    result += "]}"
+    return result
+
 fn _to_json_yamldoc(value: YamlDoc) raises -> String:
     var result = String("{\"__algenta_struct\":\"YamlDoc\",\"v\":[")
     result += _to_json_yamlpool(value.pool)
@@ -19579,6 +20036,15 @@ fn _to_json_list_candidateentry_vector_kernels_table(value: List[CandidateEntry_
     result += "]"
     return result
 
+fn _to_json_list_cellvalue(value: List[CellValue]) raises -> String:
+    var result = String("[")
+    for i in range(len(value)):
+        if i > 0:
+            result += ","
+        result += _to_json_cellvalue(value[i])
+    result += "]"
+    return result
+
 fn _to_json_list_column(value: List[Column]) raises -> String:
     var result = String("[")
     for i in range(len(value)):
@@ -19603,6 +20069,15 @@ fn _to_json_list_event(value: List[Event]) raises -> String:
         if i > 0:
             result += ","
         result += _to_json_event(value[i])
+    result += "]"
+    return result
+
+fn _to_json_list_fnode(value: List[FNode]) raises -> String:
+    var result = String("[")
+    for i in range(len(value)):
+        if i > 0:
+            result += ","
+        result += _to_json_fnode(value[i])
     result += "]"
     return result
 
@@ -19711,6 +20186,15 @@ fn _to_json_list_ttlcacheentry(value: List[TTLCacheEntry]) raises -> String:
         if i > 0:
             result += ","
         result += _to_json_ttlcacheentry(value[i])
+    result += "]"
+    return result
+
+fn _to_json_list_token(value: List[Token]) raises -> String:
+    var result = String("[")
+    for i in range(len(value)):
+        if i > 0:
+            result += ","
+        result += _to_json_token(value[i])
     result += "]"
     return result
 
@@ -120998,6 +121482,600 @@ fn _dispatch_set_ops(function_name: String, args_array: String) raises -> String
         "Function '" + function_name + "' is not registered for module set_ops."
     )
 
+fn _dispatch_sheet__api(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "sheet_recalc_report":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _sheet_api__sheet_recalc_report(arg_0, arg_1)
+                var result_json = _to_json_sheetrecalcreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.api.sheet_recalc_report."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.api.sheet_recalc_report expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sheet_eval_cell":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_string_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _sheet_api__sheet_eval_cell(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_sheetcellresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.api.sheet_eval_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.api.sheet_eval_cell expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.api."
+    )
+
+fn _dispatch_sheet__engine(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "recalc_workbook":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_workbook_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _sheet_engine__recalc_workbook(arg_0, arg_1)
+                var result_json = _to_json_recalcoutcome(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.engine.recalc_workbook."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.engine.recalc_workbook expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.engine."
+    )
+
+fn _dispatch_sheet__formula(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "function_id_of":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_formula__function_id_of(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.formula.function_id_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.formula.function_id_of expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tokenize":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_token_token(json_array_get(args_array, 1))
+                var result = _sheet_formula__tokenize(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                var mutated_args_json = String("{")
+                mutated_args_json += "\"1\":" + _to_json_list_token(arg_1)
+                mutated_args_json += "}"
+                return _success_with_mutated_args_json(result_json, mutated_args_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.formula.tokenize."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.formula.tokenize expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "parse_formula":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_string_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_fnode_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var result = _sheet_formula__parse_formula(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                var mutated_args_json = String("{")
+                mutated_args_json += "\"2\":" + _to_json_list_fnode(arg_2)
+                mutated_args_json += ","
+                mutated_args_json += "\"3\":" + _to_json_list_int(arg_3)
+                mutated_args_json += "}"
+                return _success_with_mutated_args_json(result_json, mutated_args_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.formula.parse_formula."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.formula.parse_formula expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.formula."
+    )
+
+fn _dispatch_sheet__grid(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "load_workbook":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_grid__load_workbook(arg_0)
+                var result_json = _to_json_loadresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.grid.load_workbook."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.grid.load_workbook expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.grid."
+    )
+
+fn _dispatch_sheet__refs(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "pack_coord":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _sheet_refs__pack_coord(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.pack_coord."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.pack_coord expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "coord_row":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_refs__coord_row(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.coord_row."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.coord_row expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "coord_col":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_refs__coord_col(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.coord_col."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.coord_col expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "col_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_refs__col_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.col_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.col_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "a1_of":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _sheet_refs__a1_of(arg_0, arg_1)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.a1_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.a1_of expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "parse_a1_cell":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_refs__parse_a1_cell(arg_0)
+                var result_json = _to_json_a1parse(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.parse_a1_cell."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.parse_a1_cell expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "parse_ref_text":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_refs__parse_ref_text(arg_0)
+                var result_json = _to_json_refparse(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.refs.parse_ref_text."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.refs.parse_ref_text expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.refs."
+    )
+
+fn _dispatch_sheet__values(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "error_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_values__error_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.error_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.error_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "error_code_of":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_values__error_code_of(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.error_code_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.error_code_of expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_empty":
+        if arg_count == 0:
+            try:
+                var result = _sheet_values__cv_empty()
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_empty."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_empty expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_num":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_num(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_num."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_num expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_text":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_text(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_text."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_text expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_bool":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_bool_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_bool(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_bool."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_bool expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_err":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_err(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_err."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_err expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_unsup":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_unsup(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_unsup."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_unsup expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_pending":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _sheet_values__cv_pending(arg_0)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_pending."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_pending expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_cycle":
+        if arg_count == 0:
+            try:
+                var result = _sheet_values__cv_cycle()
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_cycle."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_cycle expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cv_range":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _sheet_values__cv_range(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_cellvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.cv_range."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.cv_range expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "is_taint":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_cellvalue_token(json_array_get(args_array, 0))
+                var result = _sheet_values__is_taint(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.is_taint."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.is_taint expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fold_ascii":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_values__fold_ascii(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.fold_ascii."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.fold_ascii expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "text_equal_ci":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var result = _sheet_values__text_equal_ci(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.text_equal_ci."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.text_equal_ci expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "text_cmp_ci":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var result = _sheet_values__text_cmp_ci(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.text_cmp_ci."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.text_cmp_ci expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wildcard_match":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_string_token(json_array_get(args_array, 1))
+                var result = _sheet_values__wildcard_match(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.wildcard_match."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.wildcard_match expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "has_wildcard":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var result = _sheet_values__has_wildcard(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.has_wildcard."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.has_wildcard expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "num_to_text":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _sheet_values__num_to_text(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.num_to_text."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.num_to_text expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "value_to_display":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_cellvalue_token(json_array_get(args_array, 0))
+                var result = _sheet_values__value_to_display(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for sheet.values.value_to_display."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function sheet.values.value_to_display expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module sheet.values."
+    )
+
 fn _dispatch_signal__dsp(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "moving_average":
@@ -149548,6 +150626,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_series(function_name, args_array)
     if module_name == "set_ops":
         return _dispatch_set_ops(function_name, args_array)
+    if module_name == "sheet.api":
+        return _dispatch_sheet__api(function_name, args_array)
+    if module_name == "sheet.engine":
+        return _dispatch_sheet__engine(function_name, args_array)
+    if module_name == "sheet.formula":
+        return _dispatch_sheet__formula(function_name, args_array)
+    if module_name == "sheet.grid":
+        return _dispatch_sheet__grid(function_name, args_array)
+    if module_name == "sheet.refs":
+        return _dispatch_sheet__refs(function_name, args_array)
+    if module_name == "sheet.values":
+        return _dispatch_sheet__values(function_name, args_array)
     if module_name == "signal.dsp":
         return _dispatch_signal__dsp(function_name, args_array)
     if module_name == "signal.filter":
