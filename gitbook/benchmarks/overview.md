@@ -25,7 +25,7 @@ More families are added here as they are measured. A family appears above only o
 These are not aspirations. They are the conditions a result has to meet before it appears on any page in this section.
 
 {% hint style="info" %}
-**Measured against the strongest available baseline, not the weakest.** A speedup over an unoptimised reference is an implementation detail. A speedup over the best thing a reader could otherwise use is a result. Each page names its baseline explicitly.
+**Measured against the strongest available baseline, not the weakest.** A speedup over an unoptimised reference is an implementation detail. A speedup over the best thing a reader could otherwise use is a result. Each page names its baseline explicitly, and a page whose only baseline is an earlier Algenta implementation says so in its first line rather than presenting the ratio as competitive.
 {% endhint %}
 
 * **The baseline is named and versioned.** "Faster" is meaningless without saying "than what". Where the comparison is against Algenta's own earlier implementation, the page says so plainly rather than implying an external comparison.

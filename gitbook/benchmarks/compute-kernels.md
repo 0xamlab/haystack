@@ -1,6 +1,6 @@
 ---
 icon: microchip
-description: Dense and quantized matrix kernel results — blocked GEMM and NF4 quantized matrix-vector, measured against the engine's own prior implementations with correctness asserted alongside every timing.
+description: Quantized matrix-vector results — the fused NF4 path against expanding weights first, with the memory it never allocates.
 ---
 
 # Compute kernels
@@ -20,23 +20,6 @@ Results for the dense and quantized matrix kernels that sit under the runtime's 
 | Precision measured | 64-bit floating point |
 
 Results are reported for this configuration only. Other chip generations and memory configurations are published separately as they are measured, never averaged into a single figure.
-
-## Dense matrix multiply
-
-A cache-blocked kernel with vectorised inner loops, distributed across physical cores, compared against the engine's earlier single-threaded implementation on identical inputs. **This is a self-comparison, not a competitive one** — see the note above.
-
-| Size | Blocked | Prior implementation | Ratio | Cost per operation |
-| --- | --- | --- | --- | --- |
-| 64 | 0.10 ms | 0.67 ms | 6.6x | 0.193 |
-| 128 | 0.69 ms | 5.60 ms | 8.2x | 0.163 |
-| 256 | 0.86 ms | 44.1 ms | 51.4x | 0.026 |
-| 512 | 9.16 ms | 396 ms | 43.3x | 0.034 |
-
-**The gated property is the last column, not the ratio.** Cost per operation must not grow as the problem grows — a kernel whose per-operation cost rises with size is losing its working set from cache, and a single-size measurement cannot see that. Here it *falls* by roughly 5.7x from the smallest to the largest size, which is the blocking doing its job.
-
-The ratio widens with size for the same reason it should: the prior implementation walks one operand against the grain of memory, so it degrades once that operand stops fitting in cache, while the blocked kernel keeps its working set resident.
-
-**Correctness:** every result is compared element by element against the prior implementation. Maximum observed difference across all sizes: **zero**. The two are not required to agree bit-for-bit — a blocked kernel sums in a different order, and floating-point addition is not associative — so the check is against a per-element tolerance derived from the magnitude of the element being judged. It happens to land exact at these sizes.
 
 ## Quantized matrix-vector
 
@@ -84,6 +67,18 @@ These are **kernel-level** measurements. A kernel-level ratio is not an end-to-e
 {% endhint %}
 
 End-to-end results are published separately, measured end to end, when they exist.
+
+## What was withdrawn from this page
+
+The dense floating-point GEMM figures are gone. Two defects, pointing the same way:
+
+* The baseline was `linalg.mat_mul`, which the benchmark source itself calls "the frozen naive
+  kernel" — a naive triple loop. A cache-hostile baseline inflates a ratio.
+* Every timing was a **single call**. Eight timing sites, no repetition, no minimum over runs, on
+  a machine whose load the page never reported.
+
+So the largest number on the page carried the weakest sampling on it. They return when they are
+measured against NumPy on Accelerate, with a minimum over repetitions and the load recorded.
 
 ## Related
 
