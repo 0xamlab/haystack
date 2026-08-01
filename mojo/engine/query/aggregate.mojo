@@ -46,12 +46,42 @@ What the merge preserves, exactly and provably:
     insertion order is first-appearance order. That composes to the global order,
     independent of where the band boundaries fall — the order promise this module
     has always made survives unchanged.
-  * counts, min and max are bit-identical to the single-worker path: counting and
-    comparison have no association to reorder.
+  * counts are bit-identical to the single-worker path: counting has no
+    association to reorder.
+  * min and max are bit-identical to the single-worker path — including when a
+    NaN appears among the VALUES, because a NaN contributes to no extremum
+    (see "NaN values and the extrema" below). Comparison over the remaining
+    live values has no association to reorder, and a tie between +0.0 and -0.0
+    keeps the first appearance under any banding, because bands merge in band
+    order and the frozen updates keep `current` on a tie.
   * sums, means and m2 are combined with the standard parallel-Welford merge, so
     they differ from the sequential fold only by floating-point association —
     same inputs, same worker count, same machine is bit-reproducible, and across
-    worker counts the suite pins the drift to tolerance.
+    worker counts the suite pins the drift to tolerance. A NaN value poisons
+    them in EVERY band split identically, because NaN propagation through
+    sum/mean/m2 is associative.
+
+NaN values and the extrema (2026-08)
+------------------------------------
+A NaN VALUE (not a null: a live Float64 whose bits happen to be NaN — in-domain
+here, since `hash_index` deliberately canonicalizes NaN keys) is excluded from
+min and max, the IEEE-754 fmin/fmax rule: NaN is unordered, so it names no
+minimum. It still counts, and it still poisons sum/mean/m2 — those folds treat
+it associatively, so they cannot diverge across worker counts. A group whose
+values are ALL NaN reports the canonical quiet NaN for min/max — the fmin/fmax
+fold of all-NaN — with `present` true, matching the NaN its sum reports.
+
+This is a policy, not just an optimisation detail: the previous behaviour
+(seed min/max with the first value unconditionally, then update through the
+frozen `group_min_update`, which keeps `current` when the comparison is false)
+made the serial fold ORDER-DEPENDENT — NaN-first poisoned the extremum, NaN
+anywhere else was dropped — and no band merge can reproduce an order-dependent,
+non-associative fold. A band whose first row was NaN reported a NaN extremum,
+the sequential merge then dropped that NaN via `group_min_update(live, NaN)`,
+and every live value that band had folded was silently discarded: the same data
+returned a different minimum at different worker counts, and `group_by` plans
+workers from the machine's core count. The skip-NaN rule is associative, so
+serial and every banding agree exactly, and the suite proves it.
 
 `group_by_parallel` / `group_by_multi_parallel` take the worker count explicitly
 (that is what the suite uses to compare 1 worker against N); the unsuffixed
@@ -98,11 +128,12 @@ where each group touches few bands and the band merge is cheap anyway — the
 probe's failure mode and the band path's cheap case coincide.
 """
 from std.algorithm import parallelize
+from std.memory import bitcast
 from std.sys import info
 
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch
-from columnar.hash_index import CompositeKeyIndex, HashIndex, hash_composite
+from columnar.hash_index import CANONICAL_NAN_BITS, CompositeKeyIndex, HashIndex, hash_composite
 from numeric.contract import (
     AGG_AVG,
     AGG_COUNT,
@@ -151,6 +182,16 @@ fn planned_workers(n_rows: Int, requested: Int) -> Int:
     return requested
 
 
+fn _canonical_nan() -> Float64:
+    """The one quiet NaN this module reports, min/max of an all-NaN group.
+
+    The same bit pattern `hash_index` canonicalizes NaN KEYS to, so an all-NaN
+    extremum is deterministic down to the bits whatever NaN payloads arrived —
+    which is what lets the bit-identical promise cover it.
+    """
+    return bitcast[DType.float64](CANONICAL_NAN_BITS)
+
+
 struct GroupAccumulator(Copyable, Movable):
     """Streaming state for one group: enough for every supported aggregation.
 
@@ -179,12 +220,23 @@ struct GroupAccumulator(Copyable, Movable):
         self.seen = False
 
     fn observe(mut self, value: Float64):
-        """Fold one live value in, using the frozen update primitives."""
+        """Fold one live value in, using the frozen update primitives.
+
+        A NaN value counts and poisons sum/mean/m2 (associatively — the same
+        NaN answer under any banding), but contributes to NO extremum: NaN is
+        unordered, so seeding or comparing with it would make min/max depend on
+        where the NaN sits in the scan order, which no parallel merge can
+        reproduce. `seen` therefore means "min/max hold a live, ordered
+        extremum", not merely "a value arrived".
+        """
         self.count = group_count_update(self.count)
         self.total = group_sum_update(self.total, value)
         var new_mean = group_mean_update(self.mean, value, self.count)
         self.m2 = group_variance_update(self.m2, self.mean, value, new_mean)
         self.mean = new_mean
+        if value != value:
+            # NaN — the only Float64 not equal to itself. No extremum to move.
+            return
         if not self.seen:
             self.minimum = value
             self.maximum = value
@@ -207,8 +259,11 @@ struct GroupAccumulator(Copyable, Movable):
         The naive `M2_a + M2_b` is wrong by exactly the between-bands term
         `delta^2 * n_a * n_b / n`, and the suite proves that with two bands whose
         means differ. min/max reuse the frozen update primitives — a merge is
-        just an update with the other side's extremum. An empty side (count 0)
-        contributes nothing, matching how a null value moves no accumulator.
+        just an update with the other side's extremum — but ONLY when the other
+        side holds one: `seen` is false on a side whose values were all NaN
+        (extrema skip NaN, see `observe`), and folding its stale 0.0 in would
+        invent a value nobody observed. An empty side (count 0) contributes
+        nothing, matching how a null value moves no accumulator.
         """
         if other.count == 0.0:
             return
@@ -227,8 +282,14 @@ struct GroupAccumulator(Copyable, Movable):
         self.mean = self.mean + delta * (other.count / combined)
         self.total = self.total + other.total
         self.count = combined
-        self.minimum = group_min_update(self.minimum, other.minimum)
-        self.maximum = group_max_update(self.maximum, other.maximum)
+        if other.seen:
+            if self.seen:
+                self.minimum = group_min_update(self.minimum, other.minimum)
+                self.maximum = group_max_update(self.maximum, other.maximum)
+            else:
+                self.minimum = other.minimum
+                self.maximum = other.maximum
+                self.seen = True
 
     fn value_for(self, opcode: Int) -> Float64:
         if opcode == AGG_COUNT:
@@ -238,8 +299,15 @@ struct GroupAccumulator(Copyable, Movable):
         if opcode == AGG_AVG:
             return self.mean
         if opcode == AGG_MIN:
+            if self.count >= 1.0 and not self.seen:
+                # Values arrived but none ordered: every one was NaN. The
+                # fmin fold of all-NaN is NaN — the canonical one, so the
+                # answer has one bit pattern whatever payloads came in.
+                return _canonical_nan()
             return self.minimum
         if opcode == AGG_MAX:
+            if self.count >= 1.0 and not self.seen:
+                return _canonical_nan()
             return self.maximum
         if opcode == AGG_VAR:
             # Guarded, not merely "only called behind has_answer". value_for is public,
@@ -360,7 +428,9 @@ fn group_by(
 
     Rows with a null KEY are excluded and counted separately — they belong to no
     group, and silently folding them into one would invent a category. Rows with a
-    null VALUE join their group but contribute to no accumulator.
+    null VALUE join their group but contribute to no accumulator. A NaN VALUE is
+    not a null: it counts and poisons sum/mean/m2, but names no min/max — the
+    module header's "NaN values and the extrema" policy.
 
     Group slots come from `columnar.hash_index`, so the per-row cost does not grow
     with the number of groups. Insertion order is preserved in `keys`, which makes the
@@ -405,8 +475,11 @@ fn group_by_parallel(
         workers = n_rows
 
     if workers <= 1:
-        # The serial path, unchanged: small inputs keep producing bit-identical
-        # results to every release since this module landed.
+        # The serial path. One deliberate change from the module's first
+        # release: a NaN VALUE no longer poisons min/max when it happens to
+        # arrive first (see "NaN values and the extrema" in the module header) —
+        # the old fold was order-dependent, which no parallel merge can match.
+        # NaN-free inputs keep producing bit-identical results to every release.
         var keys = List[Float64]()
         var accumulators = List[GroupAccumulator]()
         var index = HashIndex(64)

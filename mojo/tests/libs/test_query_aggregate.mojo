@@ -6,6 +6,9 @@ check the two decisions the existing group-by paths get differently: a null key 
 not become a category, and a group with nothing to average has no answer rather
 than 0.0.
 """
+from std.math import isnan, sqrt
+from std.memory import bitcast
+
 from columnar.array import Float64Array, float64_from_list, float64_with_nulls
 from columnar.batch import RecordBatch, schema_of
 from numeric.contract import (
@@ -455,5 +458,68 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ empty key list wrong:", len(ungrouped.values))
+
+    # ── NaN VALUES: excluded from min/max, wherever they sit in the scan ──────
+    # The policy in the module header ("NaN values and the extrema"). The bite:
+    # before it, a NaN that arrived FIRST seeded min/max and stuck (x < NaN is
+    # false in the frozen updates), so [NaN, 1, 2] reported min = NaN while
+    # [1, NaN, 2] reported 1.0 — an order-dependent fold. Now both report 1.0.
+    var nan = sqrt(Float64(-1.0))
+    var nkeys = List[Float64]()
+    var nvalues = List[Float64]()
+    for _ in range(3):
+        nkeys.append(7.0)
+    nvalues.append(nan)
+    nvalues.append(1.0)
+    nvalues.append(2.0)
+    var nnames = List[String]()
+    nnames.append("k")
+    nnames.append("v")
+    var ncols = List[Float64Array]()
+    ncols.append(float64_from_list(nkeys^))
+    ncols.append(float64_from_list(nvalues^))
+    var nan_first = RecordBatch(schema_of(nnames^), ncols^, 3)
+    var nf_min = group_by(nan_first, 0, 1, AGG_MIN)
+    var nf_max = group_by(nan_first, 0, 1, AGG_MAX)
+    var nf_count = group_by(nan_first, 0, 1, AGG_COUNT)
+    var nf_sum = group_by(nan_first, 0, 1, AGG_SUM)
+    if (
+        nf_min.values[0] == 1.0
+        and nf_max.values[0] == 2.0
+        and nf_count.values[0] == 3.0      # a NaN value still counts
+        and isnan(nf_sum.values[0])        # and still poisons the sum
+    ):
+        passed += 1
+        print("  ✅ a NaN value that arrives first names no extremum: min 1, max 2")
+    else:
+        failed += 1
+        print("  ❌ NaN-first extrema wrong:", nf_min.values[0], nf_max.values[0])
+
+    # ── all-NaN group: min/max are the CANONICAL quiet NaN, present ───────────
+    # And one live value after two NaNs must claim both extrema — the old fold
+    # kept the seeded NaN forever, so 5.0 could never take over.
+    var acc_nan = GroupAccumulator(1.0)
+    acc_nan.observe(nan)
+    acc_nan.observe(nan)
+    var all_nan_min = acc_nan.value_for(AGG_MIN)
+    var all_nan_max = acc_nan.value_for(AGG_MAX)
+    acc_nan.observe(5.0)
+    if (
+        bitcast[DType.uint64](all_nan_min) == 0x7FF8000000000000
+        and bitcast[DType.uint64](all_nan_max) == 0x7FF8000000000000
+        and acc_nan.has_answer(AGG_MIN)
+        and acc_nan.value_for(AGG_MIN) == 5.0
+        and acc_nan.value_for(AGG_MAX) == 5.0
+        and acc_nan.count == 3.0
+    ):
+        passed += 1
+        print("  ✅ all-NaN min/max = one canonical NaN; a later live value takes over")
+    else:
+        failed += 1
+        print(
+            "  ❌ all-NaN extrema policy wrong:",
+            all_nan_min,
+            acc_nan.value_for(AGG_MIN),
+        )
 
     print("  [query.aggregate] Passed:", passed, "Failed:", failed)
