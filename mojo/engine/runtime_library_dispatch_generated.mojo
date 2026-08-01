@@ -306,6 +306,11 @@ from atmospheric_chemistry import (
     lifetime_from_oh as _atmospheric_chemistry__lifetime_from_oh,
 )
 
+from attnk.backward import (
+    sdpa_bwd_flat as _attnk_backward__sdpa_bwd_flat,
+    attn_bwd_gradcheck_flat as _attnk_backward__attn_bwd_gradcheck_flat,
+)
+
 from attnk.contract import (
     attn_status_name as _attnk_contract__attn_status_name,
     attn_work_fits as _attnk_contract__attn_work_fits,
@@ -7685,6 +7690,11 @@ from arima import (
     MAFit,
 )
 
+from attnk.backward import (
+    BwdAgreement,
+    SdpaGrad,
+)
+
 from attnk.flash import (
     FlashAgreement,
     FlashOut,
@@ -10317,6 +10327,20 @@ fn _to_json_brierdecomposition(value: BrierDecomposition) raises -> String:
     result += _to_json_int(value.bins_occupied)
     result += ","
     result += _to_json_int(value.bin_policy)
+    result += "]}"
+    return result
+
+fn _to_json_bwdagreement(value: BwdAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BwdAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.tolerance_at_max)
+    result += ","
+    result += _to_json_bool(value.within_tolerance)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -17739,6 +17763,22 @@ fn _to_json_scenarioset(value: ScenarioSet) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_sdpagrad(value: SdpaGrad) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SdpaGrad\",\"v\":[")
+    result += _to_json_list_float64(value.dq)
+    result += ","
+    result += _to_json_list_float64(value.dk)
+    result += ","
+    result += _to_json_list_float64(value.dv)
+    result += ","
+    result += _to_json_int(value.n_tok_q)
+    result += ","
+    result += _to_json_int(value.n_tok_k)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_sdpaout(value: SdpaOut) raises -> String:
     var result = String("{\"__algenta_struct\":\"SdpaOut\",\"v\":[")
     result += _to_json_list_float64(value.out)
@@ -24836,6 +24876,63 @@ fn _dispatch_atmospheric_chemistry(function_name: String, args_array: String) ra
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module atmospheric_chemistry."
+    )
+
+fn _dispatch_attnk__backward(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "sdpa_bwd_flat":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var result = _attnk_backward__sdpa_bwd_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_sdpagrad(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.backward.sdpa_bwd_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.backward.sdpa_bwd_flat expected 10 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "attn_bwd_gradcheck_flat":
+        if arg_count == 10:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var result = _attnk_backward__attn_bwd_gradcheck_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9)
+                var result_json = _to_json_bwdagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for attnk.backward.attn_bwd_gradcheck_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function attnk.backward.attn_bwd_gradcheck_flat expected 10 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module attnk.backward."
     )
 
 fn _dispatch_attnk__contract(function_name: String, args_array: String) raises -> String:
@@ -147785,6 +147882,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_astronomy(function_name, args_array)
     if module_name == "atmospheric_chemistry":
         return _dispatch_atmospheric_chemistry(function_name, args_array)
+    if module_name == "attnk.backward":
+        return _dispatch_attnk__backward(function_name, args_array)
     if module_name == "attnk.contract":
         return _dispatch_attnk__contract(function_name, args_array)
     if module_name == "attnk.flash":

@@ -145,6 +145,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_attnk_mask.mojo",
         "test_attnk_rope.mojo",
         "test_attnk_contract.mojo",
+        "test_attnk_backward.mojo",
         "test_normk_rmsnorm.mojo",
         "test_normk_layernorm.mojo",
         "test_normk_contract.mojo",

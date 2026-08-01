@@ -351,6 +351,36 @@ _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
         4,
         6,
     ],
+    # ── attnk.backward ────────────────────────────────────────────────────────────────
+    # Same GQA shape the forward overrides use: 2 tokens, 2 query heads over 1 KV head, head dim 2.
+    # q and dout need n_tok_q * h_q * d = 8; k and v need n_tok_k * h_kv * d = 4.
+    ("attnk.backward", "sdpa_bwd_flat"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+    ],
+    # The gradcheck runs a full forward per perturbed element, so it is quadratic in cells. At 8
+    # cells that is 16 forwards of an 8-element buffer — trivial, and deliberately not scaled up:
+    # the A-Z suite is a reachability check, and the accuracy gate lives in the handwritten suite.
+    ("attnk.backward", "attn_bwd_gradcheck_flat"): [
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        _SAMPLE_VARIABLES["_lf8_attn"],
+        2,
+        2,
+        2,
+        1,
+        2,
+        0.5,
+        1.0e-4,
+    ],
     # ── normk ─────────────────────────────────────────────────────────────────────────
     # `gamma`, `beta`, `mean` and `rstd` are all shorter than the activations, so the default
     # 5-element list already covers them; only the `[n_rows][n_cols]` buffers need sizing. `rstd`
