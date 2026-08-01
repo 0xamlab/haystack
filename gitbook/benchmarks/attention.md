@@ -78,3 +78,13 @@ Algenta does not pick one silently. The convention is selected explicitly, and t
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Compute kernels](compute-kernels.md) — the matrix kernels attention is built on.
 * [Normalization](normalization.md) — the layer norms that surround attention in a transformer block.
+
+## Reproduce
+
+Every table on this page comes from one command:
+
+```text title="benchmark"
+mojo run benchmarks/mojo_benchmarks/bench_attnk.mojo
+```
+
+The benchmark prints its own gate results, and fails on the properties described above rather than on absolute times, which vary by machine, thermal state and concurrent load.

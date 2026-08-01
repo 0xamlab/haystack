@@ -84,3 +84,13 @@ Algenta splits that reduction by column instead — each worker owns whole colum
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Attention](attention.md) — the attention kernels these norms surround.
 * [Feed-forward](feed-forward.md) — the other half of a transformer block.
+
+## Reproduce
+
+Every table on this page comes from one command:
+
+```text title="benchmark"
+mojo run benchmarks/mojo_benchmarks/bench_normk.mojo
+```
+
+The benchmark prints its own gate results, and fails on the properties described above rather than on absolute times, which vary by machine, thermal state and concurrent load.

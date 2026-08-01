@@ -74,3 +74,13 @@ That is the argument for a sparse gradient representation, quantified rather tha
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Normalization](normalization.md) — the other half of a transformer block.
 * [Attention](attention.md) — attention kernel results.
+
+## Reproduce
+
+Every table on this page comes from one command:
+
+```text title="benchmark"
+mojo run benchmarks/mojo_benchmarks/bench_mlpk.mojo
+```
+
+The benchmark prints its own gate results, and fails on the properties described above rather than on absolute times, which vary by machine, thermal state and concurrent load.
