@@ -12259,6 +12259,8 @@ fn _to_json_fittedforecast(value: FittedForecast) raises -> String:
     result += ","
     result += _to_json_float64(value.beta)
     result += ","
+    result += _to_json_float64(value.gamma)
+    result += ","
     result += _to_json_float64(value.phi)
     result += ","
     result += _to_json_float64(value.l0)

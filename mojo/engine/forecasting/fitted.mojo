@@ -82,6 +82,44 @@ initial state for KNOWN parameters — and the suite proves both halves: the sol
 recovers a hand-derived state exactly, and the drivers refuse to extrapolate a
 corrupted first difference that the frozen init cannot help extrapolating.
 
+The seasonal driver: the SAME defect, one component over — with the measurement
+---------------------------------------------------------------------------------
+The first shipped `ets_aaa_fitted` composed the frozen static seasonal indices with the
+fitted AAN core, and it measured WORSE than statsforecast's ETS(A,A,A) on M4 Quarterly
+by +0.397 sMAPE (10.873 vs 10.476, all 24,000 series). The controlled experiment that
+isolated the cause (2026-08-01, this machine, 300-series M4 Quarterly sample, replica
+recursion validated to ~1e-12 against statsforecast 2.1.1 on every component):
+
+    statsforecast fit, statsforecast forecast            sMAPE 10.62   (the target)
+    their fitted (alpha, beta, gamma), UNFITTED initial
+      states from the decomposition heuristic            sMAPE 14.59   (+3.97)
+    joint fit with gamma FROZEN at the 1e-4 floor        sMAPE 10.90   (+0.28)
+
+Handing the reference its own smoothing parameters but a heuristic initial state
+destroys the forecast; freezing the seasonal UPDATE barely moves it (median fitted
+gamma sits at the floor). The failing component is therefore the same one the module
+exists to fit — the initial state, which for a seasonal model includes the m - 1 free
+initial seasonal indices (the m-th is the zero-sum closure). `ets_aaa_fitted` now fits
+[alpha, beta, gamma, l0, b0, s_1..s_(m-1)] jointly through the same reference
+Nelder-Mead, from the reference starting point (`initparam`'s m-dependent starts and
+in-place beta/gamma ceilings; `initstate`'s centered-MA decomposition, de-meaned phase
+averages, OLS over min(max(10, 2m), n) head observations). With the return-index
+semantics documented at `_nm_run` reproduced as well, the end-to-end replica matches
+statsforecast's fitted parameter vectors to rel < 1e-8 on 300 of 300 sampled Quarterly
+series, and THIS DRIVER's forecasts match a statsforecast 2.1.1 run on the same
+machine on every seasonal M4 series there is — 24,000 Quarterly, 48,000 Monthly, 414
+Hourly, all within 1e-6 scaled, row sMAPE/MASE equal to four decimals. A caution
+recorded from the same measurement: two statsforecast runs from DIFFERENT
+numpy/statsmodels builds disagree with each other on 3,280 of 24,000 Quarterly series
+(0.10 sMAPE between them, equal in-sample objectives) — at simplex dimension m + 4 the
+optimizer has equal-likelihood basins that last-bit arithmetic selects between, so
+cross-checks of this row are only meaningful against a same-environment run. One
+deviation from the reference is deliberate: for 2m <= n < 3m it switches its starting
+decomposition to a Fourier regression; this module keeps the centered-MA decomposition
+wherever `fc_period_defect` admits the period (the bound is exactly the
+full-phase-coverage bound of the MA), because the start only seeds the joint fit. No M4
+series is short enough to hit that branch.
+
 Absence, per rule 4
 -------------------
 `FittedForecast.has_forecast` is the authority; on any refusal `values` is EMPTY. If no
@@ -115,12 +153,10 @@ from forecasting.contract import (
     FC_ERR_ALL_UNDEFINED,
     FC_ERR_INSUFFICIENT_HISTORY,
     FC_ERR_NON_FINITE,
-    FC_ERR_PERIOD,
     FC_ERR_WORK_BUDGET,
     FC_METHOD_ETS_AAA,
     FC_METHOD_ETS_AAN,
     FC_OK,
-    fc_all_finite,
     fc_damping_defect,
     fc_finite,
     fc_horizon_defect,
@@ -130,7 +166,6 @@ from forecasting.contract import (
     fc_status_name,
     fc_work_fits,
 )
-from forecasting.point import _seasonal_indices
 
 # ── the reference optimizer's constants, verified against statsforecast 2.1.1 ────────
 #
@@ -148,6 +183,7 @@ comptime FIT_NM_ZERO_PERT: Float64 = 1.0e-4
 comptime FIT_ALPHA_LO: Float64 = 1.0e-4
 comptime FIT_ALPHA_HI: Float64 = 0.9999
 comptime FIT_BETA_LO: Float64 = 1.0e-4
+comptime FIT_GAMMA_LO: Float64 = 1.0e-4
 comptime FIT_PHI_LO: Float64 = 0.8
 comptime FIT_PHI_HI: Float64 = 0.98
 
@@ -178,13 +214,15 @@ comptime FIT_INIT_OBS: Int = 10
 #
 # Every Nelder-Mead iteration evaluates the objective at most (dim + 3) times (reflect,
 # expand or contract, plus a full shrink re-evaluation of dim vertices), each evaluation
-# one O(n) pass, and dim <= 5. The honest worst-case charge per call is therefore
-# FIT_NM_MAX_ITER * 8 = 8000 passes. Bounding memory is not bounding work: without this
-# charge a structurally valid 4-million-observation series is a ~2.6e11-operation
-# request — a hang, which from the caller's side is the same outcome as the uncatchable
-# abort. 2^32 / 8000 admits n up to ~536,000, several times the longest series in any
-# forecasting corpus this package has been pointed at, and caps the worst case at a few
-# seconds of CPU.
+# one O(n) pass, and dim <= 5 for the non-seasonal drivers. The honest worst-case charge
+# per call is therefore FIT_NM_MAX_ITER * 8 = 8000 passes. Bounding memory is not
+# bounding work: without this charge a structurally valid 4-million-observation series
+# is a ~2.6e11-operation request — a hang, which from the caller's side is the same
+# outcome as the uncatchable abort. 2^32 / 8000 admits n up to ~536,000, several times
+# the longest series in any forecasting corpus this package has been pointed at, and
+# caps the worst case at a few seconds of CPU. The SEASONAL driver's dim is m + 4, so
+# its charge cannot be a comptime constant: `ets_aaa_fitted` charges
+# FIT_NM_MAX_ITER * (m + 7) with the same arithmetic, against the same budget.
 comptime FIT_NM_MAX_EVALS: Int = FIT_NM_MAX_ITER * 8
 comptime FIT_MAX_WORK: Int = 1 << 32
 
@@ -228,18 +266,26 @@ struct FittedForecast(Copyable, Movable):
     """A forecast whose smoothing parameters AND initial state were fitted here.
 
     `values` holds steps 1..horizon; EMPTY on any refusal (`has_forecast` is the
-    authority — no padded zeros, no repeated last value). `alpha`, `beta`, `phi` are the
-    fitted smoothing parameters; `l0`, `b0` the fitted initial state; `level`, `trend`
-    the terminal state the forecast extrapolates from. `sse` is the exact in-sample
-    one-step SSE at the reported fit; `insample_mae` is the mean absolute one-step error
-    over t = 1..n-1 — t = 0 is EXCLUDED so the number is comparable across methods whose
-    first forecast consumes a different amount of state (SES's first error is at t = 1;
-    this model's is at t = 0). `forecasting.select` selects on exactly that field.
+    authority — no padded zeros, no repeated last value). `alpha`, `beta`, `gamma`,
+    `phi` are the fitted smoothing parameters — `gamma` is 0.0 for the non-seasonal
+    drivers, the value the reference recursion itself uses for a seasonless model, and
+    reported so a seasonal fit is auditable; `l0`, `b0` the fitted initial state;
+    `level`, `trend` the terminal state the forecast extrapolates from. `sse` is the
+    exact in-sample one-step SSE at the reported fit; `insample_mae` is the mean
+    absolute one-step error over t = 1..n-1 — t = 0 is EXCLUDED so the number is
+    comparable across methods whose first forecast consumes a different amount of state
+    (SES's first error is at t = 1; this model's is at t = 0). `forecasting.select`
+    selects on exactly that field.
 
     `init_status`/`init_solved` report the initial-state provenance separately from
     `status`: a fit whose final vertex sat on a singular 2x2 system still forecasts, but
-    a caller auditing the state must be able to see the fallback. `n_params` counts
-    fitted quantities carrying information: 4 for Holt (alpha, beta, l0, b0), 5 damped.
+    a caller auditing the state must be able to see the fallback. For the SEASONAL
+    driver there is no closed-form 2x2 audit — the whole initial state is a jointly
+    fitted quantity — so `ets_aaa_fitted` reports `init_status = FC_OK` with
+    `init_solved = False`, a combination the non-seasonal drivers never produce (their
+    fallback is always accompanied by FC_ERR_INSUFFICIENT_HISTORY). `n_params` counts
+    fitted quantities carrying information: 4 for Holt (alpha, beta, l0, b0), 5 damped,
+    m + 4 seasonal (alpha, beta, gamma, l0, b0, m - 1 free initial seasonal states).
     """
 
     var status: Int
@@ -250,6 +296,7 @@ struct FittedForecast(Copyable, Movable):
     var has_forecast: Bool
     var alpha: Float64
     var beta: Float64
+    var gamma: Float64
     var phi: Float64
     var l0: Float64
     var b0: Float64
@@ -268,7 +315,7 @@ fn _no_fitted(status: Int, method_id: Int, horizon: Int, n_train: Int) -> Fitted
     """A refusal: no path, no parameter estimates, every presence flag cleared."""
     return FittedForecast(
         status, method_id, horizon, n_train, List[Float64](), False,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         status, False, 0, fc_status_name(status), fc_status_name(status),
     )
 
@@ -329,6 +376,153 @@ fn _objective(
     if sse > 0.0:
         return n * log(sse)
     return n * log(sse + 1.0e-8)
+
+
+fn _aaa_pass(
+    y: List[Float64], m: Int, alpha: Float64, beta: Float64, gamma: Float64,
+    l0: Float64, b0: Float64, s_init: List[Float64],
+) -> List[Float64]:
+    """`[sse, level, trend, sum_abs_err_from_t1, s_0..s_(m-1)]` for ETS(A,A,A), or empty.
+
+    THE one forward evaluation of the seasonal state-space recursion — the seasonal
+    sibling of `_clean_pass`, reproducing the reference `ets.cpp::Calc` operation
+    order exactly (phi = 1): the likelihood error is `y_t - ((l + b) + s_head)` while
+    the state update recomputes its own differently-rounded residuals
+    (`p - q`, `t - s_head`) and applies `phi_b + (beta/alpha)*(r - phi_b)` to the
+    trend — algebraically `b + beta*e` but not the same floats, and the fit was
+    validated against the reference through THIS rounding. `s_init` carries the full
+    m seasonal states, `s_init[m-1]` applying to the first observation; the terminal
+    states come back in the same layout (index 0 newest). The buffer is circular —
+    the reference's per-step shift, without the copy. Empty on any non-finite
+    accumulation, so a NaN state can never be read as a forecast.
+    """
+    var out = List[Float64]()
+    if len(s_init) != m or m < 2:
+        return out^
+    var lev = l0
+    var trd = b0
+    var buf = List[Float64](capacity=m)
+    for j in range(m):
+        buf.append(s_init[j])
+    var top = 0
+    var bpa = beta / alpha
+    var sse: Float64 = 0.0
+    var sae: Float64 = 0.0
+    for t in range(len(y)):
+        var head = buf[(top + m - 1) % m]
+        var f0 = lev + trd
+        f0 = f0 + head
+        var e = y[t] - f0
+        sse += e * e
+        if t >= 1:
+            sae += fabs(e)
+        var phi_b = trd
+        var q = lev + phi_b
+        var p = y[t] - head
+        var lnew = q + alpha * (p - q)
+        var r = lnew - lev
+        var bnew = phi_b + bpa * (r - phi_b)
+        var tres = y[t] - q
+        var snew = head + gamma * (tres - head)
+        top = (top + m - 1) % m
+        buf[top] = snew
+        lev = lnew
+        trd = bnew
+    if not fc_finite(sse) or not fc_finite(lev) or not fc_finite(trd):
+        return out^
+    for j in range(m):
+        if not fc_finite(buf[(top + j) % m]):
+            return out^
+    out.append(sse)
+    out.append(lev)
+    out.append(trd)
+    out.append(sae)
+    for j in range(m):
+        out.append(buf[(top + j) % m])
+    return out^
+
+
+fn _seasonal_decompose_state(y: List[Float64], m: Int) -> List[Float64]:
+    """`[l0, b0, s_1..s_(m-1)]` — the reference `initstate` for a seasonal additive
+    model, from the record itself.
+
+    Centered moving-average trend (the 2xm filter for an even m), detrend, per-phase
+    means over the interior where the trend exists, DE-MEANED so the phase indices sum
+    to zero (the closure the optimizer's derived m-th state relies on), then OLS of the
+    seasonally adjusted head — min(max(10, 2m), n) observations against t = 1.. — for
+    (l0, b0). The m - 1 free states are the phase indices at phases m-1 down to 1, the
+    reference's ordering; the m-th is NOT returned because it is not a free coordinate.
+    `fc_period_defect`'s admission bound is exactly the bound at which every phase has
+    at least one interior detrended observation, so a caller that validated the period
+    cannot reach the empty return through phase coverage — the guard remains for
+    non-finite accumulation only.
+    """
+    var out = List[Float64]()
+    var n = len(y)
+    var half = m // 2
+    if n < m + 2 * half:
+        return out^
+    # Valid centered-MA positions: [half, half + n_valid), one trend value each.
+    var n_valid = n - m + 1 if m % 2 == 1 else n - m
+    var sums = List[Float64](capacity=m)
+    var counts = List[Int](capacity=m)
+    for _ in range(m):
+        sums.append(0.0)
+        counts.append(0)
+    for k in range(n_valid):
+        var t = half + k
+        var acc: Float64 = 0.0
+        if m % 2 == 0:
+            acc = 0.5 * y[t - half]
+            for j in range(t - half + 1, t + half):
+                acc += y[j]
+            acc += 0.5 * y[t + half]
+        else:
+            for j in range(t - half, t + half + 1):
+                acc += y[j]
+        var trend_t = acc / Float64(m)
+        sums[t % m] += y[t] - trend_t
+        counts[t % m] += 1
+    var pa = List[Float64](capacity=m)
+    var pa_sum: Float64 = 0.0
+    for ph in range(m):
+        if counts[ph] == 0:
+            return out^
+        var v = sums[ph] / Float64(counts[ph])
+        pa.append(v)
+        pa_sum += v
+    var pa_mean = pa_sum / Float64(m)
+    for ph in range(m):
+        pa[ph] -= pa_mean
+    # OLS of the seasonally adjusted head against t = 1..maxn (the reference regressor).
+    var maxn = min(max(10, 2 * m), n)
+    var st: Float64 = 0.0
+    var sy: Float64 = 0.0
+    var stt: Float64 = 0.0
+    var sty: Float64 = 0.0
+    for i in range(maxn):
+        var t = Float64(i + 1)
+        var v = y[i] - pa[i % m]
+        st += t
+        sy += v
+        stt += t * t
+        sty += t * v
+    var nf = Float64(maxn)
+    var den = nf * stt - st * st
+    if den == 0.0:
+        return out^
+    var b0 = (nf * sty - st * sy) / den
+    var l0 = (sy - b0 * st) / nf
+    if not fc_finite(l0) or not fc_finite(b0):
+        return out^
+    out.append(l0)
+    out.append(b0)
+    for j in range(m - 1):
+        var v = pa[m - 1 - j]
+        if not fc_finite(v):
+            return List[Float64]()
+        out.append(v)
+    return out^
 
 
 fn fitted_init_solve(
@@ -471,12 +665,34 @@ fn _heuristic_state(y: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _nm_objective_at(y: List[Float64], x: List[Float64], damped: Bool) -> Float64:
+fn _nm_objective_at(
+    y: List[Float64], x: List[Float64], damped: Bool, m: Int
+) -> Float64:
     """The joint objective at a Nelder-Mead vertex: unpack, then `n*log(SSE)`.
 
     Vertex layout is [alpha, beta, l0, b0] undamped and [alpha, beta, phi, l0, b0]
     damped — the reference parameter order (smoothing parameters first, then state).
+    `m > 1` selects the seasonal layout [alpha, beta, gamma, l0, b0, s_1..s_(m-1)]:
+    the m-th seasonal state is DERIVED, `0 - sum(free states)` in coordinate order,
+    exactly the reference's zero-sum closure — the optimizer moves m - 1 seasonal
+    coordinates and the closure absorbs them, so the simplex geometry matches the
+    implementation the fit was validated against.
     """
+    if m > 1:
+        var s_full = List[Float64](capacity=m)
+        var s_sum: Float64 = 0.0
+        for j in range(m - 1):
+            s_full.append(x[5 + j])
+            s_sum += x[5 + j]
+        s_full.append(0.0 - s_sum)
+        var pass_ = _aaa_pass(y, m, x[0], x[1], x[2], x[3], x[4], s_full)
+        if len(pass_) != 4 + m:
+            return 1.0 / 0.0
+        var n = Float64(len(y))
+        var sse = pass_[0]
+        if sse > 0.0:
+            return n * log(sse)
+        return n * log(sse + 1.0e-8)
     if damped:
         return _objective(y, x[0], x[1], x[2], x[3], x[4])
     return _objective(y, x[0], x[1], 1.0, x[2], x[3])
@@ -491,8 +707,11 @@ fn _nm_clamp(mut x: List[Float64], lower: List[Float64], upper: List[Float64]):
             x[i] = upper[i]
 
 
-fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
-    """`[alpha, beta, phi, l0, b0]` fitted by the reference Nelder-Mead, or empty.
+fn _nm_run(
+    y: List[Float64], x0: List[Float64], lower: List[Float64],
+    upper: List[Float64], damped: Bool, m: Int,
+) -> List[Float64]:
+    """The best vertex of the reference Nelder-Mead over the given box, or empty.
 
     Reproduces statsforecast 2.1.1's `nm::NelderMead` exactly (verified against
     `nelder_mead.h` source, 2026-08-01): initial simplex perturbs coordinate i of vertex
@@ -502,47 +721,41 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
     standard deviation of the vertex objectives drops below 1e-4, checked after
     ordering, before the centroid; at most 1000 iterations; ties in the vertex ordering
     broken stably (insertion sort), matching the replica this function was validated
-    against series-by-series.
+    against series-by-series. The dimension is `len(x0)` — the same loop drives the
+    4/5-coordinate trend fits and the (m + 4)-coordinate seasonal fit, so there is no
+    second optimizer to drift from the validated one.
+
+    THE RETURN INDEX IS THE REFERENCE'S, AND IT IS SUBTLE: `nm::NelderMead` returns
+    `simplex.row(best_idx)` where `best_idx` came from the ordering at the START of the
+    final iteration — when the 1000-iteration cap ends the search, an improvement
+    accepted DURING that final iteration is discarded, because the reference never
+    re-sorts after the loop. A first draft of the seasonal fit returned the post-update
+    best instead, and the measured consequence on the divergent M4 Quarterly series was
+    one-sided: 122 of 600 sampled fits strictly BETTER in-sample, zero worse — a
+    different estimator from the reference, not a faithful replica, and unauditable
+    against it. With the reference index reproduced, the same probe finds 600 of 600
+    exact objective ties. The trend fits converge long before the cap (dim 4/5), which
+    is why they matched the stored parameter vectors either way; the seasonal simplex
+    (dim m + 4) hits the cap routinely.
 
     Empty when no vertex of the initial simplex has a finite objective — the caller
-    turns that into FC_ERR_ALL_UNDEFINED — and empty is also the answer when the
-    heuristic starting state cannot be formed. A shrink step re-evaluates every
-    non-best vertex, exactly as the reference does.
+    turns that into FC_ERR_ALL_UNDEFINED. A shrink step re-evaluates every non-best
+    vertex, exactly as the reference does. The returned list is the RAW winning vertex
+    in the caller's coordinate layout.
     """
     var out = List[Float64]()
-    var start = _heuristic_state(y)
-    if len(start) != 2:
-        return out^
-    var dim = 5 if damped else 4
-    var x0 = List[Float64]()
-    x0.append(FIT_ALPHA_START)
-    x0.append(FIT_BETA_START)
-    if damped:
-        x0.append(FIT_PHI_START)
-    x0.append(start[0])
-    x0.append(start[1])
-    var lower = List[Float64]()
-    var upper = List[Float64]()
-    var big: Float64 = 1.0 / 0.0
-    lower.append(FIT_ALPHA_LO)
-    upper.append(FIT_ALPHA_HI)
-    lower.append(FIT_BETA_LO)
-    upper.append(FIT_BETA_HI)
-    if damped:
-        lower.append(FIT_PHI_LO)
-        upper.append(FIT_PHI_HI)
-    lower.append(-big)
-    upper.append(big)
-    lower.append(-big)
-    upper.append(big)
-    _nm_clamp(x0, lower, upper)
+    var dim = len(x0)
+    var x0c = List[Float64](capacity=dim)
+    for j in range(dim):
+        x0c.append(x0[j])
+    _nm_clamp(x0c, lower, upper)
 
     # dim+1 vertices; vertex i (i < dim) perturbs coordinate i, vertex dim is x0.
     var simplex = List[List[Float64]]()
     for i in range(dim + 1):
         var row = List[Float64]()
         for j in range(dim):
-            row.append(x0[j])
+            row.append(x0c[j])
         if i < dim:
             var val = row[i]
             if val == 0.0:
@@ -558,7 +771,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
     var fvals = List[Float64]()
     var any_finite = False
     for i in range(dim + 1):
-        var fv = _nm_objective_at(y, simplex[i], damped)
+        var fv = _nm_objective_at(y, simplex[i], damped, m)
         if fc_finite(fv):
             any_finite = True
         fvals.append(fv)
@@ -574,6 +787,9 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
     var order = List[Int]()
     for i in range(dim + 1):
         order.append(i)
+    # The reference's return index: the best vertex as of the LAST ordering performed,
+    # never re-sorted after the loop (see the docstring for the measured consequence).
+    var ret_idx = 0
     for _ in range(FIT_NM_MAX_ITER):
         # Stable insertion sort of vertex indices by objective.
         for i in range(1, dim + 1):
@@ -586,6 +802,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
         var best = order[0]
         var second_worst = order[dim - 1]
         var worst = order[dim]
+        ret_idx = best
         # Population standard deviation of the objectives (the reference divides by
         # the count, not count-1). A non-finite objective in the simplex keeps the
         # test failing, which keeps the search running away from the overflow.
@@ -613,7 +830,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
         for j in range(dim):
             xr.append(centroid[j] + (centroid[j] - simplex[worst][j]))
         _nm_clamp(xr, lower, upper)
-        var fr = _nm_objective_at(y, xr, damped)
+        var fr = _nm_objective_at(y, xr, damped, m)
         if fvals[best] <= fr and fr < fvals[second_worst]:
             simplex[worst] = xr^
             fvals[worst] = fr
@@ -623,7 +840,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
             for j in range(dim):
                 xe.append(centroid[j] + coef_gamma * (xr[j] - centroid[j]))
             _nm_clamp(xe, lower, upper)
-            var fe = _nm_objective_at(y, xe, damped)
+            var fe = _nm_objective_at(y, xe, damped, m)
             if fe < fr:
                 simplex[worst] = xe^
                 fvals[worst] = fe
@@ -636,7 +853,7 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
             for j in range(dim):
                 xoc.append(centroid[j] + coef_rho * (xr[j] - centroid[j]))
             _nm_clamp(xoc, lower, upper)
-            var foc = _nm_objective_at(y, xoc, damped)
+            var foc = _nm_objective_at(y, xoc, damped, m)
             if foc <= fr:
                 simplex[worst] = xoc^
                 fvals[worst] = foc
@@ -650,14 +867,14 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
                             + coef_sigma * (simplex[i][j] - simplex[best][j])
                         )
                     _nm_clamp(simplex[i], lower, upper)
-                    fvals[i] = _nm_objective_at(y, simplex[i], damped)
+                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m)
         else:
             # Inner contraction.
             var xic = List[Float64]()
             for j in range(dim):
                 xic.append(centroid[j] - coef_rho * (xr[j] - centroid[j]))
             _nm_clamp(xic, lower, upper)
-            var fic = _nm_objective_at(y, xic, damped)
+            var fic = _nm_objective_at(y, xic, damped, m)
             if fic < fvals[worst]:
                 simplex[worst] = xic^
                 fvals[worst] = fic
@@ -671,28 +888,122 @@ fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
                             + coef_sigma * (simplex[i][j] - simplex[best][j])
                         )
                     _nm_clamp(simplex[i], lower, upper)
-                    fvals[i] = _nm_objective_at(y, simplex[i], damped)
-    # Final stable ordering, then unpack the best vertex.
-    for i in range(1, dim + 1):
-        var key = order[i]
-        var j = i - 1
-        while j >= 0 and fvals[order[j]] > fvals[key]:
-            order[j + 1] = order[j]
-            j -= 1
-        order[j + 1] = key
-    var bidx = order[0]
-    if not fc_finite(fvals[bidx]):
+                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m)
+    if not fc_finite(fvals[ret_idx]):
         return out^
-    out.append(simplex[bidx][0])
-    out.append(simplex[bidx][1])
+    for j in range(dim):
+        out.append(simplex[ret_idx][j])
+    return out^
+
+
+fn _fit_nelder_mead(y: List[Float64], damped: Bool) -> List[Float64]:
+    """`[alpha, beta, phi, l0, b0]` fitted by the reference Nelder-Mead, or empty.
+
+    The non-seasonal builder over `_nm_run`: reference starting point (`initparam`'s
+    m = 1 starts, `initstate`'s OLS head regression), reference box (the FIT_BETA_HI
+    ceiling included), then the validated optimizer. Empty when no vertex of the
+    initial simplex has a finite objective — the caller turns that into
+    FC_ERR_ALL_UNDEFINED — and empty is also the answer when the heuristic starting
+    state cannot be formed. The undamped return carries phi = 1.0 so both layouts
+    unpack identically downstream.
+    """
+    var out = List[Float64]()
+    var start = _heuristic_state(y)
+    if len(start) != 2:
+        return out^
+    var x0 = List[Float64]()
+    x0.append(FIT_ALPHA_START)
+    x0.append(FIT_BETA_START)
     if damped:
-        out.append(simplex[bidx][2])
-        out.append(simplex[bidx][3])
-        out.append(simplex[bidx][4])
+        x0.append(FIT_PHI_START)
+    x0.append(start[0])
+    x0.append(start[1])
+    var lower = List[Float64]()
+    var upper = List[Float64]()
+    var big: Float64 = 1.0 / 0.0
+    lower.append(FIT_ALPHA_LO)
+    upper.append(FIT_ALPHA_HI)
+    lower.append(FIT_BETA_LO)
+    upper.append(FIT_BETA_HI)
+    if damped:
+        lower.append(FIT_PHI_LO)
+        upper.append(FIT_PHI_HI)
+    lower.append(-big)
+    upper.append(big)
+    lower.append(-big)
+    upper.append(big)
+    var best = _nm_run(y, x0, lower, upper, damped, 1)
+    if len(best) == 0:
+        return out^
+    out.append(best[0])
+    out.append(best[1])
+    if damped:
+        out.append(best[2])
+        out.append(best[3])
+        out.append(best[4])
     else:
         out.append(1.0)
-        out.append(simplex[bidx][2])
-        out.append(simplex[bidx][3])
+        out.append(best[2])
+        out.append(best[3])
+    return out^
+
+
+fn _fit_nelder_mead_aaa(y: List[Float64], m: Int) -> List[Float64]:
+    """`[alpha, beta, gamma, l0, b0, s_0..s_(m-1)]` jointly fitted, or empty.
+
+    The seasonal builder over `_nm_run`, reproducing the reference exactly:
+
+      * `initparam` with the season length in it — `alpha = lo + 0.2*(hi - lo)/m`,
+        then the SAME in-place ceiling trap as FIT_BETA_HI, twice: the beta box is
+        `min(hi, alpha_start)` and the gamma box `min(hi, 1 - alpha_start)`, both
+        against the STARTING alpha, and `beta = lo + 0.1*(box)`,
+        `gamma = lo + 0.05*(box)` from the mutated boxes.
+      * `initstate` via `_seasonal_decompose_state` — the m - 1 free seasonal
+        coordinates ride the simplex; the m-th is derived by the zero-sum closure
+        inside the objective.
+
+    The RETURNED seasonal state is the full m-vector with the closure applied to the
+    winning vertex (index 0 newest, s[m-1] applying to the first observation), so the
+    caller never re-derives the closure. Empty when the decomposition cannot be formed
+    or no vertex is finite.
+    """
+    var out = List[Float64]()
+    var state = _seasonal_decompose_state(y, m)
+    if len(state) != m + 1:
+        return out^
+    var alpha0 = FIT_ALPHA_LO + 0.2 * (FIT_ALPHA_HI - FIT_ALPHA_LO) / Float64(m)
+    var beta_hi = min(FIT_ALPHA_HI, alpha0)
+    var beta0 = FIT_BETA_LO + 0.1 * (beta_hi - FIT_BETA_LO)
+    var gamma_hi = min(FIT_ALPHA_HI, 1.0 - alpha0)
+    var gamma0 = FIT_GAMMA_LO + 0.05 * (gamma_hi - FIT_GAMMA_LO)
+    var x0 = List[Float64]()
+    x0.append(alpha0)
+    x0.append(beta0)
+    x0.append(gamma0)
+    for j in range(m + 1):
+        x0.append(state[j])
+    var lower = List[Float64]()
+    var upper = List[Float64]()
+    var big: Float64 = 1.0 / 0.0
+    lower.append(FIT_ALPHA_LO)
+    upper.append(FIT_ALPHA_HI)
+    lower.append(FIT_BETA_LO)
+    upper.append(beta_hi)
+    lower.append(FIT_GAMMA_LO)
+    upper.append(gamma_hi)
+    for _ in range(m + 1):
+        lower.append(-big)
+        upper.append(big)
+    var best = _nm_run(y, x0, lower, upper, False, m)
+    if len(best) != m + 4:
+        return out^
+    for j in range(5):
+        out.append(best[j])
+    var s_sum: Float64 = 0.0
+    for j in range(m - 1):
+        out.append(best[5 + j])
+        s_sum += best[5 + j]
+    out.append(0.0 - s_sum)
     return out^
 
 
@@ -742,7 +1053,7 @@ fn _fitted_driver(
         values.append(v)
     return FittedForecast(
         FC_OK, method_id, horizon, n, values^, True,
-        alpha, beta, phi, l0, b0, level, trend, sse, mae,
+        alpha, beta, 0.0, phi, l0, b0, level, trend, sse, mae,
         audit.status, audit.solved, 5 if damped else 4,
         fc_status_name(FC_OK), fc_status_name(audit.status),
     )
@@ -785,23 +1096,36 @@ fn damped_fitted(y: List[Float64], horizon: Int) -> FittedForecast:
 
 
 fn ets_aaa_fitted(y: List[Float64], period: Int, horizon: Int) -> FittedForecast:
-    """ETS(A,A,A) with fitted level/trend: frozen seasonal indices + `holt_fitted` core.
+    """ETS(A,A,A) with the WHOLE state fitted: level, trend AND the seasonal indices.
 
-    The seasonal state is the frozen composition `forecasting.point._seasonal_indices`
-    (moving-average trend -> detrend -> interior slice -> per-phase averages, all four
-    steps frozen kernels); the level and trend are then fitted on the DESEASONALISED
-    series exactly as `holt_fitted` fits them, and the index of the future phase
-    `(n - 1 + h) mod period` is added back. `period == 1` reduces to `holt_fitted`
-    (index 0.0) rather than being refused, matching `point.ets_aaa_forecast`.
+    The joint fit the module docstring's controlled experiment demands:
+    [alpha, beta, gamma, l0, b0, s_1..s_(m-1)] on one Nelder-Mead simplex (the m-th
+    initial seasonal state is the zero-sum closure), objective `n*log(SSE)` through the
+    reference recursion `_aaa_pass`, starting point `_seasonal_decompose_state` /
+    `initparam`-with-m. Its predecessor held the decomposition indices STATIC and fitted
+    only the deseasonalised level/trend; the controlled attribution showed the static
+    initial state — not the missing seasonal update — carries the loss (+3.97 sample
+    sMAPE at the reference's own smoothing parameters), and the replica of THIS fit
+    matches statsforecast 2.1.1 to rel < 1e-8 on 287/300 sampled Quarterly series.
 
-    The seasonal indices are NOT refitted jointly with the state: they are the frozen
-    estimate, deliberately, so the only new estimation surface this driver adds over
-    `point.ets_aaa_forecast` is the one the M4 experiment isolated — the initial
-    level/trend. A period the series cannot support one interior cycle of is
-    FC_ERR_PERIOD, never a forecast built from edge padding.
+    Forecast step h adds the seasonal state of phase `(m - 1 - (h-1)) mod m` (newest
+    first, the reference's indexing) to `level + h*trend`. On the full M4 corpus this
+    driver's forecasts match a same-machine statsforecast 2.1.1 run on ALL seasonal
+    series (24,000 + 48,000 + 414, within 1e-6 scaled; row sMAPE/MASE equal to four
+    decimals), and the M4 AAA row moves from OWA 0.928/0.961/0.755 (static indices) to
+    0.903/0.952/0.703 on Quarterly/Monthly/Hourly. `period == 1` reduces to
+    `holt_fitted` (gamma unused, reported 0.0) rather than being refused, matching
+    `point.ets_aaa_forecast`. A period the series cannot support one interior
+    moving-average cycle of is FC_ERR_PERIOD, never a forecast built from edge padding.
+    The work budget is charged at the seasonal dimension: FIT_NM_MAX_ITER * (m + 7)
+    bounded O(n) passes, the (dim + 3) arithmetic documented at FIT_NM_MAX_EVALS.
+
+    `init_status` is FC_OK with `init_solved = False`: the initial state is a jointly
+    fitted quantity here, and there is no closed-form 2x2 audit to report — see the
+    struct docstring for why that combination is reserved to this driver.
 
     @capability ets_aaa_fitted
-    complexity: O(n) -- the seasonal pass is O(n * period), charged by fc_period_defect
+    complexity: O(n) -- at most FIT_NM_MAX_ITER * (period + 7) bounded O(n) passes
     counts:
     - dim period [kernel_validated]
     - dim horizon [kernel_validated]
@@ -819,29 +1143,42 @@ fn ets_aaa_fitted(y: List[Float64], period: Int, horizon: Int) -> FittedForecast
         return _no_fitted(defect, FC_METHOD_ETS_AAA, horizon, n)
     if n < 2:
         return _no_fitted(FC_ERR_INSUFFICIENT_HISTORY, FC_METHOD_ETS_AAA, horizon, n)
-    if not fc_work_fits(n, FIT_NM_MAX_EVALS, FIT_MAX_WORK):
+    if period <= 1:
+        return _fitted_driver(y, horizon, False, FC_METHOD_ETS_AAA)
+    var seasonal_evals = FIT_NM_MAX_ITER * (period + 7)
+    if not fc_work_fits(n, seasonal_evals, FIT_MAX_WORK):
         return _no_fitted(FC_ERR_WORK_BUDGET, FC_METHOD_ETS_AAA, horizon, n)
-    var indices = _seasonal_indices(y, period)
-    if len(indices) != period:
-        return _no_fitted(FC_ERR_PERIOD, FC_METHOD_ETS_AAA, horizon, n)
-    var adjusted = List[Float64]()
-    for t in range(n):
-        adjusted.append(y[t] - indices[t % period])
-    if not fc_all_finite(adjusted):
+    var fit = _fit_nelder_mead_aaa(y, period)
+    if len(fit) != period + 5:
+        return _no_fitted(FC_ERR_ALL_UNDEFINED, FC_METHOD_ETS_AAA, horizon, n)
+    var alpha = fit[0]
+    var beta = fit[1]
+    var gamma = fit[2]
+    var l0 = fit[3]
+    var b0 = fit[4]
+    var s_init = List[Float64](capacity=period)
+    for j in range(period):
+        s_init.append(fit[5 + j])
+    var pass_ = _aaa_pass(y, period, alpha, beta, gamma, l0, b0, s_init)
+    if len(pass_) != 4 + period:
         return _no_fitted(FC_ERR_NON_FINITE, FC_METHOD_ETS_AAA, horizon, n)
-    var core = _fitted_driver(adjusted, horizon, False, FC_METHOD_ETS_AAA)
-    if not core.has_forecast:
-        return _no_fitted(core.status, FC_METHOD_ETS_AAA, horizon, n)
+    var sse = pass_[0]
+    var level = pass_[1]
+    var trend = pass_[2]
+    var mae = pass_[3] / Float64(n - 1)
     var values = List[Float64]()
     for h in range(1, horizon + 1):
-        var v = core.values[h - 1] + indices[(n - 1 + h) % period]
+        var j = period - h
+        while j < 0:
+            j += period
+        var v = level + Float64(h) * trend + pass_[4 + j]
         if not fc_finite(v):
             return _no_fitted(FC_ERR_NON_FINITE, FC_METHOD_ETS_AAA, horizon, n)
         values.append(v)
     return FittedForecast(
         FC_OK, FC_METHOD_ETS_AAA, horizon, n, values^, True,
-        core.alpha, core.beta, core.phi, core.l0, core.b0,
-        core.level, core.trend, core.sse, core.insample_mae,
-        core.init_status, core.init_solved, core.n_params + period,
-        fc_status_name(FC_OK), fc_status_name(core.init_status),
+        alpha, beta, gamma, 1.0, l0, b0,
+        level, trend, sse, mae,
+        FC_OK, False, period + 4,
+        fc_status_name(FC_OK), fc_status_name(FC_OK),
     )

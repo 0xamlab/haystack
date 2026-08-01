@@ -21,7 +21,19 @@ the PR that introduced this file.
 
 Exactness is asserted where the arithmetic is exactly representable: the two hand-derived
 solves and the seasonal reproduction are all dyadic rationals, so `==` is used there, not
-a tolerance.
+a tolerance. For the seasonal ramp the exactness now runs THROUGH the joint fit: the
+decomposition + OLS starting state is the perfect fit (pa = [1, -1, 2, -2], l0 = -2,
+b0 = 2, all dyadic), every in-sample error is exactly zero, so the recursion transports
+the states untouched and the optimizer cannot leave the minimum it started on.
+
+The seasonal biting assertion (4b) mirrors the corrupted-difference one: a seasonal
+amplitude that GROWS makes any static seasonal index wrong on the next cycle by the
+amplitude drift, while the joint fit tracks it through the fitted seasonal state
+(expected values from the replica validated against statsforecast 2.1.1 on this exact
+series to 1e-11: joint worst error 0.262, static composition worst 1.51, fitted gamma
+0.9499). Anti-vacuity for the new assertions was demonstrated the same way as the
+original: pointing assertion 4b at the static-index composition fails it, and reporting
+gamma = 0 from the seasonal driver fails the audit-trail check.
 """
 from std.math import abs as fabs
 
@@ -48,7 +60,7 @@ from forecasting.fitted import (
     fitted_init_solve,
     holt_fitted,
 )
-from forecasting.point import ets_aan_forecast
+from forecasting.point import ets_aaa_forecast, ets_aan_forecast
 
 
 fn _floats(*vals: Float64) -> List[Float64]:
@@ -229,10 +241,13 @@ fn main():
         print("  ❌ damped line behaviour wrong:", dl.phi, dl.values[5])
 
     # ══ 4. seasonal reproduction, EXACT ════════════════════════════════════════════
-    # y_t = 2t + s_{t mod 4}, s = [1, -1, 2, -2] over 12 points: the frozen indices
-    # recover s + 1 exactly (see test_forecasting_point), the adjusted series is the
-    # exact line 2t - 1, and the fitted core continues it exactly, so the next four
-    # true values 25, 25, 30, 28 come back EXACTLY — dyadic arithmetic end to end.
+    # y_t = 2t + s_{t mod 4}, s = [1, -1, 2, -2] over 12 points. The joint seasonal fit
+    # starts at the decomposition + OLS state, which on this series IS the perfect fit
+    # (every value dyadic: pa = [1, -1, 2, -2], l0 = -2, b0 = 2), every in-sample error
+    # is exactly 0, so the states pass through the recursion unchanged and the next four
+    # true values 25, 25, 30, 28 come back EXACTLY — dyadic arithmetic end to end. The
+    # in-sample SSE of the reported fit is asserted at the same time: only a
+    # numerically perfect fit forecasts this series exactly.
     var ys = List[Float64]()
     var s_idx = _floats(1.0, -1.0, 2.0, -2.0)
     for t in range(12):
@@ -242,12 +257,49 @@ fn main():
         af.status == FC_OK
         and af.values[0] == 25.0 and af.values[1] == 25.0
         and af.values[2] == 30.0 and af.values[3] == 28.0
+        and af.sse < 1.0e-12
     ):
         passed += 1
         print("  ✅ ets_aaa_fitted reproduces 25, 25, 30, 28 EXACTLY on the seasonal ramp")
     else:
         failed += 1
         print("  ❌ seasonal reproduction wrong")
+
+    # ══ 4b. THE SEASONAL BITING ASSERTION: evolving seasonal amplitude ═══════════════
+    # y = 10 + amp_c * base[t mod 4], base = [1, -1, 0.5, -0.5], amplitude growing
+    # 1.00, 1.25, .., 3.75 over 12 cycles; the next (13th) cycle's true amplitude is
+    # 4.0. STATIC decomposition indices can only carry the average amplitude (~2.4), so
+    # the frozen-index driver misses the last cycle by ~1.5 at every phase no matter
+    # its smoothing weights; the joint fit tracks the growth through the fitted
+    # seasonal state (replica gamma 0.9499, = statsforecast 2.1.1 on this series to
+    # 1e-11) and lands within 0.27 everywhere. Asserted on the WORST step, where the
+    # static index cannot hide behind a lucky phase: joint < 0.5, frozen > 1.0, at
+    # least a 3x differential, and the fitted gamma is reported LARGE — the capability
+    # the static composition lacks is visible in the audit trail, not just in the miss.
+    var ye = List[Float64]()
+    var base = _floats(1.0, -1.0, 0.5, -0.5)
+    for c in range(12):
+        for j in range(4):
+            ye.append(10.0 + (1.0 + 0.25 * Float64(c)) * base[j])
+    var truth = _floats(14.0, 6.0, 12.0, 8.0)  # 10 + 4.0 * base
+    var ae = ets_aaa_fitted(ye, 4, 4)
+    var fe = ets_aaa_forecast(ye, 0.2, 0.05, 1.0, 4, 4)
+    var evolving_ok = ae.status == FC_OK and fe.has_forecast and ae.gamma > 0.5
+    var worst_joint: Float64 = 0.0
+    var worst_frozen: Float64 = 0.0
+    for k in range(4):
+        worst_joint = max(worst_joint, fabs(ae.values[k] - truth[k]))
+        worst_frozen = max(worst_frozen, fabs(fe.values[k] - truth[k]))
+    if worst_frozen < 3.0 * worst_joint:
+        evolving_ok = False
+    if evolving_ok and worst_joint < 0.5 and worst_frozen > 1.0:
+        passed += 1
+        print("  ✅ evolving seasonality: joint fit within 0.5 (gamma fitted large),")
+        print("     static-index composition misses by > 1.0 — 3x differential per step")
+    else:
+        failed += 1
+        print("  ❌ the seasonal joint fit does not track evolving amplitude:",
+              worst_joint, worst_frozen, ae.gamma)
 
     # ══ 5. bit-reproducibility: same input, same fit, twice ═══════════════════════════
     var r1 = holt_fitted(yc, 6)
@@ -259,9 +311,16 @@ fn main():
     for k in range(6):
         if r1.values[k] != r2.values[k]:
             same = False
+    var a1 = ets_aaa_fitted(ye, 4, 4)
+    var a2 = ets_aaa_fitted(ye, 4, 4)
+    if a1.alpha != a2.alpha or a1.gamma != a2.gamma or a1.sse != a2.sse:
+        same = False
+    for k in range(4):
+        if a1.values[k] != a2.values[k]:
+            same = False
     if same:
         passed += 1
-        print("  ✅ bit-reproducible: two identical calls agree to the bit")
+        print("  ✅ bit-reproducible: two identical calls agree to the bit (AAN and AAA)")
     else:
         failed += 1
         print("  ❌ the fit is not deterministic")
@@ -331,16 +390,26 @@ fn main():
         print("  ❌ the work budget did not bite:", ew.status)
 
     # ══ 7. the audit trail: init provenance is reported on success ════════════════════
+    # The seasonal driver's reserved combination: init_status FC_OK with
+    # init_solved = False (jointly fitted state, no 2x2 audit), n_params = m + 4
+    # (alpha, beta, gamma, l0, b0, m - 1 free seasonal states), gamma reported for the
+    # seasonal fit and exactly 0.0 for the non-seasonal drivers — the reference
+    # recursion's own value for a seasonless model, so the field can never be read as
+    # a fitted seasonal weight where none was fitted.
     if (
         hf.init_status == FC_OK and hf.init_solved
         and hf.method_id == FC_METHOD_ETS_AAN
         and af.method_id == FC_METHOD_ETS_AAA
         and hf.n_params == 4 and dfc.n_params == 5
+        and af.n_params == 8
+        and af.init_status == FC_OK and not af.init_solved
+        and hf.gamma == 0.0 and dfc.gamma == 0.0
     ):
         passed += 1
-        print("  ✅ init provenance, method ids and parameter counts are reported")
+        print("  ✅ init provenance, method ids, parameter counts and gamma are reported")
     else:
         failed += 1
-        print("  ❌ audit fields wrong:", hf.init_status, hf.n_params, dfc.n_params)
+        print("  ❌ audit fields wrong:", hf.init_status, hf.n_params, dfc.n_params,
+              af.n_params, af.init_solved, hf.gamma)
 
     print("  [forecasting.fitted] Passed:", passed, "Failed:", failed)
