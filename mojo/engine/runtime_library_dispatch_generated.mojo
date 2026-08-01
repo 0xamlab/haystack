@@ -2423,6 +2423,9 @@ from forecasting.fitted import (
     holt_fitted as _forecasting_fitted__holt_fitted,
     damped_fitted as _forecasting_fitted__damped_fitted,
     ets_aaa_fitted as _forecasting_fitted__ets_aaa_fitted,
+    theta_fitted_at as _forecasting_fitted__theta_fitted_at,
+    theta_fitted as _forecasting_fitted__theta_fitted,
+    dotm_fitted as _forecasting_fitted__dotm_fitted,
 )
 
 from forecasting.hierarchy import (
@@ -2461,6 +2464,14 @@ from forecasting.point import (
     ar_forecast_checked as _forecasting_point__ar_forecast_checked,
     baseline_forecast as _forecasting_point__baseline_forecast,
     deseasonalise_flat as _forecasting_point__deseasonalise_flat,
+)
+
+from forecasting.pool import (
+    pool_candidate_name as _forecasting_pool__pool_candidate_name,
+    pool_mode_name as _forecasting_pool__pool_mode_name,
+    pool_holdout_report as _forecasting_pool__pool_holdout_report,
+    pool_blend_flat as _forecasting_pool__pool_blend_flat,
+    pool_holdout_forecast as _forecasting_pool__pool_holdout_forecast,
 )
 
 from forecasting.select import (
@@ -7970,8 +7981,10 @@ from forecasting.contract import (
 )
 
 from forecasting.fitted import (
+    DotmFit,
     FittedForecast,
     InitSolve,
+    ThetaFit,
 )
 
 from forecasting.hierarchy import (
@@ -7996,6 +8009,11 @@ from forecasting.origin_select import (
 from forecasting.point import (
     PointForecast,
     SeasonalAdjust,
+)
+
+from forecasting.pool import (
+    PoolForecast,
+    PoolReport,
 )
 
 from forecasting.select import (
@@ -11768,6 +11786,32 @@ fn _to_json_dominancereport(value: DominanceReport) raises -> String:
     result += _to_json_int(value.n_dominated)
     result += ","
     result += _to_json_list_bool(value.dominated)
+    result += "]}"
+    return result
+
+fn _to_json_dotmfit(value: DotmFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DotmFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_float64(value.l0)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.theta)
+    result += ","
+    result += _to_json_float64(value.sse)
+    result += ","
+    result += _to_json_float64(value.insample_mae)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -16180,6 +16224,66 @@ fn _to_json_policyvalues(value: PolicyValues) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_poolforecast(value: PoolForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PoolForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.mode)
+    result += ","
+    result += _to_json_int(value.top_k)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_int(value.chosen_candidate)
+    result += ","
+    result += _to_json_bool(value.is_combination)
+    result += ","
+    result += _to_json_list_int(value.candidate_status)
+    result += ","
+    result += _to_json_list_float64(value.holdout_mae)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
+fn _to_json_poolreport(value: PoolReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PoolReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_int(value.n_fit)
+    result += ","
+    result += _to_json_int(value.period)
+    result += ","
+    result += _to_json_bool(value.has_report)
+    result += ","
+    result += _to_json_list_int(value.candidate_status)
+    result += ","
+    result += _to_json_list_float64(value.holdout_mae)
+    result += ","
+    result += _to_json_list_float64(value.holdout_values)
+    result += ","
+    result += _to_json_list_float64(value.full_values)
+    result += ","
+    result += _to_json_list_float64(value.si_holdout)
+    result += ","
+    result += _to_json_list_float64(value.si_future)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_poweriterresult(value: PowerIterResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PowerIterResult\",\"v\":[")
     result += _to_json_float64(value.eigenvalue)
@@ -18900,6 +19004,30 @@ fn _to_json_testresult(value: TestResult) raises -> String:
     result += _to_json_float64(value.p_value)
     result += ","
     result += _to_json_bool(value.reject_h0)
+    result += "]}"
+    return result
+
+fn _to_json_thetafit(value: ThetaFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ThetaFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_float64(value.theta)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.sse)
+    result += ","
+    result += _to_json_float64(value.insample_mae)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -59643,6 +59771,58 @@ fn _dispatch_forecasting__fitted(function_name: String, args_array: String) rais
             "invalid_arguments",
             "Function forecasting.fitted.ets_aaa_fitted expected 3 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "theta_fitted_at":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_fitted__theta_fitted_at(arg_0, arg_1, arg_2)
+                var result_json = _to_json_thetafit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.theta_fitted_at."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.theta_fitted_at expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "theta_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_fitted__theta_fitted(arg_0, arg_1)
+                var result_json = _to_json_thetafit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.theta_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.theta_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dotm_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_fitted__dotm_fitted(arg_0, arg_1)
+                var result_json = _to_json_dotmfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.dotm_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.dotm_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module forecasting.fitted."
@@ -60110,6 +60290,107 @@ fn _dispatch_forecasting__point(function_name: String, args_array: String) raise
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module forecasting.point."
+    )
+
+fn _dispatch_forecasting__pool(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "pool_candidate_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_pool__pool_candidate_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.pool.pool_candidate_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.pool.pool_candidate_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pool_mode_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_pool__pool_mode_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.pool.pool_mode_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.pool.pool_mode_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pool_holdout_report":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_pool__pool_holdout_report(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_poolreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.pool.pool_holdout_report."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.pool.pool_holdout_report expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pool_blend_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _forecasting_pool__pool_blend_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_poolforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.pool.pool_blend_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.pool.pool_blend_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pool_holdout_forecast":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _forecasting_pool__pool_holdout_forecast(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_poolforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.pool.pool_holdout_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.pool.pool_holdout_forecast expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.pool."
     )
 
 fn _dispatch_forecasting__select(function_name: String, args_array: String) raises -> String:
@@ -148707,6 +148988,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_forecasting__origin_select(function_name, args_array)
     if module_name == "forecasting.point":
         return _dispatch_forecasting__point(function_name, args_array)
+    if module_name == "forecasting.pool":
+        return _dispatch_forecasting__pool(function_name, args_array)
     if module_name == "forecasting.select":
         return _dispatch_forecasting__select(function_name, args_array)
     if module_name == "forensics":

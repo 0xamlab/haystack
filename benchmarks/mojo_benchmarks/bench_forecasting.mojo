@@ -84,6 +84,7 @@ from forecasting.fitted import fitted_init_solve, holt_fitted
 from forecasting.origin_select import crn_origin_select
 from forecasting.hierarchy import reconcile_bottom_up_flat, reconcile_top_down_flat
 from forecasting.interval import interval_empirical_flat
+from forecasting.pool import POOL_MODE_INV_MAE, pool_holdout_forecast
 
 
 fn _series(n: Int, period: Int) -> List[Float64]:
@@ -528,6 +529,47 @@ fn main() raises:
             failures += 1
             print("  ❌ moving-block resample is super-linear:", mbb_unit[0], "->",
                   mbb_unit[1])
+
+    # ══ 10. the pool driver is a CONSTANT number of bounded fits — no hidden n^2 ══
+    #
+    # `pool_holdout_forecast` runs each candidate twice (truncated + full window), so
+    # its cost is a fixed multiple of the fitted drivers gated above. The same 4x-n /
+    # 10x-total shape gate applies: a super-linear join (say, a per-step rescan of the
+    # whole series while composing weights) would land at 16x+ and fail here even
+    # though every component driver passed its own gate.
+    var pool_total = List[Float64]()
+    var pool_ns_list = List[Int]()
+    pool_ns_list.append(512)
+    pool_ns_list.append(2048)
+    for i in range(len(pool_ns_list)):
+        var n_pool = pool_ns_list[i]
+        var yp = _series(n_pool, 12)
+        var best_pool: Float64 = 0.0
+        var pool_refused = False
+        for rep in range(GATE_REPS):
+            var t16 = perf_counter_ns()
+            var pooled = pool_holdout_forecast(yp, yp, 1, 8, POOL_MODE_INV_MAE, 3)
+            var t17 = perf_counter_ns()
+            if pooled.status != FC_OK:
+                pool_refused = True
+                print("  ❌ pool_holdout_forecast refused at n =", n_pool,
+                      pooled.status_name)
+                break
+            if rep == 0 or _ns(t16, t17) < best_pool:
+                best_pool = _ns(t16, t17)
+        if pool_refused:
+            failures += 1
+            continue
+        pool_total.append(best_pool)
+        print("  n =", n_pool, "min of", GATE_REPS, "pool_holdout_forecast total ns",
+              best_pool)
+    if len(pool_total) == 2:
+        if pool_total[1] <= 10.0 * pool_total[0]:
+            print("  ✅ pool_holdout_forecast total cost grew sub-quadratically across 4x n")
+        else:
+            failures += 1
+            print("  ❌ pool_holdout_forecast cost is super-linear:", pool_total[0],
+                  "->", pool_total[1])
 
     print("  [bench_forecasting] scaling failures:", failures)
 

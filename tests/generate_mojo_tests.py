@@ -186,6 +186,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_forecasting_intermittent.mojo",
         "test_forecasting_interval.mojo",
         "test_forecasting_point.mojo",
+        "test_forecasting_pool.mojo",
         "test_forecasting_select.mojo",
         # Statistical inference package: hand-written known-value suites. Note these are the
         # `inference/` PACKAGE suites; test_inference_engine / test_inference_cost_latency /

@@ -53,14 +53,23 @@ from forecasting.contract import (
 from forecasting.fitted import (
     FIT_MAX_WORK,
     FIT_NM_MAX_EVALS,
+    FIT_THETA_HI,
+    DotmFit,
     FittedForecast,
     InitSolve,
+    ThetaFit,
+    _dotm_forecast_path,
+    _dotm_pass,
     damped_fitted,
+    dotm_fitted,
     ets_aaa_fitted,
     fitted_init_solve,
     holt_fitted,
+    theta_fitted,
+    theta_fitted_at,
 )
-from forecasting.point import ets_aaa_forecast, ets_aan_forecast
+from forecasting.point import ets_aaa_forecast, ets_aan_forecast, theta_forecast
+from forecasting.select import _golden_ses_alpha, _theta_line
 
 
 fn _floats(*vals: Float64) -> List[Float64]:
@@ -411,5 +420,235 @@ fn main():
         failed += 1
         print("  ❌ audit fields wrong:", hf.init_status, hf.n_params, dfc.n_params,
               af.n_params, af.init_solved, hf.gamma)
+
+    # ══ 8. optimized theta: the fitted theta and its anchors ══════════════════════════
+    #
+    # 8a. THE ANCHOR: theta forced to 2.0 IS the shipped classical-Theta pipeline,
+    # bit-for-bit. `forecasting.select` carries the reference alpha fit for the theta-2
+    # line (the same golden section the M4 Theta row's parameters came out of);
+    # `theta_fitted_at(y, 2.0, h)` must reproduce that alpha to the LAST BIT and the
+    # forecast must equal `theta_forecast` at that alpha to the last bit. This is also
+    # the drift guard for the op-identical helper copies in `fitted` — any divergence
+    # from `select`'s recursion order shows up here as a bit mismatch, so `==`, never a
+    # tolerance. The series is trend + deterministic zig-zag, nothing degenerate.
+    var yzz = List[Float64]()
+    for t in range(40):
+        yzz.append(
+            10.0 + 0.3 * Float64(t)
+            + (3.0 if t % 2 == 0 else -2.0)
+            + 0.1 * Float64((t * 7) % 5)
+        )
+    var zline = _theta_line(yzz)
+    var a_sel = _golden_ses_alpha(zline)
+    var fc_ref = theta_forecast(yzz, 2.0, a_sel, 8)
+    var at2 = theta_fitted_at(yzz, 2.0, 8)
+    var anchor_ok = (
+        at2.status == FC_OK and at2.has_forecast and fc_ref.has_forecast
+        and at2.alpha == a_sel and at2.theta == 2.0 and len(at2.values) == 8
+    )
+    if anchor_ok:
+        for k in range(8):
+            if at2.values[k] != fc_ref.values[k]:
+                anchor_ok = False
+    if anchor_ok:
+        passed += 1
+        print("  ✅ theta_fitted_at(2.0) == select's alpha fit + theta_forecast, bit-exact")
+    else:
+        failed += 1
+        print("  ❌ the theta = 2 anchor drifted:", at2.alpha, a_sel)
+
+    # 8b. A perfect line, hand-derived: on y = 3 + 2t the OLS line is y itself, so the
+    # theta line Z = theta*y + (1-theta)*L equals y for EVERY theta — the inner alpha
+    # fit and the SES level s are therefore IDENTICAL across theta, and the profile
+    # objective is (1/theta)^2 * C with C > 0 constant: monotone decreasing, so the
+    # fitted theta must sit at the top of the box (midpoint of a 28-iteration bracket,
+    # within 1e-3 of FIT_THETA_HI). The forecast error obeys the closed form
+    # f_h - truth = (1/theta) * (s - truth_h) with the SAME s for every theta, hence
+    # the exact identity theta* x err_fitted(h) = 2 x err_theta2(h), asserted at 1e-9
+    # relative (the subtraction f - truth cancels ~digit-for-digit at these magnitudes,
+    # nothing worse). The fitted theta's error is |2/theta*| ~ 0.2 of classical
+    # theta's — the driver's reason to exist, asserted, not narrated.
+    var ylin = List[Float64]()
+    for t in range(30):
+        ylin.append(3.0 + 2.0 * Float64(t))
+    var flin = theta_fitted(ylin, 6)
+    var flin2 = theta_fitted_at(ylin, 2.0, 6)
+    var lin_ok = (
+        flin.status == FC_OK and flin.theta > FIT_THETA_HI - 1.0e-3
+        and flin2.status == FC_OK
+    )
+    if lin_ok:
+        for k in range(6):
+            var truth = 3.0 + 2.0 * Float64(29 + k + 1)
+            var err_f = flin.values[k] - truth
+            var err_2 = flin2.values[k] - truth
+            if fabs(flin.theta * err_f - 2.0 * err_2) > 1.0e-9 * fabs(2.0 * err_2):
+                lin_ok = False
+            if not (fabs(err_f) < fabs(err_2)):
+                lin_ok = False
+    if lin_ok:
+        passed += 1
+        print("  ✅ on y = 3+2t: theta -> box top, err identity theta*errF == 2*err2 holds")
+    else:
+        failed += 1
+        print("  ❌ linear-series theta fit wrong:", flin.theta, flin.values[5])
+
+    # 8c. The optimizer optimises ITS OWN objective: on the zig-zag series the fitted
+    # theta is interior (measured 5.6276..., pinned only as "strictly inside the box")
+    # and its method-scale SSE is <= the SSE at theta = 1, 2 and 10 probed through the
+    # same public building block (measured 292.81 vs 369.91 / 321.98 / 294.60). A
+    # flipped bracket update, a dropped (1/theta)^2 rescale or an ignored theta
+    # argument each break at least one of these (verified by mutation before this
+    # file shipped). Consistency: theta_fitted's path IS theta_fitted_at(theta*)'s,
+    # bit-for-bit, so the optimum and its forecast cannot drift apart.
+    var fzz = theta_fitted(yzz, 8)
+    var zz1 = theta_fitted_at(yzz, 1.0, 8)
+    var zz10 = theta_fitted_at(yzz, 10.0, 8)
+    var fzz_at = theta_fitted_at(yzz, fzz.theta, 8)
+    var opt_ok = (
+        fzz.status == FC_OK and fzz.theta > 1.01 and fzz.theta < 9.99
+        and fzz.sse <= zz1.sse and fzz.sse <= at2.sse and fzz.sse <= zz10.sse
+        and fzz.alpha == fzz_at.alpha and fzz.insample_mae == fzz_at.insample_mae
+    )
+    if opt_ok:
+        for k in range(8):
+            if fzz.values[k] != fzz_at.values[k]:
+                opt_ok = False
+    if opt_ok:
+        passed += 1
+        print("  ✅ fitted theta interior, beats theta = 1/2/10 on its objective,")
+        print("     and equals theta_fitted_at(theta*) bit-for-bit")
+    else:
+        failed += 1
+        print("  ❌ theta optimum inconsistent:", fzz.theta, fzz.sse, at2.sse)
+
+    # 8d. The selection statistic is the METHOD's, not the line's: at theta = 2 the
+    # reported insample_mae must be EXACTLY half the SES-on-Z mae — the same
+    # (1/theta)-rescale `forecasting.select` applies to its theta candidate, so a
+    # selector can rank this driver against the existing pool without conversion.
+    var z_pass_sae: Float64 = 0.0
+    var s_run = zline[0]
+    for t in range(1, len(zline)):
+        var e = zline[t] - s_run
+        z_pass_sae += fabs(e)
+        s_run = a_sel * zline[t] + (1.0 - a_sel) * s_run
+    var z_mae = z_pass_sae / Float64(len(zline) - 1)
+    if at2.insample_mae == 0.5 * z_mae:
+        passed += 1
+        print("  ✅ insample_mae at theta = 2 is exactly half the theta-line SES mae")
+    else:
+        failed += 1
+        print("  ❌ method-scale mae wrong:", at2.insample_mae, 0.5 * z_mae)
+
+    # 8e. Refusals, per rule 4: absent, never a padded stand-in.
+    var t_empty = theta_fitted(List[Float64](), 4)
+    var t_short = theta_fitted(_floats(1.0, 2.0), 1)
+    var t_range = theta_fitted_at(yzz, 0.5, 4)   # theta < 1 leans against the trend
+    var t_hor = theta_fitted(yzz, 0)
+    if (
+        t_empty.status == FC_ERR_EMPTY_SERIES and not t_empty.has_forecast
+        and len(t_empty.values) == 0
+        and t_short.status == FC_ERR_INSUFFICIENT_HISTORY and not t_short.has_forecast
+        and t_range.status == FC_ERR_PARAM_RANGE and not t_range.has_forecast
+        and t_hor.status == FC_ERR_HORIZON and not t_hor.has_forecast
+    ):
+        passed += 1
+        print("  ✅ theta refusals: empty, n < 3, theta < 1, horizon 0 — all absent")
+    else:
+        failed += 1
+        print("  ❌ a theta refusal leaked a forecast:", t_empty.status,
+              t_short.status, t_range.status, t_hor.status)
+
+    # ══ 9. DOTM: the dynamic theta recursion, pinned to the reference ═════════════════
+    #
+    # 9a. THE REFERENCE-PINNED PASS, derived by hand and confirmed against the compiled
+    # statsforecast 2.1.1 `theta::calc` (which this port was validated against on 200
+    # randomized trials to 1e-12 and 600 M4 series end-to-end at rel < 1e-4, 597/600
+    # rel < 1e-8, before this section was written). y = [3, 5, 4, 7], l0 = 2,
+    # alpha = 0.5, theta = 2 — every state is hand-checkable:
+    #   i=0: lev = 2.5, meany = A = 3, B = 0, no error charged (mu_0 = y_0)
+    #   i=1: mu = 2.5 + .5*(3*.5) = 3.25, e = 1.75; lev 3.75; B = (6*(5-3)/2)/3 = 2,
+    #        meany 4, A = 4 - 2*3/2 = 1
+    #   i=2: mu = 3.75 + .5*(1*.25 + 2*(1-.125)/.5) = 5.625, e = -1.625; lev 3.875;
+    #        B = (1*2 + 0)/4 = 0.5, meany 4, A = 3
+    #   i=3: mu = 3.875 + .5*(3*.125 + .5*(1-.0625)/.5) = 4.53125, e = 2.46875;
+    #        lev 5.4375; B = (2*.5 + 6*(7-4)/4)/5 = 1.1 <- FROM THE PRE-UPDATE MEAN 4,
+    #        the sampler-style post-update mean gives 0.875 and a different estimator;
+    #        meany 4.75, A = 4.75 - 1.1*5/2 = 2
+    # objective = 2.46875^2 / mean|y| = 6.0947265625 / 4.75; sse(t>=1) = 3.0625 +
+    # 2.640625 + 6.0947265625 = 11.7978515625. Dyadic except the two divisions, which
+    # are single correctly-rounded IEEE ops, so `==` throughout.
+    var ydot = _floats(3.0, 5.0, 4.0, 7.0)
+    var dp = _dotm_pass(ydot, 2.0, 0.5, 2.0)
+    if (
+        len(dp) == 7
+        and dp[0] == 6.0947265625 / 4.75
+        and dp[1] == 5.4375 and dp[2] == 4.75 and dp[3] == 2.0 and dp[4] == 1.1
+        and dp[5] == 11.7978515625
+    ):
+        passed += 1
+        print("  ✅ DOTM pass on [3,5,4,7]: every state and both errors hand-exact")
+    else:
+        failed += 1
+        if len(dp) == 7:
+            print("  ❌ DOTM pass wrong:", dp[0], dp[1], dp[2], dp[3], dp[4], dp[5])
+        else:
+            print("  ❌ DOTM pass refused a finite series")
+
+    # 9b. The forecast recursion continues the SAME updates with mu standing in for y:
+    # step 1 = 5.4375 + .5*(2*.0625 + 1.1*(1-.03125)/.5) = 6.565625, and the states it
+    # implies give step 2 = 6.937509765625 — both confirmed equal to the compiled
+    # reference `theta::forecast` output on this exact input. 1e-12 relative covers
+    # the one non-dyadic product; the reference values themselves are printed digits
+    # of the compiled library's doubles.
+    var dpath = _dotm_forecast_path(4, 2, 0.5, 2.0, dp[1], dp[2], dp[3], dp[4])
+    if (
+        len(dpath) == 2
+        and fabs(dpath[0] - 6.565625) <= 1.0e-12 * 6.565625
+        and fabs(dpath[1] - 6.937509765625) <= 1.0e-12 * 6.937509765625
+    ):
+        passed += 1
+        print("  ✅ DOTM forecast recursion reproduces the reference path (2 steps)")
+    else:
+        failed += 1
+        print("  ❌ DOTM forecast wrong:", dpath[0] if len(dpath) > 0 else -1.0,
+              dpath[1] if len(dpath) > 1 else -1.0)
+
+    # 9c. The fitted driver on a perfect line: the dynamic OLS states on y = 3 + 2t
+    # equal the true line from the second observation on, so a large theta rides it
+    # and the h = 6 forecast must land within 0.1 of the truth 73 (measured 72.9595)
+    # — STRICTLY closer than the static theta_fitted's box-capped 71.798, which is
+    # the dynamics' reason to exist. Plus bit-reproducibility and rule-4 refusals
+    # (n = 3 is a refusal HERE — the reference objective sees no error at n <= 3 and
+    # would converge instantly on an arbitrary start; theta_fitted accepts n = 3
+    # because ITS objective scores errors from t = 1).
+    var ylin9 = List[Float64]()
+    for t in range(30):
+        ylin9.append(3.0 + 2.0 * Float64(t))
+    var d9 = dotm_fitted(ylin9, 6)
+    var d9b = dotm_fitted(ylin9, 6)
+    var s9 = theta_fitted(ylin9, 6)
+    var d9_ok = (
+        d9.status == FC_OK and d9.has_forecast
+        and fabs(d9.values[5] - 73.0) < 0.1
+        and fabs(d9.values[5] - 73.0) < fabs(s9.values[5] - 73.0)
+        and d9.values[5] == d9b.values[5] and d9.theta == d9b.theta
+    )
+    var d_empty = dotm_fitted(List[Float64](), 4)
+    var d_short = dotm_fitted(_floats(1.0, 2.0, 3.0), 1)
+    var d_hor = dotm_fitted(ydot, 0)
+    if (
+        d9_ok
+        and d_empty.status == FC_ERR_EMPTY_SERIES and not d_empty.has_forecast
+        and d_short.status == FC_ERR_INSUFFICIENT_HISTORY and not d_short.has_forecast
+        and d_hor.status == FC_ERR_HORIZON and not d_hor.has_forecast
+    ):
+        passed += 1
+        print("  ✅ dotm_fitted: line within 0.1 of truth, beats static, reproducible,")
+        print("     and empty / n = 3 / horizon 0 are refusals")
+    else:
+        failed += 1
+        print("  ❌ dotm_fitted wrong:", d9.status, d9.values[5] if d9.has_forecast else -1.0,
+              d_short.status)
 
     print("  [forecasting.fitted] Passed:", passed, "Failed:", failed)

@@ -88,13 +88,19 @@ Modules
   point        — ETS(A,N,N) / ETS(A,A,N) damped / ETS(A,A,A), Theta, checked AR, deseasonalise
   fitted       — Holt/Damped/ETS(A,A,A) with FITTED smoothing parameters and initial
                  state (the closed-form 2x2 initial-state solve plus the reference
-                 Nelder-Mead), closing the measured M4 fixed-init defect
+                 Nelder-Mead), closing the measured M4 fixed-init defect; plus the
+                 Theta family with theta itself fitted — static (`theta_fitted`) and
+                 dynamic (`dotm_fitted`, the reference DOTM recursion)
   select       — per-series selection and inverse-MAE combination over {SES, Damped, Theta}
   origin_select — CRN-paired rolling-origin selection and the tournament tie gate:
                  K paired origins inside the training series decide select-vs-combine
                  per series, through `strategy.tournament`'s paired-t verdict
   bagging      — moving-block-bootstrap bagged forecasts (Bergmeir-Hyndman on this
                  substrate), keyed through `determinism.counter_rng`
+  pool         — training-holdout selection/combination over the WIDE pool (SES, Holt,
+                 Damped, Theta, Comb, ETS(A,A,A), seasonal naive, Naive2): fit on
+                 y[:n-h], score on the held training tail, refit on full y — no test
+                 window can enter any decision by construction
   backtest     — rolling-origin backtest and the honest error measures
   intermittent — Croston / SBA / SBJ and demand classification
   hierarchy    — bottom-up and top-down reconciliation, plus a coherence audit

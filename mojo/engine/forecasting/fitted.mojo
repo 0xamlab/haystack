@@ -1,7 +1,9 @@
 """
-forecasting.fitted — Holt-family drivers that FIT the smoothing parameters AND the
-initial state, closing the measured M4 defect in the fixed-init Holt path. Zero
-Python imports.
+forecasting.fitted — drivers that FIT what the pointwise drivers take as inputs: the
+Holt family's smoothing parameters AND initial state (closing the measured M4
+fixed-init defect), and the Theta family's theta itself — static (`theta_fitted`,
+golden section on the profile SSE) and dynamic (`dotm_fitted`, the reference DOTM
+state-space fit). Zero Python imports.
 
 The defect this module exists to close, with the measurement
 ------------------------------------------------------------
@@ -149,10 +151,13 @@ deprecation_state: active
 """
 from std.math import abs as fabs, log, sqrt
 
+from series import _ols_fit
+
 from forecasting.contract import (
     FC_ERR_ALL_UNDEFINED,
     FC_ERR_INSUFFICIENT_HISTORY,
     FC_ERR_NON_FINITE,
+    FC_ERR_PARAM_RANGE,
     FC_ERR_WORK_BUDGET,
     FC_METHOD_ETS_AAA,
     FC_METHOD_ETS_AAN,
@@ -166,6 +171,7 @@ from forecasting.contract import (
     fc_status_name,
     fc_work_fits,
 )
+from forecasting.point import FC_MAX_THETA, theta_forecast
 
 # ── the reference optimizer's constants, verified against statsforecast 2.1.1 ────────
 #
@@ -666,7 +672,7 @@ fn _heuristic_state(y: List[Float64]) -> List[Float64]:
 
 
 fn _nm_objective_at(
-    y: List[Float64], x: List[Float64], damped: Bool, m: Int
+    y: List[Float64], x: List[Float64], damped: Bool, m: Int, dotm: Bool = False
 ) -> Float64:
     """The joint objective at a Nelder-Mead vertex: unpack, then `n*log(SSE)`.
 
@@ -677,7 +683,17 @@ fn _nm_objective_at(
     exactly the reference's zero-sum closure — the optimizer moves m - 1 seasonal
     coordinates and the closure absorbs them, so the simplex geometry matches the
     implementation the fit was validated against.
+
+    `dotm` selects the dynamic-theta layout [l0, alpha, theta] and ITS reference
+    objective (tail SSE over the mean absolute observation — see `_dotm_pass`); the
+    default keeps every existing caller on the exact code path the ETS fits were
+    validated on.
     """
+    if dotm:
+        var pass_ = _dotm_pass(y, x[0], x[1], x[2])
+        if len(pass_) != 7:
+            return 1.0 / 0.0
+        return pass_[0]
     if m > 1:
         var s_full = List[Float64](capacity=m)
         var s_sum: Float64 = 0.0
@@ -709,7 +725,7 @@ fn _nm_clamp(mut x: List[Float64], lower: List[Float64], upper: List[Float64]):
 
 fn _nm_run(
     y: List[Float64], x0: List[Float64], lower: List[Float64],
-    upper: List[Float64], damped: Bool, m: Int,
+    upper: List[Float64], damped: Bool, m: Int, dotm: Bool = False,
 ) -> List[Float64]:
     """The best vertex of the reference Nelder-Mead over the given box, or empty.
 
@@ -771,7 +787,7 @@ fn _nm_run(
     var fvals = List[Float64]()
     var any_finite = False
     for i in range(dim + 1):
-        var fv = _nm_objective_at(y, simplex[i], damped, m)
+        var fv = _nm_objective_at(y, simplex[i], damped, m, dotm)
         if fc_finite(fv):
             any_finite = True
         fvals.append(fv)
@@ -830,7 +846,7 @@ fn _nm_run(
         for j in range(dim):
             xr.append(centroid[j] + (centroid[j] - simplex[worst][j]))
         _nm_clamp(xr, lower, upper)
-        var fr = _nm_objective_at(y, xr, damped, m)
+        var fr = _nm_objective_at(y, xr, damped, m, dotm)
         if fvals[best] <= fr and fr < fvals[second_worst]:
             simplex[worst] = xr^
             fvals[worst] = fr
@@ -840,7 +856,7 @@ fn _nm_run(
             for j in range(dim):
                 xe.append(centroid[j] + coef_gamma * (xr[j] - centroid[j]))
             _nm_clamp(xe, lower, upper)
-            var fe = _nm_objective_at(y, xe, damped, m)
+            var fe = _nm_objective_at(y, xe, damped, m, dotm)
             if fe < fr:
                 simplex[worst] = xe^
                 fvals[worst] = fe
@@ -853,7 +869,7 @@ fn _nm_run(
             for j in range(dim):
                 xoc.append(centroid[j] + coef_rho * (xr[j] - centroid[j]))
             _nm_clamp(xoc, lower, upper)
-            var foc = _nm_objective_at(y, xoc, damped, m)
+            var foc = _nm_objective_at(y, xoc, damped, m, dotm)
             if foc <= fr:
                 simplex[worst] = xoc^
                 fvals[worst] = foc
@@ -867,14 +883,14 @@ fn _nm_run(
                             + coef_sigma * (simplex[i][j] - simplex[best][j])
                         )
                     _nm_clamp(simplex[i], lower, upper)
-                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m)
+                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m, dotm)
         else:
             # Inner contraction.
             var xic = List[Float64]()
             for j in range(dim):
                 xic.append(centroid[j] - coef_rho * (xr[j] - centroid[j]))
             _nm_clamp(xic, lower, upper)
-            var fic = _nm_objective_at(y, xic, damped, m)
+            var fic = _nm_objective_at(y, xic, damped, m, dotm)
             if fic < fvals[worst]:
                 simplex[worst] = xic^
                 fvals[worst] = fic
@@ -888,7 +904,7 @@ fn _nm_run(
                             + coef_sigma * (simplex[i][j] - simplex[best][j])
                         )
                     _nm_clamp(simplex[i], lower, upper)
-                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m)
+                    fvals[i] = _nm_objective_at(y, simplex[i], damped, m, dotm)
     if not fc_finite(fvals[ret_idx]):
         return out^
     for j in range(dim):
@@ -1181,4 +1197,542 @@ fn ets_aaa_fitted(y: List[Float64], period: Int, horizon: Int) -> FittedForecast
         level, trend, sse, mae,
         FC_OK, False, period + 4,
         fc_status_name(FC_OK), fc_status_name(FC_OK),
+    )
+
+
+# ═══ Optimized Theta: theta fitted per series, not frozen at 2 ══════════════════════
+#
+# `point.theta_forecast` takes theta as an INPUT and the shipped pipelines freeze it at
+# the classical 2.0. But theta is a per-series quantity: `1 - 1/theta` is the weight on
+# the extrapolated OLS line, and how much a series' future rewards its full-sample trend
+# is exactly the kind of thing an in-sample fit can estimate (Fiorucci et al. 2016 fit
+# it by in-sample SSE and call the family "optimised theta"). The fit here is the same
+# machinery the package already trusts for alpha — golden section on the one-step
+# in-sample SSE — nested: for each theta probe, alpha is fitted on the theta line by
+# the EXACT golden section `forecasting.select` ships for the classical theta-2 line
+# (same bounds, same 28 iterations, same bracket updates), then the profile objective
+#
+#     SSE(theta) = (1/theta)^2 * SSE_SES(Z_theta, alpha*(theta))
+#
+# is compared across theta probes. The (1/theta)^2 scaling is NOT decoration: by the
+# decomposition identity `y = (1/theta)*Z(theta) + (1 - 1/theta)*L` the one-step
+# in-sample error of the theta METHOD is `(1/theta) * (z_t - s_{t-1})` — the SES error
+# on the theta line, rescaled — so without the scaling the objective would be the error
+# of the LINE, not of the method, and it would grow ~theta^2 instead of measuring
+# anything. `theta = 1` is plain SES; the profile at 1 equals the SES SSE exactly.
+#
+# Why golden section and not the Nelder-Mead above: the alpha fit this must reduce to
+# at theta = 2 (the shipped Theta row's `a_th`) IS a golden section, and the anchor
+# requirement — theta forced to 2.0 reproduces that row bit-for-bit — is only checkable
+# if the inner fit is op-identical to it. The helpers below therefore mirror
+# `select._ses_sse_mae` / `select._golden_ses_alpha` operation for operation; the suite
+# pins the two fits to bit-equality on probe series so the copies cannot drift.
+#
+# The theta box [1, 10]: the lower bound is `theta_forecast`'s own admission bound
+# (theta < 1 leans AGAINST the fitted trend — a sign error, refused there). The upper
+# bound is fixed a priori, not tuned: at theta = 10 the line weight `1 - 1/theta` is
+# already 0.9, past which the family is numerically the OLS-line extrapolation that
+# `series.linear_extrapolation` serves honestly (the same reasoning as FC_MAX_THETA,
+# one order of magnitude earlier). The reference implementation (statsforecast 2.1.1
+# `optimize_theta_target_fn`) bounds theta in [1, 1e10] but starts its Nelder-Mead at
+# 2.0, so ITS effective range is local myopia; a golden section needs the honest box
+# stated, and it is stated here once, before any measurement.
+
+comptime FIT_THETA_LO: Float64 = 1.0
+comptime FIT_THETA_HI: Float64 = 10.0
+comptime FIT_THETA_GOLDEN_ITERS: Int = 28
+comptime FIT_THETA_GOLDEN_RATIO: Float64 = 0.6180339887498949  # (sqrt(5) - 1) / 2
+# The reference SES bounds, the same values `forecasting.select` uses for a_theta.
+comptime FIT_THETA_ALPHA_LO: Float64 = 0.01
+comptime FIT_THETA_ALPHA_HI: Float64 = 0.99
+
+# The work budget, with the arithmetic: one theta PROBE costs one theta-line build,
+# one inner golden section (2 SSE passes per iteration) and one SSE pass at the fitted
+# alpha = 2 * FIT_THETA_GOLDEN_ITERS + 2 bounded O(n) passes. The outer golden section
+# runs 2 probes per iteration plus the final refit probe, and the OLS line is one more
+# pass: (2 * 28 + 1) * (2 * 28 + 2) + 1 = 3307. Same FIT_MAX_WORK budget as the
+# Nelder-Mead drivers; 2^32 / 3307 admits n up to ~1.3 million.
+comptime FIT_THETA_PROBE_PASSES: Int = 2 * FIT_THETA_GOLDEN_ITERS + 2
+comptime FIT_THETA_MAX_EVALS: Int = (
+    (2 * FIT_THETA_GOLDEN_ITERS + 1) * FIT_THETA_PROBE_PASSES + 1
+)
+
+
+@fieldwise_init
+struct ThetaFit(Copyable, Movable):
+    """A Theta forecast whose theta (and theta-line alpha) were fitted here.
+
+    `values` holds steps 1..horizon, EMPTY on any refusal (`has_forecast` is the
+    authority — no padded zeros, no repeated last value). `theta` and `alpha` are the
+    fitted parameters; the path itself comes out of `point.theta_forecast`, so the
+    method family stays FC_METHOD_THETA — a theta with a fitted theta is the same
+    method family, not a new method, and no id is minted.
+
+    `sse` is the one-step in-sample SSE of the METHOD — `(1/theta)^2` times the SES SSE
+    on the theta line, by the decomposition identity — and `insample_mae` the matching
+    mean absolute one-step error over t = 1..n-1, the SAME statistic
+    `forecasting.select` computes for classical theta (its `0.5 * z_mae` is this
+    quantity at theta = 2), so a selector can rank this driver against the existing
+    candidates without a conversion.
+    """
+
+    var status: Int
+    var horizon: Int
+    var n_train: Int
+    var values: List[Float64]
+    var has_forecast: Bool
+    var theta: Float64
+    var alpha: Float64
+    var sse: Float64
+    var insample_mae: Float64
+    var status_name: String
+
+
+fn _no_theta_fit(status: Int, horizon: Int, n_train: Int) -> ThetaFit:
+    """A refusal: no path, no parameter estimates."""
+    return ThetaFit(
+        status, horizon, n_train, List[Float64](), False,
+        0.0, 0.0, 0.0, 0.0, fc_status_name(status),
+    )
+
+
+fn _theta_ses_sse_mae(z: List[Float64], alpha: Float64) -> List[Float64]:
+    """`[sse, mae]` of one-step errors under the engine SES recursion, `s_0 = z[0]`.
+
+    OP-IDENTICAL to `select._ses_sse_mae` — same recursion, same accumulation order —
+    because the theta = 2 special case of the drivers below must reproduce the shipped
+    Theta pipeline bit-for-bit, and that pipeline's alpha came out of exactly this
+    pass. The suite pins the equality; a change here that survives compilation will
+    fail it. Errors run t = 1..n-1; the caller guarantees n >= 2. Empty on a
+    non-finite accumulation.
+    """
+    var out = List[Float64]()
+    var s = z[0]
+    var sse: Float64 = 0.0
+    var sae: Float64 = 0.0
+    for t in range(1, len(z)):
+        var e = z[t] - s
+        sse += e * e
+        sae += fabs(e)
+        s = alpha * z[t] + (1.0 - alpha) * s
+    if not fc_finite(sse) or not fc_finite(sae):
+        return out^
+    out.append(sse)
+    out.append(sae / Float64(len(z) - 1))
+    return out^
+
+
+fn _theta_golden_alpha(z: List[Float64]) -> Float64:
+    """Golden-section argmin of the SES one-step SSE over [0.01, 0.99].
+
+    OP-IDENTICAL to `select._golden_ses_alpha` (same bracket updates, same 28
+    iterations, same midpoint return), for the same bit-parity reason as
+    `_theta_ses_sse_mae`. A non-finite SSE at a probe is +inf so the bracket walks
+    away from overflow; if every probe is non-finite the midpoint is still returned
+    and the CALLER's subsequent pass reports the non-finite fit.
+    """
+    var lo = FIT_THETA_ALPHA_LO
+    var hi = FIT_THETA_ALPHA_HI
+    for _ in range(FIT_THETA_GOLDEN_ITERS):
+        var x1 = hi - FIT_THETA_GOLDEN_RATIO * (hi - lo)
+        var x2 = lo + FIT_THETA_GOLDEN_RATIO * (hi - lo)
+        var p1 = _theta_ses_sse_mae(z, x1)
+        var p2 = _theta_ses_sse_mae(z, x2)
+        var f1 = p1[0] if len(p1) == 2 else 1.0 / 0.0
+        var f2 = p2[0] if len(p2) == 2 else 1.0 / 0.0
+        if f1 < f2:
+            hi = x2
+        else:
+            lo = x1
+    return 0.5 * (lo + hi)
+
+
+fn _theta_line_at(
+    y: List[Float64], intercept: Float64, slope: Float64, theta: Float64
+) -> List[Float64]:
+    """`Z_t = theta*y_t + (1-theta)*(a + b*t)`, or empty on a non-finite value.
+
+    The EXPRESSION is `point.theta_forecast`'s own theta-line construction, kept
+    op-identical so the SSE minimised here is the SSE of the line the forecast will
+    actually smooth. (At theta = 2 it is also bit-equal to `select._theta_line`'s
+    `2*y - L`: `(1-2) * L` is an exact sign flip and `x + (-L)` is the same IEEE
+    operation as `x - L`.)
+    """
+    var out = List[Float64]()
+    for t in range(len(y)):
+        var z = theta * y[t] + (1.0 - theta) * (intercept + slope * Float64(t))
+        if not fc_finite(z):
+            return List[Float64]()
+        out.append(z)
+    return out^
+
+
+fn _theta_profile(
+    y: List[Float64], intercept: Float64, slope: Float64, theta: Float64
+) -> List[Float64]:
+    """`[alpha, method_sse, method_mae]` at one theta, or empty on a non-finite fit.
+
+    One probe of the profile objective: build the theta line, fit alpha on it by the
+    inner golden section, then rescale the line's SSE/MAE by `1/theta` per the
+    decomposition identity so the numbers are the METHOD's one-step errors, comparable
+    across theta values (and across methods — see `ThetaFit.insample_mae`).
+    """
+    var out = List[Float64]()
+    var z = _theta_line_at(y, intercept, slope, theta)
+    if len(z) != len(y):
+        return out^
+    var alpha = _theta_golden_alpha(z)
+    var p = _theta_ses_sse_mae(z, alpha)
+    if len(p) != 2:
+        return out^
+    var w = 1.0 / theta
+    out.append(alpha)
+    out.append(w * w * p[0])
+    out.append(w * p[1])
+    return out^
+
+
+fn theta_fitted_at(y: List[Float64], theta: Float64, horizon: Int) -> ThetaFit:
+    """Classical Theta at a CALLER-CHOSEN theta, with alpha fitted on the theta line.
+
+    The building block `theta_fitted` optimises over, public because it is the anchor:
+    at theta = 2.0 this IS the shipped M4 Theta pipeline — the same golden-section
+    alpha on the same theta-2 line feeding `point.theta_forecast` — reproduced
+    bit-for-bit (the suite asserts it against `forecasting.select`'s own fit, and the
+    M4 artifact row was verified equal to the last bit on all 100,000 series).
+
+    Requires n >= 3: the fit ranks alphas by an SSE over n - 1 one-step errors, and a
+    single error is an anecdote, not an objective (the same bound `forecasting.select`
+    uses, for the same reason).
+
+    @capability theta_fitted_at
+    complexity: O(n) -- at most 2*FIT_THETA_GOLDEN_ITERS + 3 bounded O(n) passes
+    counts:
+    - dim horizon [kernel_validated]
+    @endcapability
+    """
+    var n = len(y)
+    var defect = fc_series_defect(y)
+    if defect != FC_OK:
+        return _no_theta_fit(defect, horizon, n)
+    defect = fc_horizon_defect(n, horizon)
+    if defect != FC_OK:
+        return _no_theta_fit(defect, horizon, n)
+    if n < 3:
+        return _no_theta_fit(FC_ERR_INSUFFICIENT_HISTORY, horizon, n)
+    if not fc_finite(theta):
+        return _no_theta_fit(FC_ERR_NON_FINITE, horizon, n)
+    if theta < 1.0 or theta > FC_MAX_THETA:
+        return _no_theta_fit(FC_ERR_PARAM_RANGE, horizon, n)
+    if not fc_work_fits(n, FIT_THETA_PROBE_PASSES + 1, FIT_MAX_WORK):
+        return _no_theta_fit(FC_ERR_WORK_BUDGET, horizon, n)
+    var fit = _ols_fit(y)
+    if len(fit) != 2 or not fc_finite(fit[0]) or not fc_finite(fit[1]):
+        return _no_theta_fit(FC_ERR_NON_FINITE, horizon, n)
+    var prof = _theta_profile(y, fit[0], fit[1], theta)
+    if len(prof) != 3:
+        return _no_theta_fit(FC_ERR_NON_FINITE, horizon, n)
+    var fc = theta_forecast(y, theta, prof[0], horizon)
+    if not fc.has_forecast:
+        return _no_theta_fit(fc.status, horizon, n)
+    return ThetaFit(
+        FC_OK, horizon, n, fc.values.copy(), True,
+        theta, prof[0], prof[1], prof[2], fc_status_name(FC_OK),
+    )
+
+
+fn theta_fitted(y: List[Float64], horizon: Int) -> ThetaFit:
+    """Optimized Theta: theta fitted per series by golden section on the profile SSE.
+
+    Outer golden section on theta over [FIT_THETA_LO, FIT_THETA_HI]; each probe fits
+    alpha on that probe's theta line by the inner golden section and reports the
+    method's one-step SSE via the decomposition identity (module comment above). The
+    returned forecast is `theta_fitted_at(y, theta*, horizon)` — the SAME public
+    building block, so the optimum and its forecast cannot drift apart.
+
+    Everything the fit reads is the training series: the OLS line, the theta lines,
+    the SES recursions and both golden sections consume `y` alone. Nothing here sees
+    a test window; a caller holding one out never hands it to this function.
+
+    A non-finite probe (magnitudes that overflow the theta-line recursion) is +inf, so
+    the bracket walks away from overflow exactly as the alpha fit does; if EVERY probe
+    is non-finite the final refit reports the non-finite fit and the driver refuses —
+    a fit that never evaluated is not a fit.
+
+    @capability theta_fitted
+    complexity: O(n) -- at most FIT_THETA_MAX_EVALS bounded O(n) passes, plus O(horizon)
+    counts:
+    - dim horizon [kernel_validated]
+    @endcapability
+    """
+    var n = len(y)
+    var defect = fc_series_defect(y)
+    if defect != FC_OK:
+        return _no_theta_fit(defect, horizon, n)
+    defect = fc_horizon_defect(n, horizon)
+    if defect != FC_OK:
+        return _no_theta_fit(defect, horizon, n)
+    if n < 3:
+        return _no_theta_fit(FC_ERR_INSUFFICIENT_HISTORY, horizon, n)
+    if not fc_work_fits(n, FIT_THETA_MAX_EVALS, FIT_MAX_WORK):
+        return _no_theta_fit(FC_ERR_WORK_BUDGET, horizon, n)
+    var fit = _ols_fit(y)
+    if len(fit) != 2 or not fc_finite(fit[0]) or not fc_finite(fit[1]):
+        return _no_theta_fit(FC_ERR_NON_FINITE, horizon, n)
+    var lo = FIT_THETA_LO
+    var hi = FIT_THETA_HI
+    for _ in range(FIT_THETA_GOLDEN_ITERS):
+        var x1 = hi - FIT_THETA_GOLDEN_RATIO * (hi - lo)
+        var x2 = lo + FIT_THETA_GOLDEN_RATIO * (hi - lo)
+        var p1 = _theta_profile(y, fit[0], fit[1], x1)
+        var p2 = _theta_profile(y, fit[0], fit[1], x2)
+        var f1 = p1[1] if len(p1) == 3 else 1.0 / 0.0
+        var f2 = p2[1] if len(p2) == 3 else 1.0 / 0.0
+        if f1 < f2:
+            hi = x2
+        else:
+            lo = x1
+    return theta_fitted_at(y, 0.5 * (lo + hi), horizon)
+
+
+# ═══ Dynamic Optimized Theta (DOTM): the trend line re-estimated at every step ══════
+#
+# `theta_fitted` extrapolates the OLS line of the WHOLE record; DOTM (Fiorucci et al.
+# 2016, the strongest pure-Theta M4 entry class) re-estimates the line RECURSIVELY —
+# at step t the model only trusts the line fitted to y_1..y_t — and couples it to the
+# smoothed level through the state-space mean
+#
+#     mu_t = l_{t-1} + (1 - 1/theta) * (A_{t-1}*(1-alpha)^t + B_{t-1}*(1-(1-alpha)^(t+1))/alpha)
+#
+# where (A_t, B_t) are the running OLS intercept/slope against the 1-based clock,
+# maintained by exact recurrences, and l_t is the SES level. The implementation
+# reproduces statsforecast 2.1.1's compiled `theta::calc` / `theta::forecast` /
+# `theta::optimize` (verified against the C++ source AND numerically against the
+# compiled library on randomized trials to 1e-12 before this section was written):
+#
+#   * t = 0 is charged NO error (mu_0 = y_0 by the reference's dynamic init
+#     A_0 = y_0, B_0 = 0) and the level update at t = 0 consumes the FITTED initial
+#     level parameter.
+#   * B updates from the PRE-update running mean, then the mean updates, then
+#     A = meany - B*(t+2)/2 — this exact order; the sampler-style order (mean first)
+#     is a DIFFERENT estimator and fails the suite's reference-pinned path.
+#   * the fit objective is `sum(e_t^2 for t >= 3) / max(mean|y|, 1e-10)` — the first
+#     three errors are excluded (two of them are dominated by the unidentified
+#     initial states) and the normalisation makes the 1e-4 simplex-spread stopping
+#     rule scale-free. Reproduced EXACTLY, because the Nelder-Mead stopping test is
+#     calibrated on this objective's scale, and a rescaled objective is a different
+#     stopping point, which is a different fit.
+#   * the optimizer is the SAME `_nm_run` the ETS fits were validated on (the
+#     reference calls one nm::NelderMead template for both), over the layout
+#     [l0, alpha, theta], start [y_0/2, 0.5, 2.0], box [-1e10, 1e10] x [0.1, 0.99]
+#     x [1, 1e10] — `initparamtheta` / `optimize_theta_target_fn` verbatim. Theta's
+#     alpha floor is 0.1 (not the SES fit's 0.01) and theta's ceiling is the
+#     reference's own 1e10: unlike the static golden section, Nelder-Mead needs no
+#     finite bracket, so the reference box is reproduced rather than re-derived.
+#
+# The forecast recursion continues the SAME state updates with each mu taking the
+# place of the unobserved y (the reference `theta::forecast`), so a caller cannot
+# get a path whose dynamics differ from the fit that produced it.
+
+comptime FIT_DOTM_ALPHA_LO: Float64 = 0.1
+comptime FIT_DOTM_ALPHA_HI: Float64 = 0.99
+comptime FIT_DOTM_THETA_LO: Float64 = 1.0
+comptime FIT_DOTM_THETA_HI: Float64 = 1.0e10
+comptime FIT_DOTM_LEVEL_BOUND: Float64 = 1.0e10
+comptime FIT_DOTM_MEAN_FLOOR: Float64 = 1.0e-10
+
+
+@fieldwise_init
+struct DotmFit(Copyable, Movable):
+    """A dynamic-optimized-theta forecast: (l0, alpha, theta) fitted jointly here.
+
+    `values` holds steps 1..horizon, EMPTY on any refusal (`has_forecast` is the
+    authority). `l0` is the fitted initial level (a parameter of this model, unlike
+    the static driver where the SES start is pinned to the first theta-line value);
+    `theta` and `alpha` the fitted dynamics. The method family is still Theta — no
+    new id is minted.
+
+    `sse` is the sum of squared one-step errors over t = 1..n-1 (t = 0 is
+    structurally error-free in this model and charging it would flatter nothing);
+    NOTE it is the plain SSE, not the reference's normalised OBJECTIVE — the
+    objective's tail truncation and scale floor belong to the optimizer, not to an
+    audit field. `insample_mae` is the mean absolute one-step error over the same
+    t = 1..n-1, the statistic `forecasting.select` ranks candidates by.
+    """
+
+    var status: Int
+    var horizon: Int
+    var n_train: Int
+    var values: List[Float64]
+    var has_forecast: Bool
+    var l0: Float64
+    var alpha: Float64
+    var theta: Float64
+    var sse: Float64
+    var insample_mae: Float64
+    var status_name: String
+
+
+fn _no_dotm(status: Int, horizon: Int, n_train: Int) -> DotmFit:
+    """A refusal: no path, no parameter estimates."""
+    return DotmFit(
+        status, horizon, n_train, List[Float64](), False,
+        0.0, 0.0, 0.0, 0.0, 0.0, fc_status_name(status),
+    )
+
+
+fn _dotm_pass(
+    y: List[Float64], l0: Float64, alpha: Float64, theta: Float64
+) -> List[Float64]:
+    """`[objective, level, meany, A, B, sse_from_t1, sae_from_t1]`, or empty.
+
+    THE one forward evaluation of the DOTM recursion — the optimizer's objective,
+    the driver's audit numbers and the forecast's starting states all come from this
+    pass, so there is no second copy to drift. Reproduces the reference `calc` for
+    ModelType::DOTM exactly: dynamic init (A = y_0, B = 0, no t = 0 error), B before
+    mean before A, powers taken by `pow` per step as the reference does (a running
+    product rounds differently and this fit was validated against the reference
+    through this rounding). Objective = tail SSE (t >= 3) over the floored mean
+    absolute observation. Empty on any non-finite accumulation.
+    """
+    var out = List[Float64]()
+    var n = len(y)
+    if n < 1:
+        return out^
+    var one_m_a = 1.0 - alpha
+    var w = 1.0 - 1.0 / theta
+    var lev = alpha * y[0] + one_m_a * l0
+    var meany = y[0]
+    var a_n = y[0]
+    var b_n: Float64 = 0.0
+    var abs_sum = fabs(y[0])
+    var sse: Float64 = 0.0
+    var sae: Float64 = 0.0
+    var tail_sse: Float64 = 0.0
+    for i in range(1, n):
+        var fi = Float64(i)
+        var pw = one_m_a ** fi
+        var pw1 = one_m_a ** (fi + 1.0)
+        var mu = lev + w * (a_n * pw + b_n * (1.0 - pw1) / alpha)
+        var e = y[i] - mu
+        sse += e * e
+        sae += fabs(e)
+        if i >= 3:
+            tail_sse += e * e
+        abs_sum += fabs(y[i])
+        lev = alpha * y[i] + one_m_a * lev
+        b_n = ((fi - 1.0) * b_n + 6.0 * (y[i] - meany) / (fi + 1.0)) / (fi + 2.0)
+        meany = (fi * meany + y[i]) / (fi + 1.0)
+        a_n = meany - b_n * (fi + 2.0) / 2.0
+    if (
+        not fc_finite(lev) or not fc_finite(meany) or not fc_finite(a_n)
+        or not fc_finite(b_n) or not fc_finite(sse) or not fc_finite(sae)
+    ):
+        return out^
+    var mean_abs = abs_sum / Float64(n)
+    if mean_abs < FIT_DOTM_MEAN_FLOOR:
+        mean_abs = FIT_DOTM_MEAN_FLOOR
+    out.append(tail_sse / mean_abs)
+    out.append(lev)
+    out.append(meany)
+    out.append(a_n)
+    out.append(b_n)
+    out.append(sse)
+    out.append(sae)
+    return out^
+
+
+fn _dotm_forecast_path(
+    n: Int, horizon: Int, alpha: Float64, theta: Float64,
+    lev0: Float64, meany0: Float64, a0: Float64, b0: Float64,
+) -> List[Float64]:
+    """Steps 1..horizon of the reference DOTM forecast recursion, or empty.
+
+    Continues the state updates from the terminal in-sample states with each mu
+    standing in for the unobserved observation — `theta::forecast` verbatim,
+    validated numerically against the compiled reference. Empty on any non-finite
+    value, so a diverging extrapolation is a refusal, not a path of infinities.
+    """
+    var out = List[Float64]()
+    var one_m_a = 1.0 - alpha
+    var w = 1.0 - 1.0 / theta
+    var lev = lev0
+    var meany = meany0
+    var a_n = a0
+    var b_n = b0
+    for i in range(n, n + horizon):
+        var fi = Float64(i)
+        var pw = one_m_a ** fi
+        var pw1 = one_m_a ** (fi + 1.0)
+        var mu = lev + w * (a_n * pw + b_n * (1.0 - pw1) / alpha)
+        if not fc_finite(mu):
+            return List[Float64]()
+        out.append(mu)
+        lev = alpha * mu + one_m_a * lev
+        b_n = ((fi - 1.0) * b_n + 6.0 * (mu - meany) / (fi + 1.0)) / (fi + 2.0)
+        meany = (fi * meany + mu) / (fi + 1.0)
+        a_n = meany - b_n * (fi + 2.0) / 2.0
+    return out^
+
+
+fn dotm_fitted(y: List[Float64], horizon: Int) -> DotmFit:
+    """DOTM: (l0, alpha, theta) fitted by the reference Nelder-Mead, then extrapolated.
+
+    The dynamic sibling of `theta_fitted` — see the section comment for the model,
+    the reference-faithful details, and why the objective is reproduced to the
+    letter. Everything the fit reads is the training series; nothing here sees a
+    test window.
+
+    Requires n >= 4: the reference objective scores errors from t = 3 on, and a fit
+    whose objective saw NO error would converge instantly at its starting point and
+    hand back an arbitrary forecast wearing a fitted label — the reference does
+    exactly that silently; here it is a refusal.
+
+    @capability dotm_fitted
+    complexity: O(n) -- at most FIT_NM_MAX_EVALS bounded O(n) passes, plus O(horizon)
+    counts:
+    - dim horizon [kernel_validated]
+    @endcapability
+    """
+    var n = len(y)
+    var defect = fc_series_defect(y)
+    if defect != FC_OK:
+        return _no_dotm(defect, horizon, n)
+    defect = fc_horizon_defect(n, horizon)
+    if defect != FC_OK:
+        return _no_dotm(defect, horizon, n)
+    if n < 4:
+        return _no_dotm(FC_ERR_INSUFFICIENT_HISTORY, horizon, n)
+    if not fc_work_fits(n, FIT_NM_MAX_EVALS, FIT_MAX_WORK):
+        return _no_dotm(FC_ERR_WORK_BUDGET, horizon, n)
+    var x0 = List[Float64]()
+    x0.append(y[0] / 2.0)
+    x0.append(0.5)
+    x0.append(2.0)
+    var lower = List[Float64]()
+    var upper = List[Float64]()
+    lower.append(-FIT_DOTM_LEVEL_BOUND)
+    upper.append(FIT_DOTM_LEVEL_BOUND)
+    lower.append(FIT_DOTM_ALPHA_LO)
+    upper.append(FIT_DOTM_ALPHA_HI)
+    lower.append(FIT_DOTM_THETA_LO)
+    upper.append(FIT_DOTM_THETA_HI)
+    var best = _nm_run(y, x0, lower, upper, False, 1, True)
+    if len(best) != 3:
+        return _no_dotm(FC_ERR_ALL_UNDEFINED, horizon, n)
+    var l0 = best[0]
+    var alpha = best[1]
+    var theta = best[2]
+    var pass_ = _dotm_pass(y, l0, alpha, theta)
+    if len(pass_) != 7:
+        return _no_dotm(FC_ERR_NON_FINITE, horizon, n)
+    var values = _dotm_forecast_path(
+        n, horizon, alpha, theta, pass_[1], pass_[2], pass_[3], pass_[4]
+    )
+    if len(values) != horizon:
+        return _no_dotm(FC_ERR_NON_FINITE, horizon, n)
+    var mae = pass_[6] / Float64(n - 1)
+    return DotmFit(
+        FC_OK, horizon, n, values^, True,
+        l0, alpha, theta, pass_[5], mae, fc_status_name(FC_OK),
     )
