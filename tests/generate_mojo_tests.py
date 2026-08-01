@@ -104,6 +104,13 @@ HANDWRITTEN_TESTS = frozenset(
         "test_columnar_batch.mojo",
         "test_query_ir.mojo",
         "test_query_aggregate.mojo",
+        "test_query_aggregate_parallel.mojo",
+        # Live-timing kernels (#417): hand-written suites that shipped unregistered —
+        # only the on-disk marker backstop was protecting them.
+        "test_contest_strategy.mojo",
+        "test_degradation_state.mojo",
+        "test_evolutionary_search.mojo",
+        "test_forecast_metrics.mojo",
         "test_columnar_hash_index.mojo",
         "test_query_executor.mojo",
         "test_query_join.mojo",

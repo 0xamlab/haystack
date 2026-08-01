@@ -1,6 +1,6 @@
 """test_counter_rng.mojo — hand-written tests for counter_rng (philox4x64-10/v1).
 
-Not auto-generated. The critical test here is CRN order-independence: a draw must be a pure
+Hand-written. The critical test here is CRN order-independence: a draw must be a pure
 function of its coordinates, so the same logical draw is identical no matter what a trajectory
 did beforehand. That is the property valid common random numbers rest on, and it is the one
 that silently breaks if the layout or word selection ever changes.
