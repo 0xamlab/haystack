@@ -104,7 +104,7 @@ jobs:
 
       - name: Build + sign runtime manifest
         env:
-          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
           set -euo pipefail
@@ -157,7 +157,7 @@ jobs:
       - name: Build + sign Secure Enclave helper (macOS)
         if: runner.os == 'macOS'
         env:
-          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
           ALGENTA_SE_CODESIGN_IDENTITY: ${{ secrets.ALGENTA_SE_CODESIGN_IDENTITY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
