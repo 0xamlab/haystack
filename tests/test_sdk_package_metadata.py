@@ -41,7 +41,7 @@ _PYTHON_CONTRACTS = {
     "mcp": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
 }
 _TRUST_ANCHOR_DER_SHA256 = {
-    "algenta_release_pub.pem": "576e8a02b410ec113c2d10dbe68009799958f5d3c1315db4dae93b7d7d9117a2",
+    "algenta_release_pub.pem": "121aaf4a3f298d4ea09a337860a4ef2031c0ec4ef0af645c5bb06a56bc169468",
     "algenta_license_pub.pem": "73a5ccb64e12aef2581fed60010f1648d60da0fd833897802b2ad8b7eea3de6b",
 }
 

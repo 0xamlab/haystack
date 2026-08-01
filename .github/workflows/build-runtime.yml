@@ -31,10 +31,12 @@ jobs:
             runs-on: macos-14
             platform: darwin
             mcpu: ""
+            shard_timeout: 300
           - target: linux-x86_64
             runs-on: ubuntu-22.04
             platform: linux
             mcpu: "x86-64-v3"
+            shard_timeout: 900
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -67,7 +69,7 @@ jobs:
           python3 scripts/build_runtime_shards.py \
             --out "${GITHUB_WORKSPACE}/mojo_build/runtime-shards" \
             --shard-size 24 \
-            --timeout-seconds 300
+            --timeout-seconds ${{ matrix.shard_timeout }}
 
       - name: Stage self-contained runtime package
         run: |
@@ -104,7 +106,7 @@ jobs:
 
       - name: Build + sign runtime manifest
         env:
-          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
           set -euo pipefail
@@ -157,7 +159,7 @@ jobs:
       - name: Build + sign Secure Enclave helper (macOS)
         if: runner.os == 'macOS'
         env:
-          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY }}
+          ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
           ALGENTA_SE_CODESIGN_IDENTITY: ${{ secrets.ALGENTA_SE_CODESIGN_IDENTITY }}
           RUNTIME_RELEASE_PUBLISH: ${{ github.event_name == 'push' || inputs.publish == 'true' }}
         run: |
