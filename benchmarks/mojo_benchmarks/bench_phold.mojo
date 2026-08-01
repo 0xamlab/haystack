@@ -289,18 +289,35 @@ comptime GOLDEN_B_DIGEST: UInt64 = 15643879954897263383
 
 @fieldwise_init
 struct PholdRun(Copyable, Movable):
-    """One PHOLD run: counters and invariants only, no per-event arrays.
+    """One PHOLD run: counters and invariants only, no per-event arrays, UNLESS `capture_trace`
+    was requested.
 
-    Deliberately allocation-free apart from the calendar itself. `calendar_replay_flat` returns a
-    five-array trace of every popped event, which is the right shape for auditing an order and the
-    wrong shape for an event rate: 80 bytes per event of `List` growth lands inside the timed
-    region and any ns/event derived from it is allocation cost plus calendar cost. Nothing here
-    grows per event.
+    Deliberately allocation-free apart from the calendar itself, on the default path.
+    `calendar_replay_flat` returns a five-array trace of every popped event, which is the right
+    shape for auditing an order and the wrong shape for an event rate: 80 bytes per event of
+    `List` growth lands inside the timed region and any ns/event derived from it is allocation
+    cost plus calendar cost. That is exactly why PHOLD needed its OWN trace mode rather than
+    reusing that driver: `calendar_replay_flat` pushes every event and then pops every event, which
+    cannot express "process one event, schedule exactly one new one" — PHOLD's defining loop.
+    Nothing here grows per event UNLESS the caller asked for a trace, and the four `trace_*`
+    fields are the ONLY per-event state added: at `capture_trace=False` they are constructed empty
+    and never appended to, so the counters-only fast path and its published ns/event figures are
+    unchanged.
 
     `setup_ns` and `loop_ns` are measured separately because they answer different questions.
     Priming the calendar with `pending` initial events is O(pending log pending) and happens once;
     the event rate is `n_events / loop_ns` and must not be diluted by it. At `n_events == pending`
     the priming would otherwise be half the measured work.
+
+    Trace fields, populated only when `capture_trace=True`, one entry per PROCESSED event in the
+    order it was processed (`trace_event_id[i] == i` always — it is the loop's own `processed`
+    index, recorded rather than recomputed, so there is no second source of truth for it):
+
+      * `trace_time[i]`    — the popped event's simulated timestamp (`now` at that iteration).
+      * `trace_source[i]`  — the LP the event was popped from (`src`).
+      * `trace_dest[i]`    — the LP the rescheduled event was sent to (`dest`); `dest != src` iff
+                             the event was one of the run's `n_remote` remote events.
+      * `trace_event_id[i]`— the global processed-event index, `0 .. n_events - 1`.
     """
 
     var status: Int
@@ -324,15 +341,21 @@ struct PholdRun(Copyable, Movable):
     var work_charged: Int
     var setup_ns: Int
     var loop_ns: Int
+    var trace_time: List[Float64]
+    var trace_source: List[Int]
+    var trace_dest: List[Int]
+    var trace_event_id: List[Int]
 
 
 fn _phold_refusal(code: Int) -> PholdRun:
-    """A refusal carries no counters — not zeros that read as a run of length zero."""
+    """A refusal carries no counters — not zeros that read as a run of length zero. Nor a trace:
+    an empty `List`, the same "absent" shape `capture_trace=False` produces on a real run."""
     return PholdRun(
         code, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         False, False, False,
         0.0, 0.0, 0.0,
         0, 0, 0, 0,
+        List[Float64](), List[Int](), List[Int](), List[Int](),
     )
 
 
@@ -389,6 +412,7 @@ fn phold_run(
     seed: UInt64,
     replication: UInt64,
     use_replace_root: Bool = True,
+    capture_trace: Bool = False,
 ) -> PholdRun:
     """Run PHOLD for exactly `n_events` events on `discrete_event.calendar`'s heap.
 
@@ -413,6 +437,14 @@ fn phold_run(
         faster path's correctness is a published measurement rather than a claim in a comment. The
         flag is read once per event into a branch that is perfectly predicted, and the slower arm
         pays the same branch, so the A/B is fair.
+      * `capture_trace` — default False, the counters-only fast path this file publishes every
+        figure from. True additionally records `(time, source, dest, event_id)` for every
+        processed event into the four `trace_*` fields of `PholdRun`. It changes nothing about
+        the SIMULATION: the same draws are consumed in the same order either way, so a
+        `capture_trace=True` run and a `capture_trace=False` run at the same seed and replication
+        must agree on every counter, invariant and digest bit for bit — section 10 gates exactly
+        that, then re-derives the counter path's own numbers FROM the trace alone as a second,
+        independent check that the two views of one run agree.
 
     Refusals use `discrete_event`'s status vocabulary rather than inventing a second one, because
     this driver validates the same things its drivers do:
@@ -496,6 +528,15 @@ fn phold_run(
     var digest = FNV_OFFSET
     var non_finite = False
 
+    # Trace arrays stay empty and unallocated-into on the default path: `capture_trace` is read
+    # once per event below, into a branch that predicts perfectly once warm, and nothing is
+    # appended to these four `List`s unless it is True. That is what keeps the counters-only path
+    # allocation-free apart from the calendar itself, exactly as `PholdRun`'s docstring states.
+    var trace_time = List[Float64]()
+    var trace_source = List[Int]()
+    var trace_dest = List[Int]()
+    var trace_event_id = List[Int]()
+
     var t_loop = perf_counter_ns()
     while processed < n_events:
         var size_before = _heap_size(cal)
@@ -545,6 +586,12 @@ fn phold_run(
         if dest < 0 or dest >= n_lps:
             n_bad_dest += 1
 
+        if capture_trace:
+            trace_time.append(now)
+            trace_source.append(src)
+            trace_dest.append(dest)
+            trace_event_id.append(Int(e))
+
         var dt = lookahead + rng_exponential(
             seed, 0, replication, e, 0, s_incr, 0, rate
         )
@@ -576,6 +623,7 @@ fn phold_run(
         ordered, monotone, valid,
         start_time, last_t, sum_increment, digest, charge,
         setup_ns, loop_ns,
+        trace_time^, trace_source^, trace_dest^, trace_event_id^,
     )
 
 
@@ -1526,6 +1574,167 @@ fn _bench_calendar_operation(mut adv: List[Int]) -> Int:
     return 0
 
 
+@no_inline
+fn _bench_trace_mode(mut adv: List[Int]) -> Int:
+    """Section 10 — `capture_trace`: the opt-in event trace, and its two proofs.
+
+    Prior finding: this driver returned counters and invariants only, with no way to see WHICH
+    events produced them — the wrong shape for validating a future PHOLD-vs-ROSS or PHOLD-vs-any-
+    other-simulator comparison event by event. `phold_run(..., capture_trace=True)` now also fills
+    `PholdRun.trace_time/trace_source/trace_dest/trace_event_id`, one entry per processed event,
+    default False everywhere else in this file so every gate above this section is unaffected.
+
+    Two proofs, not one, because "it runs" is not "it is correct":
+
+    (a) BIT-IDENTICAL AGGREGATES. The same config and seed, once with `capture_trace=False` and
+        once `True`, must agree on every counter, invariant and the digest — recording a trace is
+        additional bookkeeping, not a different simulation. Only the trace arrays differ in
+        length, from 0 to `n_events`.
+    (b) THE TRACE ALONE REPRODUCES THE COUNTERS. `n_remote_distinct`, `n_bad_dest`,
+        `time_monotone` and the digest itself are each re-derived purely from
+        `(trace_time, trace_source, trace_dest, trace_event_id)` — the SAME FNV-1a fold the loop
+        runs inline, run again here over the recorded arrays — and must equal the loop's own
+        counters. That is the actual "trace reproduces the aggregates" consistency check: if the
+        trace ever silently dropped or reordered an event, this would be the gate that caught it,
+        because the counters come from the live loop and the re-derivation comes only from what
+        was recorded.
+
+    Plus a small hand-checkable trace: 3 LPs, 1 initial event each, 6 processed events, every
+    event forced remote so every row is visibly a cross-LP hop, printed row by row.
+    """
+    print("[10] Trace mode — per-event capture, opt-in, and its two proofs")
+    var fails = 0
+
+    # (a) same config and seed, counters-only vs traced.
+    var n_lps = 16
+    var init_per_lp = 4
+    var n_events = 2000
+    var p_remote = 0.3
+    var rep: UInt64 = 7
+
+    var counters_only = phold_run(
+        n_lps, init_per_lp, n_events, p_remote, REF_LOOKAHEAD, REF_EXP_MEAN, REF_SEED, rep,
+        True, False,
+    )
+    var traced = phold_run(
+        n_lps, init_per_lp, n_events, p_remote, REF_LOOKAHEAD, REF_EXP_MEAN, REF_SEED, rep,
+        True, True,
+    )
+
+    var agree = counters_only.status == traced.status
+    agree = agree and counters_only.pending == traced.pending
+    agree = agree and counters_only.n_events == traced.n_events
+    agree = agree and counters_only.n_remote == traced.n_remote
+    agree = agree and counters_only.n_remote_distinct == traced.n_remote_distinct
+    agree = agree and counters_only.n_bad_dest == traced.n_bad_dest
+    agree = agree and counters_only.heap_min == traced.heap_min
+    agree = agree and counters_only.heap_max == traced.heap_max
+    agree = agree and counters_only.n_draws == traced.n_draws
+    agree = agree and counters_only.order_held == traced.order_held
+    agree = agree and counters_only.time_monotone == traced.time_monotone
+    agree = agree and counters_only.heap_valid == traced.heap_valid
+    agree = agree and counters_only.start_time == traced.start_time
+    agree = agree and counters_only.end_time == traced.end_time
+    agree = agree and counters_only.sum_increment == traced.sum_increment
+    agree = agree and counters_only.digest == traced.digest
+    agree = agree and counters_only.work_charged == traced.work_charged
+    print(
+        "     counters-only vs traced, same seed/replication: digest", counters_only.digest,
+        "vs", traced.digest, " n_remote", counters_only.n_remote, "vs", traced.n_remote,
+    )
+    if agree and len(counters_only.trace_time) == 0 and len(traced.trace_time) == n_events:
+        print(
+            "  PASS capturing a trace changed nothing about the simulated result — every shared",
+            "counter, invariant and the digest are bit-identical — and only the traced run grew",
+            "the four trace arrays, to exactly n_events entries",
+        )
+    else:
+        fails += 1
+        print(
+            "  FAIL trace capture changed the simulated result, or grew an array on the wrong",
+            "arm:", agree, len(counters_only.trace_time), len(traced.trace_time),
+        )
+
+    # (b) derive the same aggregates from the trace alone.
+    var d2 = FNV_OFFSET
+    var remote_from_trace = 0
+    var bad_from_trace = 0
+    var mono_from_trace = True
+    var ids_sequential = True
+    for i in range(len(traced.trace_time)):
+        d2 = (d2 ^ bitcast[DType.uint64](traced.trace_time[i])) * FNV_PRIME
+        d2 = (d2 ^ UInt64(traced.trace_source[i])) * FNV_PRIME
+        if traced.trace_dest[i] != traced.trace_source[i]:
+            remote_from_trace += 1
+        if traced.trace_dest[i] < 0 or traced.trace_dest[i] >= n_lps:
+            bad_from_trace += 1
+        if i > 0 and traced.trace_time[i] < traced.trace_time[i - 1]:
+            mono_from_trace = False
+        if traced.trace_event_id[i] != i:
+            ids_sequential = False
+    var start_from_trace = -1.0
+    var end_from_trace = -1.0
+    if len(traced.trace_time) > 0:
+        start_from_trace = traced.trace_time[0]
+        end_from_trace = traced.trace_time[len(traced.trace_time) - 1]
+
+    var derived_ok = d2 == traced.digest
+    derived_ok = derived_ok and remote_from_trace == traced.n_remote_distinct
+    derived_ok = derived_ok and bad_from_trace == traced.n_bad_dest
+    derived_ok = derived_ok and mono_from_trace == traced.time_monotone
+    derived_ok = derived_ok and ids_sequential
+    derived_ok = derived_ok and start_from_trace == traced.start_time
+    derived_ok = derived_ok and end_from_trace == traced.end_time
+    print(
+        "     from the trace alone: digest", d2, " remote-by-dest!=src", remote_from_trace,
+        " bad-dest", bad_from_trace, " time monotone", mono_from_trace, " ids sequential",
+        ids_sequential,
+    )
+    if derived_ok:
+        print(
+            "  PASS every aggregate re-derived FROM the trace — the digest fold, the remote",
+            "count, the bad-destination count, time monotonicity and the 0..n-1 event ids —",
+            "matches the counter the live loop kept, for the same run",
+        )
+    else:
+        fails += 1
+        print(
+            "  FAIL an aggregate derived from the trace did not match the counter the loop kept:",
+            d2 == traced.digest, remote_from_trace == traced.n_remote_distinct,
+            bad_from_trace == traced.n_bad_dest, mono_from_trace == traced.time_monotone,
+        )
+
+    # (c) a small, hand-checkable trace: 3 LPs, one initial event each, 6 processed events, every
+    # event forced remote so every row's destination is visibly a different LP from its source.
+    var small = phold_run(3, 1, 6, 1.0, 0.1, 1.0, REF_SEED, 0, True, True)
+    print("     small trace: 3 LPs, 1 event/LP, 6 processed events, p_remote = 1.0")
+    print("       event_id  time                    src  dest")
+    var small_ok = small.status == DE_OK and len(small.trace_time) == 6
+    for i in range(len(small.trace_time)):
+        print(
+            "      ", small.trace_event_id[i], " ", small.trace_time[i], " ",
+            small.trace_source[i], " ", small.trace_dest[i],
+        )
+        small_ok = small_ok and small.trace_event_id[i] == i
+        small_ok = small_ok and small.trace_source[i] >= 0 and small.trace_source[i] < 3
+        small_ok = small_ok and small.trace_dest[i] >= 0 and small.trace_dest[i] < 3
+        small_ok = small_ok and small.trace_dest[i] != small.trace_source[i]
+        if i > 0:
+            small_ok = small_ok and small.trace_time[i] >= small.trace_time[i - 1]
+    if small_ok:
+        print(
+            "  PASS six rows, every destination a legal LP different from its source (p_remote",
+            "= 1.0 forces that), timestamps non-decreasing, event ids exactly 0..5 in order",
+        )
+    else:
+        fails += 1
+        print("  FAIL the small hand-checkable trace violated a structural invariant")
+
+    if fails > 0:
+        return fails
+    return 0
+
+
 fn main() raises:
     print("\n=== bench_phold: PHOLD, the standard PDES benchmark, on discrete_event.calendar ===")
     print("Metric: EVENTS PER SECOND, sequential protocol, one core, no rollback and no GVT.")
@@ -1555,6 +1764,8 @@ fn main() raises:
     failures += _bench_published_anchor(adv)
     print("")
     failures += _bench_calendar_operation(adv)
+    print("")
+    failures += _bench_trace_mode(adv)
     print("")
     if adv[0] > 0:
         print(

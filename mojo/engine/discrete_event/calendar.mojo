@@ -44,10 +44,17 @@ namespace.
 
 Internals are shared, not copied
 --------------------------------
-`_EventHeap` and its four sift/push/pop helpers are underscore-prefixed, which keeps them out
+`_EventHeap` and its five sift/push/pop helpers are underscore-prefixed, which keeps them out
 of the runtime contract (a heap of parallel satellite arrays is not a wire type) while letting
 `discrete_event.resource` import the SAME implementation. Rule 3 applies inside a package: a
-second heap in `resource.mojo` would be a second ordering rule, and the two would drift.
+second heap in `resource.mojo` would be a second ordering rule, and the two would drift. The same
+reasoning is why `benchmarks/mojo_benchmarks/bench_phold.mojo` reaches these names instead of
+re-implementing a heap: a benchmark that measures its own copy is not measuring the product.
+
+`_heap_replace_root` is the fifth helper and the newest. It performs a pop and a push as ONE sift
+for the caller that has already read slot 0, which is the discrete-event fast path; see its own
+docstring for the 1.58x-1.91x it is worth and for the bit-identical-pop-order guarantee the PHOLD
+benchmark gates it against.
 
 @capability-module
 deterministic: true
@@ -236,6 +243,66 @@ fn _heap_drop_root(mut h: _EventHeap):
     _ = h.kind.pop()
     _ = h.ent.pop()
     _heap_sift_down(h, 0)
+
+
+fn _heap_replace_root(
+    mut h: _EventHeap, time: Float64, priority: Int, sequence: Int, kind: Int, entity: Int
+):
+    """Overwrite the minimum with a new entry, in ONE sift. The caller reads slot 0 first.
+
+    This is the discrete-event fast path — "process the imminent event, schedule the next one" —
+    and it is a single operation rather than a pop followed by a push. The difference is not
+    cosmetic. `_heap_drop_root` then `_heap_push` costs a sift-down, five `List.pop`s, five
+    `List.append`s and a sift-up; this costs one sift-down. Measured on the PHOLD driver in
+    `benchmarks/mojo_benchmarks/bench_phold.mojo`, interleaved A/B on the same heap and the same
+    seed, the pair costs 1.58x to 1.91x more per event across pending populations from 128 to
+    262,144 — and the two produce a BIT-IDENTICAL pop order, which that benchmark gates.
+
+    There is no precondition on `time`. The root has no parent, so sifting down alone restores the
+    heap property for ANY new key: a key smaller than both children simply stays where it is. That
+    is worth stating because the obvious guess — that the new event must be no earlier than the one
+    just popped — would be an unnecessary restriction, and a caller who believed it would reach for
+    the slower pair whenever it could not prove it.
+
+    Written in the HOLE style rather than with `_heap_swap`: the new entry is not stored until its
+    final slot is known, so a descent of `d` levels does `d` single writes per array instead of `d`
+    swaps (each of which is two reads and two writes per array). The comparison is the same
+    `de_key_less` the rest of the calendar uses, so there is still exactly one ordering rule in this
+    package.
+
+    An empty heap is a push, not a crash: `_heap_size(h) == 0` means there was no root to replace,
+    and appending is the only interpretation that leaves the entry in the calendar. Every index
+    below is derived from `_heap_size(h)`, so no read can pass the end — which matters more than
+    usual, because a `List` read past the end is an uncatchable abort that ends the worker process.
+    """
+    var n = _heap_size(h)
+    if n == 0:
+        _heap_push(h, time, priority, sequence, kind, entity)
+        return
+    var pos = 0
+    while True:
+        var left = 2 * pos + 1
+        if left >= n:
+            break
+        var best = left
+        var right = left + 1
+        if right < n and de_key_less(
+            h.t[right], h.pri[right], h.seq[right], h.t[left], h.pri[left], h.seq[left]
+        ):
+            best = right
+        if not de_key_less(h.t[best], h.pri[best], h.seq[best], time, priority, sequence):
+            break
+        h.t[pos] = h.t[best]
+        h.pri[pos] = h.pri[best]
+        h.seq[pos] = h.seq[best]
+        h.kind[pos] = h.kind[best]
+        h.ent[pos] = h.ent[best]
+        pos = best
+    h.t[pos] = time
+    h.pri[pos] = priority
+    h.seq[pos] = sequence
+    h.kind[pos] = kind
+    h.ent[pos] = entity
 
 
 # ── results ───────────────────────────────────────────────────────────────────

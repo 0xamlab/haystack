@@ -51,6 +51,31 @@ Case D — the ragged tail nobody expects
     no batch mean and are reported in `n_tail_dropped`, because an estimator that silently
     trimmed its own input cannot be reproduced from its inputs.
 
+Case E — the zero-truncation defect: a real transient hidden behind a large common offset
+--------------------------------------------------------------------------------------------
+    `MSER(d) = (1/k^2) * (Q_d - S_d^2/k)` (`Q_d`, `S_d` the suffix sum of squares and suffix sum
+    of the batch means) is a subtraction of two nearly-equal numbers whenever the batch means
+    carry a large common offset — a clock that has run a long time, a counter, a price level.
+    24 batches, offset `1e10`, a decaying transient of 120, 90, 60, 30 in the first four batches,
+    then +-0.4 noise:
+
+        obs[i] = 1e10 + 30*(4-i) for i < 4, else 1e10 + (0.4 if i even else -0.4)
+
+    Computed WITHOUT recentering, `Q_d` and `S_d^2/k` are both of order `24 * (1e10)^2 = 2.4e21`
+    at every candidate `d`, so their difference is dominated by float64 rounding (of order
+    `2.4e21 * 2^-52`, about `5e5`) rather than by the true deviations (tens to thousands). Every
+    candidate's raw deviation sum rounds negative, every one is clamped to the SAME 0.0, and "ties
+    go to the smallest d" then picks `d = 0` — discarding NOTHING — even though the first four
+    batches are an obvious, decaying, 4x-the-noise transient. That is the zero-truncation defect
+    verified by mutation below: reverting the recentering in `warmup_mser_flat` on this exact
+    series reproduces `best_d == 0` with a fabricated `mser_value == 0.0`.
+
+    Recentered — subtracting `means[0]` before accumulating, which cannot change any ranking
+    because sum-of-squared-deviations is translation invariant — the same series correctly
+    truncates at `d = 4`: `n_discarded_obs == 4`, a small nonzero MSER score (~0.008, bounded here
+    rather than pinned to a fragile bit pattern), and a steady mean within a thousandth of `1e10`,
+    the true noise-free level once the decaying transient is gone.
+
 The bias audit
 --------------
 On case A with `n_discard = 4`: full mean = (400 + 160)/12 = 46.666666666666664, truncated mean
@@ -188,6 +213,69 @@ fn main():
     else:
         failed += 1
         print("  ❌ batch means are not means of their own batch:", d.batch_means[0])
+
+    # ── case E: the zero-truncation defect, a real transient behind a huge common offset ──────
+    var big = List[Float64]()
+    for i in range(24):
+        var transient: Float64 = 0.0
+        if i < 4:
+            transient = 30.0 * Float64(4 - i)
+        var noise: Float64 = 0.4
+        if i % 2 == 1:
+            noise = -0.4
+        big.append(1.0e10 + transient + noise)
+    var e = warmup_mser_flat(big, 24, 1)
+    var ok_e = e.status == DE_OK and e.n_batches == 24 and e.search_boundary == 12
+    ok_e = ok_e and not e.at_search_boundary
+    ok_e = ok_e and e.n_discarded_batches == 4 and e.n_discarded_obs == 4
+    ok_e = ok_e and e.n_retained_batches == 20 and e.n_retained_obs == 20
+    ok_e = ok_e and e.has_mser and e.mser_value > 0.001 and e.mser_value < 0.02
+    ok_e = ok_e and e.has_estimate and fabs(e.steady_mean - 1.0e10) < 1.0e-3
+    if ok_e:
+        passed += 1
+        print(
+            "  ✅ zero-truncation defect fixed: a decaying transient behind a 1e10 common offset",
+            "still truncates at d = 4, not the spurious d = 0 the un-recentered arithmetic gives",
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌ case E wrong:", e.status, e.n_discarded_obs, e.mser_value, e.has_estimate,
+            e.steady_mean,
+        )
+
+    # Same target series, through the TRUE batch_size=5 path: each of case E's 24 values repeated
+    # 5 times as raw observations, so every batch mean is (rounding aside) that same value. Proves
+    # the fix is not specific to batch_size=1.
+    var big5 = List[Float64]()
+    for i in range(24):
+        var transient5: Float64 = 0.0
+        if i < 4:
+            transient5 = 30.0 * Float64(4 - i)
+        var noise5: Float64 = 0.4
+        if i % 2 == 1:
+            noise5 = -0.4
+        var v = 1.0e10 + transient5 + noise5
+        for _ in range(5):
+            big5.append(v)
+    var e5 = warmup_mser_flat(big5, 120, 5)
+    var ok_e5 = e5.status == DE_OK and e5.n_batches == 24 and e5.search_boundary == 12
+    ok_e5 = ok_e5 and not e5.at_search_boundary and e5.n_tail_dropped == 0
+    ok_e5 = ok_e5 and e5.n_discarded_batches == 4 and e5.n_discarded_obs == 20
+    ok_e5 = ok_e5 and e5.n_retained_batches == 20 and e5.n_retained_obs == 100
+    ok_e5 = ok_e5 and e5.has_estimate and fabs(e5.steady_mean - 1.0e10) < 1.0e-3
+    if ok_e5:
+        passed += 1
+        print(
+            "  ✅ the same fix holds through true batch_size=5 (MSER-5 proper), not just batch",
+            "size 1: 4 batches (20 observations) discarded, not zero",
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌ case E (batch_size=5) wrong:", e5.status, e5.n_discarded_obs, e5.has_estimate,
+            e5.steady_mean,
+        )
 
     # ── refusals ──────────────────────────────────────────────────────────────
     var nan_series = List[Float64]()

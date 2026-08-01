@@ -195,9 +195,32 @@ fn warmup_mser_flat(obs: List[Float64], n_obs: Int, batch_size: Int) -> WarmupRe
     That form is cancellation-prone when the batch means are large relative to their spread, so
     it is used ONLY to RANK candidates — a relative comparison — and the reported `steady_mean`
     and `batch_mean_variance` are recomputed exactly at the chosen `d` through the frozen
-    `stats.compute_mean` and `stats.compute_variance`. A negative deviation sum can only come
-    from that cancellation and is clamped to zero, which cannot change a ranking: the true value
-    it approximates is non-negative.
+    `stats.compute_mean` and `stats.compute_variance`.
+
+    ZERO-TRUNCATION DEFECT, FIXED: every batch mean is accumulated relative to `means[0]` before
+    `Q_d` and `S_d` are formed, not in its raw magnitude. Sum-of-squared-deviations is translation
+    invariant, so this changes no ranking that was ever computed correctly — it only removes an
+    additive constant before the cancellation-prone step. Without it, a series whose batch means
+    carry a large common offset (a clock that has been running a long time, a counter, a price
+    level) drives `Q_d` and `S_d^2/k` to nearly equal huge numbers at every candidate; their
+    difference is then dominated by float64 rounding rather than by the real deviations, every
+    candidate's raw score can round negative and get clamped to the SAME 0.0, and the tie rule
+    ("ties go to the smallest d") then picks `d = 0` — discarding NOTHING — even when the first
+    batches carry an obvious, large, decaying transient a human would truncate on sight. That is
+    "MSER-5 selects a zero truncation" as an outright numerical bug, distinct from and in addition
+    to MSER's separate, genuine statistical limitation (see `bench_queueing_validation.mojo`
+    section 7): on a long run where the transient's real contribution to the batch-mean spread is
+    a small fraction of steady-state noise, an EXACTLY computed score can still legitimately
+    minimise at `d = 0`. Recentering cannot fix that second case and does not try to — it fixes
+    only the case where the wrong `d` was picked because the arithmetic, not the statistic, was
+    wrong. `mojo/tests/libs/test_discrete_event_warmup.mojo` constructs the first case by hand and
+    proves it by mutation: reverting this recentering on that exact input reproduces `best_d == 0`
+    with a fabricated `mser_value == 0.0`, though a real decaying transient is sitting in the data.
+
+    A negative deviation sum can still occur from residual rounding after recentering, and is
+    clamped to zero as before — but the residual is now bounded by the data's own SPREAD rather
+    than an unrelated common offset, so it is too small to out-rank a genuine signal at the scale
+    this module is meant to detect.
 
     @capability warmup_mser_flat
     complexity: O(n_obs)
@@ -233,15 +256,23 @@ fn warmup_mser_flat(obs: List[Float64], n_obs: Int, batch_size: Int) -> WarmupRe
             return _warmup_refusal(DE_ERR_NON_FINITE)
         means.append(bm)
 
-    # Suffix sums: suffix_sum[d] and suffix_sq[d] cover batches d..m-1.
+    # Suffix sums: suffix_sum[d] and suffix_sq[d] cover batches d..m-1, accumulated RELATIVE to
+    # `offset0` rather than in the batch means' own magnitude. `sum (b_i - mean)^2` is translation
+    # invariant, so subtracting any fixed constant before accumulating changes no ranking — it
+    # only keeps `Q_d` and `S_d` at the scale of the data's own spread instead of at the scale of
+    # whatever offset the series happens to carry, which is what keeps `Q_d - S_d^2/k` a real
+    # subtraction instead of a cancellation between two nearly-equal huge numbers. See this
+    # function's docstring, "ZERO-TRUNCATION DEFECT, FIXED".
+    var offset0 = means[0]
     var suffix_sum = List[Float64]()
     var suffix_sq = List[Float64]()
     for _ in range(m + 1):
         suffix_sum.append(0.0)
         suffix_sq.append(0.0)
     for d in range(m - 1, -1, -1):
-        suffix_sum[d] = suffix_sum[d + 1] + means[d]
-        suffix_sq[d] = suffix_sq[d + 1] + means[d] * means[d]
+        var rel = means[d] - offset0
+        suffix_sum[d] = suffix_sum[d + 1] + rel
+        suffix_sq[d] = suffix_sq[d + 1] + rel * rel
 
     var boundary = m // 2
     var best_d = 0
