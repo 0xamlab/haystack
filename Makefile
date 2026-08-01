@@ -3,7 +3,7 @@
         test test-unit test-integration test-contract test-load \
         lint format typecheck openapi clean help stop-api logs-api-local \
         js-install js-lint js-test js-build js-check \
-        bench bench-gate bench-boundary bench-vs-python bench-algenta-mojo-catalog bench-algenta-import bench-decision-engine-import bench-decision-engine-client-init bench-algenta-connector-preview bench-algenta-runtime-read-cache bench-algenta-local-runtime-exact bench-algenta-local-connect bench-algenta-api-exact-resolve bench-algenta-api-payload \
+        bench bench-gate bench-mojo-gate bench-boundary bench-vs-python bench-algenta-mojo-catalog bench-algenta-import bench-decision-engine-import bench-decision-engine-client-init bench-algenta-connector-preview bench-algenta-runtime-read-cache bench-algenta-local-runtime-exact bench-algenta-local-connect bench-algenta-api-exact-resolve bench-algenta-api-payload \
         go-live-status go-live-status-json go-live-status-strict go-live-status-tier2 go-live-status-tier3 \
         go-live-status-fivetran go-live-status-fivetran-json go-live-report go-live-report-fivetran \
         go-live-inspect-fivetran-account \
@@ -872,6 +872,40 @@ bench-dist-accuracy:
 ## Real-data integration test (CSV files → FileConnector → auto-map → Mojo engine)
 bench-real-data:
 	PYTHONPATH=. python3 -m tests.benchmark.bench_real_data
+
+## Mojo kernel SCALING gates: run each gated benchmark and require its BENCH_GATE verdict.
+##
+## This target is what makes the `BENCH_GATE <lib> PASS` marker load-bearing. Those benchmarks
+## print the marker and the gated ones also raise, but `mojo run` exits 0 on a printed FAIL for
+## the ones that only print — so without a consumer that reads stdout the marker was decorative
+## and a super-linear regression would have gone green. Three ways to fail here, all of them
+## non-zero: the verdict says FAIL, the benchmark emitted no marker at all (a benchmark that
+## silently stopped gating is the failure mode that hides all the others), or it did not build.
+##
+## Gates on SHAPE — per-unit cost staying flat as the problem grows — never on absolute
+## nanoseconds, so it is safe on a shared or throttled runner. Each timed point is the minimum
+## of several repetitions for the same reason; see GATE_REPS in the benchmark sources.
+BENCH_GATE_LIBS ?= forecasting inference causal_inference
+
+bench-mojo-gate:
+	@fail=0; \
+	for b in $(BENCH_GATE_LIBS); do \
+	  echo "── bench_$$b ──"; \
+	  out=$$(cd mojo_env && pixi run mojo run -I../mojo/engine \
+	    ../benchmarks/mojo_benchmarks/bench_$$b.mojo 2>&1) || true; \
+	  line=$$(printf '%s\n' "$$out" | grep -E "^BENCH_GATE $$b (PASS|FAIL)" | tail -1); \
+	  if [ -z "$$line" ]; then \
+	    printf '%s\n' "$$out" | tail -15; \
+	    echo "❌ bench_$$b emitted no BENCH_GATE line"; fail=1; \
+	  elif [ "$$line" = "BENCH_GATE $$b PASS" ]; then \
+	    echo "✅ $$line"; \
+	  else \
+	    printf '%s\n' "$$out" | grep '❌' || true; \
+	    echo "❌ $$line"; fail=1; \
+	  fi; \
+	done; \
+	if [ $$fail -ne 0 ]; then echo "bench-mojo-gate FAILED"; exit 1; fi; \
+	echo "bench-mojo-gate: all $(words $(BENCH_GATE_LIBS)) gates PASS"
 
 ## Run all Mojo engine unit tests (all 11 engines, score range, histogram/CDF presence)
 test-mojo-engines:

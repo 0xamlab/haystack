@@ -92,6 +92,37 @@ fn _ns(t0: UInt, t1: UInt) -> Float64:
 comptime GATE_REPS: Int = 7
 
 
+fn _min_backtest_ns(
+    y: List[Float64], method_id: Int, horizon: Int, min_train: Int,
+    step: Int, expanding: Bool, period: Int
+) -> Float64:
+    """Fastest of `GATE_REPS` identical `backtest_flat` calls, or -1.0 if any one refused.
+
+    This exists as its own function for a COMPILE-TIME reason, not a stylistic one. Putting this
+    loop inline in `main` — a `backtest_flat` call inside a nested `for rep` among main's dozens
+    of live Lists — took the Mojo compiler from 18 seconds to over ten minutes on this file, at
+    every repetition count including one, so the cost is the structure and not the iterations.
+    Hoisted into a small scope with four live values it builds in seconds. The band and
+    reconciliation loops repeat inline without trouble; `backtest_flat` is the call that does
+    not tolerate it, so only it is hoisted.
+
+    -1.0 rather than a status: the caller re-runs the call once for the verdict and the metadata
+    it prints, so this function only has to answer the timing question.
+    """
+    var best: Float64 = -1.0
+    for rep in range(GATE_REPS):
+        var t0 = perf_counter_ns()
+        var report = backtest_flat(
+            y, method_id, horizon, min_train, step, expanding, period, 2, 0.4, 0.2, 1.0, 2.0
+        )
+        var t1 = perf_counter_ns()
+        if report.status != FC_OK or report.n_origins_run == 0:
+            return -1.0
+        if rep == 0 or _ns(t0, t1) < best:
+            best = _ns(t0, t1)
+    return best
+
+
 fn main() raises:
     var failures = 0
     print("\n[bench_forecasting] scaling gate")
@@ -109,34 +140,25 @@ fn main() raises:
         var min_train = n // 4
         var step = (n - horizon - min_train) // 15
         var y = _series(n, 12)
-        var best: Float64 = 0.0
-        var refused = False
-        var origins = 0
-        var last_origin = 0
-        for rep in range(GATE_REPS):
-            var t0 = perf_counter_ns()
-            var report = backtest_flat(
-                y, FC_METHOD_THETA, horizon, min_train, step, True, 12, 2, 0.4, 0.2, 1.0, 2.0
-            )
-            var t1 = perf_counter_ns()
-            if report.status != FC_OK or report.n_origins_run == 0:
-                refused = True
-                print("  ❌ backtest refused at n =", n, "status", report.status_name)
-                break
-            if rep == 0 or _ns(t0, t1) < best:
-                best = _ns(t0, t1)
-            origins = report.n_origins_run
-            last_origin = report.origin_index[report.n_origins_run - 1]
-        if refused:
+        var report = backtest_flat(
+            y, FC_METHOD_THETA, horizon, min_train, step, True, 12, 2, 0.4, 0.2, 1.0, 2.0
+        )
+        if report.status != FC_OK or report.n_origins_run == 0:
             failures += 1
+            print("  ❌ backtest refused at n =", n, "status", report.status_name)
+            continue
+        var best = _min_backtest_ns(y, FC_METHOD_THETA, horizon, min_train, step, True, 12)
+        if best <= 0.0:
+            failures += 1
+            print("  ❌ backtest refused inside the timing loop at n =", n)
             continue
         # Expanding window: mean training length is about (first + last)/2.
-        var mean_window = Float64(min_train + last_origin) * 0.5
-        var units = Float64(origins) * mean_window
+        var mean_window = Float64(min_train + report.origin_index[report.n_origins_run - 1]) * 0.5
+        var units = Float64(report.n_origins_run) * mean_window
         var ns_per_unit = best / units
         per_unit.append(ns_per_unit)
         print(
-            "  n =", n, "origins", origins, "min of", GATE_REPS, "total ns", best,
+            "  n =", n, "origins", report.n_origins_run, "min of", GATE_REPS, "total ns", best,
             "ns/(origin*window)", ns_per_unit,
         )
     if len(per_unit) == 2:
@@ -168,8 +190,16 @@ fn main() raises:
             "  expanding ns", _ns(t2, t3), "sliding ns", _ns(t3, t4),
             "origins", wide.n_origins_run,
         )
+        # ADVISORY, not a gate, and deliberately not marked with a checkmark. The else branch
+        # below counts no failure, so a broken invariant here cannot turn the verdict red --
+        # verified by making this condition unsatisfiable and watching the benchmark still
+        # report PASS. At these sizes both policies are O(window) and the difference is inside
+        # the timing noise, so gating it would add a coin flip rather than a signal. It stays
+        # printed because the comparison is still worth seeing. If you gate it later, give it a
+        # min-of-GATE_REPS reading first and count the failure; until then it must not wear the
+        # same checkmark as the four gates in this file that do fail.
         if _ns(t3, t4) <= _ns(t2, t3):
-            print("  ✅ a fixed sliding window costs no more than an expanding one")
+            print("  (note) sliding was faster here, as expected; both are O(window)")
         else:
             print("  (note) sliding was not faster here; both are O(window) and n is small")
 
@@ -184,31 +214,28 @@ fn main() raises:
         var y = _series(n, period)
         var min_train = n // 4
         var step = (n - horizon - min_train) // 7
-        var best: Float64 = 0.0
-        var refused = False
-        var origins = 0
-        for rep in range(GATE_REPS):
-            var t5 = perf_counter_ns()
-            var report = backtest_flat(
-                y, FC_METHOD_ETS_AAA, horizon, min_train, step, False, period, 2,
-                0.4, 0.2, 1.0, 2.0,
-            )
-            var t6 = perf_counter_ns()
-            if report.status != FC_OK or report.n_origins_run == 0:
-                refused = True
-                print("  ❌ seasonal backtest refused at period", period, report.status_name)
-                break
-            if rep == 0 or _ns(t5, t6) < best:
-                best = _ns(t5, t6)
-            origins = report.n_origins_run
-        if refused:
+        var report = backtest_flat(
+            y, FC_METHOD_ETS_AAA, horizon, min_train, step, False, period, 2,
+            0.4, 0.2, 1.0, 2.0,
+        )
+        if report.status != FC_OK or report.n_origins_run == 0:
             failures += 1
+            print("  ❌ seasonal backtest refused at period", period, report.status_name)
             continue
-        var units = Float64(origins) * Float64(min_train) * Float64(period)
+        var best = _min_backtest_ns(
+            y, FC_METHOD_ETS_AAA, horizon, min_train, step, False, period
+        )
+        if best <= 0.0:
+            failures += 1
+            print("  ❌ seasonal backtest refused inside the timing loop at period", period)
+            continue
+        var units = (
+            Float64(report.n_origins_run) * Float64(min_train) * Float64(period)
+        )
         var ns_per_unit = best / units
         seasonal_unit.append(ns_per_unit)
         print(
-            "  period =", period, "origins", origins, "min of", GATE_REPS,
+            "  period =", period, "origins", report.n_origins_run, "min of", GATE_REPS,
             "total ns", best, "ns/(origin*window*period)", ns_per_unit,
         )
     if len(seasonal_unit) == 2:
