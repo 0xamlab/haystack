@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **546 modules** and **5384 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **566 modules** and **5508 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -36,12 +36,13 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## LLM & attention
 
-14 modules.
+15 modules.
 
 | Module | Functions |
 | --- | --- |
 | `attnk.rope` | 6 |
 | `bpe_tokenizer` | 10 |
+| `causal_inference.propensity` | 5 |
 | `embeddings` | 12 |
 | `flash_attention` | 10 |
 | `kv_cache` | 10 |
@@ -57,19 +58,32 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Machine learning
 
-29 modules.
+42 modules.
 
 | Module | Functions |
 | --- | --- |
 | `activations` | 10 |
 | `bayesian_inference` | 10 |
 | `calibration` | 5 |
+| `causal_inference.base` | 13 |
+| `causal_inference.dag` | 6 |
+| `causal_inference.estimators` | 5 |
+| `causal_inference.panel` | 2 |
+| `causal_inference.sensitivity` | 7 |
+| `causal_inference.uplift` | 2 |
 | `config.toml_parser` | 5 |
 | `config.yaml_parser` | 5 |
 | `constraint` | 8 |
 | `decision_ml_fusion` | 10 |
 | `gemm.quantized` | 4 |
 | `gradient_descent` | 10 |
+| `inference.assume` | 5 |
+| `inference.core` | 18 |
+| `inference.glm` | 3 |
+| `inference.multiplicity` | 5 |
+| `inference.power` | 5 |
+| `inference.resample` | 3 |
+| `inference.robust` | 3 |
 | `inference_cost_latency` | 11 |
 | `inference_engine` | 10 |
 | `inference_security` | 10 |
@@ -119,7 +133,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Statistics & probability
 
-20 modules.
+21 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -129,6 +143,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `distribution_fit` | 10 |
 | `distributions` | 25 |
 | `electrostatics` | 10 |
+| `forecasting.interval` | 3 |
 | `hypothesis` | 6 |
 | `interval` | 13 |
 | `ml.naive_bayes` | 8 |
@@ -303,7 +318,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-358 modules.
+363 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -427,6 +442,11 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `fluid` | 12 |
 | `food_science` | 12 |
 | `forecast_metrics` | 10 |
+| `forecasting.backtest` | 4 |
+| `forecasting.contract` | 18 |
+| `forecasting.hierarchy` | 5 |
+| `forecasting.intermittent` | 4 |
+| `forecasting.point` | 8 |
 | `forensics` | 12 |
 | `formal_logic` | 14 |
 | `fused_kernels` | 10 |

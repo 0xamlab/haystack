@@ -166,6 +166,31 @@ HANDWRITTEN_TESTS = frozenset(
         "test_seq2_trainer.mojo",
         "test_svm_solver.mojo",
         "test_tensor2d.mojo",
+        # Forecasting package: hand-written known-value suites.
+        "test_forecasting_backtest.mojo",
+        "test_forecasting_contract.mojo",
+        "test_forecasting_hierarchy.mojo",
+        "test_forecasting_intermittent.mojo",
+        "test_forecasting_interval.mojo",
+        "test_forecasting_point.mojo",
+        # Statistical inference package: hand-written known-value suites. Note these are the
+        # `inference/` PACKAGE suites; test_inference_engine / test_inference_cost_latency /
+        # test_inference_security belong to the flat LLM-serving modules and are listed above.
+        "test_inference_assume.mojo",
+        "test_inference_core.mojo",
+        "test_inference_glm.mojo",
+        "test_inference_multiplicity.mojo",
+        "test_inference_power.mojo",
+        "test_inference_resample.mojo",
+        "test_inference_robust.mojo",
+        # Causal inference package: hand-written known-value suites.
+        "test_causal_inference_base.mojo",
+        "test_causal_inference_dag.mojo",
+        "test_causal_inference_estimators.mojo",
+        "test_causal_inference_panel.mojo",
+        "test_causal_inference_propensity.mojo",
+        "test_causal_inference_sensitivity.mojo",
+        "test_causal_inference_uplift.mojo",
     }
 )
 

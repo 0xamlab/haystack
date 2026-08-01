@@ -52,6 +52,9 @@
 * [Feature hashing (the hashing trick)](engine/ml-feature-hashing.md)
 * [Partial least squares regression (PLS1)](engine/ml-pls.md)
 * [Trainable SVM classifier (simplified SMO)](engine/ml-svm.md)
+* [Forecasting and backtesting](engine/forecasting.md)
+* [Statistical inference](engine/statistical-inference.md)
+* [Causal inference](engine/causal-inference.md)
 * [Batched chain greeks](engine/ml-chain-greeks.md)
 * [How the engine works](concepts/engine.md)
 

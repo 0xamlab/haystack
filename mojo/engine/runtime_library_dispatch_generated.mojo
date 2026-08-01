@@ -720,6 +720,67 @@ from causal import (
     needed_sample_size_ate as _causal__needed_sample_size_ate,
 )
 
+from causal_inference.base import (
+    ci_status_name as _causal_inference_base__ci_status_name,
+    ci_finite as _causal_inference_base__ci_finite,
+    ci_all_finite as _causal_inference_base__ci_all_finite,
+    ci_tolerance as _causal_inference_base__ci_tolerance,
+    ci_product_fits as _causal_inference_base__ci_product_fits,
+    ci_product3_fits as _causal_inference_base__ci_product3_fits,
+    ci_matrix_fits as _causal_inference_base__ci_matrix_fits,
+    ci_panel_fits as _causal_inference_base__ci_panel_fits,
+    ci_treatment_defect as _causal_inference_base__ci_treatment_defect,
+    ci_count_treated as _causal_inference_base__ci_count_treated,
+    ci_argsort_asc as _causal_inference_base__ci_argsort_asc,
+    ci_argsort_desc as _causal_inference_base__ci_argsort_desc,
+    ci_is_permutation as _causal_inference_base__ci_is_permutation,
+)
+
+from causal_inference.dag import (
+    dag_validate as _causal_inference_dag__dag_validate,
+    d_separated as _causal_inference_dag__d_separated,
+    backdoor_check as _causal_inference_dag__backdoor_check,
+    backdoor_minimal_set as _causal_inference_dag__backdoor_minimal_set,
+    dag_descendants as _causal_inference_dag__dag_descendants,
+    dag_ancestors as _causal_inference_dag__dag_ancestors,
+)
+
+from causal_inference.estimators import (
+    naive_ate as _causal_inference_estimators__naive_ate,
+    outcome_regression_ate as _causal_inference_estimators__outcome_regression_ate,
+    aipw_ate as _causal_inference_estimators__aipw_ate,
+    strata_ate as _causal_inference_estimators__strata_ate,
+    aipw_bootstrap_ci as _causal_inference_estimators__aipw_bootstrap_ci,
+)
+
+from causal_inference.panel import (
+    did_panel as _causal_inference_panel__did_panel,
+    synthetic_control as _causal_inference_panel__synthetic_control,
+)
+
+from causal_inference.propensity import (
+    propensity_fit as _causal_inference_propensity__propensity_fit,
+    overlap_report as _causal_inference_propensity__overlap_report,
+    ipw_ate as _causal_inference_propensity__ipw_ate,
+    match_nearest as _causal_inference_propensity__match_nearest,
+    match_optimal as _causal_inference_propensity__match_optimal,
+)
+
+from causal_inference.sensitivity import (
+    e_value_ratio as _causal_inference_sensitivity__e_value_ratio,
+    e_value_bound as _causal_inference_sensitivity__e_value_bound,
+    robustness_value as _causal_inference_sensitivity__robustness_value,
+    omitted_variable_bias as _causal_inference_sensitivity__omitted_variable_bias,
+    sensitivity_curve as _causal_inference_sensitivity__sensitivity_curve,
+    rosenbaum_sign_bound as _causal_inference_sensitivity__rosenbaum_sign_bound,
+    rosenbaum_gamma_needed as _causal_inference_sensitivity__rosenbaum_gamma_needed,
+)
+
+from causal_inference.uplift import (
+    uplift_by_bin as _causal_inference_uplift__uplift_by_bin,
+    qini_curve as _causal_inference_uplift__qini_curve,
+)
+
 from cellular import (
     grid_create as _cellular__grid_create,
     grid_randomize as _cellular__grid_randomize,
@@ -2172,6 +2233,66 @@ from forecast_metrics import (
     metrics_selftest as _forecast_metrics__metrics_selftest,
 )
 
+from forecasting.backtest import (
+    backtest_origin_count as _forecasting_backtest__backtest_origin_count,
+    backtest_flat as _forecasting_backtest__backtest_flat,
+    backtest_residuals_at_step as _forecasting_backtest__backtest_residuals_at_step,
+    forecast_errors_flat as _forecasting_backtest__forecast_errors_flat,
+)
+
+from forecasting.contract import (
+    fc_status_name as _forecasting_contract__fc_status_name,
+    fc_method_name as _forecasting_contract__fc_method_name,
+    fc_method_family as _forecasting_contract__fc_method_family,
+    fc_finite as _forecasting_contract__fc_finite,
+    fc_all_finite as _forecasting_contract__fc_all_finite,
+    fc_tolerance as _forecasting_contract__fc_tolerance,
+    fc_sum_tolerance as _forecasting_contract__fc_sum_tolerance,
+    fc_ceilings as _forecasting_contract__fc_ceilings,
+    fc_series_defect as _forecasting_contract__fc_series_defect,
+    fc_horizon_defect as _forecasting_contract__fc_horizon_defect,
+    fc_period_defect as _forecasting_contract__fc_period_defect,
+    fc_smoothing_defect as _forecasting_contract__fc_smoothing_defect,
+    fc_damping_defect as _forecasting_contract__fc_damping_defect,
+    fc_level_defect as _forecasting_contract__fc_level_defect,
+    fc_cells_fit as _forecasting_contract__fc_cells_fit,
+    fc_work_fits as _forecasting_contract__fc_work_fits,
+    fc_min_samples_for_level as _forecasting_contract__fc_min_samples_for_level,
+    fc_quantile_of as _forecasting_contract__fc_quantile_of,
+)
+
+from forecasting.hierarchy import (
+    hierarchy_shape_defect as _forecasting_hierarchy__hierarchy_shape_defect,
+    hierarchy_coherence_flat as _forecasting_hierarchy__hierarchy_coherence_flat,
+    reconcile_bottom_up_flat as _forecasting_hierarchy__reconcile_bottom_up_flat,
+    reconcile_top_down_flat as _forecasting_hierarchy__reconcile_top_down_flat,
+    reconcile_flat as _forecasting_hierarchy__reconcile_flat,
+)
+
+from forecasting.intermittent import (
+    croston_variant_name as _forecasting_intermittent__croston_variant_name,
+    demand_class_name as _forecasting_intermittent__demand_class_name,
+    croston_forecast as _forecasting_intermittent__croston_forecast,
+    demand_classify as _forecasting_intermittent__demand_classify,
+)
+
+from forecasting.interval import (
+    interval_empirical_flat as _forecasting_interval__interval_empirical_flat,
+    interval_bootstrap_flat as _forecasting_interval__interval_bootstrap_flat,
+    interval_coverage_flat as _forecasting_interval__interval_coverage_flat,
+)
+
+from forecasting.point import (
+    ets_ann_forecast as _forecasting_point__ets_ann_forecast,
+    ets_aan_forecast as _forecasting_point__ets_aan_forecast,
+    ets_aaa_forecast as _forecasting_point__ets_aaa_forecast,
+    theta_forecast as _forecasting_point__theta_forecast,
+    theta_drift_forecast as _forecasting_point__theta_drift_forecast,
+    ar_forecast_checked as _forecasting_point__ar_forecast_checked,
+    baseline_forecast as _forecasting_point__baseline_forecast,
+    deseasonalise_flat as _forecasting_point__deseasonalise_flat,
+)
+
 from forensics import (
     time_of_death_newton as _forensics__time_of_death_newton,
     algor_mortis_rate as _forensics__algor_mortis_rate,
@@ -2896,6 +3017,69 @@ from immunology import (
     herd_immunity_threshold as _immunology__herd_immunity_threshold,
     antibody_avidity_index as _immunology__antibody_avidity_index,
     opsonisation_index as _immunology__opsonisation_index,
+)
+
+from inference.assume import (
+    variance_homogeneity_flat as _inference_assume__variance_homogeneity_flat,
+    expected_counts_flat as _inference_assume__expected_counts_flat,
+    residual_normality_flat as _inference_assume__residual_normality_flat,
+    t_test_checked_flat as _inference_assume__t_test_checked_flat,
+    proportion_test_checked_flat as _inference_assume__proportion_test_checked_flat,
+)
+
+from inference.core import (
+    inference_status_name as _inference_core__inference_status_name,
+    inference_finite as _inference_core__inference_finite,
+    inference_absent as _inference_core__inference_absent,
+    inference_scaled_tol as _inference_core__inference_scaled_tol,
+    inference_scaled_tol_ulps as _inference_core__inference_scaled_tol_ulps,
+    inference_product_fits as _inference_core__inference_product_fits,
+    inference_product3_fits as _inference_core__inference_product3_fits,
+    inference_dims_fit as _inference_core__inference_dims_fit,
+    inference_ceilings as _inference_core__inference_ceilings,
+    inference_beta_inc as _inference_core__inference_beta_inc,
+    inference_t_tail_region as _inference_core__inference_t_tail_region,
+    inference_t_cdf as _inference_core__inference_t_cdf,
+    inference_t_sf_two_sided as _inference_core__inference_t_sf_two_sided,
+    inference_f_sf as _inference_core__inference_f_sf,
+    inference_norm_sf_two_sided as _inference_core__inference_norm_sf_two_sided,
+    inference_t_quantile as _inference_core__inference_t_quantile,
+    t_cdf_agreement as _inference_core__t_cdf_agreement,
+    wls_solve_flat as _inference_core__wls_solve_flat,
+)
+
+from inference.glm import (
+    glm_input_defect as _inference_glm__glm_input_defect,
+    glm_logistic_fit_flat as _inference_glm__glm_logistic_fit_flat,
+    glm_poisson_fit_flat as _inference_glm__glm_poisson_fit_flat,
+)
+
+from inference.multiplicity import (
+    multiplicity_input_defect as _inference_multiplicity__multiplicity_input_defect,
+    bonferroni_flat as _inference_multiplicity__bonferroni_flat,
+    holm_flat as _inference_multiplicity__holm_flat,
+    benjamini_hochberg_flat as _inference_multiplicity__benjamini_hochberg_flat,
+    correction_agreement_flat as _inference_multiplicity__correction_agreement_flat,
+)
+
+from inference.power import (
+    power_design_defect as _inference_power__power_design_defect,
+    power_two_means_flat as _inference_power__power_two_means_flat,
+    power_two_means_t_flat as _inference_power__power_two_means_t_flat,
+    sample_size_two_means_flat as _inference_power__sample_size_two_means_flat,
+    sample_size_two_means_t_flat as _inference_power__sample_size_two_means_t_flat,
+)
+
+from inference.resample import (
+    resample_statistic_name as _inference_resample__resample_statistic_name,
+    bootstrap_ci_flat as _inference_resample__bootstrap_ci_flat,
+    permutation_test_flat as _inference_resample__permutation_test_flat,
+)
+
+from inference.robust import (
+    robust_scale_mad as _inference_robust__robust_scale_mad,
+    huber_weight as _inference_robust__huber_weight,
+    huber_fit_flat as _inference_robust__huber_fit_flat,
 )
 
 from inference_cost_latency import (
@@ -7083,6 +7267,46 @@ from calibration import (
     PlattParams,
 )
 
+from causal_inference.dag import (
+    AdjustmentSet,
+    BackdoorReport,
+    DSepReport,
+    DagReport,
+)
+
+from causal_inference.estimators import (
+    ArmContrast,
+    BootCI,
+    DrEstimate,
+    OutcomeModel,
+    StrataAte,
+)
+
+from causal_inference.panel import (
+    DidReport,
+    SynthResult,
+)
+
+from causal_inference.propensity import (
+    IpwEstimate,
+    MatchReport,
+    OverlapReport,
+    PropensityFit,
+)
+
+from causal_inference.sensitivity import (
+    EValue,
+    OvbResult,
+    RobustnessValue,
+    RosenbaumBound,
+    SensitivityCurve,
+)
+
+from causal_inference.uplift import (
+    QiniResult,
+    UpliftCurve,
+)
+
 from color import (
     HSL,
     HSV,
@@ -7172,6 +7396,35 @@ from forecast_metrics import (
     ReliabilityBins,
 )
 
+from forecasting.backtest import (
+    BacktestReport,
+    ErrorReport,
+)
+
+from forecasting.contract import (
+    FcQuantile,
+)
+
+from forecasting.hierarchy import (
+    CoherenceReport,
+    Reconciliation,
+)
+
+from forecasting.intermittent import (
+    DemandProfile,
+    IntermittentForecast,
+)
+
+from forecasting.interval import (
+    CoverageReport,
+    IntervalBand,
+)
+
+from forecasting.point import (
+    PointForecast,
+    SeasonalAdjust,
+)
+
 from gaussian_process import (
     GPFit,
     GPPrediction,
@@ -7257,6 +7510,42 @@ from hmm import (
 
 from imbalance import (
     ClassWeights,
+)
+
+from inference.assume import (
+    AssumptionVerdict,
+    CellCountVerdict,
+    CheckedProportionTest,
+    CheckedTest,
+    NormalityVerdict,
+)
+
+from inference.core import (
+    CdfAgreement,
+    WlsSolution,
+)
+
+from inference.glm import (
+    GlmFit,
+)
+
+from inference.multiplicity import (
+    Correction,
+    CorrectionAgreement,
+)
+
+from inference.power import (
+    PowerReport,
+    SampleSizeReport,
+)
+
+from inference.resample import (
+    BootstrapCI,
+    PermutationTest,
+)
+
+from inference.robust import (
+    RobustFit,
 )
 
 from interval import (
@@ -8778,6 +9067,30 @@ fn _to_json_actout(value: ActOut) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_adjustmentset(value: AdjustmentSet) raises -> String:
+    var result = String("{\"__algenta_struct\":\"AdjustmentSet\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.identified)
+    result += ","
+    result += _to_json_bool(value.has_set)
+    result += ","
+    result += _to_json_list_int(value.chosen)
+    result += ","
+    result += _to_json_int(value.n_candidates)
+    result += ","
+    result += _to_json_int(value.n_dropped_descendant)
+    result += ","
+    result += _to_json_int(value.n_dropped_non_ancestral)
+    result += ","
+    result += _to_json_int(value.n_dropped_redundant)
+    result += ","
+    result += _to_json_bool(value.minimality_measured)
+    result += ","
+    result += _to_json_int(value.n_checks)
+    result += "]}"
+    return result
+
 fn _to_json_arenaflat(value: ArenaFlat) raises -> String:
     var result = String("{\"__algenta_struct\":\"ArenaFlat\",\"v\":[")
     result += _to_json_int(value.status)
@@ -8797,6 +9110,32 @@ fn _to_json_arenaflat(value: ArenaFlat) raises -> String:
     result += _to_json_list_int(value.rights)
     result += ","
     result += _to_json_list_int(value.extras)
+    result += "]}"
+    return result
+
+fn _to_json_armcontrast(value: ArmContrast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ArmContrast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_diff)
+    result += ","
+    result += _to_json_float64(value.diff)
+    result += ","
+    result += _to_json_float64(value.mean_treated)
+    result += ","
+    result += _to_json_float64(value.mean_control)
+    result += ","
+    result += _to_json_float64(value.var_treated)
+    result += ","
+    result += _to_json_float64(value.var_control)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += ","
+    result += _to_json_float64(value.se)
+    result += ","
+    result += _to_json_bool(value.has_se)
     result += "]}"
     return result
 
@@ -8839,6 +9178,106 @@ fn _to_json_assignment(value: Assignment) raises -> String:
     result += _to_json_int(value.warm_started)
     result += ","
     result += _to_json_int(value.augmentations)
+    result += "]}"
+    return result
+
+fn _to_json_assumptionverdict(value: AssumptionVerdict) raises -> String:
+    var result = String("{\"__algenta_struct\":\"AssumptionVerdict\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_groups)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.statistic)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.df1)
+    result += ","
+    result += _to_json_float64(value.df2)
+    result += ","
+    result += _to_json_bool(value.satisfied)
+    result += ","
+    result += _to_json_float64(value.variance_ratio)
+    result += ","
+    result += _to_json_bool(value.variance_ratio_known)
+    result += "]}"
+    return result
+
+fn _to_json_backdoorreport(value: BackdoorReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BackdoorReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.identified)
+    result += ","
+    result += _to_json_bool(value.has_verdict)
+    result += ","
+    result += _to_json_bool(value.blocks_backdoor_paths)
+    result += ","
+    result += _to_json_int(value.n_descendant_violations)
+    result += ","
+    result += _to_json_int(value.first_descendant)
+    result += ","
+    result += _to_json_int(value.n_adjustment)
+    result += ","
+    result += _to_json_int(value.n_open_backdoor_paths_found)
+    result += ","
+    result += _to_json_list_int(value.unblocked_path)
+    result += "]}"
+    return result
+
+fn _to_json_backtestreport(value: BacktestReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BacktestReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.min_train)
+    result += ","
+    result += _to_json_int(value.step)
+    result += ","
+    result += _to_json_bool(value.expanding)
+    result += ","
+    result += _to_json_int(value.n_origins_requested)
+    result += ","
+    result += _to_json_int(value.n_origins_run)
+    result += ","
+    result += _to_json_int(value.n_origins_refused)
+    result += ","
+    result += _to_json_int(value.n_cells)
+    result += ","
+    result += _to_json_list_int(value.origin_index)
+    result += ","
+    result += _to_json_list_float64(value.forecast)
+    result += ","
+    result += _to_json_list_float64(value.actual)
+    result += ","
+    result += _to_json_list_float64(value.error)
+    result += ","
+    result += _to_json_list_float64(value.origin_mae)
+    result += ","
+    result += _to_json_list_float64(value.origin_rmse)
+    result += ","
+    result += _to_json_float64(value.mae)
+    result += ","
+    result += _to_json_float64(value.rmse)
+    result += ","
+    result += _to_json_bool(value.has_pooled)
+    result += ","
+    result += _to_json_int(value.worst_origin)
+    result += ","
+    result += _to_json_float64(value.worst_origin_mae)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -8930,6 +9369,72 @@ fn _to_json_blockquant(value: BlockQuant) raises -> String:
 
 fn _to_json_bool(value: Bool) raises -> String:
     return "true" if value else "false"
+
+fn _to_json_bootci(value: BootCI) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BootCI\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_ci)
+    result += ","
+    result += _to_json_float64(value.point)
+    result += ","
+    result += _to_json_float64(value.ci_lo)
+    result += ","
+    result += _to_json_float64(value.ci_hi)
+    result += ","
+    result += _to_json_float64(value.se_boot)
+    result += ","
+    result += _to_json_bool(value.has_se)
+    result += ","
+    result += _to_json_int(value.n_replicates)
+    result += ","
+    result += _to_json_int(value.n_replicates_used)
+    result += ","
+    result += _to_json_int(value.n_replicates_dropped)
+    result += ","
+    result += _to_json_int(value.seed_used)
+    result += "]}"
+    return result
+
+fn _to_json_bootstrapci(value: BootstrapCI) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BootstrapCI\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.statistic)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_resamples)
+    result += ","
+    result += _to_json_uint64(value.seed)
+    result += ","
+    result += _to_json_uint64(value.stream)
+    result += ","
+    result += _to_json_float64(value.confidence)
+    result += ","
+    result += _to_json_bool(value.interval_known)
+    result += ","
+    result += _to_json_float64(value.point_estimate)
+    result += ","
+    result += _to_json_float64(value.lo)
+    result += ","
+    result += _to_json_float64(value.hi)
+    result += ","
+    result += _to_json_float64(value.resample_se)
+    result += ","
+    result += _to_json_float64(value.bias)
+    result += ","
+    result += _to_json_int(value.lo_rank)
+    result += ","
+    result += _to_json_int(value.hi_rank)
+    result += ","
+    result += _to_json_float64(value.endpoint_rank_sd)
+    result += ","
+    result += _to_json_float64(value.lo_mc_halfwidth)
+    result += ","
+    result += _to_json_float64(value.hi_mc_halfwidth)
+    result += "]}"
+    return result
 
 fn _to_json_bracket(value: Bracket) raises -> String:
     var result = String("{\"__algenta_struct\":\"Bracket\",\"v\":[")
@@ -9095,6 +9600,26 @@ fn _to_json_candidatetable_vector_kernels_table(value: CandidateTable__vector_ke
     result += "]}"
     return result
 
+fn _to_json_cdfagreement(value: CdfAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CdfAgreement\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_float64(value.t)
+    result += ","
+    result += _to_json_float64(value.df)
+    result += ","
+    result += _to_json_float64(value.frozen_cdf)
+    result += ","
+    result += _to_json_float64(value.corrected_cdf)
+    result += ","
+    result += _to_json_bool(value.frozen_is_probability)
+    result += ","
+    result += _to_json_float64(value.abs_gap)
+    result += ","
+    result += _to_json_bool(value.agree)
+    result += "]}"
+    return result
+
 fn _to_json_ceagreement(value: CeAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"CeAgreement\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
@@ -9148,6 +9673,36 @@ fn _to_json_ceout(value: CeOut) raises -> String:
     result += _to_json_int(value.peak_logit_cells)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_cellcountverdict(value: CellCountVerdict) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CellCountVerdict\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_int(value.n_cells)
+    result += ","
+    result += _to_json_float64(value.statistic)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.df)
+    result += ","
+    result += _to_json_int(value.n_below_min)
+    result += ","
+    result += _to_json_float64(value.min_expected_cell)
+    result += ","
+    result += _to_json_float64(value.min_expected_required)
+    result += ","
+    result += _to_json_float64(value.total_observed)
+    result += ","
+    result += _to_json_float64(value.total_expected)
+    result += ","
+    result += _to_json_bool(value.totals_match)
+    result += ","
+    result += _to_json_bool(value.satisfied)
     result += "]}"
     return result
 
@@ -9209,6 +9764,94 @@ fn _to_json_chanceresult(value: ChanceResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_checkedproportiontest(value: CheckedProportionTest) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CheckedProportionTest\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_int(value.n_a)
+    result += ","
+    result += _to_json_int(value.n_b)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.p_hat_a)
+    result += ","
+    result += _to_json_float64(value.p_hat_b)
+    result += ","
+    result += _to_json_float64(value.z)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.frozen_p_value)
+    result += ","
+    result += _to_json_bool(value.frozen_p_value_usable)
+    result += ","
+    result += _to_json_float64(value.min_expected_cell)
+    result += ","
+    result += _to_json_bool(value.normal_approximation_ok)
+    result += ","
+    result += _to_json_bool(value.reject)
+    result += ","
+    result += _to_json_float64(value.ci_a_lo)
+    result += ","
+    result += _to_json_float64(value.ci_a_hi)
+    result += ","
+    result += _to_json_float64(value.ci_b_lo)
+    result += ","
+    result += _to_json_float64(value.ci_b_hi)
+    result += "]}"
+    return result
+
+fn _to_json_checkedtest(value: CheckedTest) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CheckedTest\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_int(value.n1)
+    result += ","
+    result += _to_json_int(value.n2)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.mean1)
+    result += ","
+    result += _to_json_float64(value.mean2)
+    result += ","
+    result += _to_json_float64(value.variance1)
+    result += ","
+    result += _to_json_float64(value.variance2)
+    result += ","
+    result += _to_json_float64(value.statistic)
+    result += ","
+    result += _to_json_bool(value.statistic_reproduced)
+    result += ","
+    result += _to_json_float64(value.df)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.frozen_p_value)
+    result += ","
+    result += _to_json_bool(value.frozen_p_value_usable)
+    result += ","
+    result += _to_json_bool(value.reject)
+    result += ","
+    result += _to_json_float64(value.equal_variance_p)
+    result += ","
+    result += _to_json_bool(value.equal_variance_satisfied)
+    result += ","
+    result += _to_json_bool(value.normality_checked)
+    result += ","
+    result += _to_json_bool(value.normality_satisfied_1)
+    result += ","
+    result += _to_json_bool(value.normality_satisfied_2)
+    result += ","
+    result += _to_json_bool(value.assumptions_satisfied)
+    result += "]}"
+    return result
+
 fn _to_json_circularbuffer(value: CircularBuffer) raises -> String:
     var result = String("{\"__algenta_struct\":\"CircularBuffer\",\"v\":[")
     result += _to_json_list_float64(value.data)
@@ -9250,6 +9893,34 @@ fn _to_json_closenessresult(value: ClosenessResult) raises -> String:
     result += _to_json_list_int(value.reached_count)
     result += ","
     result += _to_json_list_float64(value.sum_distance)
+    result += "]}"
+    return result
+
+fn _to_json_coherencereport(value: CoherenceReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CoherenceReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_internal)
+    result += ","
+    result += _to_json_list_float64(value.residual)
+    result += ","
+    result += _to_json_bool(value.has_report)
+    result += ","
+    result += _to_json_bool(value.coherent)
+    result += ","
+    result += _to_json_float64(value.max_residual)
+    result += ","
+    result += _to_json_int(value.worst_node)
+    result += ","
+    result += _to_json_int(value.worst_step)
+    result += ","
+    result += _to_json_int(value.n_incoherent_cells)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -9439,6 +10110,48 @@ fn _to_json_corrresult(value: CorrResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_correction(value: Correction) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Correction\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_int(value.n_tests)
+    result += ","
+    result += _to_json_int(value.n_rejected)
+    result += ","
+    result += _to_json_list_float64(value.adjusted)
+    result += ","
+    result += _to_json_list_bool(value.rejected)
+    result += ","
+    result += _to_json_float64(value.min_p)
+    result += ","
+    result += _to_json_float64(value.max_rejected_p)
+    result += "]}"
+    return result
+
+fn _to_json_correctionagreement(value: CorrectionAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CorrectionAgreement\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_tests)
+    result += ","
+    result += _to_json_int(value.n_rejected_bonferroni)
+    result += ","
+    result += _to_json_int(value.n_rejected_holm)
+    result += ","
+    result += _to_json_int(value.n_rejected_bh)
+    result += ","
+    result += _to_json_bool(value.smallest_p_identical)
+    result += ","
+    result += _to_json_bool(value.monotone_bh_le_holm_le_bonferroni)
+    result += ","
+    result += _to_json_bool(value.power_ordering_holds)
+    result += "]}"
+    return result
+
 fn _to_json_costreport(value: CostReport) raises -> String:
     var result = String("{\"__algenta_struct\":\"CostReport\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9481,6 +10194,28 @@ fn _to_json_countingbloom(value: CountingBloom) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_coveragereport(value: CoverageReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"CoverageReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.n_covered)
+    result += ","
+    result += _to_json_int(value.n_below)
+    result += ","
+    result += _to_json_int(value.n_above)
+    result += ","
+    result += _to_json_int(value.n_degenerate)
+    result += ","
+    result += _to_json_float64(value.coverage)
+    result += ","
+    result += _to_json_bool(value.has_coverage)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_crowding(value: Crowding) raises -> String:
     var result = String("{\"__algenta_struct\":\"Crowding\",\"v\":[")
     result += _to_json_int(value.status)
@@ -9506,6 +10241,50 @@ fn _to_json_dmresult(value: DMResult) raises -> String:
     result += _to_json_float64(value.dm_stat)
     result += ","
     result += _to_json_float64(value.p_two_sided)
+    result += "]}"
+    return result
+
+fn _to_json_dsepreport(value: DSepReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DSepReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.separated)
+    result += ","
+    result += _to_json_bool(value.has_answer)
+    result += ","
+    result += _to_json_int(value.n_reachable)
+    result += ","
+    result += _to_json_list_int(value.path_nodes)
+    result += ","
+    result += _to_json_list_bool(value.reachable_mask)
+    result += "]}"
+    return result
+
+fn _to_json_dagreport(value: DagReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DagReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.n_edges)
+    result += ","
+    result += _to_json_bool(value.is_dag)
+    result += ","
+    result += _to_json_int(value.cycle_from)
+    result += ","
+    result += _to_json_int(value.cycle_to)
+    result += ","
+    result += _to_json_int(value.n_self_loops)
+    result += ","
+    result += _to_json_int(value.n_duplicate_edges)
+    result += ","
+    result += _to_json_bool(value.has_order)
+    result += ","
+    result += _to_json_list_int(value.topo_order)
+    result += ","
+    result += _to_json_list_int(value.in_degree)
+    result += ","
+    result += _to_json_list_int(value.out_degree)
     result += "]}"
     return result
 
@@ -9541,6 +10320,38 @@ fn _to_json_degreecentralityresult(value: DegreeCentralityResult) raises -> Stri
     result += "]}"
     return result
 
+fn _to_json_demandprofile(value: DemandProfile) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DemandProfile\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_periods)
+    result += ","
+    result += _to_json_int(value.n_nonzero)
+    result += ","
+    result += _to_json_int(value.n_zero)
+    result += ","
+    result += _to_json_float64(value.zero_fraction)
+    result += ","
+    result += _to_json_float64(value.adi)
+    result += ","
+    result += _to_json_bool(value.has_adi)
+    result += ","
+    result += _to_json_float64(value.cv2)
+    result += ","
+    result += _to_json_bool(value.has_cv2)
+    result += ","
+    result += _to_json_float64(value.mean_demand)
+    result += ","
+    result += _to_json_bool(value.has_mean_demand)
+    result += ","
+    result += _to_json_int(value.demand_class)
+    result += ","
+    result += _to_json_string(value.class_name)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_deviceprobe(value: DeviceProbe) raises -> String:
     var result = String("{\"__algenta_struct\":\"DeviceProbe\",\"v\":[")
     result += _to_json_bool(value.device_present)
@@ -9552,6 +10363,50 @@ fn _to_json_deviceprobe(value: DeviceProbe) raises -> String:
     result += _to_json_int(value.name_length)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_didreport(value: DidReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DidReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_att)
+    result += ","
+    result += _to_json_float64(value.att)
+    result += ","
+    result += _to_json_float64(value.mean_pre_treated)
+    result += ","
+    result += _to_json_float64(value.mean_post_treated)
+    result += ","
+    result += _to_json_float64(value.mean_pre_control)
+    result += ","
+    result += _to_json_float64(value.mean_post_control)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += ","
+    result += _to_json_int(value.n_pre)
+    result += ","
+    result += _to_json_int(value.n_post)
+    result += ","
+    result += _to_json_bool(value.has_pre_trend)
+    result += ","
+    result += _to_json_float64(value.pre_trend_diff)
+    result += ","
+    result += _to_json_float64(value.pre_trend_r_squared)
+    result += ","
+    result += _to_json_float64(value.max_abs_pre_gap_change)
+    result += ","
+    result += _to_json_float64(value.pre_gap_first)
+    result += ","
+    result += _to_json_float64(value.pre_gap_last)
+    result += ","
+    result += _to_json_list_float64(value.treated_mean)
+    result += ","
+    result += _to_json_list_float64(value.control_mean)
+    result += ","
+    result += _to_json_list_float64(value.gap)
     result += "]}"
     return result
 
@@ -9601,6 +10456,46 @@ fn _to_json_doublequant(value: DoubleQuant) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_drestimate(value: DrEstimate) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DrEstimate\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_ate)
+    result += ","
+    result += _to_json_float64(value.ate)
+    result += ","
+    result += _to_json_float64(value.ate_regression)
+    result += ","
+    result += _to_json_float64(value.ate_correction)
+    result += ","
+    result += _to_json_float64(value.decomposition_residual)
+    result += ","
+    result += _to_json_float64(value.se)
+    result += ","
+    result += _to_json_bool(value.has_se)
+    result += ","
+    result += _to_json_float64(value.ci_lo)
+    result += ","
+    result += _to_json_float64(value.ci_hi)
+    result += ","
+    result += _to_json_bool(value.has_ci)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_used)
+    result += ","
+    result += _to_json_int(value.n_trimmed)
+    result += ","
+    result += _to_json_int(value.n_extreme)
+    result += ","
+    result += _to_json_float64(value.max_weight)
+    result += ","
+    result += _to_json_float64(value.ess_treated)
+    result += ","
+    result += _to_json_float64(value.ess_control)
+    result += "]}"
+    return result
+
 fn _to_json_dtypecast(value: DtypeCast) raises -> String:
     var result = String("{\"__algenta_struct\":\"DtypeCast\",\"v\":[")
     result += _to_json_list_float64(value.values)
@@ -9642,6 +10537,26 @@ fn _to_json_dualcheck(value: DualCheck) raises -> String:
     result += _to_json_bool(value.has_dual_objective)
     result += ","
     result += _to_json_float64(value.dual_objective)
+    result += "]}"
+    return result
+
+fn _to_json_evalue(value: EValue) raises -> String:
+    var result = String("{\"__algenta_struct\":\"EValue\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.evalue)
+    result += ","
+    result += _to_json_float64(value.rr_oriented)
+    result += ","
+    result += _to_json_bool(value.inverted)
+    result += ","
+    result += _to_json_bool(value.has_ci_limit)
+    result += ","
+    result += _to_json_float64(value.evalue_ci_limit)
+    result += ","
+    result += _to_json_bool(value.ci_limit_crosses_null)
     result += "]}"
     return result
 
@@ -9727,6 +10642,50 @@ fn _to_json_embedout(value: EmbedOut) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_errorreport(value: ErrorReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ErrorReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.period)
+    result += ","
+    result += _to_json_float64(value.mae)
+    result += ","
+    result += _to_json_bool(value.has_mae)
+    result += ","
+    result += _to_json_float64(value.rmse)
+    result += ","
+    result += _to_json_bool(value.has_rmse)
+    result += ","
+    result += _to_json_float64(value.mape)
+    result += ","
+    result += _to_json_bool(value.has_mape)
+    result += ","
+    result += _to_json_int(value.n_defined_mape)
+    result += ","
+    result += _to_json_int(value.n_undefined_mape)
+    result += ","
+    result += _to_json_float64(value.smape)
+    result += ","
+    result += _to_json_bool(value.has_smape)
+    result += ","
+    result += _to_json_int(value.n_defined_smape)
+    result += ","
+    result += _to_json_int(value.n_undefined_smape)
+    result += ","
+    result += _to_json_float64(value.mase)
+    result += ","
+    result += _to_json_bool(value.has_mase)
+    result += ","
+    result += _to_json_float64(value.scale_denominator)
+    result += ","
+    result += _to_json_bool(value.has_scale)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_event(value: Event) raises -> String:
     var result = String("{\"__algenta_struct\":\"Event\",\"v\":[")
     result += _to_json_float64(value.time)
@@ -9762,6 +10721,22 @@ fn _to_json_factorvector(value: FactorVector) raises -> String:
     result += _to_json_float64(value.norm)
     result += ","
     result += _to_json_list_float64(value.values)
+    result += "]}"
+    return result
+
+fn _to_json_fcquantile(value: FcQuantile) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FcQuantile\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_int(value.n_samples)
+    result += ","
+    result += _to_json_float64(value.p)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -10114,6 +11089,42 @@ fn _to_json_gemmresult(value: GemmResult) raises -> String:
     result += _to_json_float64(value.flop_count)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_glmfit(value: GlmFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GlmFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.family)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_params)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_int(value.n_iter)
+    result += ","
+    result += _to_json_int(value.max_iter)
+    result += ","
+    result += _to_json_float64(value.intercept)
+    result += ","
+    result += _to_json_list_float64(value.coefficients)
+    result += ","
+    result += _to_json_list_float64(value.std_errors)
+    result += ","
+    result += _to_json_list_float64(value.wald_z)
+    result += ","
+    result += _to_json_list_float64(value.wald_p)
+    result += ","
+    result += _to_json_float64(value.log_likelihood)
+    result += ","
+    result += _to_json_float64(value.deviance)
+    result += ","
+    result += _to_json_bool(value.separation_witnessed)
+    result += ","
+    result += _to_json_float64(value.separation_margin)
     result += "]}"
     return result
 
@@ -10514,6 +11525,40 @@ fn _to_json_infeasibilitycore(value: InfeasibilityCore) raises -> String:
 fn _to_json_int(value: Int) raises -> String:
     return String(value)
 
+fn _to_json_intermittentforecast(value: IntermittentForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"IntermittentForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.variant)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_list_float64(value.forecast)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_float64(value.demand_level)
+    result += ","
+    result += _to_json_float64(value.interval_level)
+    result += ","
+    result += _to_json_bool(value.has_levels)
+    result += ","
+    result += _to_json_float64(value.bias_factor)
+    result += ","
+    result += _to_json_int(value.n_periods)
+    result += ","
+    result += _to_json_int(value.n_nonzero)
+    result += ","
+    result += _to_json_int(value.n_zero)
+    result += ","
+    result += _to_json_float64(value.zero_fraction)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_interval(value: Interval) raises -> String:
     var result = String("{\"__algenta_struct\":\"Interval\",\"v\":[")
     result += _to_json_float64(value.lo)
@@ -10524,11 +11569,83 @@ fn _to_json_interval(value: Interval) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_intervalband(value: IntervalBand) raises -> String:
+    var result = String("{\"__algenta_struct\":\"IntervalBand\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_origins)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_int(value.min_residuals_required)
+    result += ","
+    result += _to_json_list_float64(value.center)
+    result += ","
+    result += _to_json_list_float64(value.lower)
+    result += ","
+    result += _to_json_list_float64(value.upper)
+    result += ","
+    result += _to_json_list_bool(value.has_interval)
+    result += ","
+    result += _to_json_list_int(value.n_residuals)
+    result += ","
+    result += _to_json_int(value.n_steps_covered)
+    result += ","
+    result += _to_json_int(value.draws_per_step)
+    result += ","
+    result += _to_json_int(value.seed)
+    result += ","
+    result += _to_json_int(value.stream)
+    result += ","
+    result += _to_json_string(value.rng_version)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_inverseresult(value: InverseResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"InverseResult\",\"v\":[")
     result += _to_json_bool(value.ok)
     result += ","
     result += _to_json_list_float64(value.data)
+    result += "]}"
+    return result
+
+fn _to_json_ipwestimate(value: IpwEstimate) raises -> String:
+    var result = String("{\"__algenta_struct\":\"IpwEstimate\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_estimate)
+    result += ","
+    result += _to_json_float64(value.ate_ht)
+    result += ","
+    result += _to_json_float64(value.ate_hajek)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_used)
+    result += ","
+    result += _to_json_int(value.n_used_treated)
+    result += ","
+    result += _to_json_int(value.n_used_control)
+    result += ","
+    result += _to_json_int(value.n_trimmed)
+    result += ","
+    result += _to_json_int(value.n_extreme)
+    result += ","
+    result += _to_json_float64(value.max_weight)
+    result += ","
+    result += _to_json_float64(value.sum_weight_treated)
+    result += ","
+    result += _to_json_float64(value.sum_weight_control)
+    result += ","
+    result += _to_json_float64(value.ess_treated)
+    result += ","
+    result += _to_json_float64(value.ess_control)
     result += "]}"
     return result
 
@@ -11162,6 +12279,42 @@ fn _to_json_maskspec(value: MaskSpec) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_matchreport(value: MatchReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MatchReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_estimate)
+    result += ","
+    result += _to_json_float64(value.att)
+    result += ","
+    result += _to_json_list_int(value.matched_treated)
+    result += ","
+    result += _to_json_list_int(value.matched_control)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += ","
+    result += _to_json_int(value.n_matched)
+    result += ","
+    result += _to_json_int(value.n_unmatched)
+    result += ","
+    result += _to_json_float64(value.matched_fraction)
+    result += ","
+    result += _to_json_bool(value.is_full_sample)
+    result += ","
+    result += _to_json_float64(value.total_gap)
+    result += ","
+    result += _to_json_float64(value.mean_gap)
+    result += ","
+    result += _to_json_float64(value.max_gap)
+    result += ","
+    result += _to_json_bool(value.with_replacement)
+    result += ","
+    result += _to_json_int(value.n_controls_used)
+    result += "]}"
+    return result
+
 fn _to_json_matrix(value: Matrix) raises -> String:
     var result = String("{\"__algenta_struct\":\"Matrix\",\"v\":[")
     result += _to_json_list_float64(value.data)
@@ -11492,6 +12645,34 @@ fn _to_json_normout(value: NormOut) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_normalityverdict(value: NormalityVerdict) raises -> String:
+    var result = String("{\"__algenta_struct\":\"NormalityVerdict\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.shapiro_statistic)
+    result += ","
+    result += _to_json_float64(value.shapiro_p)
+    result += ","
+    result += _to_json_bool(value.shapiro_normal)
+    result += ","
+    result += _to_json_float64(value.anderson_statistic)
+    result += ","
+    result += _to_json_float64(value.anderson_p)
+    result += ","
+    result += _to_json_bool(value.anderson_normal)
+    result += ","
+    result += _to_json_bool(value.tests_agree)
+    result += ","
+    result += _to_json_bool(value.satisfied)
+    result += "]}"
+    return result
+
 fn _to_json_nsga2result(value: Nsga2Result) raises -> String:
     var result = String("{\"__algenta_struct\":\"Nsga2Result\",\"v\":[")
     result += _to_json_int(value.status)
@@ -11635,6 +12816,100 @@ fn _to_json_oracleboard(value: OracleBoard) raises -> String:
     result += _to_json_int(value.n_replications)
     result += ","
     result += _to_json_float64(value.mean_displacement)
+    result += "]}"
+    return result
+
+fn _to_json_outcomemodel(value: OutcomeModel) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OutcomeModel\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_ate)
+    result += ","
+    result += _to_json_float64(value.ate)
+    result += ","
+    result += _to_json_list_float64(value.mu0)
+    result += ","
+    result += _to_json_list_float64(value.mu1)
+    result += ","
+    result += _to_json_list_float64(value.coef_treated)
+    result += ","
+    result += _to_json_list_float64(value.coef_control)
+    result += ","
+    result += _to_json_float64(value.bias_treated)
+    result += ","
+    result += _to_json_float64(value.bias_control)
+    result += ","
+    result += _to_json_bool(value.converged_treated)
+    result += ","
+    result += _to_json_bool(value.converged_control)
+    result += ","
+    result += _to_json_int(value.n_iter_treated)
+    result += ","
+    result += _to_json_int(value.n_iter_control)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += "]}"
+    return result
+
+fn _to_json_ovbresult(value: OvbResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OvbResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_result)
+    result += ","
+    result += _to_json_float64(value.bias)
+    result += ","
+    result += _to_json_float64(value.adjusted_estimate)
+    result += ","
+    result += _to_json_float64(value.adjusted_se)
+    result += ","
+    result += _to_json_float64(value.adjusted_t)
+    result += ","
+    result += _to_json_bool(value.has_adjusted_t)
+    result += ","
+    result += _to_json_bool(value.flips_sign)
+    result += ","
+    result += _to_json_float64(value.original_estimate)
+    result += "]}"
+    return result
+
+fn _to_json_overlapreport(value: OverlapReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OverlapReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_report)
+    result += ","
+    result += _to_json_float64(value.support_lo)
+    result += ","
+    result += _to_json_float64(value.support_hi)
+    result += ","
+    result += _to_json_bool(value.has_support)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += ","
+    result += _to_json_int(value.n_treated_outside)
+    result += ","
+    result += _to_json_int(value.n_control_outside)
+    result += ","
+    result += _to_json_float64(value.overlap_fraction)
+    result += ","
+    result += _to_json_int(value.n_below_eps)
+    result += ","
+    result += _to_json_int(value.n_above_eps)
+    result += ","
+    result += _to_json_int(value.n_degenerate)
+    result += ","
+    result += _to_json_float64(value.mean_treated)
+    result += ","
+    result += _to_json_float64(value.mean_control)
+    result += ","
+    result += _to_json_float64(value.standardized_diff)
+    result += ","
+    result += _to_json_bool(value.has_standardized_diff)
     result += "]}"
     return result
 
@@ -11804,6 +13079,34 @@ fn _to_json_permutationimportance(value: PermutationImportance) raises -> String
     result += "]}"
     return result
 
+fn _to_json_permutationtest(value: PermutationTest) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PermutationTest\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n1)
+    result += ","
+    result += _to_json_int(value.n2)
+    result += ","
+    result += _to_json_int(value.n_permutations)
+    result += ","
+    result += _to_json_uint64(value.seed)
+    result += ","
+    result += _to_json_uint64(value.stream)
+    result += ","
+    result += _to_json_float64(value.mean1)
+    result += ","
+    result += _to_json_float64(value.mean2)
+    result += ","
+    result += _to_json_float64(value.observed_diff)
+    result += ","
+    result += _to_json_int(value.count_at_least_as_extreme)
+    result += ","
+    result += _to_json_float64(value.p_value)
+    result += ","
+    result += _to_json_float64(value.p_value_floor)
+    result += "]}"
+    return result
+
 fn _to_json_philoxblock(value: PhiloxBlock) raises -> String:
     var result = String("{\"__algenta_struct\":\"PhiloxBlock\",\"v\":[")
     result += _to_json_uint64(value.w0)
@@ -11862,6 +13165,38 @@ fn _to_json_point(value: Point) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_pointforecast(value: PointForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PointForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_bool(value.has_level)
+    result += ","
+    result += _to_json_float64(value.trend)
+    result += ","
+    result += _to_json_bool(value.has_trend)
+    result += ","
+    result += _to_json_float64(value.scale)
+    result += ","
+    result += _to_json_bool(value.has_scale)
+    result += ","
+    result += _to_json_int(value.n_params)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_pointresult(value: PointResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"PointResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -11884,6 +13219,30 @@ fn _to_json_poweriterresult(value: PowerIterResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_powerreport(value: PowerReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PowerReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_float64(value.effect_size)
+    result += ","
+    result += _to_json_int(value.n_per_group)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_bool(value.one_sided)
+    result += ","
+    result += _to_json_bool(value.power_known)
+    result += ","
+    result += _to_json_float64(value.power)
+    result += ","
+    result += _to_json_float64(value.df)
+    result += ","
+    result += _to_json_float64(value.critical_value)
+    result += "]}"
+    return result
+
 fn _to_json_priorityqueue(value: PriorityQueue) raises -> String:
     var result = String("{\"__algenta_struct\":\"PriorityQueue\",\"v\":[")
     result += _to_json_list_float64(value.priorities)
@@ -11897,6 +13256,46 @@ fn _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
     result += _to_json_float64(value.priority)
     result += ","
     result += _to_json_int(value.value)
+    result += "]}"
+    return result
+
+fn _to_json_propensityfit(value: PropensityFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PropensityFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_scores)
+    result += ","
+    result += _to_json_list_float64(value.scores)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_float64(value.bias)
+    result += ","
+    result += _to_json_list_float64(value.std_errors)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_int(value.n_iter)
+    result += ","
+    result += _to_json_float64(value.log_likelihood)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_features)
+    result += ","
+    result += _to_json_int(value.n_treated)
+    result += ","
+    result += _to_json_int(value.n_control)
+    result += ","
+    result += _to_json_int(value.n_degenerate)
+    result += ","
+    result += _to_json_float64(value.min_score_treated)
+    result += ","
+    result += _to_json_float64(value.max_score_treated)
+    result += ","
+    result += _to_json_float64(value.min_score_control)
+    result += ","
+    result += _to_json_float64(value.max_score_control)
     result += "]}"
     return result
 
@@ -12184,6 +13583,44 @@ fn _to_json_qrresult(value: QRResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_qiniresult(value: QiniResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"QiniResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_curve)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_points_absent)
+    result += ","
+    result += _to_json_list_float64(value.point_x)
+    result += ","
+    result += _to_json_list_float64(value.point_y)
+    result += ","
+    result += _to_json_list_bool(value.point_has_value)
+    result += ","
+    result += _to_json_list_int(value.point_k)
+    result += ","
+    result += _to_json_float64(value.endpoint)
+    result += ","
+    result += _to_json_bool(value.has_endpoint)
+    result += ","
+    result += _to_json_float64(value.area_curve)
+    result += ","
+    result += _to_json_float64(value.area_random)
+    result += ","
+    result += _to_json_float64(value.qini_coefficient)
+    result += ","
+    result += _to_json_bool(value.has_coefficient)
+    result += ","
+    result += _to_json_float64(value.qini_normalized)
+    result += ","
+    result += _to_json_bool(value.has_normalized)
+    result += "]}"
+    return result
+
 fn _to_json_quanterror(value: QuantError) raises -> String:
     var result = String("{\"__algenta_struct\":\"QuantError\",\"v\":[")
     result += _to_json_float64(value.max_abs_err)
@@ -12384,6 +13821,40 @@ fn _to_json_rcpspresult(value: RcpspResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_reconciliation(value: Reconciliation) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Reconciliation\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.n_nodes)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_leaves)
+    result += ","
+    result += _to_json_int(value.n_roots)
+    result += ","
+    result += _to_json_list_float64(value.reconciled)
+    result += ","
+    result += _to_json_bool(value.has_result)
+    result += ","
+    result += _to_json_bool(value.coherent)
+    result += ","
+    result += _to_json_float64(value.max_residual)
+    result += ","
+    result += _to_json_int(value.worst_node)
+    result += ","
+    result += _to_json_int(value.worst_step)
+    result += ","
+    result += _to_json_int(value.n_incoherent_cells)
+    result += ","
+    result += _to_json_float64(value.adjustment_l1)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_refdelta(value: RefDelta) raises -> String:
     var result = String("{\"__algenta_struct\":\"RefDelta\",\"v\":[")
     result += _to_json_float64(value.max_abs_delta)
@@ -12488,6 +13959,42 @@ fn _to_json_rhssensitivity(value: RhsSensitivity) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_robustfit(value: RobustFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RobustFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_params)
+    result += ","
+    result += _to_json_float64(value.tuning)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_bool(value.exact_fit)
+    result += ","
+    result += _to_json_int(value.n_iter)
+    result += ","
+    result += _to_json_int(value.max_iter)
+    result += ","
+    result += _to_json_float64(value.intercept)
+    result += ","
+    result += _to_json_list_float64(value.coefficients)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_float64(value.scale)
+    result += ","
+    result += _to_json_int(value.n_downweighted)
+    result += ","
+    result += _to_json_float64(value.min_weight)
+    result += ","
+    result += _to_json_float64(value.max_abs_residual)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += "]}"
+    return result
+
 fn _to_json_robustminmaxresult(value: RobustMinMaxResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"RobustMinMaxResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -12580,6 +14087,26 @@ fn _to_json_robustscenarioresult(value: RobustScenarioResult) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_robustnessvalue(value: RobustnessValue) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RobustnessValue\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_value)
+    result += ","
+    result += _to_json_float64(value.rv)
+    result += ","
+    result += _to_json_float64(value.f_q)
+    result += ","
+    result += _to_json_float64(value.partial_r2)
+    result += ","
+    result += _to_json_bool(value.has_partial_r2)
+    result += ","
+    result += _to_json_float64(value.t_abs)
+    result += ","
+    result += _to_json_float64(value.q)
+    result += "]}"
+    return result
+
 fn _to_json_ropeagreement(value: RopeAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"RopeAgreement\",\"v\":[")
     result += _to_json_float64(value.squared_convention)
@@ -12619,6 +14146,30 @@ fn _to_json_ropetable(value: RopeTable) raises -> String:
     result += _to_json_float64(value.theta)
     result += ","
     result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_rosenbaumbound(value: RosenbaumBound) raises -> String:
+    var result = String("{\"__algenta_struct\":\"RosenbaumBound\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_bound)
+    result += ","
+    result += _to_json_float64(value.p_upper_bound)
+    result += ","
+    result += _to_json_float64(value.p_plus)
+    result += ","
+    result += _to_json_float64(value.gamma)
+    result += ","
+    result += _to_json_int(value.n_pairs)
+    result += ","
+    result += _to_json_int(value.n_positive)
+    result += ","
+    result += _to_json_bool(value.has_gamma)
+    result += ","
+    result += _to_json_float64(value.gamma_critical)
+    result += ","
+    result += _to_json_int(value.n_iter)
     result += "]}"
     return result
 
@@ -12900,6 +14451,34 @@ fn _to_json_svmmodel(value: SVMModel) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_samplesizereport(value: SampleSizeReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SampleSizeReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.method)
+    result += ","
+    result += _to_json_float64(value.effect_size)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.target_power)
+    result += ","
+    result += _to_json_bool(value.one_sided)
+    result += ","
+    result += _to_json_int(value.n_per_group)
+    result += ","
+    result += _to_json_int(value.closed_form_n)
+    result += ","
+    result += _to_json_int(value.search_steps)
+    result += ","
+    result += _to_json_float64(value.achieved_power)
+    result += ","
+    result += _to_json_float64(value.power_at_n_minus_1)
+    result += ","
+    result += _to_json_bool(value.minimal)
+    result += "]}"
+    return result
+
 fn _to_json_scalarresult(value: ScalarResult) raises -> String:
     var result = String("{\"__algenta_struct\":\"ScalarResult\",\"v\":[")
     result += _to_json_int(value.status)
@@ -12964,6 +14543,32 @@ fn _to_json_sdpascores(value: SdpaScores) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_seasonaladjust(value: SeasonalAdjust) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SeasonalAdjust\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.period)
+    result += ","
+    result += _to_json_int(value.n_obs)
+    result += ","
+    result += _to_json_int(value.n_cycles)
+    result += ","
+    result += _to_json_list_float64(value.adjusted)
+    result += ","
+    result += _to_json_list_float64(value.indices)
+    result += ","
+    result += _to_json_bool(value.has_result)
+    result += ","
+    result += _to_json_float64(value.index_mean)
+    result += ","
+    result += _to_json_float64(value.max_recompose_residual)
+    result += ","
+    result += _to_json_bool(value.reversible)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += "]}"
+    return result
+
 fn _to_json_selection(value: Selection) raises -> String:
     var result = String("{\"__algenta_struct\":\"Selection\",\"v\":[")
     result += _to_json_int(value.status)
@@ -12981,6 +14586,30 @@ fn _to_json_selection(value: Selection) raises -> String:
     result += _to_json_list_int(value.chosen)
     result += ","
     result += _to_json_list_int(value.rank)
+    result += "]}"
+    return result
+
+fn _to_json_sensitivitycurve(value: SensitivityCurve) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SensitivityCurve\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_curve)
+    result += ","
+    result += _to_json_list_float64(value.r2_used)
+    result += ","
+    result += _to_json_list_float64(value.adjusted)
+    result += ","
+    result += _to_json_list_float64(value.bias)
+    result += ","
+    result += _to_json_list_bool(value.has_point)
+    result += ","
+    result += _to_json_int(value.n_points)
+    result += ","
+    result += _to_json_int(value.n_absent)
+    result += ","
+    result += _to_json_bool(value.has_sign_flip)
+    result += ","
+    result += _to_json_float64(value.first_sign_flip_r2)
     result += "]}"
     return result
 
@@ -13324,6 +14953,38 @@ fn _to_json_spmvvector(value: SpmvVector) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_strataate(value: StrataAte) raises -> String:
+    var result = String("{\"__algenta_struct\":\"StrataAte\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_ate)
+    result += ","
+    result += _to_json_float64(value.ate)
+    result += ","
+    result += _to_json_float64(value.ate_uncovered_as_zero)
+    result += ","
+    result += _to_json_int(value.n_strata)
+    result += ","
+    result += _to_json_int(value.n_usable)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_covered)
+    result += ","
+    result += _to_json_float64(value.covered_fraction)
+    result += ","
+    result += _to_json_bool(value.is_full_sample)
+    result += ","
+    result += _to_json_list_float64(value.stratum_ate)
+    result += ","
+    result += _to_json_list_bool(value.stratum_has_ate)
+    result += ","
+    result += _to_json_list_int(value.stratum_n)
+    result += ","
+    result += _to_json_list_int(value.stratum_n_treated)
+    result += "]}"
+    return result
+
 fn _to_json_strategyboard(value: StrategyBoard) raises -> String:
     var result = String("{\"__algenta_struct\":\"StrategyBoard\",\"v\":[")
     result += _to_json_list_float64(value.p_ahead)
@@ -13376,6 +15037,44 @@ fn _to_json_symmetryresult(value: SymmetryResult) raises -> String:
     result += _to_json_float64(value.threshold)
     result += ","
     result += _to_json_int(value.compared)
+    result += "]}"
+    return result
+
+fn _to_json_synthresult(value: SynthResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SynthResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_effect)
+    result += ","
+    result += _to_json_float64(value.effect)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_list_int(value.donor_index)
+    result += ","
+    result += _to_json_float64(value.sum_weights)
+    result += ","
+    result += _to_json_int(value.n_nonzero_weights)
+    result += ","
+    result += _to_json_float64(value.pre_rmse)
+    result += ","
+    result += _to_json_bool(value.has_pre_rmse)
+    result += ","
+    result += _to_json_float64(value.fw_gap)
+    result += ","
+    result += _to_json_int(value.n_iter)
+    result += ","
+    result += _to_json_bool(value.converged)
+    result += ","
+    result += _to_json_int(value.n_donors)
+    result += ","
+    result += _to_json_int(value.n_pre)
+    result += ","
+    result += _to_json_int(value.n_post)
+    result += ","
+    result += _to_json_list_float64(value.effect_per_period)
+    result += ","
+    result += _to_json_list_float64(value.synthetic)
     result += "]}"
     return result
 
@@ -13723,6 +15422,40 @@ fn _to_json_url(value: URL) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_upliftcurve(value: UpliftCurve) raises -> String:
+    var result = String("{\"__algenta_struct\":\"UpliftCurve\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_curve)
+    result += ","
+    result += _to_json_int(value.n_bins)
+    result += ","
+    result += _to_json_int(value.n_units)
+    result += ","
+    result += _to_json_int(value.n_bins_absent)
+    result += ","
+    result += _to_json_int(value.n_inversions)
+    result += ","
+    result += _to_json_list_int(value.bin_n)
+    result += ","
+    result += _to_json_list_int(value.bin_n_treated)
+    result += ","
+    result += _to_json_list_int(value.bin_n_control)
+    result += ","
+    result += _to_json_list_float64(value.bin_mean_treated)
+    result += ","
+    result += _to_json_list_float64(value.bin_mean_control)
+    result += ","
+    result += _to_json_list_float64(value.bin_uplift)
+    result += ","
+    result += _to_json_list_bool(value.bin_has_uplift)
+    result += ","
+    result += _to_json_list_float64(value.bin_score_hi)
+    result += ","
+    result += _to_json_list_float64(value.bin_score_lo)
+    result += "]}"
+    return result
+
 fn _to_json_varcheck(value: VarCheck) raises -> String:
     var result = String("{\"__algenta_struct\":\"VarCheck\",\"v\":[")
     result += _to_json_int(value.status)
@@ -13772,6 +15505,20 @@ fn _to_json_windoweddataset(value: WindowedDataset) raises -> String:
     result += _to_json_int(value.n_windows)
     result += ","
     result += _to_json_int(value.window_len)
+    result += "]}"
+    return result
+
+fn _to_json_wlssolution(value: WlsSolution) raises -> String:
+    var result = String("{\"__algenta_struct\":\"WlsSolution\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_list_float64(value.beta)
+    result += ","
+    result += _to_json_bool(value.positive_definite)
+    result += ","
+    result += _to_json_float64(value.max_row_residual)
+    result += ","
+    result += _to_json_bool(value.verified)
     result += "]}"
     return result
 
@@ -26460,6 +28207,811 @@ fn _dispatch_causal(function_name: String, args_array: String) raises -> String:
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module causal."
+    )
+
+fn _dispatch_causal_inference__base(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "ci_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_all_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_all_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_all_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_all_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_tolerance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _causal_inference_base__ci_tolerance(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "causal_inference.base.ci_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_tolerance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_product_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _causal_inference_base__ci_product_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_product_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_product_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_product3_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_base__ci_product3_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_product3_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_product3_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_matrix_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _causal_inference_base__ci_matrix_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_matrix_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_matrix_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_panel_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _causal_inference_base__ci_panel_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_panel_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_panel_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_treatment_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_treatment_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_treatment_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_treatment_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_count_treated":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_count_treated(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_count_treated."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_count_treated expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_argsort_asc":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_argsort_asc(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_argsort_asc."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_argsort_asc expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_argsort_desc":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _causal_inference_base__ci_argsort_desc(arg_0)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_argsort_desc."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_argsort_desc expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ci_is_permutation":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _causal_inference_base__ci_is_permutation(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.base.ci_is_permutation."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.base.ci_is_permutation expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.base."
+    )
+
+fn _dispatch_causal_inference__dag(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "dag_validate":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _causal_inference_dag__dag_validate(arg_0, arg_1, arg_2)
+                var result_json = _to_json_dagreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.dag_validate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.dag_validate expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "d_separated":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var result = _causal_inference_dag__d_separated(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_dsepreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.d_separated."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.d_separated expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "backdoor_check":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var result = _causal_inference_dag__backdoor_check(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_backdoorreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.backdoor_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.backdoor_check expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "backdoor_minimal_set":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var result = _causal_inference_dag__backdoor_minimal_set(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_adjustmentset(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.backdoor_minimal_set."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.backdoor_minimal_set expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dag_descendants":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_dag__dag_descendants(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.dag_descendants."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.dag_descendants expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "dag_ancestors":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_dag__dag_ancestors(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.dag.dag_ancestors."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.dag.dag_ancestors expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.dag."
+    )
+
+fn _dispatch_causal_inference__estimators(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "naive_ate":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var result = _causal_inference_estimators__naive_ate(arg_0, arg_1)
+                var result_json = _to_json_armcontrast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.estimators.naive_ate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.estimators.naive_ate expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "outcome_regression_ate":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var result = _causal_inference_estimators__outcome_regression_ate(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_outcomemodel(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.estimators.outcome_regression_ate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.estimators.outcome_regression_ate expected 9 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "aipw_ate":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _causal_inference_estimators__aipw_ate(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_drestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.estimators.aipw_ate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.estimators.aipw_ate expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "strata_ate":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_estimators__strata_ate(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_strataate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.estimators.strata_ate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.estimators.strata_ate expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "aipw_bootstrap_ci":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_float64_token(json_array_get(args_array, 7))
+                var result = _causal_inference_estimators__aipw_bootstrap_ci(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_bootci(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.estimators.aipw_bootstrap_ci."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.estimators.aipw_bootstrap_ci expected 8 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.estimators."
+    )
+
+fn _dispatch_causal_inference__panel(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "did_panel":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _causal_inference_panel__did_panel(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_didreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.panel.did_panel."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.panel.did_panel expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "synthetic_control":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _causal_inference_panel__synthetic_control(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_synthresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.panel.synthetic_control."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.panel.synthetic_control expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.panel."
+    )
+
+fn _dispatch_causal_inference__propensity(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "propensity_fit":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _causal_inference_propensity__propensity_fit(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_propensityfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.propensity.propensity_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.propensity.propensity_fit expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "overlap_report":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _causal_inference_propensity__overlap_report(arg_0, arg_1, arg_2)
+                var result_json = _to_json_overlapreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.propensity.overlap_report."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.propensity.overlap_report expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ipw_ate":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _causal_inference_propensity__ipw_ate(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_ipwestimate(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.propensity.ipw_ate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.propensity.ipw_ate expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "match_nearest":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_bool_token(json_array_get(args_array, 4))
+                var result = _causal_inference_propensity__match_nearest(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_matchreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.propensity.match_nearest."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.propensity.match_nearest expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "match_optimal":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _causal_inference_propensity__match_optimal(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_matchreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.propensity.match_optimal."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.propensity.match_optimal expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.propensity."
+    )
+
+fn _dispatch_causal_inference__sensitivity(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "e_value_ratio":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _causal_inference_sensitivity__e_value_ratio(arg_0)
+                var result_json = _to_json_evalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.e_value_ratio."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.e_value_ratio expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "e_value_bound":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _causal_inference_sensitivity__e_value_bound(arg_0, arg_1)
+                var result_json = _to_json_evalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.e_value_bound."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.e_value_bound expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "robustness_value":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _causal_inference_sensitivity__robustness_value(arg_0, arg_1, arg_2)
+                var result_json = _to_json_robustnessvalue(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.robustness_value."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.robustness_value expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "omitted_variable_bias":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _causal_inference_sensitivity__omitted_variable_bias(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_ovbresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.omitted_variable_bias."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.omitted_variable_bias expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sensitivity_curve":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var result = _causal_inference_sensitivity__sensitivity_curve(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_sensitivitycurve(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.sensitivity_curve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.sensitivity_curve expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rosenbaum_sign_bound":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _causal_inference_sensitivity__rosenbaum_sign_bound(arg_0, arg_1, arg_2)
+                var result_json = _to_json_rosenbaumbound(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.rosenbaum_sign_bound."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.rosenbaum_sign_bound expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "rosenbaum_gamma_needed":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _causal_inference_sensitivity__rosenbaum_gamma_needed(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_rosenbaumbound(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.sensitivity.rosenbaum_gamma_needed."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.sensitivity.rosenbaum_gamma_needed expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.sensitivity."
+    )
+
+fn _dispatch_causal_inference__uplift(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "uplift_by_bin":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_uplift__uplift_by_bin(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_upliftcurve(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.uplift.uplift_by_bin."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.uplift.uplift_by_bin expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "qini_curve":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _causal_inference_uplift__qini_curve(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_qiniresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for causal_inference.uplift.qini_curve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function causal_inference.uplift.qini_curve expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module causal_inference.uplift."
     )
 
 fn _dispatch_cellular(function_name: String, args_array: String) raises -> String:
@@ -50713,6 +53265,813 @@ fn _dispatch_forecast_metrics(function_name: String, args_array: String) raises 
         "Function '" + function_name + "' is not registered for module forecast_metrics."
     )
 
+fn _dispatch_forecasting__backtest(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "backtest_origin_count":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_backtest__backtest_origin_count(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.backtest.backtest_origin_count."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.backtest.backtest_origin_count expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "backtest_flat":
+        if arg_count == 12:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_bool_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_float64_token(json_array_get(args_array, 11))
+                var result = _forecasting_backtest__backtest_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11)
+                var result_json = _to_json_backtestreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.backtest.backtest_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.backtest.backtest_flat expected 12 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "backtest_residuals_at_step":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_backtest__backtest_residuals_at_step(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.backtest.backtest_residuals_at_step."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.backtest.backtest_residuals_at_step expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "forecast_errors_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_backtest__forecast_errors_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_errorreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.backtest.forecast_errors_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.backtest.forecast_errors_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.backtest."
+    )
+
+fn _dispatch_forecasting__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "fc_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_method_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_method_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_method_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_method_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_method_family":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_method_family(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_method_family."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_method_family expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_all_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_all_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_all_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_all_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_tolerance":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _forecasting_contract__fc_tolerance(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "forecasting.contract.fc_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_tolerance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_sum_tolerance":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _forecasting_contract__fc_sum_tolerance(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "forecasting.contract.fc_sum_tolerance produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_sum_tolerance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_sum_tolerance expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_ceilings":
+        if arg_count == 0:
+            try:
+                var result = _forecasting_contract__fc_ceilings()
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_ceilings."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_ceilings expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_series_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_series_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_series_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_series_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_horizon_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_contract__fc_horizon_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_horizon_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_horizon_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_period_defect":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_contract__fc_period_defect(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_period_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_period_defect expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_smoothing_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_smoothing_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_smoothing_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_smoothing_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_damping_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_damping_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_damping_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_damping_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_level_defect":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_level_defect(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_level_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_level_defect expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_cells_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_contract__fc_cells_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_cells_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_cells_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_work_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_contract__fc_work_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_work_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_work_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_min_samples_for_level":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_contract__fc_min_samples_for_level(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_min_samples_for_level."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_min_samples_for_level expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "fc_quantile_of":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _forecasting_contract__fc_quantile_of(arg_0, arg_1)
+                var result_json = _to_json_fcquantile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.contract.fc_quantile_of."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.contract.fc_quantile_of expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.contract."
+    )
+
+fn _dispatch_forecasting__hierarchy(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "hierarchy_shape_defect":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_hierarchy__hierarchy_shape_defect(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.hierarchy.hierarchy_shape_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.hierarchy.hierarchy_shape_defect expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "hierarchy_coherence_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _forecasting_hierarchy__hierarchy_coherence_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_coherencereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.hierarchy.hierarchy_coherence_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.hierarchy.hierarchy_coherence_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "reconcile_bottom_up_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _forecasting_hierarchy__reconcile_bottom_up_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_reconciliation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.hierarchy.reconcile_bottom_up_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.hierarchy.reconcile_bottom_up_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "reconcile_top_down_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _forecasting_hierarchy__reconcile_top_down_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_reconciliation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.hierarchy.reconcile_top_down_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.hierarchy.reconcile_top_down_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "reconcile_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _forecasting_hierarchy__reconcile_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_reconciliation(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.hierarchy.reconcile_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.hierarchy.reconcile_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.hierarchy."
+    )
+
+fn _dispatch_forecasting__intermittent(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "croston_variant_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_intermittent__croston_variant_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.intermittent.croston_variant_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.intermittent.croston_variant_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "demand_class_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _forecasting_intermittent__demand_class_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.intermittent.demand_class_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.intermittent.demand_class_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "croston_forecast":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _forecasting_intermittent__croston_forecast(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_intermittentforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.intermittent.croston_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.intermittent.croston_forecast expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "demand_classify":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _forecasting_intermittent__demand_classify(arg_0)
+                var result_json = _to_json_demandprofile(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.intermittent.demand_classify."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.intermittent.demand_classify expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.intermittent."
+    )
+
+fn _dispatch_forecasting__interval(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "interval_empirical_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _forecasting_interval__interval_empirical_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_intervalband(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.interval.interval_empirical_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.interval.interval_empirical_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "interval_bootstrap_flat":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _forecasting_interval__interval_bootstrap_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_intervalband(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.interval.interval_bootstrap_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.interval.interval_bootstrap_flat expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "interval_coverage_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var result = _forecasting_interval__interval_coverage_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_coveragereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.interval.interval_coverage_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.interval.interval_coverage_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.interval."
+    )
+
+fn _dispatch_forecasting__point(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "ets_ann_forecast":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_point__ets_ann_forecast(arg_0, arg_1, arg_2)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.ets_ann_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.ets_ann_forecast expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ets_aan_forecast":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _forecasting_point__ets_aan_forecast(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.ets_aan_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.ets_aan_forecast expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ets_aaa_forecast":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var result = _forecasting_point__ets_aaa_forecast(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.ets_aaa_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.ets_aaa_forecast expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "theta_forecast":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_point__theta_forecast(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.theta_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.theta_forecast expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "theta_drift_forecast":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_point__theta_drift_forecast(arg_0, arg_1, arg_2)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.theta_drift_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.theta_drift_forecast expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ar_forecast_checked":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_point__ar_forecast_checked(arg_0, arg_1, arg_2)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.ar_forecast_checked."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.ar_forecast_checked expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "baseline_forecast":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _forecasting_point__baseline_forecast(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_pointforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.baseline_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.baseline_forecast expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "deseasonalise_flat":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_point__deseasonalise_flat(arg_0, arg_1)
+                var result_json = _to_json_seasonaladjust(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.point.deseasonalise_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.point.deseasonalise_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.point."
+    )
+
 fn _dispatch_forensics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "time_of_death_newton":
@@ -62999,6 +66358,875 @@ fn _dispatch_immunology(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module immunology."
+    )
+
+fn _dispatch_inference__assume(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "variance_homogeneity_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_assume__variance_homogeneity_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_assumptionverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.assume.variance_homogeneity_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.assume.variance_homogeneity_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "expected_counts_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_assume__expected_counts_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_cellcountverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.assume.expected_counts_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.assume.expected_counts_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residual_normality_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_assume__residual_normality_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_normalityverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.assume.residual_normality_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.assume.residual_normality_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "t_test_checked_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _inference_assume__t_test_checked_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_checkedtest(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.assume.t_test_checked_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.assume.t_test_checked_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "proportion_test_checked_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _inference_assume__proportion_test_checked_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_checkedproportiontest(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.assume.proportion_test_checked_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.assume.proportion_test_checked_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.assume."
+    )
+
+fn _dispatch_inference__core(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "inference_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _inference_core__inference_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_finite":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _inference_core__inference_finite(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_finite."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_finite expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_absent":
+        if arg_count == 0:
+            try:
+                var result = _inference_core__inference_absent()
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_absent produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_absent."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_absent expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_scaled_tol":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__inference_scaled_tol(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_scaled_tol produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_scaled_tol."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_scaled_tol expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_scaled_tol_ulps":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_core__inference_scaled_tol_ulps(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_scaled_tol_ulps produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_scaled_tol_ulps."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_scaled_tol_ulps expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_product_fits":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _inference_core__inference_product_fits(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_product_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_product_fits expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_product3_fits":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _inference_core__inference_product3_fits(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_product3_fits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_product3_fits expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_dims_fit":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _inference_core__inference_dims_fit(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_dims_fit."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_dims_fit expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_ceilings":
+        if arg_count == 0:
+            try:
+                var result = _inference_core__inference_ceilings()
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_ceilings."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_ceilings expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_beta_inc":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_core__inference_beta_inc(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_beta_inc produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_beta_inc."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_beta_inc expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_t_tail_region":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__inference_t_tail_region(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_t_tail_region."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_t_tail_region expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_t_cdf":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__inference_t_cdf(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_t_cdf produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_t_cdf."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_t_cdf expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_t_sf_two_sided":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__inference_t_sf_two_sided(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_t_sf_two_sided produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_t_sf_two_sided."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_t_sf_two_sided expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_f_sf":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_core__inference_f_sf(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_f_sf produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_f_sf."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_f_sf expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_norm_sf_two_sided":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var result = _inference_core__inference_norm_sf_two_sided(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_norm_sf_two_sided produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_norm_sf_two_sided."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_norm_sf_two_sided expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "inference_t_quantile":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__inference_t_quantile(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.core.inference_t_quantile produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.inference_t_quantile."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.inference_t_quantile expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "t_cdf_agreement":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _inference_core__t_cdf_agreement(arg_0, arg_1)
+                var result_json = _to_json_cdfagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.t_cdf_agreement."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.t_cdf_agreement expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "wls_solve_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _inference_core__wls_solve_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_wlssolution(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.core.wls_solve_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.core.wls_solve_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.core."
+    )
+
+fn _dispatch_inference__glm(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "glm_input_defect":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_float64_token(json_array_get(args_array, 5))
+                var result = _inference_glm__glm_input_defect(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.glm.glm_input_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.glm.glm_input_defect expected 6 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "glm_logistic_fit_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _inference_glm__glm_logistic_fit_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_glmfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.glm.glm_logistic_fit_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.glm.glm_logistic_fit_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "glm_poisson_fit_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _inference_glm__glm_poisson_fit_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_glmfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.glm.glm_poisson_fit_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.glm.glm_poisson_fit_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.glm."
+    )
+
+fn _dispatch_inference__multiplicity(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "multiplicity_input_defect":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_multiplicity__multiplicity_input_defect(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.multiplicity.multiplicity_input_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.multiplicity.multiplicity_input_defect expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bonferroni_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_multiplicity__bonferroni_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_correction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.multiplicity.bonferroni_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.multiplicity.bonferroni_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "holm_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_multiplicity__holm_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_correction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.multiplicity.holm_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.multiplicity.holm_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "benjamini_hochberg_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_multiplicity__benjamini_hochberg_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_correction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.multiplicity.benjamini_hochberg_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.multiplicity.benjamini_hochberg_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "correction_agreement_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_multiplicity__correction_agreement_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_correctionagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.multiplicity.correction_agreement_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.multiplicity.correction_agreement_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.multiplicity."
+    )
+
+fn _dispatch_inference__power(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "power_design_defect":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_power__power_design_defect(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.power.power_design_defect."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.power.power_design_defect expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "power_two_means_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _inference_power__power_two_means_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_powerreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.power.power_two_means_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.power.power_two_means_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "power_two_means_t_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _inference_power__power_two_means_t_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_powerreport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.power.power_two_means_t_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.power.power_two_means_t_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sample_size_two_means_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _inference_power__sample_size_two_means_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_samplesizereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.power.sample_size_two_means_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.power.sample_size_two_means_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "sample_size_two_means_t_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_bool_token(json_array_get(args_array, 3))
+                var result = _inference_power__sample_size_two_means_t_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_samplesizereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.power.sample_size_two_means_t_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.power.sample_size_two_means_t_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.power."
+    )
+
+fn _dispatch_inference__resample(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "resample_statistic_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _inference_resample__resample_statistic_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.resample.resample_statistic_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.resample.resample_statistic_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "bootstrap_ci_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_uint64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_uint64_token(json_array_get(args_array, 6))
+                var result = _inference_resample__bootstrap_ci_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_bootstrapci(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.resample.bootstrap_ci_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.resample.bootstrap_ci_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "permutation_test_flat":
+        if arg_count == 6:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_uint64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_uint64_token(json_array_get(args_array, 5))
+                var result = _inference_resample__permutation_test_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5)
+                var result_json = _to_json_permutationtest(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.resample.permutation_test_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.resample.permutation_test_flat expected 6 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.resample."
+    )
+
+fn _dispatch_inference__robust(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "robust_scale_mad":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _inference_robust__robust_scale_mad(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.robust.robust_scale_mad produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.robust.robust_scale_mad."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.robust.robust_scale_mad expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "huber_weight":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _inference_robust__huber_weight(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "inference.robust.huber_weight produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.robust.huber_weight."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.robust.huber_weight expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "huber_fit_flat":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_float64_token(json_array_get(args_array, 6))
+                var result = _inference_robust__huber_fit_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_robustfit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for inference.robust.huber_fit_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function inference.robust.huber_fit_flat expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module inference.robust."
     )
 
 fn _dispatch_inference_cost_latency(function_name: String, args_array: String) raises -> String:
@@ -133374,6 +137602,20 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_category_theory(function_name, args_array)
     if module_name == "causal":
         return _dispatch_causal(function_name, args_array)
+    if module_name == "causal_inference.base":
+        return _dispatch_causal_inference__base(function_name, args_array)
+    if module_name == "causal_inference.dag":
+        return _dispatch_causal_inference__dag(function_name, args_array)
+    if module_name == "causal_inference.estimators":
+        return _dispatch_causal_inference__estimators(function_name, args_array)
+    if module_name == "causal_inference.panel":
+        return _dispatch_causal_inference__panel(function_name, args_array)
+    if module_name == "causal_inference.propensity":
+        return _dispatch_causal_inference__propensity(function_name, args_array)
+    if module_name == "causal_inference.sensitivity":
+        return _dispatch_causal_inference__sensitivity(function_name, args_array)
+    if module_name == "causal_inference.uplift":
+        return _dispatch_causal_inference__uplift(function_name, args_array)
     if module_name == "cellular":
         return _dispatch_cellular(function_name, args_array)
     if module_name == "cellular_automata":
@@ -133608,6 +137850,18 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_food_science(function_name, args_array)
     if module_name == "forecast_metrics":
         return _dispatch_forecast_metrics(function_name, args_array)
+    if module_name == "forecasting.backtest":
+        return _dispatch_forecasting__backtest(function_name, args_array)
+    if module_name == "forecasting.contract":
+        return _dispatch_forecasting__contract(function_name, args_array)
+    if module_name == "forecasting.hierarchy":
+        return _dispatch_forecasting__hierarchy(function_name, args_array)
+    if module_name == "forecasting.intermittent":
+        return _dispatch_forecasting__intermittent(function_name, args_array)
+    if module_name == "forecasting.interval":
+        return _dispatch_forecasting__interval(function_name, args_array)
+    if module_name == "forecasting.point":
+        return _dispatch_forecasting__point(function_name, args_array)
     if module_name == "forensics":
         return _dispatch_forensics(function_name, args_array)
     if module_name == "formal_logic":
@@ -133718,6 +137972,20 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_imbalance(function_name, args_array)
     if module_name == "immunology":
         return _dispatch_immunology(function_name, args_array)
+    if module_name == "inference.assume":
+        return _dispatch_inference__assume(function_name, args_array)
+    if module_name == "inference.core":
+        return _dispatch_inference__core(function_name, args_array)
+    if module_name == "inference.glm":
+        return _dispatch_inference__glm(function_name, args_array)
+    if module_name == "inference.multiplicity":
+        return _dispatch_inference__multiplicity(function_name, args_array)
+    if module_name == "inference.power":
+        return _dispatch_inference__power(function_name, args_array)
+    if module_name == "inference.resample":
+        return _dispatch_inference__resample(function_name, args_array)
+    if module_name == "inference.robust":
+        return _dispatch_inference__robust(function_name, args_array)
     if module_name == "inference_cost_latency":
         return _dispatch_inference_cost_latency(function_name, args_array)
     if module_name == "inference_engine":
