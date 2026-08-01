@@ -1,0 +1,74 @@
+{
+  "id": "net_maxflow_4node",
+  "family": "network",
+  "description": "Maximum s-t flow on a 4-node network with edge capacities.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "at": 1,
+      "bt": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "sa",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 3
+    },
+    {
+      "name": "sb",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 2
+    },
+    {
+      "name": "ab",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    },
+    {
+      "name": "at",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 2
+    },
+    {
+      "name": "bt",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 3
+    }
+  ],
+  "constraints": [
+    {
+      "name": "conserve_a",
+      "coeffs": {
+        "sa": 1,
+        "ab": -1,
+        "at": -1
+      },
+      "sense": "==",
+      "rhs": 0
+    },
+    {
+      "name": "conserve_b",
+      "coeffs": {
+        "sb": 1,
+        "ab": 1,
+        "bt": -1
+      },
+      "sense": "==",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 5.0,
+    "source": "hand"
+  }
+}

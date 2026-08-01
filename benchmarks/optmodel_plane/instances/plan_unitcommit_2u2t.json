@@ -1,0 +1,162 @@
+{
+  "id": "plan_unitcommit_2u2t",
+  "family": "planning",
+  "description": "Two generating units, two periods, minimum-output big-M commitment.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "p11": 1,
+      "p12": 1,
+      "p21": 2,
+      "p22": 2,
+      "on21": 1,
+      "on22": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "p11",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "p12",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "p21",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "p22",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "on11",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "on12",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "on21",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "on22",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "demand_1",
+      "coeffs": {
+        "p11": 1.0,
+        "p21": 1.0
+      },
+      "sense": ">=",
+      "rhs": 3.0
+    },
+    {
+      "name": "demand_2",
+      "coeffs": {
+        "p12": 1.0,
+        "p22": 1.0
+      },
+      "sense": ">=",
+      "rhs": 6.0
+    },
+    {
+      "name": "cap_11",
+      "coeffs": {
+        "p11": 1.0,
+        "on11": -5.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "min_11",
+      "coeffs": {
+        "p11": 1.0,
+        "on11": -2.0
+      },
+      "sense": ">=",
+      "rhs": 0
+    },
+    {
+      "name": "cap_12",
+      "coeffs": {
+        "p12": 1.0,
+        "on12": -5.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "min_12",
+      "coeffs": {
+        "p12": 1.0,
+        "on12": -2.0
+      },
+      "sense": ">=",
+      "rhs": 0
+    },
+    {
+      "name": "cap_21",
+      "coeffs": {
+        "p21": 1.0,
+        "on21": -5.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "min_21",
+      "coeffs": {
+        "p21": 1.0,
+        "on21": -2.0
+      },
+      "sense": ">=",
+      "rhs": 0
+    },
+    {
+      "name": "cap_22",
+      "coeffs": {
+        "p22": 1.0,
+        "on22": -5.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "min_22",
+      "coeffs": {
+        "p22": 1.0,
+        "on22": -2.0
+      },
+      "sense": ">=",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 12.0,
+    "source": "referee:scipy-highs"
+  }
+}

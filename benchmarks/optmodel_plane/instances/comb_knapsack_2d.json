@@ -1,0 +1,72 @@
+{
+  "id": "comb_knapsack_2d",
+  "family": "combinatorial",
+  "description": "Choose items under two independent budgets.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "i1": 10,
+      "i2": 13,
+      "i3": 7,
+      "i4": 11
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "i1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "i2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "i3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "i4",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "budget_a",
+      "coeffs": {
+        "i1": 6,
+        "i2": 8,
+        "i3": 5,
+        "i4": 4
+      },
+      "sense": "<=",
+      "rhs": 10
+    },
+    {
+      "name": "budget_b",
+      "coeffs": {
+        "i1": 3,
+        "i2": 1,
+        "i3": 4,
+        "i4": 2
+      },
+      "sense": "<=",
+      "rhs": 5
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 21.0,
+    "source": "referee:scipy-highs"
+  }
+}

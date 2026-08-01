@@ -1,0 +1,49 @@
+{
+  "id": "refuse_node_budget",
+  "family": "refusals",
+  "description": "Wolsey MILP at max_nodes 3: truncated search refuses, incumbent stays a diagnostic.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "x": 5,
+      "y": 8
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "x",
+      "kind": "integer",
+      "lower": 0.0
+    },
+    {
+      "name": "y",
+      "kind": "integer",
+      "lower": 0.0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "row_a",
+      "coeffs": {
+        "x": 1,
+        "y": 1
+      },
+      "sense": "<=",
+      "rhs": 6
+    },
+    {
+      "name": "row_b",
+      "coeffs": {
+        "x": 5,
+        "y": 9
+      },
+      "sense": "<=",
+      "rhs": 45
+    }
+  ],
+  "expect": "refused",
+  "max_nodes": 3,
+  "referee_expectation": "optimal",
+  "coverage_gap": "node_budget"
+}

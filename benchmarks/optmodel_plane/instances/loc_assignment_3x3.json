@@ -1,0 +1,145 @@
+{
+  "id": "loc_assignment_3x3",
+  "family": "location_cover_assign",
+  "description": "Assign 3 agents to 3 tasks at minimum cost.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "m11": 4,
+      "m12": 2,
+      "m13": 8,
+      "m21": 4,
+      "m22": 3,
+      "m23": 7,
+      "m31": 3,
+      "m32": 1,
+      "m33": 6
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "m11",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m12",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m13",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m21",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m22",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m23",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m31",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m32",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "m33",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "agent_1",
+      "coeffs": {
+        "m11": 1,
+        "m12": 1,
+        "m13": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "agent_2",
+      "coeffs": {
+        "m21": 1,
+        "m22": 1,
+        "m23": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "agent_3",
+      "coeffs": {
+        "m31": 1,
+        "m32": 1,
+        "m33": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "task_1",
+      "coeffs": {
+        "m11": 1,
+        "m21": 1,
+        "m31": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "task_2",
+      "coeffs": {
+        "m12": 1,
+        "m22": 1,
+        "m32": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "task_3",
+      "coeffs": {
+        "m13": 1,
+        "m23": 1,
+        "m33": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 12.0,
+    "source": "hand"
+  }
+}

@@ -983,6 +983,15 @@ rollback:
 help:
 	@grep -E '^## ' Makefile | sed 's/## //' | column -t -s ':' | sort
 
+## Solver-side ceiling: ground-truth formulations through the optmodel plane (referee + gate)
+bench-optmodel-plane:
+	PYTHONPATH=. python3 benchmarks/optmodel_plane/harness.py $${ARGS:-}
+
+## Solver-side ceiling on the full 780-instance MM-OptBench mirror (generate + referee + gate)
+bench-optmodel-mirror:
+	PYTHONPATH=. python3 benchmarks/optmodel_plane/make_mirror_instances.py
+	PYTHONPATH=. python3 benchmarks/optmodel_plane/harness.py --mirror $${ARGS:-}
+
 bench-optimization:
 	@if [ -d mojo_env ] && command -v pixi >/dev/null 2>&1; then \
 		cd mojo_env && pixi run mojo run -I../mojo/engine ../benchmarks/mojo_benchmarks/bench_optimization.mojo; \

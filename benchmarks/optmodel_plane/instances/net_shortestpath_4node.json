@@ -1,0 +1,95 @@
+{
+  "id": "net_shortestpath_4node",
+  "family": "network",
+  "description": "Shortest 1->4 path as a unit min-cost flow.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "e12": 1,
+      "e24": 3,
+      "e13": 2,
+      "e34": 1,
+      "e23": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "e12",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    },
+    {
+      "name": "e24",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    },
+    {
+      "name": "e13",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    },
+    {
+      "name": "e34",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    },
+    {
+      "name": "e23",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "out_of_source",
+      "coeffs": {
+        "e12": 1,
+        "e13": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "into_sink",
+      "coeffs": {
+        "e24": 1,
+        "e34": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "conserve_2",
+      "coeffs": {
+        "e12": 1,
+        "e24": -1,
+        "e23": -1
+      },
+      "sense": "==",
+      "rhs": 0
+    },
+    {
+      "name": "conserve_3",
+      "coeffs": {
+        "e13": 1,
+        "e23": 1,
+        "e34": -1
+      },
+      "sense": "==",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 3.0,
+    "source": "hand"
+  }
+}

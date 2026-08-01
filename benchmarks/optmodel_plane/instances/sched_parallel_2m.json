@@ -1,0 +1,136 @@
+{
+  "id": "sched_parallel_2m",
+  "family": "scheduling",
+  "description": "Schedule 4 jobs on 2 parallel machines to minimise makespan.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "cmax": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "x11",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x12",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x21",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x22",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x31",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x32",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x41",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x42",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "cmax",
+      "kind": "continuous",
+      "lower": 0.0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "assign_1",
+      "coeffs": {
+        "x11": 1,
+        "x12": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "assign_2",
+      "coeffs": {
+        "x21": 1,
+        "x22": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "assign_3",
+      "coeffs": {
+        "x31": 1,
+        "x32": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "assign_4",
+      "coeffs": {
+        "x41": 1,
+        "x42": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "load_1",
+      "coeffs": {
+        "x11": 3.0,
+        "x21": 3.0,
+        "x31": 2.0,
+        "x41": 2.0,
+        "cmax": -1.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "load_2",
+      "coeffs": {
+        "x12": 3.0,
+        "x22": 3.0,
+        "x32": 2.0,
+        "x42": 2.0,
+        "cmax": -1.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 5.0,
+    "source": "hand"
+  }
+}

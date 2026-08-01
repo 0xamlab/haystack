@@ -4867,6 +4867,25 @@ from option_pricing import (
     implied_volatility as _option_pricing__implied_volatility,
 )
 
+from optmodel.formulation import (
+    optm_status_name as _optmodel_formulation__optm_status_name,
+    optm_verdict_name as _optmodel_formulation__optm_verdict_name,
+    formulation_check_flat as _optmodel_formulation__formulation_check_flat,
+    formulation_lower_flat as _optmodel_formulation__formulation_lower_flat,
+    formulation_point_audit_flat as _optmodel_formulation__formulation_point_audit_flat,
+)
+
+from optmodel.judge import (
+    judge_objective as _optmodel_judge__judge_objective,
+    formulation_verdict_flat as _optmodel_judge__formulation_verdict_flat,
+    formulation_verdict_default as _optmodel_judge__formulation_verdict_default,
+)
+
+from optmodel.solve import (
+    formulation_solve_flat as _optmodel_solve__formulation_solve_flat,
+    formulation_solve_default as _optmodel_solve__formulation_solve_default,
+)
+
 from orthodontics import (
     tooth_movement_rate as _orthodontics__tooth_movement_rate,
     moment_to_force_ratio as _orthodontics__moment_to_force_ratio,
@@ -8477,6 +8496,21 @@ from optimize import (
 
 from option_greeks_batch import (
     ChainGreeksResult,
+)
+
+from optmodel.formulation import (
+    FormulationCheck,
+    LoweredForm,
+    PointAudit,
+)
+
+from optmodel.judge import (
+    JudgeReport,
+    PlaneVerdict,
+)
+
+from optmodel.solve import (
+    OptModelSolve,
 )
 
 from persistence import (
@@ -12898,6 +12932,28 @@ fn _to_json_formvalue(value: FormValue) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_formulationcheck(value: FormulationCheck) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FormulationCheck\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.ok)
+    result += ","
+    result += _to_json_int(value.n_vars)
+    result += ","
+    result += _to_json_int(value.n_cons)
+    result += ","
+    result += _to_json_int(value.constraint_index)
+    result += ","
+    result += _to_json_int(value.var_index)
+    result += ","
+    result += _to_json_int(value.n_continuous)
+    result += ","
+    result += _to_json_int(value.n_integer)
+    result += ","
+    result += _to_json_int(value.n_binary)
+    result += "]}"
+    return result
+
 fn _to_json_framecensus(value: FrameCensus) raises -> String:
     var result = String("{\"__algenta_struct\":\"FrameCensus\",\"v\":[")
     result += _to_json_int(value.status)
@@ -14243,6 +14299,30 @@ fn _to_json_jobshopschedule(value: JobShopSchedule) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_judgereport(value: JudgeReport) raises -> String:
+    var result = String("{\"__algenta_struct\":\"JudgeReport\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.comparable)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_float64(value.ground_truth)
+    result += ","
+    result += _to_json_float64(value.abs_error)
+    result += ","
+    result += _to_json_float64(value.rel_error)
+    result += ","
+    result += _to_json_bool(value.strict_match)
+    result += ","
+    result += _to_json_float64(value.rounded_objective)
+    result += ","
+    result += _to_json_float64(value.rounded_truth)
+    result += ","
+    result += _to_json_bool(value.lineage_match)
+    result += "]}"
+    return result
+
 fn _to_json_kmfit(value: KMFit) raises -> String:
     var result = String("{\"__algenta_struct\":\"KMFit\",\"v\":[")
     result += _to_json_int(value.status)
@@ -14816,6 +14896,38 @@ fn _to_json_lognormalfit(value: LognormalFit) raises -> String:
     result += _to_json_float64(value.ks_distance_vs_km)
     result += ","
     result += _to_json_bool(value.has_ks)
+    result += "]}"
+    return result
+
+fn _to_json_loweredform(value: LoweredForm) raises -> String:
+    var result = String("{\"__algenta_struct\":\"LoweredForm\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.ok)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.n_upper_rows)
+    result += ","
+    result += _to_json_float64(value.constant)
+    result += ","
+    result += _to_json_list_float64(value.c)
+    result += ","
+    result += _to_json_list_float64(value.a)
+    result += ","
+    result += _to_json_list_int(value.senses)
+    result += ","
+    result += _to_json_list_float64(value.rhs)
+    result += ","
+    result += _to_json_list_int(value.var_kind)
+    result += ","
+    result += _to_json_list_float64(value.shift)
+    result += ","
+    result += _to_json_list_int(value.row_kind)
+    result += ","
+    result += _to_json_list_int(value.row_ref)
     result += "]}"
     return result
 
@@ -15617,6 +15729,52 @@ fn _to_json_objectivedecomposition(value: ObjectiveDecomposition) raises -> Stri
     result += "]}"
     return result
 
+fn _to_json_optmodelsolve(value: OptModelSolve) raises -> String:
+    var result = String("{\"__algenta_struct\":\"OptModelSolve\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.solved)
+    result += ","
+    result += _to_json_bool(value.refused)
+    result += ","
+    result += _to_json_bool(value.is_discrete)
+    result += ","
+    result += _to_json_int(value.underlying_status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_list_float64(value.x)
+    result += ","
+    result += _to_json_int(value.lowered_rows)
+    result += ","
+    result += _to_json_bool(value.audit_feasible)
+    result += ","
+    result += _to_json_bool(value.has_bound)
+    result += ","
+    result += _to_json_float64(value.best_bound)
+    result += ","
+    result += _to_json_bool(value.has_incumbent)
+    result += ","
+    result += _to_json_float64(value.incumbent_objective)
+    result += ","
+    result += _to_json_bool(value.core_verified)
+    result += ","
+    result += _to_json_bool(value.core_minimal)
+    result += ","
+    result += _to_json_int(value.core_size)
+    result += ","
+    result += _to_json_list_int(value.core_constraints)
+    result += ","
+    result += _to_json_list_int(value.core_bound_vars)
+    result += ","
+    result += _to_json_int(value.nodes_explored)
+    result += ","
+    result += _to_json_int(value.lp_iterations)
+    result += "]}"
+    return result
+
 fn _to_json_optpolicy(value: OptPolicy) raises -> String:
     var result = String("{\"__algenta_struct\":\"OptPolicy\",\"v\":[")
     result += _to_json_int(value.max_iterations)
@@ -16313,6 +16471,52 @@ fn _to_json_pipelinestate(value: PipelineState) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_planeverdict(value: PlaneVerdict) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PlaneVerdict\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.verdict_strict)
+    result += ","
+    result += _to_json_int(value.verdict_lineage)
+    result += ","
+    result += _to_json_bool(value.solved)
+    result += ","
+    result += _to_json_bool(value.refused)
+    result += ","
+    result += _to_json_bool(value.is_discrete)
+    result += ","
+    result += _to_json_int(value.underlying_status)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
+    result += ","
+    result += _to_json_float64(value.ground_truth)
+    result += ","
+    result += _to_json_float64(value.abs_error)
+    result += ","
+    result += _to_json_float64(value.rel_error)
+    result += ","
+    result += _to_json_bool(value.strict_match)
+    result += ","
+    result += _to_json_bool(value.lineage_match)
+    result += ","
+    result += _to_json_bool(value.audit_feasible)
+    result += ","
+    result += _to_json_int(value.core_size)
+    result += ","
+    result += _to_json_list_int(value.core_constraints)
+    result += ","
+    result += _to_json_list_int(value.core_bound_vars)
+    result += ","
+    result += _to_json_int(value.nodes_explored)
+    result += ","
+    result += _to_json_int(value.lp_iterations)
+    result += ","
+    result += _to_json_string(value.message)
+    result += "]}"
+    return result
+
 fn _to_json_plannerresolution(value: PlannerResolution) raises -> String:
     var result = String("{\"__algenta_struct\":\"PlannerResolution\",\"v\":[")
     result += _to_json_uint32(value.resolved_column_id)
@@ -16342,6 +16546,36 @@ fn _to_json_point(value: Point) raises -> String:
     result += _to_json_float64(value.x)
     result += ","
     result += _to_json_float64(value.y)
+    result += "]}"
+    return result
+
+fn _to_json_pointaudit(value: PointAudit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"PointAudit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.feasible)
+    result += ","
+    result += _to_json_int(value.n_row_violations)
+    result += ","
+    result += _to_json_int(value.worst_row)
+    result += ","
+    result += _to_json_float64(value.row_violation)
+    result += ","
+    result += _to_json_int(value.n_bound_violations)
+    result += ","
+    result += _to_json_int(value.worst_bound_var)
+    result += ","
+    result += _to_json_float64(value.bound_violation)
+    result += ","
+    result += _to_json_int(value.n_integrality_violations)
+    result += ","
+    result += _to_json_int(value.worst_integrality_var)
+    result += ","
+    result += _to_json_float64(value.integrality_violation)
+    result += ","
+    result += _to_json_bool(value.has_objective)
+    result += ","
+    result += _to_json_float64(value.objective)
     result += "]}"
     return result
 
@@ -101135,6 +101369,283 @@ fn _dispatch_option_pricing(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module option_pricing."
     )
 
+fn _dispatch_optmodel__formulation(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "optm_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optmodel_formulation__optm_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.formulation.optm_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.formulation.optm_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "optm_verdict_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _optmodel_formulation__optm_verdict_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.formulation.optm_verdict_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.formulation.optm_verdict_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_check_flat":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_int_token(json_array_get(args_array, 10))
+                var result = _optmodel_formulation__formulation_check_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_formulationcheck(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.formulation.formulation_check_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.formulation.formulation_check_flat expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_lower_flat":
+        if arg_count == 11:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_int_token(json_array_get(args_array, 10))
+                var result = _optmodel_formulation__formulation_lower_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10)
+                var result_json = _to_json_loweredform(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.formulation.formulation_lower_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.formulation.formulation_lower_flat expected 11 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_point_audit_flat":
+        if arg_count == 14:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_float64_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_float64_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_int_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_float64_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_float64_token(json_array_get(args_array, 13))
+                var result = _optmodel_formulation__formulation_point_audit_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13)
+                var result_json = _to_json_pointaudit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.formulation.formulation_point_audit_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.formulation.formulation_point_audit_flat expected 14 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optmodel.formulation."
+    )
+
+fn _dispatch_optmodel__judge(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "judge_objective":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _optmodel_judge__judge_objective(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_judgereport(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.judge.judge_objective."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.judge.judge_objective expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_verdict_flat":
+        if arg_count == 20:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_int_token(json_array_get(args_array, 14))
+                var arg_15 = _parse_float64_token(json_array_get(args_array, 15))
+                var arg_16 = _parse_float64_token(json_array_get(args_array, 16))
+                var arg_17 = _parse_float64_token(json_array_get(args_array, 17))
+                var arg_18 = _parse_float64_token(json_array_get(args_array, 18))
+                var arg_19 = _parse_float64_token(json_array_get(args_array, 19))
+                var result = _optmodel_judge__formulation_verdict_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14, arg_15, arg_16, arg_17, arg_18, arg_19)
+                var result_json = _to_json_planeverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.judge.formulation_verdict_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.judge.formulation_verdict_flat expected 20 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_verdict_default":
+        if arg_count == 14:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_float64_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_int_token(json_array_get(args_array, 13))
+                var result = _optmodel_judge__formulation_verdict_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13)
+                var result_json = _to_json_planeverdict(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.judge.formulation_verdict_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.judge.formulation_verdict_default expected 14 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optmodel.judge."
+    )
+
+fn _dispatch_optmodel__solve(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "formulation_solve_flat":
+        if arg_count == 17:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_int_token(json_array_get(args_array, 12))
+                var arg_13 = _parse_int_token(json_array_get(args_array, 13))
+                var arg_14 = _parse_float64_token(json_array_get(args_array, 14))
+                var arg_15 = _parse_float64_token(json_array_get(args_array, 15))
+                var arg_16 = _parse_float64_token(json_array_get(args_array, 16))
+                var result = _optmodel_solve__formulation_solve_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12, arg_13, arg_14, arg_15, arg_16)
+                var result_json = _to_json_optmodelsolve(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.solve.formulation_solve_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.solve.formulation_solve_flat expected 17 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "formulation_solve_default":
+        if arg_count == 13:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_float64_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_list_int_token(json_array_get(args_array, 8))
+                var arg_9 = _parse_list_float64_token(json_array_get(args_array, 9))
+                var arg_10 = _parse_list_float64_token(json_array_get(args_array, 10))
+                var arg_11 = _parse_list_int_token(json_array_get(args_array, 11))
+                var arg_12 = _parse_int_token(json_array_get(args_array, 12))
+                var result = _optmodel_solve__formulation_solve_default(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9, arg_10, arg_11, arg_12)
+                var result_json = _to_json_optmodelsolve(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for optmodel.solve.formulation_solve_default."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function optmodel.solve.formulation_solve_default expected 13 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module optmodel.solve."
+    )
+
 fn _dispatch_orthodontics(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tooth_movement_rate":
@@ -151144,6 +151655,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_option_greeks_batch(function_name, args_array)
     if module_name == "option_pricing":
         return _dispatch_option_pricing(function_name, args_array)
+    if module_name == "optmodel.formulation":
+        return _dispatch_optmodel__formulation(function_name, args_array)
+    if module_name == "optmodel.judge":
+        return _dispatch_optmodel__judge(function_name, args_array)
+    if module_name == "optmodel.solve":
+        return _dispatch_optmodel__solve(function_name, args_array)
     if module_name == "orthodontics":
         return _dispatch_orthodontics(function_name, args_array)
     if module_name == "packaging":

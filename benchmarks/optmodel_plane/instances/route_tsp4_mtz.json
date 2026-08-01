@@ -1,0 +1,264 @@
+{
+  "id": "route_tsp4_mtz",
+  "family": "routing",
+  "description": "4-city TSP with MTZ subtour elimination.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "e0_1": 10.0,
+      "e0_2": 15.0,
+      "e0_3": 20.0,
+      "e1_0": 10.0,
+      "e1_2": 35.0,
+      "e1_3": 25.0,
+      "e2_0": 15.0,
+      "e2_1": 35.0,
+      "e2_3": 30.0,
+      "e3_0": 20.0,
+      "e3_1": 25.0,
+      "e3_2": 30.0
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "e0_1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e0_2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e0_3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e1_0",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e1_2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e1_3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e2_0",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e2_1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e2_3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e3_0",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e3_1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "e3_2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "u1",
+      "kind": "integer",
+      "lower": 1,
+      "upper": 3
+    },
+    {
+      "name": "u2",
+      "kind": "integer",
+      "lower": 1,
+      "upper": 3
+    },
+    {
+      "name": "u3",
+      "kind": "integer",
+      "lower": 1,
+      "upper": 3
+    }
+  ],
+  "constraints": [
+    {
+      "name": "leave_0",
+      "coeffs": {
+        "e0_1": 1,
+        "e0_2": 1,
+        "e0_3": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "enter_0",
+      "coeffs": {
+        "e1_0": 1,
+        "e2_0": 1,
+        "e3_0": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "leave_1",
+      "coeffs": {
+        "e1_0": 1,
+        "e1_2": 1,
+        "e1_3": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "enter_1",
+      "coeffs": {
+        "e0_1": 1,
+        "e2_1": 1,
+        "e3_1": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "leave_2",
+      "coeffs": {
+        "e2_0": 1,
+        "e2_1": 1,
+        "e2_3": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "enter_2",
+      "coeffs": {
+        "e0_2": 1,
+        "e1_2": 1,
+        "e3_2": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "leave_3",
+      "coeffs": {
+        "e3_0": 1,
+        "e3_1": 1,
+        "e3_2": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "enter_3",
+      "coeffs": {
+        "e0_3": 1,
+        "e1_3": 1,
+        "e2_3": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "mtz_1_2",
+      "coeffs": {
+        "u1": 1,
+        "u2": -1,
+        "e1_2": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    },
+    {
+      "name": "mtz_1_3",
+      "coeffs": {
+        "u1": 1,
+        "u3": -1,
+        "e1_3": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    },
+    {
+      "name": "mtz_2_1",
+      "coeffs": {
+        "u2": 1,
+        "u1": -1,
+        "e2_1": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    },
+    {
+      "name": "mtz_2_3",
+      "coeffs": {
+        "u2": 1,
+        "u3": -1,
+        "e2_3": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    },
+    {
+      "name": "mtz_3_1",
+      "coeffs": {
+        "u3": 1,
+        "u1": -1,
+        "e3_1": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    },
+    {
+      "name": "mtz_3_2",
+      "coeffs": {
+        "u3": 1,
+        "u2": -1,
+        "e3_2": 4
+      },
+      "sense": "<=",
+      "rhs": 3
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 80.0,
+    "source": "hand"
+  }
+}

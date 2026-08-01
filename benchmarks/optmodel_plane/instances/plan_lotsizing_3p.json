@@ -1,0 +1,146 @@
+{
+  "id": "plan_lotsizing_3p",
+  "family": "planning",
+  "description": "Three-period capacitated lot sizing with setup and holding costs.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "q1": 1,
+      "q2": 1,
+      "q3": 1,
+      "inv1": 0.5,
+      "inv2": 0.5,
+      "inv3": 0.5,
+      "u1": 6,
+      "u2": 6,
+      "u3": 6
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "q1",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 8.0
+    },
+    {
+      "name": "q2",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 8.0
+    },
+    {
+      "name": "q3",
+      "kind": "continuous",
+      "lower": 0.0,
+      "upper": 8.0
+    },
+    {
+      "name": "inv1",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "inv2",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "inv3",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "u1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "u2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "u3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "balance_1",
+      "coeffs": {
+        "q1": 1.0,
+        "inv1": -1.0
+      },
+      "sense": "==",
+      "rhs": 4.0
+    },
+    {
+      "name": "setup_1",
+      "coeffs": {
+        "q1": 1.0,
+        "u1": -8.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "balance_2",
+      "coeffs": {
+        "q2": 1.0,
+        "inv2": -1.0,
+        "inv1": 1.0
+      },
+      "sense": "==",
+      "rhs": 5.0
+    },
+    {
+      "name": "setup_2",
+      "coeffs": {
+        "q2": 1.0,
+        "u2": -8.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "balance_3",
+      "coeffs": {
+        "q3": 1.0,
+        "inv3": -1.0,
+        "inv2": 1.0
+      },
+      "sense": "==",
+      "rhs": 3.0
+    },
+    {
+      "name": "setup_3",
+      "coeffs": {
+        "q3": 1.0,
+        "u3": -8.0
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "end_empty",
+      "coeffs": {
+        "inv3": 1.0
+      },
+      "sense": "==",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 25.5,
+    "source": "referee:scipy-highs"
+  }
+}

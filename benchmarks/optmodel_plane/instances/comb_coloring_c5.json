@@ -1,0 +1,333 @@
+{
+  "id": "comb_coloring_c5",
+  "family": "combinatorial",
+  "description": "Colour the 5-cycle with the fewest colours (chromatic number 3).",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "y1": 1,
+      "y2": 1,
+      "y3": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "y1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "y2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "y3",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x11",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x12",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x13",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x21",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x22",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x23",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x31",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x32",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x33",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x41",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x42",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x43",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x51",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x52",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "x53",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "colour_1",
+      "coeffs": {
+        "x11": 1,
+        "x12": 1,
+        "x13": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "colour_2",
+      "coeffs": {
+        "x21": 1,
+        "x22": 1,
+        "x23": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "colour_3",
+      "coeffs": {
+        "x31": 1,
+        "x32": 1,
+        "x33": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "colour_4",
+      "coeffs": {
+        "x41": 1,
+        "x42": 1,
+        "x43": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "colour_5",
+      "coeffs": {
+        "x51": 1,
+        "x52": 1,
+        "x53": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "edge_12_c1",
+      "coeffs": {
+        "x11": 1,
+        "x21": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_12_c2",
+      "coeffs": {
+        "x12": 1,
+        "x22": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_12_c3",
+      "coeffs": {
+        "x13": 1,
+        "x23": 1,
+        "y3": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_23_c1",
+      "coeffs": {
+        "x21": 1,
+        "x31": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_23_c2",
+      "coeffs": {
+        "x22": 1,
+        "x32": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_23_c3",
+      "coeffs": {
+        "x23": 1,
+        "x33": 1,
+        "y3": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_34_c1",
+      "coeffs": {
+        "x31": 1,
+        "x41": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_34_c2",
+      "coeffs": {
+        "x32": 1,
+        "x42": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_34_c3",
+      "coeffs": {
+        "x33": 1,
+        "x43": 1,
+        "y3": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_45_c1",
+      "coeffs": {
+        "x41": 1,
+        "x51": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_45_c2",
+      "coeffs": {
+        "x42": 1,
+        "x52": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_45_c3",
+      "coeffs": {
+        "x43": 1,
+        "x53": 1,
+        "y3": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_51_c1",
+      "coeffs": {
+        "x51": 1,
+        "x11": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_51_c2",
+      "coeffs": {
+        "x52": 1,
+        "x12": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "edge_51_c3",
+      "coeffs": {
+        "x53": 1,
+        "x13": 1,
+        "y3": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 3.0,
+    "source": "hand"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "id": "loc_facility_2x3",
+  "family": "location_cover_assign",
+  "description": "Open facilities (fixed costs 5 and 4) and assign 3 customers.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "y1": 5,
+      "y2": 4,
+      "a11": 1,
+      "a12": 2,
+      "a13": 3,
+      "a21": 3,
+      "a22": 1,
+      "a23": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "y1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "y2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a11",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a12",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a13",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a21",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a22",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "a23",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "serve_1",
+      "coeffs": {
+        "a11": 1,
+        "a21": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "serve_2",
+      "coeffs": {
+        "a12": 1,
+        "a22": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "serve_3",
+      "coeffs": {
+        "a13": 1,
+        "a23": 1
+      },
+      "sense": "==",
+      "rhs": 1
+    },
+    {
+      "name": "open_11",
+      "coeffs": {
+        "a11": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "open_12",
+      "coeffs": {
+        "a12": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "open_13",
+      "coeffs": {
+        "a13": 1,
+        "y1": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "open_21",
+      "coeffs": {
+        "a21": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "open_22",
+      "coeffs": {
+        "a22": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "open_23",
+      "coeffs": {
+        "a23": 1,
+        "y2": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 9.0,
+    "source": "hand"
+  }
+}

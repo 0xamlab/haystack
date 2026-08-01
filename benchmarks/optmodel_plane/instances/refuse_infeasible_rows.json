@@ -1,0 +1,40 @@
+{
+  "id": "refuse_infeasible_rows",
+  "family": "refusals",
+  "description": "x <= 2 against x >= 5: proven infeasible, core names both rows.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "x": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "x",
+      "kind": "continuous",
+      "lower": 0.0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "ceiling",
+      "coeffs": {
+        "x": 1
+      },
+      "sense": "<=",
+      "rhs": 2
+    },
+    {
+      "name": "floor",
+      "coeffs": {
+        "x": 1
+      },
+      "sense": ">=",
+      "rhs": 5
+    }
+  ],
+  "expect": "refused",
+  "max_nodes": 10000,
+  "referee_expectation": "infeasible"
+}

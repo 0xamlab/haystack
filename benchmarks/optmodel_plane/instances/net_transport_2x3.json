@@ -1,0 +1,105 @@
+{
+  "id": "net_transport_2x3",
+  "family": "network",
+  "description": "Ship from 2 plants to 3 markets at minimum freight cost.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "x11": 2,
+      "x12": 3,
+      "x13": 1,
+      "x21": 5,
+      "x22": 4,
+      "x23": 8
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "x11",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "x12",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "x13",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "x21",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "x22",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "x23",
+      "kind": "continuous",
+      "lower": 0.0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "supply_1",
+      "coeffs": {
+        "x11": 1,
+        "x12": 1,
+        "x13": 1
+      },
+      "sense": "<=",
+      "rhs": 20
+    },
+    {
+      "name": "supply_2",
+      "coeffs": {
+        "x21": 1,
+        "x22": 1,
+        "x23": 1
+      },
+      "sense": "<=",
+      "rhs": 30
+    },
+    {
+      "name": "demand_1",
+      "coeffs": {
+        "x11": 1,
+        "x21": 1
+      },
+      "sense": ">=",
+      "rhs": 10
+    },
+    {
+      "name": "demand_2",
+      "coeffs": {
+        "x12": 1,
+        "x22": 1
+      },
+      "sense": ">=",
+      "rhs": 25
+    },
+    {
+      "name": "demand_3",
+      "coeffs": {
+        "x13": 1,
+        "x23": 1
+      },
+      "sense": ">=",
+      "rhs": 15
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 150.0,
+    "source": "referee:scipy-highs"
+  }
+}

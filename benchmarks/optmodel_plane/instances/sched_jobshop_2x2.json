@@ -1,0 +1,136 @@
+{
+  "id": "sched_jobshop_2x2",
+  "family": "scheduling",
+  "description": "Two-job two-machine job shop with disjunctive big-M sequencing.",
+  "maximize": false,
+  "objective": {
+    "coeffs": {
+      "cmax": 1
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "s11",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "s12",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "s22",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "s21",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "cmax",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "z_m1",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "z_m2",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "j1_route",
+      "coeffs": {
+        "s12": 1,
+        "s11": -1
+      },
+      "sense": ">=",
+      "rhs": 3
+    },
+    {
+      "name": "j2_route",
+      "coeffs": {
+        "s21": 1,
+        "s22": -1
+      },
+      "sense": ">=",
+      "rhs": 1
+    },
+    {
+      "name": "m1_j1_first",
+      "coeffs": {
+        "s21": 1,
+        "s11": -1,
+        "z_m1": -20
+      },
+      "sense": ">=",
+      "rhs": -17
+    },
+    {
+      "name": "m1_j2_first",
+      "coeffs": {
+        "s11": 1,
+        "s21": -1,
+        "z_m1": 20
+      },
+      "sense": ">=",
+      "rhs": 4
+    },
+    {
+      "name": "m2_j1_first",
+      "coeffs": {
+        "s22": 1,
+        "s12": -1,
+        "z_m2": -20
+      },
+      "sense": ">=",
+      "rhs": -18
+    },
+    {
+      "name": "m2_j2_first",
+      "coeffs": {
+        "s12": 1,
+        "s22": -1,
+        "z_m2": 20
+      },
+      "sense": ">=",
+      "rhs": 1
+    },
+    {
+      "name": "cmax_j1",
+      "coeffs": {
+        "cmax": 1,
+        "s12": -1
+      },
+      "sense": ">=",
+      "rhs": 2
+    },
+    {
+      "name": "cmax_j2",
+      "coeffs": {
+        "cmax": 1,
+        "s21": -1
+      },
+      "sense": ">=",
+      "rhs": 4
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 7.0,
+    "source": "hand"
+  }
+}

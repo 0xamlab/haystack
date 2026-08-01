@@ -1,0 +1,61 @@
+{
+  "id": "comb_logical_implication",
+  "family": "combinatorial",
+  "description": "Weighted selection under an implication and a mutual exclusion.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "a": 3,
+      "b": 2,
+      "c": 4
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "a",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "b",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    },
+    {
+      "name": "c",
+      "kind": "binary",
+      "lower": 0,
+      "upper": 1
+    }
+  ],
+  "constraints": [
+    {
+      "name": "a_implies_b",
+      "coeffs": {
+        "a": 1,
+        "b": -1
+      },
+      "sense": "<=",
+      "rhs": 0
+    },
+    {
+      "name": "b_xor_c",
+      "coeffs": {
+        "b": 1,
+        "c": 1
+      },
+      "sense": "<=",
+      "rhs": 1
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 5.0,
+    "source": "hand"
+  }
+}

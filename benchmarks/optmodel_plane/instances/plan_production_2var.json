@@ -1,0 +1,52 @@
+{
+  "id": "plan_production_2var",
+  "family": "planning",
+  "description": "Two products, two shared resources, maximise profit.",
+  "maximize": true,
+  "objective": {
+    "coeffs": {
+      "x": 3,
+      "y": 2
+    },
+    "constant": 0.0
+  },
+  "variables": [
+    {
+      "name": "x",
+      "kind": "continuous",
+      "lower": 0.0
+    },
+    {
+      "name": "y",
+      "kind": "continuous",
+      "lower": 0.0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "resource_a",
+      "coeffs": {
+        "x": 1,
+        "y": 1
+      },
+      "sense": "<=",
+      "rhs": 4
+    },
+    {
+      "name": "resource_b",
+      "coeffs": {
+        "x": 1,
+        "y": 3
+      },
+      "sense": "<=",
+      "rhs": 6
+    }
+  ],
+  "expect": "verified",
+  "max_nodes": 10000,
+  "referee_expectation": "optimal",
+  "ground_truth": {
+    "objective": 12.0,
+    "source": "hand"
+  }
+}
