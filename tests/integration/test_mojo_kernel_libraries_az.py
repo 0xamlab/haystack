@@ -243,6 +243,25 @@ _RUNTIME_STRUCT_SPECS: dict[str, Any] | None = None
 
 
 _MANUAL_KERNEL_OVERRIDES: dict[tuple[str, str], list[Any]] = {
+    # ── accel ─────────────────────────────────────────────────────────────────────────
+    # A 2x4 times 4x3 product: `a` needs m*k = 8 and `b` needs k*n = 12, which the existing sized
+    # lists already provide. On a host without the GPU build these return `shader_toolchain_absent`
+    # rather than computing — which is the point of reaching them here, since that refusal path is
+    # what every CI runner executes and it should be exercised, not skipped.
+    ("accel.gemm_metal", "gemm_metal_flat"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        2,
+        3,
+        4,
+    ],
+    ("accel.gemm_metal", "gemm_metal_agreement"): [
+        _SAMPLE_VARIABLES["_lf8_norm2x4"],
+        _SAMPLE_VARIABLES["_lf12_vocab4x3"],
+        2,
+        3,
+        4,
+    ],
     # ── lossk ─────────────────────────────────────────────────────────────────────────
     # The chunk is a MEMORY parameter, so the suite's `5` would be both larger than the batch and
     # meaningless; it is set to 1 here, the smallest legal value, which also exercises the

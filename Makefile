@@ -678,6 +678,32 @@ inventory-check:
 ## Prove the generated dispatch COMPILES for the structs that can only be built
 ## via default-construct + field assignment. This is the gate that was missing:
 ## the generated table emitted positional construction for such structs, which
+## Run the GPU kernel suites. Needs BOTH a shader compiler and the build flag.
+##
+## `-D ALGENTA_GPU` is what compiles the Metal kernels in at all; without it they are elided at
+## compile time and every GPU call reports `shader_toolchain_absent`. That default is deliberate —
+## it is what lets a Linux runner with no shader compiler build the tree — so this target is the
+## explicit opt-in rather than something the normal test run picks up.
+##
+## DEVELOPER_DIR is separate and equally required on macOS: `xcode-select` pointing at
+## CommandLineTools is NOT enough, and the failure it gives ("Metal Compiler failed to compile
+## metallib") reads like a toolchain bug rather than a missing component. Override it if Xcode
+## lives elsewhere.
+DEVELOPER_DIR_GPU ?= $(firstword $(wildcard /Applications/Xcode*.app/Contents/Developer))
+
+test-gpu-kernels:
+	@test -n "$(DEVELOPER_DIR_GPU)" || { \
+	  echo "no Xcode found under /Applications; set DEVELOPER_DIR_GPU=<path>/Contents/Developer"; \
+	  exit 1; }
+	@echo "using DEVELOPER_DIR=$(DEVELOPER_DIR_GPU)"
+	@DEVELOPER_DIR=$(DEVELOPER_DIR_GPU) xcrun -sdk macosx --find metal >/dev/null 2>&1 || { \
+	  echo "the Metal shader compiler is missing; run: DEVELOPER_DIR=$(DEVELOPER_DIR_GPU) xcodebuild -downloadComponent MetalToolchain"; \
+	  exit 1; }
+	cd mojo_env && DEVELOPER_DIR=$(DEVELOPER_DIR_GPU) pixi run mojo run -D ALGENTA_GPU \
+	  -I../mojo/engine ../mojo/tests/libs/test_accel_gemm_metal.mojo
+	cd mojo_env && DEVELOPER_DIR=$(DEVELOPER_DIR_GPU) pixi run mojo run -D ALGENTA_GPU \
+	  -I../mojo/engine ../mojo/tests/libs/test_accel_launch.mojo
+
 ## does not compile, so the whole runtime build failed and those kernels were
 ## unreachable end-to-end. Bounded: seconds and under 4 GB, versus the monolith's
 ## 17 GB+.

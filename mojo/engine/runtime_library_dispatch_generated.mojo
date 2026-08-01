@@ -33,6 +33,12 @@ from accel.device import (
     accel_device_probe as _accel_device__accel_device_probe,
 )
 
+from accel.gemm_metal import (
+    gemm_metal_available as _accel_gemm_metal__gemm_metal_available,
+    gemm_metal_flat as _accel_gemm_metal__gemm_metal_flat,
+    gemm_metal_agreement as _accel_gemm_metal__gemm_metal_agreement,
+)
+
 from accounting import (
     straight_line_depreciation as _accounting__straight_line_depreciation,
     declining_balance as _accounting__declining_balance,
@@ -7025,6 +7031,11 @@ from accel.device import (
     DeviceProbe,
 )
 
+from accel.gemm_metal import (
+    MetalGemmAgreement,
+    MetalGemmResult,
+)
+
 from arima import (
     ARFit,
     MAFit,
@@ -11205,6 +11216,34 @@ fn _to_json_maxflow(value: MaxFlow) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_metalgemmagreement(value: MetalGemmAgreement) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MetalGemmAgreement\",\"v\":[")
+    result += _to_json_float64(value.max_abs_delta)
+    result += ","
+    result += _to_json_float64(value.float32_bound)
+    result += ","
+    result += _to_json_bool(value.within_float32_precision)
+    result += ","
+    result += _to_json_int(value.n_compared)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_metalgemmresult(value: MetalGemmResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"MetalGemmResult\",\"v\":[")
+    result += _to_json_list_float64(value.c)
+    result += ","
+    result += _to_json_int(value.rows)
+    result += ","
+    result += _to_json_int(value.cols)
+    result += ","
+    result += _to_json_int(value.backend_used)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_metricscounter(value: MetricsCounter) raises -> String:
     var result = String("{\"__algenta_struct\":\"MetricsCounter\",\"v\":[")
     result += _to_json_string(value.name)
@@ -14514,6 +14553,68 @@ fn _dispatch_accel__device(function_name: String, args_array: String) raises -> 
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module accel.device."
+    )
+
+fn _dispatch_accel__gemm_metal(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "gemm_metal_available":
+        if arg_count == 0:
+            try:
+                var result = _accel_gemm_metal__gemm_metal_available()
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.gemm_metal.gemm_metal_available."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.gemm_metal.gemm_metal_available expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_metal_flat":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _accel_gemm_metal__gemm_metal_flat(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_metalgemmresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.gemm_metal.gemm_metal_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.gemm_metal.gemm_metal_flat expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "gemm_metal_agreement":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _accel_gemm_metal__gemm_metal_agreement(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_metalgemmagreement(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.gemm_metal.gemm_metal_agreement."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.gemm_metal.gemm_metal_agreement expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module accel.gemm_metal."
     )
 
 fn _dispatch_accounting(function_name: String, args_array: String) raises -> String:
@@ -133167,6 +133268,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_accel__contract(function_name, args_array)
     if module_name == "accel.device":
         return _dispatch_accel__device(function_name, args_array)
+    if module_name == "accel.gemm_metal":
+        return _dispatch_accel__gemm_metal(function_name, args_array)
     if module_name == "accounting":
         return _dispatch_accounting(function_name, args_array)
     if module_name == "acoustics":
