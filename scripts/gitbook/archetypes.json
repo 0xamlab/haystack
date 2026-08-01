@@ -9,6 +9,7 @@
   "authentication.md": "task",
   "benchmarks/attention.md": "reference",
   "benchmarks/compute-kernels.md": "reference",
+  "benchmarks/dataframe-groupby.md": "reference",
   "benchmarks/feed-forward.md": "reference",
   "benchmarks/forecasting-m4.md": "reference",
   "benchmarks/normalization.md": "reference",

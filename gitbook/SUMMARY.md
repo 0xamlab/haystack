@@ -218,6 +218,7 @@
 * [Feed-forward](benchmarks/feed-forward.md)
 * [Code retrieval quality](benchmarks/code-retrieval.md)
 * [M4 forecasting accuracy](benchmarks/forecasting-m4.md)
+* [Dataframe group-by](benchmarks/dataframe-groupby.md)
 
 ## Help
 
