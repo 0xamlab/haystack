@@ -16,6 +16,7 @@ This section is the index. Each benchmark family has its own page with its own c
 <tbody>
 <tr><td><strong>Compute kernels</strong></td><td>Dense and quantized matrix kernels, measured against the engine's own prior implementations.</td><td><a href="compute-kernels.md">compute-kernels.md</a></td></tr>
 <tr><td><strong>Least-squares accuracy</strong></td><td>Correct digits on the NIST StRD linear-regression suite, against fourteen numpy, scipy and statsmodels arms on the same data.</td><td><a href="least-squares-accuracy.md">least-squares-accuracy.md</a></td></tr>
+<tr><td><strong>Forecasting on the joint axis</strong></td><td>Accuracy and latency together on all 100,000 M4 series, against statsforecast 2.1.1 at matched parallelism.</td><td><a href="forecasting-joint-axis.md">forecasting-joint-axis.md</a></td></tr>
 </tbody>
 </table>
 
@@ -50,5 +51,6 @@ A result appears in this section only if it meets all of the following condition
 * [Attention](attention.md) — tiled attention memory, rotary embedding, and block-size invariance.
 * [Normalization](normalization.md) — RMSNorm and LayerNorm, and the price of a safe variance.
 * [Feed-forward](feed-forward.md) — gated activations, the two GELU conventions, and embedding cost.
+* [Forecasting on the joint axis](forecasting-joint-axis.md) — M4 accuracy and latency measured together against statsforecast 2.1.1.
 * [Runtime libraries](../engine/runtime-libraries.md) — the surface these kernels are exposed through.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.

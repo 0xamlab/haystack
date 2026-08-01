@@ -502,11 +502,27 @@
         "validation": "static_inventory"
       },
       {
-        "bytes": 58,
+        "bytes": 145,
         "language": "text",
-        "line": 48,
+        "line": 147,
         "path": "benchmarks/dataframe-groupby.md",
-        "sha256": "af8157137970087273907559a466fba2de3e341f8f99b2f0324b30575a6986fb",
+        "sha256": "0ecdfc72ce07cb3d2242691d62aebbf1ef453375a6191c3b2d1016849a5a9a71",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 66,
+        "language": "text",
+        "line": 152,
+        "path": "benchmarks/dataframe-groupby.md",
+        "sha256": "0a367582ee96a6a9c4c8187002b62afeec0d7cfd6f0404aadc29506225566438",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 90,
+        "language": "text",
+        "line": 156,
+        "path": "benchmarks/dataframe-groupby.md",
+        "sha256": "10774674121aa899e6570431cfc6fa7c132b352ee21e63f09e25300ab29ba87f",
         "validation": "static_inventory"
       },
       {
@@ -515,6 +531,46 @@
         "line": 82,
         "path": "benchmarks/feed-forward.md",
         "sha256": "fa7eea6cfb4ad7ee93a6a6dee4668ee8b59facef1fea3b5b1fc385cee7b984ce",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 113,
+        "language": "text",
+        "line": 267,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "sha256": "8075efba11168a4c9431dc98467c519e5f90f57f59aa09c2b2fbf93849fb1e95",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 382,
+        "language": "text",
+        "line": 273,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "sha256": "a7b7ddc85b40fad69730c708cdc6887331849eb0a64a1dff99bb30fe8809415a",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 399,
+        "language": "text",
+        "line": 280,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "sha256": "f0d10e7444fae7e20a8c97d3bcff8d42c7db09499d4df6f5dfa9cfdc8656e2ba",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 91,
+        "language": "text",
+        "line": 288,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "sha256": "63e7a4321b6e5d4905284bb79502d08a99ca66aa3f10f84627be09f2936f6ffc",
+        "validation": "static_inventory"
+      },
+      {
+        "bytes": 77,
+        "language": "text",
+        "line": 224,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "sha256": "6535d8d84ca260a070b28292fc7996fc884093e5c660af6bc6c16cf76a8d34cf",
         "validation": "static_inventory"
       },
       {
@@ -17382,7 +17438,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 741,
+        "line": 747,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17391,7 +17447,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/health",
-        "line": 741,
+        "line": 747,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17400,7 +17456,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/execute",
-        "line": 741,
+        "line": 747,
         "match_kind": "exact",
         "method": "POST",
         "path": "engine/runtime-library-catalog.md",
@@ -28717,31 +28773,43 @@
       },
       {
         "kind": "internal",
-        "line": 224,
+        "line": 221,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/least-squares-accuracy.md"
       },
       {
         "kind": "internal",
-        "line": 225,
+        "line": 222,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "benchmarks/forecasting-joint-axis.md"
       },
       {
         "kind": "internal",
         "line": 226,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
         "line": 227,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 228,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 229,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 230,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -28981,25 +29049,31 @@
       },
       {
         "kind": "anchor",
-        "line": 42,
+        "line": 111,
+        "path": "benchmarks/dataframe-groupby.md",
+        "target": "#the-question-this-page-used-to-leave-open-q1"
+      },
+      {
+        "kind": "anchor",
+        "line": 142,
         "path": "benchmarks/dataframe-groupby.md",
         "target": "#method"
       },
       {
         "kind": "internal",
-        "line": 56,
+        "line": 167,
         "path": "benchmarks/dataframe-groupby.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 57,
+        "line": 168,
         "path": "benchmarks/dataframe-groupby.md",
         "target": "compute-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 58,
+        "line": 169,
         "path": "benchmarks/dataframe-groupby.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -29023,6 +29097,60 @@
       },
       {
         "kind": "internal",
+        "line": 314,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 315,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "target": "least-squares-accuracy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 316,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "target": "dataframe-groupby.md"
+      },
+      {
+        "kind": "internal",
+        "line": 317,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "target": "../engine/runtime-library-catalog.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 113,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "target": "#scope"
+      },
+      {
+        "kind": "anchor",
+        "line": 196,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "target": "#cost"
+      },
+      {
+        "kind": "internal",
+        "line": 235,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 236,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "target": "compute-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 237,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "target": "../engine/runtime-library-catalog.md"
+      },
+      {
+        "kind": "internal",
         "line": 84,
         "path": "benchmarks/normalization.md",
         "target": "overview.md"
@@ -29041,37 +29169,43 @@
       },
       {
         "kind": "internal",
-        "line": 48,
+        "line": 50,
         "path": "benchmarks/overview.md",
         "target": "compute-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 49,
+        "line": 51,
         "path": "benchmarks/overview.md",
         "target": "attention.md"
       },
       {
         "kind": "internal",
-        "line": 50,
+        "line": 52,
         "path": "benchmarks/overview.md",
         "target": "normalization.md"
       },
       {
         "kind": "internal",
-        "line": 51,
+        "line": 53,
         "path": "benchmarks/overview.md",
         "target": "feed-forward.md"
       },
       {
         "kind": "internal",
-        "line": 52,
+        "line": 54,
+        "path": "benchmarks/overview.md",
+        "target": "forecasting-joint-axis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 55,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 53,
+        "line": 56,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -29080,6 +29214,18 @@
         "line": 17,
         "path": "benchmarks/overview.md",
         "target": "compute-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 18,
+        "path": "benchmarks/overview.md",
+        "target": "least-squares-accuracy.md"
+      },
+      {
+        "kind": "internal",
+        "line": 19,
+        "path": "benchmarks/overview.md",
+        "target": "forecasting-joint-axis.md"
       },
       {
         "kind": "internal",
@@ -31297,25 +31443,25 @@
       },
       {
         "kind": "internal",
-        "line": 741,
-        "path": "engine/runtime-library-catalog.md",
-        "target": "runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 746,
-        "path": "engine/runtime-library-catalog.md",
-        "target": "runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
         "line": 747,
+        "path": "engine/runtime-library-catalog.md",
+        "target": "runtime-libraries.md"
+      },
+      {
+        "kind": "internal",
+        "line": 752,
+        "path": "engine/runtime-library-catalog.md",
+        "target": "runtime-libraries.md"
+      },
+      {
+        "kind": "internal",
+        "line": 753,
         "path": "engine/runtime-library-catalog.md",
         "target": "catalog.md"
       },
       {
         "kind": "internal",
-        "line": 748,
+        "line": 754,
         "path": "engine/runtime-library-catalog.md",
         "target": "../concepts/engine.md"
       },
@@ -34844,42 +34990,42 @@
         "term": "algenta"
       },
       {
-        "line": 10,
+        "line": 3,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 14,
+        "line": 15,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 14,
+        "line": 19,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 16,
+        "line": 22,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 25,
+        "line": 22,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 33,
+        "line": 83,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 40,
+        "line": 92,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
       {
-        "line": 46,
+        "line": 118,
         "path": "benchmarks/dataframe-groupby.md",
         "term": "algenta"
       },
@@ -34891,6 +35037,166 @@
       {
         "line": 63,
         "path": "benchmarks/feed-forward.md",
+        "term": "algenta"
+      },
+      {
+        "line": 32,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 36,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 41,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 51,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 53,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 65,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 71,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 95,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 110,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 114,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 142,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 142,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 143,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 143,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 143,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 144,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 144,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 144,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 150,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 159,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 179,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 196,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 208,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 212,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 217,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 238,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 264,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 14,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 45,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 50,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 59,
+        "path": "benchmarks/least-squares-accuracy.md",
+        "term": "algenta"
+      },
+      {
+        "line": 69,
+        "path": "benchmarks/least-squares-accuracy.md",
         "term": "algenta"
       },
       {
@@ -34909,17 +35215,17 @@
         "term": "algenta"
       },
       {
-        "line": 28,
+        "line": 30,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 31,
+        "line": 33,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 41,
+        "line": 43,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
@@ -46206,8 +46512,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 187,
-      "links": 187,
+      "internal_links": 189,
+      "links": 189,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -46470,7 +46776,7 @@
       "shell_commands": 0
     },
     {
-      "code_fences": 1,
+      "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
         "environment_mutating": 0,
@@ -46482,7 +46788,7 @@
       "endpoint_mentions": 0,
       "external_links": 0,
       "internal_links": 3,
-      "links": 4,
+      "links": 5,
       "path": "benchmarks/dataframe-groupby.md",
       "product_claims": {
         "algenta": 8,
@@ -46511,6 +46817,56 @@
       "path": "benchmarks/feed-forward.md",
       "product_claims": {
         "algenta": 2,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 4,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "benchmarks/forecasting-joint-axis.md",
+      "product_claims": {
+        "algenta": 27,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 5,
+      "path": "benchmarks/least-squares-accuracy.md",
+      "product_claims": {
+        "algenta": 5,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -46556,8 +46912,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 7,
-      "links": 7,
+      "internal_links": 10,
+      "links": 10,
       "path": "benchmarks/overview.md",
       "product_claims": {
         "algenta": 4,
@@ -50904,7 +51260,7 @@
     "source_paths": 222
   },
   "snippets": {
-    "code_fences": 1212,
+    "code_fences": 1219,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 811,
@@ -50918,7 +51274,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 953,
+    "claim_mentions": 985,
     "command_execution_percent": 100.0,
     "commands_classified": 811,
     "commands_executed": 67,
@@ -50926,22 +51282,22 @@
     "endpoint_mentions": 1990,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1148,
+    "links_checked": 1163,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 188,
+    "pages_checked": 190,
     "shell_syntax_validation_percent": 100.0,
     "skips": 745,
-    "snippets_checked": 1212,
+    "snippets_checked": 1219,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6114,
+    "source_items_inventoried": 6168,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 953,
-    "code_fences": 1212,
+    "claim_mentions": 985,
+    "code_fences": 1219,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -50953,18 +51309,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 744,
-    "internal_links": 1130,
-    "links": 1148,
-    "pages": 188,
+    "internal_links": 1142,
+    "links": 1163,
+    "pages": 190,
     "product_claims": {
-      "algenta": 944,
+      "algenta": 976,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 9
     },
-    "public_pages": 187,
+    "public_pages": 189,
     "requires_environment_commands": 375,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -50973,7 +51329,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 745,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6114,
+    "source_items_inventoried": 6168,
     "static_only_commands": 63,
     "static_or_guarded_commands": 744,
     "unexecuted_runnable_commands": 0,

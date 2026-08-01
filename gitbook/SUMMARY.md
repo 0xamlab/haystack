@@ -219,6 +219,7 @@
 * [Code retrieval quality](benchmarks/code-retrieval.md)
 * [Dataframe group-by](benchmarks/dataframe-groupby.md)
 * [Least-squares accuracy](benchmarks/least-squares-accuracy.md)
+* [Forecasting on the joint axis](benchmarks/forecasting-joint-axis.md)
 
 ## Help
 
