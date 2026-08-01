@@ -710,6 +710,19 @@ test-gpu-kernels:
 verify-dispatch-compiles:
 	$(REPO_PYTHON) scripts/verify_dispatch_struct_construction.py
 
+## Compile the contract-reachable accel surface for a NO-accelerator target — the exact shape the
+## release shard build sees on CI runners (which have no detectable GPU). Catches the failure class
+## where JIT on a GPU developer machine is green but AOT release compilation breaks, because
+## `DeviceContext` instantiation on a no-accelerator target is a COMPILE error unless pruned with
+## `@parameter if` (build-runtime run 30706203629). Seconds, tiny memory; then runs the binary to
+## prove the gated build answers with typed refusals instead of crashing.
+verify-accel-aot:
+	@mkdir -p mojo_build
+	cd mojo_env && pixi run mojo build --target-accelerator=none \
+	  -I../mojo/engine ../mojo/tests/verify_accel_aot_none.mojo -o ../mojo_build/verify-accel-aot-none
+	./mojo_build/verify-accel-aot-none
+	@echo "✅ accel surface compiles and answers for a no-accelerator AOT target"
+
 ## Regenerate the per-kernel Mojo test suites (hand-written suites are protected)
 gen-mojo-tests:
 	python3 tests/generate_mojo_tests.py
