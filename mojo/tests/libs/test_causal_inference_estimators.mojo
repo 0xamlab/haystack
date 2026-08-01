@@ -43,6 +43,7 @@ decision that has to be explained, which is why the resample draws from `determi
 through `uniform_int_keyed` rather than from process-global state.
 """
 from std.math import abs as fabs, sqrt
+from time import perf_counter_ns
 
 from causal import ate as frozen_ate, stratified_ate as frozen_stratified
 
@@ -91,6 +92,52 @@ fn _ints(*vals: Int) -> List[Int]:
 fn _close(a: Float64, b: Float64) -> Bool:
     """Judged against the magnitude of THE TWO TERMS BEING COMPARED, and nothing else."""
     return fabs(a - b) <= ci_tolerance(fabs(a) + fabs(b), 0.0)
+
+
+# A bootstrap-shaped sample of `n` units, alternating arms, every score strictly interior so no
+# replicate is dropped. Used by the scaling assertion, where `n` is held fixed and the replicate
+# count is what varies.
+#
+# THE REPLICATE ATEs MUST GENUINELY DIFFER, and that is a property of this data rather than an
+# incidental one. The suite's main dataset pairs `e = 0.5` with a perfect outcome model, so every
+# replicate's AIPW estimate is the SAME number — and an insertion sort of an already-sorted array
+# is O(B), not O(B^2). Measured with exactly that data, the quadratic sort ran the scaling test at
+# 3.94x and the assertion below passed against the defect it exists to catch. The periods here
+# (5 / 13 / 3 / 4) are pairwise coprime with each other and with the arm alternation, so a
+# resample lands on a different mixture almost every time and the sort sees unsorted input.
+fn _boot_y(n: Int) -> List[Float64]:
+    var out = List[Float64](capacity=n)
+    for i in range(n):
+        out.append(1.0 + Float64(i % 13))
+    return out^
+
+
+fn _boot_t(n: Int) -> List[Int]:
+    var out = List[Int](capacity=n)
+    for i in range(n):
+        out.append(1 if (i % 2) == 0 else 0)
+    return out^
+
+
+fn _boot_e(n: Int) -> List[Float64]:
+    var out = List[Float64](capacity=n)
+    for i in range(n):
+        out.append(0.35 + 0.3 * Float64(i % 5) / 5.0)
+    return out^
+
+
+fn _boot_m0(n: Int) -> List[Float64]:
+    var out = List[Float64](capacity=n)
+    for i in range(n):
+        out.append(0.5 + Float64(i % 3))
+    return out^
+
+
+fn _boot_m1(n: Int) -> List[Float64]:
+    var out = List[Float64](capacity=n)
+    for i in range(n):
+        out.append(1.5 + Float64(i % 4))
+    return out^
 
 
 fn _lf5() -> List[Float64]:
@@ -512,6 +559,63 @@ fn main() raises:
             MAX_CI_BOOTSTRAP_WORK,
             over_budget.status,
             in_budget.status,
+        )
+
+    # ── the charge has to bound the COST, and only a run can say whether it does ──
+    # The ceiling above bounds `n_replicates x n`. The two percentile calls at the end of
+    # `aipw_bootstrap_ci` cost `O(f(n_replicates))` with no `n` in it at all, so the charge says
+    # nothing about them, and `math_ext.quantile` makes `f` QUADRATIC (its `_sort_copy` is an
+    # insertion sort). MEASURED with that quantile, at charges the ceiling admits exactly:
+    #
+    #     n = 1024, B =   16384    1.12 s
+    #     n =  256, B =   65536    1.84 s
+    #     n =   64, B =  262144   20.79 s
+    #     n =   16, B = 1048576  353.92 s     <- and the block above ASSERTS this one admitted
+    #
+    # Same four charges through `stats.quantile`: 0.70 / 0.74 / 0.99 / 1.56 s.
+    #
+    # Asserted as a SCALING RATIO rather than a wall-clock bound, because a ratio is a property
+    # of the algorithm and a stopwatch reading is a property of the machine. Quadrupling `B` at a
+    # fixed `n` costs ~4x under an introsort and ~16x under an insertion sort; measured here,
+    # 4.02x against 14.16x, which no plausible machine or load reorders. The absolute ceiling
+    # beside it is deliberately loose (55x the observed 0.18 s) and exists only to catch a
+    # regression so gross that the ratio survives it.
+    var t_a0 = perf_counter_ns()
+    var boot_small = aipw_bootstrap_ci(
+        _boot_y(16), _boot_t(16), _boot_e(16), _boot_m0(16), _boot_m1(16), 32768, 7, 0.05
+    )
+    var t_a1 = perf_counter_ns()
+    var boot_big = aipw_bootstrap_ci(
+        _boot_y(16), _boot_t(16), _boot_e(16), _boot_m0(16), _boot_m1(16), 131072, 7, 0.05
+    )
+    var t_a2 = perf_counter_ns()
+    var secs_small = Float64(Int(t_a1 - t_a0)) / 1.0e9
+    var secs_big = Float64(Int(t_a2 - t_a1)) / 1.0e9
+    var quadruple_ratio = secs_big / secs_small if secs_small > 0.0 else 1.0e9
+    if (
+        boot_small.status == CI_OK
+        and boot_big.status == CI_OK
+        and boot_small.has_ci
+        and boot_big.has_ci
+        # 4x the replicates must cost about 4x, not about 16x
+        and quadruple_ratio < 8.0
+        and secs_big < 10.0
+    ):
+        passed += 1
+        print(
+            "  ✅ 4x the replicates costs",
+            quadruple_ratio,
+            "x, not 16x — the percentile sort is O(B log B)",
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌ the bootstrap percentile is superlinear in n_replicates:",
+            secs_small,
+            "s ->",
+            secs_big,
+            "s, ratio",
+            quadruple_ratio,
         )
 
     # ── refusals ─────────────────────────────────────────────────────────────

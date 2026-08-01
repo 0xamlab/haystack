@@ -47,7 +47,12 @@ What is REUSED, unchanged
 * `math_ext.mean` / `math_ext.variance` (ddof = 1) — the arm summaries and the
   influence-function standard error. The AIPW standard error IS `sqrt(var(psi) / n)`, so the
   frozen sample variance is the whole computation and nothing is re-derived here.
-* `math_ext.quantile` — the bootstrap percentile interval endpoints.
+* `stats.quantile` — the bootstrap percentile interval endpoints. `stats` and not `math_ext`,
+  which has a `quantile` of the same definition: `math_ext._sort_copy` is an insertion sort, so
+  its cost is quadratic in the replicate count, which is a caller's integer and is bounded only
+  by a work budget that does not charge for it. `stats.quantile` sorts through `stats.fast_sort`,
+  an introsort. Measured at charges the budget admits exactly, the difference is 353.9 s against
+  1.56 s; see `aipw_bootstrap_ci`.
 * `causal.stratified_ate` — called by the suite as the differential oracle for `strata_ate`,
   which must reproduce it exactly whenever every stratum is usable, and must DIVERGE (visibly,
   with a reported coverage) when one is not.
@@ -86,7 +91,16 @@ deprecation_state: active
 from std.math import sqrt
 
 from linear_models import elasticnet_fit
-from math_ext import mean as ext_mean, quantile as ext_quantile, variance as ext_variance
+from math_ext import mean as ext_mean, variance as ext_variance
+# `stats.quantile` and NOT `math_ext.quantile`. Both are frozen, both are numpy's 'linear'
+# interpolation, and on the finite input this file hands them they agree to the last bit — but
+# `math_ext.quantile` sorts through `math_ext._sort_copy`, which is `_ins_sort`: O(B^2).
+# `stats.quantile` sorts through `stats.sort_values` -> `stats.fast_sort`, an introsort: O(B log B).
+# `B` is `n_replicates`, a caller's integer, and the difference is the whole cost of
+# `aipw_bootstrap_ci` at the extreme its work budget admits — see the comment there.
+# `evaluation.resample` and `strategy.tournament`, the other two bootstrap percentile intervals in
+# this tree, already take `stats.quantile`; this file was the one that did not.
+from stats import quantile as stats_quantile
 
 from determinism.sampling_keyed import uniform_int_keyed
 from determinism.streams import stream_id
@@ -946,8 +960,26 @@ fn aipw_bootstrap_ci(
     if out.n_replicates_used < 2:
         out.status = CI_ERR_INSUFFICIENT_DATA
         return out^
-    var lo = ext_quantile(reps, 0.5 * alpha)
-    var hi = ext_quantile(reps, 1.0 - 0.5 * alpha)
+    # Two sorts of a `n_replicates`-long list. Charging `n_replicates x n` bounds the DRAWING
+    # loop above and says nothing at all about these two calls, whose cost is in `n_replicates`
+    # ALONE — the shape of undercharge rule 4b names: a budget that counts only the product.
+    # MEASURED at charges that are exactly at `MAX_CI_BOOTSTRAP_WORK`, so every one of them is
+    # admitted, with `math_ext.quantile`'s O(B^2) insertion sort:
+    #
+    #     n = 1024, B = 16384    1.12 s
+    #     n =  256, B = 65536    1.84 s
+    #     n =   64, B = 262144   20.8 s
+    #     n =   16, B = 1048576  353.9 s      <- six minutes, and the suite asserted it admitted
+    #
+    # The same four shapes through `stats.quantile`'s introsort: 0.70 s, 0.74 s, 0.99 s, 1.56 s.
+    # The cost is now FLAT in the shape at a fixed charge, which is what a budget that charges
+    # `n_replicates x n` is entitled to assume and previously could not.
+    #
+    # Neither the ceiling nor the hard `MAX_CI_ITERATIONS` cap could have caught this: both bound
+    # `B`, and no bound on `B` that still permits an ordinary 10,000-replicate bootstrap keeps a
+    # quadratic sort inside seconds. The fix is the O(B log B) frozen kernel, not a lower ceiling.
+    var lo = stats_quantile(reps, len(reps), 0.5 * alpha)
+    var hi = stats_quantile(reps, len(reps), 1.0 - 0.5 * alpha)
     var v = ext_variance(reps)
     if not ci_finite(lo) or not ci_finite(hi) or not ci_finite(v):
         return BootCI(CI_ERR_NON_FINITE)
