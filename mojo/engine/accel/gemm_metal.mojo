@@ -44,17 +44,19 @@ The wire type is Float64 either way, so every call pays a narrowing conversion i
 conversion out. The benchmark measures that conversion separately from the kernel, because for a
 small matrix it is most of the call.
 
-The tiling
-------------
-Each threadgroup computes one `TILE x TILE` block of C. The K dimension is walked in `TILE`-wide
-steps: every thread cooperatively loads one element of A and one of B into threadgroup memory, the
-group barriers, each thread accumulates `TILE` products from that shared tile, and the group barriers
-again before the next step.
+The tiling, and the measurement that chose it
+-----------------------------------------------
+Each threadgroup computes a `BM x BN` block of C, walking K in `BK`-wide steps. Within a group each
+THREAD owns a `TM x TN` register tile rather than a single output — that is the optimization. With one
+output per thread the inner loop performs two shared-memory loads per multiply-add and the kernel is
+bandwidth-bound; a register tile reuses each loaded value TM (or TN) times.
 
-The second barrier is the one that gets forgotten. Without it a fast thread starts overwriting the
-shared tile for step k+1 while a slow thread is still reading it for step k — a race that produces
-almost-right answers on small inputs and gets worse with occupancy, which is the hardest possible
-failure to debug.
+Measured on an M4 Max, hot, at a 2048-cube: the one-output-per-thread version reached 268 GFLOP/s and
+this one reaches **2018 GFLOP/s**, a 7.5x improvement from the same arithmetic in a different order.
+
+The specific tile sizes came from measurement and CONTRADICT our own cost model — see the constants
+below, where the predicted and measured orderings are tabulated. This is why they are constants with a
+table attached rather than numbers someone rounded to.
 
 Public API:
   gemm_metal_available()                                     -> Bool
@@ -88,11 +90,40 @@ no shader compiler, which is every Linux CI runner in this project. The flag is 
 skipped at runtime — a runtime `if` would not help, because codegen happens at compile time for
 anything reachable."""
 
-comptime TILE: Int = 16
-"""Threadgroup tile edge. 16x16 gives 256 threads per group — the same count `accel.launch` uses, and
-for the same reason: a multiple of the 32-wide SIMD group on both Apple and NVIDIA, large enough to
-hide memory latency, small enough not to exhaust registers. Two 16x16 Float32 tiles is 2 KB of
-threadgroup memory, comfortably inside every target's budget."""
+comptime BM: Int = 32
+comptime BN: Int = 32
+comptime BK: Int = 16
+comptime TM: Int = 2
+comptime TN: Int = 2
+comptime NTHREADS: Int = (BM // TM) * (BN // TN)
+"""The threadgroup tile (BM x BN), the K step (BK), and how many outputs ONE THREAD owns (TM x TN).
+
+Each thread computing several outputs is the whole optimization. With one output per thread the inner
+loop does two shared-memory loads per multiply-add and the kernel is bandwidth-bound long before it is
+compute-bound; holding a TM x TN block of accumulators in registers reuses each loaded value TM (or
+TN) times instead of once.
+
+THESE NUMBERS WERE MEASURED, AND THEY CONTRADICT OUR OWN COST MODEL. Scoring candidates through the
+frozen `gpu_kernels` roofline — arithmetic intensity, occupancy, register pressure — ranks 128x128
+with 8x8 per thread BEST and this 32x32 with 2x2 WORST. Measured hot at a 2048-cube, the order is
+reversed:
+
+| config | predicted score | measured hot GFLOP/s |
+|---|---|---|
+| 32x32, 2x2 | 0.55 (last) | **2018** |
+| 64x64, 4x4 | 1.09 | 706 |
+| 64x128, 4x8 | 1.46 | 855 |
+| 128x128, 8x8 | 2.19 (first) | 620 |
+
+The model ranks by arithmetic intensity, which rewards big tiles, and its occupancy term is constant
+across these because they all use 256 threads. What it does not capture is that a big tile means FEWER
+threadgroups, and this GPU hides latency by having many small groups in flight rather than few large
+ones. `gpu_kernels` was written as a roofline for a machine with a handful of large SMs; Apple silicon
+is not that machine.
+
+Recorded rather than corrected. The frozen kernel keeps its behaviour and its callers, and this
+package uses the measurement — but a reader who reaches for `roofline_performance` to pick a tile size
+on Apple silicon should know it points the wrong way."""
 
 comptime ACCEL_GEMM_MAX_DIM: Int = 1 << 14
 """Largest edge this kernel accepts, per dimension.
@@ -155,52 +186,78 @@ fn _tiled_gemm_kernel(
     n: Int,
     k: Int,
 ):
-    """One `TILE x TILE` block of `C = A @ B`, cooperating through threadgroup memory.
+    """A `BM x BN` block of `C = A @ B`, with each thread owning a `TM x TN` register tile.
 
-    Private, and it would be private even without the compile-time gate: it is a device function, and
-    the only thing that may call it is the launch below.
+    Private device function; only the gated launch below may call it.
+
+    Three things here are load-bearing and each has a failure mode worth naming.
+
+    THE SECOND BARRIER. Without it a fast thread overwrites the shared tile for step k+1 while a slow
+    one still reads it for step k. The answer comes out almost right, and worse under load — the
+    hardest possible failure to debug.
+
+    ZERO-PADDED LOADS RATHER THAN SKIPPED ONES. Out-of-range lanes store 0.0 instead of `continue`-ing.
+    Every thread must reach both barriers; an early exit on a partial tile hangs the group.
+
+    THE REGISTER TILE. `acc` lives in per-thread storage, not shared memory. That is what turns two
+    shared loads per multiply-add into two loads per TM x TN multiply-adds.
     """
     var a_tile = stack_allocation[
-        TILE * TILE, DType.float32, address_space = AddressSpace.SHARED
+        BM * BK, DType.float32, address_space = AddressSpace.SHARED
     ]()
     var b_tile = stack_allocation[
-        TILE * TILE, DType.float32, address_space = AddressSpace.SHARED
+        BK * BN, DType.float32, address_space = AddressSpace.SHARED
     ]()
+    var acc = stack_allocation[TM * TN, DType.float32]()
+    var reg_a = stack_allocation[TM, DType.float32]()
+    var reg_b = stack_allocation[TN, DType.float32]()
 
-    var ty = thread_idx.y
-    var tx = thread_idx.x
-    var row = block_idx.y * TILE + ty
-    var col = block_idx.x * TILE + tx
+    for i in range(TM * TN):
+        acc[i] = 0.0
 
-    var acc: Float32 = 0.0
-    var n_steps = (k + TILE - 1) // TILE
+    var ty = Int(thread_idx.y)
+    var tx = Int(thread_idx.x)
+    var tid = ty * (BN // TN) + tx
+    var block_row = Int(block_idx.y) * BM
+    var block_col = Int(block_idx.x) * BN
 
+    var n_steps = (k + BK - 1) // BK
     for step in range(n_steps):
-        var a_col = step * TILE + tx
-        var b_row = step * TILE + ty
-
-        # Out-of-range lanes load zero rather than skipping the load. Every thread must reach both
-        # barriers below, so an early `continue` here would hang the group on a partial tile.
-        if row < m and a_col < k:
-            a_tile[ty * TILE + tx] = a_ptr[row * k + a_col]
-        else:
-            a_tile[ty * TILE + tx] = 0.0
-        if b_row < k and col < n:
-            b_tile[ty * TILE + tx] = b_ptr[b_row * n + col]
-        else:
-            b_tile[ty * TILE + tx] = 0.0
+        # Cooperative load. Each thread fetches several elements so the whole group shares one tile.
+        for s in range(BM * BK // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var ar = idx // BK
+            var ac = idx % BK
+            var gr = block_row + ar
+            var gc = step * BK + ac
+            a_tile[idx] = a_ptr[gr * k + gc] if (gr < m and gc < k) else Float32(0.0)
+        for s in range(BK * BN // NTHREADS):
+            var idx = tid + s * NTHREADS
+            var br = idx // BN
+            var bc = idx % BN
+            var gr = step * BK + br
+            var gc = block_col + bc
+            b_tile[idx] = b_ptr[gr * n + gc] if (gr < k and gc < n) else Float32(0.0)
 
         barrier()
 
-        for e in range(TILE):
-            acc += a_tile[ty * TILE + e] * b_tile[e * TILE + tx]
+        for kk in range(BK):
+            for i in range(TM):
+                reg_a[i] = a_tile[(ty * TM + i) * BK + kk]
+            for j in range(TN):
+                reg_b[j] = b_tile[kk * BN + tx * TN + j]
+            for i in range(TM):
+                for j in range(TN):
+                    acc[i * TN + j] += reg_a[i] * reg_b[j]
 
-        # THE SECOND BARRIER. Without it a fast thread overwrites the tile for step+1 while a slow
-        # one is still reading it for step. The result is almost right, and worse under load.
         barrier()
 
-    if row < m and col < n:
-        c_ptr[row * n + col] = acc
+    for i in range(TM):
+        for j in range(TN):
+            var r = block_row + ty * TM + i
+            var c = block_col + tx * TN + j
+            if r < m and c < n:
+                c_ptr[r * n + c] = acc[i * TN + j]
 
 
 fn gemm_metal_flat(
@@ -285,8 +342,8 @@ fn _run_metal_gemm(
     # the zero-fill has to come back, and the symptom of forgetting would be garbage from whatever
     # the allocator last held.
 
-    var grid_x = (n + TILE - 1) // TILE
-    var grid_y = (m + TILE - 1) // TILE
+    var grid_x = (n + BN - 1) // BN
+    var grid_y = (m + BM - 1) // BM
     ctx.enqueue_function[_tiled_gemm_kernel, _tiled_gemm_kernel](
         c_buf.unsafe_ptr(),
         a_buf.unsafe_ptr(),
@@ -295,7 +352,7 @@ fn _run_metal_gemm(
         n,
         k,
         grid_dim=(grid_x, grid_y),
-        block_dim=(TILE, TILE),
+        block_dim=(BN // TN, BM // TM),
     )
     ctx.synchronize()
 

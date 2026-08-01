@@ -23,7 +23,7 @@ k=4096 on identical code.
 
 The shapes are chosen to break tiling, not to flatter it
 ----------------------------------------------------------
-Every size below is deliberately NOT a multiple of the 16-wide tile. A GEMM that only ever sees
+Every size below is deliberately NOT a multiple of the threadgroup tile. A GEMM that only ever sees
 tile-aligned shapes never exercises the partial tile at the edges, and the partial tile is where the
 bounds guards and the zero-padding of the shared memory actually matter. A kernel that is wrong there
 is right on every benchmark and wrong on every real model.
@@ -39,7 +39,8 @@ from accel.contract import (
 from accel.gemm_metal import (
     ACCEL_GEMM_MAX_DIM,
     ACCEL_GPU_BUILD,
-    TILE,
+    BM,
+    BN,
     gemm_metal_agreement,
     gemm_metal_available,
     gemm_metal_flat,

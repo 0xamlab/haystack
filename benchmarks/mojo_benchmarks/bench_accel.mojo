@@ -88,6 +88,52 @@ fn _count_occ(haystack: String, needle: String) -> Int:
     return count
 
 
+fn _median_of(mut samples: List[Float64]) -> Float64:
+    """Median by insertion sort. Small n, and the point is robustness rather than speed.
+
+    MEDIAN, not minimum. A best-of-N hides exactly the contention this benchmark needs to detect: on
+    a loaded machine the minimum can still look clean while every other sample is three times worse,
+    and the run then reports a number nobody will reproduce."""
+    for i in range(1, len(samples)):
+        var key = samples[i]
+        var j = i - 1
+        while j >= 0 and samples[j] > key:
+            samples[j + 1] = samples[j]
+            j -= 1
+        samples[j + 1] = key
+    return samples[len(samples) // 2]
+
+
+fn _spread_of(samples: List[Float64]) -> Float64:
+    """(max - min) / median. The dispersion that decides whether a run is reportable at all."""
+    if len(samples) == 0:
+        return 0.0
+    var lo = samples[0]
+    var hi = samples[0]
+    for i in range(len(samples)):
+        if samples[i] < lo:
+            lo = samples[i]
+        if samples[i] > hi:
+            hi = samples[i]
+    var sorted_copy = List[Float64](capacity=len(samples))
+    for i in range(len(samples)):
+        sorted_copy.append(samples[i])
+    var med = _median_of(sorted_copy)
+    if med <= 0.0:
+        return 0.0
+    return (hi - lo) / med
+
+
+comptime MAX_REPORTABLE_SPREAD: Float64 = 0.35
+"""Above this dispersion the machine, not the kernel, is what is being measured.
+
+Chosen after a run on a host at load average 389 produced `hot` SLOWER than `warm` — impossible by
+construction, since hot takes the median of samples collected after strictly more warm-up. The
+numbers were internally contradictory and the benchmark printed them as fact. A gate that catches
+that is worth more than any individual timing, because a reader cannot tell a contended sample from a
+real regression by looking at it."""
+
+
 def main() raises:
     var failures: Int = 0
 
@@ -167,10 +213,21 @@ def main() raises:
     print("   These kernels compute in DIFFERENT precisions on purpose — Float32 on the device,")
     print("   Float64 on the CPU. The bound is what Float32 can do, not what the tiling did.")
 
-    # ── 2. the breakdown that keeps the claim honest ──────────────────────────
+    # ── 2. cold / warm / hot, with a validity gate ────────────────────────────
+    # COLD  — first call at this shape: shader load, buffer first-touch, allocator warm-up.
+    # WARM  — the calls right after it, still settling.
+    # HOT   — steady state, median of many.
+    #
+    # All three are reported because they answer different questions: a caller issuing one GEMM per
+    # process sees COLD, a training loop sees HOT.
+    #
+    # And all three are CHECKED against each other. `hot <= warm <= cold` must hold — hot is the
+    # median of samples taken after strictly more warm-up, so any other ordering means the machine
+    # moved under the measurement. When that happens the row is reported as INVALID and no ratio is
+    # printed, because a contended sample and a real regression look identical on the page.
     print("")
-    print("[accel.gemm_metal] square GEMM: kernel-and-transfer vs CPU, per size")
-    print("   size    GPU end-to-end ms    CPU f64 ms     end-to-end ratio")
+    print("[accel.gemm_metal] square GEMM, end-to-end (conversion included)")
+    print("   size    cold ms   warm ms    hot ms   spread   |  CPU hot ms   ratio")
     var sizes = List[Int]()
     sizes.append(128)
     sizes.append(256)
@@ -182,26 +239,61 @@ def main() raises:
         var a = _pseudo(d * d, 1)
         var b = _pseudo(d * d, 5)
 
-        # Warm both paths. Cold, the first GPU call pays shader load and first-touch page mapping,
-        # and the first CPU call pays its own page faults; timing either cold compares warm-up.
-        var _wg = gemm_metal_flat(a, b, d, d, d)
-        var _wc = sgemm_flat(a, b, d, d, d, 1.0, 0.0, False, False)
-
-        var t0 = perf_counter_ns()
-        var g = gemm_metal_flat(a, b, d, d, d)
-        var gpu_ns = _ns_since(t0)
-
-        var t1 = perf_counter_ns()
-        var c = sgemm_flat(a, b, d, d, d, 1.0, 0.0, False, False)
-        var cpu_ns = _ns_since(t1)
-
-        if g.status != ACCEL_OK or c.status != GEMM_OK:
+        var t_cold = perf_counter_ns()
+        var g_cold = gemm_metal_flat(a, b, d, d, d)
+        var cold_ns = _ns_since(t_cold)
+        if g_cold.status != ACCEL_OK:
             failures += 1
-            print("   FAIL at", d, ":", g.status, c.status)
+            print("   FAIL at", d, ":", g_cold.status)
             continue
 
-        print("  ", d, "   ", gpu_ns / 1e6, "   ", cpu_ns / 1e6, "   ",
-              cpu_ns / gpu_ns if gpu_ns > 0.0 else 0.0, "x")
+        var warm_samples = List[Float64]()
+        for _ in range(3):
+            var t_warm = perf_counter_ns()
+            var _gw = gemm_metal_flat(a, b, d, d, d)
+            warm_samples.append(_ns_since(t_warm))
+        var warm_ns = _median_of(warm_samples)
+
+        for _ in range(5):
+            var _h = gemm_metal_flat(a, b, d, d, d)
+        var hot_samples = List[Float64]()
+        for _ in range(9):
+            var t_hot = perf_counter_ns()
+            var _gh = gemm_metal_flat(a, b, d, d, d)
+            hot_samples.append(_ns_since(t_hot))
+        var hot_ns = _median_of(hot_samples)
+        var spread = _spread_of(hot_samples)
+
+        # The CPU baseline gets the same treatment. Comparing a hot GPU against a cold CPU is the
+        # easiest way to manufacture a ratio, so both are hot and both are medians.
+        for _ in range(3):
+            var _wc = sgemm_flat(a, b, d, d, d, 1.0, 0.0, False, False)
+        var cpu_samples = List[Float64]()
+        for _ in range(5):
+            var t_cpu = perf_counter_ns()
+            var c = sgemm_flat(a, b, d, d, d, 1.0, 0.0, False, False)
+            cpu_samples.append(_ns_since(t_cpu))
+            if c.status != GEMM_OK:
+                failures += 1
+        var cpu_hot = _median_of(cpu_samples)
+        var cpu_spread = _spread_of(cpu_samples)
+
+        var ordered = hot_ns <= warm_ns and warm_ns <= cold_ns
+        var steady = spread <= MAX_REPORTABLE_SPREAD and cpu_spread <= MAX_REPORTABLE_SPREAD
+        if not ordered or not steady:
+            print("  ", d, "  ", cold_ns / 1e6, "  ", warm_ns / 1e6, "  ", hot_ns / 1e6,
+                  "  ", spread, "  |  INVALID — machine moved under the measurement")
+            if not ordered:
+                print("       hot <= warm <= cold does not hold; hot is a median taken after MORE")
+                print("       warm-up, so this ordering is impossible unless the host is contended")
+            if not steady:
+                print("       sample spread", spread, "(gpu)", cpu_spread, "(cpu) exceeds",
+                      MAX_REPORTABLE_SPREAD)
+            print("       no ratio printed. Re-run on an idle host.")
+            continue
+
+        print("  ", d, "  ", cold_ns / 1e6, "  ", warm_ns / 1e6, "  ", hot_ns / 1e6,
+              "  ", spread, "  |  ", cpu_hot / 1e6, "  ", cpu_hot / hot_ns, "x")
 
     print("")
     print("   The small sizes LOSE, and that is the correct result rather than a tuning failure:")
