@@ -217,6 +217,7 @@
 * [Normalization](benchmarks/normalization.md)
 * [Feed-forward](benchmarks/feed-forward.md)
 * [Code retrieval quality](benchmarks/code-retrieval.md)
+* [M4 forecasting accuracy](benchmarks/forecasting-m4.md)
 
 ## Help
 
