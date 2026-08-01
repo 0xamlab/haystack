@@ -18,6 +18,21 @@ from ab_testing import (
     ucb1_select as _ab_testing__ucb1_select,
 )
 
+from accel.contract import (
+    accel_status_name as _accel_contract__accel_status_name,
+    accel_policy_name as _accel_contract__accel_policy_name,
+    accel_backend_name as _accel_contract__accel_backend_name,
+    accel_policy_known as _accel_contract__accel_policy_known,
+    accel_resolve as _accel_contract__accel_resolve,
+    accel_worth_offloading as _accel_contract__accel_worth_offloading,
+)
+
+from accel.device import (
+    accel_has_device as _accel_device__accel_has_device,
+    accel_device_name_len as _accel_device__accel_device_name_len,
+    accel_device_probe as _accel_device__accel_device_probe,
+)
+
 from accounting import (
     straight_line_depreciation as _accounting__straight_line_depreciation,
     declining_balance as _accounting__declining_balance,
@@ -7006,6 +7021,10 @@ from workflow_engine import (
     chain_output_compatibility as _workflow_engine__chain_output_compatibility,
 )
 
+from accel.device import (
+    DeviceProbe,
+)
+
 from arima import (
     ARFit,
     MAFit,
@@ -9508,6 +9527,20 @@ fn _to_json_degreecentralityresult(value: DegreeCentralityResult) raises -> Stri
     result += _to_json_list_float64(value.in_values)
     result += ","
     result += _to_json_list_float64(value.total_values)
+    result += "]}"
+    return result
+
+fn _to_json_deviceprobe(value: DeviceProbe) raises -> String:
+    var result = String("{\"__algenta_struct\":\"DeviceProbe\",\"v\":[")
+    result += _to_json_bool(value.device_present)
+    result += ","
+    result += _to_json_bool(value.launch_verified)
+    result += ","
+    result += _to_json_int(value.backend)
+    result += ","
+    result += _to_json_int(value.name_length)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -14320,6 +14353,167 @@ fn _dispatch_ab_testing(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module ab_testing."
+    )
+
+fn _dispatch_accel__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "accel_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _accel_contract__accel_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_policy_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _accel_contract__accel_policy_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_policy_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_policy_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_backend_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _accel_contract__accel_backend_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_backend_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_backend_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_policy_known":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _accel_contract__accel_policy_known(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_policy_known."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_policy_known expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_resolve":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_bool_token(json_array_get(args_array, 2))
+                var result = _accel_contract__accel_resolve(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_resolve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_resolve expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_worth_offloading":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_float64_token(json_array_get(args_array, 4))
+                var result = _accel_contract__accel_worth_offloading(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.contract.accel_worth_offloading."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.contract.accel_worth_offloading expected 5 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module accel.contract."
+    )
+
+fn _dispatch_accel__device(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "accel_has_device":
+        if arg_count == 0:
+            try:
+                var result = _accel_device__accel_has_device()
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.device.accel_has_device."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.device.accel_has_device expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_device_name_len":
+        if arg_count == 0:
+            try:
+                var result = _accel_device__accel_device_name_len()
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.device.accel_device_name_len."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.device.accel_device_name_len expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "accel_device_probe":
+        if arg_count == 0:
+            try:
+                var result = _accel_device__accel_device_probe()
+                var result_json = _to_json_deviceprobe(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for accel.device.accel_device_probe."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function accel.device.accel_device_probe expected 0 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module accel.device."
     )
 
 fn _dispatch_accounting(function_name: String, args_array: String) raises -> String:
@@ -132969,6 +133163,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         args_array = "[]"
     if module_name == "ab_testing":
         return _dispatch_ab_testing(function_name, args_array)
+    if module_name == "accel.contract":
+        return _dispatch_accel__contract(function_name, args_array)
+    if module_name == "accel.device":
+        return _dispatch_accel__device(function_name, args_array)
     if module_name == "accounting":
         return _dispatch_accounting(function_name, args_array)
     if module_name == "acoustics":

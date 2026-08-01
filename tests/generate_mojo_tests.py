@@ -153,6 +153,8 @@ HANDWRITTEN_TESTS = frozenset(
         "test_mlpk_contract.mojo",
         "test_lossk_cross_entropy.mojo",
         "test_lossk_contract.mojo",
+        "test_accel_contract.mojo",
+        "test_accel_launch.mojo",
         "test_tensorx_pack.mojo",
         "test_tensorx_dtype.mojo",
         "test_tensorx_contract.mojo",
