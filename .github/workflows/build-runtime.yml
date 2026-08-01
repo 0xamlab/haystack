@@ -172,6 +172,9 @@ jobs:
             echo "::warning::ALGENTA_SIGNING_KEY unset on a non-publishing build; skipping the SE helper."
             exit 0
           fi
+          # build_se_helper.py signs the SE manifest with `cryptography`; this step is macOS-only
+          # AND publish-gated, so it had never executed and the dependency was never installed.
+          python3 -m pip install --quiet cryptography
           python3 scripts/build_se_helper.py --out mojo_build/runtime-wheel/se --platform "${{ matrix.target }}"
 
       - name: Build platform runtime wheel
