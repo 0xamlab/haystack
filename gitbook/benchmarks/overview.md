@@ -5,7 +5,7 @@ description: How Algenta measures and publishes performance — what each benchm
 
 # Benchmarks
 
-Algenta publishes performance the same way it publishes everything else: with the configuration attached. A number without a baseline, a hardware description and a reproduction command is marketing, not measurement.
+Every result in this section includes its baseline, hardware description, and reproduction command.
 
 This section is the index. Each benchmark family has its own page with its own claims, baselines and results, so results can be added without rewriting what is already here.
 
@@ -22,7 +22,7 @@ More families are added here as they are measured. A family appears above only o
 
 ## The rules every number follows
 
-These are not aspirations. They are the conditions a result has to meet before it appears on any page in this section.
+A result appears in this section only if it meets all of the following conditions.
 
 {% hint style="info" %}
 **Measured against the strongest available baseline, not the weakest.** A speedup over an unoptimised reference is an implementation detail. A speedup over the best thing a reader could otherwise use is a result. Each page names its baseline explicitly, and a page whose only baseline is an earlier Algenta implementation says so in its first line rather than presenting the ratio as competitive.
