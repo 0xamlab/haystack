@@ -216,6 +216,7 @@
 * [Attention](benchmarks/attention.md)
 * [Normalization](benchmarks/normalization.md)
 * [Feed-forward](benchmarks/feed-forward.md)
+* [Code retrieval quality](benchmarks/code-retrieval.md)
 
 ## Help
 
