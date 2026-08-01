@@ -7,8 +7,12 @@ description: Dense and quantized matrix kernel results — blocked GEMM and NF4 
 
 Results for the dense and quantized matrix kernels that sit under the runtime's numeric surface. Each claim below names its baseline, states the property being gated, and reports the correctness check that ran with it.
 
-{% hint style="info" %}
-The baseline throughout this page is **Algenta's own earlier matrix implementation**, not a third-party library. These numbers say the engine got faster at something it already did. They are not a comparison against any external framework, and should not be read as one.
+{% hint style="warning" %}
+**Read the baseline before reading the numbers.** Everything on this page compares Algenta against **Algenta's own earlier implementation**. These are portability and regression figures — the engine got faster at something it already did — and they are **not** a claim about any other library.
+
+For dense floating-point matrix multiply specifically, a tuned vendor library is the right tool and is faster than this kernel. Measured on the same Apple silicon host, a vendor GPU path reaches roughly twice the throughput of Algenta's Metal matrix kernel. Algenta's dense matrix kernels exist to be **portable, dependency-free and correct on shapes a vendor path does not cover** — not to win a dense-GEMM contest, and no number here should be quoted as if they did.
+
+Where Algenta's kernels do lead is stated on the other pages in this section, and it is mostly **memory rather than throughput**: attention with a working set that does not grow with context, and a loss layer that never materialises the logit tensor. Those are the numbers worth quoting.
 {% endhint %}
 
 ## Hardware
@@ -23,7 +27,7 @@ Results are reported for this configuration only. Other chip generations and mem
 
 ## Dense matrix multiply
 
-A cache-blocked kernel with vectorised inner loops, distributed across physical cores, compared against the engine's earlier single-threaded implementation on identical inputs.
+A cache-blocked kernel with vectorised inner loops, distributed across physical cores, compared against the engine's earlier single-threaded implementation on identical inputs. **This is a self-comparison, not a competitive one** — see the note above.
 
 | Size | Blocked | Prior implementation | Ratio | Cost per operation |
 | --- | --- | --- | --- | --- |

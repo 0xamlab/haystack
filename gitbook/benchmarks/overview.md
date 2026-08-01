@@ -38,6 +38,8 @@ These are not aspirations. They are the conditions a result has to meet before i
 ## What is not published here
 
 * Single-number claims of the form "N times faster", with no shape, no baseline and no hardware.
+* A self-comparison presented as a competitive one. Where Algenta is measured against its own earlier implementation, the page says so — and where a tuned vendor library is faster, the page says that too rather than omitting the comparison.
+* A timing taken on a machine that was busy. Benchmarks in this engine check `hot ≤ warm ≤ cold` and a sample-dispersion bound before reporting; a run that fails either is published as invalid with no ratio, because a contended sample and a real regression look identical on the page.
 * A kernel-level speedup restated as an end-to-end one. A kernel result may be published as a kernel result; it becomes an end-to-end claim only when an end-to-end run demonstrates it.
 * Results from a configuration a reader cannot reproduce.
 
