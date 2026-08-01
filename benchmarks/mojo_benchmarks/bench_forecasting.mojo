@@ -35,6 +35,15 @@ What is measured, and why each one is the claim that matters
 5. **Reconciliation is linear in cells.** Bottom-up and top-down are single passes plus an
    audit, so ns per cell must stay flat as the hierarchy grows.
 
+6. **The closed-form initial-state solve is one O(n) pass.** Every Nelder-Mead objective
+   evaluation in `forecasting.fitted` is the same pass, so a super-linear solve would
+   multiply through every fit; ns per observation must stay flat.
+
+7. **A fitted driver is O(n) per evaluation with a BOUNDED evaluation count.** Gated on
+   total cost across a 4x rise in n: linear-per-evaluation lands near 4x (times small
+   evaluation-count drift), quadratic lands at 16x and beyond. The 10x limit separates
+   the hypotheses while tolerating the drift.
+
 Gate
 ----
 Fails on the SCALING properties, not on absolute nanoseconds, which vary by machine:
@@ -43,6 +52,8 @@ Fails on the SCALING properties, not on absolute nanoseconds, which vary by mach
     in period
   * empirical-band ns per k^2 must not grow more than 3x across a 4x rise in k
   * reconciliation ns per cell must not grow more than 3x across a 16x rise in cells
+  * initial-state-solve ns per observation must not grow more than 3x across a 4x rise in n
+  * holt_fitted total cost must not grow more than 10x across a 4x rise in n
   * every timed call must return FC_OK — a refusal is instant and would "win" every timing
 Absolute numbers are printed for tracking.
 
@@ -59,6 +70,7 @@ from forecasting.contract import (
     FC_OK,
     FC_MAX_QUANTILE_SAMPLES,
 )
+from forecasting.fitted import fitted_init_solve, holt_fitted
 from forecasting.hierarchy import reconcile_bottom_up_flat, reconcile_top_down_flat
 from forecasting.interval import interval_empirical_flat
 
@@ -342,6 +354,89 @@ fn main() raises:
             failures += 1
             print("  ❌ reconciliation grew super-linearly:", recon_unit[0], "->",
                   recon_unit[1])
+
+    # ══ 6. the closed-form initial-state solve is ONE O(n) pass ═══════════════════
+    #
+    # `fitted_init_solve` accumulates a 2x2 normal system in a single forward pass plus
+    # one clean SSE pass, so ns per observation must stay flat as the series grows. This
+    # is the load-bearing shape claim for the fitted family: every Nelder-Mead objective
+    # evaluation in the drivers is the same O(n) pass, so a super-linear solve would
+    # multiply through every fit.
+    var solve_unit = List[Float64]()
+    var solve_ns_list = List[Int]()
+    solve_ns_list.append(4096)
+    solve_ns_list.append(16384)
+    for i in range(len(solve_ns_list)):
+        var n_solve = solve_ns_list[i]
+        var ys = _series(n_solve, 12)
+        var best_solve: Float64 = 0.0
+        var refused = False
+        for rep in range(GATE_REPS):
+            var t12 = perf_counter_ns()
+            var solved = fitted_init_solve(ys, 0.3, 0.05, 1.0)
+            var t13 = perf_counter_ns()
+            if solved.status != FC_OK or not solved.solved:
+                refused = True
+                print("  ❌ solve refused at n =", n_solve, solved.status_name)
+                break
+            if rep == 0 or _ns(t12, t13) < best_solve:
+                best_solve = _ns(t12, t13)
+        if refused:
+            failures += 1
+            continue
+        var ns_per_obs = best_solve / Float64(n_solve)
+        solve_unit.append(ns_per_obs)
+        print("  n =", n_solve, "min of", GATE_REPS, "total ns", best_solve,
+              "ns/obs", ns_per_obs)
+    if len(solve_unit) == 2:
+        if solve_unit[1] <= 3.0 * solve_unit[0]:
+            print("  ✅ initial-state solve ns per observation stayed flat across 4x n")
+        else:
+            failures += 1
+            print("  ❌ initial-state solve grew super-linearly:", solve_unit[0], "->",
+                  solve_unit[1])
+
+    # ══ 7. a fitted driver is O(n) per evaluation, with a BOUNDED evaluation count ═
+    #
+    # `holt_fitted`'s cost is (Nelder-Mead evaluations) x O(n), and the evaluation count
+    # is data-dependent but bounded (FIT_NM_MAX_EVALS) and empirically stable across
+    # sizes of the same deterministic family. The gate is therefore on TOTAL cost across
+    # a 4x rise in n: an O(n) per-evaluation implementation lands near 4x (times a small
+    # evaluation-count drift), while a quadratic per-evaluation implementation lands at
+    # 16x or more at equal counts. The 10x limit separates those two hypotheses while
+    # tolerating up to ~2.5x evaluation-count variation; it is a shape gate, not an
+    # absolute-nanoseconds gate.
+    var fit_total = List[Float64]()
+    var fit_ns_list = List[Int]()
+    fit_ns_list.append(512)
+    fit_ns_list.append(2048)
+    for i in range(len(fit_ns_list)):
+        var n_fit = fit_ns_list[i]
+        var yf = _series(n_fit, 12)
+        var best_fit: Float64 = 0.0
+        var refused = False
+        for rep in range(GATE_REPS):
+            var t14 = perf_counter_ns()
+            var fitted = holt_fitted(yf, 8)
+            var t15 = perf_counter_ns()
+            if fitted.status != FC_OK:
+                refused = True
+                print("  ❌ holt_fitted refused at n =", n_fit, fitted.status_name)
+                break
+            if rep == 0 or _ns(t14, t15) < best_fit:
+                best_fit = _ns(t14, t15)
+        if refused:
+            failures += 1
+            continue
+        fit_total.append(best_fit)
+        print("  n =", n_fit, "min of", GATE_REPS, "holt_fitted total ns", best_fit)
+    if len(fit_total) == 2:
+        if fit_total[1] <= 10.0 * fit_total[0]:
+            print("  ✅ holt_fitted total cost grew sub-quadratically across 4x n")
+        else:
+            failures += 1
+            print("  ❌ holt_fitted cost is super-linear per evaluation:", fit_total[0],
+                  "->", fit_total[1])
 
     print("  [bench_forecasting] scaling failures:", failures)
 

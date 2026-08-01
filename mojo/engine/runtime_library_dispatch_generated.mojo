@@ -2412,6 +2412,13 @@ from forecasting.contract import (
     fc_quantile_of as _forecasting_contract__fc_quantile_of,
 )
 
+from forecasting.fitted import (
+    fitted_init_solve as _forecasting_fitted__fitted_init_solve,
+    holt_fitted as _forecasting_fitted__holt_fitted,
+    damped_fitted as _forecasting_fitted__damped_fitted,
+    ets_aaa_fitted as _forecasting_fitted__ets_aaa_fitted,
+)
+
 from forecasting.hierarchy import (
     hierarchy_shape_defect as _forecasting_hierarchy__hierarchy_shape_defect,
     hierarchy_coherence_flat as _forecasting_hierarchy__hierarchy_coherence_flat,
@@ -2442,6 +2449,11 @@ from forecasting.point import (
     ar_forecast_checked as _forecasting_point__ar_forecast_checked,
     baseline_forecast as _forecasting_point__baseline_forecast,
     deseasonalise_flat as _forecasting_point__deseasonalise_flat,
+)
+
+from forecasting.select import (
+    select_best_fitted as _forecasting_select__select_best_fitted,
+    combine_inverse_mae_fitted as _forecasting_select__combine_inverse_mae_fitted,
 )
 
 from forensics import (
@@ -7941,6 +7953,11 @@ from forecasting.contract import (
     FcQuantile,
 )
 
+from forecasting.fitted import (
+    FittedForecast,
+    InitSolve,
+)
+
 from forecasting.hierarchy import (
     CoherenceReport,
     Reconciliation,
@@ -7959,6 +7976,10 @@ from forecasting.interval import (
 from forecasting.point import (
     PointForecast,
     SeasonalAdjust,
+)
+
+from forecasting.select import (
+    SelectedForecast,
 )
 
 from gaussian_process import (
@@ -12220,6 +12241,50 @@ fn _to_json_fcquantile(value: FcQuantile) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_fittedforecast(value: FittedForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"FittedForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_float64(value.alpha)
+    result += ","
+    result += _to_json_float64(value.beta)
+    result += ","
+    result += _to_json_float64(value.phi)
+    result += ","
+    result += _to_json_float64(value.l0)
+    result += ","
+    result += _to_json_float64(value.b0)
+    result += ","
+    result += _to_json_float64(value.level)
+    result += ","
+    result += _to_json_float64(value.trend)
+    result += ","
+    result += _to_json_float64(value.sse)
+    result += ","
+    result += _to_json_float64(value.insample_mae)
+    result += ","
+    result += _to_json_int(value.init_status)
+    result += ","
+    result += _to_json_bool(value.init_solved)
+    result += ","
+    result += _to_json_int(value.n_params)
+    result += ","
+    result += _to_json_string(value.status_name)
+    result += ","
+    result += _to_json_string(value.init_status_name)
+    result += "]}"
+    return result
+
 fn _to_json_flashagreement(value: FlashAgreement) raises -> String:
     var result = String("{\"__algenta_struct\":\"FlashAgreement\",\"v\":[")
     result += _to_json_float64(value.max_out_delta)
@@ -13377,6 +13442,26 @@ fn _to_json_infeasibilitycore(value: InfeasibilityCore) raises -> String:
     result += _to_json_list_float64(value.core_rhs)
     result += ","
     result += _to_json_list_bool(value.necessary)
+    result += "]}"
+    return result
+
+fn _to_json_initsolve(value: InitSolve) raises -> String:
+    var result = String("{\"__algenta_struct\":\"InitSolve\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_bool(value.has_state)
+    result += ","
+    result += _to_json_bool(value.solved)
+    result += ","
+    result += _to_json_float64(value.l0)
+    result += ","
+    result += _to_json_float64(value.b0)
+    result += ","
+    result += _to_json_float64(value.sse)
+    result += ","
+    result += _to_json_float64(value.det)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -17858,6 +17943,34 @@ fn _to_json_segmentdistance(value: SegmentDistance) raises -> String:
     result += _to_json_bool(value.has_leg_length)
     result += ","
     result += _to_json_float64(value.leg_length_m)
+    result += "]}"
+    return result
+
+fn _to_json_selectedforecast(value: SelectedForecast) raises -> String:
+    var result = String("{\"__algenta_struct\":\"SelectedForecast\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.horizon)
+    result += ","
+    result += _to_json_int(value.n_train)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_int(value.chosen_method_id)
+    result += ","
+    result += _to_json_bool(value.is_combination)
+    result += ","
+    result += _to_json_list_int(value.method_ids)
+    result += ","
+    result += _to_json_list_int(value.component_status)
+    result += ","
+    result += _to_json_list_float64(value.maes)
+    result += ","
+    result += _to_json_list_float64(value.weights)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -59292,6 +59405,84 @@ fn _dispatch_forecasting__contract(function_name: String, args_array: String) ra
         "Function '" + function_name + "' is not registered for module forecasting.contract."
     )
 
+fn _dispatch_forecasting__fitted(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "fitted_init_solve":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _forecasting_fitted__fitted_init_solve(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_initsolve(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.fitted_init_solve."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.fitted_init_solve expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "holt_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_fitted__holt_fitted(arg_0, arg_1)
+                var result_json = _to_json_fittedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.holt_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.holt_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "damped_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_fitted__damped_fitted(arg_0, arg_1)
+                var result_json = _to_json_fittedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.damped_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.damped_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "ets_aaa_fitted":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _forecasting_fitted__ets_aaa_fitted(arg_0, arg_1, arg_2)
+                var result_json = _to_json_fittedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.fitted.ets_aaa_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.fitted.ets_aaa_fitted expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.fitted."
+    )
+
 fn _dispatch_forecasting__hierarchy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hierarchy_shape_defect":
@@ -59692,6 +59883,47 @@ fn _dispatch_forecasting__point(function_name: String, args_array: String) raise
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module forecasting.point."
+    )
+
+fn _dispatch_forecasting__select(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "select_best_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_select__select_best_fitted(arg_0, arg_1)
+                var result_json = _to_json_selectedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.select.select_best_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.select.select_best_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "combine_inverse_mae_fitted":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _forecasting_select__combine_inverse_mae_fitted(arg_0, arg_1)
+                var result_json = _to_json_selectedforecast(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for forecasting.select.combine_inverse_mae_fitted."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function forecasting.select.combine_inverse_mae_fitted expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module forecasting.select."
     )
 
 fn _dispatch_forensics(function_name: String, args_array: String) raises -> String:
@@ -148234,6 +148466,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_forecasting__backtest(function_name, args_array)
     if module_name == "forecasting.contract":
         return _dispatch_forecasting__contract(function_name, args_array)
+    if module_name == "forecasting.fitted":
+        return _dispatch_forecasting__fitted(function_name, args_array)
     if module_name == "forecasting.hierarchy":
         return _dispatch_forecasting__hierarchy(function_name, args_array)
     if module_name == "forecasting.intermittent":
@@ -148242,6 +148476,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_forecasting__interval(function_name, args_array)
     if module_name == "forecasting.point":
         return _dispatch_forecasting__point(function_name, args_array)
+    if module_name == "forecasting.select":
+        return _dispatch_forecasting__select(function_name, args_array)
     if module_name == "forensics":
         return _dispatch_forensics(function_name, args_array)
     if module_name == "formal_logic":

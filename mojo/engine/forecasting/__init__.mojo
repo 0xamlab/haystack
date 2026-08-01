@@ -86,6 +86,10 @@ Modules
 -------
   contract     — status codes, ceilings, tolerances, guards, the empirical quantile
   point        — ETS(A,N,N) / ETS(A,A,N) damped / ETS(A,A,A), Theta, checked AR, deseasonalise
+  fitted       — Holt/Damped/ETS(A,A,A) with FITTED smoothing parameters and initial
+                 state (the closed-form 2x2 initial-state solve plus the reference
+                 Nelder-Mead), closing the measured M4 fixed-init defect
+  select       — per-series selection and inverse-MAE combination over {SES, Damped, Theta}
   backtest     — rolling-origin backtest and the honest error measures
   intermittent — Croston / SBA / SBJ and demand classification
   hierarchy    — bottom-up and top-down reconciliation, plus a coherence audit

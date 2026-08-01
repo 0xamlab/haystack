@@ -177,10 +177,12 @@ HANDWRITTEN_TESTS = frozenset(
         # Forecasting package: hand-written known-value suites.
         "test_forecasting_backtest.mojo",
         "test_forecasting_contract.mojo",
+        "test_forecasting_fitted.mojo",
         "test_forecasting_hierarchy.mojo",
         "test_forecasting_intermittent.mojo",
         "test_forecasting_interval.mojo",
         "test_forecasting_point.mojo",
+        "test_forecasting_select.mojo",
         # Statistical inference package: hand-written known-value suites. Note these are the
         # `inference/` PACKAGE suites; test_inference_engine / test_inference_cost_latency /
         # test_inference_security belong to the flat LLM-serving modules and are listed above.
