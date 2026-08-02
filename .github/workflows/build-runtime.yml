@@ -40,10 +40,11 @@ jobs:
             platform: linux
             mcpu: "x86-64-v3"
             shard_timeout: 900
-            # Below the ~31 GiB the swap step below provisions, so a shard that
-            # grows past this fails with a named diagnostic instead of taking the
-            # runner VM down with a bare exit 143.
-            shard_max_rss_mb: 24000
+            # Fallback only: the swap step below overrides this with 80% of the
+            # RAM+swap it actually provisions, so a shard that outgrows the
+            # machine fails with a named diagnostic instead of taking the runner
+            # VM down with a bare exit 143.
+            shard_max_rss_mb: 8000
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -66,44 +67,71 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y patchelf
 
-      # `mojo build` needs far more memory than a standard hosted Linux runner has.
-      # A single 24-module shard was measured at ~11 GiB of peak footprint, against
-      # 7 GiB of RAM plus the image's stock 4 GiB swapfile. Shards under ~11 GiB
-      # survived by swapping (which is why this job is ~4x slower per shard than
-      # macOS); the first shard to cross 11 GiB took the whole VM out, and the step
-      # reported only `exit code 143` plus "The runner has received a shutdown
-      # signal" because nothing inside the VM was left to report anything else.
-      # /mnt is a large scratch SSD that the build does not otherwise use, so the
-      # cheapest correct fix is to stop pretending 4 GiB of swap is enough.
+      # `mojo build` needs more memory than a standard hosted Linux runner has.
+      # Measured on this exact runner: 7.8 GiB RAM + a 3.0 GiB stock swapfile =
+      # a 10.8 GiB ceiling. The heaviest 24-module shard peaks at 11.3 GiB. Shards
+      # under the ceiling survive by swapping (which is why this job is ~4x slower
+      # per shard than macOS); the first shard to cross it takes the whole VM out,
+      # and the step then reports only `exit code 143` plus "The runner has
+      # received a shutdown signal", because nothing inside the VM is left to
+      # report anything else.
+      #
+      # There is no scratch disk to put a bigger swapfile on -- /mnt is not a
+      # separate mount on this image and / has only ~12 GiB free of 73 GiB. So
+      # reclaim the preinstalled toolchains this build never touches (Android,
+      # Haskell, .NET, Swift, prebaked Docker images) and spend the space on swap.
+      # /opt/hostedtoolcache is deliberately NOT removed: setup-python's
+      # interpreter lives there and every later step needs it.
       - name: Provision Linux compiler memory headroom
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          echo "before:"; free -h; swapon --show || true; df -h / /mnt || true
-          # Prefer the scratch disk, but do not hard-fail the release if a future
-          # runner image drops it — a smaller swapfile on / still beats none.
-          host_dir=/mnt
-          [ -d "$host_dir" ] || host_dir=/
-          avail_gib=$(( $(df --output=avail -k "$host_dir" | tail -1) / 1024 / 1024 ))
+          echo "== before =="; free -h; swapon --show || true; df -h /
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/local/.ghcup \
+            /opt/ghc \
+            /usr/share/dotnet \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /usr/share/miniconda || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "== reclaimed =="; df -h /
+          # Keep 12 GiB of the freed space for the build's own artifacts and temp
+          # objects; spend the rest, up to 24 GiB, on swap.
+          avail_gib=$(( $(df --output=avail -k / | tail -1) / 1024 / 1024 ))
           swap_gib=24
-          if (( avail_gib < swap_gib + 8 )); then swap_gib=$(( avail_gib - 8 )); fi
+          if (( avail_gib - 12 < swap_gib )); then swap_gib=$(( avail_gib - 12 )); fi
           if (( swap_gib < 8 )); then
-            echo "::error::${host_dir} has only ${avail_gib} GiB free; the Mojo compiler needs" \
-                 "at least 8 GiB of swap on top of runner RAM and will take the VM down without it"
+            echo "::error::only ${avail_gib} GiB free on / after reclaiming toolchains;" \
+                 "the Mojo compiler peaks at ~11.3 GiB against ~7.8 GiB of runner RAM and" \
+                 "needs at least 8 GiB of swap, or a larger runner"
             exit 1
           fi
-          swapfile="${host_dir%/}/algenta-build-swap"
-          sudo swapoff -a
-          sudo rm -f /mnt/swapfile /swapfile
-          sudo fallocate -l "${swap_gib}G" "$swapfile"
-          sudo chmod 600 "$swapfile"
-          sudo mkswap "$swapfile"
-          sudo swapon "$swapfile"
+          sudo fallocate -l "${swap_gib}G" /algenta-build-swap
+          sudo chmod 600 /algenta-build-swap
+          sudo mkswap /algenta-build-swap >/dev/null
+          sudo swapon /algenta-build-swap
           # The compiler's working set is anonymous memory that cannot be dropped;
           # the page cache holding the pixi environment can be re-read from disk.
           # Evict the cache first.
           sudo sysctl -w vm.swappiness=10
-          echo "after:"; free -h; swapon --show
+          echo "== after =="; free -h; swapon --show; df -h /
+          # Derive the per-shard ceiling from the headroom we actually got rather
+          # than from a constant that can silently exceed it. 80% of RAM+swap
+          # leaves room for the runner agent and page cache.
+          total_mib=$(free -m | awk '/^Mem:/{m=$2} /^Swap:/{s=$2} END{print m+s}')
+          # An unreadable total would arithmetic-evaluate to 0 and silently
+          # DISABLE the ceiling, which is the failure mode this whole step exists
+          # to remove. Refuse instead.
+          if [ -z "${total_mib}" ] || (( total_mib < 8000 )); then
+            echo "::error::could not read usable memory from free(1) (got '${total_mib}' MiB);" \
+                 "refusing to run without a per-shard footprint ceiling"
+            exit 1
+          fi
+          echo "RUNTIME_SHARD_MAX_RSS_MB=$(( total_mib * 80 / 100 ))" >> "$GITHUB_ENV"
 
       - name: Compile bounded runtime worker shards
         env:
@@ -112,11 +140,15 @@ jobs:
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
         run: |
           set -euo pipefail
+          # The linux step above publishes a ceiling derived from the memory it
+          # actually provisioned; the matrix value is the fallback for macOS.
+          max_rss="${RUNTIME_SHARD_MAX_RSS_MB:-${{ matrix.shard_max_rss_mb }}}"
+          echo "per-shard footprint ceiling: ${max_rss} MiB"
           python3 scripts/build_runtime_shards.py \
             --out "${GITHUB_WORKSPACE}/mojo_build/runtime-shards" \
             --shard-size 24 \
             --timeout-seconds ${{ matrix.shard_timeout }} \
-            --max-rss-mb ${{ matrix.shard_max_rss_mb }}
+            --max-rss-mb "${max_rss}"
 
       - name: Stage self-contained runtime package
         run: |
