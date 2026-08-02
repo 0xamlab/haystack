@@ -216,6 +216,7 @@
 * [Attention](benchmarks/attention.md)
 * [Normalization](benchmarks/normalization.md)
 * [Feed-forward](benchmarks/feed-forward.md)
+* [Generation](benchmarks/generation.md)
 * [Code retrieval quality](benchmarks/code-retrieval.md)
 * [Dataframe group-by](benchmarks/dataframe-groupby.md)
 * [Least-squares accuracy](benchmarks/least-squares-accuracy.md)
