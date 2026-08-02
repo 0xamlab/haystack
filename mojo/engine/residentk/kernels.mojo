@@ -599,6 +599,101 @@ fn _norm_gemv_kernel_i8(
         y[j] = red[sub * _LANES]
 
 
+fn _norm_gemv_kernel_simd_i8(
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
+):
+    """The REDUCTION-MECHANISM twin of `_norm_gemv_kernel_i8` — IDENTICAL int8-dequant GEMV math,
+    IDENTICAL per-output-row `wscale`, only HOW its two internal reductions collapse to a scalar
+    differs. Same relationship `_sdpa_kernel_simd` has to `_sdpa_kernel`, applied to a DIFFERENT
+    reduction shape — see `gemv_simd_reduce_probe.mojo` for the device-side confirmation this
+    docstring's claims rest on, not assumed.
+
+    `_norm_gemv_kernel_i8` has TWO barrier-tree reductions, not one, and they are DIFFERENT shapes:
+
+    1. Sum-of-squares over the whole `k`-length vector, reduced across all `_TG = 256` threads —
+       `log2(256) = 8` barrier-synchronized halving levels. Apple's real hardware SIMD-group width
+       (`std.gpu.WARP_SIZE` under `is_apple_gpu()`) is 32, confirmed on this M4 Max — so these 256
+       threads are EXACTLY `_SUBS = 8` full SIMD-groups, the SAME multi-group shape
+       `_sdpa_kernel_simd`'s `d_head = 128 = 4 groups` fix targeted, just twice as many groups.
+       Fixed the SAME way: `_warp_sum` reduces each of the 8 groups with NO barrier (hardware
+       lockstep), one lane per group writes its group's total into an `_SUBS`-slot shared array,
+       ONE `barrier()` makes those 8 writes visible, every thread sums the 8 entries itself (cheap
+       — 8 adds). 8 barriers → 1. No trailing "safety" barrier is needed here the way
+       `_sdpa_kernel_simd`'s per-KEY loop needs one: this reduction runs exactly ONCE per launch
+       (not once per loop iteration reusing the same shared slots), so there is no next iteration
+       for a fast thread to race ahead into.
+
+    2. Each output column's dot product, reduced across its own `_LANES = 32`-wide SIMD group —
+       `log2(32) = 5` more barrier-synchronized halving levels, one PER OUTPUT COLUMN (there are
+       `_SUBS = 8` columns computed per threadgroup, each by its own, fully independent, SIMD
+       group). This is a SIMPLER case than either of the above: since one SIMD group maps 1:1 to
+       one output column with NOTHING to combine across groups (unlike the sum-of-squares above,
+       and unlike `_sdpa_kernel_simd`'s cross-group softmax score), a single-level `_warp_sum`
+       alone — no shared array, no barrier at all — IS the complete reduction: it reduces the
+       column's 32 partial sums and broadcasts the total to every lane in that group, and the one
+       lane at `lane == 0` writes it straight to `y[j]`. 5 barriers → 0.
+
+    13 barriers per launch (`8 + 5`, ignoring the two unrelated staging barriers that protect
+    `xs` and are untouched by this change) collapse to 1. Every other line — the normalization
+    arithmetic, the int8 dequantization (`Float32(i8) * wscale[row]`, inside the loop, immediately
+    on load), the vectorized `char4` load, the accumulation order within one lane — is copied
+    byte-for-byte from `_norm_gemv_kernel_i8`, because the math this kernel computes must be, and
+    is verified to be, IDENTICAL; only the summation order across lanes/groups differs.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    # ── 1. sum of squares over the whole vector, two-level SIMD-shuffle reduced ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory ──────
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    # ── 3. one SIMD group per output column, single-level SIMD-shuffle reduction ─
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var total = _warp_sum(acc)
+    if lane == 0 and j < n:
+        y[j] = total
+
+
 fn _norm_gemv_kernel_i4(
     y: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n: Int, eps: Float32
 ):
@@ -822,6 +917,57 @@ fn _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         st //= 2
     if lane == 0 and j < n:
         y[j] = y[j] + red[sub * _LANES]
+
+
+fn _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+    """The REDUCTION-MECHANISM twin of `_gemv_accum_kernel_i8` — IDENTICAL `o_proj`/`down_proj` +
+    residual-add math, only HOW each output column's dot product collapses to a scalar differs.
+
+    `_gemv_accum_kernel_i8` has exactly ONE reduction (no whole-vector norm here, unlike
+    `_norm_gemv_kernel_i8` — `x` is only staged into shared memory, a plain parallel copy with no
+    reduction): each output column's dot product, reduced across its own `_LANES = 32`-wide SIMD
+    group, `log2(32) = 5` barrier-synchronized halving levels, one per column, `_SUBS = 8`
+    independent columns per threadgroup. Since one SIMD group maps 1:1 to one output column with
+    NOTHING to combine across groups, a single-level `_warp_sum` — no shared array, no barrier at
+    all — IS the complete reduction: it reduces the column's 32 partial sums, broadcasts the total
+    to every lane in that group, and `lane == 0` adds it into `y[j]`. 5 barriers → 0. See
+    `_norm_gemv_kernel_simd_i8`'s docstring for the fuller account of why this shape needs no
+    cross-group combine, unlike `_sdpa_kernel_simd`'s or that other kernel's own sum-of-squares
+    stage. Every other line is copied byte-for-byte from `_gemv_accum_kernel_i8`.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var total = _warp_sum(acc)
+    if lane == 0 and j < n:
+        y[j] = y[j] + total
 
 
 fn _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
@@ -1181,6 +1327,114 @@ fn _norm_gemv2_swiglu_kernel_i8(
         var g = gsh[sub]
         var u = red[sub * _LANES]
         act[j] = (g / (1.0 + exp(-g))) * u
+
+
+fn _norm_gemv2_swiglu_kernel_simd_i8(
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+):
+    """The REDUCTION-MECHANISM twin of `_norm_gemv2_swiglu_kernel_i8` — IDENTICAL gate/up/SwiGLU
+    math, IDENTICAL per-output-row `wscale` over the concatenated `2 * n_ff` rows, only HOW its
+    THREE internal reductions collapse to a scalar differs. See `_norm_gemv_kernel_simd_i8`'s
+    docstring for the full account of the two reduction SHAPES this file's GEMV kernels have; this
+    kernel has one of each shape, twice (gate and up each get their own column-dot-product stage):
+
+    1. Sum-of-squares over the whole `k`-length vector (256 threads = `_SUBS = 8` full SIMD
+       groups): two-level SIMD-shuffle, exactly as `_norm_gemv_kernel_simd_i8`'s own stage 1. 8
+       barriers → 1.
+    2. Gate projection's per-output-column dot product (one SIMD group per column, nothing to
+       combine across groups): single-level `_warp_sum`, no shared array. Its result still needs
+       to reach the FINAL combine below, so `lane == 0` writes it to `gsh[sub]` exactly as the
+       barrier-tree kernel does — kept behind ONE `barrier()` (down from that kernel's
+       five-level tree PLUS its own trailing barrier, six total), out of the same caution
+       `_sdpa_kernel_simd`'s trailing safety barrier documents, even though `gsh[sub]` is written
+       and later read only by the SAME lane (`lane == 0` of the same group) — a same-thread
+       read-after-write that needs no barrier for ITS OWN visibility, but this file does not spend
+       a proof of that on removing one launch-once barrier when the cost of being wrong is silent
+       wrong output. 6 barriers → 1.
+    3. Up projection's per-output-column dot product: identical shape to the gate stage's, but
+       nothing downstream needs a barrier afterward — the kernel's very next statement is the
+       final combine, executed by the SAME lane that computed this stage's own result. 5 barriers
+       → 0.
+
+    19 barriers per launch (`8 + 6 + 5`, ignoring the one unrelated staging barrier that protects
+    `xs`) collapse to 2. Every other line is copied byte-for-byte from `_norm_gemv2_swiglu_kernel_i8`.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var j = Int(block_idx.x) * _SUBS + sub
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    # ── gate ────────────────────────────────────────────────────────────────────
+    var acc = Float32(0.0)
+    if j < n_ff:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    var gate_total = _warp_sum(acc)
+    if lane == 0:
+        gsh[sub] = gate_total
+    barrier()
+
+    # ── up ──────────────────────────────────────────────────────────────────────
+    var acc2 = Float32(0.0)
+    if j < n_ff:
+        var base2 = (n_ff + j) * k
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
+        var t2 = lane * _VEC_I8
+        while t2 < k_vec:
+            var xv2 = xs.load[width=_VEC_I8](t2)
+            var wv2 = w.load[width=_VEC_I8](base2 + t2).cast[DType.float32]() * srow2_v
+            var pv2 = xv2 * wv2
+            for lane_e2 in range(_VEC_I8):
+                acc2 += pv2[lane_e2]
+            t2 += _VEC_STRIDE_I8
+        var tt2 = k_vec + lane
+        while tt2 < k:
+            acc2 += xs[tt2] * (Float32(w[base2 + tt2]) * srow2)
+            tt2 += _LANES
+    var up_total = _warp_sum(acc2)
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        act[j] = (g / (1.0 + exp(-g))) * up_total
 
 
 fn _norm_gemv2_swiglu_kernel_i4(

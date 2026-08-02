@@ -96,15 +96,18 @@ from residentk.kernels import (
     _gemv_accum_kernel,
     _gemv_accum_kernel_f16,
     _gemv_accum_kernel_i8,
+    _gemv_accum_kernel_simd_i8,
     _lmhead_argmax_kernel,
     _lmhead_argmax_kernel_f16,
     _lmhead_argmax_kernel_i8,
     _norm_gemv2_swiglu_kernel,
     _norm_gemv2_swiglu_kernel_f16,
     _norm_gemv2_swiglu_kernel_i8,
+    _norm_gemv2_swiglu_kernel_simd_i8,
     _norm_gemv_kernel,
     _norm_gemv_kernel_f16,
     _norm_gemv_kernel_i8,
+    _norm_gemv_kernel_simd_i8,
     _qk_rope_write_kernel,
     _qk_rope_write_kernel_kvf16,
     _sdpa_kernel,
@@ -2230,6 +2233,519 @@ struct _MBQwen3I8SDPASimd(Movable):
 
     fn device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA SIMD-shuffle reduction)"
+
+    fn dispatch_budget(self) -> Int:
+        return self.n_descriptors
+
+    fn upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return MB_ERR_CONTEXT_FULL
+        var s = _quantize_into_i8(
+            self.embed_ptr, self.embed_scale_ptr, embed, self.vocab, self.d_model, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _narrow_into(self.final_norm_ptr, final_norm, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return MB_ERR_UPLOAD_LENGTH
+        var cos_f = self.cos_ptr.bitcast[Float32]()
+        var sin_f = self.sin_ptr.bitcast[Float32]()
+        for i in range(n_pos * n_pairs):
+            cos_f[i] = Float32(cos_t[i])
+            sin_f[i] = Float32(sin_t[i])
+        return MB_OK
+
+    fn upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        if layer < 0 or layer >= self.n_layers:
+            return MB_ERR_UPLOAD_LENGTH
+        ref lw = self.layers[layer]
+        var s = _narrow_into(lw.ln1_ptr, ln1, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.ln2_ptr, ln2, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.qn_ptr, qn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.kn_ptr, kn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wq, self.d_model, n_q, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wk, self.d_model, n_kv, n_q, n_q
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wv, self.d_model, n_kv, n_q + n_kv, n_q + n_kv
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_o_ptr, lw.w_o_scale_ptr, wo, n_q, self.d_model, 0, 0)
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_gu_ptr, lw.w_gu_scale_ptr, wgate, self.d_model, self.d_ff, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_gu_ptr, lw.w_gu_scale_ptr, wup, self.d_model, self.d_ff, self.d_ff, self.d_ff
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_down_ptr, lw.w_down_scale_ptr, wdown, self.d_ff, self.d_model, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        return MB_OK
+
+    fn seal(mut self) -> Int:
+        return MB_OK
+
+    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """Byte-for-byte `_MBQwen3.step`'s/`_MBQwen3F16.step`'s own body — see `_MBQwen3.step`'s
+        docstring."""
+
+        @parameter
+        if not MB_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
+
+            _mb_set_arg_int(self.descriptors, self.token_id_offset, 3, token_id)
+            var n_keys = pos + 1
+            for layer in range(self.n_layers):
+                _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
+                _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+
+            var rc = _mb_run_token(self.descriptors, self.n_descriptors)
+            if rc != 0:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+
+            var tok = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+            var lg = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            return _StepOut(tok, lg, self.n_descriptors, MB_OK)
+
+
+struct _MBQwen3I8AllSimd(Movable):
+    """The GEMV-reduction-mechanism twin of `_MBQwen3I8SDPASimd`: identical descriptor plan,
+    identical `step()` contract, identical int8 weight storage (`_MBLayerBufI8`), identical
+    `_sdpa_kernel_simd` SDPA role — the ONLY difference from `_MBQwen3I8SDPASimd` is that the
+    three GEMV-shaped roles (`norm_gemv`/QKV-proj, `gemv_accum`/o_proj+down_proj,
+    `norm_gemv2_swiglu`/gate-up) now dispatch through `residentk.kernels._norm_gemv_kernel_simd_i8`,
+    `_gemv_accum_kernel_simd_i8`, `_norm_gemv2_swiglu_kernel_simd_i8` instead of their barrier-tree
+    `_i8` twins. This struct therefore composes BOTH reduction-mechanism fixes shipped so far —
+    SDPA-simd (already `_MBQwen3I8SDPASimd`'s own, and today's production SDPA role) plus this
+    struct's own new GEMV-simd, since `_MBQwen3I8` itself (barrier-tree everywhere) is not what
+    production runs anymore.
+
+    Each of the three new kernels computes IDENTICAL math to its `_i8` twin — only HOW their
+    reductions collapse to a scalar differs. See `_norm_gemv_kernel_simd_i8`'s own docstring in
+    `residentk.kernels` for the full account: a `_TG = 256`-wide sum-of-squares reduction (fixed
+    the SAME multi-SIMD-group way `_sdpa_kernel_simd` fixed its own) plus one or two `_LANES = 32`-
+    wide per-output-column dot-product reductions (needing NO cross-group combine at all, unlike
+    `_sdpa_kernel_simd`'s cross-group softmax score, since one SIMD group maps 1:1 to one
+    independent output column).
+
+    MUST be built into its OWN binary, never alongside `_MBQwen3I8`/`_MBQwen3I8SDPASimd` (or
+    `_MBQwen3`/`_MBQwen3F16`) — see the module docstring's "separate binary" section and
+    `_MBQwen3I8`'s own docstring: `_classify_pipeline` matches by ROLE substring
+    ("norm_gemv"/"gemv_accum"/"norm_gemv2"/"sdpa"), not by exact kernel variant, so two pipelines
+    for the SAME role compiled into one binary would collide with no way to tell them apart. This
+    struct's constructor therefore never calls `compile_function_unchecked` on any of the four
+    barrier-tree kernels it replaces — only their four `_simd` twins, exactly the same
+    one-pipeline-per-role discipline `_MBQwen3I8SDPASimd`'s own constructor already follows.
+    """
+
+    var d_model: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var n_layers: Int
+    var vocab: Int
+    var max_ctx: Int
+    var eps: Float32
+    var scale: Float32
+
+    var pipeline_idx: List[Int]
+
+    var layers: List[_MBLayerBufI8]
+    var embed_addr: UInt64
+    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_addr: UInt64
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_addr: UInt64
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_addr: UInt64
+    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_addr: UInt64
+    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var hidden_addr: UInt64
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_addr: UInt64
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_addr: UInt64
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_addr: UInt64
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_addr: UInt64
+    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_addr: UInt64
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_addr: UInt64
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_addr: UInt64
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_addr: UInt64
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors: Int
+    var token_id_offset: Int
+    var pos_offsets: List[Int]
+    var nkeys_offsets: List[Int]
+
+    fn __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        """REFUSES a `d_head` that is not an exact multiple of `std.gpu.WARP_SIZE` (32 on this
+        Apple GPU target), BEFORE any GPU work happens -- see `_ResidentQwen3I8SDPASimd.__init__`'s
+        own docstring in `residentk.session` for why: `_sdpa_kernel_simd`'s two-level reduction
+        assumes every `d_head / WARP_SIZE` SIMD-group launched is FULLY populated, which Qwen3-
+        0.6B's real `d_head = 128` (four full groups) satisfies cleanly but an arbitrary shape
+        might not.
+        """
+        if d_head % WARP_SIZE != 0:
+            raise Error(
+                "_MBQwen3I8AllSimd: d_head=" + String(d_head) + " is not a multiple of WARP_SIZE="
+                + String(WARP_SIZE) + " -- _sdpa_kernel_simd's SIMD-group reduction requires every "
+                + "group full; use _MBQwen3I8 (the barrier-tree _sdpa_kernel) for this shape instead"
+            )
+        self.d_model = d_model
+        self.h_q = h_q
+        self.h_kv = h_kv
+        self.d_head = d_head
+        self.d_ff = d_ff
+        self.n_layers = n_layers
+        self.vocab = vocab
+        self.max_ctx = max_ctx
+        self.eps = Float32(eps)
+        self.scale = Float32(scale)
+
+        # ── force every kernel THIS ARM needs to be compiled + embedded in THIS binary's
+        # __TEXT,__const — the int8 GEMV-shaped twins plus the three kernels with no per-dtype
+        # variant. Deliberately NEVER the Float32 or Float16 GEMV-shaped kernels — see the struct
+        # docstring.
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
+        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
+        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
+        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
+        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+
+        var opened = _mb_open_session()
+        if opened < 0:
+            raise Error("metaldispatch: algenta_open_session failed, status=" + String(MB_ERR_SESSION_OPEN_FAILED))
+
+        self.pipeline_idx = List[Int]()
+        for _ in range(_N_ROLES):
+            self.pipeline_idx.append(-1)
+        var count = _mb_pipeline_count()
+        for i in range(count):
+            var name = String()
+            _ = _mb_pipeline_name(i, name)
+            var role = _classify_pipeline(name)
+            if role >= 0:
+                self.pipeline_idx[role] = i
+        for role in range(_N_ROLES):
+            if self.pipeline_idx[role] < 0:
+                raise Error(
+                    "metaldispatch: pipeline role " + String(role)
+                    + " not found among " + String(count) + " discovered pipelines, status="
+                    + String(MB_ERR_PIPELINE_NOT_FOUND)
+                )
+
+        # ── resident buffers: SAME shapes as _MBQwen3, but the four GEMV weight matrices per
+        # layer and `embed` are Int8 (1 byte/element), each with its own Float32 (4 bytes/row)
+        # per-output-row scale buffer.
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        var n_pairs = d_head // 2
+
+        self.layers = List[_MBLayerBufI8]()
+        for _ in range(n_layers):
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
+            if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln2)")
+            if _mb_alloc_buffer(d_head * 4, qna, qnp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (qn)")
+            if _mb_alloc_buffer(d_head * 4, kna, knp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (kn)")
+            if _mb_alloc_buffer(n_qkv * d_model * 1, wqkva, wqkvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv i8)")
+            if _mb_alloc_buffer(n_qkv * 4, wqkvsa, wqkvsp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv_scale)")
+            if _mb_alloc_buffer(d_model * h_q * d_head * 1, woa, wop) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o i8)")
+            if _mb_alloc_buffer(d_model * 4, wosa, wosp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o_scale)")
+            if _mb_alloc_buffer(2 * d_ff * d_model * 1, wgua, wgup) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu i8)")
+            if _mb_alloc_buffer(2 * d_ff * 4, wgusa, wgusp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu_scale)")
+            if _mb_alloc_buffer(d_model * d_ff * 1, wdowna, wdownp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down i8)")
+            if _mb_alloc_buffer(d_model * 4, wdownsa, wdownsp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down_scale)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cka, ckp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ck)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cva, cvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (cv)")
+            self.layers.append(_MBLayerBufI8(
+                ln1a, ln1p, ln2a, ln2p, qna, qnp, kna, knp,
+                wqkva, wqkvp, wqkvsa, wqkvsp,
+                woa, wop, wosa, wosp,
+                wgua, wgup, wgusa, wgusp,
+                wdowna, wdownp, wdownsa, wdownsp,
+                cka, ckp, cva, cvp,
+            ))
+
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed i8)")
+        if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed_scale)")
+        if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (final_norm)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.cos_addr, self.cos_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (cos)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (sin)")
+
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (hidden)")
+        if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (qkv)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.q_rot_addr, self.q_rot_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (q_rot)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.attn_out_addr, self.attn_out_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn_out)")
+        if _mb_alloc_buffer(d_ff * 4, self.act_addr, self.act_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (act)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_val_addr, self.blk_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_val)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_idx_addr, self.blk_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_idx)")
+        if _mb_alloc_buffer(4, self.out_val_addr, self.out_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_val)")
+        if _mb_alloc_buffer(4, self.out_idx_addr, self.out_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_idx)")
+
+        self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
+        self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
+        self.token_id_offset = -1
+        self.pos_offsets = List[Int]()
+        self.nkeys_offsets = List[Int]()
+        self._build_descriptors(n_qkv)
+
+    fn _build_descriptors(mut self, n_qkv: Int) raises:
+        """Same descriptor PLAN as `_MBQwen3`/`_MBQwen3F16`'s own — same roles, same grid/
+        threadgroup shapes, same per-step-varying slots — but every GEMV-shaped role's descriptor
+        carries one more pointer argument: that matrix's per-output-row scale buffer, positioned
+        immediately after the weight-matrix pointer, matching `residentk.kernels`' `_i8` kernel
+        signatures (`w` then `wscale`) exactly."""
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors, d, 3, 0)  # token_id, patched per step
+        self.token_id_offset = d
+        _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 6, n_qkv)
+            _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors, d, 8, 0)  # pos, patched per step
+            self.pos_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            d += 1
+
+            _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, 0)  # n_keys, patched per step
+            self.nkeys_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 5, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 6, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 7, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 8, self.scale)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, n_q)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 6, self.d_ff)
+            _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_ff)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors, d, 9, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors:
+            raise Error(
+                "metaldispatch: built " + String(d) + " descriptors but the budget says "
+                + String(self.n_descriptors) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    fn device_name(self) -> String:
+        return "metal (batched shim, int8 weights, SDPA + GEMV SIMD-shuffle reduction)"
 
     fn dispatch_budget(self) -> Int:
         return self.n_descriptors

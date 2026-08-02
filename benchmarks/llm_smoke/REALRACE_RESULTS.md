@@ -59,6 +59,15 @@ llama.cpp but still trail mlx-lm — informational only, since the standing rule
 same-session three-way race, which this addendum does not attempt (out of this task's scope; see
 the addendum for exactly what was and was not re-measured). No gitbook page yet.**
 
+**Update (2026-08-02, final for this chain): the GEMV-reduction-mechanism fix (the addendum
+immediately above the closing section) was raced fresh, seven arms, six interleaved rounds — read
+"Seven-arm race for the GEMV-simd result" (the closing section) for the full numbers. Algenta's
+best arm (int8 + SDPA-simd + GEMV-simd) reaches a **311.55 tok/s median, 1.24% behind mlx-lm's
+315.41** — the closest this entire day's chain has come, down from a 15.56x gap at this morning's
+float64 CPU baseline. It is not a publishable win: mlx-lm still wins outright in 3 of 6 rounds
+(including one round where a machine-load spike dropped Algenta's own arm to 167 tok/s), so the
+standing "every round, not just median" bar is not met. No gitbook page ships.**
+
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
 measured together. **Where two sections disagree, the last one is right** — in particular the
@@ -3117,3 +3126,379 @@ close a gap this small, and both are still multi-day, high-risk redesigns outsid
 addendum already documented (`residentk/kernels.mojo`, `residentk/session.mojo`,
 `metaldispatch/session.mojo`) -- unchanged by this section, which adds no code, only this
 race + writeup. Worktree already at `origin/main` tip (`#512`) -- no rebase needed.
+
+## GEMV SIMD-group-shuffle reduction addendum (2026-08-02, later still again): the SAME class of fix applied to the three GEMV-shaped roles -- a real, smaller win, correctly attributed to the mechanism that changed
+
+The SDPA-simd addendum immediately above dropped SDPA's own share of the token from 28.58% to
+14.33%, and named the three GEMV-shaped per-layer roles (`norm_gemv`/QKV-proj, `gemv_accum`/
+o_proj+down_proj, `norm_gemv2_swiglu`/gate-up) as the largest remaining share by a wide margin.
+This section asks the obvious next question: does SDPA-simd's own fix (barrier-tree ->
+SIMD-group-shuffle reduction) apply to these three kernels too?
+
+### What was found: TWO different reduction shapes inside the SAME kernels, both fixable, for different reasons
+
+Read in full (the int8 variants, today's production dtype): `_norm_gemv_kernel_i8`,
+`_gemv_accum_kernel_i8`, `_norm_gemv2_swiglu_kernel_i8`. Every one of them launches `_TG = 256`
+threads/threadgroup and reduces with shared-memory barrier trees, but there are TWO DIFFERENT
+reduction shapes inside them, not one, and they needed different treatment:
+
+1. **Sum-of-squares over the whole `k`-length input vector** (`norm_gemv`/`norm_gemv2_swiglu`
+   only -- `gemv_accum` has no norm, hence no this stage): every one of the 256 threads holds a
+   partial sum, reduced to one scalar with `log2(256) = 8` barrier-synchronized halving levels.
+   Confirmed via a device-side probe (`gemv_simd_reduce_probe.mojo`, same discipline
+   `sdpa_simd_reduce_probe.mojo` used, not assumed): Apple's real hardware SIMD-group width on
+   this M4 Max is 32, so these 256 threads are EXACTLY `_SUBS = 8` full SIMD-groups -- the SAME
+   multi-SIMD-group shape `_sdpa_kernel_simd` fixed for `d_head = 128 = 4 groups`, just twice as
+   many groups. Fixed the SAME two-level way: `warp.sum` reduces each group with no barrier, one
+   lane per group writes its total to an 8-slot shared array, ONE barrier makes those visible,
+   every thread sums the 8 entries itself. **8 barriers -> 1.**
+2. **Each output column's dot product**: `_LANES = 32` threads (one SIMD group) compute ONE
+   output column, `_SUBS = 8` columns per threadgroup, each by its own, independent SIMD group --
+   `log2(32) = 5` barrier-synchronized levels PER COLUMN. This is a SIMPLER case than (1) and than
+   `_sdpa_kernel_simd`'s own fix: since one SIMD group maps 1:1 to one output column with NOTHING
+   to combine across groups (unlike the sum-of-squares stage above, and unlike `_sdpa_kernel_simd`'s
+   cross-group softmax score), a single-level `warp.sum` alone -- no shared array, no barrier at
+   all -- IS the complete reduction. **5 barriers -> 0.**
+
+`norm_gemv`/`norm_gemv2_swiglu` have BOTH shapes (`norm_gemv2_swiglu` has the per-column shape
+TWICE, once for gate and once for up, needing one retained combine-barrier between the two so the
+gate result survives to the final SwiGLU combine -- kept out of the same caution
+`_sdpa_kernel_simd`'s own trailing safety barrier documents, even though the data dependency is a
+same-lane read-after-write that arguably needs no barrier on its own). `gemv_accum` has ONLY the
+per-column shape. New kernels: `_norm_gemv_kernel_simd_i8`, `_gemv_accum_kernel_simd_i8`,
+`_norm_gemv2_swiglu_kernel_simd_i8`. Wired into new additive twins
+`residentk.session._ResidentQwen3I8AllSimd` and `metaldispatch.session._MBQwen3I8AllSimd`, both
+composing this fix WITH the already-shipped `_sdpa_kernel_simd` (today's production SDPA role,
+left untouched) rather than reverting to the older all-barrier-tree baseline.
+
+### Staged correctness, exactly this package's own protocol
+
+1. **Controlled small case, hand-verified against an independent host reference.**
+   `benchmarks/llm_smoke/gemv_simd_reduce_probe.mojo`: SIMD-group width confirmed 32 (8 full
+   groups inside one `_TG = 256` threadgroup, `lane_id()`/`warp_id()` match `thread_idx.x % / //
+   32` exactly). Both reduction shapes' barrier-tree and SIMD-shuffle candidates agree with a
+   pure-host Float64 reference to `~4e-5` worst case (`k` up to 3072) -- and agree with EACH OTHER
+   exactly, `0.0` delta, at every shape/size tested. `mojo/tests/libs/test_residentk_gemv_simd_kernel.mojo`
+   (new, hand-written, permanent) repeats this at the kernel level for all three int8 kernels, at
+   a deliberately non-power-of-everything shape (`k=137`, `n=19`, exercising the vectorized-loop-
+   plus-scalar-tail path and a partially-populated final threadgroup): barrier-tree vs SIMD-shuffle
+   vs host-f64 reference all agree, **tree-vs-simd delta exactly `0.0`** for all three kernels (not
+   merely within bound -- bit-identical). 3/3 passed. `test_residentk_session.mojo` (51/51),
+   `test_residentk_kvcache_fp16_kernel.mojo` (4/4), `test_residentk_sdpa_simd_kernel.mojo` (4/4),
+   `test_residentk_contract.mojo` (6/6), `test_residentk_probe.mojo` (3/3),
+   `test_metaldispatch_session_i8.mojo` (8/8), `test_metaldispatch_session_i8_kvf16.mojo` (8/8),
+   and `test_metaldispatch_contract.mojo` (2/2) all reconfirmed green -- no regression from the two
+   new additive structs.
+2. **Full single-token decode step vs. the existing SDPA-simd (today's production) kernel.** Same
+   real checkpoint, same prompt: `_MBQwen3I8AllSimd`'s first generated token's logit
+   (`21.033048629760742`) vs `_MBQwen3I8SDPASimd`'s own (`21.033050537109375`) -- delta `~1.9e-6`,
+   an argmax-irrelevant Float32 reordering difference, same token id either way.
+3. **Full 16-token greedy generation vs. the transformers-CPU reference.**
+   `qwen3_generate_batch_i8_allsimd.mojo` (built on `_MBQwen3I8AllSimd`) generated, from
+   `"The capital of France is"`:
+
+   ```
+   12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13
+   ```
+
+   Verified with `verify_generation.py` against the same `reference_generate.py` transformers-CPU
+   dump this document's own "SDPA SIMD-group-shuffle reduction addendum" used
+   (`reference_generate_sdpasimd_final`): **16/16 match**, position by position, byte-for-byte the
+   SAME sequence every other arm in this document produces. No divergence anywhere.
+
+### Measured, real, hardware numbers -- only reported because all three stages above passed
+
+**Decode-only tok/s**, same methodology as this doc's own (16 greedy tokens, prompt `"The capital
+of France is"`), fresh same-session A/B against TODAY'S PRODUCTION baseline (SDPA-simd, GEMV
+barrier-tree -- not the older all-barrier-tree arm, since SDPA is not what changed here), eight
+interleaved rounds, alternating start order:
+
+| Arm | Rounds (tok/s) | Median |
+|---|---|---|
+| int8 + SDPA-simd (today's production, `qwen3_generate_batch_i8_sdpasimd.mojo`) | 297.20, 301.29, 269.80, 293.00, 294.35, 299.29, 290.87, 293.75 | **294.05** |
+| **int8 + SDPA-simd + GEMV-simd** (`qwen3_generate_batch_i8_allsimd.mojo`) | 322.46, 305.42, 319.15, 319.58, 290.60, 314.17, 312.57, 314.42 | **314.29** |
+
+**+6.9% decode-only tok/s** (294.05 -> 314.29 median), same weights, same checkpoint, same prompt,
+same 171-dispatch budget per token, only the three GEMV-shaped roles' reduction mechanism
+differing. GEMV-simd was faster in 7 of the 8 rounds; round 5 (290.60 vs 294.35 that round) is the
+one exception, within normal run-to-run/thermal noise for a benchmark this short.
+
+**Per-role GPU-counter timing**, `qwen3_probe_counters_i8_sdpasimd.mojo` (baseline, today's
+production) vs the new `qwen3_probe_counters_i8_allsimd.mojo` (direct twin, `_MBQwen3I8AllSimd`
+substituted for `_MBQwen3I8SDPASimd`), same OFF/ON/OFF/ON alternated-order methodology PR #510
+built, 30 ON-phase decode steps each, same calibrated GPU-tick-to-ns conversion:
+
+| Role | Baseline avg/dispatch | AllSimd avg/dispatch | Change |
+|---|---|---|---|
+| `norm_gemv` (QKV-proj, HAS the sum-of-squares stage) | 23.48 us | 20.36 us | **-13.3%** |
+| `norm_gemv2_swiglu` (gate-up, HAS the sum-of-squares stage) | 29.49 us | 24.02 us | **-18.6%** |
+| `gemv_accum` (o_proj+down_proj, per-column shape ONLY) | 14.69 us | 14.38 us | -2.1% (within noise) |
+| `sdpa` (unchanged this task -- sanity check) | 18.65 us | 18.38 us | -1.5% (noise, confirms no regression) |
+
+This is the structurally-predicted pattern, not a uniform win: the two roles that have BOTH
+reduction shapes (`norm_gemv`, `norm_gemv2_swiglu` -- the 8-barrier sum-of-squares stage PLUS the
+5-barrier-per-column stage) see a real, double-digit-percent drop; the one role with ONLY the
+per-column shape (`gemv_accum`, no norm, hence no sum-of-squares stage) sees a much smaller drop,
+consistent with the isolated-microbenchmark finding below. `sdpa`'s own number moving by only
+~1.5% (pure noise, that kernel is byte-for-byte unchanged this task) is the sanity check that the
+measurement methodology itself did not shift.
+
+**Combined GEMV-shaped-role time per token**: 2.306 ms (baseline) -> 2.048 ms (AllSimd), a
+**-11.2%** drop in the three roles' own summed GPU time -- smaller in absolute percentage than
+SDPA-simd's own -56.9% role-level drop, for a structural reason named below, not a measurement
+artifact.
+
+### Why the win is real but smaller than SDPA-simd's own, explained structurally, not hand-waved
+
+An isolated microbenchmark (`gemv_simd_reduce_probe.mojo`'s own timing section, reduction-only, no
+weight dequant/vectorized load around it) measured only a ~2-3% speedup for BOTH shapes in
+isolation -- much smaller than SDPA-simd's per-key ~57% role-level win. The reason is structural,
+not a measurement error: SDPA's barrier-tree reduction ran INSIDE a per-KEY loop, so its 9 barriers
+were paid `n_keys` times per launch (up to hundreds at this benchmark's longest context) --
+removing 7 of them PER KEY compounds into a huge aggregate saving. Every GEMV kernel's own
+sum-of-squares and per-column reductions run EXACTLY ONCE per launch, not once per `k`-element or
+per-column iteration -- so the 8 (or 5) barriers eliminated are a ONE-TIME cost per dispatch,
+amortized against the launch's real dominant cost (the `k`-deep, memory-bound vectorized dot-
+product loop itself, unchanged by this fix). The full-kernel, full-decode measurement above
+(-13.3%/-18.6% for the two roles with the sum-of-squares stage, -2.1% for the one without) landed
+between the isolated microbenchmark's ~2-3% and SDPA-simd's ~57%, exactly where the "barriers paid
+once, not per iteration" structural argument predicts: still real, still worth shipping, correctly
+smaller than the per-key case.
+
+### What this does and does not close
+
+Against this document's own "Fresh three-way race" numbers immediately above (mlx-lm 311.63 tok/s,
+Algenta int8+SDPA-simd 297.17 tok/s, 1.049x short), this run's own SDPA-simd baseline sample
+(294.05 median across these 8 fresh rounds, consistent with that prior 297.17 within run-to-run
+noise) vs this arm's 314.29 median would CLEAR mlx-lm's last-recorded number outright --
+**informational only**, since the standing publication rule requires a FRESH same-session six-arm
+re-race (Algenta CPU/int8-baseline/this-new-arm, llama.cpp CPU/GPU, mlx-lm) before any gitbook page
+ships, which this task's scope did not include. No gitbook page ships from this addendum alone; a
+fresh six-arm re-race is the natural next step for whoever races this next.
+
+### Gates
+
+`git diff --stat eea8e045 -- mojo/engine/` (with this addendum's changes staged, so untracked files
+are visible) shows the same 228-file residual this document's own SDPA-simd addendum already
+carries, unrelated to this task -- none of the residual files are ones this task touched; this
+task's own changes (`residentk/kernels.mojo`, `residentk/session.mojo`,
+`metaldispatch/session.mojo`) are fully covered by the `residentk/`/`metaldispatch/` freeze-gate
+exemption. `make inventory-refresh` then `make inventory-check` both clean. `capability_manifest_gate.py`
+clean (no new undeclared kernels -- every new symbol is leading-underscore). `tests/generate_mojo_tests.py
+--check`: **199 hand-written suites protected, up from 198** (this task's new
+`test_residentk_gemv_simd_kernel.mojo`), 466 generated suites fresh.
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed
+
+# the standalone kernel probe (Stage 1, no shim needed)
+pixi run mojo run -D ALGENTA_GPU -I../mojo/engine \
+    ../benchmarks/llm_smoke/gemv_simd_reduce_probe.mojo
+
+# the permanent kernel-level golden-vector test
+pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+    ../mojo/tests/libs/test_residentk_gemv_simd_kernel.mojo -o /tmp/test_gemv_simd_kernel
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/test_gemv_simd_kernel
+
+# the batched-shim decode-only tok/s A/B (needs batch_shim.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+for f in qwen3_generate_batch_i8_sdpasimd qwen3_generate_batch_i8_allsimd; do
+  pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+      ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/$f \
+      -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/$f
+done
+
+# the per-role GPU-counter before/after (needs batch_shim_counters.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
+    -o /tmp/batch_shim_counters.o
+for f in qwen3_probe_counters_i8_sdpasimd qwen3_probe_counters_i8_allsimd; do
+  pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+      ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/$f \
+      -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/$f
+done
+```
+
+## Seven-arm race for the GEMV-simd result (2026-08-02, closing this chain): closest yet — 1.24% behind mlx-lm on median, but not an every-round win
+
+The GEMV SIMD-group-shuffle reduction addendum immediately above measured its +6.9% decode win
+against a same-session A/B (SDPA-simd baseline vs. SDPA-simd+GEMV-simd only) and said plainly that
+a fresh six-arm re-race against both real opponents was "informational only" and "the natural next
+step for whoever races this next." This section is that race: rebased onto `origin/main` tip
+(`#513`, `715150f7`), all seven arms, six interleaved rounds, run back to back, right now.
+
+### Rebase
+
+The worktree's own branch (`feat/residentk-gemv-simd-reduce`) carried two commits already merged to
+`origin/main` as the squashed `#513` (`715150f7`) — confirmed byte-identical via
+`git diff <branch-tip> 715150f7 -- mojo/engine/ benchmarks/llm_smoke/` (zero lines) before touching
+anything. Rather than fight a textual rebase conflict over an already-landed diff, a fresh branch
+(`gemv-onmain`) was cut from `origin/main` and only the GEMV-simd commit itself (`2693477f`)
+cherry-picked onto it — landed clean, `git diff --stat origin/main -- mojo/engine/` shows exactly
+the three additive files (`residentk/kernels.mojo`, `residentk/session.mojo`,
+`metaldispatch/session.mojo`) this chain's own prior addendum already documented, nothing else.
+
+### Gates, rerun unconditionally after the rebase
+
+- `make inventory-refresh`: zero diff (every new symbol here is leading-underscore, exactly like
+  every other kernel/session pair in `residentk`/`metaldispatch`).
+- `make inventory-check`: clean — runtime contract OK, capability manifest OK (122/655 modules
+  fully declared, 595 undeclared against the unchanged 595 ceiling), `runtime-library-catalog.md`
+  OK.
+- `tests/generate_mojo_tests.py --check`: **199 hand-written suites protected** (up from 198,
+  this chain's own `test_residentk_gemv_simd_kernel.mojo`), 466 generated suites fresh.
+- Freeze gate (`git diff --stat eea8e045 -- mojo/engine/` through the documented exemption
+  alternation, plus `git diff eea8e045 -- mojo/tests/libs/ | grep '^-' | grep -v '^---'`): the same
+  228-file residual this document's own SDPA-simd addendum already carries, from sibling work
+  unrelated to this task — none of the residual files are ones this task touched.
+- All eight `residentk`/`metaldispatch` suites rerun fresh on the rebased tree, all green:
+  `test_residentk_session.mojo` (51/51), `test_residentk_kvcache_fp16_kernel.mojo` (4/4),
+  `test_residentk_sdpa_simd_kernel.mojo` (4/4), `test_residentk_contract.mojo` (6/6),
+  `test_residentk_probe.mojo` (3/3), `test_residentk_gemv_simd_kernel.mojo` (3/3),
+  `test_metaldispatch_session_i8.mojo` (8/8), `test_metaldispatch_session_i8_kvf16.mojo` (8/8),
+  `test_metaldispatch_contract.mojo` (2/2).
+- `gemv_simd_reduce_probe.mojo` (the device-side probe this chain's own addendum built) rerun fresh:
+  SIMD-group width confirmed 32, 8 full groups inside `_TG=256`; barrier-tree vs. SIMD-shuffle
+  agree with a host-f64 reference to `~4e-5` worst case and with each other to `0.0` at every shape.
+
+### Correctness first, on this exact run
+
+A `transformers`-CPU reference was regenerated fresh in this session (`reference_generate.py` ->
+`/tmp/bb/qwen3_ckpt/reference_generate_gemvchain_final/`), and every Algenta arm's
+`generated_ids.txt` from this run's own binaries was checked against it position-by-position with
+`verify_generation.py`:
+
+| Arm | tokens matching reference |
+|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | **16 / 16** |
+| Algenta batched-shim GPU, int8 (barrier-tree everywhere, pre-SDPA-simd baseline) | **16 / 16** |
+| Algenta batched-shim GPU, int8 + SDPA-simd (`#513` standing production) | **16 / 16** |
+| Algenta batched-shim GPU, int8 + SDPA-simd + GEMV-simd (this chain) | **16 / 16** |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+identical across all four Algenta arms, every round spot-checked (rounds 1, 3, and 6, chosen to
+bracket the load-variance seen in the numbers below). Both real opponents printed the identical
+text in every round checked too: llama.cpp (`-ngl 0` and `-ngl 99`) `' Paris. The capital of
+Germany is Berlin. The capital of Italy is Rome.'`, mlx-lm `'Paris. The capital of Germany is
+Berlin. The capital of Italy is Rome.'` (same leading-space detokenizer difference this document
+notes throughout — same token content). **No arm diverged from any other, in any round checked.**
+
+### The numbers
+
+Same checkpoint (`/private/tmp/qwen3-0.6b-base`), same prompt (`"The capital of France is"`), 16
+greedy decode tokens, decode-only tok/s, six rounds, fixed order Algenta CPU -> Algenta
+batched-shim GPU int8 (pre-SDPA-simd baseline) -> Algenta batched-shim GPU int8+SDPA-simd ->
+Algenta batched-shim GPU int8+SDPA-simd+GEMV-simd -> llama.cpp CPU (`-ngl 0`) -> llama.cpp GPU
+(`-ngl 99`) -> mlx-lm, all back to back per round, one full round before the next begins. 1-minute
+load average 7.4 – 23.2 across the six rounds (this is a busy shared dev machine; round 6's own
+23.18 is the highest load this document has recorded for any race). Round 5's mlx-lm value was
+re-measured immediately after the round (the harness's own wrapper was killed by an unrelated
+2-minute tool timeout mid-request, leaving an empty log — no data was lost, the rerun is the real
+number for that round, at comparable machine load to the rest of round 5).
+
+| Arm | Round 1 | Round 2 | Round 3 | Round 4 | Round 5 | Round 6 | Median | Range |
+|---|---|---|---|---|---|---|---|---|
+| Algenta CPU (float64, FastGEMV) | 2.23 | 7.01 | 6.82 | 5.38 | 7.01 | 7.74 | **6.91** | 2.23 – 7.74 |
+| Algenta GPU, int8 (pre-SDPA-simd baseline) | 193.31 | 228.92 | 244.24 | 196.52 | 205.13 | 239.70 | **217.03** | 193.31 – 244.24 |
+| Algenta GPU, int8 + SDPA-simd (`#513`) | 269.71 | 257.21 | 223.40 | 256.63 | 294.97 | 235.74 | **256.92** | 223.40 – 294.97 |
+| **Algenta GPU, int8 + SDPA-simd + GEMV-simd (this chain)** | 313.67 | 319.20 | **167.42** | 314.58 | 309.43 | 240.39 | **311.55** | 167.42 – 319.20 |
+| llama.cpp CPU (`-ngl 0`) | 47.62 | 13.77 | 48.64 | 44.74 | 41.64 | 11.01 | **43.19** | 11.01 – 48.64 |
+| llama.cpp GPU (`-ngl 99`) | 260.35 | 243.25 | 222.61 | 240.27 | 250.32 | 224.11 | **241.76** | 222.61 – 260.35 |
+| mlx-lm | 304.47 | 318.61 | 321.02 | 313.06 | 317.76¹ | 312.87 | **315.41** | 304.47 – 321.02 |
+
+¹ Round 5's rerun value (see above); the log timestamp is a few minutes after the rest of round 5
+finished, at load average within the same session's range.
+
+**Round 3 is a genuine outlier, not a transcription error.** Its own per-step dispatch times
+(printed inside the binary's log, ~3.0–3.9 ms each, summing to ~48 ms) do not match its own
+reported decode-only wall time (89.6 ms) — the gap is host-side stall between dispatches, not GPU
+kernel time, consistent with this being a busy shared machine and this specific 89 ms window
+catching contention none of this arm's other five rounds did. It is reported as measured, not
+discarded: this document's own standing practice all day has been to report load-variance rounds
+honestly rather than cherry-pick them out, and doing otherwise here — right when the story is
+closest to a win — would be exactly the wrong moment to start.
+
+**GEMV-simd over SDPA-simd-only, median-to-median**: 311.55 / 256.92 = **1.21x (+21.3%)** — larger
+than the isolated same-session A/B in the addendum above (+6.9%) because that A/B's own SDPA-simd
+baseline sample (294.05) ran at lower ambient load than this race's SDPA-simd column (256.92);
+both numbers describe the same kernel-level fix, the difference is machine load between sessions,
+not a change in what the fix does. **Over the pre-SDPA-simd baseline**: 311.55 / 217.03 = **1.44x
+(+43.6%)**, the combined effect of both reduction-mechanism fixes shipped today.
+
+**Every-round-win check, the distinction PR #513 itself found matters:**
+
+- **vs. llama.cpp GPU**: Algenta's best arm (GEMV-simd) wins **5 of 6 rounds** (1.07x – 1.31x
+  faster), losing only round 3 (167.42 vs. 222.61, the load-spike round above). Not an
+  every-round win.
+- **vs. mlx-lm**: Algenta's best arm wins **3 of 6 rounds** (rounds 1, 2, 4 — margins 1.00x–1.03x,
+  essentially a dead heat) and loses **3 of 6** (round 3's load spike, 0.52x; round 5, 0.97x;
+  round 6, 0.77x, itself the session's highest-load round). Median-to-median the gap is **1.24%**
+  (315.41 / 311.55 = 1.0124x, mlx-lm still ahead) — the closest this entire day's chain has come,
+  down from mlx-lm's earlier-recorded 1.049x (SDPA-simd alone) and 1.289x (the original int8
+  baseline) — but a coin-flip on a per-round basis, not a win.
+
+### Publication decision: no gitbook page — closest yet, still not the every-round win the standing rule requires
+
+**The standing rule is an outright win against BOTH llama.cpp's best AND mlx-lm's real number, on
+this run, every round — not just median.** This run does not clear that bar: mlx-lm wins outright
+in half the rounds measured (3 of 6), including one by a wide margin (round 3, itself explained
+above as genuine machine contention, not a kernel regression). Median-to-median the gap is now
+**1.24%** — the tightest margin recorded across this entire day's chain, from this morning's 1.35
+tok/s float64 one-shot baseline through FastGEMV (~6.7 tok/s CPU) -> resident GPU -> fp16 -> int8
+-> SDPA-simd -> GEMV-simd (today's 311.55 tok/s median) — but a median win, on a benchmark this
+short and a machine this noisy, is not the bar this repository's standing rule sets. **No gitbook
+page ships. None is drafted.**
+
+### What is left, stated plainly
+
+The remaining ~1.24% (median-to-median) is now smaller than this run's own round-to-round noise
+band (the highest-load round alone moved Algenta's arm by more than 40 percentage points against
+mlx-lm). Closing it for real, rather than by getting lucky on machine load during the next
+re-race, still needs one of the two structural levers this document has named all day and not yet
+attempted: a lower-per-dispatch-cost submission mechanism (blocked today — Mojo/MAX exposes no
+command-buffer batching on Metal, confirmed twice earlier in this document) or a genuinely
+persistent decode loop that never returns to the host between tokens (a multi-day, high-risk
+redesign, not a same-day lever). Both remain out of scope for a single reduction-mechanism task.
+The honest state for today: **from a 15.56x gap to mlx-lm at this morning's baseline to a 1.24%
+median gap now, real and cumulative at every stage — genuinely close, not yet a crossing of the
+line.**
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed, and
+# the rebased branch checked out (origin/main tip + the GEMV-simd commit cherry-picked on top)
+
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+for f in qwen3_generate_batch_i8 qwen3_generate_batch_i8_sdpasimd qwen3_generate_batch_i8_allsimd; do
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+      -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/race_$f \
+      -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+done
+
+# one round = all seven arms, back to back, interleaved (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8_sdpasimd
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8_allsimd
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+# repeat this block 6x for six rounds
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_gemvchain_final
+for arm in mojo_generate_llmfwd mojo_generate_batch_i8 mojo_generate_batch_i8_sdpasimd mojo_generate_batch_i8_allsimd; do
+  /tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/$arm/generated_ids.txt \
+      /tmp/bb/qwen3_ckpt/reference_generate_gemvchain_final/reference_generated.json
+done
+```
