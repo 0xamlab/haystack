@@ -18,9 +18,17 @@ correctness-verified kernel, so there is nothing new to race. The verdict above 
 
 **Update (2026-08-02, later still again): fused batched dispatch + vectorized GEMV + fp16 weights,
 combined for the first time — read "Batched-dispatch + full-stack addendum" for that result
-(206.38 tok/s, still short of both opponents), then the very last section, "Int8-weight addendum",
-for a third precision tier on top of it (241.83 tok/s — closer, still short of both opponents).
-The final section is the current, correct verdict.**
+(206.38 tok/s, still short of both opponents), then the "Int8-weight addendum" for a third
+precision tier on top of it (241.83 tok/s — closer, still short of both opponents), then the
+"Dispatch-fusion + packed-int8-load addendum" for two more levers tried and confirmed dead ends
+(no kernel change, no new number).**
+
+**Update (2026-08-02, final for today): the full field was re-raced together — Algenta CPU/fp16/
+int8, llama.cpp CPU/GPU, mlx-lm — six interleaved rounds, fresh token verification. Read
+"Final real race (2026-08-02): every arm, six rounds, verdict for today" for the closing numbers.
+Algenta's best arm (int8, 243.06 tok/s median) still loses to both real opponents on this run
+(llama.cpp GPU 256.72, mlx-lm 313.21). No gitbook page ships. That section is the current, correct,
+final verdict for today's chain of work.**
 
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
@@ -1390,5 +1398,494 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo bu
     -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/submit_floor_batch.mojo \
     -o /tmp/submit_floor_batch -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
     -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/submit_floor_batch
+```
+
+## Dispatch-fusion + packed-int8-load addendum (2026-08-02, later still): both attacked, both confirmed dead ends on this toolchain — 171 stands, char4 stands
+
+The int8 addendum immediately above named two real levers left in a 241.83 tok/s token: the 171-
+dispatch submission floor (36.5% of the token, 1.51 ms, unchanged since it does not depend on
+weight dtype) and the int8 kernel-execution residual sitting ~51% above its own bandwidth floor
+(2.63 ms, worse than fp16's 4.4% because `char4`/`half4`/`float4` all advance the same 128 elements
+per SIMD step on this toolchain — narrower dtypes shrink bytes moved without shrinking instruction
+count). This project attacked both directly, in a fresh worktree off `origin/main`'s tip
+(`f1a99dfb`, `#507`), branch `feat/residentk-dispatch-fusion`. **Both are confirmed dead ends for
+this toolchain, not merely unattempted — and unlike the raw-Metal-dispatch addendum's "no-go," this
+one required no new correctness-risking code in `residentk`/`metaldispatch` at all: both questions
+were answered without changing a single frozen or non-frozen production kernel.**
+
+### Task 1 — further dispatch fusion: every fusion the task asked about is already landed; the rest is a real hardware floor, cited from the code that already says so
+
+Reading `residentk.session._ResidentQwen3I8.step` (and its Float32/Float16 twins — identical
+dispatch plan, see each struct's own docstring) against the four fusion opportunities this project
+was asked to check, one at a time:
+
+- **RoPE folded into qnorm/knorm?** Already done. `_qk_rope_write_kernel` (`residentk/kernels.mojo`)
+  is one dispatch that does q_norm, k_norm, RoPE on both, AND the in-place KV-cache slot write — its
+  own docstring: *"Per-head rmsnorm on Q and K, RoPE on both, and the KV-cache slot write — all in
+  one dispatch."*
+- **Residual-add folded into the preceding projection's epilogue, for o_proj and down_proj?**
+  Already done, for both. `_gemv_accum_kernel` (and its `_f16`/`_i8` twins) computes `y += W @ x` in
+  the same launch that does the matmul — `session.mojo` calls it identically for `o_proj` (dispatch
+  4) and `down_proj` (dispatch 6). Its own docstring: *"`+=` rather than `=` is the whole point...
+  Splitting the add into its own elementwise dispatch would cost ~180 us of blocked host time for
+  ~1 us of arithmetic."*
+- **sdpa's mask folded into the sdpa kernel itself?** There is no separate mask dispatch to fold —
+  `_sdpa_kernel`'s own docstring states the mask is not merely fused, it is provably unneeded:
+  *"NO MASK IS APPLIED, and that is a claim rather than an omission. A single query at the true
+  current position attends to every cached key by construction."*
+- **Any elementwise step that is a separate dispatch for code-organization reasons only?** No —
+  every dispatch boundary in the six-per-layer plan is a genuine cross-threadgroup data dependency:
+  `rmsnorm` needs the FULL vector the previous projection produced, and that vector was written by
+  many independent threadgroups (128 for `o_proj`/`down_proj` at this model's `d_model=1024`, more
+  for `d_ff=3072`). Metal has no grid-wide barrier, so completing that dependency needs a real
+  kernel boundary. This is not this project's own conclusion reached fresh — it is already the
+  contract's own stated position, `residentk.contract.RESIDENT_DISPATCH_PER_LAYER`'s docstring,
+  verified unchanged in this session: *"Six is a floor imposed by hardware, not a target someone
+  stopped at... Fusing further needs a persistent kernel with a device-scope spin barrier —
+  possible, high-risk, and deliberately not attempted here."*
+
+So the answer to Task 1, honestly: **there was no further fusion available to attempt.** Every one
+of the four opportunities this project was asked to check for was already shipped in #503-507, and
+the one remaining lever (a persistent-kernel, device-scope-spin-barrier redesign that would let a
+single dispatch survive across what are today six separate kernel launches) is explicitly flagged,
+in the code this project was asked to read, as high-risk and deliberately not attempted — a
+correctness posture this project agrees with rather than overrides: Metal's public API has no
+grid-wide barrier primitive, so a spin-barrier implementation would be racing the GPU's own
+scheduler with no language-level guarantee it terminates, which is a materially different risk
+class than every other fusion in this file (all of which are ordinary same-kernel accumulation with
+no new synchronization primitive). Reported as a negative result rather than forced into a
+made-up "further fusion," per the standing instruction not to report a target number without a real
+implementation behind it. Dispatch count stands at **171** (`28 * 6 + 3`), unchanged, and
+`residentk_dispatch_budget(28)` continues to assert exactly that.
+
+Reconfirming the submission floor this conclusion rests on, fresh on this worktree
+(`submit_floor_batch.mojo`, no-op-shaped dispatches at the real 171-dispatch mix, median of 30):
+
+```
+   171 no-op-shaped dispatches / ONE shim call, median of 30 : 1507.0 us  == 8.81 us/dispatch
+   implied per-token submission floor at this dispatch count: 1.507 ms
+   implied tok/s ceiling from submission alone: 663.57
+```
+
+8.81 us/dispatch matches the int8 addendum's own 8.80-8.84 us/dispatch (and the fp16 addendum's
+8.68-8.86 us/dispatch) within run-to-run noise — the batched-shim submission floor has not moved,
+consistent with zero dispatch-count or dispatch-mechanism change this session. This also directly
+answers the task's own question about ROI at this overhead level: 8.81 us/dispatch on the batched-
+shim path is already ~11x below MAX's own 16.45 ms/171-dispatch floor's ~96 us/dispatch, so even if
+the persistent-kernel redesign were attempted and succeeded perfectly at removing every layer
+boundary (six dispatches/layer down to one, a 4.2x reduction in count), the submission-time saving
+would be at most `(171-1-28-2) * 8.81us ≈ 1.23 ms` of a 4.135 ms token — real, but small next to the
+correctness risk a grid-wide spin barrier introduces on a backend with no documented barrier
+primitive, and it would still leave the int8 kernel-execution residual (2.63 ms) as the larger term.
+The ROI calculus the task asked to check honestly is worse here than it would have been against
+MAX's ~96 us/dispatch, exactly as the task anticipated it might be, and this project did not
+attempt the redesign.
+
+### Task 2 — packed int8 loads: three variants tried, all three measurably worse than the existing `char4` load
+
+Built `benchmarks/llm_smoke/int8_pack_probe.mojo` — a new, additive, hand-written, unregistered
+probe (same convention `decode_metal_probe.mojo` and the `metal_ffi_probe/` files already
+established: not in `generate_mojo_tests.py`'s protected/generated suites, because this is a design
+probe, not a golden-vector suite). It isolates the int8 GEMV reduction loop from
+`residentk.kernels._norm_gemv_kernel_i8` (same threadgroup shape, same one-SIMD-group-per-output-
+column structure, same tree reduction; the rmsnorm stage is removed so only the weight-load choice
+varies) and runs four variants at real decode shapes:
+
+- **A (baseline)**: `w.load[width=4]` — the existing `char4` vector load, `.cast[DType.float32]()`,
+  multiply by the per-row scale.
+- **B (`word32`)**: one explicit `UInt32` read via `w.bitcast[UInt32]()`, then a shift/mask/compare/
+  subtract unpack to 4 signed lanes — the literal "single 32-bit-word read" the task asked to try.
+- **B2 (`word32_bl`)**: the same explicit word read, but a branchless shift-based sign extension
+  (`(Int32(raw) << 24) >> 24`) instead of the mask-compare-subtract in B — added to separate "the
+  branch is what's slow" from "the extra unpack arithmetic itself is what's slow" before reporting
+  B's result as the whole answer.
+- **C (`word32x2`)**: two consecutive `UInt32` reads (8 bytes, 8 elements) unpacked together, 8
+  elements/step instead of 4 — the "wider packed read" the task asked to check if B showed a win.
+
+**Stage 1 correctness, checked before any timing number was trusted**: all four variants, on a
+small (`k=136`, `n=24` — deliberately not a multiple of any vector stride, so every variant's
+scalar-tail path is exercised) hand-quantized shape, against an independent pure-host scalar Int8
+reference (no vectorization, no packed reads, a plain multiply-accumulate loop):
+
+```
+correctness[ char4 ]:     worst |delta| vs scalar host reference = 3.90e-06   OK
+correctness[ word32 ]:    worst |delta| vs scalar host reference = 3.90e-06   OK
+correctness[ word32_bl ]: worst |delta| vs scalar host reference = 3.90e-06   OK
+correctness[ word32x2 ]:  worst |delta| vs scalar host reference = 4.32e-06   OK
+```
+
+All four agree with the independent scalar reference to float-rounding noise — the byte-order
+assumption in the manual unpack (`shift = 0` is the lowest 8 bits, matching `char4`'s own element
+0) is correct on this host, confirmed rather than assumed.
+
+**Timing, median of 200, at three real decode-shaped GEMVs** (gate/up-like, down-proj-like, and an
+lm_head-column-block-like shape), all run through `DeviceContext.enqueue_function_unchecked`
+directly (not the batched shim — this measures kernel-side cost in isolation, with the ~150-170 us
+MAX per-call submission floor as a roughly constant offset that cancels in the relative comparison
+below, since `char4`'s own timing is flat across all three shapes and close to that floor, meaning
+its own kernel time is small enough to be lost in the noise floor — the packed variants' growth
+IS real, shape-proportional kernel time on top of that same floor):
+
+| shape (k, n) | char4 (baseline) | word32 | word32_bl | word32x2 |
+|---|---|---|---|---|
+| 1024, 3072 (gate/up-like) | 166-167 us | 474-480 us (**+184-188%**) | 481 us (**+188%**) | 315-316 us (**+89-91%**) |
+| 3072, 1024 (down-proj-like) | 166-168 us | 555-558 us (**+232-234%**) | 560 us (**+233%**) | 353-358 us (**+109-113%**) |
+| 1024, 2048 (lm_head-block-like) | 154-159 us | 365-366 us (**+130-137%**) | 382 us (**+140%**) | 254-260 us (**+64-65%**) |
+
+**Every packed variant is slower than the existing `char4` load, at every shape tried, by a wide
+margin.** Removing the branch (B2 vs B) changed nothing measurable — B and B2 track each other
+within noise at every shape, which rules out "the branch, specifically, is the cost" and points
+instead at the unpack arithmetic itself (four to eight shift/mask/cast operations per step,
+scalar, one lane at a time) versus what `char4`'s vector load gets essentially for free: a single
+vectorized load instruction plus a fused `int8x4 -> float4` cast the compiler emits without being
+asked. Doubling the elements read per step (C) helps relative to the single-word variants (B/B2)
+but never closes even half the gap to baseline.
+
+**Answer to the task's precise question**: Metal's compiler does NOT need an explicit packed-word
+read to get a 32-bit-wide memory transaction out of `w.load[width=4]` on an `Int8` pointer — the
+evidence is that the explicit form is 2-3x SLOWER, which is only possible if the load itself was
+never the bottleneck `char4` was paying and the packed form's manual unpack is pure added cost on
+top of an equivalent (or better-optimized) load. This is a real, measured, three-variant negative
+result, reported as exactly that per the task's own standing allowance for a null result. **No
+change was made to `_norm_gemv_kernel_i8`, `_gemv_accum_kernel_i8`, `_norm_gemv2_swiglu_kernel_i8`,
+or `_lmhead_argmax_kernel_i8`** — they are byte-identical to `origin/main`'s `#506` versions, and
+this measurement is the reason they were left alone rather than "additively" replaced with a slower
+path.
+
+### Staged correctness, reconfirmed fresh rather than assumed unchanged
+
+Because neither task changed a production kernel or the dispatch plan, "the new design" bit-for-bit
+IS `#506`'s own int8 arm. Reran the full stack anyway, fresh, on this worktree, rather than take
+that on faith:
+
+- **Single-token / small-model golden vectors** (Stage 1/2 territory): `test_residentk_session.mojo`
+  **39/39**, `test_metaldispatch_session_i8.mojo` **8/8** (int8 logit agrees to `6.644e-3` within an
+  int8 bound of `10.19` — this is the "~6.6e-3 logit delta band" this project's own task description
+  named), `test_metaldispatch_session.mojo` (Float32) **11/11**,
+  `test_metaldispatch_session_f16.mojo` **8/8**, `test_metaldispatch_contract.mojo` **2/2** — every
+  count identical to `#506`'s own report, zero regressions.
+- **Full 16-token greedy generation** (Stage 3): reran `qwen3_generate_batch_i8.mojo` against a
+  `transformers`-CPU reference regenerated fresh in this session
+  (`/tmp/bb/qwen3_ckpt/reference_generate_int8dispatch/`):
+
+```
+[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]
+" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."
+```
+
+  **16/16 tokens match**, max per-step logit delta **2.36e-01** — identical to `#506`'s own figure,
+  not a new number, because nothing that affects a logit changed. No divergence anywhere; nothing
+  to stop and report per the task's Stage 3 instruction, because there is none.
+
+### Measured decode-only tok/s this session
+
+Five fresh runs of `qwen3_generate_batch_i8.mojo` (unchanged binary/kernels, this worktree, load
+average 7.89-7.90, calmer than most sessions in this document):
+
+```
+236.42  237.31  241.96  243.41  244.83     median 241.96
+```
+
+Inside `#506`'s own range (231.01-245.30, median 241.83) — this is the SAME arm, remeasured, not an
+improvement or a regression, exactly as expected when zero production code changed. Reported per the
+task's own instruction to measure and state the real number rather than carry the old one forward
+unchecked.
+
+### Where the gap stands, unchanged, and why both remaining terms are now confirmed harder than "more engineering time"
+
+`#506`'s own framing stands: a token with the measured ~2.63 ms int8 kernel time and zero submission
+overhead would run at ~380 tok/s, clearing mlx-lm's 309.83 median — so the gap is a submission-
+mechanism and kernel-instruction-density problem, not a bandwidth one. This session closes off both
+of the concrete levers named for closing it:
+
+1. **Fewer dispatches** — confirmed already at the fusion floor the hardware (no grid-wide Metal
+   barrier) imposes; every fusion this project could check for is already shipped, and the one
+   fusion left unshipped (persistent-kernel spin-barrier) is a different, higher-risk class of
+   change than anything already in `residentk`, explicitly flagged as such in the code, and not
+   attempted here on that basis.
+2. **Cheaper per-element int8 unpacking** — confirmed the opposite of a win: the existing `char4`
+   load is already faster than every explicit alternative tried, by 64%-234%.
+
+Neither confirmed dead end is "more engineering time would fix it" — one is blocked on Metal's own
+public API having no grid-wide barrier (the same class of gap the raw-Metal-dispatch addendum
+already named for the submission mechanism itself), and the other is blocked on `char4` already
+being at or near what this compiler can do with a 4-byte-aligned vector read, measured three ways.
+The honest state of this design, after this session, is: 241.83-244.83 tok/s, 171 dispatches/token,
+`char4` int8 loads, unchanged from `#506` — and the next lever, if one exists, is not on this list.
+
+### Publication decision: no gitbook page
+
+No number changed, so the standing verdict does not change: Algenta's best arm (int8, batched-shim,
+~242 tok/s) still loses to llama.cpp GPU (~258.53 median, `#506`) and mlx-lm (~309.83 median,
+`#506`) — not re-raced this session since neither lever attempted here altered any Algenta number
+that would move that comparison. No page ships, and none is drafted. Both explored levers are a
+real, reproducible, negative engineering result — confirmed dead ends on this toolchain, not
+unattempted ones — and are reported as exactly that.
+
+### Gates, on a fresh worktree off `origin/main` tip (`f1a99dfb`, `#507`)
+
+- `git diff --stat origin/main -- mojo/engine/`: **completely empty** — not merely
+  alternation-filtered-empty; zero files under `mojo/engine/` were touched, because neither task's
+  conclusion required a production-kernel change. `git status --porcelain mojo/engine/`: empty.
+  `git status --porcelain` (whole repo): one new untracked file,
+  `benchmarks/llm_smoke/int8_pack_probe.mojo`.
+- `make inventory-refresh` (unconditional): zero diff. `make inventory-check`: clean.
+- `scripts/capability_manifest_gate.py` (run as part of `inventory-check`): clean — "122 of 655
+  modules fully declared... 595 still undeclared (ceiling 595)", unchanged from `#506`.
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean.
+- `python3 -m scripts.reliability_guards` (all guards): same three pre-existing baselined debt
+  categories as `#506`, same counts — `boundary_imports` 11, `egress_sdk_clients` 11, `raw_egress`
+  35 — no new violations.
+- `tests/generate_mojo_tests.py --check`: clean — "195 hand-written suite(s) protected, 466
+  generated suite(s) fresh", identical counts to `#506`.
+- `mojo/tests/libs/test_residentk_session.mojo`: 39/39. `test_metaldispatch_session_i8.mojo`: 8/8.
+  `test_metaldispatch_session.mojo`: 11/11. `test_metaldispatch_session_f16.mojo`: 8/8.
+  `test_metaldispatch_contract.mojo`: 2/2. All identical counts to `#506`, rerun fresh rather than
+  assumed.
+- `int8_pack_probe.mojo` is a hand-written, intentionally-unregistered probe (see its own
+  docstring), matching `decode_metal_probe.mojo`'s own precedent — not part of
+  `generate_mojo_tests.py`'s protected/generated suites by design; its own in-file Stage-1
+  correctness check (against an independent scalar host reference) is what this addendum's timing
+  numbers depend on, and it passed before any timing number above was trusted.
+
+### Reproduction
+
+```bash
+# the packed-load probe (Task 2's own numbers)
+cd /Users/angel/Developer/decision-engine/mojo_env  # or this session's worktree's mojo_env
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/int8_pack_probe.mojo -o /tmp/int8_pack_probe
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/int8_pack_probe
+
+# reconfirm the submission floor (Task 1's own number)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/submit_floor_batch.mojo \
+    -o /tmp/submit_floor_batch -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/submit_floor_batch
+
+# the unchanged int8 arm, remeasured, plus the reference cross-check
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo \
+    -o /tmp/race_gpu_i8 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
+/tmp/bb/bin/python3 -P ../benchmarks/llm_smoke/reference_generate.py \
+    --checkpoint /private/tmp/qwen3-0.6b-base --out /tmp/bb/qwen3_ckpt/reference_generate_int8dispatch
+/tmp/bb/bin/python3 -P ../benchmarks/llm_smoke/verify_generation.py \
+    /tmp/bb/qwen3_ckpt/mojo_generate_batch_i8/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_int8dispatch/reference_generated.json
+```
+
+## Final real race (2026-08-02, later still): every arm, six rounds, verdict for today
+
+The dispatch-fusion/packed-int8-load addendum immediately above changed no production kernel — both
+of its levers were confirmed dead ends. This section re-races the full field anyway, fresh, on the
+same worktree (`/tmp/int8dispatch`, branch `feat/residentk-dispatch-fusion`, at `origin/main` tip
+`f1a99dfb`/#507, no rebase needed — the tree was already current), rather than carry forward a
+prior session's opponent numbers. Six full arms, six interleaved rounds, back to back, in the fixed
+order Algenta CPU → Algenta batched-shim fp16 → Algenta batched-shim int8 → llama.cpp CPU →
+llama.cpp GPU → mlx-lm. 1-minute load average 7.79 – 9.47 across the six rounds.
+
+**"Algenta batched-GPU int8 + this phase's fusion/packing improvements" is not a separate arm to
+build.** `git diff --stat origin/main -- mojo/engine/ benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo`
+is empty — the fusion/packing project concluded with zero kernel changes, so the "+fusion" arm and
+the "#507 baseline" arm are the literal same binary. One int8 measurement series stands for both
+labels below; this is reported plainly rather than run twice for the appearance of two data points.
+
+### Correctness first, on this exact run
+
+A `transformers`-CPU reference was regenerated fresh in this session
+(`reference_generate.py` → `/tmp/bb/qwen3_ckpt/reference_generate_realrace_final/`) and every
+Algenta arm's generated-ids file from this run's binaries was checked against it position-by-position
+with `verify_generation.py`:
+
+| Arm | tokens matching reference | max per-step logit delta |
+|---|---|---|
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | 3.19e-06 |
+| Algenta batched-shim GPU, fp16 | **16 / 16** | 5.72e-06 |
+| Algenta batched-shim GPU, int8 | **16 / 16** | 1.35e-01 |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."` — identical across all
+three Algenta arms. Both real opponents printed the identical text in every one of the six rounds:
+llama.cpp `' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'`, mlx-lm
+`'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` (same leading-space
+detokenizer difference this document notes throughout — same token content). **No arm diverged in
+any round, on this run.**
+
+`mojo/tests/libs/test_residentk_session.mojo`: 39/39. `test_metaldispatch_session_i8.mojo`: 8/8
+(real-GPU build). `test_metaldispatch_session.mojo` (Float32): 11/11. `test_metaldispatch_session_f16.mojo`:
+8/8. `test_metaldispatch_contract.mojo`: 2/2. All identical counts to every prior addendum in this
+document — rerun fresh on this worktree, not assumed.
+
+### The numbers
+
+Same checkpoint, prompt, 16 greedy tokens, decode-only tok/s, six rounds:
+
+| Arm | Precision | Compute | Range | Median | vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 6.47 – 7.93 | 7.31 | 0.030x |
+| Algenta batched-shim GPU, fp16 | mixed (fp16 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 202.97 – 210.93¹ | 209.39¹ | 0.862x |
+| **Algenta batched-shim GPU, int8 (#507 baseline == this phase's "+fusion" arm, byte-identical)** | mixed (int8 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 223.65 – 246.29 | **243.06** | **1x (best)** |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 14.20 – 63.06² | 47.90² | 6.55x faster |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 250.54 – 260.82 | 256.72 | **1.056x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 304.60 – 319.09 | **313.21** | **1.289x faster** |
+
+¹ Round 1's fp16 value (147.57 tok/s) is excluded from this row's range/median as a known,
+previously-documented artifact: it was the very first GPU-binary invocation of the session, and this
+document's own earlier "session open... 8 shaders compiled" note already names a one-time cold
+Metal-shader-cache cost on the first GPU call of a run. Included, the full six-value range is
+147.57 – 210.93, median 208.55 — the conclusion below is unchanged either way (the int8 arm beats
+fp16 regardless, and neither arm beats the field). The raw six values, unedited:
+`147.57 210.23 210.93 208.55 210.49 202.97`.
+
+² llama.cpp CPU is inherently noisy on this host (this session's spread, 14.20 – 63.06, is wider
+than any GPU arm's) — server warm-up plus this machine's other load sharing the same 12 performance
+cores llama.cpp's CPU path uses. It is not this race's binding comparison (both GPU opponents beat
+it by a wide margin) and the spread does not change the verdict.
+
+Per-round values, in round order:
+
+```
+algenta_cpu        6.999   7.930   6.468   7.735   7.627   6.712
+algenta_gpu_f16  147.567 210.225 210.935 208.553 210.491 202.974
+algenta_gpu_i8   223.650 245.254 242.707 246.289 241.779 243.416
+llama_cpp_cpu     14.201  46.429  56.591  49.380  63.058  35.708
+llama_cpp_gpu    252.872 259.732 250.544 255.407 258.035 260.824
+mlx_lm           308.347 311.401 315.009 319.092 315.441 304.598
+```
+
+**int8 over fp16, on this run** (fp16 excluding the cold-start round): 243.06 / 210.23 = **1.156x
+(+15.6%)** — consistent with every prior measurement of this same gap in this document (+16.9% in
+the Int8-weight addendum, same order of magnitude, run-to-run noise accounts for the rest).
+
+**int8 vs. the field, on this run**: llama.cpp GPU (256.72) beats Algenta int8 by **1.056x**;
+mlx-lm (313.21) beats Algenta int8 by **1.289x**. Both figures match the Dispatch-fusion addendum's
+own carried-forward numbers (1.07x, 1.28x) to within normal day-long measurement noise — because
+nothing changed in the int8 arm's kernels since that addendum, this is exactly the outcome a fresh
+remeasurement should produce, and it is what happened.
+
+### Where the gap stands, and why: unchanged, confirmed one more time
+
+The token-cost breakdown this document has built up all day still holds, reconfirmed fresh:
+`submit_floor_batch.mojo` (median of 30, run fresh in this session) measured **8.71 us/dispatch**,
+implying a **1.49 ms/token, 671 tok/s submission-alone ceiling** at the unchanged 171-dispatch
+budget — matching every prior session's 8.68 – 8.86 us/dispatch band. At the median 243.06 tok/s,
+a token costs 4.114 ms; subtracting the ~1.49 ms submission floor leaves **~2.62 ms** of
+kernel-execution time, matching the Int8-weight and Dispatch-fusion addenda's own ~2.63 ms figure.
+Both concrete levers this document identified for shrinking that number were tried this session
+(fewer dispatches, cheaper per-element int8 unpacking) and both came back negative, for the reasons
+already given in the addendum immediately above this one: Metal's public API has no grid-wide
+barrier to fuse the remaining per-layer dispatch boundaries, and the existing `char4` load already
+beats every explicit packed-word alternative measured, by 64%-234%.
+
+### Publication decision: no gitbook page
+
+**Standing rule: an outright win against BOTH llama.cpp's best (256.72 tok/s median, GPU, measured
+on this run) AND mlx-lm's real number (313.21 tok/s median, measured on this run).** Algenta's best
+arm — batched-shim int8, 243.06 tok/s median — loses to both: **1.056x short of llama.cpp GPU,
+1.289x short of mlx-lm.** No gitbook page ships, and none is drafted.
+
+This closes out today's entire chain (Qwen3 forward pass → KV-cache decode → parallel GEMV →
+resident GPU → kernel efficiency + fp16 → batched raw-Metal dispatch → int8 → deeper fusion) with an
+honest, consistent verdict at every stage: real, cumulative, verified engineering progress — a
+15.56x-to-1.29x closing of the gap to mlx-lm across five precision/dispatch tiers (float32 one-shot
+→ fp16 → batched dispatch → int8 → fusion-floor-confirmed) — and a genuine, named remaining
+bottleneck, not a crossing of the line. The two levers left in the 243.06 tok/s token
+(submission-mechanism cost, and per-instruction overhead below the byte-width where narrower dtypes
+stop helping) are both now confirmed dead ends *for this toolchain, today* rather than merely
+untried:
+
+- **More dispatch fusion**: blocked on Metal's public API exposing no grid-wide barrier; the one
+  remaining redesign (persistent kernel + device-scope spin barrier) is explicitly flagged in the
+  code itself as high-risk and was correctly not attempted.
+- **Cheaper int8 unpacking**: measured, three ways, to be a regression, not a win — the compiler's
+  own `char4` lowering already beats hand-written alternatives.
+
+**Honest assessment: further optimization within this toolchain's public API is very unlikely to
+close the remaining ~1.06x-1.29x gap today.** Both concrete levers this session's own task named are
+now spent, not merely tried-and-abandoned for lack of time. Closing the gap for real would need
+either (a) a Modular/Mojo toolchain capability this public API does not currently expose (a
+grid-wide barrier, or a lower per-dispatch submission cost than the batched shim already achieves),
+or (b) an algorithmic change outside the scope of today's chain (e.g., true persistent-kernel decode
+that never returns to the host between tokens, which is the same "high-risk, deliberately not
+attempted" redesign named above, or a different attention/GEMV formulation entirely). Neither is a
+same-day lever. Today's honest stopping point is **243.06 tok/s**, 171 dispatches/token, int8
+weights, `char4` loads — a real, 33.2x improvement over this session's original CPU baseline
+(7.31 tok/s), still short of the field.
+
+### Gates, rerun on this worktree (already at `origin/main` tip `f1a99dfb`/#507 — no rebase needed)
+
+- `git fetch origin main` then `git merge-base --is-ancestor origin/main HEAD`: true — this worktree
+  was already at the current tip.
+- `git diff --stat origin/main -- mojo/engine/`: empty, unchanged from every gate check this session.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean (runtime contract OK,
+  capability manifest OK, runtime-library-catalog OK, 122/655 modules fully declared, 595 undeclared
+  against the unchanged 595 ceiling).
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean.
+- `python3 -m scripts.reliability_guards` (all guards): the same three pre-existing baselined debt
+  categories as every prior addendum (`boundary_imports` 11, `egress_sdk_clients` 11, `raw_egress`
+  35) — no new violations.
+- `tests/generate_mojo_tests.py --check`: clean (195 hand-written suites protected, 466 generated
+  fresh) — **after fixing one real, pre-existing gap found while verifying this**: PR #507 added
+  `mojo/tests/libs/test_metaldispatch_session_i8.mojo` (a hand-written golden-vector suite, sibling
+  to the already-registered `test_metaldispatch_session.mojo`/`test_metaldispatch_session_f16.mojo`)
+  but never added it to `tests/generate_mojo_tests.py`'s `HANDWRITTEN_TESTS` registry. This is
+  invisible to `generate_mojo_tests.py --check` itself (which only checks registered-but-missing,
+  not present-but-unregistered) and invisible to CI (`DE_SKIP_GO_LIVE_VERIFY=1` skips the one caller
+  that does check the stricter symmetric-difference condition,
+  `tests/integration/test_mojo_libraries_az.py`'s preflight) — but it is a real, reproducible local
+  gap, caught here by running `pnpm check` in full rather than only the narrower gate script. Fixed
+  with a one-line registry addition (test-inventory bookkeeping only, zero kernel/production code
+  touched); `pnpm check`'s "Mojo libraries A-Z" step failed before the fix and passed after it,
+  confirming the fix at the same tool that found the gap.
+- `pnpm check`: full run, all suites green after the fix above (24 → 25 passed suites; see prior
+  addenda for the two other pre-existing, already-documented, CI-invisible local quirks this
+  worktree also carries — the go-live S3 connectivity flake and the `/mcp/sse` 401 mismatch — which
+  did not reproduce as failures in this run's environment).
+- `mojo/tests/libs/test_residentk_session.mojo`: 39/39. `test_metaldispatch_session_i8.mojo`: 8/8.
+  `test_metaldispatch_session.mojo`: 11/11. `test_metaldispatch_session_f16.mojo`: 8/8.
+  `test_metaldispatch_contract.mojo`: 2/2. All rerun fresh, all identical counts to every prior
+  addendum.
+
+### Reproduction
+
+```bash
+# build the shim object + all three Algenta arms (from mojo_env/)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_f16.mojo \
+    -o /tmp/race_gpu_f16 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo \
+    -o /tmp/race_gpu_i8 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+
+# one round = every arm once, back to back, interleaved (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_f16
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+# repeat this block 6x for six rounds
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_realrace_final
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_llmfwd/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_f16/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_i8/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final/reference_generated.json
+
+# the submission-only floor this section's breakdown depends on
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/submit_floor_batch
 ```

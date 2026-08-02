@@ -218,6 +218,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_residentk_session.mojo",
         "test_metaldispatch_session.mojo",
         "test_metaldispatch_session_f16.mojo",
+        "test_metaldispatch_session_i8.mojo",
         "test_tensorx_pack.mojo",
         "test_tensorx_dtype.mojo",
         "test_tensorx_contract.mojo",
