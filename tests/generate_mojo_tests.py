@@ -143,6 +143,13 @@ HANDWRITTEN_TESTS = frozenset(
         # would delete the only independently-sourced expectations in the package.
         "test_exactnum_eft.mojo",
         "test_exactnum_lstsq.mojo",
+        # progexec: FinQA-shaped indexed-program execution + the round-half-to-even final
+        # step. Goldens are real FinQA (github.com/czyssrs/FinQA) question ids and the
+        # dataset's own exe_ans, plus the adversarial guard paths (bad ref, table range,
+        # divide by zero, unknown op) a generated suite's fixed 5-element fuzz cannot
+        # exercise meaningfully.
+        "test_progexec_exec.mojo",
+        "test_progexec_roundexact.mojo",
         "test_columnar_arrow_wire.mojo",
         "test_columnar_dictionary.mojo",
         "test_determinism_manifest.mojo",

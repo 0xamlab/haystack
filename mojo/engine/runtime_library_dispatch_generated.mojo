@@ -5422,6 +5422,18 @@ from procurement import (
     payment_discount_annualized as _procurement__payment_discount_annualized,
 )
 
+from progexec.contract import (
+    progexec_status_name as _progexec_contract__progexec_status_name,
+)
+
+from progexec.exec import (
+    progexec_run_flat as _progexec_exec__progexec_run_flat,
+)
+
+from progexec.roundexact import (
+    round_half_even_scaled as _progexec_roundexact__round_half_even_scaled,
+)
+
 from project_management import (
     earned_value as _project_management__earned_value,
     schedule_variance as _project_management__schedule_variance,
@@ -8524,6 +8536,10 @@ from pipelines import (
 
 from pls import (
     PLSResult,
+)
+
+from progexec.exec import (
+    ProgExecResult,
 )
 
 from queue_ds import (
@@ -16938,6 +16954,20 @@ fn _to_json_priorityqueueentry(value: PriorityQueueEntry) raises -> String:
     result += _to_json_float64(value.priority)
     result += ","
     result += _to_json_int(value.value)
+    result += "]}"
+    return result
+
+fn _to_json_progexecresult(value: ProgExecResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ProgExecResult\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.is_bool)
+    result += ","
+    result += _to_json_bool(value.bool_value)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -111058,6 +111088,89 @@ fn _dispatch_procurement(function_name: String, args_array: String) raises -> St
         "Function '" + function_name + "' is not registered for module procurement."
     )
 
+fn _dispatch_progexec__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "progexec_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _progexec_contract__progexec_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for progexec.contract.progexec_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function progexec.contract.progexec_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module progexec.contract."
+    )
+
+fn _dispatch_progexec__exec(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "progexec_run_flat":
+        if arg_count == 9:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_list_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_float64_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_float64_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_list_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_list_int_token(json_array_get(args_array, 7))
+                var arg_8 = _parse_int_token(json_array_get(args_array, 8))
+                var result = _progexec_exec__progexec_run_flat(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8)
+                var result_json = _to_json_progexecresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for progexec.exec.progexec_run_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function progexec.exec.progexec_run_flat expected 9 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module progexec.exec."
+    )
+
+fn _dispatch_progexec__roundexact(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "round_half_even_scaled":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _progexec_roundexact__round_half_even_scaled(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "progexec.roundexact.round_half_even_scaled produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for progexec.roundexact.round_half_even_scaled."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function progexec.roundexact.round_half_even_scaled expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module progexec.roundexact."
+    )
+
 fn _dispatch_project_management(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "earned_value":
@@ -151739,6 +151852,12 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_probability(function_name, args_array)
     if module_name == "procurement":
         return _dispatch_procurement(function_name, args_array)
+    if module_name == "progexec.contract":
+        return _dispatch_progexec__contract(function_name, args_array)
+    if module_name == "progexec.exec":
+        return _dispatch_progexec__exec(function_name, args_array)
+    if module_name == "progexec.roundexact":
+        return _dispatch_progexec__roundexact(function_name, args_array)
     if module_name == "project_management":
         return _dispatch_project_management(function_name, args_array)
     if module_name == "propensity":

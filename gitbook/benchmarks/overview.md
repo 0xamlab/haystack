@@ -17,6 +17,7 @@ This section is the index. Each benchmark family has its own page with its own c
 <tr><td><strong>Compute kernels</strong></td><td>Dense and quantized matrix kernels, measured against the engine's own prior implementations.</td><td><a href="compute-kernels.md">compute-kernels.md</a></td></tr>
 <tr><td><strong>Least-squares accuracy</strong></td><td>Correct digits on the NIST StRD linear-regression suite, against fourteen numpy, scipy and statsmodels arms on the same data.</td><td><a href="least-squares-accuracy.md">least-squares-accuracy.md</a></td></tr>
 <tr><td><strong>Forecasting on the joint axis</strong></td><td>Accuracy and latency together on all 100,000 M4 series, against statsforecast 2.1.1 at matched parallelism.</td><td><a href="forecasting-joint-axis.md">forecasting-joint-axis.md</a></td></tr>
+<tr><td><strong>FinQA exact execution</strong></td><td>Execution accuracy on all 8,281 real FinQA gold programs, against three real naive-reimplementation arms on the same programs.</td><td><a href="finqa-exact-execution.md">finqa-exact-execution.md</a></td></tr>
 </tbody>
 </table>
 
