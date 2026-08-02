@@ -11,9 +11,8 @@ additive, nothing frozen touched:
 1. A REAL KV cache, not a recompute-from-scratch loop. Every earlier token's post-RoPE K and
    post-projection V, per layer, are computed ONCE (during prefill or their own decode step) and
    never recomputed. Each decode step embeds only the ONE new token, projects Q/K/V for only that one
-   token, appends the new K/V to the running per-layer cache with the new
-   `llmk.generate.kv_cache_append_flat`, and calls `attnk.sdpa.sdpa_forward_flat` with
-   `n_tok_q=1` against the FULL grown cache as `n_tok_k` — exactly the shape
+   token, appends the new K/V to the running per-layer cache, and calls `attnk.sdpa.sdpa_forward_flat`
+   with `n_tok_q=1` against the FULL grown cache as `n_tok_k` — exactly the shape
    `attnk.mask.mask_causal_flat`'s `offset` parameter and `sdpa_forward_flat`'s independent
    `n_tok_q`/`n_tok_k` were already built to support (see `llmk/generate.mojo`'s docstring). Cost per
    decode step is O(cache_len) for attention plus O(1) for every other op — NOT O(prompt + step)
@@ -21,6 +20,19 @@ additive, nothing frozen touched:
    at every step would cost. Total cost across `n` decode steps is O(n) projections/FFN + O(n^2)
    attention (summed growing cache), the standard KV-cache decode complexity — not O(n^3) or worse,
    which a naive "recompute everything from scratch" loop would be.
+
+   The append itself uses `llmk.generate`'s internal `_kv_cache_reserve_flat` /
+   `_kv_cache_append_into_flat`, not the public `kv_cache_append_flat` this file used to call: this
+   loop calls the append twice per layer per step (K, then V) against the SAME cache, every step, up
+   to `N_NEW_MAX` times, and `kv_cache_append_flat` allocates a brand-new buffer and copies the
+   ENTIRE existing cache into it on every single call — O(cache_len + n_new) per call, which sums to
+   O(n^2) TOTAL copy cost across an n-step decode on top of the O(n^2) attention cost that is already
+   the expected shape (see `llmk/generate.mojo`'s own module docstring for the full comparison).
+   `N_NEW_MAX` makes the maximum total cache length knowable before decoding starts — the same bound
+   this file already computes as `max_pos` to size the shared RoPE table — so `_kv_cache_reserve_flat`
+   allocates each layer's K/V buffer ONCE, up front, at that maximum size, and every step after that
+   writes only its `h_kv * d_head` new elements at their final offset: zero reallocation, zero
+   re-copy of existing content, for the life of the loop.
 2. GEMV, not GEMM, for every per-layer projection during decode. A decode step's activation is ONE
    row (`n_tok=1`); `gemm.blocked.gemv_flat` exists specifically for this ("the decode-shaped case:
    one vector, memory-bound" — its own docstring) and was unused by any driver before this file.
@@ -78,7 +90,7 @@ from attnk.sdpa import sdpa_forward_flat
 from attnk.contract import ATTN_OK
 from llmk.residual import residual_add_flat
 from llmk.contract import LLMK_OK
-from llmk.generate import greedy_argmax_flat, kv_cache_append_flat
+from llmk.generate import _kv_cache_append_into_flat, _kv_cache_reserve_flat, greedy_argmax_flat
 from llmk.gemv_fast import gemv_transposed_parallel_flat
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
@@ -256,12 +268,17 @@ def main() raises:
     var rt = rope_table(d_head, max_pos, theta)
     _check(rt.status, ATTN_OK, "rope_table")
 
-    # ── per-layer KV cache: grows by exactly one token's worth per step, every layer in step ──
+    # ── per-layer KV cache: reserved ONCE at its known maximum size (max_pos tokens' worth, the
+    # same bound rope_table above already uses), then grown in place -- see this file's own module
+    # docstring for why that beats kv_cache_append_flat's per-call reallocate-and-copy-everything
+    # for THIS caller specifically (two calls per layer per step, against the same cache, for up to
+    # N_NEW_MAX steps).
+    var max_cache_elems = max_pos * h_kv * d_head
     var cache_k = List[List[Float64]]()
     var cache_v = List[List[Float64]]()
     for _ in range(n_layers):
-        cache_k.append(List[Float64]())
-        cache_v.append(List[Float64]())
+        cache_k.append(_kv_cache_reserve_flat(max_cache_elems))
+        cache_v.append(_kv_cache_reserve_flat(max_cache_elems))
     var cache_len_tokens = 0
 
     var generated_ids = List[Int]()
@@ -307,14 +324,13 @@ def main() raises:
         var k_rot = rope_apply_flat(kn.y, rt.cos_table, rt.sin_table, n_prompt, h_kv, d_head, prefill_positions, False)
         _check(k_rot.status, ATTN_OK, "rope_apply_flat(prefill k)")
 
-        # Seed this layer's KV cache: append onto an empty cache, exactly the decode step's own
-        # `kv_cache_append_flat` call, at cache_len=0 -- prefill and decode share the one growth path.
-        var k_seeded = kv_cache_append_flat(cache_k[layer], k_rot.values, 0, n_prompt * h_kv * d_head)
-        _check(k_seeded.status, LLMK_OK, "kv_cache_append_flat(prefill k)")
-        var v_seeded = kv_cache_append_flat(cache_v[layer], v_new.c, 0, n_prompt * h_kv * d_head)
-        _check(v_seeded.status, LLMK_OK, "kv_cache_append_flat(prefill v)")
-        cache_k[layer] = k_seeded.out.copy()
-        cache_v[layer] = v_seeded.out.copy()
+        # Seed this layer's reserved KV cache: write onto the reserved buffer at offset 0, exactly
+        # the decode step's own `_kv_cache_append_into_flat` call below -- prefill and decode share
+        # the one growth path, in place, no reallocation either way.
+        var k_seed_status = _kv_cache_append_into_flat(cache_k[layer], k_rot.values, 0, n_prompt * h_kv * d_head)
+        _check(k_seed_status, LLMK_OK, "_kv_cache_append_into_flat(prefill k)")
+        var v_seed_status = _kv_cache_append_into_flat(cache_v[layer], v_new.c, 0, n_prompt * h_kv * d_head)
+        _check(v_seed_status, LLMK_OK, "_kv_cache_append_into_flat(prefill v)")
 
         var attn = sdpa_forward_flat(
             q_rot.values, cache_k[layer], cache_v[layer], prefill_causal.bias,
@@ -407,16 +423,14 @@ def main() raises:
                 var k_rot1 = rope_apply_flat(kn1.y, rt.cos_table, rt.sin_table, 1, h_kv, d_head, one_pos, False)
                 _check(k_rot1.status, ATTN_OK, "rope_apply_flat(decode k)")
 
-                var k_grown = kv_cache_append_flat(
+                var k_grow_status = _kv_cache_append_into_flat(
                     cache_k[layer], k_rot1.values, cache_len_tokens * h_kv * d_head, h_kv * d_head
                 )
-                _check(k_grown.status, LLMK_OK, "kv_cache_append_flat(decode k)")
-                var v_grown = kv_cache_append_flat(
+                _check(k_grow_status, LLMK_OK, "_kv_cache_append_into_flat(decode k)")
+                var v_grow_status = _kv_cache_append_into_flat(
                     cache_v[layer], v1.y, cache_len_tokens * h_kv * d_head, h_kv * d_head
                 )
-                _check(v_grown.status, LLMK_OK, "kv_cache_append_flat(decode v)")
-                cache_k[layer] = k_grown.out.copy()
-                cache_v[layer] = v_grown.out.copy()
+                _check(v_grow_status, LLMK_OK, "_kv_cache_append_into_flat(decode v)")
 
                 var total_k_tokens = cache_len_tokens + 1
                 var decode_mask = mask_causal_flat(1, total_k_tokens, pos)

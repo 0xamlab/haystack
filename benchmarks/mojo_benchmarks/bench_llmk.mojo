@@ -29,6 +29,14 @@ Three kernels, and they are not equally interesting
    copy cost across the whole sequence, not the O(1)-amortized cost an append usually implies. That
    is disclosed here as a measured property, not smoothed into a "fast enough" number.
 
+   `qwen3_generate.mojo`'s decode loop WAS that caller (twice per layer per step, K then V, every
+   step, against the same cache) and no longer is: it now calls `llmk.generate`'s internal (leading-
+   underscore) `_kv_cache_append_into_flat` against a buffer `_kv_cache_reserve_flat` pre-sizes once,
+   up front, to the loop's own known maximum length. Section 4 below measures THAT path, holding
+   `n_new` fixed and raising the existing-cache size exactly like section 3 does for the unchanged
+   function — the point being the direct side-by-side: same measurement methodology, opposite cost
+   shape, because this path never re-copies existing content.
+
 Gate
 ----
 Fails on the properties, not on absolute nanoseconds, which vary by machine:
@@ -44,12 +52,21 @@ Fails on the properties, not on absolute nanoseconds, which vary by machine:
     positive confirmation of the O(cache_len + n_new)-per-call finding above. A run where it does
     NOT grow would mean the implementation changed and this docstring (and the published page) is
     now wrong, which is exactly why this is gated rather than merely printed.
+  * _kv_cache_append_into_flat must agree with direct list concatenation, cache ++ new_vals, in order
+  * _kv_cache_append_into_flat: ns per NEWLY APPENDED element must stay roughly FLAT as the existing
+    cache grows — the inverse of kv_cache_append_flat's own finding above, and the positive proof the
+    quadratic-total-copy cost is gone from the path the decode loop actually calls now.
 Absolute numbers are printed for tracking.
 """
 from std.time import perf_counter_ns
 
 from llmk.contract import LLMK_OK
-from llmk.generate import greedy_argmax_flat, kv_cache_append_flat
+from llmk.generate import (
+    _kv_cache_append_into_flat,
+    _kv_cache_reserve_flat,
+    greedy_argmax_flat,
+    kv_cache_append_flat,
+)
 from llmk.residual import residual_add_flat
 
 
@@ -314,6 +331,75 @@ def main() raises:
         print("   quadratic TOTAL copy cost across the sequence, not the O(1)-amortized cost an")
         print("   append usually implies. A caller who cares about that should know it before")
         print("   calling this repeatedly in a hot loop.")
+
+    # ── 4. _kv_cache_append_into_flat — the fixed path the decode loop actually calls now ──────
+    print("")
+    print("[llmk.generate] _kv_cache_append_into_flat correctness against direct concatenation")
+    var i_base_cache = _pseudo(6000, 71)
+    var i_base_new = _pseudo(128, 72)
+    var i_ref = List[Float64](capacity=6128)
+    for i in range(6000):
+        i_ref.append(i_base_cache[i])
+    for i in range(128):
+        i_ref.append(i_base_new[i])
+    var i_buf = _kv_cache_reserve_flat(6128)
+    var i_seed_status = _kv_cache_append_into_flat(i_buf, i_base_cache, 0, 6000)
+    var i_grow_status = _kv_cache_append_into_flat(i_buf, i_base_new, 6000, 128)
+    var i_drift = 0.0
+    for i in range(6128):
+        var dd = _abs(i_buf[i] - i_ref[i])
+        if dd > i_drift:
+            i_drift = dd
+    if i_seed_status == LLMK_OK and i_grow_status == LLMK_OK and i_drift == 0.0:
+        print("   correctness: bit-identical to cache ++ new_vals, in order, 6,000 + 128 = 6,128")
+    else:
+        failures += 1
+        print("   FAIL: _kv_cache_append_into_flat diverged from direct concatenation by", i_drift)
+
+    print("")
+    print("[llmk.generate] _kv_cache_append_into_flat cost as the EXISTING cache grows, n_new fixed")
+    print("   at 128 -- same shape section 3 measures, opposite claim: this must stay FLAT")
+    print("   cache_len    total ns      ns/appended-cell")
+    var i_clens = List[Int]()
+    i_clens.append(512)
+    i_clens.append(8192)
+    i_clens.append(131072)
+    var i_n_new = 128
+    var i_new_vals = _pseudo(i_n_new, 81)
+    var i_per_new_first = 0.0
+    var i_per_new_last = 0.0
+    var i_reps = 200
+    for ci in range(len(i_clens)):
+        var cache_len = i_clens[ci]
+        var i_reserved = _kv_cache_reserve_flat(cache_len + i_n_new)
+        var _i_seed = _kv_cache_append_into_flat(i_reserved, _pseudo(cache_len, 900 + ci), 0, cache_len)
+        var _i_warm = _kv_cache_append_into_flat(i_reserved, i_new_vals, cache_len, i_n_new)
+        var it0 = perf_counter_ns()
+        for _r in range(i_reps):
+            var i_status = _kv_cache_append_into_flat(i_reserved, i_new_vals, cache_len, i_n_new)
+            if i_status != LLMK_OK:
+                failures += 1
+                print("   FAIL: status", i_status, "at cache_len =", cache_len)
+        var i_ns = _ns_since(it0) / Float64(i_reps)
+        var i_per_new = i_ns / Float64(i_n_new)
+        if ci == 0:
+            i_per_new_first = i_per_new
+        i_per_new_last = i_per_new
+        print("  ", cache_len, "   ", i_ns, "   ", i_per_new)
+
+    var i_growth = i_per_new_last / i_per_new_first if i_per_new_first > 0.0 else 0.0
+    print("")
+    print("   ns/appended-cell growth across a 256x larger existing cache:", i_growth, "x  (gate: <= 3x)")
+    if i_growth > 3.0:
+        failures += 1
+        print("   FAIL: ns per newly appended element grew", i_growth,
+              "x with the existing cache -- the reserved-capacity path is re-copying existing")
+        print("   content again, which would make this fix's whole premise false")
+    else:
+        print("   CONFIRMED: cost per newly appended element stays flat as the existing cache grows,")
+        print("   the exact inverse of kv_cache_append_flat's own measured shape above -- this path")
+        print("   writes only the", i_n_new, "new elements at their final offset, zero re-copy of the")
+        print("   existing cache, zero reallocation once _kv_cache_reserve_flat has sized the buffer.")
 
     print("")
     if failures == 0:

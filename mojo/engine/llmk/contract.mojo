@@ -53,6 +53,11 @@ Codes 569-570 (below) are additive for `llmk.gemv_fast.gemv_transposed_parallel_
 transposed-GEMV that replaces `gemm.blocked.gemv_flat(..., trans=True)`'s single-threaded scalar path
 at the 7-of-8 decode-step call sites `benchmarks/llm_smoke/qwen3_generate.mojo` uses it at (see that
 module's own docstring for the measured bottleneck). Still inside 560-579, still nothing renumbered.
+
+Code 571 (below) is additive for `llmk.generate`'s internal (leading-underscore, not
+runtime-discoverable) `_kv_cache_append_into_flat` -- the reserved-capacity, zero-copy replacement
+for `kv_cache_append_flat` in `qwen3_generate.mojo`'s decode hot loop (that function's own docstring
+has the full story). Still inside 560-579, still nothing renumbered.
 """
 
 from tensorx.contract import tx_finite
@@ -97,6 +102,13 @@ comptime LLMK_ERR_GEMV_X_LENGTH: Int = 570
 """gemv_transposed_parallel_flat: len(x) != m -- the input vector is not the in-features width the
 caller claimed."""
 
+comptime LLMK_ERR_CACHE_CAPACITY: Int = 571
+"""`generate.mojo`'s internal `_kv_cache_append_into_flat`: `cache_len + n_new` exceeds `len(cache)`
+-- the caller did not reserve the cache's full known maximum size before appending into it in
+place. Internal-only status (the function that returns it is not runtime-discoverable, see
+`apps/runtime/mojo_inventory.py`'s leading-underscore skip), listed here anyway because every
+`llmk`-owned code, public or not, lives in this one file's vocabulary (rule 4e)."""
+
 comptime LLMK_MAX_DIM: Int = 1 << 24
 """Ceiling on `n`. Matches `normk.contract.NORM_MAX_ROWS`'s order of magnitude — a residual add over
 `tokens * d_model` at any real transformer shape is far below this, and a caller passing a byte count
@@ -125,6 +137,8 @@ fn llmk_status_name(code: Int) -> String:
         return String("llmk_gemv_a_length_mismatch")
     if code == LLMK_ERR_GEMV_X_LENGTH:
         return String("llmk_gemv_x_length_mismatch")
+    if code == LLMK_ERR_CACHE_CAPACITY:
+        return String("llmk_cache_capacity_exceeded")
     return String("llmk_code_out_of_range")
 
 

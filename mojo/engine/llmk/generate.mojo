@@ -32,9 +32,27 @@ Neither of these touches `attnk`/`normk`/`mlpk`/`gemm`, neither touches `llm_sam
 `llmk_residual_dims_check`, the same split `llmk.residual` already uses. Status codes are additive
 within `llmk`'s own owned range 560-579 -- see `llmk.contract` for 566-568.
 
+`kv_cache_append_flat` is O(cache_len + n_new) BY DESIGN, on purpose -- and that is only fine for a
+caller who calls it once, or a small fixed number of times, against a cache that is not the thing
+growing in a hot loop. `qwen3_generate.mojo`'s decode loop is neither: it calls this twice per layer
+per step (K, then V), every step, against the SAME cache, for as many steps as the loop runs. Two
+private (leading-underscore, not runtime-discoverable -- see rule 1's note on
+`apps/runtime/mojo_inventory.py` skipping `_`-prefixed names) primitives below exist for exactly
+that caller and no other: `_kv_cache_reserve_flat` and `_kv_cache_append_into_flat`. See their own
+docstrings for why a pre-sized buffer, not amortized doubling, is the right shape for THIS call site
+specifically (`qwen3_generate.mojo`'s own `N_NEW_MAX` decode-step cap makes the maximum total length
+knowable before decoding starts -- the caller already computes it, for `rope_table`'s own sizing).
+`kv_cache_append_flat` itself is UNCHANGED -- still exactly the O(cache_len + n_new)-per-call
+function `benchmarks/mojo_benchmarks/bench_llmk.mojo`'s gate documents and asserts, still correct,
+just no longer the one the hot loop calls.
+
 Public API:
   kv_cache_append_flat(cache, new_vals, cache_len, n_new)   -> KvAppendResult
   greedy_argmax_flat(logits, n)                              -> GreedyResult
+
+Internal (not runtime-discoverable, `qwen3_generate.mojo`'s decode loop is the one caller):
+  _kv_cache_reserve_flat(max_elements)                                    -> List[Float64]
+  _kv_cache_append_into_flat(cache, new_vals, cache_len, n_new)           -> Int (status)
 
 @capability-module
 deterministic: true
@@ -53,7 +71,16 @@ deprecation_state: active
 @endcapability
 """
 
-from llmk.contract import LLMK_OK, llmk_argmax_dims_check, llmk_kv_append_dims_check
+from llmk.contract import (
+    LLMK_ERR_CACHE_CAPACITY,
+    LLMK_ERR_DIM_TOO_LARGE,
+    LLMK_ERR_EMPTY_DIM,
+    LLMK_ERR_NEW_LENGTH,
+    LLMK_MAX_DIM,
+    LLMK_OK,
+    llmk_argmax_dims_check,
+    llmk_kv_append_dims_check,
+)
 from llm_sampling import greedy_token_id
 
 
@@ -101,6 +128,67 @@ fn kv_cache_append_flat(
     for i in range(n_new):
         out.append(new_vals[i])
     return KvAppendResult(out^, cache_len + n_new, LLMK_OK)
+
+
+fn _kv_cache_reserve_flat(max_elements: Int) -> List[Float64]:
+    """Allocate a decode loop's ENTIRE per-layer K (or V) cache buffer once, at the maximum element
+    count it will ever hold, zero-filled. Pairs with `_kv_cache_append_into_flat` below: every step
+    after this one writes into memory this call already owns, so the reallocation-plus-copy
+    `kv_cache_append_flat` pays on every call happens zero times across a whole decode, not once per
+    step. `max_elements` is `(n_prompt + N_NEW_MAX) * h_kv * d_head` at `qwen3_generate.mojo`'s call
+    site -- the same `n_prompt + N_NEW_MAX` bound that file already computes as `max_pos` to size its
+    shared RoPE table, so this asks nothing of the caller it was not already computing.
+
+    A caller with no knowable maximum step count (unbounded streaming decode) is a different call
+    shape than this file's own `N_NEW_MAX`-capped loop and would want geometric/amortized-doubling
+    growth instead -- not this function, and not a reason to make this one more complicated than the
+    one caller it has actually needs.
+
+    Returns an empty list for a non-positive or oversized request rather than allocating a buffer of
+    unbounded or nonsensical size (rule 1) -- the caller's own `llmk_kv_append_dims_check`-style
+    capacity check in `_kv_cache_append_into_flat` then refuses every append against it, so the
+    failure is loud (a wrong status code) rather than an out-of-bounds write.
+    """
+    if max_elements < 1 or max_elements > LLMK_MAX_DIM:
+        return List[Float64]()
+    return List[Float64](length=max_elements, fill=0.0)
+
+
+fn _kv_cache_append_into_flat(
+    mut cache: List[Float64], new_vals: List[Float64], cache_len: Int, n_new: Int
+) -> Int:
+    """The reserved-capacity replacement for `kv_cache_append_flat` in a decode hot loop: writes
+    `new_vals` into `cache[cache_len : cache_len + n_new]` IN PLACE and returns a status code --
+    no new allocation, no copy of the existing `cache_len` elements, ever. `cache` must already be
+    sized to its final maximum length by `_kv_cache_reserve_flat` (its trailing zero-fill past the
+    logical `cache_len + n_new` is inert padding the caller's own running length counter never reads,
+    exactly how `qwen3_generate.mojo` already tracks `cache_len_tokens` independently of `len(cache)`).
+
+    Observable result is identical to `kv_cache_append_flat`'s: reading `cache[0 : cache_len + n_new]`
+    afterward gives `cache[0:cache_len] ++ new_vals`, bit-for-bit, in order -- this changes WHERE the
+    bytes end up (written once, at their final resting place) and WHEN the buffer was allocated (once,
+    up front), never WHAT the result is.
+
+    No fenced capability block below on purpose: the leading underscore already excludes this
+    function from `apps/runtime/mojo_inventory.py`'s public-function parse, so no runtime dispatch
+    entry, A-Z generated test, or manifest/catalog entry exists for it either -- a fenced block
+    naming it would be flagged as declaring a capability for a function the parser cannot see
+    (`unknown_function`), which is a hard failure of `capability_manifest_gate.py`, not a style
+    choice. Complexity is O(n_new), never O(cache_len + n_new); shape is enforced the same way
+    regardless: `n_new == len(new_vals)`, and `cache_len + n_new <= len(cache)` against the
+    RESERVED capacity, not a running length.
+    """
+    if cache_len < 0 or n_new < 1:
+        return LLMK_ERR_EMPTY_DIM
+    if len(new_vals) != n_new:
+        return LLMK_ERR_NEW_LENGTH
+    if cache_len > LLMK_MAX_DIM - n_new:
+        return LLMK_ERR_DIM_TOO_LARGE
+    if cache_len + n_new > len(cache):
+        return LLMK_ERR_CACHE_CAPACITY
+    for i in range(n_new):
+        cache[cache_len + i] = new_vals[i]
+    return LLMK_OK
 
 
 fn greedy_argmax_flat(logits: List[Float64], n: Int) -> GreedyResult:

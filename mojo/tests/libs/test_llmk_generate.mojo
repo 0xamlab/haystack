@@ -6,15 +6,30 @@ KV-cache append actually concatenates in order and refuses a caller's wrong leng
 uncatchable-abort risk `llmk.residual` guards against, rule 1); greedy argmax finds the real maximum
 regardless of where it sits, breaks ties by first-index (matching `numpy.argmax`), and refuses a
 shape mismatch rather than reading past the real buffer.
+
+Also covers `_kv_cache_append_into_flat` / `_kv_cache_reserve_flat` -- the internal, reserved-
+capacity replacement `qwen3_generate.mojo`'s decode hot loop actually calls now (see
+`llmk/generate.mojo`'s module docstring for why `kv_cache_append_flat` above stays unchanged and is
+no longer that caller). The claim worth testing there is two-sided: bit-identical to
+`cache ++ new_vals`, exactly like the O(cache_len + n_new) function above, PLUS the inverse of that
+function's own cost shape -- cost per newly-appended element must stay FLAT as the existing cache
+grows, not grow with it, since this path never re-copies existing content.
 """
 from llmk.contract import (
+    LLMK_ERR_CACHE_CAPACITY,
     LLMK_ERR_CACHE_LENGTH,
     LLMK_ERR_EMPTY_DIM,
     LLMK_ERR_LOGITS_LENGTH,
     LLMK_ERR_NEW_LENGTH,
     LLMK_OK,
 )
-from llmk.generate import greedy_argmax_flat, kv_cache_append_flat
+from llmk.generate import (
+    _kv_cache_append_into_flat,
+    _kv_cache_reserve_flat,
+    greedy_argmax_flat,
+    kv_cache_append_flat,
+)
+from std.time import perf_counter_ns
 
 
 fn _abs(x: Float64) -> Float64:
@@ -85,6 +100,95 @@ def main() raises:
     else:
         failed += 1
         print("  ❌ n_new=0 was not refused")
+
+    # ── _kv_cache_append_into_flat: bit-identical to cache ++ new_vals ──────────
+    var reserved = _kv_cache_reserve_flat(20)
+    var seed_status = _kv_cache_append_into_flat(reserved, cache, 0, 6)
+    var grow_status = _kv_cache_append_into_flat(reserved, new_vals, 6, 3)
+    var into_ok = seed_status == LLMK_OK and grow_status == LLMK_OK
+    for i in range(6):
+        if _abs(reserved[i] - Float64(i)) > 1e-12:
+            into_ok = False
+    for i in range(3):
+        if _abs(reserved[6 + i] - Float64(100 + i)) > 1e-12:
+            into_ok = False
+    if into_ok:
+        passed += 1
+        print("  ✅ _kv_cache_append_into_flat: reserved-buffer writes match cache ++ new_vals exactly")
+    else:
+        failed += 1
+        print("  ❌ _kv_cache_append_into_flat produced the wrong buffer")
+
+    # ── _kv_cache_append_into_flat: refuses capacity overrun rather than reading/writing past the
+    # reserved buffer (the in-place analogue of kv_cache_append_flat's LLMK_ERR_CACHE_LENGTH check
+    # -- there is no "cache_len mismatch" here since cache_len is just an offset, but writing past
+    # the reserved length is the same uncatchable-abort risk rule 1 warns about) ──
+    var tight = _kv_cache_reserve_flat(8)
+    if _kv_cache_append_into_flat(tight, new_vals, 6, 3) == LLMK_ERR_CACHE_CAPACITY:
+        passed += 1
+        print("  ✅ writing past the reserved capacity is refused, not written out of bounds")
+    else:
+        failed += 1
+        print("  ❌ a capacity overrun was accepted -- this WOULD write past the reserved buffer")
+
+    if _kv_cache_append_into_flat(reserved, short_new, 6, 3) == LLMK_ERR_NEW_LENGTH:
+        passed += 1
+        print("  ✅ _kv_cache_append_into_flat also refuses a wrong n_new claim")
+    else:
+        failed += 1
+        print("  ❌ _kv_cache_append_into_flat accepted a mismatched n_new claim")
+
+    if len(_kv_cache_reserve_flat(0)) == 0 and len(_kv_cache_reserve_flat(-1)) == 0:
+        passed += 1
+        print("  ✅ _kv_cache_reserve_flat refuses a non-positive size (empty list, not a crash)")
+    else:
+        failed += 1
+        print("  ❌ _kv_cache_reserve_flat accepted a non-positive size")
+
+    # ── _kv_cache_append_into_flat: cost per NEWLY appended element stays FLAT as the existing
+    # cache grows -- the exact inverse of kv_cache_append_flat's own documented O(cache_len + n_new)
+    # cost, and the positive proof the quadratic-total-copy bug is gone from this path. Same
+    # methodology bench_llmk.mojo uses for the O(cache_len + n_new) function: REPS amortizes away
+    # clock-resolution noise on a single call. ──
+    var n_new_probe = 128
+    var probe_vals = List[Float64]()
+    for i in range(n_new_probe):
+        probe_vals.append(Float64(i))
+    var probe_reps = 200
+
+    var small_cap = 2048
+    var small_buf = _kv_cache_reserve_flat(small_cap + n_new_probe)
+    var _small_warm = _kv_cache_append_into_flat(small_buf, probe_vals, small_cap - n_new_probe, n_new_probe)
+    var small_t0 = perf_counter_ns()
+    for _r in range(probe_reps):
+        _ = _kv_cache_append_into_flat(small_buf, probe_vals, small_cap - n_new_probe, n_new_probe)
+    var small_ns = Float64(Int(perf_counter_ns() - small_t0)) / Float64(probe_reps)
+    var small_per = small_ns / Float64(n_new_probe)
+
+    var big_cap = 2048 + 131072
+    var big_buf = _kv_cache_reserve_flat(big_cap + n_new_probe)
+    var _big_warm = _kv_cache_append_into_flat(big_buf, probe_vals, big_cap - n_new_probe, n_new_probe)
+    var big_t0 = perf_counter_ns()
+    for _r in range(probe_reps):
+        _ = _kv_cache_append_into_flat(big_buf, probe_vals, big_cap - n_new_probe, n_new_probe)
+    var big_ns = Float64(Int(perf_counter_ns() - big_t0)) / Float64(probe_reps)
+    var big_per = big_ns / Float64(n_new_probe)
+
+    var flat_growth = big_per / small_per if small_per > 0.0 else 0.0
+    var cache_size_growth = Float64(big_cap) / Float64(small_cap)
+    print("  [cost shape] ns/appended-cell at existing-cache-size", small_cap, "->", small_per)
+    print("  [cost shape] ns/appended-cell at existing-cache-size", big_cap, "->", big_per,
+          "(", cache_size_growth, "x larger existing cache )")
+    print("  [cost shape] growth:", flat_growth, "x  (gate: <= 3x -- flat, not the O(cache_len) growth")
+    print("  kv_cache_append_flat itself still shows)")
+    if flat_growth <= 3.0:
+        passed += 1
+        print("  ✅ cost per newly-appended element stays flat as the existing cache grows",
+              cache_size_growth, "x -- no re-copy of existing content, unlike kv_cache_append_flat")
+    else:
+        failed += 1
+        print("  ❌ cost per newly-appended element grew", flat_growth,
+              "x with the existing cache -- the in-place path is copying existing content again")
 
     # ── greedy_argmax_flat: max in the middle, at the start, at the end ─────────
     var mid = List[Float64]()

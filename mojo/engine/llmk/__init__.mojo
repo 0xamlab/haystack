@@ -31,6 +31,11 @@ Modules
                actual per-layer decode step (which frozen kernel gets called at which shape, prefill
                vs. one-new-token) is the driver's job, `benchmarks/llm_smoke/qwen3_generate.mojo`,
                not this package's — this package supplies only what no frozen kernel already did.
+               Also has two internal (leading-underscore) primitives, `_kv_cache_reserve_flat` and
+               `_kv_cache_append_into_flat`, that the same driver's decode hot loop calls instead of
+               `kv_cache_append_flat` -- see `generate.mojo`'s docstring for why that call site needed
+               a reserved-capacity, zero-copy append rather than the per-call reallocate-and-copy the
+               public function still (correctly) does.
 
 Dependency direction is one-way: `llmk` uses `tensorx` for finiteness and `llm_sampling` for the
 frozen greedy formula, and never the reverse, exactly like attnk/normk/mlpk.
