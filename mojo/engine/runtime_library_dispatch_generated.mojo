@@ -2119,6 +2119,11 @@ from esrnn.global_residual import (
     esrnn_apply_correction as _esrnn_global_residual__esrnn_apply_correction,
 )
 
+from esrnn.per_frequency import (
+    esrnn_fit_frequency_corrector as _esrnn_per_frequency__esrnn_fit_frequency_corrector,
+    esrnn_apply_linear_correction as _esrnn_per_frequency__esrnn_apply_linear_correction,
+)
+
 from etiology import (
     relative_risk as _etiology__relative_risk,
     odds_ratio as _etiology__odds_ratio,
@@ -55575,6 +55580,62 @@ fn _dispatch_esrnn__global_residual(function_name: String, args_array: String) r
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module esrnn.global_residual."
+    )
+
+fn _dispatch_esrnn__per_frequency(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "esrnn_fit_frequency_corrector":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _esrnn_per_frequency__esrnn_fit_frequency_corrector(arg_0, arg_1)
+                var result_json = _to_json_regressionresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.per_frequency.esrnn_fit_frequency_corrector."
+                )
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _esrnn_per_frequency__esrnn_fit_frequency_corrector(arg_0, arg_1, arg_2)
+                var result_json = _to_json_regressionresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.per_frequency.esrnn_fit_frequency_corrector."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.per_frequency.esrnn_fit_frequency_corrector expected 2 or 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_apply_linear_correction":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_float64_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_float64_token(json_array_get(args_array, 3))
+                var result = _esrnn_per_frequency__esrnn_apply_linear_correction(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.per_frequency.esrnn_apply_linear_correction."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.per_frequency.esrnn_apply_linear_correction expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module esrnn.per_frequency."
     )
 
 fn _dispatch_etiology(function_name: String, args_array: String) raises -> String:
@@ -151539,6 +151600,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_esrnn__bias_correction(function_name, args_array)
     if module_name == "esrnn.global_residual":
         return _dispatch_esrnn__global_residual(function_name, args_array)
+    if module_name == "esrnn.per_frequency":
+        return _dispatch_esrnn__per_frequency(function_name, args_array)
     if module_name == "etiology":
         return _dispatch_etiology(function_name, args_array)
     if module_name == "evaluation.binning":

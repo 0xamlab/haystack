@@ -181,6 +181,11 @@ HANDWRITTEN_TESTS = frozenset(
         # a genuinely non-constant residual left with a real leftover, refusal on
         # non-finite input).
         "test_esrnn_bias_correction.mojo",
+        # esrnn.per_frequency: a LINEAR-class (ridge regression) per-frequency residual
+        # corrector over the SAME backbone/window primitives. Hand-written known-value
+        # suite (bit-exact against a direct ridge_regression/predict call, a recoverable
+        # zero-noise linear signal, refusal on an empty/mismatched pool, the sign check).
+        "test_esrnn_per_frequency.mojo",
         "test_retrieval_score.mojo",
         "test_pls.mojo",
         "test_seq_nn.mojo",

@@ -447,6 +447,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `ergonomics` | 12 |
 | `esrnn.bias_correction` | 2 |
 | `esrnn.global_residual` | 7 |
+| `esrnn.per_frequency` | 2 |
 | `etiology` | 10 |
 | `evaluation.binning` | 4 |
 | `evaluation.contract` | 13 |
