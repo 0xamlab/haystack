@@ -656,7 +656,11 @@ def _emit_function_dispatch(module_name: str, function: RuntimeFunctionSpec) -> 
     return lines
 
 
-def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
+def render_dispatch_source(
+    modules: tuple[RuntimeLibraryModule, ...],
+    *,
+    struct_scan_modules: tuple[RuntimeLibraryModule, ...] | None = None,
+) -> str:
     param_types: set[str] = set()
     result_types: set[str] = set()
     from apps.runtime.mojo_inventory import (
@@ -673,11 +677,22 @@ def render_dispatch_source(modules: tuple[RuntimeLibraryModule, ...]) -> str:
     # variants, which genuinely differ in fields) are distinct nominal types and
     # are namespaced per defining module via `qualify()` below — so the generated
     # ser/de never conflate them, and no function is filtered out.
+    #
+    # Struct DEFINITIONS are scanned from `struct_scan_modules` (the full executable
+    # set by default), never from the possibly shard-FILTERED `modules` alone: a
+    # function in one shard can take a struct whose defining module lands in a
+    # DIFFERENT shard under pure alphabetical chunking (measured —
+    # optimization.explain:model_contributions takes ModelFlat, defined in
+    # optimization.model, shard index 16 vs explain's 15 at shard-size 24). Parsing
+    # helpers are pure and side-effect-free, so scanning the full set here costs
+    # nothing per shard and generalizes to any future cross-shard struct reference,
+    # not just this one. The function-DISPATCH switch below still only emits cases
+    # for `modules`, preserving per-shard binary size.
     module_struct_fields: dict[tuple[str, str], list[tuple[str, str]]] = {}
     module_defines: dict[str, set[str]] = {}
     struct_def_count: dict[str, int] = {}
     module_struct_construction: dict[tuple[str, str], str] = {}
-    for module in modules:
+    for module in (struct_scan_modules if struct_scan_modules is not None else modules):
         defined = module_defines.setdefault(module.import_path, set())
         for struct_name, (fields, construction) in _parse_struct_defs(module.path).items():
             if struct_name not in defined:
@@ -983,11 +998,12 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    modules = discover_runtime_library_modules(
+    all_modules = discover_runtime_library_modules(
         engine_root=args.engine_root,
         executable_only=True,
         cache_path=args.cache_path,
     )
+    modules = all_modules
     if args.modules:
         available_modules = {module.import_path: module for module in modules}
         missing_modules = [
@@ -1026,7 +1042,7 @@ def main() -> None:
             "your build directory, which is what scripts/build_mojo_binary.sh does when it stages."
         )
 
-    rendered = render_dispatch_source(modules)
+    rendered = render_dispatch_source(modules, struct_scan_modules=all_modules)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered, encoding="utf-8")
     print(args.output)
