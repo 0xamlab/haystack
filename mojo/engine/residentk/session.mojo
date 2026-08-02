@@ -90,20 +90,26 @@ from residentk.contract import (
     residentk_dims_check,
     residentk_dispatch_budget,
 )
+from std.math import abs as _fabs64
 from residentk.kernels import (
     _TG,
     _SUBS,
     _argmax_reduce_kernel,
     _embed_row_kernel,
     _embed_row_kernel_f16,
+    _embed_row_kernel_i8,
     _gemv_accum_kernel,
     _gemv_accum_kernel_f16,
+    _gemv_accum_kernel_i8,
     _lmhead_argmax_kernel,
     _lmhead_argmax_kernel_f16,
+    _lmhead_argmax_kernel_i8,
     _norm_gemv2_swiglu_kernel,
     _norm_gemv2_swiglu_kernel_f16,
+    _norm_gemv2_swiglu_kernel_i8,
     _norm_gemv_kernel,
     _norm_gemv_kernel_f16,
+    _norm_gemv_kernel_i8,
     _qk_rope_write_kernel,
     _sdpa_kernel,
 )
@@ -188,6 +194,34 @@ struct _LayerGpuF16(Copyable, Movable):
     var w_o: DeviceBuffer[DType.float16]
     var w_gu: DeviceBuffer[DType.float16]
     var w_down: DeviceBuffer[DType.float16]
+    var ck: DeviceBuffer[DType.float32]
+    var cv: DeviceBuffer[DType.float32]
+
+
+@fieldwise_init
+struct _LayerGpuI8(Copyable, Movable):
+    """The int8-weight twin of `_LayerGpu`/`_LayerGpuF16`: the four GEMV weight matrices resident as
+    Int8, each with its OWN companion Float32 per-output-row scale buffer (`w_qkv_scale` has
+    `n_qkv` elements, `w_o_scale` has `d_model`, `w_gu_scale` has `2 * d_ff`, `w_down_scale` has
+    `d_model` — one scale per row of the matrix it belongs to, matching `_norm_gemv_kernel_i8` and
+    its siblings' `wscale[j]` indexing exactly). `ln1`/`ln2`/`qn`/`kn` and `ck`/`cv` stay Float32,
+    identically to the fp16 twin, for the same reason that struct's docstring gives: none of the
+    six is a weight MATRIX in the sense this arm's task was built for, and all six are negligible
+    next to the four matrices.
+    """
+
+    var ln1: DeviceBuffer[DType.float32]
+    var ln2: DeviceBuffer[DType.float32]
+    var qn: DeviceBuffer[DType.float32]
+    var kn: DeviceBuffer[DType.float32]
+    var w_qkv: DeviceBuffer[DType.int8]
+    var w_qkv_scale: DeviceBuffer[DType.float32]
+    var w_o: DeviceBuffer[DType.int8]
+    var w_o_scale: DeviceBuffer[DType.float32]
+    var w_gu: DeviceBuffer[DType.int8]
+    var w_gu_scale: DeviceBuffer[DType.float32]
+    var w_down: DeviceBuffer[DType.int8]
+    var w_down_scale: DeviceBuffer[DType.float32]
     var ck: DeviceBuffer[DType.float32]
     var cv: DeviceBuffer[DType.float32]
 
@@ -288,6 +322,136 @@ fn _narrow_transposed_into_f16(
                         h[dbase + i] = Float16(Float32(sp[i * n_out + j]))
                 j0 = j1
             i0 = i1
+    return RESIDENT_OK
+
+
+comptime _I8_MAX: Float64 = 127.0
+"""The quantized range's positive extreme. `[-127, 127]`, NOT `[-128, 127]` — see
+`_quantize_row_i8`'s docstring for why the range is deliberately kept symmetric rather than using
+Int8's full asymmetric range."""
+
+
+fn _quantize_row_i8(v: Float64, inv_scale: Float64) -> Int8:
+    """Round-half-away-from-zero, clamp to `[-127, 127]`. `inv_scale` is `1.0 / scale`, passed
+    rather than dividing by `scale` at every call so the one division per row happens once, in the
+    caller, not once per element."""
+    var q = v * inv_scale
+    var r = Int(q + 0.5) if q >= 0.0 else Int(q - 0.5)
+    if r > 127:
+        r = 127
+    if r < -127:
+        r = -127
+    return Int8(r)
+
+
+fn _quantize_into_i8(
+    dst_w: DeviceBuffer[DType.int8], dst_scale: DeviceBuffer[DType.float32],
+    src: List[Float64], n_rows: Int, width: Int, row_off: Int, scale_off: Int,
+) raises -> Int:
+    """Per-output-row symmetric int8 quantization, NO transpose — `src` is already `[n_rows,
+    width]` row-major, exactly the tied embedding/lm_head table's own on-disk layout, so (unlike
+    `_quantize_transposed_into_i8`) each row is already contiguous and needs only one pass: find
+    that row's max `|value|`, derive its scale, quantize the same row immediately.
+
+    Scale is `max(|row|) / 127` — the largest representable magnitude in the row maps to exactly
+    127 (or -127), not 128, keeping the quantized range symmetric around zero so a dequantized
+    value can never have a lopsided negative extreme with no positive counterpart. An all-zero row
+    gets `scale = 1.0` (never zero), so no dequant multiply downstream can divide by zero or read a
+    NaN scale — the same "never a zero divisor" discipline `residentk_scalars_ok` enforces for
+    `eps`/`scale` elsewhere in this package.
+    """
+    if len(src) != n_rows * width:
+        return RESIDENT_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    with dst_scale.map_to_host() as hs:
+        with dst_w.map_to_host() as hw:
+            for r in range(n_rows):
+                var base = r * width
+                var maxabs = 0.0
+                for i in range(width):
+                    var av = _fabs64(sp[base + i])
+                    if av > maxabs:
+                        maxabs = av
+                var scale = (maxabs / _I8_MAX) if maxabs > 0.0 else 1.0
+                hs[scale_off + r] = Float32(scale)
+                var inv_scale = 1.0 / scale
+                var dbase = (row_off + r) * width
+                for i in range(width):
+                    hw[dbase + i] = _quantize_row_i8(sp[base + i], inv_scale)
+    return RESIDENT_OK
+
+
+fn _quantize_transposed_into_i8(
+    dst_w: DeviceBuffer[DType.int8], dst_scale: DeviceBuffer[DType.float32],
+    src: List[Float64], k_in: Int, n_out: Int, row_off: Int, scale_off: Int,
+) raises -> Int:
+    """Narrow, TRANSPOSE, and per-output-row symmetric-int8-quantize `[k_in, n_out]` Float64 into
+    `[n_out, k_in]` Int8 at row `row_off`, with one Float32 scale per row at `scale_off`. The
+    weight-matrix case: `src` is `[k_in, n_out]` (the checkpoint's own `[in, out]` layout), so
+    output row `j`'s `k_in` elements are the STRIDED column `src[i * n_out + j]`, not a contiguous
+    run the way `_quantize_into_i8`'s embedding-table case is.
+
+    TWO blocked passes over `_narrow_transposed_into`'s own tiling (see that function's docstring
+    for why blocking matters — the same cache-locality argument applies twice here): a row's scale
+    depends on EVERY element of that row, so no element can be quantized until the whole row has
+    been scanned. Pass 1 accumulates each output row's max `|value|` into `dst_scale`, tile by
+    tile, then converts every accumulated max to a scale in one pass over the `n_out` rows. Pass 2
+    re-reads `src` with the identical tile order and, for each element, reads the now-fixed scale
+    for its row and quantizes into `dst_w`. Same symmetric-range, never-zero-scale discipline as
+    `_quantize_into_i8` — see that function's docstring.
+    """
+    if len(src) != k_in * n_out:
+        return RESIDENT_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+
+    # ── pass 1: per-row max |value|, blocked, then converted to a scale ──
+    with dst_scale.map_to_host() as hs:
+        for j in range(n_out):
+            hs[scale_off + j] = 0.0
+        var i0 = 0
+        while i0 < k_in:
+            var i1 = i0 + _TILE
+            if i1 > k_in:
+                i1 = k_in
+            var j0 = 0
+            while j0 < n_out:
+                var j1 = j0 + _TILE
+                if j1 > n_out:
+                    j1 = n_out
+                for j in range(j0, j1):
+                    var m = hs[scale_off + j]
+                    for i in range(i0, i1):
+                        var av = Float32(_fabs64(sp[i * n_out + j]))
+                        if av > m:
+                            m = av
+                    hs[scale_off + j] = m
+                j0 = j1
+            i0 = i1
+        for j in range(n_out):
+            var m = hs[scale_off + j]
+            hs[scale_off + j] = (m / Float32(_I8_MAX)) if m > 0.0 else 1.0
+
+    # ── pass 2: transpose + quantize, using the now-fixed scale ──
+    with dst_scale.map_to_host() as hs2:
+        with dst_w.map_to_host() as hw:
+            var i0b = 0
+            while i0b < k_in:
+                var i1b = i0b + _TILE
+                if i1b > k_in:
+                    i1b = k_in
+                var j0b = 0
+                while j0b < n_out:
+                    var j1b = j0b + _TILE
+                    if j1b > n_out:
+                        j1b = n_out
+                    for j in range(j0b, j1b):
+                        var scale = Float64(hs2[scale_off + j])
+                        var inv_scale = 1.0 / scale
+                        var dbase = (row_off + j) * k_in
+                        for i in range(i0b, i1b):
+                            hw[dbase + i] = _quantize_row_i8(sp[i * n_out + j], inv_scale)
+                    j0b = j1b
+                i0b = i1b
     return RESIDENT_OK
 
 
@@ -950,6 +1114,345 @@ struct _ResidentQwen3F16(Movable):
                 self.f_lm,
                 self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
                 self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(),
+                self.d_model, self.vocab, self.eps, n_iters,
+                grid_dim=_LM_BLOCKS, block_dim=_TG,
+            )
+            self.ctx.enqueue_function_unchecked(
+                self.f_argmax,
+                self.out_val.unsafe_ptr(), self.out_idx.unsafe_ptr(),
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), _LM_BLOCKS,
+                grid_dim=1, block_dim=_TG,
+            )
+            issued += 2
+
+            self.ctx.enqueue_copy(self.host_val, self.out_val)
+            self.ctx.enqueue_copy(self.host_idx, self.out_idx)
+            self.ctx.synchronize()
+            var tok = Int(self.host_idx.unsafe_ptr()[0])
+            var lg = Float64(self.host_val.unsafe_ptr()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
+            return _StepOut(tok, lg, issued, RESIDENT_OK)
+
+
+struct _ResidentQwen3I8(Movable):
+    """The int8-weight twin of `_ResidentQwen3`/`_ResidentQwen3F16`: identical session, identical
+    dispatch plan, identical `step()` contract — the four GEMV weight matrices per layer and the
+    tied embed/lm_head table are resident as Int8, each with a companion per-output-row Float32
+    scale buffer, read through the `_i8` kernel twins (see `residentk.kernels._I8P`'s docstring for
+    the quantization scheme and the in-register dequant this session's kernels perform).
+
+    Additive alongside both existing arms, per the task this struct was built for: `_ResidentQwen3`
+    and `_ResidentQwen3F16` above are untouched. Every field that is NOT a weight matrix or its
+    scale keeps the Float32 type the other two arms use: activations, the KV cache, norm gains, the
+    RoPE tables, and the argmax scratch. Mixed precision (Float32 activations/accumulator, Int8
+    storage with a Float32 scale), not an all-int8 session.
+    """
+
+    var ctx: DeviceContext
+    var d_model: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var n_layers: Int
+    var vocab: Int
+    var max_ctx: Int
+    var eps: Float32
+    var scale: Float32
+
+    var layers: List[_LayerGpuI8]
+    var embed: DeviceBuffer[DType.int8]
+    var embed_scale: DeviceBuffer[DType.float32]
+    var final_norm: DeviceBuffer[DType.float32]
+    var cos_t: DeviceBuffer[DType.float32]
+    var sin_t: DeviceBuffer[DType.float32]
+
+    var hidden: DeviceBuffer[DType.float32]
+    var qkv: DeviceBuffer[DType.float32]
+    var q_rot: DeviceBuffer[DType.float32]
+    var attn_out: DeviceBuffer[DType.float32]
+    var act: DeviceBuffer[DType.float32]
+    var blk_val: DeviceBuffer[DType.float32]
+    var blk_idx: DeviceBuffer[DType.int32]
+    var out_val: DeviceBuffer[DType.float32]
+    var out_idx: DeviceBuffer[DType.int32]
+    var host_val: HostBuffer[DType.float32]
+    var host_idx: HostBuffer[DType.int32]
+
+    var f_embed: DeviceFunction[
+        _embed_row_kernel_i8, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_norm_gemv: DeviceFunction[
+        _norm_gemv_kernel_i8, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_gemv_acc: DeviceFunction[
+        _gemv_accum_kernel_i8, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_gu: DeviceFunction[
+        _norm_gemv2_swiglu_kernel_i8, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_rope: DeviceFunction[
+        _qk_rope_write_kernel, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_sdpa: DeviceFunction[
+        _sdpa_kernel, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_lm: DeviceFunction[
+        _lmhead_argmax_kernel_i8, None, target = DeviceContext.default_device_info.target()
+    ]
+    var f_argmax: DeviceFunction[
+        _argmax_reduce_kernel, None, target = DeviceContext.default_device_info.target()
+    ]
+
+    fn __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        """Open the context, compile every kernel, and allocate every resident buffer. ONCE.
+
+        Same call-site discipline as `_ResidentQwen3.__init__` and `_ResidentQwen3F16.__init__` —
+        see that constructor's docstring and the module docstring for why the compile-time gate
+        cannot sit on a constructor.
+        """
+        self.ctx = DeviceContext()
+        self.d_model = d_model
+        self.h_q = h_q
+        self.h_kv = h_kv
+        self.d_head = d_head
+        self.d_ff = d_ff
+        self.n_layers = n_layers
+        self.vocab = vocab
+        self.max_ctx = max_ctx
+        self.eps = Float32(eps)
+        self.scale = Float32(scale)
+
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        var n_pairs = d_head // 2
+
+        self.layers = List[_LayerGpuI8]()
+        for _ in range(n_layers):
+            self.layers.append(
+                _LayerGpuI8(
+                    self.ctx.enqueue_create_buffer[DType.float32](d_model),
+                    self.ctx.enqueue_create_buffer[DType.float32](d_model),
+                    self.ctx.enqueue_create_buffer[DType.float32](d_head),
+                    self.ctx.enqueue_create_buffer[DType.float32](d_head),
+                    self.ctx.enqueue_create_buffer[DType.int8](n_qkv * d_model),
+                    self.ctx.enqueue_create_buffer[DType.float32](n_qkv),
+                    self.ctx.enqueue_create_buffer[DType.int8](d_model * h_q * d_head),
+                    self.ctx.enqueue_create_buffer[DType.float32](d_model),
+                    self.ctx.enqueue_create_buffer[DType.int8](2 * d_ff * d_model),
+                    self.ctx.enqueue_create_buffer[DType.float32](2 * d_ff),
+                    self.ctx.enqueue_create_buffer[DType.int8](d_model * d_ff),
+                    self.ctx.enqueue_create_buffer[DType.float32](d_model),
+                    self.ctx.enqueue_create_buffer[DType.float32](max_ctx * h_kv * d_head),
+                    self.ctx.enqueue_create_buffer[DType.float32](max_ctx * h_kv * d_head),
+                )
+            )
+
+        self.embed = self.ctx.enqueue_create_buffer[DType.int8](vocab * d_model)
+        self.embed_scale = self.ctx.enqueue_create_buffer[DType.float32](vocab)
+        self.final_norm = self.ctx.enqueue_create_buffer[DType.float32](d_model)
+        self.cos_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
+        self.sin_t = self.ctx.enqueue_create_buffer[DType.float32](max_ctx * n_pairs)
+
+        self.hidden = self.ctx.enqueue_create_buffer[DType.float32](d_model)
+        self.qkv = self.ctx.enqueue_create_buffer[DType.float32](n_qkv)
+        self.q_rot = self.ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
+        self.attn_out = self.ctx.enqueue_create_buffer[DType.float32](h_q * d_head)
+        self.act = self.ctx.enqueue_create_buffer[DType.float32](d_ff)
+        self.blk_val = self.ctx.enqueue_create_buffer[DType.float32](_LM_BLOCKS)
+        self.blk_idx = self.ctx.enqueue_create_buffer[DType.int32](_LM_BLOCKS)
+        self.out_val = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.out_idx = self.ctx.enqueue_create_buffer[DType.int32](1)
+        self.host_val = self.ctx.enqueue_create_host_buffer[DType.float32](1)
+        self.host_idx = self.ctx.enqueue_create_host_buffer[DType.int32](1)
+
+        self.f_embed = self.ctx.compile_function_unchecked[_embed_row_kernel_i8]()
+        self.f_norm_gemv = self.ctx.compile_function_unchecked[_norm_gemv_kernel_i8]()
+        self.f_gemv_acc = self.ctx.compile_function_unchecked[_gemv_accum_kernel_i8]()
+        self.f_gu = self.ctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_i8]()
+        self.f_rope = self.ctx.compile_function_unchecked[_qk_rope_write_kernel]()
+        self.f_sdpa = self.ctx.compile_function_unchecked[_sdpa_kernel]()
+        self.f_lm = self.ctx.compile_function_unchecked[_lmhead_argmax_kernel_i8]()
+        self.f_argmax = self.ctx.compile_function_unchecked[_argmax_reduce_kernel]()
+
+    fn device_name(self) raises -> String:
+        return self.ctx.name()
+
+    fn dispatch_budget(self) -> Int:
+        return residentk_dispatch_budget(self.n_layers)
+
+    fn upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        """The tied embedding/lm_head table (per-row int8-quantized), the final norm gain
+        (Float32), and the RoPE tables (Float32). See `_ResidentQwen3.upload_globals` for why the
+        embedding table is not transposed."""
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return RESIDENT_ERR_CONTEXT_FULL
+        var s = _quantize_into_i8(self.embed, self.embed_scale, embed, self.vocab, self.d_model, 0, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _narrow_into(self.final_norm, final_norm, self.d_model, 0)
+        if s != RESIDENT_OK:
+            return s
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        with self.cos_t.map_to_host() as h:
+            for i in range(n_pos * n_pairs):
+                h[i] = Float32(cos_t[i])
+        with self.sin_t.map_to_host() as h:
+            for i in range(n_pos * n_pairs):
+                h[i] = Float32(sin_t[i])
+        return RESIDENT_OK
+
+    fn upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        """One layer's eleven checkpoint tensors: norm gains narrowed to Float32 exactly as
+        `_ResidentQwen3.upload_layer` does, the four GEMV weight matrices narrowed, transposed,
+        AND per-row int8-quantized instead."""
+        if layer < 0 or layer >= self.n_layers:
+            return RESIDENT_ERR_UPLOAD_LENGTH
+        ref lw = self.layers[layer]
+        var s = _narrow_into(lw.ln1, ln1, self.d_model, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _narrow_into(lw.ln2, ln2, self.d_model, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _narrow_into(lw.qn, qn, self.d_head, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _narrow_into(lw.kn, kn, self.d_head, 0)
+        if s != RESIDENT_OK:
+            return s
+
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        s = _quantize_transposed_into_i8(lw.w_qkv, lw.w_qkv_scale, wq, self.d_model, n_q, 0, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_qkv, lw.w_qkv_scale, wk, self.d_model, n_kv, n_q, n_q)
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv, lw.w_qkv_scale, wv, self.d_model, n_kv, n_q + n_kv, n_q + n_kv
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_o, lw.w_o_scale, wo, n_q, self.d_model, 0, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_gu, lw.w_gu_scale, wgate, self.d_model, self.d_ff, 0, 0)
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_gu, lw.w_gu_scale, wup, self.d_model, self.d_ff, self.d_ff, self.d_ff
+        )
+        if s != RESIDENT_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_down, lw.w_down_scale, wdown, self.d_ff, self.d_model, 0, 0)
+        if s != RESIDENT_OK:
+            return s
+        return RESIDENT_OK
+
+    fn seal(mut self) raises -> Int:
+        """Drain every upload before the first step. One synchronize for the whole load."""
+        self.ctx.synchronize()
+        return RESIDENT_OK
+
+    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """ONE token, identical dispatch plan to `_ResidentQwen3.step`/`_ResidentQwen3F16.step` —
+        same six-per-layer, same fixed three, same budget. See that function's docstring; nothing
+        about the SHAPE of the computation differs here, only which buffers a handful of the
+        dispatches read from, and that the weight-matrix dispatches now pass an extra scale-buffer
+        argument.
+        """
+
+        @parameter
+        if not RESIDENT_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, RESIDENT_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, RESIDENT_ERR_UPLOAD_LENGTH)
+
+            var n_q = self.h_q * self.d_head
+            var n_kv = self.h_kv * self.d_head
+            var n_qkv = n_q + 2 * n_kv
+            var n_keys = pos + 1
+            var issued = 0
+
+            self.ctx.enqueue_function_unchecked(
+                self.f_embed,
+                self.hidden.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
+                token_id, self.d_model,
+                grid_dim=_ceil_div(self.d_model, _TG), block_dim=_TG,
+            )
+            issued += 1
+
+            for layer in range(self.n_layers):
+                ref lw = self.layers[layer]
+
+                self.ctx.enqueue_function_unchecked(
+                    self.f_norm_gemv,
+                    self.qkv.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln1.unsafe_ptr(),
+                    lw.w_qkv.unsafe_ptr(), lw.w_qkv_scale.unsafe_ptr(),
+                    self.d_model, n_qkv, self.eps,
+                    grid_dim=_ceil_div(n_qkv, _SUBS), block_dim=_TG,
+                )
+                self.ctx.enqueue_function_unchecked(
+                    self.f_rope,
+                    self.q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                    self.qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                    self.cos_t.unsafe_ptr(), self.sin_t.unsafe_ptr(),
+                    pos, self.h_q, self.h_kv, self.d_head, self.eps,
+                    grid_dim=self.h_q + self.h_kv, block_dim=self.d_head,
+                )
+                self.ctx.enqueue_function_unchecked(
+                    self.f_sdpa,
+                    self.attn_out.unsafe_ptr(), self.q_rot.unsafe_ptr(),
+                    lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                    n_keys, self.h_q, self.h_kv, self.d_head, self.scale,
+                    grid_dim=self.h_q, block_dim=self.d_head,
+                )
+                self.ctx.enqueue_function_unchecked(
+                    self.f_gemv_acc,
+                    self.hidden.unsafe_ptr(), self.attn_out.unsafe_ptr(),
+                    lw.w_o.unsafe_ptr(), lw.w_o_scale.unsafe_ptr(),
+                    n_q, self.d_model,
+                    grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
+                )
+                self.ctx.enqueue_function_unchecked(
+                    self.f_gu,
+                    self.act.unsafe_ptr(), self.hidden.unsafe_ptr(), lw.ln2.unsafe_ptr(),
+                    lw.w_gu.unsafe_ptr(), lw.w_gu_scale.unsafe_ptr(),
+                    self.d_model, self.d_ff, self.eps,
+                    grid_dim=_ceil_div(self.d_ff, _SUBS), block_dim=_TG,
+                )
+                self.ctx.enqueue_function_unchecked(
+                    self.f_gemv_acc,
+                    self.hidden.unsafe_ptr(), self.act.unsafe_ptr(),
+                    lw.w_down.unsafe_ptr(), lw.w_down_scale.unsafe_ptr(),
+                    self.d_ff, self.d_model,
+                    grid_dim=_ceil_div(self.d_model, _SUBS), block_dim=_TG,
+                )
+                issued += 6
+
+            var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+            self.ctx.enqueue_function_unchecked(
+                self.f_lm,
+                self.blk_val.unsafe_ptr(), self.blk_idx.unsafe_ptr(), self.hidden.unsafe_ptr(),
+                self.final_norm.unsafe_ptr(), self.embed.unsafe_ptr(), self.embed_scale.unsafe_ptr(),
                 self.d_model, self.vocab, self.eps, n_iters,
                 grid_dim=_LM_BLOCKS, block_dim=_TG,
             )

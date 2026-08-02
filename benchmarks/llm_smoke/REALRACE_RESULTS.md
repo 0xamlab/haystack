@@ -16,6 +16,12 @@ finding was investigated as a raw-Metal-dispatch project — see the final secti
 dispatch addendum". No race was run from that project: it concluded no-go before reaching a
 correctness-verified kernel, so there is nothing new to race. The verdict above is unchanged.**
 
+**Update (2026-08-02, later still again): fused batched dispatch + vectorized GEMV + fp16 weights,
+combined for the first time — read "Batched-dispatch + full-stack addendum" for that result
+(206.38 tok/s, still short of both opponents), then the very last section, "Int8-weight addendum",
+for a third precision tier on top of it (241.83 tok/s — closer, still short of both opponents).
+The final section is the current, correct verdict.**
+
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
 measured together. **Where two sections disagree, the last one is right** — in particular the
@@ -1185,6 +1191,201 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_batch
     /tmp/bb/qwen3_ckpt/reference_generate_metalbatch/reference_generated.json
 
 # the submission-only floor this addendum's breakdown depends on
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/submit_floor_batch.mojo \
+    -o /tmp/submit_floor_batch -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/submit_floor_batch
+```
+
+## Int8-weight addendum (2026-08-02, later still): per-channel int8 quantization narrows the gap further — still losing to both opponents
+
+Same day, same machine, next lever down the "narrow the bytes streamed per token" path the fp16
+addendum opened: per-output-row (per-channel) symmetric int8 weights (`scale[row] = max(|row|) /
+127`, an all-zero row forced to `scale = 1.0`) on top of the identical batched-shim dispatch plan
+(171 dispatches/token, unchanged), dequantized in-register (`char4` load → Float32 cast → per-row
+scale multiply → Float32 accumulate) inside the same vectorized GEMV reduction loop the fp16 arm
+uses. Six full arms raced together this time — Algenta CPU, Algenta batched-shim fp16 (today's
+prior baseline), **Algenta batched-shim int8 (new)**, llama.cpp CPU, llama.cpp GPU, mlx-lm — six
+interleaved rounds, back to back. 1-minute load average 9.9 – 11.9 across the six rounds (calmer
+than the fp16 addendum's session).
+
+### Correctness first — re-verified on this exact measurement run, not carried over from Quantize
+
+All three Algenta arms produce the identical greedy token sequence, checked position-by-position
+against a `transformers`-CPU reference regenerated fresh in this session
+(`reference_generate.py`, same checkpoint, written to
+`/tmp/bb/qwen3_ckpt/reference_generate_i8race/`):
+
+| Arm | tokens matching reference | max per-step logit delta |
+|---|---|---|
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | 1.02e-05 |
+| Algenta batched-shim GPU, fp16 | **16 / 16** | 9.54e-06 |
+| **Algenta batched-shim GPU, int8 (new)** | **16 / 16** | 2.36e-01 |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."` — identical across all
+three Algenta arms, on the specific binaries raced below (rebuilt fresh for this session, not the
+Quantize phase's binaries). The int8 arm's per-step logit delta is visibly larger than fp16's (as
+expected — an 8-bit per-row quant step is a coarser representation than a 16-bit float), but it is
+the same order of magnitude the Quantize phase's own controlled-model and real-model checks found,
+and every one of the 16 greedy argmax decisions still lands on the reference token: quantization
+noise here is well inside the logit-gap-to-runner-up margin at every step, not close to flipping a
+decision. Both real opponents emitted the identical text in every one of the six rounds below:
+llama.cpp `' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'`, mlx-lm
+`'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` (same leading-space
+detokenizer difference this document notes throughout — same token content). **No arm diverged in
+any round.**
+
+`mojo/tests/libs/test_residentk_session.mojo`: 39/39 (int8 section appended, all pre-existing fp16
+and Float32 cases unchanged). `mojo/tests/libs/test_metaldispatch_session_i8.mojo` (new): 1/1
+default build, 8/8 real-GPU build. `mojo/tests/libs/test_metaldispatch_session.mojo` (Float32 arm):
+11/11 real-GPU build, unchanged. `mojo/tests/libs/test_metaldispatch_session_f16.mojo`: 8/8,
+unchanged. `mojo/tests/libs/test_metaldispatch_contract.mojo`: 2/2, unchanged.
+
+### The numbers
+
+Same checkpoint, prompt, 16 greedy tokens, decode-only tok/s — six rounds, every arm run once per
+round, interleaved in this fixed order within each round: Algenta CPU → Algenta batched-shim fp16
+→ **Algenta batched-shim int8** → llama.cpp CPU → llama.cpp GPU → mlx-lm.
+
+| Arm | Precision | Compute | Range | Median | vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 7.17 – 8.10 | 7.44 | 0.031x |
+| Algenta batched-shim GPU, vectorized + fp16 | mixed (fp16 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 199.71 – 209.63 | 206.86 | 0.855x |
+| **Algenta batched-shim GPU, per-channel int8 (new)** | mixed (int8 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 231.01 – 245.30 | **241.83** | **1x (best)** |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 30.67 – 53.34 | 39.90 | 6.06x faster |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 240.76 – 261.52 | 258.53 | **1.07x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 291.99 – 317.32 | **309.83** | **1.28x faster** |
+
+Per-round values, in round order:
+
+```
+algenta_cpu        8.10   7.17   7.48   7.41   7.31   7.49
+algenta_gpu_f16  207.27 206.44 205.77 208.99 209.63 199.71
+algenta_gpu_i8   242.68 239.18 240.98 231.01 244.90 245.30
+llama_cpp_cpu     30.67  37.35  42.44  53.34  45.82  31.83
+llama_cpp_gpu    258.32 259.13 257.40 258.74 261.52 240.76
+mlx_lm           291.99 302.07 315.64 304.02 317.32 317.05
+```
+
+**int8 over fp16, on this measurement run**: 241.83 / 206.86 = **1.169x (+16.9%)** — consistent
+with the Quantize phase's own isolated figure (+16.9%/+18.4% depending on which fp16 baseline it
+compared against). Narrowing the weight bytes streamed per dispatch a second time (fp16 → int8,
+half the bytes again) buys real, repeatable throughput, same direction and a similar magnitude to
+fp16's own win over float32 batched dispatch.
+
+**int8 vs. the field, on this measurement run**: llama.cpp GPU (258.53) beats Algenta int8 by
+**1.07x**; mlx-lm (309.83) beats Algenta int8 by **1.28x**. Both gaps are narrower than fp16's
+(1.25x and 1.50x on this same run's fp16 numbers) — int8 closes real ground — but neither closes to
+parity or a crossover. **Algenta's best arm today, int8, still loses to both real opponents.**
+
+### Where the remaining gap is — measured, not guessed
+
+At the median 241.83 tok/s, a token costs 4.135 ms. `submit_floor_batch.mojo` (same no-op-shaped-
+dispatch isolation every prior addendum in this document uses, run fresh in this session, median of
+30, three repeated invocations: 8.80-8.84 us/dispatch, tight) puts the pure submission cost at
+**~1.51 ms/token** (unchanged from the fp16 addendum — the dispatch count, 171/token, has not
+changed; int8 changes bytes moved per dispatch, not dispatch count). The remaining **~2.63
+ms/token** is kernel-execution time on the int8-narrowed weights. This host's resident int8
+footprint is ~0.716 GB (0.596 GB int8 weights + 0.002 GB per-row Float32 scales + 0.118 GB
+Float32 norm-gains/KV-cache, self-reported by `qwen3_generate_batch_i8.mojo` at session-open); at
+this host's previously-measured 411 GB/s streaming ceiling, that is a 1.742 ms naive bandwidth
+floor. The measured 2.63 ms kernel residual is **~51% above** that floor — a materially worse ratio
+than fp16's own 4.4% (this run's fp16 numbers: 3.33 ms residual against fp16's 1.31 GB / 411 GB/s =
+3.19 ms floor). That is the same diagnosis the Quantize phase's report gave, reproduced independently
+here: `char4`/`half4`/`float4` all advance the same 128 elements per SIMD step on this toolchain (MSL's
+widest native vector for every scalar type at play here is width-4), so int8 shrinks bytes moved per
+instruction without shrinking instruction count — below some byte-width, fixed per-instruction
+overhead (not bytes moved) starts to dominate, which is exactly why int8's bandwidth-floor ratio is
+worse than fp16's even though int8 moves fewer total bytes.
+
+A token with the measured ~2.63 ms int8 kernel time and ZERO submission overhead would run at
+**~380 tok/s** — clearing mlx-lm's 309.83 median by a comfortable margin. That reframes today's gap,
+as it did for fp16: not a kernel-efficiency ceiling but a submission-mechanism one, now the binding
+constraint for a SECOND precision tier in a row. Closing it needs the same lever the fp16 addendum
+named and did not attempt: fusing more of the 171 dispatches into fewer, larger kernels per token, or
+a lower per-dispatch encoder cost than this toolchain's public API exposes today. Int8 does not
+change that diagnosis; it sharpens it, since int8's kernel-only residual is now smaller than its own
+submission floor's neighborhood (2.63 ms kernel vs. 1.51 ms submission — submission is 36.5% of the
+int8 token, up from 30.8% for fp16), meaning submission cost is now a LARGER fraction of the token
+for int8 than for fp16, even though it is the same absolute 1.51 ms in both cases.
+
+### Publication decision: no gitbook page
+
+Standing rule: an outright win against the field's best real installed opponent, mlx-lm, measured
+today (309.83 tok/s median on this run), and also against llama.cpp's best (258.53 tok/s median,
+GPU). Algenta's best arm — batched-shim int8, 241.83 tok/s — loses to both: **1.07x short of
+llama.cpp GPU, 1.28x short of mlx-lm.** No gitbook page ships, and none is drafted. Int8
+quantization is a real, verified, +16.9%-over-fp16 engineering result — the third precision tier
+raced in this document (float32 → fp16 → int8), each one narrowing the gap to the field
+(15.56x → 1.54x → 1.28x against mlx-lm across the three tiers) without ever crossing it — and it is
+reported as exactly that, not as a field win.
+
+### Gates, all rerun on this worktree (already at `origin/main` tip `e92065cf`/`#506` — no rebase needed)
+
+- `git fetch origin main` then `git diff --stat e92065cf -- mojo/engine/`: only `residentk/` and
+  `metaldispatch/` touched, matching the freeze alternation
+- `make inventory-refresh`: zero diff (no new PUBLIC contract surface — every new function is
+  `_`-prefixed private) + `make inventory-check`: clean
+- Capability manifest gate: clean, no new undeclared kernels (122/655 modules fully declared, 595
+  functions still undeclared against the pre-existing 595 ceiling — unchanged)
+- `tests/generate_mojo_tests.py --check`: clean (195 hand-written suites protected, 466 generated
+  fresh)
+- Freeze gate / `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean
+- `python3 -m scripts.reliability_guards` (all guards): no new violations (`boundary_imports`,
+  `egress_sdk_clients`, `raw_egress` — same pre-existing baselined debt this document's prior
+  addenda already carry, unchanged counts)
+- `mojo/tests/libs/test_residentk_session.mojo`: 39/39
+- `mojo/tests/libs/test_metaldispatch_session_i8.mojo` (new): 1/1 default build, 8/8 real-GPU build
+- `mojo/tests/libs/test_metaldispatch_session.mojo` (Float32 arm): 11/11 real-GPU build — unchanged,
+  reverified after the int8 addition to confirm no regression
+- `mojo/tests/libs/test_metaldispatch_session_f16.mojo`: 8/8 real-GPU build — unchanged
+- `mojo/tests/libs/test_metaldispatch_contract.mojo`: 2/2, unchanged
+- `pnpm check`: rerun on this worktree; two pre-existing, CI-invisible local failures, neither
+  touched by this change (verified by reproducing both identically on a clean `origin/main`
+  checkout): a live-network `Live S3 source registration` connectivity flake (`go_live_verify.py`,
+  which CI itself skips via `DE_SKIP_GO_LIVE_VERIFY=1` — rerunning with that same flag set locally
+  clears it), and a local-environment `GET /mcp/sse` returning 401 instead of the
+  `test_openapi.py` integration check's expected `{200, 204, 503}` (an auth-posture mismatch
+  between this dev machine's local server config and the check's assumption, present on `main`
+  itself, unrelated to residentk/metaldispatch)
+
+### Reproduction
+
+```bash
+# build the shim object once
+cd /private/tmp/int8quant/benchmarks/llm_smoke
+clang -c -fobjc-arc -O2 metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+
+cd ../../mojo_env
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_f16.mojo \
+    -o /tmp/race_gpu_f16 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo \
+    -o /tmp/race_gpu_i8 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+
+# one round = every arm once, back to back (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_f16
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_i8race
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_i8/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_i8race/reference_generated.json
+
+# the submission-only floor this addendum's breakdown depends on (unchanged dispatch count from
+# the fp16 addendum — int8 does not change dispatches/token)
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
     -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/submit_floor_batch.mojo \
     -o /tmp/submit_floor_batch -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \

@@ -92,6 +92,7 @@ from residentk.probe import (
     resident_session_probe,
 )
 from residentk.session import _ResidentQwen3, _ResidentQwen3F16, _resident_preflight
+from residentk.session import _ResidentQwen3I8
 
 # ── the small-but-complete model this suite decodes with ──────────────────────
 comptime D_MODEL: Int = 32
@@ -694,5 +695,120 @@ def main() raises:
         else:
             print("  •  fp16 greedy token DIVERGES on this small model: fp16", gpu16_id, "vs cpu",
                   cpu_ref.token_id, "— informational, not a failure; see module docs")
+
+        # ══ the int8 weight-storage arm: SAME model, SAME prompt, SAME CPU reference ═══════════
+        # `_ResidentQwen3I8` quantizes the checkpoint above (per-output-row symmetric int8, a
+        # Float32 scale per row) and reads it through the `_i8` kernel twins; every list fed to
+        # `upload_layer`/`upload_globals` is unchanged, so any divergence below is attributable to
+        # int8 quantization alone, isolated from everything else — the isolated-error measurement
+        # this package's task was built to produce.
+        var s8 = _ResidentQwen3I8(
+            D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+        )
+        var up8 = s8.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+        for l in range(N_LAYERS):
+            if up8 == RESIDENT_OK:
+                up8 = s8.upload_layer(
+                    l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                )
+        if up8 == RESIDENT_OK:
+            up8 = s8.seal()
+        if up8 == RESIDENT_OK:
+            passed += 1
+            print("  ✅ every weight per-row-quantized to Int8 and uploaded once, on", s8.device_name())
+        else:
+            failed += 1
+            print("  ❌ the int8 upload failed:", residentk_status_name(up8))
+
+        var gpu8_id = -1
+        var gpu8_logit = 0.0
+        var gpu8_status = RESIDENT_OK
+        var issued8 = 0
+        for t in range(len(prompt)):
+            var r8 = s8.step(prompt[t], t)
+            gpu8_status = r8.status
+            gpu8_id = r8.token_id
+            gpu8_logit = r8.logit
+            issued8 = r8.dispatches
+            if r8.status != RESIDENT_OK:
+                break
+
+        if gpu8_status == RESIDENT_OK:
+            passed += 1
+            print("  ✅ four tokens ran on the int8 resident session, cache written in place each step")
+        else:
+            failed += 1
+            print("  ❌ an int8 step failed:", residentk_status_name(gpu8_status))
+
+        if issued8 == residentk_dispatch_budget(N_LAYERS):
+            passed += 1
+            print("  ✅ the int8 session issued exactly the budgeted", issued8, "dispatches per token")
+        else:
+            failed += 1
+            print("  ❌ int8 dispatch drift:", issued8, "issued against a budget of",
+                  residentk_dispatch_budget(N_LAYERS))
+
+        # THE INT8 LOGIT BOUND. Per-row symmetric int8 quantization's rounding error on any one
+        # weight element is bounded by HALF a quantization step: `scale / 2 = max(|row|) / 254`.
+        # Expressed relative to the row's OWN max (not each element's own magnitude, unlike
+        # Float16's per-element relative precision), the worst case is `1 / 254` of that row's max
+        # — but the bound below conservatively uses `1 / 127` (a FULL step, not half), matching this
+        # package's `f16_eps`/`f32_eps` bounds' own convention of a deliberately loose, honestly-
+        # documented bound rather than a tight one nobody would re-derive by hand.
+        var i8_eps = 1.0 / 127.0
+        var bound8 = i8_eps * depth * (1.0 + _abs(cpu_ref.logit))
+        var delta8 = _abs(gpu8_logit - cpu_ref.logit)
+        if cpu_ref.ok and delta8 <= bound8:
+            passed += 1
+            print("  ✅ the int8 logit agrees to", delta8, "within an int8 bound of", bound8)
+        else:
+            failed += 1
+            print("  ❌ the int8 logit is outside even the loose int8 bound:", delta8, "bound", bound8)
+
+        # THE ISOLATED int8-vs-fp16 COMPARISON this package's task explicitly asked for: both arms
+        # read the SAME uploaded Float64 weights, through the SAME dispatch plan, differing only in
+        # how the weight matrices are stored — so this delta attributes error to int8 storage alone,
+        # relative to the other already-verified narrower-storage arm, not merely to the Float64 ref.
+        var delta_i8_vs_f16 = _abs(gpu8_logit - gpu16_logit)
+        print("  •  int8 vs fp16 (SAME weights, same dispatch plan, storage format only): logit delta",
+              delta_i8_vs_f16, "( int8=", gpu8_logit, " fp16=", gpu16_logit, " cpu_f64=", cpu_ref.logit, ")")
+
+        # The bound must be capable of failing, or it proves nothing — same discipline the Float32
+        # arm's own bound-would-reject-Float64-precision assertion above uses. int8 quantization
+        # error should NOT be small enough to satisfy the much tighter Float16 bound.
+        if delta8 > bound16:
+            passed += 1
+            print("  ✅ ...and it would FAIL the tighter Float16 bound — int8 really is coarser,",
+                  "not a free lunch relabeled")
+        else:
+            print("  •  the int8 logit happens to also satisfy the Float16 bound on this small,",
+                  "low-dynamic-range model — informational, not a failure (a real 0.6B model's",
+                  "wider weight distributions are the honest test; see the benchmark driver)")
+
+        # NOT asserted as a pass/fail gate, same reasoning as the fp16 arm immediately above: int8's
+        # coarser rounding, applied to every weight of even this small model, can flip a close-margin
+        # argmax without that being a bug in these kernels or the quantization scheme.
+        if gpu8_id == cpu_ref.token_id:
+            print("  •  int8 greedy token MATCHES the Float64 reference on this small model:", gpu8_id)
+        else:
+            print("  •  int8 greedy token DIVERGES on this small model: int8", gpu8_id, "vs cpu",
+                  cpu_ref.token_id, "— informational, not a failure; see module docs")
+
+        # ── refusals the session itself must make at run time ────────────────────
+        var past_end8 = s8.step(0, MAX_CTX)
+        if past_end8.status == RESIDENT_ERR_CONTEXT_FULL:
+            passed += 1
+            print("  ✅ an int8-arm step past the last KV slot is refused, not written out of bounds")
+        else:
+            failed += 1
+            print("  ❌ an int8-arm step past the cache capacity was accepted")
+
+        var bad_tok8 = s8.step(VOCAB + 7, 0)
+        if bad_tok8.status != RESIDENT_OK:
+            passed += 1
+            print("  ✅ an int8-arm token id past the vocabulary is refused before the embedding gather")
+        else:
+            failed += 1
+            print("  ❌ an int8-arm out-of-range token id was gathered from the embedding table")
 
         print("  [residentk.session] Passed:", passed, "Failed:", failed)

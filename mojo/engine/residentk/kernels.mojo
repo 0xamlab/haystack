@@ -7,7 +7,7 @@ stateful: true
 batch_capable: false
 stream_capable: false
 seed_requirements: none
-supported_dtypes: float32, float16
+supported_dtypes: float32, float16, int8
 backend: metal
 surfaces: none
 golden_vectors: mojo/tests/libs/test_residentk_session.mojo
@@ -56,6 +56,17 @@ not a replacement: same fusion, same activation/accumulator dtype (Float32 throu
 resident weight buffer `w` is `_HP` (Float16) instead of `_FP`, widened to Float32 immediately on
 load. `residentk.session._ResidentQwen3F16` is the twin session that uploads weights narrowed to
 Float16 and dispatches through these kernels instead; `_ResidentQwen3` (Float32) is untouched.
+
+A THIRD, additive weight-storage arm: an `_i8` twin of the same five kernels (the four above plus
+`_embed_row_kernel`, since the tied embedding/lm_head table is also a weight matrix in this sense)
+— `_embed_row_kernel_i8`, `_norm_gemv_kernel_i8`, `_gemv_accum_kernel_i8`,
+`_norm_gemv2_swiglu_kernel_i8`, `_lmhead_argmax_kernel_i8`. Same fusion, same Float32
+activation/accumulator discipline as the `_f16` arm; the resident weight buffer `w` is `_I8P`
+(Int8) with a companion per-output-row Float32 SCALE buffer, and every loaded element is
+dequantized in-register — `Float32(i8_val) * wscale[row]` — inside the reduction loop before the
+multiply that consumes it. See `_I8P`'s docstring for the per-channel (per-row) symmetric
+quantization scheme and its relationship to `gemm.quantized`'s frozen NF4 in-kernel-dequant
+pattern. `residentk.session._ResidentQwen3I8` is the third twin session.
 
 Every remaining boundary is a genuine grid-wide dependency — an rmsnorm needs the whole vector the
 previous projection produced, and at `d_ff = 3072` that vector spans 384 threadgroups. Fusing across
@@ -170,6 +181,43 @@ comptime _VEC_STRIDE_H: Int = _LANES * _VEC_H
 128 — the same per-step ELEMENT count as `_VEC_STRIDE`'s Float32 loop, at half the per-step BYTE
 count (256 bytes against 512), which is exactly the traffic halving this arm exists to deliver."""
 
+alias _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
+"""A device Int8 buffer — the int8 weight-storage arm's ONLY new pointer type. Every activation,
+every accumulator and every norm gain stays `_FP` (Float32) here too, exactly as `_HP`'s fp16 arm
+keeps them: only the resident weight matrices themselves are quantized. Paired everywhere with a
+per-OUTPUT-ROW `_FP` (Float32) scale buffer — one scale per row, not one for the whole matrix — so
+`_norm_gemv_kernel_i8` and its siblings dequantize each loaded element as
+`Float32(i8_val) * wscale[row]` INSIDE the reduction loop, in-register, before the multiply that
+consumes it: the same "widen immediately, accumulate in Float32" discipline `_HP`'s docstring
+establishes for fp16, applied to a coarser storage format that additionally needs a per-row scale
+rather than a fixed exponent. This is also the exact in-kernel-dequant PATTERN `gemm.quantized`'s
+frozen `gemv_nf4_flat` established for NF4 on the CPU (dequantize inside the reduction loop rather
+than materializing a dequantized copy of the whole matrix first) — reused here as a technique, on a
+different (per-row-scaled int8, not NF4) format, on a different backend (Metal, not CPU); that
+frozen kernel is read-only reference material, never called from here."""
+
+comptime _VEC_I8: Int = 4
+"""Int8 elements one lane loads per vectorized step in the int8 weight kernels: 4 x 1 byte = 4
+bytes (`char4`).
+
+MEASURED, NOT ASSUMED — same discipline `_VEC_H`'s docstring established for fp16, and with the
+same conclusion for the same reason: Metal Shading Language defines vector types at widths 2, 3 and
+4 for EVERY scalar type it supports, `char`/`int8` included, and no wider (there is no MSL `char8`
+or `char16`). Byte-matching `_VEC`'s Float32 load (4 elements, 16 bytes) would suggest reaching for
+a 16-wide int8 vector to move the same 16 bytes per step — exactly the kind of byte-matched guess
+`_VEC_H`'s docstring already found wrong for `half` (`half8` is not a real MSL type either). For
+`int8` there is only one REAL candidate to measure, `char4`, unlike fp16's two-candidate case, so
+this constant is not a choice among alternatives the way `_VEC_H` was — it is the ceiling MSL
+allows, confirmed on this M4 Max to compile and run correctly against a scalar int8 reference before
+landing (see this package's own docs for the measured decode effect, reported once rather than
+asserted here as a number nobody re-checks)."""
+
+comptime _VEC_STRIDE_I8: Int = _LANES * _VEC_I8
+"""Elements one SIMD group advances per vectorized step in the int8 kernels: 32 lanes x 4 int8s =
+128 — the same per-step ELEMENT count as `_VEC_STRIDE`'s Float32 loop and `_VEC_STRIDE_H`'s fp16
+loop, at a QUARTER the per-step BYTE count of the Float32 loop (128 bytes against 512) and HALF the
+fp16 loop's (128 against 256) — the next halving of bandwidth this arm exists to deliver."""
+
 comptime _STAGE: Int = RESIDENT_MAX_D_MODEL
 """Compile-time size of the shared staging array. This constant IS `RESIDENT_MAX_D_MODEL`; the
 ceiling in the contract exists because of this allocation, not the other way round. 3072 Float32 is
@@ -206,6 +254,22 @@ fn _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
     var i = Int(block_idx.x) * _TG + Int(thread_idx.x)
     if i < d_model:
         hidden[i] = Float32(embed[token_id * d_model + i])
+
+
+fn _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: Int, d_model: Int):
+    """The int8-weight twin of `_embed_row_kernel`. `embed` is the SAME tied embedding/lm_head
+    table `_lmhead_argmax_kernel_i8` reads as `w` — resident as Int8 in the int8 session, one
+    Float32 scale per VOCABULARY ROW in `embed_scale` (so `embed_scale[token_id]` is exactly the
+    scale `_lmhead_argmax_kernel_i8` would use for output row `token_id` of the tied projection,
+    since a vocabulary row IS an output row either way this table is read). One row (`d_model`
+    elements) per step, so the per-element dequant multiply costs nothing measurable here; it
+    exists so the int8 session never needs a second, Float32 copy of a 155M-element table just to
+    serve the gather.
+    """
+    var i = Int(block_idx.x) * _TG + Int(thread_idx.x)
+    if i < d_model:
+        var s = embed_scale[token_id]
+        hidden[i] = Float32(embed[token_id * d_model + i]) * s
 
 
 fn _norm_gemv_kernel(
@@ -361,6 +425,76 @@ fn _norm_gemv_kernel_f16(
         y[j] = red[sub * _LANES]
 
 
+fn _norm_gemv_kernel_i8(
+    y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
+):
+    """The int8-weight twin of `_norm_gemv_kernel`. Identical except `w`'s type: a resident Int8
+    buffer instead of Float32, with a companion per-output-row Float32 scale buffer `wscale`
+    (`wscale[j]` for output column `j` — see `_I8P`'s docstring). The normalization, the shared
+    staging, the accumulator and the reduction are the SAME Float32 arithmetic as the Float32
+    kernel; only each weight element's storage is quantized, and it is dequantized — widened to
+    Float32 AND multiplied by its row's scale — immediately on load, inside the reduction loop,
+    before any multiply consumes it. See `_VEC_I8`'s docstring for why the vector width is `char4`.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = red[sub * _LANES]
+
+
 fn _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
     """`y += W @ x`, `W` held `[n, k]` row-major. The projection AND its residual add, one dispatch.
 
@@ -441,6 +575,53 @@ fn _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
         var tt = k_vec + lane
         while tt < k:
             acc += xs[tt] * Float32(w[base + tt])
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = y[j] + red[sub * _LANES]
+
+
+fn _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+    """The int8-weight twin of `_gemv_accum_kernel` — `o_proj`/`down_proj` plus the residual `+=`,
+    with `w` a resident Int8 buffer and `wscale` its per-output-row Float32 scale. See
+    `_norm_gemv_kernel_i8`."""
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
             tt += _LANES
     red[tid] = acc
     barrier()
@@ -638,6 +819,109 @@ fn _norm_gemv2_swiglu_kernel_f16(
         var tt2 = k_vec + lane
         while tt2 < k:
             acc2 += xs[tt2] * Float32(w[base2 + tt2])
+            tt2 += _LANES
+    red[tid] = acc2
+    barrier()
+    var st2 = _LANES // 2
+    while st2 > 0:
+        if lane < st2:
+            red[tid] = red[tid] + red[tid + st2]
+        barrier()
+        st2 //= 2
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        var u = red[sub * _LANES]
+        act[j] = (g / (1.0 + exp(-g))) * u
+
+
+fn _norm_gemv2_swiglu_kernel_i8(
+    act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+):
+    """The int8-weight twin of `_norm_gemv2_swiglu_kernel` — gate/up/SwiGLU, with `w` a resident
+    Int8 buffer and `wscale` a per-output-row Float32 scale over its `2 * n_ff` rows (gate rows
+    first, `wscale[j]`; up rows second, `wscale[n_ff + j]` — the exact same row indexing
+    `_narrow_transposed_into`'s Float32/Float16 twins already use for the concatenated gate/up
+    matrix, applied to the scale buffer alongside it). See `_norm_gemv_kernel_i8`.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    # ── gate ────────────────────────────────────────────────────────────────────
+    var acc = Float32(0.0)
+    if j < n_ff:
+        var base = j * k
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+        var t = lane * _VEC_I8
+        while t < k_vec:
+            var xv = xs.load[width=_VEC_I8](t)
+            var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+            var pv = xv * wv
+            for lane_e in range(_VEC_I8):
+                acc += pv[lane_e]
+            t += _VEC_STRIDE_I8
+        var tt = k_vec + lane
+        while tt < k:
+            acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0:
+        gsh[sub] = red[sub * _LANES]
+    barrier()
+
+    # ── up ──────────────────────────────────────────────────────────────────────
+    var acc2 = Float32(0.0)
+    if j < n_ff:
+        var base2 = (n_ff + j) * k
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I8](srow2)
+        var t2 = lane * _VEC_I8
+        while t2 < k_vec:
+            var xv2 = xs.load[width=_VEC_I8](t2)
+            var wv2 = w.load[width=_VEC_I8](base2 + t2).cast[DType.float32]() * srow2_v
+            var pv2 = xv2 * wv2
+            for lane_e2 in range(_VEC_I8):
+                acc2 += pv2[lane_e2]
+            t2 += _VEC_STRIDE_I8
+        var tt2 = k_vec + lane
+        while tt2 < k:
+            acc2 += xs[tt2] * (Float32(w[base2 + tt2]) * srow2)
             tt2 += _LANES
     red[tid] = acc2
     barrier()
@@ -955,6 +1239,106 @@ fn _lmhead_argmax_kernel_f16(
             var tt = k_vec + lane
             while tt < k:
                 acc += xs[tt] * Float32(w[base + tt])
+                tt += _LANES
+        red[tid] = acc
+        barrier()
+        var st = _LANES // 2
+        while st > 0:
+            if lane < st:
+                red[tid] = red[tid] + red[tid + st]
+            barrier()
+            st //= 2
+        if lane == 0 and j < n:
+            var val = red[sub * _LANES]
+            if val > best:
+                best = val
+                best_i = Int32(j)
+        barrier()
+
+    if lane == 0:
+        sv[sub] = best
+        si[sub] = best_i
+    barrier()
+    if tid == 0:
+        var bv = sv[0]
+        var bi = si[0]
+        for u in range(1, _SUBS):
+            if sv[u] > bv:
+                bv = sv[u]
+                bi = si[u]
+        blk_val[Int(block_idx.x)] = bv
+        blk_idx[Int(block_idx.x)] = bi
+
+
+fn _lmhead_argmax_kernel_i8(
+    blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
+    k: Int, n: Int, eps: Float32, n_iters: Int,
+):
+    """The int8-weight twin of `_lmhead_argmax_kernel` — final rmsnorm, the tied lm_head projection
+    and the per-threadgroup argmax, with `w` a resident Int8 buffer and `wscale` a per-vocabulary-
+    row Float32 scale (`wscale[j]` for vocabulary row `j`, the SAME buffer `_embed_row_kernel_i8`
+    reads as `embed_scale` — tying holds for the scale exactly as it does for the table itself).
+
+    This is the SINGLE LARGEST resident matrix in the model — `vocab * d_model`, ~155M elements,
+    tied with the embedding table — so it is also where int8 storage buys the most per-token
+    bandwidth back: a quarter of the Float32 arm's bytes for this one matrix, an eighth counting
+    the fp16 arm as the intermediate step. See `_norm_gemv_kernel_i8` for the widening-and-scaling
+    discipline and `_I8P` for why this stays a mixed-precision kernel (Float32 activations and
+    accumulator throughout) rather than an all-int8 one.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var si = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var st0 = tid
+    while st0 < k:
+        xs[st0] = x[st0] * inv * gamma[st0]
+        st0 += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var stride_cols = Int(grid_dim.x) * _SUBS
+    var best = _NEG_HUGE
+    var best_i = Int32(-1)
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    for it in range(n_iters):
+        var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
+        var acc = Float32(0.0)
+        if j < n:
+            var base = j * k
+            var srow = wscale[j]
+            var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+            var t = lane * _VEC_I8
+            while t < k_vec:
+                var xv = xs.load[width=_VEC_I8](t)
+                var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                var pv = xv * wv
+                for lane_e in range(_VEC_I8):
+                    acc += pv[lane_e]
+                t += _VEC_STRIDE_I8
+            var tt = k_vec + lane
+            while tt < k:
+                acc += xs[tt] * (Float32(w[base + tt]) * srow)
                 tt += _LANES
         red[tid] = acc
         barrier()
