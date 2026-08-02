@@ -2421,3 +2421,233 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo bu
     -Xlinker -framework -Xlinker Foundation
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_probe_counters_i8
 ```
+
+## int4-weights addendum (2026-08-02): the named next lever, tried, correctness FAILS on the real
+model — no race run, no gitbook page, this is the permanent record
+
+The GPU-counter addendum immediately above named **int4 weights for the three GEMV-shaped
+per-layer roles** as the one concrete, un-tried lever this chain had not yet attempted (54% of the
+summed per-token GPU residual, by that addendum's own table). This addendum built it
+(`.worktrees/int4quant`, branch `feat/residentk-int4-quant`, commit `75567c6c`, forked from
+`origin/main` tip `aee75f6f`/#509) and raced it against the real model before touching the
+publication decision. **It fails correctness on the real 0.6B checkpoint, precisely and
+reproducibly, at the very first decode step.** No production kernel or session code from this
+branch should be built on without first closing that gap; this section exists so the next session
+does not re-derive it.
+
+### What was built
+
+Per-output-row symmetric int4 (`scale = max(|row|) / 7`, clamped to `[-7,7]`), two signed nibbles
+packed per byte, applied to the exact three GEMV-shaped roles int8 already covers —
+`_norm_gemv_kernel_i4` (QKV-proj), `_gemv_accum_kernel_i4` (o_proj/down_proj),
+`_norm_gemv2_swiglu_kernel_i4` (gate-up) — via a new `_ResidentQwen3I4` session
+(`mojo/engine/residentk/session.mojo`) and new kernels (`mojo/engine/residentk/kernels.mojo`). The
+tied embed/lm_head table deliberately stayed Int8, matching the GPU-counter addendum's own scoping
+of this lever to the three per-layer roles, not the vocabulary table. Vector width for the
+in-register nibble unpack was measured, not assumed
+(`benchmarks/llm_smoke/int4_pack_probe.mojo`, rebuilt and rerun fresh in this addendum): `uchar4`
+(8 elements/lane/step) beat `uchar2` (4 elements/lane/step) at all three real decode shapes on this
+run (-10.8%, -5.7%, -3.7%; the original build session measured the same three shapes at 0.0%,
+-5.0%, -2.5% — different magnitudes on this shared, variably-loaded machine, but the same
+direction every time), so the production kernels use `uchar4`.
+
+### Stage (a) — host-only error measurement: reconfirmed fresh, ~18.1x not ~2x
+
+Rebuilt and reran `int4_pack_probe.mojo` independently in this addendum:
+
+```
+int8: mean |error| = 0.002362598050841043    max |error| = 0.004724409448818877
+int4: mean |error| = 0.042800880374746324    max |error| = 0.08571428571428577
+int4/int8 ratio: mean = 18.116022892472113    max = 18.142857142857235
+level-count ratio (127/7) for comparison: 18.142857142857142
+```
+
+The int4/int8 error ratio matches the 127/7 level-count ratio almost exactly (18.12x measured vs.
+18.14x predicted) — the naive "half the bits -> 2x the error" intuition is wrong by close to an
+order of magnitude. GPU-kernel correctness itself (both vector widths, against an independent
+scalar Int4 reference) is not in question: worst delta 5.03e-6 (`uchar4`) / 6.87e-6 (`uchar2`) on a
+small controlled shape.
+
+### Stage (b)/(c) — real Qwen3-0.6B-Base: FAILS, reconfirmed fresh in this addendum
+
+Rebuilt `qwen3_generate_metal_i4.mojo` from source in this addendum (not reusing any binary from
+the prior build session) and reran it against the same checkpoint, prompt, and dispatch budget as
+every other arm in this document:
+
+```
+STAGE (b) single-token decode: first generated id= 279 logit= 18.093505859375
+```
+
+A freshly-regenerated `transformers`-CPU reference (`reference_generate.py`, rerun in this
+addendum, not reused) gives the correct first token:
+
+```
+[reference_generate] step 0: pos=4 -> id=12095 logit=21.039467
+```
+
+`verify_generation.py`, rerun in this addendum against both fresh outputs, confirms: **diverges at
+step 0 (absolute position 5)** — `mojo=279` vs `ref=12095` — and, because greedy decoding is
+autoregressive, every one of the following 15 steps diverges too, compounding on the wrong token.
+The int4 arm's own generation settles into a repeating `279 / 6722 / 315 / 9625 / 374` cycle instead
+of the reference's `Paris. The capital of Germany is Berlin. The capital of Italy is Rome.` Full
+step-by-step table from this run:
+
+```
+step  0 (pos  5): mojo=  279 ref=12095 [DIVERGE]  logit mojo=18.093506 ref=21.039467 |delta|=2.95e+00
+step  1 (pos  6): mojo= 6722 ref=   13 [DIVERGE]  logit mojo=20.447025 ref=22.735111 |delta|=2.29e+00
+step  2 (pos  7): mojo=  315 ref=  576 [DIVERGE]  logit mojo=21.147694 ref=18.411459 |delta|=2.74e+00
+step  3 (pos  8): mojo= 9625 ref= 6722 [DIVERGE]  logit mojo=20.759418 ref=24.449240 |delta|=3.69e+00
+step  4 (pos  9): mojo=  374 ref=  315 [DIVERGE]  logit mojo=18.678455 ref=25.711689 |delta|=7.03e+00
+step  5 (pos 10): mojo=  279 ref= 9856 [DIVERGE]  logit mojo=19.882589 ref=21.800072 |delta|=1.92e+00
+step  6 (pos 11): mojo= 6722 ref=  374 [DIVERGE]  logit mojo=22.160088 ref=26.013103 |delta|=3.85e+00
+step  7 (pos 12): mojo=  315 ref=19846 [DIVERGE]  logit mojo=21.280416 ref=22.013113 |delta|=7.33e-01
+step  8 (pos 13): mojo= 9625 ref=   13 [DIVERGE]  logit mojo=20.809246 ref=24.618246 |delta|=3.81e+00
+step  9 (pos 14): mojo=  374 ref=  576 [DIVERGE]  logit mojo=19.252594 ref=20.770817 |delta|=1.52e+00
+step 10 (pos 15): mojo=  279 ref= 6722 [DIVERGE]  logit mojo=19.869764 ref=26.271065 |delta|=6.40e+00
+step 11 (pos 16): mojo= 6722 ref=  315 [DIVERGE]  logit mojo=22.162655 ref=27.881516 |delta|=5.72e+00
+step 12 (pos 17): mojo=  315 ref=15344 [DIVERGE]  logit mojo=21.020313 ref=23.479454 |delta|=2.46e+00
+step 13 (pos 18): mojo= 9625 ref=  374 [DIVERGE]  logit mojo=21.008152 ref=27.100565 |delta|=6.09e+00
+step 14 (pos 19): mojo=  374 ref=21718 [DIVERGE]  logit mojo=20.277794 ref=25.543438 |delta|=5.27e+00
+step 15 (pos 20): mojo=  279 ref=   13 [DIVERGE]  logit mojo=20.612907 ref=24.547527 |delta|=3.93e+00
+
+GENERATION LOOP DIVERGES: first mismatch at step 0 (absolute position 5)
+```
+
+**The failure at the argmax boundary itself is razor-thin, not a large error.** The diagnostic
+companion driver (`int4_stage_b_diag.mojo`) computes int4's own logit for the *correct* token
+(12095) using the identical final-rmsnorm + dot-product + int8-dequant-lm_head formula the real
+argmax kernel uses internally: **18.084009170532227** — only **0.0095** below int4's own chosen
+logit for 279 (**18.093505859375**). A sanity scan over 14 plausible candidate tokens (rerun in
+this addendum, matching the build session's own check) confirms 279/12095 really are int4's top-2,
+with the third-highest a full logit below at 17.02 — this is a genuine one-token flip at the
+decision boundary, not evidence of gross corruption elsewhere in the arm.
+
+### Verification performed in this addendum before accepting the report
+
+Every claim above was independently rebuilt and rerun from source in this addendum, not taken from
+the prior build session's transcript:
+
+- `int4_pack_probe.mojo`: rebuilt, rerun — stage (a) ratio and vector-width direction reconfirmed
+  (magnitudes differ slightly on this variably-loaded machine; direction and order-of-magnitude do
+  not).
+- `qwen3_generate_metal_i4.mojo`: rebuilt from source, rerun — stage (b)'s exact reported id/logit
+  (279 / 18.093505859375) reproduced bit-for-bit.
+- `reference_generate.py`: rerun fresh — the exact reported reference id/logit (12095 / 21.039467)
+  reproduced.
+- `verify_generation.py`: rerun against both fresh outputs — the exact reported divergence point
+  (step 0, position 5) and full 16-step table reproduced.
+- `mojo/tests/libs/test_residentk_session.mojo`: rerun via `mojo run` (this repo's test invocation,
+  not `mojo test`) — **45/45** with `-D ALGENTA_GPU`, **22/22** without it, both counts matching the
+  report exactly.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean. `make capability-check`:
+  "no new undeclared kernels." `python3 tests/generate_mojo_tests.py --check`: 195 hand-written
+  suites protected, 466 generated fresh. `python3 -m scripts.reliability_guards`: no new
+  violations (same three pre-existing baselined debt categories as every prior addendum). All
+  reproduced exactly as the build session's report claimed.
+
+No discrepancy was found anywhere between the build session's report and this addendum's
+independent, from-source reverification. The correctness failure is real.
+
+### Why no race was run
+
+The standing rule for this document is to race every viable arm, interleaved, against llama.cpp and
+mlx-lm, and only publish on an outright win. int4 cannot be a viable arm: an arm whose own greedy
+token stream has already diverged from the reference at the first decode step is not a candidate
+for a speed comparison — a wrong-but-fast answer is not a result this document reports a tok/s
+number for (the build session's own report already withheld its incidental decode-only figure on
+these grounds; this addendum does not report one either). Re-running the interleaved race for the
+*other*, already-passing arms (CPU/fp16/int8/llama.cpp/mlx-lm) would not add information: those
+arms' kernels are byte-identical to the GPU-counter addendum's own fresh, six-round, fully
+interleaved race two sections above (235.05 tok/s int8 median, llama.cpp GPU 247.88, mlx-lm 307.04,
+1.055x / 1.306x short) — a same-day remeasurement of unchanged code would only reproduce that result
+a fourth time. **No race was run.** The prior addendum's verdict — int8, 235.05 tok/s, still short
+of both opponents — stands unchanged as today's number.
+
+### Was there a principled fix available? No — not same-day
+
+No scale-tuning, clamping adjustment, or per-channel (rather than per-row) grouping was attempted
+to try to force stage (c) to pass, per this task's own instruction not to force a result. Two real
+paths exist in principle and neither is a same-day fix:
+
+- **Finer grouping** (e.g. per-64-element group scales instead of per-row, the standard llama.cpp
+  `Q4_K`-style mitigation) would shrink quantization error at the cost of a more complex kernel
+  (per-group scale lookup inside the dot-product loop, more resident scale data) — a new kernel
+  design, not a parameter change, and not scoped or attempted here.
+- **Mixed precision** (int4 for some roles, int8 for others, chosen per-role by measured
+  sensitivity) is plausible in principle but was not explored — this addendum's scope was the same
+  three roles int8 already covers, uniformly, matching the GPU-counter addendum's own framing of
+  this lever.
+
+Both are real, named, future avenues — genuinely different from "no fix exists" — but neither is
+a same-day change, so neither was attempted, and stage (c) stands as a documented, precisely
+diagnosed failure rather than a forced pass.
+
+### Publication decision: no gitbook page
+
+int4 does not clear the correctness bar to even be raced, so it cannot clear the standing
+publication rule (an outright win against both llama.cpp's best and mlx-lm's real number, on a
+race). No gitbook page ships, and none is drafted.
+
+### Is today's optimization space exhausted for this architecture? Yes, as far as any same-day
+lever goes
+
+The GPU-counter addendum named int4 weights as the one concrete lever this chain had not yet tried.
+It has now been tried, and it fails correctness before reaching a speed comparison — a different,
+more fundamental kind of dead end than the earlier "measured slower" or "no-go before a kernel"
+verdicts, but a dead end all the same for today's purposes. Combined with everything the prior
+addenda already closed out (dispatch fusion, cheaper unpacking, `lm_head`/SDPA-specific fixes,
+speculative decoding), **every concrete, same-day lever named anywhere in this document has now
+been either landed, measured worse, ruled no-go before a kernel, or tried and found to fail
+correctness.** What remains — finer-grained (per-group) int4 quantization, mixed per-role
+precision, a lower-per-dispatch-cost submission mechanism, or a genuinely persistent-kernel decode
+loop — are each real, but each is multi-day kernel-engineering or numerics work, not a same-day
+lever. **Today's honest stopping point is unchanged from the GPU-counter addendum: 235.05 tok/s
+median, int8 weights, `char4` loads, still short of llama.cpp GPU (1.055x) and mlx-lm (1.306x).**
+
+### Gates, rerun in this addendum after rebasing onto `origin/main` tip (`80afd860`, `#510`)
+
+- `git fetch origin main` then `git rebase origin/main`: the branch (forked from `aee75f6f`/#509)
+  rebased cleanly onto `80afd860`/#510 — #510 touched only `REALRACE_RESULTS.md` (this file) and two
+  new diagnostic-only files under `benchmarks/llm_smoke/metal_batch_dispatch/`, no overlap with
+  `mojo/engine/residentk/{kernels,session}.mojo`.
+- `git diff --stat origin/main -- mojo/engine/`: exactly `mojo/engine/residentk/kernels.mojo` and
+  `mojo/engine/residentk/session.mojo`, both already in the freeze alternation.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean (runtime contract OK,
+  capability manifest OK, runtime-library-catalog OK).
+- `make capability-check`: "no new undeclared kernels."
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean.
+- `python3 -m scripts.reliability_guards` (all guards): no new violations (same three pre-existing
+  baselined debt categories as every prior addendum).
+- `python3 tests/generate_mojo_tests.py --check`: clean (195 hand-written suites protected, 466
+  generated fresh).
+- `mojo/tests/libs/test_residentk_session.mojo`: 45/45 (`-D ALGENTA_GPU`), 22/22 (no GPU flag).
+
+### Reproduction
+
+```bash
+# rebase
+git fetch origin main
+git rebase origin/main
+
+# stage (a): host-only error + vector-width probe (from mojo_env/)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/int4_pack_probe.mojo -o /tmp/int4_pack_probe
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/int4_pack_probe
+
+# stage (b)/(c): the real model (from mojo_env/)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate_metal_i4.mojo -o /tmp/qwen3_metal_i4
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_metal_i4
+
+# reference + divergence check (from benchmarks/llm_smoke/)
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_i4_check
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_metal_i4/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_i4_check/reference_generated.json
+
+# golden-vector suite (from mojo_env/)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo run -D ALGENTA_GPU \
+    -I../mojo/engine ../mojo/tests/libs/test_residentk_session.mojo
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo run \
+    -I../mojo/engine ../mojo/tests/libs/test_residentk_session.mojo
+```

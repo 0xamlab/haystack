@@ -93,6 +93,7 @@ from residentk.probe import (
 )
 from residentk.session import _ResidentQwen3, _ResidentQwen3F16, _resident_preflight
 from residentk.session import _ResidentQwen3I8
+from residentk.session import _ResidentQwen3I4
 
 # ── the small-but-complete model this suite decodes with ──────────────────────
 comptime D_MODEL: Int = 32
@@ -810,5 +811,129 @@ def main() raises:
         else:
             failed += 1
             print("  ❌ an int8-arm out-of-range token id was gathered from the embedding table")
+
+        # ══ the int4 weight-storage arm: SAME model, SAME prompt, SAME CPU reference ═══════════
+        # `_ResidentQwen3I4` quantizes the checkpoint above (per-output-row symmetric PACKED int4,
+        # a Float32 scale per row, over the SAME three GEMV-shaped roles int8 covers) and reads it
+        # through the `_i4` kernel twins; the tied embed/lm_head table stays Int8 (this arm's own
+        # scope, per its task). Every list fed to `upload_layer`/`upload_globals` is unchanged, so
+        # any divergence below is attributable to int4 quantization alone.
+        var s4 = _ResidentQwen3I4(
+            D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+        )
+        var up4 = s4.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+        for l in range(N_LAYERS):
+            if up4 == RESIDENT_OK:
+                up4 = s4.upload_layer(
+                    l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                )
+        if up4 == RESIDENT_OK:
+            up4 = s4.seal()
+        if up4 == RESIDENT_OK:
+            passed += 1
+            print("  ✅ every GEMV weight per-row packed-int4-quantized and uploaded once, on",
+                  s4.device_name())
+        else:
+            failed += 1
+            print("  ❌ the int4 upload failed:", residentk_status_name(up4))
+
+        var gpu4_id = -1
+        var gpu4_logit = 0.0
+        var gpu4_status = RESIDENT_OK
+        var issued4 = 0
+        for t in range(len(prompt)):
+            var r4 = s4.step(prompt[t], t)
+            gpu4_status = r4.status
+            gpu4_id = r4.token_id
+            gpu4_logit = r4.logit
+            issued4 = r4.dispatches
+            if r4.status != RESIDENT_OK:
+                break
+
+        if gpu4_status == RESIDENT_OK:
+            passed += 1
+            print("  ✅ four tokens ran on the int4 resident session, cache written in place each step")
+        else:
+            failed += 1
+            print("  ❌ an int4 step failed:", residentk_status_name(gpu4_status))
+
+        if issued4 == residentk_dispatch_budget(N_LAYERS):
+            passed += 1
+            print("  ✅ the int4 session issued exactly the budgeted", issued4, "dispatches per token")
+        else:
+            failed += 1
+            print("  ❌ int4 dispatch drift:", issued4, "issued against a budget of",
+                  residentk_dispatch_budget(N_LAYERS))
+
+        # THE INT4 LOGIT BOUND. Per-row symmetric int4 quantization's rounding error on any one
+        # weight element is bounded by HALF a quantization step: `scale / 2 = max(|row|) / 14`.
+        # Expressed relative to the row's own max, the worst case is `1 / 14` -- but, matching this
+        # package's own deliberately loose bound convention (int8's bound below uses a FULL step,
+        # `1/127`, not half), this bound uses a full step, `1/7`, EIGHTEEN TIMES int8's own `1/127`
+        # -- not "twice", per this arm's own measured finding (see
+        # `benchmarks/llm_smoke/int4_pack_probe.mojo` Part 1: the real int4/int8 elementwise-error
+        # ratio measures ~18.1x, matching the 127/7 level-count ratio, not a naive "half the bits"
+        # ~2x guess).
+        var i4_eps = 1.0 / 7.0
+        var bound4 = i4_eps * depth * (1.0 + _abs(cpu_ref.logit))
+        var delta4 = _abs(gpu4_logit - cpu_ref.logit)
+        if cpu_ref.ok and delta4 <= bound4:
+            passed += 1
+            print("  ✅ the int4 logit agrees to", delta4, "within an int4 bound of", bound4)
+        else:
+            failed += 1
+            print("  ❌ the int4 logit is outside even the loose int4 bound:", delta4, "bound", bound4)
+
+        # The bound must be capable of failing, or it proves nothing. int4 quantization error should
+        # NOT be small enough to satisfy int8's own much tighter bound.
+        if delta4 > bound8:
+            passed += 1
+            print("  ✅ ...and it would FAIL int8's own tighter bound — int4 really is coarser,",
+                  "not a free lunch relabeled")
+        else:
+            print("  •  the int4 logit happens to also satisfy the int8 bound on this small,",
+                  "low-dynamic-range model — informational, not a failure (the REAL 0.6B model's",
+                  "own stage (b)/(c) result is the honest test; see the benchmark driver and this",
+                  "package's task report for the real, measured, razor-thin argmax flip that was",
+                  "found there)")
+
+        # THE ISOLATED int4-vs-int8 COMPARISON this arm's task explicitly asked for: both arms read
+        # the SAME uploaded Float64 weights, through the SAME dispatch plan (int4's embed/lm_head
+        # stays int8, identically to the int8 arm's own), differing only in how the three GEMV-shaped
+        # weight matrix roles are stored -- so this delta attributes error to int4 storage alone.
+        var delta_i4_vs_i8 = _abs(gpu4_logit - gpu8_logit)
+        print("  •  int4 vs int8 (SAME weights, same dispatch plan, GEMV storage format only):",
+              "logit delta", delta_i4_vs_i8, "( int4=", gpu4_logit, " int8=", gpu8_logit,
+              " cpu_f64=", cpu_ref.logit, ")")
+
+        # NOT asserted as a pass/fail gate, same reasoning as the fp16/int8 arms immediately above:
+        # int4's much coarser rounding, applied to every GEMV weight of even this small model, can
+        # flip a close-margin argmax without that being a bug in these kernels or the quantization
+        # scheme -- and per this arm's own real-model result, it DOES flip on the real 0.6B
+        # checkpoint (stage (c), step 0: int4 picks 279 over the reference's 12095, a logit gap at
+        # the argmax boundary of only ~0.0095 -- see this package's task report for the full,
+        # honestly-reported divergence).
+        if gpu4_id == cpu_ref.token_id:
+            print("  •  int4 greedy token MATCHES the Float64 reference on this small model:", gpu4_id)
+        else:
+            print("  •  int4 greedy token DIVERGES on this small model: int4", gpu4_id, "vs cpu",
+                  cpu_ref.token_id, "— informational, not a failure; see module docs")
+
+        # ── refusals the session itself must make at run time ────────────────────
+        var past_end4 = s4.step(0, MAX_CTX)
+        if past_end4.status == RESIDENT_ERR_CONTEXT_FULL:
+            passed += 1
+            print("  ✅ an int4-arm step past the last KV slot is refused, not written out of bounds")
+        else:
+            failed += 1
+            print("  ❌ an int4-arm step past the cache capacity was accepted")
+
+        var bad_tok4 = s4.step(VOCAB + 7, 0)
+        if bad_tok4.status != RESIDENT_OK:
+            passed += 1
+            print("  ✅ an int4-arm token id past the vocabulary is refused before the embedding gather")
+        else:
+            failed += 1
+            print("  ❌ an int4-arm out-of-range token id was gathered from the embedding table")
 
         print("  [residentk.session] Passed:", passed, "Failed:", failed)

@@ -7,7 +7,7 @@ stateful: true
 batch_capable: false
 stream_capable: false
 seed_requirements: none
-supported_dtypes: float32, float16, int8
+supported_dtypes: float32, float16, int8, int4
 backend: metal
 surfaces: none
 golden_vectors: mojo/tests/libs/test_residentk_session.mojo
@@ -67,6 +67,21 @@ dequantized in-register — `Float32(i8_val) * wscale[row]` — inside the reduc
 multiply that consumes it. See `_I8P`'s docstring for the per-channel (per-row) symmetric
 quantization scheme and its relationship to `gemm.quantized`'s frozen NF4 in-kernel-dequant
 pattern. `residentk.session._ResidentQwen3I8` is the third twin session.
+
+A FOURTH, additive weight-storage arm, one bit width narrower: an `_i4` twin of the THREE GEMV-
+shaped kernels only (`_norm_gemv_kernel_i4`, `_gemv_accum_kernel_i4`, `_norm_gemv2_swiglu_kernel_i4`
+— `w_qkv`/`w_o`/`w_gu`/`w_down`, the four per-layer weight matrices). The tied embedding/lm_head
+table deliberately STAYS int8 (`_embed_row_kernel_i8`/`_lmhead_argmax_kernel_i8`, reused verbatim by
+`_ResidentQwen3I4`) — a 4-bit vocabulary table is a separate, larger correctness risk on the FINAL
+output layer specifically, and this arm's task was scoped to the three per-layer GEMV roles int8
+already covers. Same Float32 activation/accumulator discipline; the resident weight buffer `w` is
+`_I4P` (two signed 4-bit values packed per byte) with a companion per-output-row Float32 SCALE
+buffer, `scale = max(|row|) / 7` — the SAME per-channel symmetric scheme int8 uses, one bit width
+down. See `_I4P`'s docstring for the packing convention and the mask+shift unpack, and
+`_VEC_I4B`'s for the packed-byte vector-width measurement this arm required that int8 did not (a
+packed int4 byte holds two elements, so the byte-width-vs-element-count choice int8 inherited
+unchanged from Float32 does not transfer automatically). `residentk.session._ResidentQwen3I4` is
+the fourth twin session.
 
 Every remaining boundary is a genuine grid-wide dependency — an rmsnorm needs the whole vector the
 previous projection produced, and at `d_ff = 3072` that vector spans 384 threadgroups. Fusing across
@@ -217,6 +232,53 @@ comptime _VEC_STRIDE_I8: Int = _LANES * _VEC_I8
 128 — the same per-step ELEMENT count as `_VEC_STRIDE`'s Float32 loop and `_VEC_STRIDE_H`'s fp16
 loop, at a QUARTER the per-step BYTE count of the Float32 loop (128 bytes against 512) and HALF the
 fp16 loop's (128 against 256) — the next halving of bandwidth this arm exists to deliver."""
+
+alias _I4P = UnsafePointer[UInt8, origin=MutAnyOrigin]
+"""A device buffer of PACKED int4 pairs — the int4 weight-storage arm's ONLY new pointer type. Two
+signed 4-bit values per byte: bits `[3:0]` are the EVEN k-index element (the "low nibble"), bits
+`[7:4]` are the ODD k-index element (the "high nibble"), each in `[-7, 7]` (never `-8`; see
+`_quantize_nibble_i4`'s docstring in `residentk.session` for why the range is kept symmetric, one
+bit width down from `_I8P`'s `[-127, 127]`). Paired with a per-OUTPUT-ROW `_FP` (Float32) scale
+buffer exactly as `_I8P` is — one scale per row, `scale = max(|row|) / 7` — so
+`_norm_gemv_kernel_i4` and its siblings dequantize each nibble as `Float32(nibble) * wscale[row]`
+INSIDE the reduction loop, in-register, before the multiply that consumes it: the same
+"widen-and-scale immediately, accumulate in Float32" discipline `_HP` and `_I8P` both establish, one
+storage format coarser. Activations, the accumulator, and every norm gain stay `_FP` here too —
+mixed precision, not an all-int4 kernel.
+
+The unpack is mask+shift, not the manual-word-bitcast forms `int8_pack_probe.mojo` already measured
+LOSING to a native vector load for int8: shift the low nibble into a SIGNED byte's top 4 bits with
+`<< 4` (the shift itself discards the bits that don't belong, no explicit mask needed), then an
+ARITHMETIC right-shift by 4 replicates the sign bit down — the standard 4-to-8-bit sign-extension
+trick. The high nibble needs an explicit mask (`& 0xF0`) first, since it is already aligned, then
+the same arithmetic right-shift. Both are two cheap ALU ops on an already-loaded register, not a
+second memory access."""
+
+comptime _VEC_I4B: Int = 4
+"""PACKED BYTES one lane loads per vectorized step in the int4 kernels — a `uchar4` vector load, 4
+bytes = 8 int4 elements. MEASURED, NOT ASSUMED, per `benchmarks/llm_smoke/int4_pack_probe.mojo`:
+unlike int8 (one candidate, `char4`, because a packed int4 byte holds TWO elements per byte where an
+int8 byte holds one, this format introduces a genuinely new width choice `_VEC_I8`'s docstring did
+not face — unpacking a `uchar2` (2 bytes = 4 elements/lane/step) against a `uchar4` (4 bytes = 8
+elements/lane/step) at three real decode-shaped GEMVs on this M4 Max (`k=1024,n=3072`;
+`k=3072,n=1024`; `k=2048,n=1024`; median of 200 after 5 warm-ups) found `uchar4` tied or faster in
+all three cases (0.0%, -5.0%, -2.5% relative to `uchar2` — negative meaning faster), never slower.
+Both variants were checked against an independent pure-host scalar Int4 reference on a small,
+deliberately-vector-stride-misaligned shape (`k=136`) BEFORE either timing number was trusted."""
+
+comptime _VEC_I4: Int = _VEC_I4B * 2
+"""Int4 ELEMENTS one lane advances per vectorized step: 4 packed bytes x 2 elements/byte = 8 — twice
+`_VEC_I8`'s 4, at the SAME 4-byte load width, because this storage format is twice as dense."""
+
+comptime _VEC_STRIDE_I4: Int = _LANES * _VEC_I4
+"""ELEMENTS one SIMD group advances per vectorized step in the int4 kernels: 32 lanes x 8 int4s =
+256 — DOUBLE `_VEC_STRIDE_I8`'s 128, at HALF the per-step BYTE count (128 bytes against 256), which
+is the next halving of bandwidth this arm exists to deliver."""
+
+comptime _VEC_BYTE_STRIDE_I4: Int = _LANES * _VEC_I4B
+"""BYTES one SIMD group advances per vectorized step in the int4 kernels: 32 lanes x 4 bytes = 128 —
+the quantity the packed-byte pointer arithmetic below actually steps by; `_VEC_STRIDE_I4` (256) is
+the same distance measured in elements, at half the bytes."""
 
 comptime _STAGE: Int = RESIDENT_MAX_D_MODEL
 """Compile-time size of the shared staging array. This constant IS `RESIDENT_MAX_D_MODEL`; the
@@ -495,6 +557,91 @@ fn _norm_gemv_kernel_i8(
         y[j] = red[sub * _LANES]
 
 
+fn _norm_gemv_kernel_i4(
+    y: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n: Int, eps: Float32
+):
+    """The int4-weight twin of `_norm_gemv_kernel_i8`. Identical except `w`'s type: a resident
+    PACKED-int4 buffer (two signed nibbles per byte, `_I4P`'s docstring gives the packing and unpack
+    convention) instead of one int8 per byte, with the SAME per-output-row Float32 scale buffer
+    `wscale` (`scale = max(|row|) / 7`, one bit width down from int8's `/127`). The normalization,
+    the shared staging, the accumulator and the reduction are the SAME Float32 arithmetic as the
+    int8 kernel; only the weight-load-and-unpack step differs, per `_VEC_I4B`'s docstring's measured
+    vector-width choice.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var n_bytes = (k + 1) // 2
+        var base = j * n_bytes
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I4B](srow)
+        var k_vec = (k // _VEC_STRIDE_I4) * _VEC_STRIDE_I4
+        # `tb` is a BYTE index into this row's packed weights, not an element index -- the packed
+        # format has two elements per byte, so `tb`'s element-space position is `tb * 2`.
+        var tb = lane * _VEC_I4B
+        while tb * 2 < k_vec:
+            var bv = w.load[width=_VEC_I4B](base + tb)
+            var lo = ((bv << 4).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var hi = ((bv & UInt8(0xF0)).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var elem_off = tb * 2
+            for e in range(_VEC_I4B):
+                var xv = xs.load[width=2](elem_off + e * 2)
+                acc += xv[0] * lo[e] + xv[1] * hi[e]
+            tb += _VEC_BYTE_STRIDE_I4
+        # Scalar tail: the `k - k_vec` elements a `_VEC_STRIDE_I4`-wide loop cannot cover exactly.
+        # Same lane-stride-`_LANES` pattern the whole loop used before vectorization, unpacking one
+        # nibble at a time from its byte.
+        var tt = k_vec + lane
+        while tt < k:
+            var bidx = tt // 2
+            var b = w[base + bidx]
+            var val: Int8
+            if tt % 2 == 0:
+                val = (b << 4).cast[DType.int8]() >> 4
+            else:
+                val = (b & UInt8(0xF0)).cast[DType.int8]() >> 4
+            acc += xs[tt] * (Float32(val) * srow)
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = red[sub * _LANES]
+
+
 fn _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
     """`y += W @ x`, `W` held `[n, k]` row-major. The projection AND its residual add, one dispatch.
 
@@ -622,6 +769,63 @@ fn _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         var tt = k_vec + lane
         while tt < k:
             acc += xs[tt] * (Float32(w[base + tt]) * srow)
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0 and j < n:
+        y[j] = y[j] + red[sub * _LANES]
+
+
+fn _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
+    """The int4-weight twin of `_gemv_accum_kernel_i8` — `o_proj`/`down_proj` plus the residual
+    `+=`, with `w` a resident packed-int4 buffer and `wscale` its per-output-row Float32 scale. See
+    `_norm_gemv_kernel_i4`."""
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var acc = Float32(0.0)
+    if j < n:
+        var n_bytes = (k + 1) // 2
+        var base = j * n_bytes
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I4B](srow)
+        var k_vec = (k // _VEC_STRIDE_I4) * _VEC_STRIDE_I4
+        var tb = lane * _VEC_I4B
+        while tb * 2 < k_vec:
+            var bv = w.load[width=_VEC_I4B](base + tb)
+            var lo = ((bv << 4).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var hi = ((bv & UInt8(0xF0)).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var elem_off = tb * 2
+            for e in range(_VEC_I4B):
+                var xv = xs.load[width=2](elem_off + e * 2)
+                acc += xv[0] * lo[e] + xv[1] * hi[e]
+            tb += _VEC_BYTE_STRIDE_I4
+        var tt = k_vec + lane
+        while tt < k:
+            var bidx = tt // 2
+            var b = w[base + bidx]
+            var val: Int8
+            if tt % 2 == 0:
+                val = (b << 4).cast[DType.int8]() >> 4
+            else:
+                val = (b & UInt8(0xF0)).cast[DType.int8]() >> 4
+            acc += xs[tt] * (Float32(val) * srow)
             tt += _LANES
     red[tid] = acc
     barrier()
@@ -922,6 +1126,129 @@ fn _norm_gemv2_swiglu_kernel_i8(
         var tt2 = k_vec + lane
         while tt2 < k:
             acc2 += xs[tt2] * (Float32(w[base2 + tt2]) * srow2)
+            tt2 += _LANES
+    red[tid] = acc2
+    barrier()
+    var st2 = _LANES // 2
+    while st2 > 0:
+        if lane < st2:
+            red[tid] = red[tid] + red[tid + st2]
+        barrier()
+        st2 //= 2
+    if lane == 0 and j < n_ff:
+        var g = gsh[sub]
+        var u = red[sub * _LANES]
+        act[j] = (g / (1.0 + exp(-g))) * u
+
+
+fn _norm_gemv2_swiglu_kernel_i4(
+    act: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
+):
+    """The int4-weight twin of `_norm_gemv2_swiglu_kernel_i8` — gate/up/SwiGLU, with `w` a resident
+    packed-int4 buffer and `wscale` a per-output-row Float32 scale over its `2 * n_ff` rows (gate
+    rows first, `wscale[j]`; up rows second, `wscale[n_ff + j]` — same row indexing as the int8
+    twin). `base`/`base2` are BYTE offsets (`n_bytes = (k + 1) // 2` per row), unlike the int8
+    twin's element offsets, because this format packs two elements per byte. See
+    `_norm_gemv_kernel_i4`.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var red = stack_allocation[_TG, DType.float32, address_space = AddressSpace.SHARED]()
+    var gsh = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    red[tid] = ss
+    barrier()
+    var stride = _TG // 2
+    while stride > 0:
+        if tid < stride:
+            red[tid] = red[tid] + red[tid + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(k) + eps)
+
+    var s = tid
+    while s < k:
+        xs[s] = x[s] * inv * gamma[s]
+        s += _TG
+    barrier()
+
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+    var j = Int(block_idx.x) * _SUBS + sub
+    var k_vec = (k // _VEC_STRIDE_I4) * _VEC_STRIDE_I4
+    var n_bytes = (k + 1) // 2
+
+    # ── gate ────────────────────────────────────────────────────────────────────
+    var acc = Float32(0.0)
+    if j < n_ff:
+        var base = j * n_bytes
+        var srow = wscale[j]
+        var srow_v = SIMD[DType.float32, _VEC_I4B](srow)
+        var tb = lane * _VEC_I4B
+        while tb * 2 < k_vec:
+            var bv = w.load[width=_VEC_I4B](base + tb)
+            var lo = ((bv << 4).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var hi = ((bv & UInt8(0xF0)).cast[DType.int8]() >> 4).cast[DType.float32]() * srow_v
+            var elem_off = tb * 2
+            for e in range(_VEC_I4B):
+                var xv = xs.load[width=2](elem_off + e * 2)
+                acc += xv[0] * lo[e] + xv[1] * hi[e]
+            tb += _VEC_BYTE_STRIDE_I4
+        var tt = k_vec + lane
+        while tt < k:
+            var bidx = tt // 2
+            var b = w[base + bidx]
+            var val: Int8
+            if tt % 2 == 0:
+                val = (b << 4).cast[DType.int8]() >> 4
+            else:
+                val = (b & UInt8(0xF0)).cast[DType.int8]() >> 4
+            acc += xs[tt] * (Float32(val) * srow)
+            tt += _LANES
+    red[tid] = acc
+    barrier()
+    var st = _LANES // 2
+    while st > 0:
+        if lane < st:
+            red[tid] = red[tid] + red[tid + st]
+        barrier()
+        st //= 2
+    if lane == 0:
+        gsh[sub] = red[sub * _LANES]
+    barrier()
+
+    # ── up ──────────────────────────────────────────────────────────────────────
+    var acc2 = Float32(0.0)
+    if j < n_ff:
+        var base2 = (n_ff + j) * n_bytes
+        var srow2 = wscale[n_ff + j]
+        var srow2_v = SIMD[DType.float32, _VEC_I4B](srow2)
+        var tb2 = lane * _VEC_I4B
+        while tb2 * 2 < k_vec:
+            var bv2 = w.load[width=_VEC_I4B](base2 + tb2)
+            var lo2 = ((bv2 << 4).cast[DType.int8]() >> 4).cast[DType.float32]() * srow2_v
+            var hi2 = ((bv2 & UInt8(0xF0)).cast[DType.int8]() >> 4).cast[DType.float32]() * srow2_v
+            var elem_off2 = tb2 * 2
+            for e2 in range(_VEC_I4B):
+                var xv2 = xs.load[width=2](elem_off2 + e2 * 2)
+                acc2 += xv2[0] * lo2[e2] + xv2[1] * hi2[e2]
+            tb2 += _VEC_BYTE_STRIDE_I4
+        var tt2 = k_vec + lane
+        while tt2 < k:
+            var bidx2 = tt2 // 2
+            var b2 = w[base2 + bidx2]
+            var val2: Int8
+            if tt2 % 2 == 0:
+                val2 = (b2 << 4).cast[DType.int8]() >> 4
+            else:
+                val2 = (b2 & UInt8(0xF0)).cast[DType.int8]() >> 4
+            acc2 += xs[tt2] * (Float32(val2) * srow2)
             tt2 += _LANES
     red[tid] = acc2
     barrier()
