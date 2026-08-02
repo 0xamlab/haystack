@@ -2025,3 +2025,399 @@ was correctly not built.
 - No decode driver was rerun in this addendum: no new binary exists to run one against. The
   final-race section's own numbers (243.06 tok/s int8, full token-agreement table) are the current,
   unchanged, correct measurement for today.
+
+## GPU-counter timing addendum (2026-08-02, later still): real per-role attribution, `lm_head` and SDPA investigated, both cleared — no single-role fix, no kernel change
+
+The "Final real race" section immediately above named a token-level split (~1.49 ms submission
+floor + ~2.62 ms kernel-execution residual) inferred by *subtraction* — an isolated no-op-shaped
+dispatch benchmark (`submit_floor_batch.mojo`) versus the real token's wall clock. This addendum
+replaces that inference with **direct measurement**: a Metal hardware-counter probe
+(`benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m` +
+`qwen3_probe_counters_i8.mojo`, both new, diagnostic-only, zero changes to `batch_shim.m`,
+`qwen3_generate_batch_i8.mojo`, or anything under `mojo/engine/`) that samples a GPU timestamp
+immediately before/after every one of the 171 real `dispatchThreadgroups:` calls in the SAME single
+command buffer/encoder/commit/`waitUntilCompleted` production uses, and attributes every
+microsecond to the dispatch's real kernel role. Built fresh in this worktree
+(`.worktrees/metalcounters`, branch `feat/metal-gpu-counter-timing`, off `origin/main` tip
+`947539f4`) and reproduced independently before anything below was trusted — see "Verification"
+below.
+
+### Two real API findings on this machine, confirmed against the installed Xcode 26.6.0 headers
+
+- `MTLDevice.supportsCounterSampling(.atDispatchBoundary)` is **NO** on this hardware/driver; only
+  `.atStageBoundary` (per-encoder) is supported. Per-dispatch granularity therefore needs one
+  `MTLComputeCommandEncoder` per dispatch (171 encoders, still one command buffer/commit/wait) —
+  pure CPU-side command-stream construction between dispatches, not a host/GPU sync point, so the
+  "no host sync between dispatches" invariant every prior addendum in this document relies on still
+  holds.
+- `MTLDevice.queryTimestampFrequency` reports **24,000,000 ticks/sec**; a direct calibration
+  bracket (GPU tick delta over a `perf_counter_ns`-measured wall interval) measures the real rate at
+  **~998,000,000 ticks/sec — off by ~41.6x**. Every ns conversion below uses the calibrated rate.
+  This is a real, reportable API-reliability finding for this OS/hardware combination, independent
+  of anything else in this addendum.
+
+### Verification: the probe's own headline numbers, reproduced independently in this session
+
+Built and ran the probe fresh (not trusting the numbers as reported):
+
+```
+OFF (no counters, plain step()): 4.4795 ms/token   ON (with counters): 7.8587 ms/token  (+75.4% overhead)
+lmhead_argmax : count=30 avg= 566.5 us   pct_of_residual_sum= 12.80%
+sdpa          : count=840 avg= 44.05 us  pct_of_residual_sum= 27.86%  (range 23-66 us, grows with position)
+sum of per-dispatch GPU deltas/token: 4.426 ms  vs OFF wall-clock: 4.480 ms  (98.8% match)
+```
+
+This matches the prior report's numbers to within run-to-run noise (556-567 us for `lm_head`,
+23-68 us range for `sdpa`, ~97-99% reconciliation) — the instrumentation and its headline breakdown
+are real, not an artifact of one run.
+
+**This reconciliation also corrects the "Final real race" section's subtractive model, not just
+confirms the report.** If ~4.43 ms of real, per-dispatch-attributed GPU time already accounts for
+~99% of a 4.48 ms token, there is no separate ~1.49 ms "submission floor" sitting *additively* on
+top of kernel execution — most of what `submit_floor_batch.mojo`'s no-op-dispatch isolation
+attributed to "pure submission cost" is in fact ordinary per-dispatch fixed overhead that is
+already *inside* the 4.43 ms of real, counter-measured kernel time above, not a second tax layered
+on top of it. This does not change today's bottom-line tok/s (nothing here is a kernel change) but
+it does mean the "~2.62 ms kernel residual, ~1.49 ms submission floor" split in every prior addendum
+should be read as an approximation, not a literal additive decomposition — worth flagging before
+any future session leans on that split to size a fusion project.
+
+### `lm_head` investigated directly — not a bug, already near this toolchain's floor
+
+The report recommended `_lmhead_argmax_kernel_i8` as "the single best isolated target" (one
+dispatch, 12.8% of the token, 12-37x any per-layer dispatch's average). Investigated all three
+angles the task named, before touching anything:
+
+1. **Already using the same vectorized+int8 techniques as the per-layer kernels** — confirmed by
+   reading the kernel (`mojo/engine/residentk/kernels.mojo:1273-1370`): identical `_VEC_I8=4`
+   (`char4`) vectorized load, identical in-register `Float32(w) * wscale[row]` dequant-then-multiply
+   pattern, identical 32-lane tree reduction. Nothing about `lm_head`'s inner loop differs from
+   `_gemv_accum_kernel_i8`/`_norm_gemv_kernel_i8`.
+2. **Reduction strategy for a 151,936-wide argmax** — a two-pass design: a grid-stride loop over
+   `_LM_BLOCKS = 2048` threadgroups (chosen, per the code's own comment, to keep MAX's per-dispatch
+   host cost near its floor rather than launching one threadgroup per 8 columns, ~19,000 of them),
+   each producing one partial `(max, argmax)`, collapsed by a second, tiny `_argmax_reduce_kernel`
+   dispatch (14.1 us, 0.3% of the token). This is a standard, appropriately-sized two-pass reduction
+   for this width, not a naive single-pass design.
+3. **Grid/threadgroup sizing** — the one knob in (2) never revisited since it was chosen against a
+   Float32-era measurement, before fp16/int8 landed. Swept directly, rebuilding and rerunning the
+   counter probe at each value (`_LM_BLOCKS` = 512, 1024, 1536, 2048, 3072, 4096, 6144 — a 12x
+   range), everything else unchanged:
+
+   | `_LM_BLOCKS` | `lm_head` avg (us) | OFF wall-clock avg (ms/token) |
+   |---|---|---|
+   | 512 | 564.4 | 4.523 |
+   | 1024 | 598.9 | 4.563 |
+   | 1536 | 576.8 | 4.485 |
+   | **2048 (current)** | **555.7** | **4.483** |
+   | 3072 | 555.7 | 4.498 |
+   | 4096 | 554.7 | 4.534 |
+   | 6144 | 576.7 | 4.556 |
+
+   No trend: every value lands in a 555-599 us band with no monotonic relationship to grid size,
+   and the current 2048 is at or near the best of the seven values tried, not a compromise leaving
+   free performance on the table. (A build at `_LM_BLOCKS = 8192` was attempted but the run
+   timed out on this shared, multi-agent-loaded machine and was not retried — the 12x range already
+   sampled is sufficient to see there is no exploitable slope.) Session file restored byte-identical
+   to `origin/main` after the sweep (`diff` clean) before drawing any conclusion.
+
+**Why the "disproportion" is real but not a bug**: `lm_head` reads the entire tied
+`[vocab, d_model]` = 151,936 x 1024 int8 matrix once per token — 155,582,464 bytes (148.4 MiB) — the
+*only* dispatch that touches this whole matrix, versus every per-layer dispatch touching a
+1-6 MiB slice of a much smaller matrix 28 times. At the measured 555.7 us baseline that is
+**~280 GB/s** — 68% of this host's own previously-measured 411 GB/s streaming ceiling (cited
+throughout this document), and only **1.47x above the 378.6 us naive bandwidth floor**
+(155.58 MB / 411 GB/s). That ratio is *better than*, not worse than, the aggregate int8-arm ratio
+the Int8-weight addendum already reported for the whole token (2.63 ms measured against a 1.742 ms
+floor — 1.51x, "~51% above floor"). In other words: `lm_head` is not an inefficient outlier in the
+breakdown table — it is the single dispatch doing the most real memory-bound work, running at
+least as close to this machine's bandwidth ceiling as everything else in the same int8 arm, and it
+*looks* disproportionate in the per-dispatch table purely because it is ~130x bigger than a typical
+per-layer dispatch, not because anything is being done inefficiently inside it.
+
+### SDPA re-verified independently, by reading the code, not by re-trusting the report
+
+Confirmed directly, independent of the report's own measurement: `_sdpa_kernel`
+(`mojo/engine/residentk/kernels.mojo:1046`) loops `for j in range(n_keys)` — `n_keys` is a runtime
+kernel argument, not `RESIDENT_MAX_CONTEXT`. At the call site
+(`mojo/engine/metaldispatch/session.mojo:885-888` and the identical residentk/f16/i8 twins),
+`n_keys = pos + 1` is patched into that dispatch's descriptor fresh every step. There is no fixed
+512-wide scan hiding anywhere in this path — the report's falsification of that hypothesis is
+correct, confirmed by reading the source, not merely by re-running its own probe.
+
+### Conclusion: no worthwhile single-role fix found — reported honestly, nothing landed
+
+Every angle the task asked to investigate for `lm_head` came back clean: same vectorization as its
+siblings, an appropriately-sized two-pass reduction, and a grid-size sweep across a 12x range with
+no measurable effect. SDPA is legitimate real per-key work, re-confirmed from the source. The
+GEMV-shaped per-layer kernels have "no fresh lever without a new idea (e.g., int4)" per the report
+— and int4 is a new precision tier applying to every weight matrix, not a `lm_head`-specific fix,
+and out of scope for a narrow same-day change (every prior precision tier in this document —
+float32 → fp16 → int8 — was its own multi-gate addendum). **This is a genuine null result: the
+per-role timing breakdown is real and correctly attributed, but nothing in it is a fixable
+inefficiency at this toolchain's current ceiling.** No kernel, session, or contract file changed;
+`git diff --stat origin/main -- mojo/engine/` stays empty. Decode-only tok/s is therefore unchanged
+from the "Final real race" section above (best arm: batched-shim int8, 243.06 tok/s median) — no
+before/after speed claim is made here because no fix was made to measure one against.
+
+### Gates, on this worktree (`.worktrees/metalcounters`, branch `feat/metal-gpu-counter-timing`, off `origin/main` tip `947539f4`)
+
+- `git diff --stat origin/main -- mojo/engine/`: empty.
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean, no new violations.
+- `make inventory-refresh`: zero diff (both new files are diagnostic-only with no new public
+  contract surface). `make inventory-check`: clean (runtime contract OK, capability manifest OK,
+  runtime-library-catalog OK).
+- `python3 scripts/capability_manifest_gate.py` (via `make inventory-check`): clean, no new
+  undeclared kernels (122/655 modules fully declared, 595 undeclared against the unchanged 595
+  ceiling).
+- `tests/generate_mojo_tests.py --check`: clean (195 hand-written suites protected, 466 generated
+  fresh).
+- `mojo/tests/libs/test_metaldispatch_session_i8.mojo`: 8/8 (real-GPU build) — rerun fresh, unchanged.
+- `mojo/tests/libs/test_residentk_session.mojo`: 22/22 (default, no-GPU build) — rerun fresh,
+  unchanged.
+- `mojo/tests/libs/test_metaldispatch_contract.mojo`: 2/2 — rerun fresh, unchanged.
+- No golden-vector test added: no function's behavior changed, so there is nothing new to pin.
+
+### Reproduction
+
+```bash
+# build the diagnostic shim + probe (from this worktree)
+clang -c -fobjc-arc -O2 benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
+    -o /tmp/batch_shim_counters.o
+cd mojo_env
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8.mojo \
+    -o /tmp/qwen3_probe_counters_i8 \
+    -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_probe_counters_i8
+
+# the _LM_BLOCKS sweep (each value: edit mojo/engine/metaldispatch/session.mojo's
+# `comptime _LM_BLOCKS: Int = 2048` line, rebuild the probe under a distinct -o path, run, restore)
+```
+
+## Final race + permanent per-role artifact (2026-08-02, later still again): every arm re-raced fresh, GPU-counter breakdown reconfirmed, still no gitbook page
+
+The GPU-counter timing addendum immediately above found a genuine null result: `lm_head` and
+SDPA were both investigated and both cleared, no kernel changed. This section closes the loop the
+task asked for: rebase onto the current `origin/main` tip, re-race every arm fresh (there is no
+"+fix" arm to add — the Optimize phase's own conclusion was that nothing landed), verify token
+agreement fresh, and fold the per-role GPU timing table into this document as a standing artifact
+so it is not re-derived next session regardless of whether it produces a speed win today.
+
+Rebased this worktree (`.worktrees/metalcounters`, branch `feat/metal-gpu-counter-timing`) onto
+`origin/main` tip `aee75f6f` (#509, speculative-decoding no-go, docs-only) — one content conflict
+in this file itself (both branches appended a new section after the same "Final real race"
+section); resolved by keeping both addenda, in chronological order. `git diff --stat origin/main --
+mojo/engine/` stays empty after the rebase.
+
+### Correctness first, on this exact run
+
+A `transformers`-CPU reference was regenerated fresh in this session
+(`reference_generate.py` → `/tmp/bb/qwen3_ckpt/reference_generate_realrace_final2/`) and every
+Algenta arm's generated-ids file from this run's binaries was checked against it position-by-position
+with `verify_generation.py`, all 16/16:
+
+| Arm | tokens matching reference | max per-step logit delta |
+|---|---|---|
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | 1.02e-05 |
+| Algenta batched-shim GPU, fp16 | **16 / 16** | 1.14e-05 |
+| Algenta batched-shim GPU, int8 | **16 / 16** | 2.36e-01 |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."` — additionally verified
+identical, token-by-token, across **all six rounds** of the race below for all three Algenta arms
+(not just the round used for the reference check), and both real opponents printed the identical
+text in every one of the six rounds too: llama.cpp `' Paris. The capital of Germany is Berlin. The
+capital of Italy is Rome.'`, mlx-lm `'Paris. The capital of Germany is Berlin. The capital of Italy
+is Rome.'` (same leading-space detokenizer difference this document notes throughout — same token
+content). **No arm diverged in any round, on this run.**
+
+### The numbers
+
+Same checkpoint, prompt, 16 greedy tokens, decode-only tok/s, six interleaved rounds, fixed order
+Algenta CPU → Algenta batched-shim GPU fp16 → Algenta batched-shim GPU int8 → llama.cpp CPU →
+llama.cpp GPU → mlx-lm:
+
+| Arm | Precision | Compute | Range | Median | vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 6.53 – 7.06 | 6.73 | 0.029x |
+| Algenta batched-shim GPU, fp16 | mixed (fp16 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 197.14 – 203.86 | 198.69 | 0.845x |
+| **Algenta batched-shim GPU, int8 ("+this chain's fix" == the #507/#508/#509 baseline, byte-identical — see below)** | mixed (int8 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 178.14¹ – 238.90 | **235.05** | **1x (best)** |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 6.65 – 46.01² | 7.63² | 1.13x faster |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 245.82 – 253.68 | 247.88 | **1.055x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 299.60 – 312.49 | **307.04** | **1.306x faster** |
+
+¹ Round 1's int8 value (178.14 tok/s) sits well below the other five rounds' tight 231.5–238.9 band.
+Unlike the fp16 cold-start artifact this document noted in the "Final real race" section, this is
+*not* a first-GPU-call-of-the-session effect — both the fp16 and int8 binaries had already been
+invoked once each, warm, immediately before round 1 (as part of this session's own pre-race sanity
+check, 200.6 and 235.1 tok/s respectively, both already in the normal band). No cause was found
+beyond ordinary host contention on this shared, multi-agent-loaded machine; it is reported plainly
+rather than excluded, since the median (235.05) is barely affected by one outlier of six and the
+conclusion below is unchanged either way. **"Algenta batched-shim GPU int8 + this chain's fix" is
+not a separate arm to build**: the Optimize phase concluded with zero kernel changes (every angle
+investigated — vectorization, reduction strategy, grid sizing, SDPA — came back clean), so there is
+nothing to add on top of the standing int8 baseline; one measurement series stands for both labels.
+
+² llama.cpp CPU remains inherently noisy on this host (14.20–63.06 in the prior session's six
+rounds; 6.65–46.01 in this one) — this is not this race's binding comparison and does not change
+the verdict.
+
+Per-round values, in round order:
+
+```
+algenta_cpu        6.838   7.062   6.525   6.579   6.788   6.680
+algenta_gpu_f16  198.085 199.298 197.138 197.545 203.857 200.776
+algenta_gpu_i8   178.143 238.899 237.967 231.506 237.827 232.277
+llama_cpp_cpu      6.653  46.010   7.535  25.657   7.597   7.660
+llama_cpp_gpu    248.807 253.678 246.959 246.887 245.821 251.323
+mlx_lm           312.373 312.493 299.604 306.888 299.858 307.200
+```
+
+**int8 vs. the field, on this run**: llama.cpp GPU (247.88) beats Algenta int8 by **1.055x**;
+mlx-lm (307.04) beats Algenta int8 by **1.306x**. Both figures match the "Final real race"
+section's own numbers (1.056x, 1.289x) to within normal day-long measurement noise — because
+nothing changed in the int8 arm's kernels since that section (the Instrument/Optimize chain's own
+honest null result), this is exactly the outcome a fresh remeasurement should produce, and it is
+what happened.
+
+### Real per-role GPU timing breakdown — permanent artifact, reconfirmed fresh on this run
+
+Rebuilt and reran the hardware-counter probe
+(`benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m` +
+`qwen3_probe_counters_i8.mojo`, diagnostic-only, zero production files touched) three times fresh
+on this run, averaged, to fold this into the permanent record regardless of today's speed
+verdict:
+
+| Role | Count/token | Avg µs/dispatch | % of summed residual |
+|---|---|---|---|
+| sdpa | 28 | 45.08 | **26.85%** |
+| gemv_accum (o_proj+down_proj) | 56 | 17.32 | 20.59% |
+| norm_gemv2_swiglu (gate-up) | 28 | 32.11 | 19.12% |
+| norm_gemv (QKV-proj) | 28 | 25.91 | 15.41% |
+| lmhead_argmax | **1** | **575.22** | 12.24% |
+| qk_rope_write | 28 | 8.91 | 5.29% |
+| argmax_reduce | 1 | 19.31 | 0.41% |
+| embed_row | 1 | 4.55 | 0.10% |
+| — gemv_accum / o_proj | 28 | 14.93 | (within gemv_accum) |
+| — gemv_accum / down_proj | 28 | 19.71 | (within gemv_accum) |
+
+Reconciliation, averaged over the same three runs: sum of per-dispatch GPU time **4.705 ms/token**
+vs. OFF-phase (single-encoder, production-shaped) wall-clock **4.778 ms/token** — a **98.5% match**,
+consistent with the Instrument/Optimize sessions' own 97–99% figures earlier today. Instrumentation
+overhead (171-separate-encoders technique itself): ON averaged 8.099 ms/token vs OFF 4.778 ms/token
+— **+69.5%**, in the same band as every prior measurement of this overhead today (+71.6% to +79.9%
+across the three probe runs individually). This table is the same real, source-verified attribution
+the Instrument and Optimize phases already established (`lm_head` disproportionate but not
+inefficient — 68% of this host's 411 GB/s streaming ceiling; SDPA's cost grows with position,
+confirmed from `_sdpa_kernel`'s `n_keys = pos + 1` argument, not a fixed-512 scan) — reconfirmed
+here, unaltered, as the standing reference for any future session that wants per-role GPU cost
+without re-deriving it.
+
+### Publication decision: no gitbook page
+
+**Standing rule: an outright win against BOTH llama.cpp's best (247.88 tok/s median, GPU, measured
+on this run) AND mlx-lm's real number (307.04 tok/s median, measured on this run).** Algenta's best
+arm — batched-shim int8, 235.05 tok/s median — loses to both: **1.055x short of llama.cpp GPU,
+1.306x short of mlx-lm.** No gitbook page ships, and none is drafted. This is the same verdict, to
+within normal measurement noise, as every prior race today.
+
+### Is today's optimization space exhausted for this architecture? Yes, as far as this chain went
+
+Today's full chain, in order: Qwen3 forward pass → KV-cache decode → parallel GEMV → resident GPU
+→ kernel efficiency + fp16 → batched raw-Metal dispatch → int8 → dispatch-fusion/packed-load
+investigation (dead end) → GPU hardware-counter per-role attribution (`lm_head`/SDPA investigated,
+dead end) → speculative decoding (dead end, no-go before a kernel was written) → this final,
+fresh, fully-reconfirmed race. Every concrete lever named anywhere in this document has now been
+either landed (float32 → fp16 → int8, batched dispatch, per-channel quantization) or tried and
+confirmed dead for *this specific 16-token, single-request, Qwen3-0.6B benchmark on this toolchain*:
+
+- **More dispatch fusion**: blocked on Metal's public API exposing no grid-wide barrier (Dispatch-
+  fusion addendum).
+- **Cheaper int8 unpacking**: measured worse than the existing `char4` load, three ways (Dispatch-
+  fusion addendum).
+- **`lm_head`/SDPA-specific fixes**: vectorization, reduction strategy, and a 12x grid-size sweep
+  all came back clean; SDPA's cost is legitimate per-key work (GPU-counter addendum).
+- **Speculative/prompt-lookup decoding**: this exact prompt's repeating unit is template, not
+  content — hit-rate caps the idealized best case at +6.7%, still short of mlx-lm (Speculative
+  decoding addendum).
+
+**Honest assessment, unchanged from every prior addendum today: closing the remaining ~1.06x–1.31x
+gap is very unlikely within this toolchain's current public API and this benchmark's shape.** The
+per-role table above does suggest one avenue this chain did not attempt because it is out of scope
+for a same-day change: **int4 weights** for the three GEMV-shaped per-layer roles (54% of the
+summed residual combined) — a new precision tier, not a `lm_head`- or SDPA-specific fix, requiring
+its own multi-gate addendum the way float32→fp16 and fp16→int8 each got one. Beyond that, the two
+structural levers this document already named (a lower-per-dispatch-cost submission mechanism, or
+a genuinely persistent-kernel decode loop that never returns to the host between tokens) remain the
+only paths to a different regime, and both are explicitly flagged elsewhere in this document as
+multi-day, high-risk redesigns outside today's scope. **Today's honest stopping point, reconfirmed
+fresh: 235.05 tok/s median, 171 dispatches/token, int8 weights, `char4` loads** — a real, 34.9x
+improvement over this session's original CPU baseline (6.73 tok/s today), still short of the field.
+
+### Gates, rebased onto `origin/main` tip (`aee75f6f`, `#509`), all rerun after the rebase
+
+- `git fetch origin main` then rebase: one content conflict in this file (both branches appended a
+  new section after "Final real race"); resolved by keeping both addenda in order, no other file
+  touched.
+- `git diff --stat origin/main -- mojo/engine/`: empty.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean (runtime contract OK,
+  capability manifest OK, runtime-library-catalog OK, 122/655 modules fully declared, 595
+  undeclared against the unchanged 595 ceiling).
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean, no new violations.
+- `tests/generate_mojo_tests.py --check`: clean (195 hand-written suites protected, 466 generated
+  fresh).
+- `mojo/tests/libs/test_metaldispatch_session_i8.mojo`: 8/8 (real-GPU build). `test_residentk_session.mojo`:
+  22/22 (default, no-GPU build). `test_metaldispatch_contract.mojo`: 2/2. All rerun fresh on this
+  worktree, post-rebase, identical counts to every prior addendum.
+
+### Reproduction
+
+```bash
+# rebase
+git fetch origin main
+git rebase origin/main
+
+# build the shim object + all three Algenta arms (from mojo_env/)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_f16.mojo \
+    -o /tmp/race_gpu_f16 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo \
+    -o /tmp/race_gpu_i8 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+
+# one round = every arm once, back to back, interleaved (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_f16
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+# repeat this block 6x for six rounds
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_realrace_final2
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_llmfwd/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final2/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_f16/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final2/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_i8/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_final2/reference_generated.json
+
+# the per-role GPU counter probe (from mojo_env/)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
+    -o /tmp/batch_shim_counters.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8.mojo \
+    -o /tmp/qwen3_probe_counters_i8 \
+    -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_probe_counters_i8
+```
