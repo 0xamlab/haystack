@@ -16,8 +16,13 @@ one has a different epsilon, a different range and a different overflow story.
 
 Modules
 -------
-  contract  — the one status vocabulary (300-319), finiteness predicate and shape check
-  dtype     — dtype tags, limits, accumulation policy, round-trip, and the tolerance constructor
+  contract     — the one status vocabulary (300-319), finiteness predicate and shape check
+  dtype        — dtype tags, limits, accumulation policy, round-trip, and the tolerance constructor
+  pack         — int4/nf4/fp8 pack-unpack, blockwise and double quantization
+  shape        — N-D shape, contiguous strides, rank limits, and NumPy-rule broadcasting
+  buffer       — a `List[UInt8]` tagged with a dtype and a shape; every other file's substrate
+  elementwise  — add/sub/mul/div/cast over buffers, broadcasting via `shape`
+  reduce       — sum/mean/min/max/var/std over a buffer, decoded wide and accumulated wide
 
 Read `contract.mojo` first: it explains why there is exactly one of each of those, and the one
 deliberate exception (`dtx_tol_for` lives in `dtype` because it is built from `dtx_eps`).

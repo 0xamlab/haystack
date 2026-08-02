@@ -199,6 +199,36 @@ def main() raises:
         failed += 1
         print("  ❌ the frozen bf16 kernel changed — it is supposed to be frozen")
 
+    # ── hand/reference-derived golden values for bf16 and both fp8 formats ─────
+    # Cross-checked against real torch casts, run before this block was written:
+    #   torch.tensor(3.14159, dtype=torch.float32).to(torch.bfloat16)      -> 3.140625
+    #   torch.tensor(3.14159, dtype=torch.float32).to(torch.float8_e4m3fn) -> 3.25
+    #   torch.tensor(3.14159, dtype=torch.float32).to(torch.float8_e5m2)   -> 3.0
+    #   torch.tensor(100.0,  dtype=torch.float32).to(torch.float8_e4m3fn) -> 96.0
+    #   torch.tensor(100.0,  dtype=torch.float32).to(torch.float8_e5m2)   -> 96.0
+    if (
+        dtx_round_trip(3.14159, DT_BF16) == 3.140625
+        and dtx_round_trip(3.14159, DT_F8E4M3) == 3.25
+        and dtx_round_trip(3.14159, DT_F8E5M2) == 3.0
+    ):
+        passed += 1
+        print("  ✅ pi rounds to 3.140625 (bf16), 3.25 (fp8 e4m3), 3.0 (fp8 e5m2) — matching torch")
+    else:
+        failed += 1
+        print(
+            "  ❌ a bf16/fp8 golden value drifted from the torch reference:",
+            dtx_round_trip(3.14159, DT_BF16),
+            dtx_round_trip(3.14159, DT_F8E4M3),
+            dtx_round_trip(3.14159, DT_F8E5M2),
+        )
+
+    if dtx_round_trip(100.0, DT_F8E4M3) == 96.0 and dtx_round_trip(100.0, DT_F8E5M2) == 96.0:
+        passed += 1
+        print("  ✅ 100.0 rounds to 96.0 in both fp8 e4m3 and e5m2 — matching torch")
+    else:
+        failed += 1
+        print("  ❌ the fp8 100.0 golden value drifted from the torch reference")
+
     # ── the count guard the A-Z harness cannot exercise ───────────────────────
     var v = List[Float64]()
     v.append(0.1)

@@ -7144,6 +7144,16 @@ from tensor_ops import (
     tensor_dot_contribution as _tensor_ops__tensor_dot_contribution,
 )
 
+from tensorx.buffer import (
+    tx_buf_element_width_bytes as _tensorx_buffer__tx_buf_element_width_bytes,
+    tx_buf_required_bytes_flat as _tensorx_buffer__tx_buf_required_bytes_flat,
+    tx_buf_required_bytes as _tensorx_buffer__tx_buf_required_bytes,
+    tx_buf_encode_flat as _tensorx_buffer__tx_buf_encode_flat,
+    tx_buf_decode_flat as _tensorx_buffer__tx_buf_decode_flat,
+    tx_buf_make as _tensorx_buffer__tx_buf_make,
+    tx_buf_to_values as _tensorx_buffer__tx_buf_to_values,
+)
+
 from tensorx.contract import (
     tx_status_name as _tensorx_contract__tx_status_name,
     tx_finite as _tensorx_contract__tx_finite,
@@ -7151,6 +7161,7 @@ from tensorx.contract import (
     tx_all_finite as _tensorx_contract__tx_all_finite,
     tx_dims_fit as _tensorx_contract__tx_dims_fit,
     tx_shape_ok as _tensorx_contract__tx_shape_ok,
+    tx_numel_checked as _tensorx_contract__tx_numel_checked,
 )
 
 from tensorx.dtype import (
@@ -7170,6 +7181,14 @@ from tensorx.dtype import (
     dtx_round_trip_list as _tensorx_dtype__dtx_round_trip_list,
 )
 
+from tensorx.elementwise import (
+    tx_ew_add as _tensorx_elementwise__tx_ew_add,
+    tx_ew_sub as _tensorx_elementwise__tx_ew_sub,
+    tx_ew_mul as _tensorx_elementwise__tx_ew_mul,
+    tx_ew_div as _tensorx_elementwise__tx_ew_div,
+    tx_ew_cast as _tensorx_elementwise__tx_ew_cast,
+)
+
 from tensorx.pack import (
     nf4_levels as _tensorx_pack__nf4_levels,
     calibrate_absmax as _tensorx_pack__calibrate_absmax,
@@ -7183,6 +7202,28 @@ from tensorx.pack import (
     double_quant_scales as _tensorx_pack__double_quant_scales,
     quant_error_report as _tensorx_pack__quant_error_report,
     int4_error_vs_frozen as _tensorx_pack__int4_error_vs_frozen,
+)
+
+from tensorx.reduce import (
+    tx_reduce_sum as _tensorx_reduce__tx_reduce_sum,
+    tx_reduce_mean as _tensorx_reduce__tx_reduce_mean,
+    tx_reduce_min as _tensorx_reduce__tx_reduce_min,
+    tx_reduce_max as _tensorx_reduce__tx_reduce_max,
+    tx_reduce_variance as _tensorx_reduce__tx_reduce_variance,
+    tx_reduce_stddev as _tensorx_reduce__tx_reduce_stddev,
+    tx_reduce_sum_narrow_accum as _tensorx_reduce__tx_reduce_sum_narrow_accum,
+)
+
+from tensorx.shape import (
+    tx_shape_status as _tensorx_shape__tx_shape_status,
+    tx_shape_numel as _tensorx_shape__tx_shape_numel,
+    tx_shape_strides as _tensorx_shape__tx_shape_strides,
+    tx_shape_is_contiguous as _tensorx_shape__tx_shape_is_contiguous,
+    tx_shape_validate as _tensorx_shape__tx_shape_validate,
+    tx_shape_broadcast_status as _tensorx_shape__tx_shape_broadcast_status,
+    tx_shape_broadcastable as _tensorx_shape__tx_shape_broadcastable,
+    tx_shape_broadcast_dims as _tensorx_shape__tx_shape_broadcast_dims,
+    tx_shape_make as _tensorx_shape__tx_shape_make,
 )
 
 from text.column_scorer import (
@@ -8877,9 +8918,17 @@ from tensor2d import (
     Matrix2D,
 )
 
+from tensorx.buffer import (
+    TxBuffer,
+)
+
 from tensorx.dtype import (
     DtypeCast,
     TxTolerance,
+)
+
+from tensorx.elementwise import (
+    TxElemResult,
 )
 
 from tensorx.pack import (
@@ -8887,6 +8936,14 @@ from tensorx.pack import (
     DoubleQuant,
     PackedNibbles,
     QuantError,
+)
+
+from tensorx.reduce import (
+    TxReduction,
+)
+
+from tensorx.shape import (
+    TxShape,
 )
 
 from token_bucket import (
@@ -9854,6 +9911,17 @@ fn _parse_trie_token(token: String) raises -> Trie:
     var field_3 = _parse_list_int_token(json_array_get(values_json, 3))
     var field_4 = _parse_list_int_token(json_array_get(values_json, 4))
     return Trie(field_0^, field_1^, field_2^, field_3^, field_4^)
+
+fn _parse_txbuffer_token(token: String) raises -> TxBuffer:
+    var values_json = json_get_array(token, "v")
+    if json_array_len(values_json) != 5:
+        raise Error("Expected 5 fields for TxBuffer, received " + String(json_array_len(values_json)))
+    var field_0 = _parse_list_uint8_token(json_array_get(values_json, 0))
+    var field_1 = _parse_list_int_token(json_array_get(values_json, 1))
+    var field_2 = _parse_int_token(json_array_get(values_json, 2))
+    var field_3 = _parse_int_token(json_array_get(values_json, 3))
+    var field_4 = _parse_int_token(json_array_get(values_json, 4))
+    return TxBuffer(field_0^, field_1^, field_2^, field_3^, field_4^)
 
 fn _parse_uint16_token(token: String) raises -> UInt16:
     var parsed = parse_int(token)
@@ -20103,6 +20171,62 @@ fn _to_json_trie(value: Trie) raises -> String:
     result += _to_json_list_int(value.nodes_first_child)
     result += ","
     result += _to_json_list_int(value.nodes_next_sibling)
+    result += "]}"
+    return result
+
+fn _to_json_txbuffer(value: TxBuffer) raises -> String:
+    var result = String("{\"__algenta_struct\":\"TxBuffer\",\"v\":[")
+    result += _to_json_list_uint8(value.data)
+    result += ","
+    result += _to_json_list_int(value.dims)
+    result += ","
+    result += _to_json_int(value.rank)
+    result += ","
+    result += _to_json_int(value.dtype)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_txelemresult(value: TxElemResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"TxElemResult\",\"v\":[")
+    result += _to_json_list_uint8(value.bytes)
+    result += ","
+    result += _to_json_list_int(value.dims)
+    result += ","
+    result += _to_json_int(value.rank)
+    result += ","
+    result += _to_json_int(value.dtype)
+    result += ","
+    result += _to_json_int(value.n_non_finite)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_txreduction(value: TxReduction) raises -> String:
+    var result = String("{\"__algenta_struct\":\"TxReduction\",\"v\":[")
+    result += _to_json_float64(value.value)
+    result += ","
+    result += _to_json_bool(value.present)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_txshape(value: TxShape) raises -> String:
+    var result = String("{\"__algenta_struct\":\"TxShape\",\"v\":[")
+    result += _to_json_list_int(value.dims)
+    result += ","
+    result += _to_json_list_int(value.strides)
+    result += ","
+    result += _to_json_int(value.rank)
+    result += ","
+    result += _to_json_int(value.numel)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -139359,6 +139483,136 @@ fn _dispatch_tensor_ops(function_name: String, args_array: String) raises -> Str
         "Function '" + function_name + "' is not registered for module tensor_ops."
     )
 
+fn _dispatch_tensorx__buffer(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tx_buf_element_width_bytes":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _tensorx_buffer__tx_buf_element_width_bytes(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_element_width_bytes."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_element_width_bytes expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_required_bytes_flat":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_buffer__tx_buf_required_bytes_flat(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_required_bytes_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_required_bytes_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_required_bytes":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_buffer__tx_buf_required_bytes(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_required_bytes."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_required_bytes expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_encode_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_buffer__tx_buf_encode_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_uint8(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_encode_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_encode_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_decode_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_buffer__tx_buf_decode_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_decode_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_decode_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_make":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _tensorx_buffer__tx_buf_make(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_txbuffer(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_make."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_make expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_buf_to_values":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_txbuffer_token(json_array_get(args_array, 0))
+                var result = _tensorx_buffer__tx_buf_to_values(arg_0)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.buffer.tx_buf_to_values."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.buffer.tx_buf_to_values expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.buffer."
+    )
+
 fn _dispatch_tensorx__contract(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "tx_status_name":
@@ -139462,6 +139716,24 @@ fn _dispatch_tensorx__contract(function_name: String, args_array: String) raises
         return _error_json(
             "invalid_arguments",
             "Function tensorx.contract.tx_shape_ok expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_numel_checked":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_contract__tx_numel_checked(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.contract.tx_numel_checked."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.contract.tx_numel_checked expected 3 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",
@@ -139724,6 +139996,124 @@ fn _dispatch_tensorx__dtype(function_name: String, args_array: String) raises ->
         "Function '" + function_name + "' is not registered for module tensorx.dtype."
     )
 
+fn _dispatch_tensorx__elementwise(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tx_ew_add":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_uint8_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _tensorx_elementwise__tx_ew_add(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_txelemresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.elementwise.tx_ew_add."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.elementwise.tx_ew_add expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_ew_sub":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_uint8_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _tensorx_elementwise__tx_ew_sub(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_txelemresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.elementwise.tx_ew_sub."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.elementwise.tx_ew_sub expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_ew_mul":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_uint8_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _tensorx_elementwise__tx_ew_mul(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_txelemresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.elementwise.tx_ew_mul."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.elementwise.tx_ew_mul expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_ew_div":
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_list_uint8_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_list_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _tensorx_elementwise__tx_ew_div(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_txelemresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.elementwise.tx_ew_div."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.elementwise.tx_ew_div expected 8 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_ew_cast":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_elementwise__tx_ew_cast(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_uint8(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.elementwise.tx_ew_cast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.elementwise.tx_ew_cast expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.elementwise."
+    )
+
 fn _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "nf4_levels":
@@ -139957,6 +140347,312 @@ fn _dispatch_tensorx__pack(function_name: String, args_array: String) raises -> 
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module tensorx.pack."
+    )
+
+fn _dispatch_tensorx__reduce(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tx_reduce_sum":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_sum(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_sum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_sum expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_mean":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_mean(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_mean."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_mean expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_min":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_min(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_min."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_min expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_max":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_max(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_max."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_max expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_variance":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_variance(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_variance."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_variance expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_stddev":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_stddev(arg_0, arg_1, arg_2)
+                var result_json = _to_json_txreduction(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_stddev."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_stddev expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_reduce_sum_narrow_accum":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_uint8_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_reduce__tx_reduce_sum_narrow_accum(arg_0, arg_1, arg_2)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "tensorx.reduce.tx_reduce_sum_narrow_accum produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.reduce.tx_reduce_sum_narrow_accum."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.reduce.tx_reduce_sum_narrow_accum expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.reduce."
+    )
+
+fn _dispatch_tensorx__shape(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "tx_shape_status":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_shape__tx_shape_status(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_status expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_numel":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_shape__tx_shape_numel(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_numel."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_numel expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_strides":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_shape__tx_shape_strides(arg_0, arg_1)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_strides."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_strides expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_is_contiguous":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_shape__tx_shape_is_contiguous(arg_0, arg_1, arg_2)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_is_contiguous."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_is_contiguous expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_validate":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _tensorx_shape__tx_shape_validate(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_validate."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_validate expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_broadcast_status":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_shape__tx_shape_broadcast_status(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_broadcast_status."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_broadcast_status expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_broadcastable":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_shape__tx_shape_broadcastable(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_broadcastable."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_broadcastable expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_broadcast_dims":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_list_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _tensorx_shape__tx_shape_broadcast_dims(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_broadcast_dims."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_broadcast_dims expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "tx_shape_make":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _tensorx_shape__tx_shape_make(arg_0, arg_1)
+                var result_json = _to_json_txshape(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for tensorx.shape.tx_shape_make."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function tensorx.shape.tx_shape_make expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module tensorx.shape."
     )
 
 fn _dispatch_text__column_scorer(function_name: String, args_array: String) raises -> String:
@@ -152914,12 +153610,20 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_tensor2d(function_name, args_array)
     if module_name == "tensor_ops":
         return _dispatch_tensor_ops(function_name, args_array)
+    if module_name == "tensorx.buffer":
+        return _dispatch_tensorx__buffer(function_name, args_array)
     if module_name == "tensorx.contract":
         return _dispatch_tensorx__contract(function_name, args_array)
     if module_name == "tensorx.dtype":
         return _dispatch_tensorx__dtype(function_name, args_array)
+    if module_name == "tensorx.elementwise":
+        return _dispatch_tensorx__elementwise(function_name, args_array)
     if module_name == "tensorx.pack":
         return _dispatch_tensorx__pack(function_name, args_array)
+    if module_name == "tensorx.reduce":
+        return _dispatch_tensorx__reduce(function_name, args_array)
+    if module_name == "tensorx.shape":
+        return _dispatch_tensorx__shape(function_name, args_array)
     if module_name == "text.column_scorer":
         return _dispatch_text__column_scorer(function_name, args_array)
     if module_name == "text.fuzzy":

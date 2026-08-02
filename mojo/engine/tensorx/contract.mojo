@@ -54,6 +54,16 @@ Public API:
   tx_count_ok(n, length)                 — the count/length relation as a status, not a Bool
   tx_dims_fit(rows, cols, ceiling)       — division-based, never forms a wrapping product
   tx_shape_ok(rows, cols, data_len)      — flat row-major: rows*cols must equal len exactly
+  tx_numel_checked(dims, n, ceiling)     — the N-dimensional generalisation of tx_dims_fit: a
+                                            checked product over an arbitrary number of factors,
+                                            still grown by division rather than formed and compared
+
+Three more codes were added here for `tensorx.shape` and `tensorx.elementwise` rather than started
+as a second table (rule 4e — one vocabulary per package, not per file): `TX_ERR_RANK_TOO_HIGH`,
+`TX_ERR_BROADCAST_INCOMPATIBLE` and `TX_ERR_DTYPE_MISMATCH`. `tx_numel_checked` sits here rather than
+in `shape.mojo` for the same reason `tx_dims_fit` does — it is the one place a product is grown by
+division for the whole package, and `shape.tx_shape_numel` is a thin caller of it, not a second
+implementation.
 """
 
 from std.math import isnan, isinf
@@ -73,6 +83,9 @@ comptime TX_ERR_BLOCK_SIZE: Int = 309
 comptime TX_ERR_BITS_UNSUPPORTED: Int = 310
 comptime TX_ERR_LENGTH_MISMATCH: Int = 311
 comptime TX_ERR_CODE_OUT_OF_RANGE: Int = 312
+comptime TX_ERR_RANK_TOO_HIGH: Int = 313
+comptime TX_ERR_BROADCAST_INCOMPATIBLE: Int = 314
+comptime TX_ERR_DTYPE_MISMATCH: Int = 315
 
 comptime TX_MAX_ELEMS: Int = 1 << 26
 """67,108,864 elements — 512 MiB of Float64, which is what the resident-dataset budget already
@@ -113,6 +126,12 @@ fn tx_status_name(code: Int) -> String:
         return String("length_mismatch")
     if code == TX_ERR_CODE_OUT_OF_RANGE:
         return String("code_out_of_range")
+    if code == TX_ERR_RANK_TOO_HIGH:
+        return String("rank_too_high")
+    if code == TX_ERR_BROADCAST_INCOMPATIBLE:
+        return String("broadcast_incompatible")
+    if code == TX_ERR_DTYPE_MISMATCH:
+        return String("dtype_mismatch")
     return String("unknown_status")
 
 
@@ -204,3 +223,35 @@ fn tx_shape_ok(rows: Int, cols: Int, data_len: Int) -> Int:
     if rows * cols != data_len:
         return TX_ERR_SHAPE_MISMATCH
     return TX_OK
+
+
+fn tx_numel_checked(dims: List[Int], n: Int, ceiling: Int) -> Int:
+    """Product of the first `n` entries of `dims`, or `-1` if any dimension is non-positive, `n` is
+    out of range, or the running product would exceed `ceiling`.
+
+    The N-dimensional generalisation of `tx_dims_fit`: each factor is checked by division AGAINST
+    the running product BEFORE multiplying, so the product itself is never formed past the ceiling
+    and a wrapping 64-bit multiply — `3 * 6148914691236517206 == 2` is how that walked past a guard
+    in `sparse_numerics` — cannot happen here either, no matter how many dimensions are supplied.
+
+    `-1` is an unambiguous sentinel: every valid shape here has strictly positive dimensions, so a
+    real product is always `>= 1`, including the empty case (`n == 0`, product of nothing is 1, a
+    scalar's shape).
+
+    @capability tx_numel_checked
+    complexity: O(n)
+    counts:
+    - n <= len(dims) [enforced]
+    @endcapability
+    """
+    if n < 0 or n > len(dims) or ceiling <= 0:
+        return -1
+    var product = 1
+    for i in range(n):
+        var d = dims[i]
+        if d <= 0 or d > ceiling:
+            return -1
+        if product > ceiling // d:
+            return -1
+        product = product * d
+    return product

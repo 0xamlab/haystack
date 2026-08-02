@@ -6,10 +6,13 @@ shape that is merely long enough rather than exactly right, and a status code th
 different things.
 """
 from tensorx.contract import (
+    TX_ERR_BROADCAST_INCOMPATIBLE,
     TX_ERR_COUNT_EXCEEDS_LENGTH,
     TX_ERR_DIMENSION_TOO_LARGE,
+    TX_ERR_DTYPE_MISMATCH,
     TX_ERR_EMPTY,
     TX_ERR_NEGATIVE_COUNT,
+    TX_ERR_RANK_TOO_HIGH,
     TX_ERR_SHAPE_MISMATCH,
     TX_MAX_ELEMS,
     TX_OK,
@@ -17,6 +20,7 @@ from tensorx.contract import (
     tx_count_ok,
     tx_dims_fit,
     tx_finite,
+    tx_numel_checked,
     tx_shape_ok,
     tx_status_name,
 )
@@ -35,6 +39,9 @@ def main() raises:
     codes.append(TX_ERR_DIMENSION_TOO_LARGE)
     codes.append(TX_ERR_SHAPE_MISMATCH)
     codes.append(TX_ERR_EMPTY)
+    codes.append(TX_ERR_RANK_TOO_HIGH)
+    codes.append(TX_ERR_BROADCAST_INCOMPATIBLE)
+    codes.append(TX_ERR_DTYPE_MISMATCH)
 
     var distinct = True
     for i in range(len(codes)):
@@ -178,5 +185,53 @@ def main() raises:
     else:
         failed += 1
         print("  ❌ TX_MAX_ELEMS drifted from its documented derivation")
+
+    # ── tx_numel_checked: the N-dimensional generalisation of the wrapping-multiply guard ──────
+    var dims4 = List[Int]()
+    dims4.append(2)
+    dims4.append(3)
+    dims4.append(4)
+    dims4.append(5)
+    if tx_numel_checked(dims4, 4, TX_MAX_ELEMS) == 120:
+        passed += 1
+        print("  ✅ a 4-D shape's checked product matches the hand product 2*3*4*5=120")
+    else:
+        failed += 1
+        print("  ❌ tx_numel_checked drifted from the hand-computed product")
+
+    var dims_huge = List[Int]()
+    dims_huge.append(6148914691236517206)
+    dims_huge.append(3)
+    if tx_numel_checked(dims_huge, 2, TX_MAX_ELEMS) == -1:
+        passed += 1
+        print("  ✅ the same wrapping product, expressed as two dims, is refused by division")
+    else:
+        failed += 1
+        print("  ❌ tx_numel_checked formed a wrapping product across dimensions")
+
+    var dims_zero = List[Int]()
+    dims_zero.append(3)
+    dims_zero.append(0)
+    if tx_numel_checked(dims_zero, 2, TX_MAX_ELEMS) == -1:
+        passed += 1
+        print("  ✅ a zero dimension is refused, not treated as an empty-but-valid product")
+    else:
+        failed += 1
+        print("  ❌ tx_numel_checked accepted a non-positive dimension")
+
+    var dims_empty = List[Int]()
+    if tx_numel_checked(dims_empty, 0, TX_MAX_ELEMS) == 1:
+        passed += 1
+        print("  ✅ the product of zero dimensions is 1 — a scalar's shape, not an error")
+    else:
+        failed += 1
+        print("  ❌ tx_numel_checked mishandled the rank-0 (scalar) case")
+
+    if tx_numel_checked(dims4, 99, TX_MAX_ELEMS) == -1:
+        passed += 1
+        print("  ✅ n=99 over a 4-element dims list is refused, not an uncatchable abort")
+    else:
+        failed += 1
+        print("  ❌ tx_numel_checked read past the end of its dims list")
 
     print("  [tensorx.contract] Passed:", passed, "Failed:", failed)

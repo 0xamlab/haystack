@@ -17,7 +17,7 @@ The NF4-vs-int4 comparison is a property test, not a fixed number: NF4 exists be
 approximately normal, so on normal-ish data it must beat a uniform grid at the same bit width. If that
 inverts, the codebook or the scaling is wrong even when every other assertion passes.
 """
-from quantization import int4_pack_error, scale_from_range
+from quantization import dequantize_symmetric, int4_pack_error, scale_from_range
 from tensorx.contract import (
     TX_ERR_BITS_UNSUPPORTED,
     TX_ERR_BLOCK_SIZE,
@@ -266,6 +266,34 @@ def main() raises:
     else:
         failed += 1
         print("  ❌ double_quant_scales did not bound n_blocks")
+
+    # A shape check alone cannot catch a double-quantization that reconstructs the WRONG scales —
+    # only decoding the outer level and comparing against `bq.scales` (the real inner scales this
+    # test itself produced above) proves the two-level round trip. Uses the frozen
+    # `quantization.dequantize_symmetric`, the same reconstruction `dequantize_blockwise` uses, so
+    # this is not a second definition of what a code means.
+    var recon_scales = List[Float64]()
+    for i in range(len(dqs.scale_codes)):
+        recon_scales.append(
+            dequantize_symmetric(Float64(dqs.scale_codes[i]), dqs.outer_scales[i // 2])
+        )
+    # The reconstruction error must sit within one quantization step of the OUTER 8-bit grid — the
+    # tolerance is built from THAT grid's own step (rule 4b: never from the inner scales being
+    # reconstructed, which would let the very thing being checked size its own margin). The step
+    # size of a symmetric grid IS its scale: adjacent codes reconstruct via `dequantize_symmetric`
+    # as `code * scale`, so two adjacent codes differ by exactly `scale` — not `scale / 127`.
+    var outer_step = dqs.outer_scales[0]
+    var double_quant_recon_ok = len(recon_scales) == len(bq.scales)
+    if double_quant_recon_ok:
+        for i in range(len(bq.scales)):
+            if _abs(recon_scales[i] - bq.scales[i]) > outer_step + 1e-9:
+                double_quant_recon_ok = False
+    if double_quant_recon_ok:
+        passed += 1
+        print("  ✅ dequantizing the double-quantized scales recovers the originals within one outer-grid step")
+    else:
+        failed += 1
+        print("  ❌ double-quant round-trip lost more than one outer-grid step:", recon_scales[0], recon_scales[1])
 
     # ── calibration ───────────────────────────────────────────────────────────
     if calibrate_absmax(x, 8) == 1.0 and calibrate_absmax(x, 99) == 0.0:
