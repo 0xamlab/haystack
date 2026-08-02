@@ -4043,3 +4043,234 @@ for arm in mojo_generate_llmfwd mojo_generate_batch_i8 mojo_generate_batch_i8_sd
       /tmp/bb/qwen3_ckpt/reference_generate_realrace3_final/reference_generated.json
 done
 ```
+
+## Split-K occupancy fix for long-context SDPA (2026-08-02, later still): closes most of the gap, wins neither race outright
+
+A separate investigation (not itself recorded in this file, since it predates this section) found
+`_sdpa_kernel_simd` — the SDPA role of `_MBQwen3I8AllSimd3`, this document's own published-race arm
+— degrading 21-29x faster with position than either real opponent on the identical checkpoint/
+prompt, root-caused via GPU-counter profiling to fixed GPU occupancy: the kernel dispatches
+`grid_dim=h_q` (16 threadgroups x 4 SIMD-groups = 64 warps GPU-wide at this model's shape)
+regardless of `n_keys`, so the exact same 64 warps just iterate a longer key range as the KV cache
+grows — no additional parallelism is ever recruited. This section races the fix that investigation
+motivated: a Flash-Decoding-style split-K, additive alongside the untouched original kernel,
+gated by `n_keys` at the call site so the published race's own 16-token depth takes an unmodified
+path.
+
+### What changed
+
+Two new kernels, `_splitk_partial_kernel_simd` and `_splitk_merge_kernel_simd`
+(`residentk.kernels`) — a split launches `h_q * 16` threadgroups (16x the original) each covering a
+contiguous slice of `[0, n_keys)` and writing an unnormalized online-softmax partial `(m, l, o)`;
+the merge collapses the 16 partials per head into one final normalized output via the standard
+associative online-softmax combine. `_sdpa_kernel_simd` itself is byte-unmodified.
+`metaldispatch.session._MBQwen3I8AllSimd3` now holds a SECOND, independently-built descriptor
+table substituting the split/merge pair for the one `sdpa` dispatch, and `step()` gates on `n_keys`
+against a threshold of 512 (measured: splitting regresses at the published race's own 16-token
+depth, wins from roughly 500 up) — below threshold it submits the original, untouched table.
+
+### Gates, rerun fresh
+
+Freeze-gate diff (`git diff --stat origin/main -- mojo/engine/` filtered to non-`residentk`/
+`metaldispatch` paths) clean — only those two directories changed. `generate_algenta_runtime_
+contract.py --check`, `generate_algenta_capability_manifest.py --check`, `gen_runtime_library_
+reference.py --check`, `capability_manifest_gate.py`, `generate_mojo_tests.py --check`, and
+`verify_dispatch_struct_construction.py` all green, no drift. Every pre-existing `residentk`/
+`metaldispatch` suite rebuilt and rerun fresh on this session's own copy of the toolchain:
+`test_residentk_{contract,probe,session,sdpa_simd_kernel,gemv_simd_kernel,lmhead_simd_kernel,
+argmax_reduce_simd_kernel,kvcache_fp16_kernel}` and `test_metaldispatch_{contract,session,
+session_f16,session_i8,session_i8_kvf16}` — 100% pass, zero regressions. The new isolated kernel
+suite, `test_residentk_attn_splitk_kernel.mojo` — split+merge vs. a host-Float64 reference and vs.
+`_sdpa_kernel_simd` itself, including ragged and more-splits-than-keys cases — 15/15, worst delta
+~1.4e-7 against a bound ~1.6e-3.
+
+### Correctness, verified independently on this exact run
+
+Shallow (16-token, `max_ctx=512`) single-step regression: every token id and every logit byte-
+identical to a pre-fix build, the published sequence `[12095, 13, 576, 6722, 315, 9856, 374, 19846,
+13, 576, 6722, 315, 15344, 374, 21718, 13]` reproduced exactly and matching a freshly regenerated
+`transformers`-CPU reference. Deep single-step regression (`max_ctx=4096`, teacher-forced against a
+real 2200-token `transformers`-CPU reference, `n_keys` = 106/506/1006/1506/2006/2205): the original
+and split/merge kernels agree with each other to 0-9.5e-6 at every checkpoint, and `step()`'s own
+`n_keys`-vs-threshold gate was confirmed self-consistently selecting the original table below 512
+and the split/merge table at/above it, at every checkpoint, by forcing both tables on the identical
+real KV-cache content and comparing against `step()`'s own auto-gated result.
+
+GPU-counter scaling, pos=20 vs pos=4000 (clean, uncontended, this session's own measurement,
+consistent with but not identical to the motivating investigation's numbers — this is a noisy,
+shared machine):
+
+| | shallow | deep | ratio |
+|---|---|---|---|
+| `sdpa` (before) | 1.15 ms | 105.81 ms | 91.70x |
+| `splitk_partial`+`splitk_merge` (after) | 1.22 ms | 7.87 ms | 6.45x |
+| TOTAL per-token GPU dispatch time (before) | 5.27 ms | 108.88 ms | 20.67x |
+| TOTAL per-token GPU dispatch time (after) | 6.10 ms | 10.81 ms | 1.77x |
+
+### The short-context race: 12 of 14 against mlx-lm, not the 14/14 this document's own standing bar requires
+
+Same methodology as every prior race in this document — 16 greedy-decoded tokens, 14 interleaved
+rounds, run order alternated every round. The FIRST attempt at this race was contaminated by this
+task's own concurrent GPU probe work running in the background and discarded outright, not
+reported here. This is a clean rerun, nothing else on the GPU:
+
+| Round | Algenta best (`allsimd3`) | mlx-lm | Ratio | Win? |
+|---|---|---|---|---|
+| 1 | 322.93 | 320.50 | 1.0076 | win |
+| 2 | 330.53 | 306.00 | 1.0801 | win |
+| 3 | 269.60 | 317.67 | 0.8487 | **LOSS** |
+| 4 | 322.28 | 292.43 | 1.1021 | win |
+| 5 | 330.15 | 315.98 | 1.0448 | win |
+| 6 | 324.39 | 309.93 | 1.0467 | win |
+| 7 | 325.78 | 305.67 | 1.0658 | win |
+| 8 | 322.17 | 315.77 | 1.0203 | win |
+| 9 | 317.03 | 317.60 | 0.9982 | **LOSS** (near-tie) |
+| 10 | 309.62 | 297.95 | 1.0391 | win |
+| 11 | 309.87 | 305.83 | 1.0132 | win |
+| 12 | 316.48 | 295.10 | 1.0724 | win |
+| 13 | 312.28 | 309.40 | 1.0093 | win |
+| 14 | 319.80 | 316.07 | 1.0118 | win |
+
+**12 of 14 — two losses, round 3 (a real 15% margin) and round 9 (a 0.18% near-tie).** 14/14 against
+both llama.cpp configurations (median 254.7 tok/s GPU, 36.2 tok/s CPU) — the regression, such as it
+is, is specific to the mlx-lm comparison, this document's own "bar that actually decides
+publication."
+
+**Isolating cause vs. noise.** `_sdpa_kernel_simd` itself is byte-unmodified below the 512
+threshold, and the code path this build takes at 16 tokens is nominally identical to a pre-fix
+build's (same table, same kernel, same dispatch count) — the only structural differences are three
+extra resident buffers and two extra compiled pipelines the constructor now always creates, never
+used below threshold. Three separate checks, in increasing rigor:
+
+1. A 10-round interleaved A/B (this session's pre-fix build vs. this session's post-fix build vs.
+   mlx-lm, order alternated) run immediately afterward, same machine, same moment: the pre-fix build
+   won 10/10 against mlx-lm; the post-fix build won only 8/10 (losing rounds 7 and 10, both
+   near-ties) — median tok/s 327.6 (before) vs. 325.7 (after), a ~0.6% difference.
+2. A 20-pair DIRECT before/after comparison (no mlx-lm in the loop, order alternated pair by pair)
+   found the two builds statistically indistinguishable at the median (315.19 before vs. 315.20
+   after) — the mean is dominated by a handful of huge, symmetric outliers (one pair differed by
+   135 tok/s, another by -110, with nothing else running on the machine), the same order of
+   magnitude as this document's own long-documented ambient-noise floor on this shared machine.
+3. The GPU-counter shallow-position numbers above (1.15ms before vs. 1.22ms after for the `sdpa`-
+   equivalent role) show no large, consistent difference either.
+
+**Honest conclusion: most likely this machine's own documented noise, not a clear, provable code
+regression** — but the task's own standing rule gates on the RACE OUTCOME actually measured, not on
+an attribution judgment call, and the clean, required reproduction landed at 12/14. Treated as a
+regression for the purpose of the publication decision below, on the conservative side.
+
+### The long-context race: substantially narrowed, not won
+
+Same methodology as the motivating investigation: `max_ctx=8192`, 4096-token single generation,
+real installed mlx-lm 0.31.3 and llama.cpp build 10210 (`-ngl 99`), per-position instantaneous rate,
+3 rounds with the run order alternated (forward / reversed / forward):
+
+| abs pos | Algenta tok/s (3 rounds) | mlx-lm tok/s (3 rounds) | llama.cpp GPU tok/s (3 rounds) |
+|---|---|---|---|
+| 50 | 252.4 / 238.5 / 247.0 | 289.8 / 280.8 / 290.8 | 237.9 / 245.8 / 258.4 |
+| 250 | 108.2 / 108.2 / 107.5 | 266.4 / 279.7 / 278.4 | 242.2 / 254.3 / 248.8 |
+| 500 | 63.3 / 63.1 / 63.2 | 278.9 / 267.4 / 271.4 | 250.3 / 241.0 / 250.4 |
+| 750 | 217.8 / 223.5 / 219.3 | 264.6 / 244.1 / 261.6 | 238.6 / 240.9 / 226.0 |
+| 1000 | 204.3 / 203.0 / 201.6 | 258.6 / 212.0 / 264.9 | 213.4 / 230.7 / 198.5 |
+| 2000 | 141.9 / 140.6 / 112.5 | 234.0 / 238.9 / 231.1 | 209.0 / 207.4 / 206.0 |
+| 4000 | 91.8 / 84.9 / 82.3 | 212.5 / 211.3 / 172.6 | 188.5 / 202.2 / 182.6 |
+| 4095 | 90.3 / 87.6 / 86.7 | 211.7 / 202.7 / 156.8 | 191.9 / 200.9 / 176.7 |
+
+Aggregate over the full 4096-token generation: Algenta 118.7-125.9 tok/s vs. mlx-lm 226.3-238.2
+tok/s vs. llama.cpp GPU 193.4-218.6 tok/s, consistent across all 3 rounds (forward and reversed).
+
+**The fix is real and large.** Position 500 sits just below the 512 threshold and still takes the
+untouched original kernel — 63 tok/s, matching the pre-fix collapse almost exactly (63.2 tok/s at
+this same position in the motivating investigation) — but from position 1000 on, where the split/
+merge path is active, the degradation ratio (pos 4095 / pos 50) falls from the pre-fix
+investigation's own 21.7x to roughly 2.7-2.9x here, the same order of improvement the isolated
+GPU-counter numbers above show.
+
+**The fix does not close the gap.** Algenta loses to BOTH real opponents at every position checked
+from 250 onward, in every one of 3 rounds, and in aggregate throughput (roughly 1.7-2x behind mlx-lm
+and 1.5-1.8x behind llama.cpp GPU, aggregated over the full generation). This is not an outright win
+at any meaningful length past the shallow starting positions — the standing bar this document has
+applied to every race it has recorded.
+
+### Publication decision: no gitbook page, no gitbook extension — neither race clears the standing bar
+
+Per this document's own standing rule (an outright win, every round, no proximity claims), applied
+identically to a page EXTENSION as to a new page:
+
+- **Short-context: 12/14 against mlx-lm, not 14/14.** Even though the underlying cause looks more
+  like this machine's own ambient noise than a deterministic code regression (see the isolation
+  checks above), the actual required reproduction of the published methodology did not sweep every
+  round, and this document does not resolve ambiguous attribution in publication's favor.
+- **Long-context: loses to both real opponents at every position checked past the shallow start,
+  and in aggregate.** The degradation-ratio improvement (21.7x -> ~2.8x) is real and substantial,
+  but "less far behind" is not "ahead" — this document's own standing rule has never made a
+  proximity claim and does not start here.
+
+Neither gate needs the other to block publication; both independently do. `gitbook/benchmarks/
+decode-throughput.md` is unchanged.
+
+**The kernel fix itself still merges.** Matching this whole day's chain (PRs #505-515 all merged
+real, verified improvements without necessarily winning the race outright): the split-K occupancy
+fix is a genuine, thoroughly-verified, ~6-8x deep-position GPU-time improvement with zero
+correctness regressions at any depth checked, isolated-kernel-tested against a host reference, and
+gated so the published race's own short-context path is nominally unchanged. It lands as its own
+change regardless of the publication decision above.
+
+### What is left, stated plainly
+
+The split-K fix closes most, not all, of the long-context gap this chain's own investigation found.
+What remains, most likely in decreasing order of impact: (1) the split count (`16`, fixed) is not
+re-tuned per depth — a shallower split count near the 512 threshold and a deeper one further out
+might close more of the gap than one fixed value does everywhere above threshold; (2) the 256-511
+`n_keys` range immediately below the threshold gets none of this fix's benefit and still shows the
+full pre-fix collapse (position 500's 63 tok/s above) — raising the split path's effective floor
+below 512, or lowering the threshold itself now that splitting's own fixed overhead is better
+characterized, is unexplored; (3) the two structural levers this document has named in every prior
+addendum and still not attempted — a lower-per-dispatch submission mechanism, or a persistent decode
+loop that never returns to host between tokens — would very plausibly help both the short-context
+near-miss (fewer, cheaper submissions) and the long-context gap (less fixed overhead to amortize
+against an already-large per-position compute cost) simultaneously, and neither has been attempted
+in this chain. The short-context 12/14 result's true cause (noise vs. residual regression) is also
+not conclusively resolved — a follow-up race on a quieter machine, or with the three extra resident
+buffers and second compiled kernel pair made lazy (only materialized the first time `n_keys` actually
+crosses the threshold) would settle it either way.
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed
+
+# the isolated kernel-level golden-vector suite
+pixi run mojo run -D ALGENTA_GPU -I../mojo/engine \
+    ../mojo/tests/libs/test_residentk_attn_splitk_kernel.mojo
+
+# the deep-context GPU-counter probes (needs batch_shim_counters.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m -o /tmp/batch_shim_counters.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8_allsimd3_deepctx.mojo \
+    -o /tmp/probe_before -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8_allsimd3_splitk_deepctx.mojo \
+    -o /tmp/probe_after -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_before 20 4000 8192
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_after 20 4000 8192
+
+# the short-context race: same block as every prior addendum in this document, 14 rounds, alternating order
+# ... (see the "Nine-arm race" section above for the exact per-arm build/run block; substitute the
+# fixed allsimd3 binary for the arm under test)
+
+# the long-context race (needs batch_shim.m linked; max_ctx and n_new are genuine runtime args)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8_allsimd3_longctx_probe.mojo \
+    -o /tmp/race_longctx -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_longctx 8192 4096
+/tmp/bb/bin/python -P realrace_mlx_lm_longctx.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --max-tokens 4096 --out /tmp/mlx_longctx.json
+/tmp/bb/bin/python -P realrace_llama_cpp_longctx.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf \
+    --ngl 99 --n-predict 4096 --out /tmp/llama_longctx.json
+# repeat 3x, alternating the order of the three lines above
+```
+

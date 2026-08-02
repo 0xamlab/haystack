@@ -91,6 +91,8 @@ from residentk.kernels import (
     _SUBS,
     _argmax_reduce_kernel,
     _argmax_reduce_kernel_simd,
+    _splitk_partial_kernel_simd,
+    _splitk_merge_kernel_simd,
     _embed_row_kernel,
     _embed_row_kernel_f16,
     _embed_row_kernel_i8,
@@ -191,6 +193,73 @@ fn _classify_pipeline(name: String) -> Int:
         return _ROLE_LMHEAD_ARGMAX
     if name.find("argmax_redu") >= 0:
         return _ROLE_ARGMAX_REDUCE
+    return -1
+
+
+comptime _ATTN_SPLITK_N_SPLITS: Int = 16
+"""Fixed split count for `_MBQwen3I8AllSimd3`'s deep-context SDPA path (`_splitk_partial_
+kernel_simd` + `_splitk_merge_kernel_simd`, `residentk.kernels`) — baked in at construction
+time, not derived from `n_keys` per step, because the batched descriptor plan this struct dispatches
+through fixes every descriptor's grid size at `_build_descriptors_deep` time (see that method's own
+docstring for why `n_keys`-DEPENDENT occupancy is not available in this architecture the way it is
+in `residentk.session`'s own per-role `enqueue_function` calls). Chosen from the scratch probe PR
+#519's long-context investigation ran against the real production grid/block shape (`grid_dim=16,
+block_dim=128`): 16 splits measured a 4.3x-10.6x speedup from `n_keys=2000` up (`P=16` was inside the
+measured-best range at every depth from 500 through 8000 that probe tried), without needing a second,
+deeper-only split count."""
+
+comptime _ATTN_SPLITK_THRESHOLD: Int = 512
+"""Below this `n_keys`, `_MBQwen3I8AllSimd3.step` dispatches the ORIGINAL, byte-unmodified
+`_sdpa_kernel_simd` (`self.descriptors`) exactly as before this fix — never the split/merge pair.
+The same scratch probe that picked `_ATTN_SPLITK_N_SPLITS` found splitting a REGRESSION at the
+published race's own depth (16 tokens: two dispatches' fixed launch overhead outweighs the extra
+parallelism when there is barely any work to spread across it) and the first real win around
+`n_keys ~= 500`. Set at 512, one clean power-of-two step above that measured crossover, so the
+gate's own overhead-vs-benefit tradeoff has margin on both sides rather than sitting exactly on the
+knee. `_MBQwen3I8AllSimd3.step`'s own docstring has the re-measurement against the real (not
+isolated-probe) kernel that confirms this threshold."""
+
+
+fn _classify_splitk_pipeline(name: String) -> Int:
+    """Which of the TWO occupancy-fix kernels (`_splitk_partial_kernel_simd` /
+    `_splitk_merge_kernel_simd`) a discovered pipeline's name belongs to — `0` / `1` / `-1`
+    (neither). A SEPARATE function from `_classify_pipeline` above, deliberately never folded into
+    it or into that function's own `_N_ROLES`-sized `pipeline_idx` list: `_classify_pipeline` and
+    its 8-role resolution loop are SHARED by every struct in this file (`_MBQwen3`, `_MBQwen3F16`,
+    every `_MBQwen3I8*` variant), and every one of them runs `for role in range(_N_ROLES): if
+    self.pipeline_idx[role] < 0: raise Error(...)` — bumping the shared `_N_ROLES` to cover these two
+    NEW roles would make every OTHER struct's constructor start demanding two pipelines it never
+    compiles, breaking every arm that is not `_MBQwen3I8AllSimd3`. Neither substring below collides
+    with any of `_classify_pipeline`'s own eight patterns (`sdpa` included: `splitk_partial`/
+    `splitk_merge` contain no `sdpa` substring at all, checked directly against the real,
+    possibly-truncated Metal AIR names this struct's own binary produces, not merely by inspection of
+    the Mojo source names).
+
+    THE TRUNCATION ITSELF, measured directly TWICE (`/tmp/probe_pipeline_names.mojo`, a throwaway
+    scratch probe, not committed, plus a temporary debug `print` in this very constructor, since
+    removed): every one of `_classify_pipeline`'s own eight kernels' real discovered names is
+    `residentk_kernels__<11 visible chars>6A6A6A6A_<opaque hash>` — EXACTLY 11 characters of the Mojo
+    function's own base name survive before the filler, confirmed across all eight (e.g. `_norm_
+    gemv2_swiglu_kernel_simd_i8` -> `norm_gemv2_` visible, `_lmhead_argmax_kernel_simd_i8` ->
+    `lmhead_argm` visible). TWO real, measured failures while landing this pair, in order:
+
+    1. An EARLIER, since-abandoned naming attempt (`_attn_splitk_partial_kernel_simd` / `_attn_
+       splitk_merge_kernel_simd`) shared an 11-character prefix (`attn_splitk`) and surfaced as two
+       IDENTICAL visible names — this struct's constructor raised `MB_ERR_PIPELINE_NOT_FOUND` for
+       both. Renamed to the current `_splitk_partial_kernel_simd` / `_splitk_merge_kernel_simd`,
+       whose shared prefix is only `splitk_` (7 characters), diverging (`p` vs `m`) at character 8 —
+       inside the 11-character surviving window.
+    2. Even after that rename, matching against the FULL kernel names (`splitk_partial`, 14
+       characters; `splitk_merge`, 12) STILL failed the same way — `.find()` was searching for
+       characters (`ial` / the trailing `e`) that the 11-character truncation had already cut off
+       the discovered name entirely, so neither substring could ever be present no matter how the
+       kernels were named. The fix is the patterns below: `splitk_part` / `splitk_merg`, each exactly
+       the 11 characters this measurement shows genuinely survive — not a shorter, easier-to-write
+       guess, the ACTUAL boundary."""
+    if name.find("splitk_part") >= 0:
+        return 0
+    if name.find("splitk_merg") >= 0:
+        return 1
     return -1
 
 
@@ -3414,6 +3483,20 @@ struct _MBQwen3I8AllSimd3(Movable):
     to tell them apart. This struct's constructor therefore never calls
     `compile_function_unchecked` on the barrier-tree `_argmax_reduce_kernel` — only its `_simd`
     twin, exactly the same one-pipeline-per-role discipline every other struct in this file follows.
+
+    A FIFTH addition, orthogonal to the four reduction-mechanism fixes above and landed later: this
+    is also the arm PR #519's long-context investigation found degrading 21-29x faster with position
+    than either of two real, installed opponents (mlx-lm, llama.cpp), root-caused to `_sdpa_kernel_
+    simd`'s FIXED grid size (`grid_x=h_q`, independent of `n_keys`). This struct now holds TWO
+    complete, independently-built descriptor tables — `self.descriptors` (this docstring's own plan,
+    UNCHANGED) and `self.descriptors_deep` (`_build_descriptors_deep`'s plan, substituting
+    `residentk.kernels._splitk_partial_kernel_simd` + `_splitk_merge_kernel_simd` for the
+    one `_sdpa_kernel_simd` dispatch) — and `step()` picks between them per call based on `n_keys`
+    against `_ATTN_SPLITK_THRESHOLD`. See `step()`'s own docstring for the gate and `_ATTN_SPLITK_
+    THRESHOLD`/`_ATTN_SPLITK_N_SPLITS`'s own docstrings for the measurements that picked their
+    values. `_sdpa_kernel_simd` itself, and every byte of the `self.descriptors` table and the
+    branch that submits it, are UNTOUCHED by this addition — the published race's own short-context
+    (16-token) behavior takes that exact, unmodified path.
     """
 
     var d_model: Int
@@ -3466,6 +3549,29 @@ struct _MBQwen3I8AllSimd3(Movable):
     var pos_offsets: List[Int]
     var nkeys_offsets: List[Int]
 
+    var pipeline_idx_split: Int
+    var pipeline_idx_merge: Int
+    var m_partial_addr: UInt64
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_addr: UInt64
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_addr: UInt64
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors_deep: Int
+    var token_id_offset_deep: Int
+    var pos_offsets_deep: List[Int]
+    var nkeys_offsets_deep: List[Int]
+    """See `_ATTN_SPLITK_THRESHOLD`'s own docstring and this struct's `step()` for the full account
+    of the two fields above `descriptors_deep` onward: a SECOND, fully independent, fixed descriptor
+    table built once at construction (`_build_descriptors_deep`) alongside the original
+    `descriptors` — never a replacement for it. `step()` picks WHICH table to patch-and-submit each
+    call based on the CURRENT `n_keys`; the other table's stale contents from a previous call simply
+    do not matter until it is chosen again, at which point its own `pos`/`n_keys` slots are repatched
+    fresh before submission — the same "mutate this step's arguments into an already-built plan"
+    discipline `step()`'s pre-existing `pos_offsets`/`nkeys_offsets` patching already relies on, just
+    duplicated across two plans instead of one."""
+
     fn __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
@@ -3477,7 +3583,9 @@ struct _MBQwen3I8AllSimd3(Movable):
         lm_head-simd and argmax-reduce-simd changes (the latter's own SIMD-group reduction is over
         `_TG = 256` threads fixed at compile time, not `d_head`, so it never needed this refusal on
         its own account — restated here only because this struct inherits the SDPA-simd role's
-        requirement unchanged).
+        requirement unchanged). `_splitk_partial_kernel_simd`'s own per-key SIMD-group reduction
+        inherits the identical requirement (it is `_sdpa_kernel_simd`'s per-key loop body, unmodified,
+        just bounded to a key subrange), so no separate refusal is needed for it either.
         """
         if d_head % WARP_SIZE != 0:
             raise Error(
@@ -3511,6 +3619,11 @@ struct _MBQwen3I8AllSimd3(Movable):
         _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
         _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
         _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+        # ── the deep-context occupancy fix's two kernels — ADDITIVE, alongside `_sdpa_kernel_simd`
+        # above, never a replacement for it. See `_ATTN_SPLITK_THRESHOLD`'s own docstring and this
+        # struct's `step()` for why BOTH are compiled into this one binary.
+        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
+        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -3520,12 +3633,22 @@ struct _MBQwen3I8AllSimd3(Movable):
         for _ in range(_N_ROLES):
             self.pipeline_idx.append(-1)
         var count = _mb_pipeline_count()
+        self.pipeline_idx_split = -1
+        self.pipeline_idx_merge = -1
         for i in range(count):
             var name = String()
             _ = _mb_pipeline_name(i, name)
             var role = _classify_pipeline(name)
             if role >= 0:
                 self.pipeline_idx[role] = i
+            # `_classify_splitk_pipeline` scans the SAME discovered-pipeline list, entirely
+            # independently of `_classify_pipeline`/`_N_ROLES` above — see that function's own
+            # docstring for why the two roles it resolves are never folded into the shared list.
+            var splitk_role = _classify_splitk_pipeline(name)
+            if splitk_role == 0:
+                self.pipeline_idx_split = i
+            elif splitk_role == 1:
+                self.pipeline_idx_merge = i
         for role in range(_N_ROLES):
             if self.pipeline_idx[role] < 0:
                 raise Error(
@@ -3533,6 +3656,13 @@ struct _MBQwen3I8AllSimd3(Movable):
                     + " not found among " + String(count) + " discovered pipelines, status="
                     + String(MB_ERR_PIPELINE_NOT_FOUND)
                 )
+        if self.pipeline_idx_split < 0 or self.pipeline_idx_merge < 0:
+            raise Error(
+                "metaldispatch: _MBQwen3I8AllSimd3 attn-splitk pipeline(s) not found among "
+                + String(count) + " discovered pipelines (split=" + String(self.pipeline_idx_split)
+                + " merge=" + String(self.pipeline_idx_merge) + "), status="
+                + String(MB_ERR_PIPELINE_NOT_FOUND)
+            )
 
         # ── resident buffers: SAME shapes as _MBQwen3I8AllSimd.
         var n_qkv = (h_q + 2 * h_kv) * d_head
@@ -3635,12 +3765,38 @@ struct _MBQwen3I8AllSimd3(Movable):
         if _mb_alloc_buffer(4, self.out_idx_addr, self.out_idx_ptr) < 0:
             raise Error("metaldispatch: buffer alloc failed (out_idx)")
 
+        # ── deep-context split/merge scratch: ONE shared buffer, reused across layers exactly the
+        # way `q_rot`/`attn_out` already are (attention for layer L+1 never starts before layer L's
+        # own SDPA role has both read and finished with its inputs, so overwriting this scratch next
+        # layer is safe -- the same sequencing argument this file's docstring makes for `attn_out`).
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
+        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * 4, self.l_partial_addr, self.l_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk l_partial)")
+        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * d_head * 4, self.o_partial_addr, self.o_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk o_partial)")
+
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
         self.token_id_offset = -1
         self.pos_offsets = List[Int]()
         self.nkeys_offsets = List[Int]()
+
+        # ── the SECOND, deep-context descriptor table's OWN fields, allocated here (every field
+        # must hold a value before `self` is "fully constructed enough" to call a method on it, so
+        # this cannot wait until after `self._build_descriptors(n_qkv)` below) -- see `step()`'s own
+        # docstring for the gate this table exists to serve.
+        self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
+        self.descriptors_deep = _mb_alloc_descriptors(self.n_descriptors_deep)
+        self.token_id_offset_deep = -1
+        self.pos_offsets_deep = List[Int]()
+        self.nkeys_offsets_deep = List[Int]()
+
         self._build_descriptors(n_qkv)
+        self._build_descriptors_deep(n_qkv)
 
     fn _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
@@ -3780,6 +3936,174 @@ struct _MBQwen3I8AllSimd3(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
+    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+        """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
+        IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
+        ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
+        dispatches, `_splitk_partial_kernel_simd` (`grid_x = h_q * _ATTN_SPLITK_N_SPLITS`) then
+        `_splitk_merge_kernel_simd` (`grid_x = h_q`, same shape the SDPA dispatch it replaces
+        used) — 7 descriptors per layer here against that method's 6. Every OTHER role (`norm_gemv`,
+        `qk_rope`, both `gemv_accum`s, `norm_gemv2_swiglu`, `lm_head`, `argmax_reduce`) is copied
+        byte-for-byte, reading and writing the SAME resident buffers (`hidden`/`qkv`/`q_rot`/
+        `attn_out`/per-layer `ck`/`cv`/weights) `_build_descriptors`'s own plan does — this table is
+        an ALTERNATE PLAN over the identical resident state, not a second independent model.
+
+        `q_rot`/`ck`/`cv` are written by THIS table's own `qk_rope` dispatch every step it is chosen,
+        exactly as `_build_descriptors`'s plan writes them every step IT is chosen — whichever plan
+        `step()` did not pick on the PREVIOUS call left no residue either plan depends on, since
+        `qk_rope` fully overwrites this step's KV-cache slot and `q_rot` regardless of which table
+        runs it.
+        """
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 3, 0)  # token_id, patched per step
+        self.token_id_offset_deep = d
+        _mb_set_arg_int(self.descriptors_deep, d, 4, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, n_qkv)
+            _mb_set_arg_f32(self.descriptors_deep, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 8, 0)  # pos, patched per step
+            self.pos_offsets_deep.append(d)
+            _mb_set_arg_int(self.descriptors_deep, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            d += 1
+
+            # ── split: unnormalized partial (m, l, o) per (head, split) — replaces the ONE SDPA
+            # dispatch `_build_descriptors` issues here with a grid `_ATTN_SPLITK_N_SPLITS` times
+            # bigger, recruiting that many times the warps for the SAME query token.
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx_split,
+                self.h_q * _ATTN_SPLITK_N_SPLITS, self.d_head, 12,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.m_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.l_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.o_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 5, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, 0)  # n_keys, patched per step
+            self.nkeys_offsets_deep.append(d)
+            _mb_set_arg_int(self.descriptors_deep, d, 7, _ATTN_SPLITK_N_SPLITS)
+            _mb_set_arg_int(self.descriptors_deep, d, 8, self.h_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 9, self.h_kv)
+            _mb_set_arg_int(self.descriptors_deep, d, 10, self.d_head)
+            _mb_set_arg_f32(self.descriptors_deep, d, 11, self.scale)
+            d += 1
+
+            # ── merge: the `_ATTN_SPLITK_N_SPLITS` partials -> ONE normalized attn_out, same shape
+            # (`grid_x=h_q`) the SDPA dispatch it replaces wrote its own final output at.
+            _mb_set_header(self.descriptors_deep, d, self.pipeline_idx_merge, self.h_q, self.d_head, 6)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.m_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.l_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.o_partial_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, _ATTN_SPLITK_N_SPLITS)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_head)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, n_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, self.d_ff)
+            _mb_set_arg_f32(self.descriptors_deep, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, self.d_ff)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_deep, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors_deep, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors_deep, d, 9, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors_deep:
+            raise Error(
+                "metaldispatch: built " + String(d) + " deep descriptors but the budget says "
+                + String(self.n_descriptors_deep) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
     fn device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction)"
 
@@ -3873,10 +4197,25 @@ struct _MBQwen3I8AllSimd3(Movable):
         return MB_OK
 
     fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
-        """Byte-for-byte `_MBQwen3I8AllSimd2.step`'s own body (which is itself byte-for-byte
-        `_MBQwen3I8AllSimd.step`'s) — see that function's docstring; nothing about `step()` differs
-        across any of these structs, only which compiled pipeline each ROLE resolves to at
-        construction time."""
+        """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
+        one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
+        submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
+        race's own short-context depth (16 tokens) takes this branch, unchanged, which is what makes
+        that race's regression gate trivially satisfied by construction, not by a separate check.
+
+        At or above the threshold, this patches and submits `self.descriptors_deep`
+        (`_build_descriptors_deep`'s plan: `_splitk_partial_kernel_simd` + `_splitk_merge_
+        kernel_simd` in place of the one `_sdpa_kernel_simd` dispatch) instead — same `token_id`/
+        `pos`/`n_keys` values, just patched into that table's own offsets, since the two tables are
+        different PLANS over the identical resident buffers (this struct's own field docstring has
+        the full account of why the choice per step is safe).
+
+        `PR #519`'s long-context investigation measured `_ATTN_SPLITK_THRESHOLD = 512` against the
+        REAL production grid/block shape, not the isolated single-role scratch probe that first
+        suggested the number: at `n_keys=256` (below threshold) this branch is never taken; the
+        split path's own first real win starts around `n_keys ~= 500` and only grows from there, so
+        512 leaves margin on both sides of the measured crossover rather than sitting on top of it.
+        """
 
         @parameter
         if not MB_GPU_BUILD:
@@ -3887,21 +4226,37 @@ struct _MBQwen3I8AllSimd3(Movable):
             if token_id < 0 or token_id >= self.vocab:
                 return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
 
-            _mb_set_arg_int(self.descriptors, self.token_id_offset, 3, token_id)
             var n_keys = pos + 1
-            for layer in range(self.n_layers):
-                _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
-                _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+            var dispatches_used = self.n_descriptors
 
-            var rc = _mb_run_token(self.descriptors, self.n_descriptors)
-            if rc != 0:
-                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            if n_keys < _ATTN_SPLITK_THRESHOLD:
+                _mb_set_arg_int(self.descriptors, self.token_id_offset, 3, token_id)
+                for layer in range(self.n_layers):
+                    _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
+                    _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+
+                var rc = _mb_run_token(self.descriptors, self.n_descriptors)
+                if rc != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            else:
+                dispatches_used = self.n_descriptors_deep
+                _mb_set_arg_int(self.descriptors_deep, self.token_id_offset_deep, 3, token_id)
+                for layer in range(self.n_layers):
+                    _mb_set_arg_int(self.descriptors_deep, self.pos_offsets_deep[layer], 8, pos)
+                    # arg index 6, not 4: `_splitk_partial_kernel_simd`'s own signature puts
+                    # `n_keys` after the THREE partial-output pointers plus `q_rot`/`ck`/`cv` (6
+                    # pointer args before it), where `_sdpa_kernel_simd`'s puts it after 4.
+                    _mb_set_arg_int(self.descriptors_deep, self.nkeys_offsets_deep[layer], 6, n_keys)
+
+                var rc = _mb_run_token(self.descriptors_deep, self.n_descriptors_deep)
+                if rc != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors_deep, MB_ERR_DISPATCH_FAILED)
 
             var tok = Int(self.out_idx_ptr.bitcast[Int32]()[0])
             var lg = Float64(self.out_val_ptr.bitcast[Float32]()[0])
             if tok < 0 or tok >= self.vocab:
-                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
-            return _StepOut(tok, lg, self.n_descriptors, MB_OK)
+                return _StepOut(-1, 0.0, dispatches_used, MB_ERR_DISPATCH_FAILED)
+            return _StepOut(tok, lg, dispatches_used, MB_OK)
 
 
 struct _MBQwen3I8KVF16(Movable):

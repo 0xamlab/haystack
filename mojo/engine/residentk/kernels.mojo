@@ -124,6 +124,29 @@ online-softmax math, same accumulator types, same everything except HOW the per-
 `d_head` partial products collapse to one scalar. Composes with every weight-precision arm exactly as
 `_sdpa_kernel`/`_sdpa_kernel_kvf16` already do, since neither touches a weight matrix.
 
+A SEVENTH, additive axis, orthogonal to every arm above: `_sdpa_kernel_simd`'s GRID SIZE, not its
+per-key math or its reduction mechanism. PR #519's long-context investigation found `_sdpa_kernel_
+simd` degrading 21-29x faster with position than either of two real, installed, independently-
+implemented opponents (mlx-lm, llama.cpp) on the identical checkpoint/prompt, and GPU-counter
+profiling isolated it to exactly one role: `sdpa`'s own GPU dispatch time scaled 69-144x from a
+shallow to a deep position (repeated measurements) while every other role stayed flat. The mechanism
+is OCCUPANCY, not the per-key memory-access pattern (a batched-load, cache-defeated scratch probe
+disproved that hypothesis directly): `_sdpa_kernel_simd` launches `grid_dim=h_q` threadgroups
+regardless of `n_keys` — 16 threadgroups x 4 SIMD-groups = 64 warps GPU-wide at this model's
+`h_q=16`, `d_head=128`, launched once per token per layer, completely independent of how deep the KV
+cache has grown. As `n_keys` grows into the thousands, the SAME 64 warps just iterate longer; no
+more parallelism is ever recruited. `_splitk_partial_kernel_simd` and `_splitk_merge_
+kernel_simd` (this file, below `_sdpa_kernel_simd_kvf16`) are the fix: a Flash-Decoding-style split
+that launches `h_q * n_splits` threadgroups instead of `h_q`, each covering a slice of `[0, n_keys)`
+and writing an unnormalized partial, followed by a tiny per-head merge dispatch. `_sdpa_kernel_simd`
+itself is UNCHANGED — every byte of its own body is exactly as PR #515 left it — because a scratch
+probe of the real production grid/block shape found splitting a REGRESSION at the published race's
+own shallow depth (16 tokens): two dispatches' fixed overhead outweighs the extra parallelism when
+there is barely any work to spread across it. `metaldispatch.session._MBQwen3I8AllSimd3` (the
+published race's own arm) therefore gates on `n_keys` at the call site, dispatching the ORIGINAL,
+byte-unmodified `_sdpa_kernel_simd` below the threshold and the new split/merge pair above it — see
+that struct's own docstring for the exact threshold and the measurement that picked it.
+
 Every remaining boundary is a genuine grid-wide dependency — an rmsnorm needs the whole vector the
 previous projection produced, and at `d_ff = 3072` that vector spans 384 threadgroups. Fusing across
 one would need a persistent kernel with a device-scope spin barrier; deliberately not attempted.
@@ -1949,6 +1972,134 @@ fn _sdpa_kernel_simd_kvf16(
         var w = exp(s - nm)
         o = o * corr + w * Float32(cv[kb + e])
         denom = denom * corr + w
+        m = nm
+
+    attn_out[h * d_head + e] = o / denom
+
+
+fn _splitk_partial_kernel_simd(
+    m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The OCCUPANCY twin of `_sdpa_kernel_simd` — IDENTICAL per-key math (the SIMD-shuffle two-level
+    reduction copied byte-for-byte from that kernel's own loop body), only the KEY RANGE and what
+    gets written at the end differ. Grid is `h_q * n_splits` threadgroups (`block_idx.x` flattens
+    `(head, split)`) instead of `_sdpa_kernel_simd`'s `h_q`, so a deep decode recruits `n_splits`
+    times as many warps GPU-wide for the SAME query token — the actual fix for the effect PR #519's
+    long-context investigation named: `_sdpa_kernel_simd`'s occupancy is a FIXED 64 warps (`h_q=16`
+    threadgroups x 4 SIMD-groups at this model's `d_head=128`) no matter how deep `n_keys` grows,
+    so the exact same 64 warps just iterate longer as the KV cache grows — no more parallelism is
+    ever recruited. This kernel is the SPLIT half of a two-dispatch Flash-Decoding-style fix: each
+    of the `n_splits` blocks assigned to one query head computes an UNNORMALIZED online-softmax
+    partial (`m`, `l`, `o`) over its own contiguous slice of `[0, n_keys)`, never divides by `l`, and
+    never combines with any other split — `_splitk_merge_kernel_simd` (this file, directly
+    below) does that, as a second, tiny, per-head dispatch.
+
+    Split `s` of `n_splits` owns keys `[n_keys * s // n_splits, n_keys * (s + 1) // n_splits)` —
+    integer-division ranges that partition `[0, n_keys)` exactly once each, with no gap and no
+    overlap, for ANY `n_keys` and `n_splits` (including `n_keys < n_splits`, where the later splits'
+    ranges are simply empty: `range(key_start, key_end)` with `key_start == key_end` iterates zero
+    times, so an empty split falls out of the SAME loop with no extra branch). An empty split writes
+    `m_out = _NEG_HUGE`, `l_out = 0.0`, `o_out = 0.0` for its head — the untouched initial values of
+    the same three accumulators every non-empty split starts from — which `_splitk_merge_kernel_
+    simd`'s own docstring shows folds into a merge as a true no-op, not a special case.
+
+    Gated by `n_keys` at the call site (`metaldispatch.session._MBQwen3I8AllSimd3.step`), never
+    unconditionally: a scratch probe timing the real production grid/block shape (`grid_dim=16,
+    block_dim=128`, this model's exact `h_q`/`d_head`) found splitting a REGRESSION at shallow
+    `n_keys` (16, the published race's own depth) — two dispatches' fixed launch overhead outweighs
+    the extra parallelism when there is barely any work to parallelize — and a growing WIN from
+    around `n_keys ~= 500` up (1.4x), widening with depth (4.3x at 2000, 6.3x at 4000, 10.6x at
+    8000, the same probe found). `_sdpa_kernel_simd` itself is therefore left untouched and still the
+    ONLY kernel dispatched below the session's threshold; this kernel and its merge twin are
+    additional, never a replacement.
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
+    var idx = Int(block_idx.x)
+    var h = idx // n_splits
+    var sidx = idx % n_splits
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var key_start = (n_keys * sidx) // n_splits
+    var key_end = (n_keys * (sidx + 1)) // n_splits
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    for j in range(key_start, key_end):
+        var kb = (j * h_kv + hk) * d_head
+        var partial = qv * ck[kb + e]
+        var group_total = _warp_sum(partial)
+        if lane == 0:
+            grp[grp_id] = group_total
+        barrier()
+        var s = Float32(0.0)
+        for g in range(n_groups):
+            s += grp[g]
+        s *= scale
+        barrier()
+
+        var nm = m if m > s else s
+        var corr = exp(m - nm)
+        var w = exp(s - nm)
+        o = o * corr + w * cv[kb + e]
+        denom = denom * corr + w
+        m = nm
+
+    m_out[idx] = m
+    l_out[idx] = denom
+    o_out[idx * d_head + e] = o
+
+
+fn _splitk_merge_kernel_simd(
+    attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits: Int, d_head: Int,
+):
+    """The MERGE half of `_splitk_partial_kernel_simd`'s two-dispatch fix — collapses that
+    kernel's `n_splits` unnormalized `(m, l, o)` partials per query head into ONE final normalized
+    `attn_out`, using the standard associative online-softmax combine (the same rescale-and-add
+    `_sdpa_kernel_simd`'s own per-KEY loop uses, one level up: a partial's `m`/`l`/`o` plays exactly
+    the role one key's score/weight/value plays there).
+
+    `grid_dim = h_q`, `block_dim = d_head` — ONE thread per `(head, e)` output element, same shape
+    `_sdpa_kernel_simd`'s own final write uses. Deliberately NO `barrier()`: thread `e` only ever
+    reads column `e` of every split's `o_in` and writes column `e` of `attn_out` — no thread ever
+    touches another thread's slot, so there is nothing for a barrier to order (the same "thread-
+    private shared slot" property `_lmhead_argmax_kernel`'s per-block winner write already relies on
+    for its own no-barrier-needed claim).
+
+    An EMPTY split (`_splitk_partial_kernel_simd`'s own docstring: `m = _NEG_HUGE`, `l = 0.0`,
+    `o = 0.0`, whenever that split's key range was empty) folds into this merge as a genuine no-op,
+    not a special case needing its own branch: `_NEG_HUGE` is a large FINITE sentinel (`-3.0e38`),
+    not IEEE `-inf`, so `nm = max(m, _NEG_HUGE)` is simply whatever `m` already was once any real
+    split has been merged, `exp(_NEG_HUGE - nm)` underflows cleanly to `0.0` (no NaN, unlike a true
+    `-inf - -inf`), and that `0.0` weight multiplies the empty split's own `l = 0.0` / `o = 0.0` --
+    contributing exactly nothing. Verified against a host Float64 reference at ragged `n_keys` that
+    deliberately included more splits than keys, in the isolated kernel-level test this pair ships
+    with (`test_residentk_attn_splitk_kernel.mojo`), before this docstring's claim was trusted.
+    """
+    var h = Int(block_idx.x)
+    var e = Int(thread_idx.x)
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+    for s in range(n_splits):
+        var idx = h * n_splits + s
+        var sm = m_in[idx]
+        var sl = l_in[idx]
+        var so = o_in[idx * d_head + e]
+        var nm = m if m > sm else sm
+        var corr = exp(m - nm)
+        var w = exp(sm - nm)
+        o = o * corr + w * so
+        denom = denom * corr + w * sl
         m = nm
 
     attn_out[h * d_head + e] = o / denom
