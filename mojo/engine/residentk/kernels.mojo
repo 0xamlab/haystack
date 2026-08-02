@@ -157,7 +157,7 @@ session re-checks the one dimension that changes per step (`pos < max_ctx`) at e
 from std.builtin.type_aliases import MutAnyOrigin
 from std.gpu import barrier, block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
 from std.gpu.memory import AddressSpace
-from std.gpu.primitives.warp import sum as _warp_sum
+from std.gpu.primitives.warp import shuffle_xor as _shuffle_xor, sum as _warp_sum
 from std.math import exp, sqrt
 from std.memory import stack_allocation
 from residentk.contract import RESIDENT_MAX_D_MODEL, RESIDENT_MAX_HEAD_DIM
@@ -2429,3 +2429,101 @@ fn _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP,
     if tid == 0:
         out_val[0] = sv[0]
         out_idx[0] = si[0]
+
+
+fn _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
+    """The REDUCTION-MECHANISM twin of `_argmax_reduce_kernel` — IDENTICAL per-thread grid-stride
+    local-best scan over `blk_val`/`blk_idx` and IDENTICAL tie-break-to-lowest-id convention; only
+    HOW the `_TG=256`-wide combine collapses every thread's local `(best, best_i)` pair to one final
+    scalar differs. `grid_dim=1`, `block_dim=256`, unchanged — this is the single-threadgroup
+    dispatch that collapses `_lmhead_argmax_kernel`'s `_LM_BLOCKS=2048` per-threadgroup `(logit, id)`
+    pairs down to the one pair the host reads as 8 bytes.
+
+    LAST kernel in the decode path's reduction-mechanism sweep PR #510 named, and the smallest:
+    PR #510's GPU-counter measurement put this dispatch at roughly 0.3-0.4% of per-token GPU time
+    (against `_sdpa_kernel`'s 26.85%, PR #513, or `_lmhead_argmax_kernel_i8`'s 12-13%, PR #515) — it
+    was deliberately skipped when PR #515 landed the lm_head fix, on the grounds that
+    `std.gpu.primitives.warp` exposes `sum` (every other kernel in this sweep uses it) but no paired
+    argmax primitive: nothing that reduces a `(value, index)` pair TOGETHER the way a bare `sum`
+    reduces a scalar. Landing this one anyway completes the sweep rather than leaving a single
+    deliberately-unexamined barrier tree in an otherwise fully-audited decode path — the measurable
+    effect is expected to be within run-to-run noise at this dispatch's share of total time, and is
+    reported as such, not oversold.
+
+    THE GAP, AND HOW IT CLOSES: `std.gpu.primitives.warp.shuffle_xor` (imported here as
+    `_shuffle_xor`) IS directly importable and DOES support a hand-rolled compare-exchange
+    butterfly — confirmed by direct compilation and an on-device probe before this kernel was
+    written (see `argmax_reduce_simd_reduce_probe.mojo`, which checks both the same butterfly in
+    isolation AND an explicit two-lanes-tied-different-ids case, lowest id winning, matching
+    `numpy.argmax`'s convention). Calling `_shuffle_xor` once for `best` (Float32) and once for
+    `best_i` (Int32) at the SAME `offset`, in the SAME butterfly step, then comparing the two
+    shuffled-in values against the calling lane's own `best`/`best_i` with the IDENTICAL tie-break
+    clause `_argmax_reduce_kernel`'s own tree reduction uses, reduces one 32-lane SIMD group to its
+    own argmax winner — replicated to EVERY lane in the group (an all-reduce: every lane runs the
+    SAME 5 steps, `offset = 16, 8, 4, 2, 1`, `log2(32)`, so every lane ends the loop holding the
+    group's own winner, no different from `warp.sum`'s own broadcast-to-all-lanes behaviour). No
+    barrier anywhere in this stage — SIMD-group execution is lockstep by hardware construction, the
+    same fact every other `_simd` kernel in this file rests on.
+
+    Two-level combine, the same shape `_lmhead_argmax_kernel_simd_i8`'s own stage 1 uses: level 1 is
+    the 5-step lane-butterfly above; level 2 combines the `_SUBS = 8` per-group winners through a
+    `_SUBS`-slot shared array with exactly ONE barrier (so every thread sees every group's write),
+    then thread 0 ALONE walks all 8 entries with the SAME tie-break clause a third time and writes
+    the final `(value, id)` pair — mirroring `_lmhead_argmax_kernel`'s own final `sv`/`si` combine
+    over its `_SUBS` sub-groups, one level up, rather than reusing its 256-wide argmax loop, which
+    would need the write-visibility barrier this kernel's `warp` version instead avoids by keeping
+    `best`/`best_i` in registers until the single group-level write. `log2(256) = 8`
+    barrier-synchronized halving levels plus the original kernel's own leading write-visibility
+    barrier — 9 barrier hits total — collapse to 1.
+
+    Ties resolve to the LOWEST id, exactly as `_argmax_reduce_kernel`'s own docstring requires: all
+    three tie-break sites here (the per-thread grid-stride scan above this docstring, the 5-step
+    butterfly, and the final 8-way scalar combine) use the SAME clause —
+    `other_val > best or (other_val == best and other_idx >= 0 and (best_i < 0 or other_idx < best_i))`
+    — so an exact value tie resolves identically no matter which lane, which SIMD group, or which
+    reduction MECHANISM produced the competing entries. The `other_idx >= 0` / `best_i < 0` guards
+    exist for the same degenerate reason `_argmax_reduce_kernel`'s own docstring flags: a SIMD group
+    (or, in the original, a stride level) whose every entry is the `_NEG_HUGE`/`-1` sentinel — because
+    `n` left it with no valid `blk_val`/`blk_idx` entry at all — must not appear to "tie" a real
+    winner just because `_NEG_HUGE == _NEG_HUGE`.
+    """
+    var grp_v = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp_i = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    var best = _NEG_HUGE
+    var best_i = Int32(-1)
+    var i = tid
+    while i < n:
+        if blk_val[i] > best:
+            best = blk_val[i]
+            best_i = blk_idx[i]
+        i += _TG
+
+    var off = UInt32(_LANES // 2)
+    while off > 0:
+        var other_val = _shuffle_xor(best, off)
+        var other_idx = _shuffle_xor(best_i, off)
+        if other_val > best or (other_val == best and other_idx >= 0 and (best_i < 0 or other_idx < best_i)):
+            best = other_val
+            best_i = other_idx
+        off //= 2
+
+    if lane == 0:
+        grp_v[sub] = best
+        grp_i[sub] = best_i
+    barrier()
+
+    if tid == 0:
+        var bv = grp_v[0]
+        var bi = grp_i[0]
+        for u in range(1, _SUBS):
+            var other_val = grp_v[u]
+            var other_idx = grp_i[u]
+            if other_val > bv or (other_val == bv and other_idx >= 0 and (bi < 0 or other_idx < bi)):
+                bv = other_val
+                bi = other_idx
+        out_val[0] = bv
+        out_idx[0] = bi
