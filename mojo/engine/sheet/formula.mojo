@@ -285,6 +285,32 @@ struct FNode(Copyable, Movable):
         self.arg_start = 0
         self.argc = 0
 
+    fn __init__(
+        out self,
+        k: Int,
+        num: Float64,
+        text: String,
+        a: Int,
+        b: Int,
+        c: Int,
+        d: Int,
+        e: Int,
+        f: Int,
+        arg_start: Int,
+        argc: Int,
+    ):
+        self.k = k
+        self.num = num
+        self.text = text
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
+        self.e = e
+        self.f = f
+        self.arg_start = arg_start
+        self.argc = argc
+
 
 # ── Tokens ────────────────────────────────────────────────────────────────────
 comptime TK_END: Int = 0
@@ -327,6 +353,11 @@ struct Token(Copyable, Movable):
         self.kind = kind
         self.num = 0.0
         self.text = String("")
+
+    fn __init__(out self, kind: Int, num: Float64, text: String):
+        self.kind = kind
+        self.num = num
+        self.text = text
 
 
 fn _is_ident_byte(b: Int) -> Bool:
