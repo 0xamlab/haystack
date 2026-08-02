@@ -91,7 +91,7 @@ from residentk.probe import (
     resident_gpu_kernels_compiled,
     resident_session_probe,
 )
-from residentk.session import _ResidentQwen3, _resident_preflight
+from residentk.session import _ResidentQwen3, _ResidentQwen3F16, _resident_preflight
 
 # ── the small-but-complete model this suite decodes with ──────────────────────
 comptime D_MODEL: Int = 32
@@ -615,5 +615,84 @@ def main() raises:
         else:
             failed += 1
             print("  ❌ an out-of-range token id was gathered from the embedding table")
+
+        # ══ the fp16 weight-storage arm: SAME model, SAME prompt, SAME CPU reference ═══════════
+        # `_ResidentQwen3F16` reads exactly the checkpoint above through the `_f16` kernel twins;
+        # every list fed to `upload_layer`/`upload_globals` is unchanged, so any divergence below is
+        # attributable to fp16 weight storage alone, not to a different model.
+        var s16 = _ResidentQwen3F16(
+            D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+        )
+        var up16 = s16.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+        for l in range(N_LAYERS):
+            if up16 == RESIDENT_OK:
+                up16 = s16.upload_layer(
+                    l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                )
+        if up16 == RESIDENT_OK:
+            up16 = s16.seal()
+        if up16 == RESIDENT_OK:
+            passed += 1
+            print("  ✅ every weight narrowed to Float16 and uploaded once, on", s16.device_name())
+        else:
+            failed += 1
+            print("  ❌ the fp16 upload failed:", residentk_status_name(up16))
+
+        var gpu16_id = -1
+        var gpu16_logit = 0.0
+        var gpu16_status = RESIDENT_OK
+        var issued16 = 0
+        for t in range(len(prompt)):
+            var r16 = s16.step(prompt[t], t)
+            gpu16_status = r16.status
+            gpu16_id = r16.token_id
+            gpu16_logit = r16.logit
+            issued16 = r16.dispatches
+            if r16.status != RESIDENT_OK:
+                break
+
+        if gpu16_status == RESIDENT_OK:
+            passed += 1
+            print("  ✅ four tokens ran on the fp16 resident session, cache written in place each step")
+        else:
+            failed += 1
+            print("  ❌ an fp16 step failed:", residentk_status_name(gpu16_status))
+
+        if issued16 == residentk_dispatch_budget(N_LAYERS):
+            passed += 1
+            print("  ✅ the fp16 session issued exactly the budgeted", issued16, "dispatches per token")
+        else:
+            failed += 1
+            print("  ❌ fp16 dispatch drift:", issued16, "issued against a budget of",
+                  residentk_dispatch_budget(N_LAYERS))
+
+        # THE FP16 LOGIT BOUND. Float16 has ~2^-10 (9.77e-4) relative precision, three orders of
+        # magnitude looser than Float32's ~2^-23 — every weight was rounded to that precision before
+        # a single multiply ran, so the bound below is scaled by Float16 epsilon, not Float32's, and
+        # is expected to be visibly wider than `bound` above. Widening the input is exactly what this
+        # arm does; this assertion is what makes "wider, but still bounded" a checked claim.
+        var f16_eps = 9.765625e-4
+        var bound16 = f16_eps * depth * (1.0 + _abs(cpu_ref.logit))
+        var delta16 = _abs(gpu16_logit - cpu_ref.logit)
+        if cpu_ref.ok and delta16 <= bound16:
+            passed += 1
+            print("  ✅ the fp16 logit agrees to", delta16, "within a Float16 bound of", bound16)
+        else:
+            failed += 1
+            print("  ❌ the fp16 logit is outside even Float16 precision:", delta16, "bound", bound16)
+
+        # NOT asserted as a pass/fail gate: whether the fp16 arm's GREEDY TOKEN still matches the
+        # Float64 reference. Float16's rounding is coarse enough, applied to every one of this small
+        # model's weights, that a real argmax flip on a close-margin logit vector is possible and
+        # would be a genuine finding about fp16 sensitivity, not a bug in these kernels — this test
+        # exists to say so honestly rather than to hide it behind a token-match requirement the real
+        # 0.6B model's own wide logit margins may or may not share. See the benchmark driver and this
+        # package's docs for the REAL model's answer, checked against the REAL `transformers`
+        # reference on the standard prompt.
+        if gpu16_id == cpu_ref.token_id:
+            print("  •  fp16 greedy token MATCHES the Float64 reference on this small model:", gpu16_id)
+        else:
+            print("  •  fp16 greedy token DIVERGES on this small model: fp16", gpu16_id, "vs cpu",
+                  cpu_ref.token_id, "— informational, not a failure; see module docs")
 
         print("  [residentk.session] Passed:", passed, "Failed:", failed)

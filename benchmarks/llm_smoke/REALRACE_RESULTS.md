@@ -820,3 +820,154 @@ removed, or modified by this project.
 generated-test suite, so `inventory-refresh`/`inventory-check`/the capability gate/
 `generate_mojo_tests.py --check` all report zero diff against the rebased tree (rerun and confirmed
 after rebasing onto `origin/main`, see the PR this section ships with).
+
+## Kernel-efficiency + fp16 addendum (2026-08-02, later still): vectorized GEMV + additive fp16 weights close ~23% of the gap — still losing everywhere
+
+The four-way race above named `residentk`'s kernel time as the single largest term in the decode
+token (26.77 ms of 49.31 ms, 54.3%, ~5.4x off the measured bandwidth bound) and the submission path
+as the second-largest (16.45 ms, 33.4%, a hard 60.79 tok/s ceiling on this toolchain). This project
+attacked the first of those two directly. The second — per the raw-Metal-dispatch addendum
+immediately above, which ran in parallel on the same `residentk` base and landed on `origin/main`
+first (`#504`) — is a **confirmed no-go through any public API on this toolchain**, not merely
+unattempted: no live Metal handle is reachable from `DeviceContext`/`DeviceFunction`, and Mojo's own
+compiled kernel bytes reloaded through the public `newLibraryWithData:` path lose their buffer
+writes to Metal's own dead-code elimination. That addendum's numbers are unchanged by this one; the
+16.45 ms submission floor remains fully present under everything measured below, and this section
+rebases onto it (`#504` is in this branch's history) rather than duplicating it.
+
+### What changed
+
+- **Vectorized GEMV loads.** All four GEMV-shaped kernels in `residentk.kernels`
+  (`_norm_gemv_kernel`, `_gemv_accum_kernel`, `_norm_gemv2_swiglu_kernel`, `_lmhead_argmax_kernel`)
+  replaced their scalar, stride-32 inner loop with 4-wide vector loads on both operands (a single
+  128-bit instruction per step instead of four scalar ones), plus a scalar tail for the
+  non-128-aligned remainder. `_TG` (threadgroup occupancy) was re-measured at 256/512/1024 and left
+  at 256 — no measurable difference either way.
+- **Additive fp16 weight storage.** A parallel `_ResidentQwen3F16` session plus `_f16` twins of the
+  same four kernels resident the weight matrices (and the tied embed/lm_head table) as Float16
+  instead of Float32 (2.50 GB -> 1.31 GB measured), widened to Float32 with `.cast[DType.float32]()`
+  immediately on load and accumulated in Float32 throughout — mixed precision, not accumulate-in-
+  half. `_ResidentQwen3` (Float32) is untouched; this is a third, fully additive arm, exactly like
+  the fp32-resident arm was additive over the CPU one. The fp16 kernels' vector width (`_VEC_H`) was
+  measured, not assumed: an 8-wide load (byte-matching Float32's 128-bit width) made the arm
+  *slower*, because MSL has no native 8-wide `half` vector type; `half4` (a real MSL type) is what
+  landed.
+
+### Correctness first, again
+
+Checked position-by-position against a `transformers`-CPU reference regenerated fresh in this
+session (`reference_generate.py`, same checkpoint), and cross-checked against each other and against
+both real opponents:
+
+| Arm | tokens matching the reference | max per-step logit delta |
+|---|---|---|
+| Algenta resident GPU, vectorized (float32) | **16 / 16** | **3.81e-06** |
+| Algenta resident GPU, fp16 weights | **16 / 16** | **5.72e-06** |
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | **3.81e-06** |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."`, identical across all
+three Algenta arms. Both real opponents emit the same text in every one of the six rounds below:
+llama.cpp (`-ngl 0` and `-ngl 99`) `' Paris. The capital of Germany is Berlin. The capital of Italy
+is Rome.'`, mlx-lm `'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` (same
+leading-space detokenizer difference noted in earlier sections — same token content). **No arm
+diverged in any round.** Six implementations across three precisions, one sequence.
+
+The `mojo/tests/libs/test_residentk_session.mojo` golden-vector suite gained a matching fp16 arm:
+**33/33 passing**, including the non-128-aligned small model (`D_MODEL=32`, `D_FF=40`) that exercises
+the vectorized tail path in both dtypes.
+
+### The numbers
+
+Decode-only tokens/sec, six interleaved rounds (`n = 6` per arm), same prompt/length/methodology as
+every section above. Machine: Apple M4 Max, shared dev box; 1-minute load average **9.3 – 10.2**
+across the session, with one long-running, unrelated `mojo run` process pegging a full core for the
+entire session (present, unkillable from this workflow's permissions, for the whole session) —
+noted because it is exactly the kind of shared-core competition that widened llama.cpp CPU's spread
+in the four-way race above, and does the same here.
+
+| Arm | Precision | Compute | Range | Median | Median vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 5.16 – 8.18 | **7.45** | 0.30x |
+| Algenta resident GPU, vectorized GEMV | float32 | Apple GPU (Metal, MAX) | 21.65 – 23.51 | **23.37** | 0.94x |
+| **Algenta resident GPU, vectorized GEMV + fp16 weights** | mixed (fp16 storage, fp32 compute) | Apple GPU (Metal, MAX) | 21.96 – 25.44 | **24.88** | 1x (Algenta's best) |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 18.56 – 56.61 | **27.83** | **1.12x faster** |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 239.12 – 258.62 | **256.52** | **10.31x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 307.38 – 318.46 | **311.17** | **12.51x faster** |
+
+Per-round values, in round order:
+
+```
+algenta_cpu      7.59   7.49   7.42   7.32   8.18   5.16
+algenta_gpu32   23.46  23.44  23.30  23.51  21.65  23.14
+algenta_gpu16   23.99  24.88  24.87  25.44  25.07  21.96
+llama_cpp       33.29  23.93  21.72  56.61  18.56  31.74
+llama_gpu      240.74 257.33 255.71 239.12 258.62 257.38
+mlx            318.46 311.53 308.67 307.38 310.80 313.88
+```
+
+Against the four-way race's baseline (Algenta's best, 20.28 tok/s, same prompt/checkpoint/machine):
+the vectorized-fp32 arm measures **23.37** here (+15.3%), and the vectorized-fp32-plus-fp16 arm
+measures **24.88** (+22.7%) — both real, reproducible gains, and both still short of even the noisy
+llama.cpp CPU arm's median, let alone its GPU arm or mlx-lm. llama.cpp CPU's spread this session
+(18.56 – 56.61, wider than the four-way race's 27.23 – 46.36) reflects the same core competing with
+the leaked process noted above; even so, its slowest round (18.56) sits inside Algenta's own range
+rather than clearly above it, so the CPU comparison should be read as "roughly even, noisily," not
+as a clean loss or win either way. The two GPU opponents are unaffected by CPU contention and are
+not close: llama.cpp GPU is **10.31x** Algenta's best and mlx-lm is **12.51x**.
+
+### Publication decision: no gitbook page
+
+The standing rule is an outright win against the field's best real installed opponent, measured on
+this machine — mlx-lm, median **311.17 tok/s** today. Algenta's best arm today is **24.88 tok/s**,
+a **12.51x** loss. **No page ships, and none is drafted.** The kernel-efficiency work is real and
+reproducible (+15.3% from vectorization alone, another +6.5% from fp16 weights on top of that,
++22.7% combined vs. the four-way race's baseline) — reported here as exactly that, an incremental
+win over the prior Algenta baseline, not a win over the field.
+
+### Where the remaining gap is, updated
+
+The four-way race estimated that closing the kernel term to the bandwidth bound alone (leaving
+everything else unchanged) would reach **~44 tok/s**. This session's actual vectorization result
+(23.37, then 24.88 with fp16 added) is well short of that estimate, meaning the GEMV kernels are
+still measurably above the bandwidth bound after vectorization, not at it — a per-kernel profile
+(rather than an end-to-end token rate) is the next diagnostic step, not assumed here. Even the
+optimistic **~44 tok/s** estimate would only have passed llama.cpp CPU (27.83 median this session) —
+it would not have touched llama.cpp GPU (256.52) or mlx-lm (311.17), both dominated by Metal-native,
+batched, async-submission execution this toolchain's public API does not currently expose (see the
+raw-Metal addendum above: confirmed no-go, not merely unattempted). The submission ceiling this
+design cannot get under with today's public APIs is **60.79 tok/s** — below mlx-lm's number by
+**5.2x** even before any kernel time is counted. Outright winning stays a three-part requirement —
+near-bandwidth kernels, a submission path this toolchain does not yet expose, and fp16/bf16 weights
+(now landed) — and one of those three parts is now confirmed blocked pending upstream Mojo/MAX
+support (documented in the raw-Metal addendum above), not merely pending more engineering time here.
+
+### Reproduction
+
+```bash
+cd /Users/angel/Developer/decision-engine/mojo_env
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate_metal.mojo -o /tmp/race5_gpu32
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate_metal_fp16.mojo -o /tmp/race5_gpu16
+pixi run mojo build -I <worktree>/mojo/engine \
+    <worktree>/benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race5_cpu
+
+# one round = every arm once, back to back (from benchmarks/llm_smoke/)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race5_gpu32
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race5_gpu16
+/tmp/race5_cpu
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_race5
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_metal/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_race5/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_metal_fp16/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_race5/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_llmfwd/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_race5/reference_generated.json
+```
