@@ -11,6 +11,11 @@ historical record the FastGEMV/MetalRoute/residentk phases built on. **No gitboo
 or now** — the standing rule ("outright win only ships a page") is still not met after the
 decode-path optimizations; see the final section for the current gap and what is still missing.
 
+**Update (2026-08-02, later still): the four-way race's own "submission is a hard ceiling"
+finding was investigated as a raw-Metal-dispatch project — see the final section, "Raw-Metal
+dispatch addendum". No race was run from that project: it concluded no-go before reaching a
+correctness-verified kernel, so there is nothing new to race. The verdict above is unchanged.**
+
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
 measured together. **Where two sections disagree, the last one is right** — in particular the
@@ -698,3 +703,120 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race4_gpu
 One-time costs measured in this session, for completeness: the resident arm pays 4.74 ms session
 open + 1131.9 ms blob read + 1345.5 ms narrow/transpose/upload = **2482.5 ms**, against the CPU
 arm's **1233.0 ms** weight load. The ~1250 ms difference is earned back after **13 tokens**.
+
+## Raw-Metal dispatch addendum (2026-08-02): tried to attack the submission ceiling directly — no-go, no race run
+
+The four-way race above named MAX's dispatch submission path as the single largest fixed cost at
+this decode shape: 171 blocking `ctx.enqueue_function` calls cost 16.45 ms/token (33.4% of the
+49.31 ms token, a 60.79 tok/s ceiling even with zero kernel time), while raw Metal's own
+command-buffer dispatch floor on this same machine is 4.03 us/dispatch — roughly 250x less. This
+project asked the direct question: can Algenta keep its kernels **Mojo-authored** (compiled by
+`mojo build`, never hand-written MSL) and swap only the *submission* mechanism — hand-rolled
+`MTLCommandBuffer`/`MTLComputeCommandEncoder` dispatch via `external_call` to the Objective-C
+runtime, bypassing `DeviceContext.enqueue_function` — to remove that ceiling? Two sourcing routes
+for a live, dispatchable kernel were tried, in a new, fully additive worktree
+(`.worktrees/metalffi`, branch `feat/metal-ffi-dispatch-probe`; new-namespace-only, nothing under
+`mojo/engine/accel/`, `mojo/engine/gemm/`, or `mojo/engine/residentk/` touched).
+
+**Route A — borrow MAX's own live Metal handle.** `DeviceFunction._handle` / `DeviceContext._handle`
+are directly readable (Mojo does not enforce field privacy) but point at `_DeviceFunctionCpp` /
+`_DeviceContextCpp` — zero-field placeholder structs; Mojo's own type model carries no knowledge of
+the underlying AsyncRT object's C++ layout, so there is nothing to read *from* Mojo's perspective.
+A byte-level heap scan around both handles (enumerate all 9,754 loaded Objective-C classes via
+`objc_getClassList`, read candidate memory crash-safely via the `mach_vm_read_overwrite` Mach trap,
+match isa-pointers, follow one further hop) is proven methodologically sound — it found real,
+unrelated live Objective-C objects at depth 2 elsewhere in the process — but found **zero** `MTL*`/
+`AGX*` objects among 1,884 total class matches / 80 unique classes near either handle. **Not real:**
+no Metal object is reachable as a near/shallow member of what Mojo exposes.
+
+**Route B — extract Mojo's own compiled kernel binary and dispatch it by hand.** This one is real
+up to, and breaks exactly at, execution. Mojo embeds a complete, standalone, well-formed
+`.metallib` container (magic `MTLB`, a real `air64-apple-macosx26.0.0` compile) directly in the
+compiled binary's `__TEXT,__const` section. Extracting those exact bytes (self-declared length at
+offset +16) and loading them through the fully public Metal API —
+`dispatch_data_create` -> `-newLibraryWithData:error:` -> `newFunctionWithName:` ->
+`newComputePipelineStateWithFunction:error:` — **succeeds**: the mangled kernel name resolves,
+`MTLComputePipelineReflection` shows the declared arguments as sequential buffer indices in
+declaration order, exactly as expected. A full hand-rolled dispatch path was built from Mojo
+(`MTLCommandBuffer`/`MTLComputeCommandEncoder`, `setBuffer:offset:atIndex:`,
+`dispatchThreadgroups:threadsPerThreadgroup:`, `commit`/`waitUntilCompleted`, all reached via
+`external_call` to `objc_msgSend`/`sel_registerName`) and it completes with `status=4 (completed)`,
+no error — **but the kernel's buffer write never lands.** `MTLComputePipelineReflection` shows the
+written buffer's access as `MTLBindingAccessReadOnly` even for a kernel that only ever writes it —
+working theory: Mojo's Metal codegen marks buffer arguments read-only in the compiled AIR
+regardless of actual use, and Metal's own optimizer, reached through the public
+`newLibraryWithData:` load path, treats the store as dead code against a declared-read-only binding
+and drops it. This reproduces identically in a from-scratch, pure Objective-C program driving the
+same extracted bytes (ruling out the Mojo FFI layer as the cause) and in a from-scratch, pure
+Objective-C program against a completely independent (non-Mojo) `.metallib` built to the same
+minimal 1-arg shape, i.e. this is a property of how Metal's public load path treats this codegen
+pattern, not a bug in the probe. MAX's own internal loading/dispatch path evidently avoids or
+corrects this — the identical compiled kernel runs correctly through `DeviceContext.enqueue_function`
+(every number in every section above depends on that being true).
+
+**Independent re-verification, not taken on faith.** A second pass rebuilt
+`metal_ffi_dispatch_probe.mojo` from scratch in the same worktree and reran it cold: identical
+central numbers (`max |hand_rolled[i] - max_enqueued[i]|` over 3072 outputs = **1084.7439** both
+times; `y[0]` hand-rolled stuck at the `-999.0` pre-dispatch sentinel both times). The dispatch-cost
+side numbers were in the same ballpark across the two runs (hand-rolled single dispatch/commit+wait
+median 839-925 us vs. MAX's 350-362 us; MAX wins single-dispatch on this toolchain) — batching 20
+dispatches into one command buffer got to 713-760 us/dispatch, still worse than MAX's per-call cost,
+so the Mojo<->C `external_call` crossing overhead (~8 crossings/dispatch in this implementation)
+would need designing away even before the correctness bug, for this specific hand-rolled
+implementation to be a submission-cost win at all.
+
+**Verdict: no-go, as specified.** The owner's constraint — kernel stays Mojo-authored, only
+dispatch/submission may change — is not satisfiable today. There is no live Metal handle to borrow
+(Route A) and Mojo's own compiled kernel bytes do not execute correctly once loaded through the
+public Metal API outside MAX's runtime (Route B), confirmed independent of the FFI mechanism in
+pure Objective-C. Per the standing instruction for this exact situation — a no-go with no viable
+path does not get forced into a race — **no speed number is reported for a raw-Metal-dispatch decode
+path, no arm was added to any race, and no gitbook page is affected.** The four-way race's verdict
+above (Algenta's best, 20.28 tok/s, loses to llama.cpp CPU 2.07x / llama.cpp GPU 12.68x / mlx-lm
+15.56x) stands unchanged; the submission-ceiling term it named (16.45 ms, 33.4%) remains
+unaddressed.
+
+**What would unblock this, concretely — an upstream Mojo/MAX gap, not a probe bug:**
+
+1. A documented way to mark a GPU kernel's pointer/buffer argument as read-write (vs. Mojo's
+   apparent default of read-only) in the AIR Metal codegen emits — e.g. an access-hint on the
+   parameter type or a `compile_function` flag — so that a kernel extracted and reloaded through
+   the public `newLibraryWithData:` path is not dead-code-eliminated by Metal's own optimizer. This
+   is the one, narrow, verifiable fix that would flip Route B from broken back to viable; it was
+   flagged as unexplored by the Build phase and remains unexplored here too — this toolchain
+   install ships no bundled `.mojo` stdlib source to check compile-time flags against, and chasing
+   that further is new investigation, not verification of an existing claim, so it is reported as
+   an open question rather than attempted.
+2. Failing that, an officially-supported (non-reflection, non-heap-scan) accessor from
+   `DeviceContext`/`DeviceFunction` to the underlying live `id<MTLLibrary>`/`id<MTLFunction>` (or
+   an async submission primitive — `ctx.stream()` currently raises `"Metal stream not
+   implemented"` on this backend) would remove the need for Route B/extraction entirely.
+3. Two smaller, real Mojo-toolchain frictions worth an upstream report regardless of the above:
+   `external_call["objc_msgSend", ...]` registers one global extern per **name**, so a second call
+   site with a different signature under the same name fails to compile; and the natural
+   workaround (`dlsym` + an indirect call through a Mojo function-pointer value) compiles but
+   crashes inside `libKGENCompilerRTShared.dylib` at the point of the indirect call, on this exact
+   toolchain (both reproduced with minimal repros; worked around here with a one-signature-per-name
+   C shim, `objc_shim.c`, containing zero kernel logic).
+
+Absent (1) or (2), the only path left to move past the submission ceiling with today's public APIs
+is hand-porting `residentk`'s kernels to hand-written MSL — which trades the "kernel stays
+Mojo-authored" constraint for the ceiling, is a real two-stage-verified build (each ported kernel
+checked against the existing Mojo-compiled version before trusting it) rather than an extension of
+this probe, and needs explicit sign-off that hand-written MSL satisfies "Mojo-authored" before
+anyone spends the time, since under a literal reading it plainly does not.
+
+**Files (all new, additive-only, under `benchmarks/llm_smoke/metal_ffi_probe/`):**
+`objc_link_probe.mojo` (FFI reachability), `handle_probe.mojo`/`handle_int_probe.mojo`
+(private-field readability), `heap_scan_probe.mojo` (Route A), `gemv_metallib_dump.mojo` /
+`trace_target.mojo` / `minimal_write_probe.mojo` (Route B extraction + the isolated write-bug
+repro), `metal_ffi_dispatch_probe.mojo` (the full pipeline, this section's numbers),
+`objc_shim.c` (the one-signature-per-symbol C shim). No file under `mojo/engine/` was added,
+removed, or modified by this project.
+
+**Gates:** `git status --short` in the worktree shows only this one new, untracked directory —
+`accel/`, `gemm/`, `residentk/`, and every other frozen/existing kernel file are byte-identical to
+`origin/main`. Nothing here changes the runtime library contract, the capability manifest, or any
+generated-test suite, so `inventory-refresh`/`inventory-check`/the capability gate/
+`generate_mojo_tests.py --check` all report zero diff against the rebased tree (rerun and confirmed
+after rebasing onto `origin/main`, see the PR this section ships with).
