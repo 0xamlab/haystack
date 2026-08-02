@@ -536,7 +536,7 @@
       {
         "bytes": 113,
         "language": "text",
-        "line": 267,
+        "line": 284,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "8075efba11168a4c9431dc98467c519e5f90f57f59aa09c2b2fbf93849fb1e95",
         "validation": "static_inventory"
@@ -544,7 +544,7 @@
       {
         "bytes": 382,
         "language": "text",
-        "line": 273,
+        "line": 290,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "a7b7ddc85b40fad69730c708cdc6887331849eb0a64a1dff99bb30fe8809415a",
         "validation": "static_inventory"
@@ -552,7 +552,7 @@
       {
         "bytes": 399,
         "language": "text",
-        "line": 280,
+        "line": 297,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "f0d10e7444fae7e20a8c97d3bcff8d42c7db09499d4df6f5dfa9cfdc8656e2ba",
         "validation": "static_inventory"
@@ -560,7 +560,7 @@
       {
         "bytes": 91,
         "language": "text",
-        "line": 288,
+        "line": 305,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "63e7a4321b6e5d4905284bb79502d08a99ca66aa3f10f84627be09f2936f6ffc",
         "validation": "static_inventory"
@@ -29097,25 +29097,25 @@
       },
       {
         "kind": "internal",
-        "line": 314,
+        "line": 331,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 315,
+        "line": 332,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "least-squares-accuracy.md"
       },
       {
         "kind": "internal",
-        "line": 316,
+        "line": 333,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "dataframe-groupby.md"
       },
       {
         "kind": "internal",
-        "line": 317,
+        "line": 334,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -35045,7 +35045,7 @@
         "term": "algenta"
       },
       {
-        "line": 36,
+        "line": 37,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
@@ -35075,102 +35075,107 @@
         "term": "algenta"
       },
       {
-        "line": 95,
+        "line": 96,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 110,
+        "line": 120,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 114,
+        "line": 124,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 142,
+        "line": 152,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 142,
+        "line": 152,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 143,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 143,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 143,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 144,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 144,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 144,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 150,
+        "line": 160,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 159,
+        "line": 170,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 179,
+        "line": 185,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 196,
+        "line": 192,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 208,
+        "line": 209,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 212,
+        "line": 221,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 217,
+        "line": 225,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 238,
+        "line": 230,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 264,
+        "line": 251,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 281,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
@@ -46841,7 +46846,7 @@
       "links": 4,
       "path": "benchmarks/forecasting-joint-axis.md",
       "product_claims": {
-        "algenta": 27,
+        "algenta": 28,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -51274,7 +51279,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 985,
+    "claim_mentions": 986,
     "command_execution_percent": 100.0,
     "commands_classified": 811,
     "commands_executed": 67,
@@ -51291,12 +51296,12 @@
     "skips": 745,
     "snippets_checked": 1219,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6168,
+    "source_items_inventoried": 6169,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 985,
+    "claim_mentions": 986,
     "code_fences": 1219,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
@@ -51313,7 +51318,7 @@
     "links": 1163,
     "pages": 190,
     "product_claims": {
-      "algenta": 976,
+      "algenta": 977,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
@@ -51329,7 +51334,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 745,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6168,
+    "source_items_inventoried": 6169,
     "static_only_commands": 63,
     "static_or_guarded_commands": 744,
     "unexecuted_runnable_commands": 0,

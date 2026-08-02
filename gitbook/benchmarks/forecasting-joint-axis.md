@@ -1,6 +1,6 @@
 ---
 icon: stopwatch
-description: Forecast accuracy and latency measured together on all 100,000 M4 series against statsforecast 2.1.1 — equal or better accuracy at 2.35x-3.98x the speed, with the accuracy leaders that remain ahead named.
+description: Forecast accuracy and latency measured together on all 100,000 M4 series against statsforecast 2.1.1 — equal or better accuracy at 2.42x-3.99x the speed, with the accuracy leaders that remain ahead named.
 ---
 
 # Forecasting on the joint axis
@@ -32,8 +32,8 @@ independent scorer.
 **At accuracy equal or better, Algenta is strictly faster than statsforecast 2.1.1 on every
 frequency, every model and every thread setting measured — 45 of 45 rows.**
 
-Whole-corpus wall clock at matched parallelism: **2.35x** at one thread — the conservative figure,
-and the one the claim uses — rising to 3.98x at twelve workers and 3.41x at sixteen. On the same
+Whole-corpus wall clock at matched parallelism: **2.42x** at one thread — the conservative figure,
+and the one the claim uses — rising to 3.99x at twelve workers and 3.41x at sixteen. On the same
 series, Algenta's ETS(A,A,A) agrees with statsforecast to within 2.0e-8 on all 72,414 seasonal
 series, its damped-trend row is more accurate on all six frequencies, and its Holt row is level.
 
@@ -89,35 +89,39 @@ Per-series figures appear below for scale, but they are derived from these passe
 
 Both arms are run at the same thread count, and then each at its own best setting, because
 publishing only the favourable configuration would be scope-narrowing. Each figure is the minimum
-across K=2 interleaved launch pairs per setting, one full pass per launch — a full pass over the
-corpus **is** the cold pass, so there is no in-process repetition anywhere in this table.
+across interleaved launch pairs — K=4 at one thread and at twelve workers, K=2 at sixteen — with one
+full pass per launch, because a full pass over the corpus **is** the cold pass. There is no
+in-process repetition anywhere in this table.
 
 | Matched threads | Model | Series | Algenta | statsforecast 2.1.1 | Ratio | Load median |
 |---|---|---|---|---|---|---|
-| 1 | Holt | 100,000 | 32.46 s | 86.71 s | 2.67x | 127 |
-| 1 | Damped trend | 100,000 | 55.20 s | 238.58 s | 4.32x | 127 |
-| 1 | ETS(A,A,A) | 72,414 | 275.75 s | 527.95 s | 1.91x | 127 |
-| 1 | **all three** | 272,414 fits | **363.41 s** | **853.24 s** | **2.35x** | 127 |
-| 12 | Holt | 100,000 | 6.91 s | 55.83 s | 8.09x | 231 |
-| 12 | Damped trend | 100,000 | 11.58 s | 84.49 s | 7.30x | 231 |
-| 12 | ETS(A,A,A) | 72,414 | 43.35 s | 105.57 s | 2.44x | 231 |
-| 12 | **all three** | 272,414 fits | **61.83 s** | **245.89 s** | **3.98x** | 231 |
+| 1 | Holt | 100,000 | 26.61 s | 78.02 s | 2.93x | 66-127 |
+| 1 | Damped trend | 100,000 | 44.73 s | 209.94 s | 4.69x | 66-127 |
+| 1 | ETS(A,A,A) | 72,414 | 222.24 s | 422.61 s | 1.90x | 66-127 |
+| 1 | **all three** | 272,414 fits | **293.58 s** | **710.58 s** | **2.42x** | 66-127 |
+| 12 | Holt | 100,000 | 6.83 s | 55.83 s | 8.18x | 231-244 |
+| 12 | Damped trend | 100,000 | 11.44 s | 84.49 s | 7.38x | 231-244 |
+| 12 | ETS(A,A,A) | 72,414 | 43.35 s | 105.57 s | 2.44x | 231-244 |
+| 12 | **all three** | 272,414 fits | **61.62 s** | **245.89 s** | **3.99x** | 231-244 |
 | 16 | Holt | 100,000 | 7.30 s | 55.51 s | 7.60x | 160 |
 | 16 | Damped trend | 100,000 | 11.20 s | 81.35 s | 7.26x | 160 |
 | 16 | ETS(A,A,A) | 72,414 | 50.96 s | 99.81 s | 1.96x | 160 |
 | 16 | **all three** | 272,414 fits | **69.47 s** | **236.67 s** | **3.41x** | 160 |
 
-**The one-thread row is the one to lean on.** Its load median is the lowest of the three, and more
-importantly both arms are single-threaded there, so contention on a shared machine hits them alike.
-The twelve- and sixteen-worker rows were taken at load medians 231 and 160, where a process pool has
-more to lose than a single in-process loop does; they are reported because running only one
-parallelism setting would be scope-narrowing, but the conservative headline is **2.35x**, not 3.98x.
+**The one-thread row is the one to lean on**, and it is the one measured hardest — four launch pairs
+across two sessions whose load medians were 127 and 66. Both arms are single-threaded there, so
+contention on a shared machine hits them alike. The parallel rows were taken at load medians of 231
+and above, where a process pool has more to lose to a busy machine than a single in-process loop
+does. Two independent twelve-worker sessions land at 3.98x and 3.99x, which is a reproduction rather
+than a lucky window, but they were both taken on a loaded box and the conservative headline is
+therefore **2.42x**, not 3.99x. Both are reported, because running only one parallelism setting
+would be scope-narrowing in the other direction.
 
-**Each side at its own best setting.** Algenta is fastest at twelve workers (61.83 s) — twelve is
+**Each side at its own best setting.** Algenta is fastest at twelve workers (61.62 s) — twelve is
 exactly the performance-core count on this chip, and adding the four efficiency cores makes it
 slower. statsforecast is nominally fastest at sixteen jobs (236.67 s); its sixteen-versus-twelve gap
 is 3.6% across runs whose load medians differed by 71, so that is a tie and the faster of the two is
-credited to it. **Own best against own best: 3.83x, with Algenta using twelve of sixteen cores
+credited to it. **Own best against own best: 3.84x, with Algenta using twelve of sixteen cores
 against statsforecast's sixteen.**
 
 Per frequency, at one thread — the setting where both arms use their cheapest dispatch and no pool
@@ -125,19 +129,19 @@ overhead exists on either side:
 
 | Frequency | Series | Holt | Damped trend | ETS(A,A,A) |
 |---|---|---|---|---|
-| Yearly | 23,000 | 1.12x | 1.55x | — |
-| Quarterly | 24,000 | 2.96x | 3.67x | 2.62x |
-| Monthly | 48,000 | 2.87x | 4.60x | 1.74x |
-| Weekly | 359 | 3.56x | 6.70x | — |
-| Daily | 4,227 | 3.46x | 6.67x | — |
+| Yearly | 23,000 | 1.94x | 1.97x | — |
+| Quarterly | 24,000 | 2.45x | 3.24x | 2.06x |
+| Monthly | 48,000 | 2.87x | 4.60x | 1.85x |
+| Weekly | 359 | 3.46x | 6.18x | — |
+| Daily | 4,227 | 3.50x | 6.67x | — |
 | Hourly | 414 | 3.45x | 5.96x | 3.65x |
 
 ETS(A,A,A) has no entry on Yearly, Weekly and Daily because those series are non-seasonal and the
 model does not apply to them — which is why its corpus is 72,414 rather than 100,000.
 
 Derived per-series hot cost at one thread, from those same whole-corpus passes rather than from a
-sample: Holt 0.325 ms against 0.867 ms, damped trend 0.552 ms against 2.386 ms, ETS(A,A,A) 3.808 ms
-against 7.291 ms.
+sample: Holt 0.266 ms against 0.780 ms, damped trend 0.447 ms against 2.099 ms, ETS(A,A,A) 3.069 ms
+against 5.836 ms.
 
 ## The joint result
 
@@ -145,9 +149,9 @@ Placing both arms on the two axes at once, which is the only placement a live de
 
 | Comparison | Accuracy | Compute | Verdict |
 |---|---|---|---|
-| ETS(A,A,A), 72,414 series | equal — OWA 0.933238 both, every series within 2.0e-8 | Algenta 1.91x-2.44x faster | **Algenta dominates** |
-| Holt, 100,000 series | level — 12.789 sMAPE and 1.613 MASE on both arms; Algenta +1.0e-5 OWA | Algenta 2.67x-8.09x faster | **Algenta dominates** |
-| Damped trend, 100,000 series | Algenta better, on all six frequencies — OWA 0.878523 against 0.879521 | Algenta 4.32x-7.30x faster | **Algenta dominates, on both axes** |
+| ETS(A,A,A), 72,414 series | equal — OWA 0.933238 both, every series within 2.0e-8 | Algenta 1.90x-2.44x faster | **Algenta dominates** |
+| Holt, 100,000 series | level — 12.789 sMAPE and 1.613 MASE on both arms; Algenta +1.0e-5 OWA | Algenta 2.93x-8.18x faster | **Algenta dominates** |
+| Damped trend, 100,000 series | Algenta better, on all six frequencies — OWA 0.878523 against 0.879521 | Algenta 4.69x-7.38x faster | **Algenta dominates, on both axes** |
 | FFORMA, M4 rank 2 | FFORMA better — 0.8377 against 0.8428 | not published in any primary source | **no dominance either way** |
 | ES-RNN, M4 rank 1 | ES-RNN better — 0.8209 against 0.8428 | not published in any primary source | **no dominance either way** |
 
@@ -160,30 +164,33 @@ one — Algenta is behind on accuracy there, and their compute is not available 
 Every number above starts its clock after both stacks are loaded. A live decision does not get that
 courtesy: it pays whatever the stack costs before it can compute anything. Measured from **outside**
 both processes — exec to answer, both arms doing the identical job of opening the frequency's
-blocks, fitting one series and forecasting it — minimum of seven interleaved launches:
+blocks, fitting one series and forecasting it — minimum over fourteen interleaved launches
+across two sessions:
 
 | Frequency, model | Algenta | statsforecast 2.1.1 | Ratio |
 |---|---|---|---|
-| Monthly, ETS(A,A,A) | 67.9 ms | 1,858.2 ms | 27.4x |
 | Monthly, Holt | 73.9 ms | 1,866.6 ms | 25.3x |
 | Monthly, damped | 66.0 ms | 1,760.0 ms | 26.7x |
-| Quarterly, ETS(A,A,A) | 26.0 ms | 3,456.6 ms | 133.0x |
-| Quarterly, Holt | 26.7 ms | 4,986.0 ms | 186.4x |
-| Quarterly, damped | 27.4 ms | 2,602.3 ms | 95.1x |
-| Hourly, ETS(A,A,A) | 23.1 ms | 2,341.7 ms | 101.6x |
-| Hourly, Holt | 15.3 ms | 2,362.9 ms | 154.6x |
-| Hourly, damped | 15.8 ms | 2,386.9 ms | 151.3x |
+| Monthly, ETS(A,A,A) | 67.9 ms | 1,858.2 ms | 27.4x |
+| Quarterly, damped | 27.4 ms | 2,004.4 ms | 73.2x |
+| Quarterly, ETS(A,A,A) | 22.6 ms | 2,073.3 ms | 91.6x |
+| Quarterly, Holt | 23.6 ms | 2,244.8 ms | 95.3x |
+| Hourly, ETS(A,A,A) | 22.7 ms | 1,841.7 ms | 81.3x |
+| Hourly, damped | 14.4 ms | 1,870.6 ms | 129.5x |
+| Hourly, Holt | 13.5 ms | 1,902.6 ms | 140.4x |
 
-**The number to take from this table is the smallest one, 25.3x.** The spread across it is not a
-property of the models: the Quarterly and Hourly launches sat at a higher load average than the
-Monthly ones, and interpreter import — which is almost the whole of the reference arm's cold cost —
-is exactly what a loaded machine slows down. Repeating the whole set on a busier machine again gives
-25.3x-158.5x, the same shape and the same floor.
+**The number to take from this table is the smallest one, 25.3x.** The rest of the spread is not a
+property of the models but of how much data each frequency has to open before it can fit: the
+reference arm pays an almost constant 1.8-2.2 s of interpreter startup and import on every row,
+while Algenta's cost tracks the file it reads. An earlier single session put the Quarterly rows near
+186x purely because its launches happened to sit at a higher load average, and importing a Python
+library is exactly what a loaded machine slows down; taking the minimum over both sessions pulls
+those rows down to 73x-95x, which is what the table now carries.
 
 **Where that cost is, exactly.** It is not the models. In a fresh process, `import statsforecast`
 costs 1,915 ms at its fastest and 2,226 ms at its slowest over five launches, with NumPy already
 imported; constructing the model costs 0.006 ms. Algenta's symmetric cost is the launch of an
-ahead-of-time compiled binary, which is included in the 15-74 ms above.
+ahead-of-time compiled binary, which is included in the 13-74 ms above.
 
 {% hint style="info" %}
 **There is no JIT cost to separate out here, and that is worth stating because a reader will look
@@ -257,9 +264,13 @@ internal timer, so it is an upper bound rather than a precise figure.
   statsforecast's `n_jobs` process pool paying a fixed spawn cost of roughly 4.4 s per call that
   a few hundred series cannot amortise. That is a real property of its batch API, and it is a
   reason to quote Weekly and Hourly from the one-thread arm instead, which is what the table does.
-* **The margin is not uniform.** The narrowest measured row is Yearly Holt at one thread on a
-  heavily loaded machine, at 1.12x; the same row on a quiet machine measures 1.86x. Both are wins,
-  and the smaller is the one carried into the table.
+* **The margin is not uniform, and the narrowest row is the honest bound.** Across the four
+  one-thread launch pairs the smallest ratio is Monthly ETS(A,A,A) at 1.85x — the single largest
+  block of work in the corpus, 48,000 series, and the row that dominates the ETS(A,A,A) total. Every
+  other row is wider. An earlier pass on a heavily contended machine put Yearly Holt at 1.12x; with
+  four launches the floor for that row settles at 1.94x, which is what the table now carries. The
+  contended reading is mentioned because it is the kind of number a single unlucky pass produces,
+  and a minimum over more launches is the correction for it.
 * **Three models, not a forecasting suite.** Holt, damped trend and ETS(A,A,A). Nothing here says
   anything about ARIMA, TBATS, neural methods, or statsforecast's automatic model selection.
 * **This is single-machine measurement.** Nothing about clusters, GPUs or distributed scheduling is

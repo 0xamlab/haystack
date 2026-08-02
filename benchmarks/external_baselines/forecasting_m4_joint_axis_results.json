@@ -18,7 +18,7 @@
    "a_workers": 1,
    "b_workers": 1,
    "b_dispatch": "percall",
-   "K_process_launches": 2,
+   "K_process_launches": 4,
    "load_1m": {
     "min": 43.0791015625,
     "median": 127.48828125,
@@ -29,33 +29,33 @@
    "rows": {
     "Yearly_Damped": {
      "series": 23000,
-     "algenta_ms": 9886.787,
-     "statsforecast_ms": 15318.3738,
-     "ratio": 1.5493783571953152
+     "algenta_ms": 4834.727,
+     "statsforecast_ms": 9515.1483,
+     "ratio": 1.9680838856051233
     },
     "Yearly_Holt": {
      "series": 23000,
-     "algenta_ms": 6780.43,
-     "statsforecast_ms": 7610.0061,
-     "ratio": 1.1223485973603442
+     "algenta_ms": 2322.455,
+     "statsforecast_ms": 4498.332,
+     "ratio": 1.9368866135188842
     },
     "Quarterly_Damped": {
      "series": 24000,
-     "algenta_ms": 11608.452,
-     "statsforecast_ms": 42655.3934,
-     "ratio": 3.674511760913514
+     "algenta_ms": 6189.562,
+     "statsforecast_ms": 20046.7569,
+     "ratio": 3.2388005645633733
     },
     "Quarterly_ETSAAA": {
      "series": 24000,
-     "algenta_ms": 48621.845,
-     "statsforecast_ms": 127275.8208,
-     "ratio": 2.6176674455689617
+     "algenta_ms": 28985.133,
+     "statsforecast_ms": 59631.2003,
+     "ratio": 2.0573029732173387
     },
     "Quarterly_Holt": {
      "series": 24000,
-     "algenta_ms": 4657.418,
-     "statsforecast_ms": 13793.0573,
-     "ratio": 2.961524454107405
+     "algenta_ms": 3362.352,
+     "statsforecast_ms": 8246.7627,
+     "ratio": 2.452676786963411
     },
     "Monthly_Damped": {
      "series": 48000,
@@ -65,9 +65,9 @@
     },
     "Monthly_ETSAAA": {
      "series": 48000,
-     "algenta_ms": 223902.068,
-     "statsforecast_ms": 388906.9879,
-     "ratio": 1.7369512991724578
+     "algenta_ms": 190030.247,
+     "statsforecast_ms": 351208.9489,
+     "ratio": 1.8481739325424338
     },
     "Monthly_Holt": {
      "series": 48000,
@@ -78,14 +78,14 @@
     "Weekly_Damped": {
      "series": 359,
      "algenta_ms": 435.408,
-     "statsforecast_ms": 2917.8788,
-     "ratio": 6.701481828537831
+     "statsforecast_ms": 2692.2055,
+     "ratio": 6.183178765663469
     },
     "Weekly_Holt": {
      "series": 359,
      "algenta_ms": 287.494,
-     "statsforecast_ms": 1022.7391,
-     "ratio": 3.5574276332723462
+     "statsforecast_ms": 995.37,
+     "ratio": 3.4622287769483884
     },
     "Daily_Damped": {
      "series": 4227,
@@ -95,9 +95,9 @@
     },
     "Daily_Holt": {
      "series": 4227,
-     "algenta_ms": 7878.806,
+     "algenta_ms": 7781.201,
      "statsforecast_ms": 27230.8223,
-     "ratio": 3.456211804174389
+     "ratio": 3.499565465536747
     },
     "Hourly_Damped": {
      "series": 414,
@@ -117,13 +117,47 @@
      "statsforecast_ms": 895.5943,
      "ratio": 3.452254811639677
     }
-   }
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 25.798828125,
+    "median": 65.99169921875,
+    "max": 112.30419921875,
+    "samples": 24
+   },
+   "totals": {
+    "Damped": {
+     "series": 100000,
+     "algenta_ms": 44732.055,
+     "statsforecast_ms": 209942.05659999998,
+     "ratio": 4.693324654992935
+    },
+    "Holt": {
+     "series": 100000,
+     "algenta_ms": 26611.418999999998,
+     "statsforecast_ms": 78023.1783,
+     "ratio": 2.9319435502481097
+    },
+    "ETSAAA": {
+     "series": 72414,
+     "algenta_ms": 222240.03900000002,
+     "statsforecast_ms": 422611.60839999997,
+     "ratio": 1.901599776087152
+    },
+    "all_rows": {
+     "algenta_ms": 293583.51300000004,
+     "statsforecast_ms": 710576.8433,
+     "ratio": 2.420356770170537
+    }
+   },
+   "weakest_row": "Monthly_ETSAAA",
+   "weakest_ratio": 1.8481739325424338
   },
   "matched_12_workers": {
    "a_workers": 12,
    "b_workers": 12,
    "b_dispatch": "batch",
-   "K_process_launches": 2,
+   "K_process_launches": 4,
    "load_1m": {
     "min": 213.6396484375,
     "median": 231.486328125,
@@ -134,21 +168,21 @@
    "rows": {
     "Yearly_Damped": {
      "series": 23000,
-     "algenta_ms": 1158.586,
+     "algenta_ms": 1106.371,
      "statsforecast_ms": 6673.3035,
-     "ratio": 5.759868926432738
+     "ratio": 6.031705006729207
     },
     "Yearly_Holt": {
      "series": 23000,
-     "algenta_ms": 568.217,
+     "algenta_ms": 511.116,
      "statsforecast_ms": 5706.2708,
-     "ratio": 10.042414781676719
+     "ratio": 11.164336080263581
     },
     "Quarterly_Damped": {
      "series": 24000,
-     "algenta_ms": 1538.177,
+     "algenta_ms": 1486.017,
      "statsforecast_ms": 9929.9411,
-     "ratio": 6.455655688519592
+     "ratio": 6.682252692936891
     },
     "Quarterly_ETSAAA": {
      "series": 24000,
@@ -182,15 +216,15 @@
     },
     "Weekly_Damped": {
      "series": 359,
-     "algenta_ms": 131.711,
+     "algenta_ms": 103.326,
      "statsforecast_ms": 7075.5418,
-     "ratio": 53.72020408318211
+     "ratio": 68.47784487931402
     },
     "Weekly_Holt": {
      "series": 359,
-     "algenta_ms": 49.068,
+     "algenta_ms": 43.263,
      "statsforecast_ms": 7597.4275,
-     "ratio": 154.83466821553762
+     "ratio": 175.61027899128587
     },
     "Daily_Damped": {
      "series": 4227,
@@ -206,9 +240,9 @@
     },
     "Hourly_Damped": {
      "series": 414,
-     "algenta_ms": 85.465,
+     "algenta_ms": 78.555,
      "statsforecast_ms": 5818.1538,
-     "ratio": 68.07645000877552
+     "ratio": 74.06471644071033
     },
     "Hourly_ETSAAA": {
      "series": 414,
@@ -218,11 +252,45 @@
     },
     "Hourly_Holt": {
      "series": 414,
-     "algenta_ms": 48.403,
+     "algenta_ms": 35.667,
      "statsforecast_ms": 5806.3399,
-     "ratio": 119.9582649835754
+     "ratio": 162.79305520509152
     }
-   }
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 69.38916015625,
+    "median": 243.81103515625,
+    "max": 254.36669921875,
+    "samples": 24
+   },
+   "totals": {
+    "Damped": {
+     "series": 100000,
+     "algenta_ms": 11441.412,
+     "statsforecast_ms": 84488.60269999999,
+     "ratio": 7.384455930788961
+    },
+    "Holt": {
+     "series": 100000,
+     "algenta_ms": 6830.192,
+     "statsforecast_ms": 55834.91989999999,
+     "ratio": 8.174721867262296
+    },
+    "ETSAAA": {
+     "series": 72414,
+     "algenta_ms": 43347.668,
+     "statsforecast_ms": 105566.7026,
+     "ratio": 2.435349061914934
+    },
+    "all_rows": {
+     "algenta_ms": 61619.272,
+     "statsforecast_ms": 245890.2252,
+     "ratio": 3.9904759861492685
+    }
+   },
+   "weakest_row": "Monthly_ETSAAA",
+   "weakest_ratio": 2.2248722372018963
   },
   "matched_16_workers": {
    "a_workers": 16,
@@ -694,46 +762,64 @@
  },
  "cold_exec_to_answer": {
   "Hourly_Damped": {
-   "K": 7,
-   "algenta_exec_to_answer_ms_min": 15.777083928696811,
+   "K": 14,
+   "algenta_exec_to_answer_ms_min": 14.447708032093942,
    "algenta_median": 17.719458090141416,
-   "statsforecast_exec_to_answer_ms_min": 2386.936791939661,
+   "statsforecast_exec_to_answer_ms_min": 1870.605624979362,
    "statsforecast_median": 2561.5936670219526,
-   "ratio_min": 151.29137949238392,
+   "ratio_min": 129.474212852587,
    "load_1m": {
     "min": 129.935546875,
     "median": 131.3232421875,
     "max": 132.2626953125
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 135.16162109375,
+    "median": 140.05078125,
+    "max": 158.890625
    }
   },
   "Hourly_ETSAAA": {
-   "K": 7,
-   "algenta_exec_to_answer_ms_min": 23.05808395612985,
+   "K": 14,
+   "algenta_exec_to_answer_ms_min": 22.65129203442484,
    "algenta_median": 25.437959004193544,
-   "statsforecast_exec_to_answer_ms_min": 2341.653916053474,
+   "statsforecast_exec_to_answer_ms_min": 1841.6835000971332,
    "statsforecast_median": 2434.288208023645,
-   "ratio_min": 101.55457498154176,
+   "ratio_min": 81.30589183602378,
    "load_1m": {
     "min": 136.828125,
     "median": 138.38037109375,
     "max": 138.84912109375
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 162.93505859375,
+    "median": 169.63818359375,
+    "max": 175.96142578125
    }
   },
   "Hourly_Holt": {
-   "K": 7,
-   "algenta_exec_to_answer_ms_min": 15.285457950085402,
+   "K": 14,
+   "algenta_exec_to_answer_ms_min": 13.546374975703657,
    "algenta_median": 19.552499987185,
-   "statsforecast_exec_to_answer_ms_min": 2362.9119580145925,
+   "statsforecast_exec_to_answer_ms_min": 1902.5670000119135,
    "statsforecast_median": 2640.3448750497773,
-   "ratio_min": 154.5856176328293,
+   "ratio_min": 140.448422801251,
    "load_1m": {
     "min": 131.8740234375,
     "median": 133.5888671875,
     "max": 137.802734375
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 158.890625,
+    "median": 161.89892578125,
+    "max": 162.93505859375
    }
   },
   "Monthly_Damped": {
-   "K": 7,
+   "K": 14,
    "algenta_exec_to_answer_ms_min": 66.00087496917695,
    "algenta_median": 74.23045800533146,
    "statsforecast_exec_to_answer_ms_min": 1760.0369580322877,
@@ -743,10 +829,16 @@
     "min": 102.4462890625,
     "median": 104.3818359375,
     "max": 105.373046875
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 210.419921875,
+    "median": 220.40966796875,
+    "max": 223.5791015625
    }
   },
   "Monthly_ETSAAA": {
-   "K": 7,
+   "K": 14,
    "algenta_exec_to_answer_ms_min": 67.87899998016655,
    "algenta_median": 80.93054103665054,
    "statsforecast_exec_to_answer_ms_min": 1858.1515830010176,
@@ -756,10 +848,16 @@
     "min": 106.0556640625,
     "median": 106.84423828125,
     "max": 107.251953125
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 250.23876953125,
+    "median": 257.28857421875,
+    "max": 259.22900390625
    }
   },
   "Monthly_Holt": {
-   "K": 7,
+   "K": 14,
    "algenta_exec_to_answer_ms_min": 73.8931669620797,
    "algenta_median": 76.6922920010984,
    "statsforecast_exec_to_answer_ms_min": 1866.5769998915493,
@@ -769,45 +867,69 @@
     "min": 103.35595703125,
     "median": 104.08349609375,
     "max": 105.3095703125
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 226.41552734375,
+    "median": 242.962890625,
+    "max": 246.61572265625
    }
   },
   "Quarterly_Damped": {
-   "K": 7,
+   "K": 14,
    "algenta_exec_to_answer_ms_min": 27.372875018045306,
    "algenta_median": 32.117291004396975,
-   "statsforecast_exec_to_answer_ms_min": 2602.320040925406,
+   "statsforecast_exec_to_answer_ms_min": 2004.3996670283377,
    "statsforecast_median": 3224.7114579658955,
-   "ratio_min": 95.0692990491445,
+   "ratio_min": 73.2257633042549,
    "load_1m": {
     "min": 134.3994140625,
     "median": 137.00830078125,
     "max": 137.4443359375
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 177.87353515625,
+    "median": 180.458984375,
+    "max": 183.6328125
    }
   },
   "Quarterly_ETSAAA": {
-   "K": 7,
-   "algenta_exec_to_answer_ms_min": 25.999417062848806,
+   "K": 14,
+   "algenta_exec_to_answer_ms_min": 22.62337494175881,
    "algenta_median": 29.68537504784763,
-   "statsforecast_exec_to_answer_ms_min": 3456.6362500190735,
+   "statsforecast_exec_to_answer_ms_min": 2073.2945420313627,
    "statsforecast_median": 7601.631999947131,
-   "ratio_min": 132.95052891621728,
+   "ratio_min": 91.64391021979758,
    "load_1m": {
     "min": 100.02685546875,
     "median": 103.16015625,
     "max": 109.0029296875
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 197.38818359375,
+    "median": 204.6474609375,
+    "max": 210.419921875
    }
   },
   "Quarterly_Holt": {
-   "K": 7,
-   "algenta_exec_to_answer_ms_min": 26.74266602844,
+   "K": 14,
+   "algenta_exec_to_answer_ms_min": 23.566916002891958,
    "algenta_median": 29.932666919194162,
-   "statsforecast_exec_to_answer_ms_min": 4986.017415998504,
+   "statsforecast_exec_to_answer_ms_min": 2244.810584001243,
    "statsforecast_median": 7438.010542071424,
-   "ratio_min": 186.44429133191238,
+   "ratio_min": 95.25262379370201,
    "load_1m": {
     "min": 112.04541015625,
     "median": 125.373046875,
     "max": 132.0615234375
+   },
+   "sessions": 2,
+   "load_1m_session2": {
+    "min": 183.6328125,
+    "median": 190.87109375,
+    "max": 193.99365234375
    }
   }
  },
@@ -1249,13 +1371,13 @@
   "definition": "Dominance = (a) accuracy equal or better AND strictly faster, or (b) compute equal or less AND strictly more accurate. A trade in which one axis is given up for the other is NOT dominance.",
   "statsforecast_2.1.1": {
    "dominance": true,
-   "basis": "Strictly faster on all 15 frequency-by-model rows at each of 3 matched thread settings (45/45), whole-corpus wall clock, min-of-K. Accuracy equal or better on all three models: ETS(A,A,A) identical to 2.0e-8 on 72,414/72,414 series (corpus OWA equal to 6 decimals); damped trend strictly more accurate on all six frequencies (0.878523 vs 0.879521); Holt level (12.789 sMAPE / 1.613 MASE both arms, 99,936 of 100,000 series within 1e-6) with a disclosed 1.0e-5 OWA deficit.",
-   "weakest_row": "Yearly Holt, 1 thread, 1.12x (1.86x when re-measured on a quiet machine)",
+   "basis": "Strictly faster on all 15 frequency-by-model rows at each of 3 matched thread settings (45/45), min over K=4 launch pairs at 1 thread and at 12 workers and K=2 at 16, whole-corpus wall clock, min-of-K. Accuracy equal or better on all three models: ETS(A,A,A) identical to 2.0e-8 on 72,414/72,414 series (corpus OWA equal to 6 decimals); damped trend strictly more accurate on all six frequencies (0.878523 vs 0.879521); Holt level (12.789 sMAPE / 1.613 MASE both arms, 99,936 of 100,000 series within 1e-6) with a disclosed 1.0e-5 OWA deficit.",
+   "weakest_row": "Monthly ETS(A,A,A), 1 thread, 1.85x \u2014 the largest single block of work in the corpus (48,000 series). An earlier single contended pass put Yearly Holt at 1.12x; over 4 launches that row's floor settles at 1.94x.",
    "headline_ratio_whole_corpus": {
-    "1_thread": 2.348,
-    "12_workers": 3.977,
+    "1_thread": 2.42,
+    "12_workers": 3.99,
     "16_workers": 3.407,
-    "own_best_vs_own_best": 3.828
+    "own_best_vs_own_best": 3.841
    }
   },
   "fforma_m4_rank_2": {
