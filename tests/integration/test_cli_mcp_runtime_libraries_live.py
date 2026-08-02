@@ -144,8 +144,8 @@ def main() -> int:
 
     def test_sanitized_contract() -> None:
         modules = runtime_modules()
-        assert len(modules) == 634
-        assert sum(len(module.functions) for module in modules) == 5981
+        assert len(modules) == 635
+        assert sum(len(module.functions) for module in modules) == 5983
         _assert_rollout_inventory(
             [
                 {
@@ -156,7 +156,7 @@ def main() -> int:
             ]
         )
 
-    check("Wheel contract exposes 634 modules and 5,981 functions", test_sanitized_contract)
+    check("Wheel contract exposes 635 modules and 5,983 functions", test_sanitized_contract)
 
     def test_runtime_health() -> None:
         health = runtime.health()

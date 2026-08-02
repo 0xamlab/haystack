@@ -1,0 +1,1225 @@
+"""
+metaldispatch.session — the resident Qwen3 decode session, dispatched through the batched C shim
+instead of `DeviceContext.enqueue_function`. Zero Python.
+
+@capability-module
+deterministic: true
+stateful: true
+batch_capable: false
+stream_capable: false
+seed_requirements: none
+supported_dtypes: float32
+backend: metal
+surfaces: none
+golden_vectors: mojo/tests/libs/test_metaldispatch_session.mojo
+benchmark: benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch.mojo
+version_introduced: 0.7.0
+deprecation_state: active
+@endcapability
+
+NOT a contract module. Every entry point here is private, and every launch is compile-time gated
+--------------------------------------------------------------------------------------------------
+Identical discipline to `residentk.session` (see that file's module docstring for the full
+reasoning): leading underscores keep this out of `apps/runtime/mojo_inventory.py`, and every
+function that would force shader codegen opens with `@parameter if not MB_GPU_BUILD: return
+<toolchain_absent>`. `MB_GPU_BUILD` keys off the exact same `-D ALGENTA_GPU` define
+`residentk.session.RESIDENT_GPU_BUILD` and `accel.gemm_metal.ACCEL_GPU_BUILD` do (imported directly
+from `residentk.session`, not redeclared — a second `is_defined` call reading the same flag is a
+value duplicated at two call sites for no reason, and rule 3's spirit is "don't restate an existing
+answer" as much as "don't restate an existing kernel").
+
+Why this package's buffers are NOT `residentk`'s `DeviceBuffer`s
+---------------------------------------------------------------------
+The batched shim needs to mark every buffer a dispatch touches as an in-use Metal resource
+(`useResource:usage:`) before the encoder that dispatch belongs to is committed — required by the
+proven ABI recipe (a buffer's ADDRESS, not a `setBuffer:` binding, is what a Mojo-compiled kernel's
+pointer argument actually reads, so Metal's automatic residency tracking never sees it touched
+unless told explicitly). That call needs a live `id<MTLBuffer>` Objective-C object. A prior,
+separate investigation (`.worktrees/metalffi`, Route A) proved that no such object is reachable from
+`DeviceContext`/`DeviceFunction`'s own handles via heap-scanning; the same is true of
+`DeviceBuffer` — MAX's C++ runtime does not expose one.
+
+So this package allocates its OWN resident buffers, through the shim
+(`metaldispatch.ffi._mb_alloc_buffer`), which DOES hand back a real `id<MTLBuffer>` (the shim holds
+the strong reference and marks it resident internally) alongside the raw `gpuAddress` a kernel's
+pointer argument binds to and a CPU-writable `contents` pointer for the one-time upload. The
+WEIGHT LAYOUT, the upload/transpose math, the KV-cache in-place write scheme and the 171-dispatch
+fusion plan are `residentk`'s own, reused exactly (`_narrow_into`/`_narrow_transposed_into` below
+are the same arithmetic as `residentk.session`'s, ported to write through a raw pointer instead of
+through `DeviceBuffer.map_to_host()` — MAX's own upload primitive `map_to_host()` is itself
+unavailable for a buffer this package allocated outside MAX). Only WHERE the resident memory lives,
+and HOW a dispatch reaches it, differ from `residentk.session` — never the kernels themselves
+(`residentk.kernels`' functions are imported directly, never copied) and never the fusion grouping,
+grid shapes or KV-cache scheme (`_ceil_div`, `_TG`, `_SUBS`, `_LM_BLOCKS`, `_TILE` are the exact same
+constants `residentk.session` uses, several imported directly).
+
+The pipeline table is discovered by NAME, not by call order
+----------------------------------------------------------------
+`metaldispatch.ffi._mb_open_session` extracts every embedded `.metallib` from this binary's own
+`__TEXT,__const` and builds one pipeline per blob, in the order the blobs happen to appear —
+measured to NOT match the order `compile_function_unchecked` was called in (the two were compared
+directly while building this package; they differ). So `_resolve_pipelines` below reads each
+pipeline's real Metal function name back from the shim and classifies it by substring against
+`residentk.kernels`' own function names, once, at session open.
+
+Why `_MBQwen3F16` is a SEPARATE binary's struct, not a second set of roles in the same one
+------------------------------------------------------------------------------------------------
+Measured directly while adding the fp16 arm this package's own `#505`-combination task called for:
+Mojo's Metal AIR function name (what `algenta_pipeline_name` reads back) is truncated to a short,
+shared, human-readable prefix followed by a per-specialization hash suffix — e.g. the Float32 and
+Float16 twins of `_norm_gemv_kernel` both surface as `residentk_kernels__norm_gemv_k6A6A6A6A_<hash>`
+with DIFFERENT (opaque) hashes but an IDENTICAL visible prefix. `_classify_pipeline`'s substring
+match cannot tell them apart if both are compiled into the same binary — there would be two
+pipelines answering to `_ROLE_NORM_GEMV` with no text-based way to say which is which. Rather than
+add a runtime discrimination probe (dispatch each candidate against a known bit pattern and check
+which one reads it as Float32), `_MBQwen3F16`'s constructor simply never compiles the Float32 GEMV-
+shaped kernels at all — its binary (`qwen3_generate_batch_f16.mojo`) embeds exactly one pipeline per
+role, the same invariant `_MBQwen3`'s binary already relies on, so the existing name-substring
+classifier needs no changes and no new ambiguity is possible. `_qk_rope_write_kernel`, `_sdpa_kernel`
+and `_argmax_reduce_kernel` have no fp16 twin (`residentk`'s own fp16 session reuses them
+unmodified — see `_ResidentQwen3F16`'s own field list) so both binaries embed the identical Float32
+versions of those three, harmlessly.
+"""
+
+from std.builtin.type_aliases import MutAnyOrigin
+from std.sys import has_accelerator
+from residentk.contract import RESIDENT_MAX_CONTEXT
+from residentk.kernels import (
+    _TG,
+    _SUBS,
+    _argmax_reduce_kernel,
+    _embed_row_kernel,
+    _embed_row_kernel_f16,
+    _gemv_accum_kernel,
+    _gemv_accum_kernel_f16,
+    _lmhead_argmax_kernel,
+    _lmhead_argmax_kernel_f16,
+    _norm_gemv2_swiglu_kernel,
+    _norm_gemv2_swiglu_kernel_f16,
+    _norm_gemv_kernel,
+    _norm_gemv_kernel_f16,
+    _qk_rope_write_kernel,
+    _sdpa_kernel,
+)
+from residentk.session import RESIDENT_GPU_BUILD
+from metaldispatch.contract import (
+    MB_ERR_BUFFER_ALLOC_FAILED,
+    MB_ERR_CONTEXT_FULL,
+    MB_ERR_DISPATCH_COUNT_MISMATCH,
+    MB_ERR_DISPATCH_FAILED,
+    MB_ERR_NO_DEVICE,
+    MB_ERR_PIPELINE_NOT_FOUND,
+    MB_ERR_SESSION_OPEN_FAILED,
+    MB_ERR_SHADER_TOOLCHAIN_ABSENT,
+    MB_ERR_UPLOAD_LENGTH,
+    MB_OK,
+    metaldispatch_dispatch_budget,
+)
+from metaldispatch.ffi import (
+    _mb_alloc_buffer,
+    _mb_alloc_descriptors,
+    _mb_open_session,
+    _mb_pipeline_count,
+    _mb_pipeline_name,
+    _mb_run_token,
+    _mb_set_arg_f32,
+    _mb_set_arg_int,
+    _mb_set_arg_ptr,
+    _mb_set_header,
+)
+
+comptime MB_GPU_BUILD: Bool = RESIDENT_GPU_BUILD
+"""Reuses `residentk.session`'s own build flag — see the module docstring."""
+
+comptime _LM_BLOCKS: Int = 2048
+"""Same value, same reason, as `residentk.session._LM_BLOCKS` (imported by value, not import,
+because `residentk.session._LM_BLOCKS` is itself a module-private `comptime` and not re-exported;
+restating a single already-justified constant is not the kind of duplication rule 3 warns about --
+the ARITHMETIC that constant embodies is not repeated, only its value)."""
+
+comptime _TILE: Int = 64
+"""Host-side transpose tile — see `residentk.session._TILE`'s docstring for the measurement."""
+
+comptime _ROLE_EMBED: Int = 0
+comptime _ROLE_NORM_GEMV: Int = 1
+comptime _ROLE_GEMV_ACCUM: Int = 2
+comptime _ROLE_NORM_GEMV2_SWIGLU: Int = 3
+comptime _ROLE_QK_ROPE: Int = 4
+comptime _ROLE_SDPA: Int = 5
+comptime _ROLE_LMHEAD_ARGMAX: Int = 6
+comptime _ROLE_ARGMAX_REDUCE: Int = 7
+comptime _N_ROLES: Int = 8
+
+
+fn _ceil_div(a: Int, b: Int) -> Int:
+    return (a + b - 1) // b
+
+
+fn _classify_pipeline(name: String) -> Int:
+    """Which of the eight `residentk.kernels` functions a discovered pipeline's Metal function name
+    belongs to, by substring match against the (possibly truncated) mangled name. Order matters:
+    `norm_gemv2` is checked before the plain `norm_gemv` it would otherwise also match, and
+    `lmhead` before the bare `argmax` that `_lmhead_argmax_kernel`'s own name also contains."""
+    if name.find("embed_row") >= 0:
+        return _ROLE_EMBED
+    if name.find("norm_gemv2") >= 0:
+        return _ROLE_NORM_GEMV2_SWIGLU
+    if name.find("norm_gemv") >= 0:
+        return _ROLE_NORM_GEMV
+    if name.find("gemv_accum") >= 0:
+        return _ROLE_GEMV_ACCUM
+    if name.find("qk_rope") >= 0:
+        return _ROLE_QK_ROPE
+    if name.find("sdpa") >= 0:
+        return _ROLE_SDPA
+    if name.find("lmhead") >= 0:
+        return _ROLE_LMHEAD_ARGMAX
+    if name.find("argmax_redu") >= 0:
+        return _ROLE_ARGMAX_REDUCE
+    return -1
+
+
+@fieldwise_init
+struct _StepOut(Copyable, Movable):
+    var token_id: Int
+    var logit: Float64
+    var dispatches: Int
+    var status: Int
+
+
+@fieldwise_init
+struct _MBLayerBuf(Copyable, Movable):
+    """One transformer layer's resident buffers: gpuAddress (for kernel args) + CPU pointer (for
+    upload), one pair per tensor. Same four-matrix packing `residentk.session._LayerGpu` uses."""
+
+    var ln1_addr: UInt64
+    var ln1_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ln2_addr: UInt64
+    var ln2_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qn_addr: UInt64
+    var qn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var kn_addr: UInt64
+    var kn_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_qkv_addr: UInt64
+    var w_qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_o_addr: UInt64
+    var w_o_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_gu_addr: UInt64
+    var w_gu_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var w_down_addr: UInt64
+    var w_down_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var ck_addr: UInt64
+    var ck_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cv_addr: UInt64
+    var cv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+
+fn _narrow_into(
+    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
+) raises -> Int:
+    """Narrow `n` Float64 elements into a raw Float32 device pointer at `dst_off`. Same one-time
+    conversion `residentk.session._narrow_into` performs, ported from `DeviceBuffer.map_to_host()`
+    to a plain pointer write (Shared storage is CPU-visible with no map/unmap step)."""
+    if len(src) != n:
+        return MB_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var dp = dst.bitcast[Float32]()
+    for i in range(n):
+        dp[dst_off + i] = Float32(sp[i])
+    return MB_OK
+
+
+fn _narrow_transposed_into(
+    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
+) raises -> Int:
+    """Narrow and transpose `[k_in, n_out]` Float64 into `[n_out, k_in]` Float32 at row `row_off`.
+    Same blocked-tile arithmetic as `residentk.session._narrow_transposed_into` — see that
+    function's docstring for why the layout and the tiling both matter."""
+    if len(src) != k_in * n_out:
+        return MB_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var dp = dst.bitcast[Float32]()
+    var i0 = 0
+    while i0 < k_in:
+        var i1 = i0 + _TILE
+        if i1 > k_in:
+            i1 = k_in
+        var j0 = 0
+        while j0 < n_out:
+            var j1 = j0 + _TILE
+            if j1 > n_out:
+                j1 = n_out
+            for j in range(j0, j1):
+                var dbase = (row_off + j) * k_in
+                for i in range(i0, i1):
+                    dp[dbase + i] = Float32(sp[i * n_out + j])
+            j0 = j1
+        i0 = i1
+    return MB_OK
+
+
+fn _narrow_into_f16(
+    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], n: Int, dst_off: Int
+) raises -> Int:
+    """The fp16 twin of `_narrow_into`: Float64 -> Float16, no transpose. Same arithmetic as
+    `residentk.session._narrow_into_f16`, ported from `DeviceBuffer.map_to_host()` to a plain
+    pointer write (Shared storage needs no map/unmap step)."""
+    if len(src) != n:
+        return MB_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var dp = dst.bitcast[Float16]()
+    for i in range(n):
+        dp[dst_off + i] = Float16(Float32(sp[i]))
+    return MB_OK
+
+
+fn _narrow_transposed_into_f16(
+    dst: UnsafePointer[UInt8, origin=MutAnyOrigin], src: List[Float64], k_in: Int, n_out: Int, row_off: Int
+) raises -> Int:
+    """The fp16 twin of `_narrow_transposed_into`: Float64 -> Float16, WITH the same blocked
+    `[k_in, n_out]` -> `[n_out, k_in]` transpose. Same arithmetic as
+    `residentk.session._narrow_transposed_into_f16`, ported to a raw pointer."""
+    if len(src) != k_in * n_out:
+        return MB_ERR_UPLOAD_LENGTH
+    var sp = src.unsafe_ptr()
+    var dp = dst.bitcast[Float16]()
+    var i0 = 0
+    while i0 < k_in:
+        var i1 = i0 + _TILE
+        if i1 > k_in:
+            i1 = k_in
+        var j0 = 0
+        while j0 < n_out:
+            var j1 = j0 + _TILE
+            if j1 > n_out:
+                j1 = n_out
+            for j in range(j0, j1):
+                var dbase = (row_off + j) * k_in
+                for i in range(i0, i1):
+                    dp[dbase + i] = Float16(Float32(sp[i * n_out + j]))
+            j0 = j1
+        i0 = i1
+    return MB_OK
+
+
+struct _MBQwen3(Movable):
+    """Everything a batched-shim decode session holds, alive across the whole generation. See the
+    module docstring for why these are shim-allocated Metal buffers rather than `residentk`'s own
+    `DeviceBuffer`s."""
+
+    var d_model: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var n_layers: Int
+    var vocab: Int
+    var max_ctx: Int
+    var eps: Float32
+    var scale: Float32
+
+    var pipeline_idx: List[Int]  # role -> discovered pipeline index, length _N_ROLES
+
+    var layers: List[_MBLayerBuf]
+    var embed_addr: UInt64
+    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_addr: UInt64
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_addr: UInt64
+    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_addr: UInt64
+    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var hidden_addr: UInt64
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_addr: UInt64
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_addr: UInt64
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_addr: UInt64
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_addr: UInt64
+    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_addr: UInt64
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_addr: UInt64
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_addr: UInt64
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_addr: UInt64
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors: Int
+    var token_id_offset: Int      # arg slot, desc 0 (embed)
+    var pos_offsets: List[Int]    # one per layer, the qk_rope descriptor's `pos` arg
+    var nkeys_offsets: List[Int]  # one per layer, the sdpa descriptor's `n_keys` arg
+
+    fn __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        """Open the shim session, resolve every pipeline by name, allocate every resident buffer,
+        and build the (mostly-static) descriptor array. Called only from inside a `@parameter if
+        MB_GPU_BUILD` branch — see the module docstring on why a constructor cannot carry the gate
+        itself."""
+        self.d_model = d_model
+        self.h_q = h_q
+        self.h_kv = h_kv
+        self.d_head = d_head
+        self.d_ff = d_ff
+        self.n_layers = n_layers
+        self.vocab = vocab
+        self.max_ctx = max_ctx
+        self.eps = Float32(eps)
+        self.scale = Float32(scale)
+
+        # ── force every kernel to be compiled + embedded in THIS binary's __TEXT,__const ──
+        # `compile_function_unchecked` forces codegen; the DeviceContext it needs exists only for
+        # that side effect and is dropped immediately after — this package does not dispatch
+        # through it, the shim does.
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_embed_row_kernel]()
+        _ = cctx.compile_function_unchecked[_norm_gemv_kernel]()
+        _ = cctx.compile_function_unchecked[_gemv_accum_kernel]()
+        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel]()
+        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
+        _ = cctx.compile_function_unchecked[_sdpa_kernel]()
+        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel]()
+        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+
+        var opened = _mb_open_session()
+        if opened < 0:
+            raise Error("metaldispatch: algenta_open_session failed, status=" + String(MB_ERR_SESSION_OPEN_FAILED))
+
+        self.pipeline_idx = List[Int]()
+        for _ in range(_N_ROLES):
+            self.pipeline_idx.append(-1)
+        var count = _mb_pipeline_count()
+        for i in range(count):
+            var name = String()
+            _ = _mb_pipeline_name(i, name)
+            var role = _classify_pipeline(name)
+            if role >= 0:
+                self.pipeline_idx[role] = i
+        for role in range(_N_ROLES):
+            if self.pipeline_idx[role] < 0:
+                raise Error(
+                    "metaldispatch: pipeline role " + String(role)
+                    + " not found among " + String(count) + " discovered pipelines, status="
+                    + String(MB_ERR_PIPELINE_NOT_FOUND)
+                )
+
+        # ── resident buffers, identical shapes to residentk.session._ResidentQwen3 ──
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        var n_pairs = d_head // 2
+
+        self.layers = List[_MBLayerBuf]()
+        for _ in range(n_layers):
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
+            if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln2)")
+            if _mb_alloc_buffer(d_head * 4, qna, qnp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (qn)")
+            if _mb_alloc_buffer(d_head * 4, kna, knp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (kn)")
+            if _mb_alloc_buffer(n_qkv * d_model * 4, wqkva, wqkvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv)")
+            if _mb_alloc_buffer(d_model * h_q * d_head * 4, woa, wop) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o)")
+            if _mb_alloc_buffer(2 * d_ff * d_model * 4, wgua, wgup) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu)")
+            if _mb_alloc_buffer(d_model * d_ff * 4, wdowna, wdownp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cka, ckp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ck)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cva, cvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (cv)")
+            self.layers.append(_MBLayerBuf(
+                ln1a, ln1p, ln2a, ln2p, qna, qnp, kna, knp, wqkva, wqkvp,
+                woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
+            ))
+
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(vocab * d_model * 4, self.embed_addr, self.embed_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed)")
+        if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (final_norm)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.cos_addr, self.cos_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (cos)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (sin)")
+
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (hidden)")
+        if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (qkv)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.q_rot_addr, self.q_rot_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (q_rot)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.attn_out_addr, self.attn_out_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn_out)")
+        if _mb_alloc_buffer(d_ff * 4, self.act_addr, self.act_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (act)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_val_addr, self.blk_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_val)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_idx_addr, self.blk_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_idx)")
+        if _mb_alloc_buffer(4, self.out_val_addr, self.out_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_val)")
+        if _mb_alloc_buffer(4, self.out_idx_addr, self.out_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_idx)")
+
+        self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
+        self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
+        self.token_id_offset = -1
+        self.pos_offsets = List[Int]()
+        self.nkeys_offsets = List[Int]()
+        self._build_descriptors(n_qkv)
+
+    fn _build_descriptors(mut self, n_qkv: Int) raises:
+        """Build every one of `n_descriptors` dispatch descriptors ONCE. `token_id`, `pos` and
+        `n_keys` are written as placeholder `0`; `step()` patches only those slots per call — see
+        the module docstring's pipeline-discovery note and `residentk.session.step`'s own dispatch
+        sequence, which this mirrors exactly, one descriptor per launch there."""
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 4)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.embed_addr)
+        _mb_set_arg_int(self.descriptors, d, 2, 0)  # token_id, patched per step
+        self.token_id_offset = d
+        _mb_set_arg_int(self.descriptors, d, 3, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 5, n_qkv)
+            _mb_set_arg_f32(self.descriptors, d, 6, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors, d, 8, 0)  # pos, patched per step
+            self.pos_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            d += 1
+
+            _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, 0)  # n_keys, patched per step
+            self.nkeys_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 5, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 6, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 7, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 8, self.scale)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 5,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_o_addr)
+            _mb_set_arg_int(self.descriptors, d, 3, n_q)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_gu_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_ff)
+            _mb_set_arg_f32(self.descriptors, d, 6, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 5,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_down_addr)
+            _mb_set_arg_int(self.descriptors, d, 3, self.d_ff)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 9)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 4, self.embed_addr)
+        _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+        _mb_set_arg_int(self.descriptors, d, 6, self.vocab)
+        _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+        _mb_set_arg_int(self.descriptors, d, 8, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors:
+            raise Error(
+                "metaldispatch: built " + String(d) + " descriptors but the budget says "
+                + String(self.n_descriptors) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    fn device_name(self) -> String:
+        return "metal (batched shim)"
+
+    fn dispatch_budget(self) -> Int:
+        return self.n_descriptors
+
+    fn upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return MB_ERR_CONTEXT_FULL
+        var s = _narrow_into(self.embed_ptr, embed, self.vocab * self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(self.final_norm_ptr, final_norm, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return MB_ERR_UPLOAD_LENGTH
+        var cos_f = self.cos_ptr.bitcast[Float32]()
+        var sin_f = self.sin_ptr.bitcast[Float32]()
+        for i in range(n_pos * n_pairs):
+            cos_f[i] = Float32(cos_t[i])
+            sin_f[i] = Float32(sin_t[i])
+        return MB_OK
+
+    fn upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        if layer < 0 or layer >= self.n_layers:
+            return MB_ERR_UPLOAD_LENGTH
+        ref lw = self.layers[layer]
+        var s = _narrow_into(lw.ln1_ptr, ln1, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.ln2_ptr, ln2, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.qn_ptr, qn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.kn_ptr, kn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        s = _narrow_transposed_into(lw.w_qkv_ptr, wq, self.d_model, n_q, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_qkv_ptr, wk, self.d_model, n_kv, n_q)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_qkv_ptr, wv, self.d_model, n_kv, n_q + n_kv)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_o_ptr, wo, n_q, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_gu_ptr, wgate, self.d_model, self.d_ff, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_gu_ptr, wup, self.d_model, self.d_ff, self.d_ff)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into(lw.w_down_ptr, wdown, self.d_ff, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        return MB_OK
+
+    fn seal(mut self) -> Int:
+        """No-op: Shared-storage buffers are CPU/GPU coherent as soon as they're written, unlike
+        `residentk.session.seal`'s `ctx.synchronize()` drain of MAX's own upload queue. Kept as a
+        function so the two sessions' driver code reads identically."""
+        return MB_OK
+
+    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """ONE token, dispatched as ONE call into the shim. Patches the small set of per-token-
+        varying scalar argument slots (`token_id` once, `pos`/`n_keys` once per layer — the VALUES
+        are the same across all layers of one step, only the identity of which descriptor holds
+        them differs), then issues every descriptor behind a single command buffer/encoder/commit/
+        wait inside `algenta_run_token`."""
+
+        @parameter
+        if not MB_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
+
+            _mb_set_arg_int(self.descriptors, self.token_id_offset, 2, token_id)
+            var n_keys = pos + 1
+            for layer in range(self.n_layers):
+                _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
+                _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+
+            var rc = _mb_run_token(self.descriptors, self.n_descriptors)
+            if rc != 0:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+
+            var tok = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+            var lg = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            return _StepOut(tok, lg, self.n_descriptors, MB_OK)
+
+
+struct _MBQwen3F16(Movable):
+    """The fp16-weight twin of `_MBQwen3`: identical descriptor plan, identical `step()` contract,
+    dispatched through the SAME batched shim — the only difference is that the four GEMV weight
+    matrices per layer plus the tied `embed`/lm_head table are resident as Float16 rather than
+    Float32, read through `residentk.kernels`' `_f16` twins. Mirrors
+    `residentk.session._ResidentQwen3F16` exactly (mixed precision: activations, the KV cache, norm
+    gains and RoPE tables all stay Float32 — see that struct's own docstring for why).
+
+    MUST be built into its OWN binary (`qwen3_generate_batch_f16.mojo`), never alongside
+    `_MBQwen3` in the same one — see the module docstring's "separate binary" section for why:
+    compiling both a role's Float32 and Float16 kernel into the same binary makes the two
+    pipelines' truncated Metal names collide, and `_classify_pipeline` has no way to tell them
+    apart. This struct's constructor therefore never calls `compile_function_unchecked` on
+    `_norm_gemv_kernel`/`_gemv_accum_kernel`/`_norm_gemv2_swiglu_kernel`/`_lmhead_argmax_kernel`/
+    `_embed_row_kernel` (the Float32 GEMV-shaped kernels) — only their `_f16` twins, plus the three
+    shared kernels (`_qk_rope_write_kernel`, `_sdpa_kernel`, `_argmax_reduce_kernel`) that have no
+    fp16 variant at all, exactly as `_ResidentQwen3F16` compiles them.
+    """
+
+    var d_model: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var n_layers: Int
+    var vocab: Int
+    var max_ctx: Int
+    var eps: Float32
+    var scale: Float32
+
+    var pipeline_idx: List[Int]  # role -> discovered pipeline index, length _N_ROLES
+
+    var layers: List[_MBLayerBuf]
+    var embed_addr: UInt64
+    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_addr: UInt64
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_addr: UInt64
+    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_addr: UInt64
+    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var hidden_addr: UInt64
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_addr: UInt64
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_addr: UInt64
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_addr: UInt64
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_addr: UInt64
+    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_addr: UInt64
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_addr: UInt64
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_addr: UInt64
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_addr: UInt64
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors: Int
+    var token_id_offset: Int
+    var pos_offsets: List[Int]
+    var nkeys_offsets: List[Int]
+
+    fn __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        self.d_model = d_model
+        self.h_q = h_q
+        self.h_kv = h_kv
+        self.d_head = d_head
+        self.d_ff = d_ff
+        self.n_layers = n_layers
+        self.vocab = vocab
+        self.max_ctx = max_ctx
+        self.eps = Float32(eps)
+        self.scale = Float32(scale)
+
+        # ── force every kernel THIS ARM needs to be compiled + embedded in THIS binary's
+        # __TEXT,__const — the fp16 GEMV-shaped twins plus the three kernels with no fp16 variant.
+        # Deliberately NEVER the Float32 GEMV-shaped kernels — see the struct docstring.
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_embed_row_kernel_f16]()
+        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_f16]()
+        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_f16]()
+        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_f16]()
+        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
+        _ = cctx.compile_function_unchecked[_sdpa_kernel]()
+        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_f16]()
+        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel]()
+
+        var opened = _mb_open_session()
+        if opened < 0:
+            raise Error("metaldispatch: algenta_open_session failed, status=" + String(MB_ERR_SESSION_OPEN_FAILED))
+
+        self.pipeline_idx = List[Int]()
+        for _ in range(_N_ROLES):
+            self.pipeline_idx.append(-1)
+        var count = _mb_pipeline_count()
+        for i in range(count):
+            var name = String()
+            _ = _mb_pipeline_name(i, name)
+            var role = _classify_pipeline(name)
+            if role >= 0:
+                self.pipeline_idx[role] = i
+        for role in range(_N_ROLES):
+            if self.pipeline_idx[role] < 0:
+                raise Error(
+                    "metaldispatch: pipeline role " + String(role)
+                    + " not found among " + String(count) + " discovered pipelines, status="
+                    + String(MB_ERR_PIPELINE_NOT_FOUND)
+                )
+
+        # ── resident buffers: SAME shapes as _MBQwen3, but the four GEMV weight matrices per
+        # layer and `embed` are half the byte size (Float16, 2 bytes/element, vs Float32's 4).
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        var n_pairs = d_head // 2
+
+        self.layers = List[_MBLayerBuf]()
+        for _ in range(n_layers):
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
+            if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln2)")
+            if _mb_alloc_buffer(d_head * 4, qna, qnp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (qn)")
+            if _mb_alloc_buffer(d_head * 4, kna, knp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (kn)")
+            if _mb_alloc_buffer(n_qkv * d_model * 2, wqkva, wqkvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv f16)")
+            if _mb_alloc_buffer(d_model * h_q * d_head * 2, woa, wop) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o f16)")
+            if _mb_alloc_buffer(2 * d_ff * d_model * 2, wgua, wgup) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu f16)")
+            if _mb_alloc_buffer(d_model * d_ff * 2, wdowna, wdownp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down f16)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cka, ckp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ck)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cva, cvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (cv)")
+            self.layers.append(_MBLayerBuf(
+                ln1a, ln1p, ln2a, ln2p, qna, qnp, kna, knp, wqkva, wqkvp,
+                woa, wop, wgua, wgup, wdowna, wdownp, cka, ckp, cva, cvp,
+            ))
+
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(vocab * d_model * 2, self.embed_addr, self.embed_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed f16)")
+        if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (final_norm)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.cos_addr, self.cos_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (cos)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (sin)")
+
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (hidden)")
+        if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (qkv)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.q_rot_addr, self.q_rot_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (q_rot)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.attn_out_addr, self.attn_out_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn_out)")
+        if _mb_alloc_buffer(d_ff * 4, self.act_addr, self.act_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (act)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_val_addr, self.blk_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_val)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_idx_addr, self.blk_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_idx)")
+        if _mb_alloc_buffer(4, self.out_val_addr, self.out_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_val)")
+        if _mb_alloc_buffer(4, self.out_idx_addr, self.out_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_idx)")
+
+        self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
+        self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
+        self.token_id_offset = -1
+        self.pos_offsets = List[Int]()
+        self.nkeys_offsets = List[Int]()
+        self._build_descriptors(n_qkv)
+
+    fn _build_descriptors(mut self, n_qkv: Int) raises:
+        """Byte-for-byte the same descriptor plan as `_MBQwen3._build_descriptors` — same roles,
+        same grid/threadgroup shapes, same argument SLOTS. Only the buffer addresses bound at each
+        pointer slot differ (the fp16-sized ones above); a kernel argument slot's tag is still
+        `MB_TAG_PTR` either way, since the shim binds a pointer argument as an address VALUE
+        regardless of what the address points at."""
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 4)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.embed_addr)
+        _mb_set_arg_int(self.descriptors, d, 2, 0)  # token_id, patched per step
+        self.token_id_offset = d
+        _mb_set_arg_int(self.descriptors, d, 3, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 5, n_qkv)
+            _mb_set_arg_f32(self.descriptors, d, 6, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors, d, 8, 0)  # pos, patched per step
+            self.pos_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            d += 1
+
+            _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, 0)  # n_keys, patched per step
+            self.nkeys_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 5, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 6, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 7, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 8, self.scale)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 5,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_o_addr)
+            _mb_set_arg_int(self.descriptors, d, 3, n_q)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 7,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_gu_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_ff)
+            _mb_set_arg_f32(self.descriptors, d, 6, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 5,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_down_addr)
+            _mb_set_arg_int(self.descriptors, d, 3, self.d_ff)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 9)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 4, self.embed_addr)
+        _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+        _mb_set_arg_int(self.descriptors, d, 6, self.vocab)
+        _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+        _mb_set_arg_int(self.descriptors, d, 8, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors:
+            raise Error(
+                "metaldispatch: built " + String(d) + " descriptors but the budget says "
+                + String(self.n_descriptors) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    fn device_name(self) -> String:
+        return "metal (batched shim, fp16 weights)"
+
+    fn dispatch_budget(self) -> Int:
+        return self.n_descriptors
+
+    fn upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        """The tied embedding/lm_head table narrowed to Float16; the final norm gain and RoPE
+        tables stay Float32 — same split as `_ResidentQwen3F16.upload_globals`."""
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return MB_ERR_CONTEXT_FULL
+        var s = _narrow_into_f16(self.embed_ptr, embed, self.vocab * self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(self.final_norm_ptr, final_norm, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return MB_ERR_UPLOAD_LENGTH
+        var cos_f = self.cos_ptr.bitcast[Float32]()
+        var sin_f = self.sin_ptr.bitcast[Float32]()
+        for i in range(n_pos * n_pairs):
+            cos_f[i] = Float32(cos_t[i])
+            sin_f[i] = Float32(sin_t[i])
+        return MB_OK
+
+    fn upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        """Norm gains narrowed to Float32 exactly as `_MBQwen3.upload_layer` does; the four GEMV
+        weight matrices narrowed (and transposed) to Float16 instead."""
+        if layer < 0 or layer >= self.n_layers:
+            return MB_ERR_UPLOAD_LENGTH
+        ref lw = self.layers[layer]
+        var s = _narrow_into(lw.ln1_ptr, ln1, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.ln2_ptr, ln2, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.qn_ptr, qn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.kn_ptr, kn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        s = _narrow_transposed_into_f16(lw.w_qkv_ptr, wq, self.d_model, n_q, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_qkv_ptr, wk, self.d_model, n_kv, n_q)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_qkv_ptr, wv, self.d_model, n_kv, n_q + n_kv)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_o_ptr, wo, n_q, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_gu_ptr, wgate, self.d_model, self.d_ff, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_gu_ptr, wup, self.d_model, self.d_ff, self.d_ff)
+        if s != MB_OK:
+            return s
+        s = _narrow_transposed_into_f16(lw.w_down_ptr, wdown, self.d_ff, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        return MB_OK
+
+    fn seal(mut self) -> Int:
+        return MB_OK
+
+    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """Byte-for-byte `_MBQwen3.step`'s own body — see that function's docstring. Duplicated
+        rather than shared because Mojo has no common base for two structs with different field
+        sets to dispatch through; the STEPS taken are identical, only the resident buffers a few of
+        this struct's OWN fields point at differ."""
+
+        @parameter
+        if not MB_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
+
+            _mb_set_arg_int(self.descriptors, self.token_id_offset, 2, token_id)
+            var n_keys = pos + 1
+            for layer in range(self.n_layers):
+                _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
+                _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+
+            var rc = _mb_run_token(self.descriptors, self.n_descriptors)
+            if rc != 0:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+
+            var tok = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+            var lg = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            return _StepOut(tok, lg, self.n_descriptors, MB_OK)
+
+
+fn _mb_preflight(
+    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+    n_layers: Int, n_prompt: Int, n_new: Int, max_ctx: Int, eps: Float64, scale: Float64,
+) -> Int:
+    """Every refusal a caller can hit, answered before a device or the shim is touched. Reuses
+    `residentk`'s own shape/context checks (rule 3) rather than restating them."""
+    from residentk.contract import RESIDENT_MAX_CONTEXT, residentk_context_check, residentk_dims_check
+    from residentk.contract import RESIDENT_OK as _R_OK
+
+    var shape = residentk_dims_check(d_model, h_q, h_kv, d_head, d_ff)
+    if shape != _R_OK:
+        return shape
+    if n_layers < 1:
+        return MB_ERR_UPLOAD_LENGTH
+    var ctxs = residentk_context_check(n_prompt, n_new, max_ctx)
+    if ctxs != _R_OK:
+        return ctxs
+    if max_ctx > RESIDENT_MAX_CONTEXT:
+        return MB_ERR_CONTEXT_FULL
+    if eps <= 0.0 or scale <= 0.0:
+        return MB_ERR_UPLOAD_LENGTH
+
+    @parameter
+    if not MB_GPU_BUILD:
+        return MB_ERR_SHADER_TOOLCHAIN_ABSENT
+    if not has_accelerator():
+        return MB_ERR_NO_DEVICE
+    return MB_OK

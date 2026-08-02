@@ -3954,6 +3954,11 @@ from metabolomics import (
     metabolic_distance as _metabolomics__metabolic_distance,
 )
 
+from metaldispatch.contract import (
+    metaldispatch_status_name as _metaldispatch_contract__metaldispatch_status_name,
+    metaldispatch_dispatch_budget as _metaldispatch_contract__metaldispatch_dispatch_budget,
+)
+
 from metallurgy import (
     hall_petch as _metallurgy__hall_petch,
     johnson_cook_flow_stress as _metallurgy__johnson_cook_flow_stress,
@@ -85824,6 +85829,45 @@ fn _dispatch_metabolomics(function_name: String, args_array: String) raises -> S
         "Function '" + function_name + "' is not registered for module metabolomics."
     )
 
+fn _dispatch_metaldispatch__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "metaldispatch_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_contract__metaldispatch_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.contract.metaldispatch_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.contract.metaldispatch_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "metaldispatch_dispatch_budget":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _metaldispatch_contract__metaldispatch_dispatch_budget(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.contract.metaldispatch_dispatch_budget."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.contract.metaldispatch_dispatch_budget expected 1 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module metaldispatch.contract."
+    )
+
 fn _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hall_petch":
@@ -152376,6 +152420,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_memory_system(function_name, args_array)
     if module_name == "metabolomics":
         return _dispatch_metabolomics(function_name, args_array)
+    if module_name == "metaldispatch.contract":
+        return _dispatch_metaldispatch__contract(function_name, args_array)
     if module_name == "metallurgy":
         return _dispatch_metallurgy(function_name, args_array)
     if module_name == "meteorology":

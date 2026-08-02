@@ -39,7 +39,7 @@ does not use a Python compute fallback or print a synthetic speedup.
 
 ## Runtime libraries
 
-The installed contract contains 634 modules and 5,981 callable functions.
+The installed contract contains 635 modules and 5,983 callable functions.
 Discover and execute them without starting another service:
 
 ```bash

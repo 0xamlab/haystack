@@ -1,0 +1,255 @@
+/* batch_shim.m -- the ONE C-shim call per token this package exists to prove.
+ *
+ * Compiled to a .o and linked into the Mojo binary via `-Xlinker <path-to-batch_shim.o>`, exactly
+ * the linker-object mechanism `.worktrees/metalffi/benchmarks/llm_smoke/metal_ffi_probe/objc_shim.c`
+ * proved works (a plain object file is a valid positional argument to `ld`, so passing its path as
+ * one `-Xlinker` argument links it straight in). Unlike that probe's shim -- a one-line-per-symbol
+ * forward to `objc_msgSend` written because MOJO's own `external_call` can only register one
+ * signature per name -- THIS file is ordinary, idiomatic Objective-C (ARC-compiled, bracket syntax
+ * throughout). Nothing here is reached through Mojo's FFI signature restriction: clang compiles this
+ * file on its own, so there is no reason to hand-rove `objc_msgSend`. The content is different and
+ * bigger because the JOB is different: not "prove one dispatch reaches Metal" but "collapse 171
+ * dispatches into ONE call, entirely on this side of the Mojo<->C boundary."
+ *
+ * The proven ABI recipe this file implements for every dispatch (established in
+ * `.worktrees/metalair/benchmarks/llm_smoke/metal_air_access_probe/`, both `.m` probes, exact
+ * 0.0000000 match against MAX's own `enqueue_function` on the real 5-arg GEMV shape):
+ *   - a POINTER kernel argument is bound at its declared slot as the *value* of the buffer's own
+ *     64-bit GPU device address (`MTLBuffer.gpuAddress`), via `setBytes:length:atIndex:` -- NOT
+ *     `setBuffer:offset:atIndex:`, which is the wrong Metal call for Mojo's Metal ABI and is exactly
+ *     the mistake the no-go finding in `#504` made;
+ *   - every MTLBuffer actually referenced by ANY dispatch in the token is marked resident on the
+ *     encoder with `useResource:usage:` -- done ONCE per encoder for every buffer this session ever
+ *     allocated (Apple's residency contract only requires this once per encoder lifetime, not once
+ *     per dispatch that touches the buffer, so batching 171 dispatches behind one encoder makes this
+ *     cheaper, not more expensive, than the one-dispatch-per-encoder case the probes measured);
+ *   - a scalar `Int` argument is bound as its 8-byte value (Mojo's `Int` is 64-bit on this target);
+ *   - a scalar `Float32` argument is bound as its 4-byte value.
+ *
+ * Session-open builds every compute pipeline ONCE, from Mojo's own compiled kernel bytes (the
+ * embedded `.metallib`s in this executable's own `__TEXT,__const`, extracted and loaded through the
+ * fully public `dispatch_data_create` -> `newLibraryWithData:error:` path -- background steps (1)
+ * and (2) from the investigation this task's background section describes). Buffers are allocated
+ * ONCE and held for the session's life; only `algenta_run_token` is on the per-token path, and it
+ * does the ENTIRE 171-dispatch sequence -- one command buffer, one encoder, one commit, one wait --
+ * behind a single call from Mojo.
+ */
+#import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+#import <dispatch/dispatch.h>
+#include <mach-o/dyld.h>
+#include <mach-o/getsect.h>
+#include <stdint.h>
+#include <string.h>
+
+#define ALGENTA_MAX_ARGS 16
+#define ALGENTA_MAX_PIPELINES 32
+#define ALGENTA_MAX_BUFFERS 512
+
+typedef struct {
+    int32_t tag;       /* 0 = buffer device-address value, 1 = int64 scalar, 2 = float32 scalar */
+    int32_t reserved;
+    uint64_t value;
+} AlgentaArg;
+
+typedef struct {
+    int32_t pipeline_idx;
+    int32_t grid_x;      /* threadgroup count */
+    int32_t threads_x;   /* threads per threadgroup */
+    int32_t num_args;
+    AlgentaArg args[ALGENTA_MAX_ARGS];
+} AlgentaDispatchDesc;
+
+/* ---- session-global state. One session per process, matching residentk's own one-DeviceContext-
+ * per-generation-session design; nothing here is freed on purpose (the benchmark process runs one
+ * generation and exits, same as `_ResidentQwen3` never tears itself down either). ---- */
+static id<MTLDevice> g_device = nil;
+static id<MTLCommandQueue> g_queue = nil;
+static id<MTLComputePipelineState> g_pipelines[ALGENTA_MAX_PIPELINES];
+static NSString *g_pipeline_names[ALGENTA_MAX_PIPELINES];
+static int32_t g_pipeline_count = 0;
+static id<MTLBuffer> g_buffers[ALGENTA_MAX_BUFFERS];
+static int32_t g_buffer_count = 0;
+
+static int64_t algenta_fail(NSString *msg) {
+    fprintf(stderr, "algenta_batch_shim: %s\n", msg.UTF8String);
+    return -1;
+}
+
+/* Scan the running executable's OWN __TEXT,__const for every embedded Mojo `.metallib` (magic
+ * `MTLB`, self-declared container length at byte offset +16 -- proven in the metalair investigation
+ * this task's background section cites). Builds one MTLLibrary + one MTLComputePipelineState per
+ * blob found, in DISCOVERY order (NOT necessarily the order Mojo's `compile_function_unchecked`
+ * calls were written in -- measured to differ; callers identify a pipeline by name, not by index). */
+int64_t algenta_open_session(void) {
+    @autoreleasepool {
+        if (g_device != nil) {
+            return g_pipeline_count; /* idempotent */
+        }
+        g_device = MTLCreateSystemDefaultDevice();
+        if (!g_device) {
+            return algenta_fail(@"MTLCreateSystemDefaultDevice returned nil");
+        }
+        g_queue = [g_device newCommandQueue];
+        if (!g_queue) {
+            return algenta_fail(@"newCommandQueue returned nil");
+        }
+
+        const struct mach_header *mh = _dyld_get_image_header(0);
+        unsigned long sect_size = 0;
+        const uint8_t *sect = getsectiondata(
+            (const struct mach_header_64 *)mh, "__TEXT", "__const", &sect_size);
+        if (!sect) {
+            return algenta_fail(@"getsectiondata(__TEXT,__const) returned NULL");
+        }
+
+        size_t i = 0;
+        while (i + 20 < sect_size && g_pipeline_count < ALGENTA_MAX_PIPELINES) {
+            if (sect[i] == 'M' && sect[i + 1] == 'T' && sect[i + 2] == 'L' && sect[i + 3] == 'B') {
+                uint64_t declared_len = 0;
+                memcpy(&declared_len, sect + i + 16, sizeof(declared_len));
+                if (declared_len > 20 && i + declared_len <= sect_size) {
+                    NSData *blob = [NSData dataWithBytesNoCopy:(void *)(sect + i)
+                                                         length:(NSUInteger)declared_len
+                                                   freeWhenDone:NO];
+                    dispatch_data_t dd = dispatch_data_create(
+                        blob.bytes, blob.length, NULL, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
+                    NSError *err = nil;
+                    id<MTLLibrary> lib = [g_device newLibraryWithData:dd error:&err];
+                    if (lib) {
+                        NSArray<NSString *> *names = lib.functionNames;
+                        if (names.count >= 1) {
+                            id<MTLFunction> fn = [lib newFunctionWithName:names[0]];
+                            if (fn) {
+                                NSError *perr = nil;
+                                id<MTLComputePipelineState> pso =
+                                    [g_device newComputePipelineStateWithFunction:fn error:&perr];
+                                if (pso) {
+                                    g_pipelines[g_pipeline_count] = pso;
+                                    g_pipeline_names[g_pipeline_count] = names[0];
+                                    g_pipeline_count += 1;
+                                } else {
+                                    fprintf(stderr,
+                                        "algenta_batch_shim: pipeline build failed for %s: %s\n",
+                                        names[0].UTF8String, perr.description.UTF8String);
+                                }
+                            }
+                        }
+                    }
+                    i += (size_t)declared_len;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+        return g_pipeline_count;
+    }
+}
+
+int64_t algenta_pipeline_count(void) {
+    return g_pipeline_count;
+}
+
+/* Copies pipeline `idx`'s Metal function name (as resolved from the loaded MTLLibrary -- the exact
+ * string Metal itself uses, not a guess) into `buf`. Returns the byte length written (excluding the
+ * NUL), or -1 if `idx` is out of range. */
+int64_t algenta_pipeline_name(int64_t idx, uint8_t *buf, int64_t buf_len) {
+    @autoreleasepool {
+        if (idx < 0 || idx >= g_pipeline_count || buf_len < 1) {
+            return -1;
+        }
+        const char *cstr = g_pipeline_names[idx].UTF8String;
+        int64_t n = (int64_t)strlen(cstr);
+        int64_t to_copy = n < buf_len - 1 ? n : buf_len - 1;
+        memcpy(buf, cstr, (size_t)to_copy);
+        buf[to_copy] = 0;
+        return to_copy;
+    }
+}
+
+/* Allocates one MTLBuffer (storage mode Shared -- CPU and GPU coherent on this unified-memory
+ * host, no explicit synchronize needed for a CPU write before a GPU read once the buffer is
+ * created). Returns the internal buffer index (>=0), or -1 on failure / table exhaustion.
+ * `*out_addr` is `buffer.gpuAddress` -- the value a kernel's pointer argument is bound to.
+ * `*out_contents` is the CPU-writable pointer Mojo uses for the one-time upload. */
+int64_t algenta_alloc_buffer(int64_t length_bytes, uint64_t *out_addr, uint8_t **out_contents) {
+    @autoreleasepool {
+        if (g_device == nil || g_buffer_count >= ALGENTA_MAX_BUFFERS || length_bytes <= 0) {
+            return -1;
+        }
+        id<MTLBuffer> buf = [g_device newBufferWithLength:(NSUInteger)length_bytes
+                                                   options:MTLResourceStorageModeShared];
+        if (!buf) {
+            return algenta_fail(@"newBufferWithLength returned nil");
+        }
+        int32_t idx = g_buffer_count;
+        g_buffers[idx] = buf;
+        g_buffer_count += 1;
+        *out_addr = buf.gpuAddress;
+        *out_contents = (uint8_t *)buf.contents;
+        return idx;
+    }
+}
+
+/* THE call this whole package exists to make possible: one command buffer, one encoder, every
+ * dispatch in `descriptors` bound and issued entirely inside this function (zero Mojo<->C crossings
+ * in the loop below), one `endEncoding`, one `commit`, one `waitUntilCompleted`. Returns 0 on
+ * success, -1 on any Metal-reported error (checked once, after the wait -- not per dispatch, since
+ * Metal has no per-dispatch synchronous error return; a validation failure surfaces on the command
+ * buffer). */
+int64_t algenta_run_token(const AlgentaDispatchDesc *descriptors, int64_t n) {
+    @autoreleasepool {
+        if (g_queue == nil) {
+            return algenta_fail(@"algenta_run_token called before algenta_open_session");
+        }
+        id<MTLCommandBuffer> cb = [g_queue commandBuffer];
+        id<MTLComputeCommandEncoder> enc = [cb computeCommandEncoder];
+
+        /* Residency: every buffer this session has ever allocated, marked resident ONCE for this
+         * encoder. Correct per Apple's documented contract (residency lasts the life of the
+         * encoder/command buffer once declared) and cheaper than a per-dispatch call would be --
+         * `useResource:` is O(1) bookkeeping, not a data transfer, on unified memory. */
+        for (int32_t b = 0; b < g_buffer_count; b++) {
+            [enc useResource:g_buffers[b] usage:(MTLResourceUsageRead | MTLResourceUsageWrite)];
+        }
+
+        for (int64_t d = 0; d < n; d++) {
+            const AlgentaDispatchDesc *desc = &descriptors[d];
+            if (desc->pipeline_idx < 0 || desc->pipeline_idx >= g_pipeline_count) {
+                return algenta_fail(@"dispatch descriptor named an out-of-range pipeline index");
+            }
+            [enc setComputePipelineState:g_pipelines[desc->pipeline_idx]];
+            for (int32_t a = 0; a < desc->num_args; a++) {
+                const AlgentaArg *arg = &desc->args[a];
+                if (arg->tag == 0) {
+                    uint64_t addr = arg->value;
+                    [enc setBytes:&addr length:sizeof(addr) atIndex:(NSUInteger)a];
+                } else if (arg->tag == 1) {
+                    int64_t v = (int64_t)arg->value;
+                    [enc setBytes:&v length:sizeof(v) atIndex:(NSUInteger)a];
+                } else if (arg->tag == 2) {
+                    float v;
+                    uint32_t bits = (uint32_t)(arg->value & 0xFFFFFFFFu);
+                    memcpy(&v, &bits, sizeof(v));
+                    [enc setBytes:&v length:sizeof(v) atIndex:(NSUInteger)a];
+                } else {
+                    return algenta_fail(@"dispatch descriptor argument had an unknown tag");
+                }
+            }
+            MTLSize groups = MTLSizeMake((NSUInteger)desc->grid_x, 1, 1);
+            MTLSize threads = MTLSizeMake((NSUInteger)desc->threads_x, 1, 1);
+            [enc dispatchThreadgroups:groups threadsPerThreadgroup:threads];
+        }
+
+        [enc endEncoding];
+        [cb commit];
+        [cb waitUntilCompleted];
+
+        if (cb.status != MTLCommandBufferStatusCompleted || cb.error != nil) {
+            fprintf(stderr, "algenta_batch_shim: command buffer failed, status=%ld err=%s\n",
+                    (long)cb.status, cb.error ? cb.error.description.UTF8String : "none");
+            return -1;
+        }
+        return 0;
+    }
+}
