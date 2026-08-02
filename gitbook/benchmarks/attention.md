@@ -78,6 +78,7 @@ Algenta does not pick one silently. The convention is selected explicitly, and t
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Compute kernels](compute-kernels.md) — the matrix kernels attention is built on.
 * [Normalization](normalization.md) — the layer norms that surround attention in a transformer block.
+* [Decode throughput](decode-throughput.md) — this kernel measured end to end, against real installed mlx-lm and llama.cpp.
 
 ## Reproduce
 

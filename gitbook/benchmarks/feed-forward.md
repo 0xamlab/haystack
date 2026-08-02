@@ -74,6 +74,7 @@ That is the argument for a sparse gradient representation, quantified rather tha
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Normalization](normalization.md) — the other half of a transformer block.
 * [Attention](attention.md) — attention kernel results.
+* [Decode throughput](decode-throughput.md) — these kernels measured end to end, against real installed mlx-lm and llama.cpp.
 
 ## Reproduce
 

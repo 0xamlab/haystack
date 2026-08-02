@@ -221,6 +221,7 @@
 * [Least-squares accuracy](benchmarks/least-squares-accuracy.md)
 * [Forecasting on the joint axis](benchmarks/forecasting-joint-axis.md)
 * [FinQA exact execution](benchmarks/finqa-exact-execution.md)
+* [Decode throughput](benchmarks/decode-throughput.md)
 
 ## Help
 

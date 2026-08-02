@@ -488,7 +488,7 @@
       {
         "bytes": 52,
         "language": "text",
-        "line": 86,
+        "line": 87,
         "path": "benchmarks/attention.md",
         "sha256": "19ce040ec756bd76813be7bd4bce34b969ca21d2cfa186b22d03fd16b06d87f0",
         "validation": "static_inventory"
@@ -526,9 +526,17 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 151,
+        "language": "bash",
+        "line": 117,
+        "path": "benchmarks/decode-throughput.md",
+        "sha256": "f46f087d58d8c1e79baa1fe328f40ed609af74808f938348cf96ce158b50c64f",
+        "validation": "command_inventory"
+      },
+      {
         "bytes": 51,
         "language": "text",
-        "line": 82,
+        "line": 83,
         "path": "benchmarks/feed-forward.md",
         "sha256": "fa7eea6cfb4ad7ee93a6a6dee4668ee8b59facef1fea3b5b1fc385cee7b984ce",
         "validation": "static_inventory"
@@ -568,7 +576,7 @@
       {
         "bytes": 113,
         "language": "text",
-        "line": 273,
+        "line": 284,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "8075efba11168a4c9431dc98467c519e5f90f57f59aa09c2b2fbf93849fb1e95",
         "validation": "static_inventory"
@@ -576,7 +584,7 @@
       {
         "bytes": 382,
         "language": "text",
-        "line": 279,
+        "line": 290,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "a7b7ddc85b40fad69730c708cdc6887331849eb0a64a1dff99bb30fe8809415a",
         "validation": "static_inventory"
@@ -584,7 +592,7 @@
       {
         "bytes": 399,
         "language": "text",
-        "line": 286,
+        "line": 297,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "f0d10e7444fae7e20a8c97d3bcff8d42c7db09499d4df6f5dfa9cfdc8656e2ba",
         "validation": "static_inventory"
@@ -592,7 +600,7 @@
       {
         "bytes": 91,
         "language": "text",
-        "line": 294,
+        "line": 305,
         "path": "benchmarks/forecasting-joint-axis.md",
         "sha256": "63e7a4321b6e5d4905284bb79502d08a99ca66aa3f10f84627be09f2936f6ffc",
         "validation": "static_inventory"
@@ -17470,7 +17478,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 750,
+        "line": 760,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17479,7 +17487,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/health",
-        "line": 750,
+        "line": 760,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17488,7 +17496,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/execute",
-        "line": 750,
+        "line": 760,
         "match_kind": "exact",
         "method": "POST",
         "path": "engine/runtime-library-catalog.md",
@@ -28823,31 +28831,37 @@
       },
       {
         "kind": "internal",
-        "line": 227,
+        "line": 224,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/decode-throughput.md"
       },
       {
         "kind": "internal",
         "line": 228,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
         "line": 229,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 230,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "help/quick-reference.md"
       },
       {
         "kind": "internal",
         "line": 231,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 232,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -29051,6 +29065,12 @@
       },
       {
         "kind": "internal",
+        "line": 81,
+        "path": "benchmarks/attention.md",
+        "target": "decode-throughput.md"
+      },
+      {
+        "kind": "internal",
         "line": 46,
         "path": "benchmarks/code-retrieval.md",
         "target": "overview.md"
@@ -29117,6 +29137,24 @@
       },
       {
         "kind": "internal",
+        "line": 108,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 109,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "feed-forward.md"
+      },
+      {
+        "kind": "internal",
+        "line": 110,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "attention.md"
+      },
+      {
+        "kind": "internal",
         "line": 74,
         "path": "benchmarks/feed-forward.md",
         "target": "overview.md"
@@ -29132,6 +29170,12 @@
         "line": 76,
         "path": "benchmarks/feed-forward.md",
         "target": "attention.md"
+      },
+      {
+        "kind": "internal",
+        "line": 77,
+        "path": "benchmarks/feed-forward.md",
+        "target": "decode-throughput.md"
       },
       {
         "kind": "external",
@@ -29171,25 +29215,25 @@
       },
       {
         "kind": "internal",
-        "line": 320,
+        "line": 331,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "overview.md"
       },
       {
         "kind": "internal",
-        "line": 321,
+        "line": 332,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "least-squares-accuracy.md"
       },
       {
         "kind": "internal",
-        "line": 322,
+        "line": 333,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "dataframe-groupby.md"
       },
       {
         "kind": "internal",
-        "line": 323,
+        "line": 334,
         "path": "benchmarks/forecasting-joint-axis.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -31523,25 +31567,25 @@
       },
       {
         "kind": "internal",
-        "line": 750,
+        "line": 760,
         "path": "engine/runtime-library-catalog.md",
         "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 755,
+        "line": 765,
         "path": "engine/runtime-library-catalog.md",
         "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 756,
+        "line": 766,
         "path": "engine/runtime-library-catalog.md",
         "target": "catalog.md"
       },
       {
         "kind": "internal",
-        "line": 757,
+        "line": 767,
         "path": "engine/runtime-library-catalog.md",
         "target": "../concepts/engine.md"
       },
@@ -35110,6 +35154,46 @@
         "term": "algenta"
       },
       {
+        "line": 3,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 15,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 28,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 36,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 63,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 81,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 89,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
+        "line": 125,
+        "path": "benchmarks/decode-throughput.md",
+        "term": "algenta"
+      },
+      {
         "line": 46,
         "path": "benchmarks/feed-forward.md",
         "term": "algenta"
@@ -35185,12 +35269,7 @@
         "term": "algenta"
       },
       {
-        "line": 95,
-        "path": "benchmarks/forecasting-joint-axis.md",
-        "term": "algenta"
-      },
-      {
-        "line": 116,
+        "line": 96,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
@@ -35200,52 +35279,57 @@
         "term": "algenta"
       },
       {
-        "line": 148,
+        "line": 124,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 148,
+        "line": 152,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 149,
+        "line": 152,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 149,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 149,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 150,
+        "line": 153,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 150,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 150,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 156,
+        "line": 154,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 165,
+        "line": 160,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 170,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
@@ -35255,32 +35339,37 @@
         "term": "algenta"
       },
       {
-        "line": 202,
+        "line": 192,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 214,
+        "line": 209,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 218,
+        "line": 221,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 223,
+        "line": 225,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 244,
+        "line": 230,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
       {
-        "line": 270,
+        "line": 251,
+        "path": "benchmarks/forecasting-joint-axis.md",
+        "term": "algenta"
+      },
+      {
+        "line": 281,
         "path": "benchmarks/forecasting-joint-axis.md",
         "term": "algenta"
       },
@@ -40150,6 +40239,30 @@
         "executed": false,
         "line": 499,
         "path": "authentication.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "environment_mutating",
+        "command": "pip install mlx-lm",
+        "executed": false,
+        "line": 118,
+        "path": "benchmarks/decode-throughput.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "static_only",
+        "command": "brew install llama.cpp",
+        "executed": false,
+        "line": 119,
+        "path": "benchmarks/decode-throughput.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "python3 -c \"from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen3-0.6B-Base')\"",
+        "executed": false,
+        "line": 120,
+        "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
       {
@@ -46622,8 +46735,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 190,
-      "links": 190,
+      "internal_links": 191,
+      "links": 191,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -46822,8 +46935,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
+      "internal_links": 4,
+      "links": 4,
       "path": "benchmarks/attention.md",
       "product_claims": {
         "algenta": 3,
@@ -46914,6 +47027,31 @@
       "code_fences": 1,
       "command_counts": {
         "destructive_mutation": 0,
+        "environment_mutating": 1,
+        "external_or_mutating": 0,
+        "requires_environment": 1,
+        "safe_static": 0,
+        "static_only": 1
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 3,
+      "links": 3,
+      "path": "benchmarks/decode-throughput.md",
+      "product_claims": {
+        "algenta": 8,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 3
+    },
+    {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
         "environment_mutating": 0,
         "external_or_mutating": 0,
         "requires_environment": 0,
@@ -46922,8 +47060,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
+      "internal_links": 4,
+      "links": 4,
       "path": "benchmarks/feed-forward.md",
       "product_claims": {
         "algenta": 2,
@@ -46976,7 +47114,7 @@
       "links": 4,
       "path": "benchmarks/forecasting-joint-axis.md",
       "product_claims": {
-        "algenta": 27,
+        "algenta": 28,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -51395,11 +51533,11 @@
     "source_paths": 222
   },
   "snippets": {
-    "code_fences": 1223,
+    "code_fences": 1224,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
-    "shell_commands": 811,
-    "static_or_guarded_commands": 744
+    "shell_commands": 814,
+    "static_or_guarded_commands": 747
   },
   "source": "gitbook",
   "source_claims": {
@@ -51409,64 +51547,64 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 991,
+    "claim_mentions": 1000,
     "command_execution_percent": 100.0,
-    "commands_classified": 811,
+    "commands_classified": 814,
     "commands_executed": 67,
     "commands_unexecuted": 0,
     "endpoint_mentions": 1990,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1171,
+    "links_checked": 1177,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 191,
+    "pages_checked": 192,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 745,
-    "snippets_checked": 1223,
+    "skips": 748,
+    "snippets_checked": 1224,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6186,
+    "source_items_inventoried": 6205,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 991,
-    "code_fences": 1223,
+    "claim_mentions": 1000,
+    "code_fences": 1224,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
     "endpoint_mentions": 1990,
-    "environment_mutating_commands": 20,
+    "environment_mutating_commands": 21,
     "executed_commands": 67,
     "external_links": 4,
     "external_or_mutating_commands": 268,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 744,
-    "internal_links": 1148,
-    "links": 1171,
-    "pages": 191,
+    "guarded_commands": 747,
+    "internal_links": 1154,
+    "links": 1177,
+    "pages": 192,
     "product_claims": {
-      "algenta": 982,
+      "algenta": 991,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 9
     },
-    "public_pages": 190,
-    "requires_environment_commands": 375,
+    "public_pages": 191,
+    "requires_environment_commands": 376,
     "runnable_commands": 67,
     "safe_static_commands": 67,
-    "shell_commands": 811,
-    "shell_syntax_validated_commands": 811,
+    "shell_commands": 814,
+    "shell_syntax_validated_commands": 814,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 745,
+    "skips": 748,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6186,
-    "static_only_commands": 63,
-    "static_or_guarded_commands": 744,
+    "source_items_inventoried": 6205,
+    "static_only_commands": 64,
+    "static_or_guarded_commands": 747,
     "unexecuted_runnable_commands": 0,
     "unique_endpoint_operations": 409,
     "warnings": 0
