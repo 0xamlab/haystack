@@ -30,6 +30,15 @@ Algenta's best arm (int8, 243.06 tok/s median) still loses to both real opponent
 (llama.cpp GPU 256.72, mlx-lm 313.21). No gitbook page ships. That section is the current, correct,
 final verdict for today's chain of work.**
 
+**Update (2026-08-02, later still again): speculative/prompt-lookup decoding was investigated as
+the next lever on top of the int8 arm above — see "Speculative decoding addendum" for the full
+analysis. No-go, at both the Design and an independent Build-phase verification pass, before any
+kernel was written: this benchmark's exact text caps accepted-draft-length at 1 token, once, across
+all 16 generation steps (the repeating unit is a template, "The capital of", not content — the very
+next token is always the varying fill-in-the-blank slot). No mechanism was built, no worktree
+survived, no race was run — there is nothing new to race, and the 243.06 tok/s verdict above is
+unchanged.**
+
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
 measured together. **Where two sections disagree, the last one is right** — in particular the
@@ -1889,3 +1898,130 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
 # the submission-only floor this section's breakdown depends on
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/submit_floor_batch
 ```
+
+## Speculative decoding addendum (2026-08-02, later still again): no-go before any kernel, no race run
+
+The final real race above closed today's dispatch/precision chain at 243.06 tok/s int8, still short
+of both real opponents (llama.cpp GPU 256.72, mlx-lm 313.21). Speculative / prompt-lookup decoding
+was investigated next, as the field's standard lever for exactly this regime (small model, greedy
+decoding, memory-bandwidth-bound single-token GEMV steps). **No race was run.** Both the Design
+phase and an independent Build-phase verification pass concluded no-go before a single kernel line
+was written, and no worktree or code change from either phase survived — there is nothing to diff,
+nothing to rebase, nothing new to race. This section records why, so the technique is not
+re-investigated from scratch next session.
+
+### What was checked, and how
+
+**Kernel-level feasibility** (`mojo/engine/metaldispatch/session.mojo`, `mojo/engine/residentk/kernels.mojo`,
+`mojo/engine/residentk/contract.mojo`, all read fresh against `origin/main` — the Design phase's own
+inspection worktree, `/tmp/speculative-decode-eval`, had already been deleted, so the Build phase
+re-verified every load-bearing claim against the real tip, `610cd54a`, the same commit this
+document's own final-race numbers came from):
+
+- 171 dispatches/token (`n_layers*6 + 3`, `n_layers=28` for Qwen3-0.6B) is confirmed exact. Every
+  one of the 6 per-layer kernel roles (`_norm_gemv_kernel`, `_gemv_accum_kernel`,
+  `_norm_gemv2_swiglu_kernel`, ×3 dtype variants each where present) stages exactly **one** row into
+  a single-row `_STAGE` shared-memory buffer — there is no K-rows parameter anywhere to reuse.
+  Verified directly in the kernel bodies, not inferred.
+- `_sdpa_kernel`'s own docstring states, verbatim: attention is for **one** new query token over
+  the cached keys, unmasked, because "a single query at the true current position attends to every
+  cached key by construction." A K-draft-position verification pass needs each position to see a
+  *different* causal window — a new, masked, batched SDPA kernel, not a parameter tweak.
+- The KV cache (`RESIDENT_MAX_CONTEXT=512`, absolute-position-indexed flat buffer, no length field
+  — the #501 O(N²) fix's design) makes speculative rollback **free**: writing K speculative
+  positions straight into the real cache slots and later accepting only `m` of them needs no
+  truncation code at all, because `n_keys = pos+1` on every future step already guarantees the
+  rejected slots are never read. This part is a genuine, verified win of the existing architecture
+  — it is the KV-cache design, not the speculative-decoding project, that gets credit for it.
+- `gemm.blocked` (the frozen CPU/Float64 GEMM used elsewhere in this codebase) is confirmed
+  irrelevant — disjoint host-side module, no path to the Metal-resident GEMV world.
+- Getting a **real** win (not just K× the residual GPU compute with zero new kernels) needs new
+  batched-K variants of all 6 per-layer roles plus the lm-head argmax — **8 new kernel roles**,
+  correctly scoped by Design as multi-day kernel-engineering effort, not a wrapper. The
+  zero-new-kernel "naive" version (K duplicate 171-dispatch descriptor groups in one command
+  buffer) was also modeled and found **not worth building either** — see the cost model below.
+
+**Hit-rate, on this exact benchmark's known token sequence**
+(`[12095,13,576,6722,315,9856,374,19846,13,576,6722,315,15344,374,21718,13]`, i.e.
+`"The capital of France is Paris. The capital of Germany is Berlin. The capital of Italy is Rome."`),
+simulated independently twice (Design's `/tmp/pl_sim.py`, Build's separate `/tmp/pl_verify.py`,
+both throwaway, neither committed): with the correct n-gram window for this text (`N=3`, matching
+the real repeating unit "The capital of"), there is **exactly one point** across all 16 generation
+steps where a draft is both found and correct — position 11, drafted token `315` ("of") — and it is
+correct for exactly **one** token before the very next drafted token (copied from the first
+template occurrence, "Germany") mismatches the real next token ("Italy"). Zero additional benefit
+for any draft length K>1, on this text, ever. Both independent simulations reproduced this decisive
+result exactly (the two runs' raw "draft-available-steps" counts differed slightly on a
+methodology detail — whether prompt tokens count toward the lookup history — but the number that
+drives the go/no-go decision, one accepted draft token in the whole generation, was identical).
+
+**Cost model**, anchored to this document's own measured numbers rather than a hypothetical
+(1.49ms submission floor + 2.62ms kernel residual = 4.114ms/token, reproducing the 243.06 tok/s
+median measured in the final-race section above): a naive zero-new-kernel K-position reuse costs
+`1.49ms + K*2.62ms` per round; an idealized, perfectly-amortized 8-new-kernel build costs
+`1.49ms + 2.62ms` flat regardless of K (a generous upper bound that ignores SDPA/lm-head's likely
+inability to amortize fully). Plugging in the one-accepted-token result above:
+
+| Config | naive reuse (0 new kernels) | idealized full 8-kernel build |
+|---|---|---|
+| N=3, K=2 (best-tuned for this text) | 249.6 tok/s (+2.3%) | 260.2 tok/s (+6.7%) |
+| N=3, K=4/5 (typical fixed draft length) | 222–231 tok/s (**worse than baseline**) | 260.2 tok/s (ceiling — K beyond 2 wastes verification, no extra accept) |
+
+Even the idealized, best-case, full-multi-day-build ceiling (**260.2 tok/s**) edges past
+llama.cpp GPU's 256.72 by 1.4% but stays **16.9% behind mlx-lm's 313.21** — it does not clear the
+standing rule's "both opponents" bar even in the best case that assumes the hard kernel work lands
+perfectly. The realistic near-term version (naive reuse, no new kernels) nets at most +2.3%, and
+a poorly-tuned draft length (K>2, the common off-the-shelf default) is **net negative**.
+
+### Why this benchmark specifically, not the technique generally
+
+Speculative/prompt-lookup decoding is real and is the field's correct answer for this regime in
+general. It fails here because this run's fixed 16-token generation
+("The capital of France is Paris. The capital of Germany is Berlin. The capital of Italy is Rome.")
+repeats a 3-token *template* twice but never repeats *content* — the token immediately after every
+template match is always the newly-varying country/capital slot. Longer or more genuinely
+repetitive generations (long-form code, structured/templated text, multi-turn agreement) would give
+prompt-lookup a real, different hit-rate profile. This addendum is a verdict on tonight's specific
+16-token prompt-continuation benchmark, not a general claim that speculative decoding never helps
+Algenta.
+
+### Verification: two independent passes agree, no code survives either
+
+- **Design phase**: read `session.mojo` (1873 lines) and `kernels.mojo` (1410 lines) in a scratch
+  worktree (`/tmp/speculative-decode-eval`), ran the hit-rate simulation, concluded no-go, removed
+  the worktree. Nothing merged, nothing to diff.
+- **Build phase**: independently re-read the same three files against the real `origin/main` tip
+  (`610cd54a`) rather than trust the deleted worktree's transcript, independently re-ran the
+  hit-rate simulation against the same known token sequence, and independently reproduced the
+  decisive one-accepted-token result and the cost-model numbers derived from it. No worktree was
+  created for the Build pass; no code was written.
+- **This addendum**: no further kernel work was attempted — both independent passes already agree,
+  and the cost-model ceiling (+6.7% best case) does not clear mlx-lm even under the most generous
+  assumptions, so there was nothing left to verify by building.
+
+### Publication decision: no gitbook page, no race run
+
+**Standing rule: a gitbook page ships only on an outright win against both llama.cpp's best
+(256.72 tok/s median, GPU) and mlx-lm's real number (313.21 tok/s median), on a measurement run.**
+No mechanism exists to measure — no kernel was built, on either phase's independent recommendation
+— so there is no new arm to race, and the prior "Algenta batched-shim int8, 243.06 tok/s" verdict
+from the final-race section above stands unchanged as today's number. No gitbook page ships.
+
+This closes today's speculative-decoding lever honestly: the technique is real, the KV-cache
+rollback design already in place is free and correct for it, and the kernel-engineering path to try
+it (8 new batched-K Metal kernels) is well-scoped for a future session on a benchmark text where
+prompt-lookup's hit rate would actually be favorable — but building it against *this* run's
+template-not-content 16-token generation would, at best, buy +6.7% and still lose to mlx-lm, so it
+was correctly not built.
+
+### Gates, on a fresh worktree off `origin/main` tip (`610cd54a`, `#508`)
+
+- `git fetch origin main`: no new commits — this worktree opened at the current tip.
+- `git diff --stat origin/main`: empty except this document.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean.
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean — no kernel or
+  namespace change in this addendum.
+- `tests/generate_mojo_tests.py --check`: clean — no new or changed Mojo test files.
+- No decode driver was rerun in this addendum: no new binary exists to run one against. The
+  final-race section's own numbers (243.06 tok/s int8, full token-agreement table) are the current,
+  unchanged, correct measurement for today.
