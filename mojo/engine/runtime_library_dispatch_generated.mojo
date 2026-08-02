@@ -3742,6 +3742,13 @@ from llm_sampling import (
 from llmk.contract import (
     llmk_status_name as _llmk_contract__llmk_status_name,
     llmk_residual_dims_check as _llmk_contract__llmk_residual_dims_check,
+    llmk_kv_append_dims_check as _llmk_contract__llmk_kv_append_dims_check,
+    llmk_argmax_dims_check as _llmk_contract__llmk_argmax_dims_check,
+)
+
+from llmk.generate import (
+    kv_cache_append_flat as _llmk_generate__kv_cache_append_flat,
+    greedy_argmax_flat as _llmk_generate__greedy_argmax_flat,
 )
 
 from llmk.residual import (
@@ -8361,6 +8368,11 @@ from linalg_ext import (
 from linear_models import (
     ElasticNetResult,
     LogisticResult,
+)
+
+from llmk.generate import (
+    GreedyResult,
+    KvAppendResult,
 )
 
 from llmk.residual import (
@@ -13793,6 +13805,16 @@ fn _to_json_greedyassignment(value: GreedyAssignment) raises -> String:
     result += "]}"
     return result
 
+fn _to_json_greedyresult(value: GreedyResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"GreedyResult\",\"v\":[")
+    result += _to_json_int(value.token_id)
+    result += ","
+    result += _to_json_float64(value.logit)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
 fn _to_json_hmmforward(value: HMMForward) raises -> String:
     var result = String("{\"__algenta_struct\":\"HMMForward\",\"v\":[")
     result += _to_json_list_list_float64(value.log_alpha)
@@ -14501,6 +14523,16 @@ fn _to_json_kalmanstate(value: KalmanState) raises -> String:
     result += _to_json_list_float64(value.x)
     result += ","
     result += _to_json_list_list_float64(value.P)
+    result += "]}"
+    return result
+
+fn _to_json_kvappendresult(value: KvAppendResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"KvAppendResult\",\"v\":[")
+    result += _to_json_list_float64(value.out)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -82327,9 +82359,88 @@ fn _dispatch_llmk__contract(function_name: String, args_array: String) raises ->
             "invalid_arguments",
             "Function llmk.contract.llmk_residual_dims_check expected 3 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "llmk_kv_append_dims_check":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _llmk_contract__llmk_kv_append_dims_check(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.contract.llmk_kv_append_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.contract.llmk_kv_append_dims_check expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "llmk_argmax_dims_check":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _llmk_contract__llmk_argmax_dims_check(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.contract.llmk_argmax_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.contract.llmk_argmax_dims_check expected 2 arguments, received " + String(arg_count) + "."
+        )
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module llmk.contract."
+    )
+
+fn _dispatch_llmk__generate(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "kv_cache_append_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _llmk_generate__kv_cache_append_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_kvappendresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.generate.kv_cache_append_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.generate.kv_cache_append_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "greedy_argmax_flat":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _llmk_generate__greedy_argmax_flat(arg_0, arg_1)
+                var result_json = _to_json_greedyresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.generate.greedy_argmax_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.generate.greedy_argmax_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module llmk.generate."
     )
 
 fn _dispatch_llmk__residual(function_name: String, args_array: String) raises -> String:
@@ -151955,6 +152066,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_llm_sampling(function_name, args_array)
     if module_name == "llmk.contract":
         return _dispatch_llmk__contract(function_name, args_array)
+    if module_name == "llmk.generate":
+        return _dispatch_llmk__generate(function_name, args_array)
     if module_name == "llmk.residual":
         return _dispatch_llmk__residual(function_name, args_array)
     if module_name == "logging.logger":

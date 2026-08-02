@@ -23,15 +23,23 @@ second copy under a different package's status codes was the correct move for bo
 
 Modules
 -------
-  contract   — status codes 560-579, the one shape check `residual_add_flat` needs
+  contract   — status codes 560-579, the shape checks `residual_add_flat`/`generate.mojo` need
   residual   — residual_add_flat: y = a + b over two same-length flat buffers, parallel by band
+  generate   — kv_cache_append_flat + greedy_argmax_flat: the two pieces a real decode loop needed
+               that `residual_add_flat`'s forward-pass-only session did not yet reach. See
+               `generate.mojo`'s own docstring for why exactly these two and nothing else — the
+               actual per-layer decode step (which frozen kernel gets called at which shape, prefill
+               vs. one-new-token) is the driver's job, `benchmarks/llm_smoke/qwen3_generate.mojo`,
+               not this package's — this package supplies only what no frozen kernel already did.
 
-Dependency direction is one-way: `llmk` uses `tensorx` for finiteness and never the reverse, exactly
-like attnk/normk/mlpk.
+Dependency direction is one-way: `llmk` uses `tensorx` for finiteness and `llm_sampling` for the
+frozen greedy formula, and never the reverse, exactly like attnk/normk/mlpk.
 
 What this package is NOT
 --------------------------
 Not a general transformer-forward-pass ABI (that is the enterprise plan's phases 2-8, explicitly out
 of scope for this smoke test). Not an embedding or RoPE kernel — both of those already existed and
-this package calls them rather than shadowing them.
+this package calls them rather than shadowing them. Not a sampling-formula package — `llm_sampling`
+and `generation_loop` already own that surface (temperature, top-k/top-p, penalties); `generate.mojo`
+calls `greedy_token_id` from the former, unmodified, rather than adding a second implementation.
 """

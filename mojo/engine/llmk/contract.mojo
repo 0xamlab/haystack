@@ -38,8 +38,15 @@ two of them turned out to already exist:
    This package supplies the one driver that was missing.
 
 Public API:
-  llmk_status_name(code)                       — the status vocabulary
-  llmk_residual_dims_check(n, len_a, len_b)    — exact-length shape agreement for both operands
+  llmk_status_name(code)                              — the status vocabulary
+  llmk_residual_dims_check(n, len_a, len_b)           — exact-length shape agreement for both operands
+  llmk_kv_append_dims_check(cache_len, len_cache, n_new, len_new)  — KV-cache growth, one step
+  llmk_argmax_dims_check(n, len_logits)               — a full-vocabulary argmax row
+
+Codes 566-568 (below) are additive for `llmk.generate`'s decode-loop primitives (KV-cache append,
+greedy argmax), added in the same session that wired the actual generation loop on top of the
+prefill-only forward pass this module's docstring above describes -- still inside the 560-579 range
+this package owns, nothing renumbered.
 """
 
 from tensorx.contract import tx_finite
@@ -64,6 +71,18 @@ comptime LLMK_ERR_DIM_TOO_LARGE: Int = 564
 comptime LLMK_ERR_CODE_OUT_OF_RANGE: Int = 565
 """Not one of the codes above. Returned by llmk_status_name for an unrecognized code."""
 
+comptime LLMK_ERR_CACHE_LENGTH: Int = 566
+"""kv_cache_append_flat: len(cache) != cache_len -- the existing KV cache is not what the caller
+claimed its own running length was."""
+
+comptime LLMK_ERR_NEW_LENGTH: Int = 567
+"""kv_cache_append_flat: len(new_vals) != n_new -- this step's freshly-projected K or V rows are not
+the length the caller claimed."""
+
+comptime LLMK_ERR_LOGITS_LENGTH: Int = 568
+"""greedy_argmax_flat: len(logits) != n -- the logits row is not the vocabulary width the caller
+claimed."""
+
 comptime LLMK_MAX_DIM: Int = 1 << 24
 """Ceiling on `n`. Matches `normk.contract.NORM_MAX_ROWS`'s order of magnitude — a residual add over
 `tokens * d_model` at any real transformer shape is far below this, and a caller passing a byte count
@@ -82,6 +101,12 @@ fn llmk_status_name(code: Int) -> String:
         return String("llmk_b_length_mismatch")
     if code == LLMK_ERR_DIM_TOO_LARGE:
         return String("llmk_dimension_too_large")
+    if code == LLMK_ERR_CACHE_LENGTH:
+        return String("llmk_cache_length_mismatch")
+    if code == LLMK_ERR_NEW_LENGTH:
+        return String("llmk_new_length_mismatch")
+    if code == LLMK_ERR_LOGITS_LENGTH:
+        return String("llmk_logits_length_mismatch")
     return String("llmk_code_out_of_range")
 
 
@@ -102,4 +127,43 @@ fn llmk_residual_dims_check(n: Int, len_a: Int, len_b: Int) -> Int:
         return LLMK_ERR_A_LENGTH
     if len_b != n:
         return LLMK_ERR_B_LENGTH
+    return LLMK_OK
+
+
+fn llmk_kv_append_dims_check(cache_len: Int, len_cache: Int, n_new: Int, len_new: Int) -> Int:
+    """Validate one decode step's KV-cache growth against the real buffer lengths, exactly.
+
+    @capability llmk_kv_append_dims_check
+    complexity: O(1)
+    counts:
+    - dim cache_len <= LLMK_MAX_DIM [kernel_validated]
+    - dim n_new <= LLMK_MAX_DIM [kernel_validated]
+    @endcapability
+    """
+    if cache_len < 0 or n_new < 1:
+        return LLMK_ERR_EMPTY_DIM
+    if len_cache != cache_len:
+        return LLMK_ERR_CACHE_LENGTH
+    if len_new != n_new:
+        return LLMK_ERR_NEW_LENGTH
+    if cache_len > LLMK_MAX_DIM - n_new:
+        return LLMK_ERR_DIM_TOO_LARGE
+    return LLMK_OK
+
+
+fn llmk_argmax_dims_check(n: Int, len_logits: Int) -> Int:
+    """Validate a full-vocabulary argmax row against its real length, exactly.
+
+    @capability llmk_argmax_dims_check
+    complexity: O(1)
+    counts:
+    - dim n <= LLMK_MAX_DIM [kernel_validated]
+    @endcapability
+    """
+    if n < 1:
+        return LLMK_ERR_EMPTY_DIM
+    if n > LLMK_MAX_DIM:
+        return LLMK_ERR_DIM_TOO_LARGE
+    if len_logits != n:
+        return LLMK_ERR_LOGITS_LENGTH
     return LLMK_OK
