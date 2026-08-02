@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **628 modules** and **5963 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **630 modules** and **5966 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -36,7 +36,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## LLM & attention
 
-15 modules.
+17 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -47,6 +47,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `flash_attention` | 10 |
 | `kv_cache` | 10 |
 | `llm_sampling` | 11 |
+| `llmk.contract` | 2 |
+| `llmk.residual` | 1 |
 | `mlpk.embedding` | 3 |
 | `paged_kv_cache` | 10 |
 | `propensity` | 9 |

@@ -3739,6 +3739,15 @@ from llm_sampling import (
     token_frequency_penalty as _llm_sampling__token_frequency_penalty,
 )
 
+from llmk.contract import (
+    llmk_status_name as _llmk_contract__llmk_status_name,
+    llmk_residual_dims_check as _llmk_contract__llmk_residual_dims_check,
+)
+
+from llmk.residual import (
+    residual_add_flat as _llmk_residual__residual_add_flat,
+)
+
 from logging.logger import (
     get_logger as _logging_logger__get_logger,
 )
@@ -8352,6 +8361,10 @@ from linalg_ext import (
 from linear_models import (
     ElasticNetResult,
     LogisticResult,
+)
+
+from llmk.residual import (
+    ResidResult,
 )
 
 from logging.logger import (
@@ -17962,6 +17975,16 @@ fn _to_json_replicationci(value: ReplicationCI) raises -> String:
     result += _to_json_bool(value.has_half_width)
     result += ","
     result += _to_json_float64(value.half_width)
+    result += "]}"
+    return result
+
+fn _to_json_residresult(value: ResidResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ResidResult\",\"v\":[")
+    result += _to_json_list_float64(value.out)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -82266,6 +82289,72 @@ fn _dispatch_llm_sampling(function_name: String, args_array: String) raises -> S
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module llm_sampling."
+    )
+
+fn _dispatch_llmk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "llmk_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _llmk_contract__llmk_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.contract.llmk_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.contract.llmk_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "llmk_residual_dims_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _llmk_contract__llmk_residual_dims_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.contract.llmk_residual_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.contract.llmk_residual_dims_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module llmk.contract."
+    )
+
+fn _dispatch_llmk__residual(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "residual_add_flat":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _llmk_residual__residual_add_flat(arg_0, arg_1, arg_2)
+                var result_json = _to_json_residresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.residual.residual_add_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.residual.residual_add_flat expected 3 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module llmk.residual."
     )
 
 fn _dispatch_logging__logger(function_name: String, args_array: String) raises -> String:
@@ -151864,6 +151953,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_linguistics(function_name, args_array)
     if module_name == "llm_sampling":
         return _dispatch_llm_sampling(function_name, args_array)
+    if module_name == "llmk.contract":
+        return _dispatch_llmk__contract(function_name, args_array)
+    if module_name == "llmk.residual":
+        return _dispatch_llmk__residual(function_name, args_array)
     if module_name == "logging.logger":
         return _dispatch_logging__logger(function_name, args_array)
     if module_name == "logic_circuit":

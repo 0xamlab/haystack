@@ -1,0 +1,105 @@
+"""
+llmk.contract — the one status vocabulary and shape check for `llmk`. Zero Python.
+
+@capability-module
+deterministic: true
+stateful: false
+batch_capable: true
+stream_capable: false
+seed_requirements: none
+supported_dtypes: float64
+backend: mojo
+surfaces: library_execute, batch_execute
+golden_vectors: mojo/tests/libs/test_llmk_residual.mojo
+benchmark: benchmarks/llm_smoke/qwen3_forward.mojo
+docs: none
+version_introduced: 0.7.0
+deprecation_state: active
+@endcapability
+
+Status range
+------------
+`llmk` owns **560-579**, after `tensorx` 300-319, `gemm` 320-339, `accel`/`causal_inference` 340-359,
+`attnk` 360-379, `normk` 380-389, `mlpk` 390-399 and before `lossk` 580-599 (rule 4e).
+
+Why this package is one kernel, not three
+--------------------------------------------
+Wiring a real Qwen3 checkpoint through the existing LLM-plane kernels found three candidate gaps and
+two of them turned out to already exist:
+
+1. Embedding-table gather: **already exists**, as `mlpk.embedding.embedding_fwd_flat`. Calling it
+   directly (rule 3) rather than writing a second gather under a different package's status codes.
+2. Half-split RoPE: **already exists**, as `attnk.rope.rope_apply_flat(..., interleaved=False)` —
+   the docstring there names the GPT-NeoX split-half convention explicitly and it is exactly Qwen3's.
+   Calling it directly rather than writing a second RoPE driver.
+3. Elementwise residual-add-of-two-whole-buffers: genuinely absent. `transformer_blocks.residual_connection`
+   and `fused_kernels.fused_add_norm` are both scalar, one `Float64` at a time — the "last line of the
+   kernel, not the kernel" pattern this plane's other packages already named for attention/norm/FFN.
+   This package supplies the one driver that was missing.
+
+Public API:
+  llmk_status_name(code)                       — the status vocabulary
+  llmk_residual_dims_check(n, len_a, len_b)    — exact-length shape agreement for both operands
+"""
+
+from tensorx.contract import tx_finite
+
+# ── status codes: llmk owns 560-579 ────────────────────────────────────────────
+
+comptime LLMK_OK: Int = 560
+"""The kernel ran and every element of the output is defined."""
+
+comptime LLMK_ERR_EMPTY_DIM: Int = 561
+"""`n` was < 1."""
+
+comptime LLMK_ERR_A_LENGTH: Int = 562
+"""residual_add_flat: len(a) != n."""
+
+comptime LLMK_ERR_B_LENGTH: Int = 563
+"""residual_add_flat: len(b) != n."""
+
+comptime LLMK_ERR_DIM_TOO_LARGE: Int = 564
+"""`n` exceeds `LLMK_MAX_DIM`."""
+
+comptime LLMK_ERR_CODE_OUT_OF_RANGE: Int = 565
+"""Not one of the codes above. Returned by llmk_status_name for an unrecognized code."""
+
+comptime LLMK_MAX_DIM: Int = 1 << 24
+"""Ceiling on `n`. Matches `normk.contract.NORM_MAX_ROWS`'s order of magnitude — a residual add over
+`tokens * d_model` at any real transformer shape is far below this, and a caller passing a byte count
+or an unbounded accumulation length where an element count belongs is refused rather than allocated."""
+
+
+fn llmk_status_name(code: Int) -> String:
+    """Human name for a status code. Every code above appears here exactly once."""
+    if code == LLMK_OK:
+        return String("llmk_ok")
+    if code == LLMK_ERR_EMPTY_DIM:
+        return String("llmk_empty_dimension")
+    if code == LLMK_ERR_A_LENGTH:
+        return String("llmk_a_length_mismatch")
+    if code == LLMK_ERR_B_LENGTH:
+        return String("llmk_b_length_mismatch")
+    if code == LLMK_ERR_DIM_TOO_LARGE:
+        return String("llmk_dimension_too_large")
+    return String("llmk_code_out_of_range")
+
+
+fn llmk_residual_dims_check(n: Int, len_a: Int, len_b: Int) -> Int:
+    """Validate a residual add's shape against its real buffer lengths, exactly.
+
+    @capability llmk_residual_dims_check
+    complexity: O(1)
+    counts:
+    - dim n <= LLMK_MAX_DIM [kernel_validated]
+    @endcapability
+    """
+    if n < 1:
+        return LLMK_ERR_EMPTY_DIM
+    if n > LLMK_MAX_DIM:
+        return LLMK_ERR_DIM_TOO_LARGE
+    if len_a != n:
+        return LLMK_ERR_A_LENGTH
+    if len_b != n:
+        return LLMK_ERR_B_LENGTH
+    return LLMK_OK
