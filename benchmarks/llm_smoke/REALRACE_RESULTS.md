@@ -4,9 +4,12 @@ This is the RealRace phase: install the real opponents, run the **same checkpoin
 prompt**, the **same generation length**, through all three engines, on this machine, and report
 the honest tokens/sec — win or lose.
 
-**Honest headline: Algenta loses, by a lot, and the bottleneck is named and quantified below.**
-No gitbook page ships for this — the standing rule ("outright win only ships a page") is not met.
-This document is the honest capability report the RealRace phase produces either way.
+**Honest headline (superseded by the 2026-08-02 ReRace addendum below — read that section for the
+current, correct verdict): Algenta loses, by a lot, and the bottleneck is named and quantified
+below.** The original numbers and diagnosis in this section are kept verbatim as the historical
+record the FastGEMV/MetalRoute phases built on. **No gitbook page ships, then or now** — the
+standing rule ("outright win only ships a page") is still not met after the decode-path
+optimization; see the addendum for the current gap and what is still missing.
 
 ## Setup
 
@@ -157,4 +160,177 @@ llama-quantize /tmp/bb/qwen3-0.6b-base-f16.gguf /tmp/bb/qwen3-0.6b-base-q4_k_m.g
 /tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
 cd /Users/angel/Developer/decision-engine/mojo_env && pixi run mojo run \
     -I<this worktree>/mojo/engine <this worktree>/benchmarks/llm_smoke/qwen3_generate.mojo
+```
+
+---
+
+## ReRace addendum (2026-08-02): FastGEMV shipped, Metal-decode measured and rejected — still losing
+
+This is the ReRace phase, closing out the FastGEMV -> MetalRoute -> ReRace chain that started from
+the "bottleneck, named and quantified" section above. Same machine (Apple M4 Max, 16 physical
+cores, macOS), same checkpoint (`Qwen/Qwen3-0.6B-Base`, `/private/tmp/qwen3-0.6b-base`), same
+prompt (`"The capital of France is"`), same 16-token greedy generation, same decode-only tok/s
+definition (excludes weight load and prefill), same llama.cpp (`brew`, F16 GGUF at
+`/tmp/bb/qwen3-0.6b-base-f16.gguf`) and mlx-lm (`/tmp/bb/bin/python`, mlx-lm against the original
+safetensors) installs already present from the original RealRace phase — reinstalled nothing,
+reconverted nothing.
+
+### What changed in the decode path since the original numbers above
+
+1. **FastGEMV (shipped, wired in):** `llmk.gemv_fast.gemv_transposed_parallel_flat` replaces all 7
+   per-layer `gemv_flat(..., trans=True)` calls in `qwen3_generate.mojo`'s decode step with a
+   parallel column-band path over the same frozen-kernel shape (see that module's docstring above
+   this section's file). `gemm/blocked.mojo` itself is untouched.
+2. **MetalRoute (measured, not wired in):** `benchmarks/llm_smoke/decode_metal_probe.mojo` measures
+   `accel.gemm_metal_flat` at the exact decode shapes (`m=1`, `k`/`n` in {1024, 2048, 3072}) against
+   both the new FastGEMV CPU-parallel path and the old scalar path. Reconfirmed today: the GPU path
+   is **8.1x–13.6x slower** than FastGEMV's CPU-parallel path at every shape tested (q_proj 11.4x,
+   kv_proj 8.1x, o_proj 8.5x, gate/up 13.6x, down 11.8x slower), and often slower than even the old
+   scalar path — a single-token matmul is too small to amortize Metal's fixed per-call overhead
+   (buffer allocation, Float64<->Float32 conversion, launch, sync). The same weight shapes batched
+   like prefill instead (`m=16/64/256`) show the GPU **winning** (0.40x, 0.74x, 0.34x of CPU time —
+   under 1 means GPU wins), confirming the crossover is real and that Metal routing belongs at
+   *prefill*, not decode, on this model/host. Per the task's explicit instruction not to fake a
+   pointless wrapper, this was **not** wired into `qwen3_generate.mojo` — there is no second,
+   "Metal-routed" Algenta decode arm to race, because it would be a regression, not an improvement.
+   Only one Algenta row appears in the table below.
+
+### Correctness, reverified a final time, three ways
+
+All three re-run just now, independently, from a clean rebase onto `origin/main`'s current tip:
+
+- **Algenta** (`qwen3_generate.mojo`, this chain's FastGEMV-optimized decode path): token ids
+  `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]`
+  (`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."`), identical across
+  every repeated run today (5 runs total, including the pre-optimization scalar-path baseline rerun
+  below).
+- **`transformers`-CPU reference** (`reference_generate.py` on `/tmp/bb/bin/python3`, transformers
+  5.14.1, run independently just now against the same checkpoint): the exact same 16 token ids,
+  byte-for-byte, with per-step logits matching Algenta's own reported per-step logit to 5+ decimal
+  places (e.g. step 0: both report `21.039467`).
+- **llama.cpp** (`realrace_llama_cpp.py`, both `-ngl 0` and `-ngl 99`, F16 GGUF, run independently
+  just now): generated text `" Paris. The capital of Germany is Berlin. The capital of Italy is
+  Rome."` — identical to Algenta and the reference.
+- **mlx-lm** (`realrace_mlx_lm.py`, run independently just now against the original safetensors):
+  generated text `"Paris. The capital of Germany is Berlin. The capital of Italy is Rome."`
+  (mlx-lm's tokenizer does not re-emit the leading space consumed by the prompt's own trailing
+  space; the token content is identical) — identical to Algenta and the reference.
+
+Four independent implementations, greedy-decoding the same base model from the same prompt, still
+agree token-for-token after the decode-path change. No speed number below is reported without this
+having been checked first.
+
+### The numbers: old vs. new Algenta, and both real opponents, remeasured today
+
+Decode-only tokens/sec, greedy, 16 generated tokens, repeated runs on this machine just now (load
+average ~13-15 throughout this session — lighter than the original RealRace session's ~20, noted
+because it means llama.cpp's CPU numbers below are not directly comparable across sessions; the
+Algenta old-vs-new comparison IS directly comparable, since both were measured in the same session
+minutes apart):
+
+| Engine | Precision | Compute | Decode tok/s (range) | Typical | vs. Algenta (new) |
+|---|---|---|---|---|---|
+| **Algenta, pre-FastGEMV** (`gemv_flat(...,trans=True)` scalar path, re-run today for a same-session baseline) | float64 | CPU (1 core) | 1.32 – 1.38 | ~1.35 | 0.20x (i.e. new is ~5.0x faster) |
+| **Algenta, FastGEMV** (`gemv_transposed_parallel_flat`, this chain's shipped decode path) | float64 | CPU (parallel, up to 12 perf cores) | 4.94 – 8.00 | **~6.7** | 1x (baseline) |
+| llama.cpp, CPU-only (`-ngl 0`), remeasured today | F16 | CPU (ggml, SIMD + multi-threaded) | 38.8 – 43.5 | ~41 | **~6.1x faster** |
+| llama.cpp, GPU (`-ngl 99`), remeasured today | F16 | Apple GPU (Metal) | 256.9 – 265.8 | ~261 | **~39x faster** |
+| mlx-lm, remeasured today | bf16/fp16 (native MLX) | Apple GPU (Metal) | 302.9 – 310.2 | ~307 | **~46x faster** |
+| Algenta, hypothetical Metal-routed decode (measured via the probe, NOT wired in — not a real arm) | float64 vs float32 | Apple GPU (Metal) | n/a | 8.1x–13.6x SLOWER than the FastGEMV row | would be a regression, not a contender |
+
+FastGEMV delivered a real, reproducible **~5.0x** decode speedup on this exact checkpoint/prompt
+(typical 6.7 tok/s vs. the same-session pre-change baseline's 1.35 tok/s) purely from the CPU
+parallel-path fix — no precision change, no GPU. That is the honest, full effect of the lever this
+chain shipped. It is not enough: Algenta's *own best* now-optimized number, ~6.7 tok/s, still loses
+to llama.cpp's *CPU-only* number (~41 tok/s) by ~6.1x, before either opponent's GPU number is even
+considered — and loses to both opponents' GPU numbers by ~39x and ~46x.
+
+### Why the gap is ~6x now instead of ~19x, and why ~6x is still a loss, named precisely
+
+The original doc's point 1 (7-of-8 decode matmuls hitting a single-threaded scalar branch, 15 of 16
+cores idle) is fixed — that was the dominant term, and closing it recovered most of what a
+naive "just parallelize it" fix could realistically recover. Two terms remain, both already named
+in the original doc's points 2-3 and neither touched by this chain on purpose (rule 3: additive
+only, no frozen-kernel rewrite):
+
+1. **Parallel fan-out is not linear speedup.** ~12 available performance cores times the old
+   ~1.35 tok/s would predict something over 10x if the fix were free; the measured ~5.0x is roughly
+   half that. `parallelize`'s per-call fan-out/join cost, plus this being a genuinely shared
+   machine (load average ~13-15 during these very runs, sibling-agent Mojo processes in other
+   worktrees), both eat into the theoretical ceiling — this is the same caveat the original doc
+   made about its own numbers, still true here, and it is why the range (4.94-8.00 tok/s) is wide
+   rather than a tight cluster.
+2. **float64 is still the wire type**, still 2-wide SIMD (128-bit NEON) on this host versus fp16's
+   4-wide or bf16's 8-wide lanes that both opponents use for this same comparison. This is exactly
+   `llmk.gemv_fast`'s own docstring's stated reason for staying float64-only and leaving precision
+   as a separate, later lever — mixing it into this chain's number would have conflated two fixes
+   into one, unattributable result. It was not pursued this chain, and remains unfixed.
+3. **Compute placement for decode remains CPU-only, correctly** — MetalRoute's probe (reconfirmed
+   above) shows GPU is the wrong lever for a single-token matmul on this host; the placement
+   opponents get "for free" is not free for Algenta's decode step at float64, on this host, at
+   this batch size. GPU is real head-room for *prefill* (0.34x-0.74x, GPU winning) on this exact
+   model — a distinct, unstarted future item, not a decode fix.
+
+The next lever, if pursued, is precision (an additive fp16/bf16 GEMV kernel, per `gemv_fast.mojo`'s
+own docstring) measured against this now-improved baseline rather than the original scalar one —
+that is the honest "what's still missing" this addendum owes, not a vaguer "needs to be faster."
+
+### Publication decision
+
+**No gitbook page ships.** The standing rule is an outright win against BOTH opponents' best
+measured numbers on this machine, real installs, no proximity claims, no cap-ties counted as wins.
+Algenta's optimized decode path (~6.7 tok/s typical) loses to llama.cpp's CPU-only number (~41
+tok/s, ~6.1x) and to both GPU numbers (~39x, ~46x). A ~5x internal speedup is a real, measured,
+reproducible engineering result — and is reported as exactly that, a lever that mattered, not a
+win. It does not change the win/loss verdict, and no page is written or published for it.
+
+### Gates, all clean, on the rebased tree
+
+- Rebased `feat/llmk-decode-parallel-gemv` onto `origin/main`'s tip (`8fbc86c6`) — clean, no
+  conflicts (main's concurrent changes, e.g. `#495`'s `optmodel/formulation.mojo` fix, do not
+  overlap this chain's files).
+- `make inventory-refresh` (unconditional) after the rebase: zero diff — the previously-generated
+  artifacts (`runtime_library_dispatch_generated.mojo`, `runtime_library_contract.json`,
+  `runtime_capability_manifest.json`, `runtime-library-catalog.md`) were already current against
+  the rebased tree.
+- `make inventory-check`: clean.
+- `python3 -m scripts.reliability_guards` (includes the `mojo_freeze_namespaces` guard): clean, no
+  new violations (only the pre-existing, already-baselined wave B10/D/E debt).
+- `./scripts/run_repo_python.sh scripts/capability_manifest_gate.py`: "no new undeclared kernels."
+- `git diff HEAD -- mojo/engine/accel/ mojo/engine/gemm/ mojo/engine/llmk/`: **empty** for
+  `accel/` and `gemm/` (frozen, including `accel/gemm_metal.mojo` and `gemm/blocked.mojo`
+  specifically) — `llmk/` shows only this chain's own additive files (`gemv_fast.mojo`, new; a
+  4-status-code addition to `contract.mojo`).
+- `tests/generate_mojo_tests.py --check`: "191 hand-written suite(s) protected, 463 generated
+  suite(s) fresh."
+- `mojo/tests/libs/test_llmk_gemv_fast.mojo` (FastGEMV's suite): 7/7 assertions pass, including the
+  300x300 and 128x1536 decode-projection-shaped cases against the frozen `gemv_flat`, worst abs
+  delta `0.0`.
+- `mojo/tests/libs/test_llmk_contract.mojo` (regenerated A-Z suite covering `llmk.contract`,
+  including the new `llmk_gemv_dims_check`): 5/5 pass.
+- `decode_metal_probe.mojo` is a hand-written, intentionally-unregistered probe (see its own
+  docstring) — not part of `generate_mojo_tests.py`'s protected/generated suites by design; its
+  output is the measurement reported above, reconfirmed stable.
+
+### Reproduction (this addendum)
+
+```bash
+# Old (pre-FastGEMV) baseline, same-session comparison:
+git show 9f82eac5:benchmarks/llm_smoke/qwen3_generate.mojo > /tmp/qwen3_generate_old_baseline.mojo
+cd /Users/angel/Developer/decision-engine/mojo_env && pixi run mojo run \
+    -I <worktree>/mojo/engine /tmp/qwen3_generate_old_baseline.mojo
+
+# New (FastGEMV) decode path:
+pixi run mojo run -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate.mojo
+
+# Metal-decode probe (requires the GPU build flag + a shader compiler):
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo run -D ALGENTA_GPU \
+    -I <worktree>/mojo/engine -I <worktree>/benchmarks <worktree>/benchmarks/llm_smoke/decode_metal_probe.mojo
+
+# Opponents (already installed/converted from the original RealRace phase — not reinstalled):
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+
+# Reference cross-check:
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base
 ```

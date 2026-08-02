@@ -42,11 +42,17 @@ Public API:
   llmk_residual_dims_check(n, len_a, len_b)           — exact-length shape agreement for both operands
   llmk_kv_append_dims_check(cache_len, len_cache, n_new, len_new)  — KV-cache growth, one step
   llmk_argmax_dims_check(n, len_logits)               — a full-vocabulary argmax row
+  llmk_gemv_dims_check(m, n, len_a, len_x)            — the parallel transposed-GEMV's shape
 
 Codes 566-568 (below) are additive for `llmk.generate`'s decode-loop primitives (KV-cache append,
 greedy argmax), added in the same session that wired the actual generation loop on top of the
 prefill-only forward pass this module's docstring above describes -- still inside the 560-579 range
 this package owns, nothing renumbered.
+
+Codes 569-570 (below) are additive for `llmk.gemv_fast.gemv_transposed_parallel_flat` -- the parallel
+transposed-GEMV that replaces `gemm.blocked.gemv_flat(..., trans=True)`'s single-threaded scalar path
+at the 7-of-8 decode-step call sites `benchmarks/llm_smoke/qwen3_generate.mojo` uses it at (see that
+module's own docstring for the measured bottleneck). Still inside 560-579, still nothing renumbered.
 """
 
 from tensorx.contract import tx_finite
@@ -83,6 +89,14 @@ comptime LLMK_ERR_LOGITS_LENGTH: Int = 568
 """greedy_argmax_flat: len(logits) != n -- the logits row is not the vocabulary width the caller
 claimed."""
 
+comptime LLMK_ERR_GEMV_A_LENGTH: Int = 569
+"""gemv_transposed_parallel_flat: len(a) != m * n -- the weight buffer is not the shape the caller
+claimed."""
+
+comptime LLMK_ERR_GEMV_X_LENGTH: Int = 570
+"""gemv_transposed_parallel_flat: len(x) != m -- the input vector is not the in-features width the
+caller claimed."""
+
 comptime LLMK_MAX_DIM: Int = 1 << 24
 """Ceiling on `n`. Matches `normk.contract.NORM_MAX_ROWS`'s order of magnitude — a residual add over
 `tokens * d_model` at any real transformer shape is far below this, and a caller passing a byte count
@@ -107,6 +121,10 @@ fn llmk_status_name(code: Int) -> String:
         return String("llmk_new_length_mismatch")
     if code == LLMK_ERR_LOGITS_LENGTH:
         return String("llmk_logits_length_mismatch")
+    if code == LLMK_ERR_GEMV_A_LENGTH:
+        return String("llmk_gemv_a_length_mismatch")
+    if code == LLMK_ERR_GEMV_X_LENGTH:
+        return String("llmk_gemv_x_length_mismatch")
     return String("llmk_code_out_of_range")
 
 
@@ -166,4 +184,30 @@ fn llmk_argmax_dims_check(n: Int, len_logits: Int) -> Int:
         return LLMK_ERR_DIM_TOO_LARGE
     if len_logits != n:
         return LLMK_ERR_LOGITS_LENGTH
+    return LLMK_OK
+
+
+fn llmk_gemv_dims_check(m: Int, n: Int, len_a: Int, len_x: Int) -> Int:
+    """Validate the parallel transposed-GEMV's shape against its real buffer lengths, exactly.
+
+    `a` is `m` rows by `n` columns, row-major (the in-features-by-out-features layout
+    `qwen3_generate.mojo`'s pre-transposed weights use); `x` is the length-`m` input vector; the
+    result `y` is length `n`. Same two-buffer, two-dimension shape `gemm.blocked.gemv_flat` itself
+    validates, just under this package's own status vocabulary (rule 4e).
+
+    @capability llmk_gemv_dims_check
+    complexity: O(1)
+    counts:
+    - dim m <= LLMK_MAX_DIM [kernel_validated]
+    - dim n <= LLMK_MAX_DIM [kernel_validated]
+    @endcapability
+    """
+    if m < 1 or n < 1:
+        return LLMK_ERR_EMPTY_DIM
+    if m > LLMK_MAX_DIM or n > LLMK_MAX_DIM:
+        return LLMK_ERR_DIM_TOO_LARGE
+    if len_a != m * n:
+        return LLMK_ERR_GEMV_A_LENGTH
+    if len_x != m:
+        return LLMK_ERR_GEMV_X_LENGTH
     return LLMK_OK

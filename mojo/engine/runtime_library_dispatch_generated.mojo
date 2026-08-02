@@ -3744,6 +3744,11 @@ from llmk.contract import (
     llmk_residual_dims_check as _llmk_contract__llmk_residual_dims_check,
     llmk_kv_append_dims_check as _llmk_contract__llmk_kv_append_dims_check,
     llmk_argmax_dims_check as _llmk_contract__llmk_argmax_dims_check,
+    llmk_gemv_dims_check as _llmk_contract__llmk_gemv_dims_check,
+)
+
+from llmk.gemv_fast import (
+    gemv_transposed_parallel_flat as _llmk_gemv_fast__gemv_transposed_parallel_flat,
 )
 
 from llmk.generate import (
@@ -8368,6 +8373,10 @@ from linalg_ext import (
 from linear_models import (
     ElasticNetResult,
     LogisticResult,
+)
+
+from llmk.gemv_fast import (
+    ParallelGemvResult,
 )
 
 from llmk.generate import (
@@ -16433,6 +16442,16 @@ fn _to_json_pairingaudit(value: PairingAudit) raises -> String:
     result += _to_json_bool(value.pairing_reduces_variance)
     result += ","
     result += _to_json_bool(value.conclusions_differ)
+    result += "]}"
+    return result
+
+fn _to_json_parallelgemvresult(value: ParallelGemvResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ParallelGemvResult\",\"v\":[")
+    result += _to_json_list_float64(value.y)
+    result += ","
+    result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
     result += "]}"
     return result
 
@@ -82395,9 +82414,54 @@ fn _dispatch_llmk__contract(function_name: String, args_array: String) raises ->
             "invalid_arguments",
             "Function llmk.contract.llmk_argmax_dims_check expected 2 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "llmk_gemv_dims_check":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _llmk_contract__llmk_gemv_dims_check(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.contract.llmk_gemv_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.contract.llmk_gemv_dims_check expected 4 arguments, received " + String(arg_count) + "."
+        )
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module llmk.contract."
+    )
+
+fn _dispatch_llmk__gemv_fast(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "gemv_transposed_parallel_flat":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _llmk_gemv_fast__gemv_transposed_parallel_flat(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_parallelgemvresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for llmk.gemv_fast.gemv_transposed_parallel_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function llmk.gemv_fast.gemv_transposed_parallel_flat expected 4 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module llmk.gemv_fast."
     )
 
 fn _dispatch_llmk__generate(function_name: String, args_array: String) raises -> String:
@@ -152066,6 +152130,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_llm_sampling(function_name, args_array)
     if module_name == "llmk.contract":
         return _dispatch_llmk__contract(function_name, args_array)
+    if module_name == "llmk.gemv_fast":
+        return _dispatch_llmk__gemv_fast(function_name, args_array)
     if module_name == "llmk.generate":
         return _dispatch_llmk__generate(function_name, args_array)
     if module_name == "llmk.residual":

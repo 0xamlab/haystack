@@ -206,6 +206,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_mlpk_contract.mojo",
         "test_llmk_residual.mojo",
         "test_llmk_generate.mojo",
+        "test_llmk_gemv_fast.mojo",
         "test_query_comoments_packed.mojo",
         "test_query_median_packed.mojo",
         "test_query_topk_dense.mojo",

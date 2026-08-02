@@ -33,6 +33,21 @@ additive, nothing frozen touched:
    checked against exactly, without a matched RNG (temperature/top-p sampling both involve randomness
    that would need one).
 
+The 7-of-8 scalar-GEMV bottleneck, and the fix (additive, `gemm/` untouched)
+--------------------------------------------------------------------------------
+`benchmarks/llm_smoke/REALRACE_RESULTS.md` (the RealRace phase) traced Algenta's ~19x CPU-vs-CPU
+decode slowdown against llama.cpp to one named, quantified cause: `gemv_flat(..., trans=True)`'s
+scalar branch is single-threaded by `gemm.blocked`'s own documented design, and 7 of the 8
+per-decode-step matmuls below (every per-layer Q/K/V/O/gate/up/down projection) used to hit it, so 15
+of this host's 16 physical cores sat idle for 7 of every 8 matmuls in every step. Those 7 calls now go
+through `llmk.gemv_fast.gemv_transposed_parallel_flat` instead -- a new, additive parallel path for the
+EXACT SAME shape, in a new namespace, that partitions the output columns across `parallelize` workers
+(see that module's own docstring for why the output axis, not the input axis, is the one safe to hand
+out disjointly). The 8th call, `lm_head` (untransposed, at the very end of each step), already hit the
+parallelized `gemv_band` branch and is UNCHANGED here on purpose -- it was already fine. `gemm/blocked.mojo`
+itself is not modified; every call in this file still routes through frozen kernels, just a different
+additive driver for the transposed case.
+
 Weight residency
 ------------------
 Every layer's weights are read from `weights.blob` ONCE, into memory, before the prefill step —
@@ -64,6 +79,7 @@ from attnk.contract import ATTN_OK
 from llmk.residual import residual_add_flat
 from llmk.contract import LLMK_OK
 from llmk.generate import greedy_argmax_flat, kv_cache_append_flat
+from llmk.gemv_fast import gemv_transposed_parallel_flat
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
 comptime BLOB_PATH: String = "/tmp/qwen3smoke/weights.blob"
@@ -350,7 +366,8 @@ def main() raises:
     if prefill_greedy.token_id == EOS_TOKEN_ID:
         stopped_on_eos = True
 
-    # ═══ DECODE: one new token at a time, real KV cache, gemv_flat (decode-shaped), greedy ═══
+    # ═══ DECODE: one new token at a time, real KV cache, greedy. 7 of 8 per-step matmuls now use ═══
+    # ═══ llmk.gemv_fast's parallel transposed GEMV; lm_head (untransposed) still uses gemv_flat. ═══
     t_decode_start_ns = perf_counter_ns()
     var n_decoded = 1  # the prefill-produced token already counts as one generated token
 
@@ -373,16 +390,16 @@ def main() raises:
                 var normed1 = rmsnorm_fwd_flat(hidden1, layers[layer].ln1, 1, d_model, eps)
                 _check(normed1.status, NORM_OK, "rmsnorm_fwd_flat(decode input_layernorm)")
 
-                var q1 = gemv_flat(layers[layer].q, normed1.y, d_model, h_q * d_head, True)
-                _check(q1.status, GEMM_OK, "gemv_flat(decode q_proj)")
-                var k1 = gemv_flat(layers[layer].k, normed1.y, d_model, h_kv * d_head, True)
-                _check(k1.status, GEMM_OK, "gemv_flat(decode k_proj)")
-                var v1 = gemv_flat(layers[layer].v, normed1.y, d_model, h_kv * d_head, True)
-                _check(v1.status, GEMM_OK, "gemv_flat(decode v_proj)")
+                var q1 = gemv_transposed_parallel_flat(layers[layer].q, normed1.y, d_model, h_q * d_head)
+                _check(q1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode q_proj)")
+                var k1 = gemv_transposed_parallel_flat(layers[layer].k, normed1.y, d_model, h_kv * d_head)
+                _check(k1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode k_proj)")
+                var v1 = gemv_transposed_parallel_flat(layers[layer].v, normed1.y, d_model, h_kv * d_head)
+                _check(v1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode v_proj)")
 
-                var qn1 = rmsnorm_fwd_flat(q1.c, layers[layer].qn, h_q, d_head, eps)
+                var qn1 = rmsnorm_fwd_flat(q1.y, layers[layer].qn, h_q, d_head, eps)
                 _check(qn1.status, NORM_OK, "rmsnorm_fwd_flat(decode q_norm)")
-                var kn1 = rmsnorm_fwd_flat(k1.c, layers[layer].kn, h_kv, d_head, eps)
+                var kn1 = rmsnorm_fwd_flat(k1.y, layers[layer].kn, h_kv, d_head, eps)
                 _check(kn1.status, NORM_OK, "rmsnorm_fwd_flat(decode k_norm)")
 
                 var q_rot1 = rope_apply_flat(qn1.y, rt.cos_table, rt.sin_table, 1, h_q, d_head, one_pos, False)
@@ -395,7 +412,7 @@ def main() raises:
                 )
                 _check(k_grown.status, LLMK_OK, "kv_cache_append_flat(decode k)")
                 var v_grown = kv_cache_append_flat(
-                    cache_v[layer], v1.c, cache_len_tokens * h_kv * d_head, h_kv * d_head
+                    cache_v[layer], v1.y, cache_len_tokens * h_kv * d_head, h_kv * d_head
                 )
                 _check(v_grown.status, LLMK_OK, "kv_cache_append_flat(decode v)")
                 cache_k[layer] = k_grown.out.copy()
@@ -421,28 +438,28 @@ def main() raises:
                 )
                 _check(attn1.status, ATTN_OK, "sdpa_forward_flat(decode)")
 
-                var attn_proj1 = gemv_flat(layers[layer].o, attn1.out, h_q * d_head, d_model, True)
-                _check(attn_proj1.status, GEMM_OK, "gemv_flat(decode o_proj)")
+                var attn_proj1 = gemv_transposed_parallel_flat(layers[layer].o, attn1.out, h_q * d_head, d_model)
+                _check(attn_proj1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode o_proj)")
 
-                var resid1a = residual_add_flat(hidden1, attn_proj1.c, d_model)
+                var resid1a = residual_add_flat(hidden1, attn_proj1.y, d_model)
                 _check(resid1a.status, LLMK_OK, "residual_add_flat(decode post_attn)")
                 hidden1 = resid1a.out.copy()
 
                 var normed2a = rmsnorm_fwd_flat(hidden1, layers[layer].ln2, 1, d_model, eps)
                 _check(normed2a.status, NORM_OK, "rmsnorm_fwd_flat(decode post_attention_layernorm)")
 
-                var gate1 = gemv_flat(layers[layer].gate, normed2a.y, d_model, d_ff, True)
-                _check(gate1.status, GEMM_OK, "gemv_flat(decode gate_proj)")
-                var up1 = gemv_flat(layers[layer].up, normed2a.y, d_model, d_ff, True)
-                _check(up1.status, GEMM_OK, "gemv_flat(decode up_proj)")
+                var gate1 = gemv_transposed_parallel_flat(layers[layer].gate, normed2a.y, d_model, d_ff)
+                _check(gate1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode gate_proj)")
+                var up1 = gemv_transposed_parallel_flat(layers[layer].up, normed2a.y, d_model, d_ff)
+                _check(up1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode up_proj)")
 
-                var act1 = gated_ffn_fwd_flat(up1.c, gate1.c, 1, d_ff, MLP_ACT_SWIGLU)
+                var act1 = gated_ffn_fwd_flat(up1.y, gate1.y, 1, d_ff, MLP_ACT_SWIGLU)
                 _check(act1.status, MLP_OK, "gated_ffn_fwd_flat(decode)")
 
-                var down1 = gemv_flat(layers[layer].down, act1.y, d_ff, d_model, True)
-                _check(down1.status, GEMM_OK, "gemv_flat(decode down_proj)")
+                var down1 = gemv_transposed_parallel_flat(layers[layer].down, act1.y, d_ff, d_model)
+                _check(down1.status, LLMK_OK, "gemv_transposed_parallel_flat(decode down_proj)")
 
-                var resid2a = residual_add_flat(hidden1, down1.c, d_model)
+                var resid2a = residual_add_flat(hidden1, down1.y, d_model)
                 _check(resid2a.status, LLMK_OK, "residual_add_flat(decode post_ffn)")
                 hidden1 = resid2a.out.copy()
 

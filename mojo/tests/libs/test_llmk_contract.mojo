@@ -1,6 +1,6 @@
 """test_llmk_contract.mojo — auto-generated tests for llmk.contract."""
 from std.math import isnan, isinf
-from llmk.contract import llmk_status_name, llmk_residual_dims_check, llmk_kv_append_dims_check, llmk_argmax_dims_check
+from llmk.contract import llmk_status_name, llmk_residual_dims_check, llmk_kv_append_dims_check, llmk_argmax_dims_check, llmk_gemv_dims_check
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -50,5 +50,7 @@ def main() raises:
     passed += 1; print("  ✅ llmk.contract::llmk_kv_append_dims_check")
     _ = llmk_argmax_dims_check(5, 5)
     passed += 1; print("  ✅ llmk.contract::llmk_argmax_dims_check")
+    _ = llmk_gemv_dims_check(5, 5, 5, 5)
+    passed += 1; print("  ✅ llmk.contract::llmk_gemv_dims_check")
 
     print("  [llmk.contract] Passed:", passed, "Failed:", failed)
