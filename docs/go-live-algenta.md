@@ -33,6 +33,8 @@ product is resolved from the client_id / plan namespace / license claim, consoli
 
 CI note: `build-runtime.yml` is dispatch/tag-only (it needs the Mojo toolchain + `ALGENTA_SIGNING_KEY`), so it does not gate any PR.
 
+CI note (memory): `mojo build` is the memory-hungry part of that workflow — the heaviest 24-module shard was measured at **11.3 GiB** of peak footprint, against a standard hosted linux runner's ~7 GiB of RAM. The linux arm therefore provisions a 24 GiB swapfile on `/mnt` before compiling. Without it the runner VM is torn down mid-shard and the step reports only `exit code 143` + "The runner has received a shutdown signal". The builder now prints host memory up front, announces each shard **before** compiling it, and reports each shard's peak footprint, so a recurrence names the shard instead of leaving it to be inferred. If the peak ever approaches the `--max-rss-mb` ceiling in the matrix, raise the swapfile (or move to a larger runner) rather than the ceiling.
+
 ## Owner steps (in order)
 
 ### 1. Deploy the engine + the algenta host

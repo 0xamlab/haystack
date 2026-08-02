@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -31,13 +32,16 @@ def test_shard_builder_is_deterministic_and_complete(
         shard_builder, "discover_runtime_library_modules", lambda executable_only: modules
     )
 
-    def fake_build(*, env: dict[str, str], log_path: Path, timeout: float) -> None:
+    def fake_build(
+        *, env: dict[str, str], log_path: Path, timeout: float, max_rss_kib: int | None = None
+    ):
         assert timeout == 30.0
         worker = Path(env["BINARY_PATH"])
         worker.write_text("worker", encoding="utf-8")
         worker.chmod(0o755)
         worker.with_name(f"{worker.name}.manifest.json").write_text("{}", encoding="utf-8")
         log_path.write_text("ok", encoding="utf-8")
+        return SimpleNamespace(peak_committed_kib=1024, peak_resident_kib=1024)
 
     monkeypatch.setattr(shard_builder, "_run_build", fake_build)
     out_dir = tmp_path / "runtime-shards"
@@ -54,6 +58,69 @@ def test_shard_builder_is_deterministic_and_complete(
     assert payload["shard_count"] == 2
     assert json.loads((out_dir / "runtime-shards.json").read_text(encoding="utf-8")) == payload
     assert not (out_dir / "sources").exists()
+
+
+def test_shard_builder_announces_each_shard_before_compiling_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A build killed mid-shard must still say which shard it was on.
+
+    The release job died five times in a row reporting nothing but `exit code
+    143`, because the only per-shard output was printed *after* a shard finished.
+    The last line of a killed build named the last shard that succeeded, not the
+    one that was running.
+    """
+    shard_builder = _load_script("build_runtime_shards")
+    modules = tuple(SimpleNamespace(import_path=name) for name in ("alpha", "beta", "gamma"))
+    monkeypatch.setattr(
+        shard_builder, "discover_runtime_library_modules", lambda executable_only: modules
+    )
+
+    def exploding_build(*, env: dict[str, str], log_path: Path, timeout: float, max_rss_kib=None):
+        if "gamma" in env["MOJO_RUNTIME_MODULE_FILTER"]:
+            raise shard_builder.ShardBuildError("boom")
+        worker = Path(env["BINARY_PATH"])
+        worker.write_text("worker", encoding="utf-8")
+        log_path.write_text("ok", encoding="utf-8")
+        return SimpleNamespace(peak_committed_kib=2048, peak_resident_kib=2048)
+
+    monkeypatch.setattr(shard_builder, "_run_build", exploding_build)
+
+    with pytest.raises(shard_builder.ShardBuildError):
+        shard_builder.build_runtime_shards(
+            out_dir=tmp_path / "runtime-shards", shard_size=2, timeout=30.0
+        )
+
+    out = capsys.readouterr().out
+    assert "building algenta-runtime-worker-001 (shard 2/2): 1 modules (gamma .. gamma)" in out
+    # and the shard that did finish reports what it cost, so a creeping footprint
+    # is visible in a passing log rather than only in the crash that follows it.
+    assert "peak footprint" in out
+
+
+def test_shard_builder_names_the_in_flight_shard_when_killed() -> None:
+    shard_builder = _load_script("build_runtime_shards")
+    progress = shard_builder._PROGRESS
+    progress.label = "shard 17/27"
+    progress.worker_name = "algenta-runtime-worker-016"
+    progress.modules = ("optimization.assignment", "paleomagnetism")
+    progress.started_at = time.monotonic()
+
+    described = progress.describe()
+
+    assert "algenta-runtime-worker-016" in described
+    assert "shard 17/27" in described
+    assert "optimization.assignment .. paleomagnetism" in described
+
+
+def test_footprint_sampler_reports_a_real_process_tree() -> None:
+    """The ceiling is only as good as the measurement behind it."""
+    shard_builder = _load_script("build_runtime_shards")
+    footprint = shard_builder._tree_footprint_kib(os.getpid())
+    assert footprint is not None
+    resident, committed = footprint
+    assert resident > 0
+    assert committed >= resident
 
 
 def test_stage_rejects_incomplete_shard_map(tmp_path: Path) -> None:
