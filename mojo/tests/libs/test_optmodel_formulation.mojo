@@ -269,6 +269,82 @@ fn main() raises:
             len(low.rhs),
         )
 
+    # ── a binary's OWN `x <= 1` row is skipped iff it is REDUNDANT ─────────────
+    # Three variables, one real row (`x0+x1+x2 <= 2`) to keep `n_cons >= 1`:
+    #   var0: binary, upper 1 — `milp_solve`'s root box already says this row, so
+    #         `formulation_lower_flat` must OMIT its own copy;
+    #   var1: binary, upper 0 (fixed at 0) — the root box only gives `<= 1`, so THIS
+    #         row is the only place the tighter bound lives and must be KEPT;
+    #   var2: continuous, upper 1 — no root box exists for a continuous kind at all,
+    #         so its row must be KEPT regardless of the bound's numeric value.
+    # Expected: 1 real row + 2 upper rows (var1, var2, in index order) = 3 rows.
+    var mixed = formulation_lower_flat(
+        3, 1, _floats(0.0, 0.0, 0.0), 0.0, _floats(1.0, 1.0, 1.0), _ints(SENSE_LE),
+        _floats(2.0), _ints(VAR_BINARY, VAR_BINARY, VAR_CONTINUOUS),
+        _floats(0.0, 0.0, 0.0), _floats(1.0, 0.0, 1.0),
+        _ints(VAR_FLAG_BOXED, VAR_FLAG_BOXED, VAR_FLAG_BOXED),
+    )
+    if (
+        mixed.ok and mixed.rows == 3 and mixed.n_upper_rows == 2
+        and mixed.row_kind[0] == 0 and mixed.row_ref[0] == 0
+        and mixed.row_kind[1] == 1 and mixed.row_ref[1] == 1
+        and mixed.rhs[1] == 0.0
+        and mixed.row_kind[2] == 1 and mixed.row_ref[2] == 2
+        and mixed.rhs[2] == 1.0
+    ):
+        passed += 1
+        print("  ✅ binary-at-1 row omitted; binary-at-0 and continuous-at-1 kept")
+    else:
+        failed += 1
+        print(
+            "  ❌ redundant-row skip wrong:", mixed.rows, mixed.n_upper_rows,
+            len(mixed.row_kind),
+        )
+
+    # Mutation: an all-continuous twin of the SAME shape must NOT skip anything — the
+    # predicate is `kind == VAR_BINARY`, not merely `upper == 1.0`, and this is the
+    # check that would catch a broadened (wrong) version of it.
+    var all_continuous = formulation_lower_flat(
+        3, 1, _floats(0.0, 0.0, 0.0), 0.0, _floats(1.0, 1.0, 1.0), _ints(SENSE_LE),
+        _floats(2.0), _ints(VAR_CONTINUOUS, VAR_CONTINUOUS, VAR_CONTINUOUS),
+        _floats(0.0, 0.0, 0.0), _floats(1.0, 0.0, 1.0),
+        _ints(VAR_FLAG_BOXED, VAR_FLAG_BOXED, VAR_FLAG_BOXED),
+    )
+    if all_continuous.ok and all_continuous.rows == 4 and all_continuous.n_upper_rows == 3:
+        passed += 1
+        print("  ✅ the same three upper bounds, all continuous, keep all three rows")
+    else:
+        failed += 1
+        print(
+            "  ❌ continuous-kind twin wrongly skipped a row:", all_continuous.rows,
+            all_continuous.n_upper_rows,
+        )
+
+    # Mutation: a binary FIXED AT 1 (lower == upper == 1.0) must still get its OWN row.
+    # Its shift is 1, so the row this function would emit is `y_0 <= upper - shift ==
+    # 0.0` — NOT the same statement as `_root_node`'s hardcoded `y_0 <= 1.0` (that box
+    # is written in `y`, unaware of any shift). A predicate that tested `upper == 1.0`
+    # alone (forgetting `lower == 0.0`) would wrongly skip this row and silently widen
+    # the variable from the single point `{1}` back to `{0, 1}` — this is the case
+    # that distinguishes the two.
+    var fixed_at_one = formulation_lower_flat(
+        1, 1, _floats(0.0), 0.0, _floats(1.0), _ints(SENSE_LE), _floats(5.0),
+        _ints(VAR_BINARY), _floats(1.0), _floats(1.0), _ints(VAR_FLAG_BOXED),
+    )
+    if (
+        fixed_at_one.ok and fixed_at_one.rows == 2 and fixed_at_one.n_upper_rows == 1
+        and fixed_at_one.row_kind[1] == 1 and fixed_at_one.row_ref[1] == 0
+        and fixed_at_one.rhs[1] == 0.0
+    ):
+        passed += 1
+        print("  ✅ a binary fixed at 1 keeps its own row (y_0 <= 0), not skipped")
+    else:
+        failed += 1
+        print(
+            "  ❌ binary-fixed-at-1 row wrongly skipped:", fixed_at_one.rows,
+            fixed_at_one.n_upper_rows,
+        )
+
     # ── typed refusals at lowering, each with its repaired twin ───────────────
     var free = formulation_lower_flat(
         2, 2, _c2(), 0.0, _a2(), _le2(), _b2(), _cont2(),

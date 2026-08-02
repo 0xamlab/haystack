@@ -177,6 +177,54 @@ fn main() raises:
         failed += 1
         print("  ❌ knapsack wrong:", knap.status, knap.objective)
 
+    # ── a binary's root-box `<= 1` survives even when its OWN row is omitted ──
+    # `max x0 + x1`, both binary, `x0 + x1 <= 5` (slack, never binds): x0's upper is
+    # the standard 1 — `formulation_lower_flat` now omits its row as redundant with
+    # `milp_solve`'s unconditional root box — while x1 is fixed at 0, whose row is
+    # NOT redundant and must stay. The answer is 1 at (1, 0); if the omission logic
+    # ever over-reached (dropped x1's row too), x1 could reach 1 and either the
+    # self-check catches it (refused, not wrong) or the objective would read 2 — this
+    # is the mutation that distinguishes "the redundant row is gone" from
+    # "enforcement is gone".
+    var bin2 = _ints(VAR_BINARY, VAR_BINARY)
+    var redundant_row_omitted = formulation_solve_default(
+        2, 1, True, _floats(1.0, 1.0), 0.0, _floats(1.0, 1.0), _ints(SENSE_LE),
+        _floats(5.0), bin2, _floats(0.0, 0.0), _floats(1.0, 0.0),
+        _ints(VAR_FLAG_BOXED, VAR_FLAG_BOXED), 100,
+    )
+    if (
+        redundant_row_omitted.solved and redundant_row_omitted.objective == 1.0
+        and redundant_row_omitted.x[0] == 1.0 and redundant_row_omitted.x[1] == 0.0
+        and redundant_row_omitted.audit_feasible
+    ):
+        passed += 1
+        print("  ✅ binary root box still caps x0 at 1 with its own row omitted; x1 fixed at 0 holds")
+    else:
+        failed += 1
+        print(
+            "  ❌ redundant-row omission broke enforcement:",
+            redundant_row_omitted.status, redundant_row_omitted.objective,
+        )
+
+    # Mutation: `min x0` with x0 binary FIXED at 1 (`lower == upper == 1.0`) must solve
+    # to 1, not 0. `_root_node`'s hardcoded box only ever says `<= 1`, unaware of the
+    # shift; a broadened redundancy check (testing `upper == 1.0` alone, forgetting
+    # `lower == 0.0`) would skip THIS variable's own row too, and a minimiser would
+    # happily drift to the un-forced end of `[0, 1]`.
+    var fixed_one = formulation_solve_default(
+        1, 1, False, _floats(1.0), 0.0, _floats(1.0), _ints(SENSE_LE), _floats(5.0),
+        _ints(VAR_BINARY), _floats(1.0), _floats(1.0), _ints(VAR_FLAG_BOXED), 100,
+    )
+    if (
+        fixed_one.solved and fixed_one.objective == 1.0 and fixed_one.x[0] == 1.0
+        and fixed_one.audit_feasible
+    ):
+        passed += 1
+        print("  ✅ a binary fixed at 1 stays at 1 under `min x0` — the shift is honoured")
+    else:
+        failed += 1
+        print("  ❌ binary-fixed-at-1 drifted:", fixed_one.status, fixed_one.objective)
+
     # ── infeasibility NAMES the conflict, in the caller's vocabulary ──────────
     # Rows: 0: x <= 2, 1: x >= 5, 2: y <= 100. The core is {0, 1}; row 2 is innocent.
     var rows_conflict = formulation_solve_default(

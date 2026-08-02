@@ -78,6 +78,7 @@ from optimization.model import (
     SENSE_EQ,
     SENSE_GE,
     SENSE_LE,
+    VAR_BINARY,
     VAR_CONTINUOUS,
     _round_f as _nearest_int,
     has_lower_bound,
@@ -292,6 +293,47 @@ fn _empty_lowered(status: Int) -> LoweredForm:
     )
 
 
+fn _upper_row_redundant(kind: Int, lower: Float64, upper: Float64, n_cons: Int) -> Bool:
+    """True when `milp_solve`'s OWN root box already enforces this upper bound for free.
+
+    `integer._root_node` adds an unconditional `y_j <= 1` row for EVERY `VAR_BINARY`
+    column before the first LP relaxation ever runs, and `_augment` re-appends it at
+    every node — a row entirely separate from anything this module emits, and stated in
+    the LOWERED variable `y_j` (`_root_node` takes only `cols`/`var_kind`, never a
+    shift). The row `formulation_lower_flat` would otherwise emit is `y_j <= upper -
+    shift`; it is a byte-for-byte DUPLICATE of the root box ONLY when that equals `1.0`
+    too, which needs BOTH `upper == 1.0` AND `shift == 0.0` (i.e. `lower == 0.0` — the
+    binary's own boxing already forces its declared lower to be exactly 0 or exactly
+    1, `OPTM_ERR_DISCRETE_SHIFT`'s grid check besides). A binary fixed at 1
+    (`lower == upper == 1.0`) would otherwise emit `y_j <= 0.0`, which the `1.0` root
+    box does NOT say — checking `upper` alone would have skipped that row too and
+    silently widened the variable back to `{0, 1}`.
+
+    Two identical `y_j <= 1` rows are not extra safety margin — they are the textbook
+    shape of a degenerate tie (either row's slack can sit at 0 while the other's does
+    too, for free, at every vertex where the bound binds) — measured driving the
+    frozen simplex to a genuine non-terminating stall on
+    `m_p_median_center_h_01`/`h_03` (a 211-variable, 661-row root relaxation with 210
+    such duplicated pairs: `lp_solve` never reached `LP_OPTIMAL` at 1x/5x/30x the
+    default iteration budget, using the ENTIRE cap each time with the SAME node
+    reached). Omitting the duplicate changes NOTHING about the feasible region —
+    `milp_solve` still enforces the bound, unconditionally, from its own frozen code —
+    so this is exact row ELIMINATION, not a bound approximation, and it applies
+    regardless of which solver dispatch handles the model.
+
+    Guarded by `n_cons >= 1` for a reason that has nothing to do with degeneracy:
+    `formulation_solve_flat`'s `rows == 0` branch is a SEPARATE analytical shortcut
+    that answers a pure-corner/unbounded question WITHOUT ever calling `milp_solve` —
+    it never sees `_root_node`'s box, so it must never be reached over a model whose
+    ONLY upper enforcement was a row this function omitted. `n_cons >= 1` makes
+    `rows_out` positive independently of `n_upper`, so that shortcut cannot fire here
+    at all, no matter how many upper rows this predicate removes. A model with zero
+    caller constraints is rare in this package's callers and is left on the
+    un-optimised (always-emit) path rather than reasoned about further.
+    """
+    return kind == VAR_BINARY and lower == 0.0 and upper == 1.0 and n_cons >= 1
+
+
 fn formulation_check_flat(
     n_vars: Int, n_cons: Int, c: List[Float64], c0: Float64,
     a: List[Float64], senses: List[Int], rhs: List[Float64], var_kind: List[Int],
@@ -381,9 +423,11 @@ fn formulation_lower_flat(
 
     Binary variables keep their kind: `variables_validate_flat` already forced their
     declared box inside `[0, 1]`, `OPTM_ERR_DISCRETE_SHIFT` forces the shift onto the
-    grid, so the shift is 0 or 1 and the shifted domain stays inside `{0, 1}` — the
-    `y_j <= 1` row `milp_solve` adds for the kind is therefore valid (if loose) and the
-    explicit upper row emitted here is what binds.
+    grid, so the shift is 0 or 1 and the shifted domain stays inside `{0, 1}`. A binary
+    variable's OWN explicit upper row is emitted here only when it would say something
+    `milp_solve`'s unconditional `y_j <= 1` root-node box does not already say
+    (`_upper_row_redundant`) — an upper bound tighter than 1 (fixing the variable at 0)
+    still gets its row, because that one binds where the root box does not.
 
     @capability formulation_lower_flat
     complexity: O(n_cons * n_vars + n_vars * n_vars)
@@ -407,7 +451,9 @@ fn formulation_lower_flat(
         if var_kind[j] != VAR_CONTINUOUS:
             if _nearest_int(var_lower[j]) != var_lower[j]:
                 return _empty_lowered(OPTM_ERR_DISCRETE_SHIFT)
-        if has_upper_bound(var_flags[j]):
+        if has_upper_bound(var_flags[j]) and not _upper_row_redundant(
+            var_kind[j], var_lower[j], var_upper[j], n_cons
+        ):
             n_upper += 1
 
     var rows_out = n_cons + n_upper
@@ -457,6 +503,8 @@ fn formulation_lower_flat(
 
     for j in range(n_vars):
         if not has_upper_bound(var_flags[j]):
+            continue
+        if _upper_row_redundant(var_kind[j], var_lower[j], var_upper[j], n_cons):
             continue
         for k in range(n_vars):
             if k == j:
