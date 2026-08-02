@@ -176,6 +176,11 @@ HANDWRITTEN_TESTS = frozenset(
         # backbone. Hand-written known-value suite (backbone selection outcomes, the
         # exact tie, call-only bit-exactness, refusal-not-truncation arithmetic).
         "test_esrnn_global_residual.mojo",
+        # esrnn.bias_correction: the bias-only (no-LSTM) residual corrector. Hand-written
+        # known-value suite (mean arithmetic, exact round-trip on a constant residual,
+        # a genuinely non-constant residual left with a real leftover, refusal on
+        # non-finite input).
+        "test_esrnn_bias_correction.mojo",
         "test_retrieval_score.mojo",
         "test_pls.mojo",
         "test_seq_nn.mojo",

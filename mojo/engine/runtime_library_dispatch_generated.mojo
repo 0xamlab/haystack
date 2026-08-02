@@ -2104,6 +2104,11 @@ from ergonomics import (
     body_mass_index as _ergonomics__body_mass_index,
 )
 
+from esrnn.bias_correction import (
+    esrnn_bias_mean as _esrnn_bias_correction__esrnn_bias_mean,
+    esrnn_apply_bias as _esrnn_bias_correction__esrnn_apply_bias,
+)
+
 from esrnn.global_residual import (
     esrnn_method_name as _esrnn_global_residual__esrnn_method_name,
     esrnn_backbone_forecast as _esrnn_global_residual__esrnn_backbone_forecast,
@@ -55394,6 +55399,51 @@ fn _dispatch_ergonomics(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module ergonomics."
+    )
+
+fn _dispatch_esrnn__bias_correction(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "esrnn_bias_mean":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _esrnn_bias_correction__esrnn_bias_mean(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "esrnn.bias_correction.esrnn_bias_mean produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.bias_correction.esrnn_bias_mean."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.bias_correction.esrnn_bias_mean expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_apply_bias":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _esrnn_bias_correction__esrnn_apply_bias(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.bias_correction.esrnn_apply_bias."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.bias_correction.esrnn_apply_bias expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module esrnn.bias_correction."
     )
 
 fn _dispatch_esrnn__global_residual(function_name: String, args_array: String) raises -> String:
@@ -151485,6 +151535,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_epigenetics(function_name, args_array)
     if module_name == "ergonomics":
         return _dispatch_ergonomics(function_name, args_array)
+    if module_name == "esrnn.bias_correction":
+        return _dispatch_esrnn__bias_correction(function_name, args_array)
     if module_name == "esrnn.global_residual":
         return _dispatch_esrnn__global_residual(function_name, args_array)
     if module_name == "etiology":

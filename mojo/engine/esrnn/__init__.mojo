@@ -17,6 +17,13 @@ composition, additive-only:
       arithmetic that composes a backbone forecast with the corrector's prediction
       (`esrnn_residual`, `esrnn_apply_correction`).
 
+  bias_correction — the simplest possible non-zero correction over the SAME backbone:
+      a single scalar additive bias equal to the mean training-holdout residual, no
+      shared weights and no LSTM at all (`esrnn_bias_mean`, `esrnn_apply_bias`). Built to
+      measure, in isolation, whether `global_residual`'s measured regression (0.9768 vs
+      the 0.8786 backbone-alone baseline) is a corrector-capacity problem or a residual-
+      transfer problem — a claim the LSTM's own confounds cannot isolate by itself.
+
 Frozen kernels are called, never reimplemented: every backbone number is
 `forecasting.fitted`'s own fit, and the shared corrector this package's functions feed is
 `seq_training`'s own trainer — this package supplies the composition between them, not a
