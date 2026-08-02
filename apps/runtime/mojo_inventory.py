@@ -106,7 +106,12 @@ _SKIP_RUNTIME_RELATIVE_PREFIXES = {
 # cosmetic: sn_socket_unix() takes no arguments and returns an Int, which is a *valid* runtime
 # contract signature, so without this entry any SDK caller could open sockets inside the worker.
 _SKIP_RUNTIME_DIRS = {"engines", "algenta_runtime", "canonical", "columnar", "determinism",
-                      "hostio", "numeric", "query"}
+                      "hostio", "numeric", "query",
+                      # quantfin: entry points take List[HestonParams] and
+                      # List[List[Float64]] correlation matrices plus UInt64 Philox
+                      # coordinates, none of which cross a JSON frame. Same reasoning
+                      # as `determinism`.
+                      "quantfin"}
 # Maximum source lines one function signature may span while still being parsed. This was 10, which
 # silently truncated anything longer -- and a truncated signature parses as ZERO parameters, which the
 # dispatch generator then emits as a zero-argument call to a multi-argument function.

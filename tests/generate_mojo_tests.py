@@ -61,6 +61,11 @@ SKIP_DIRS = {
     "columnar",
     # Query IR + columnar executor: hand-written suites.
     "query",
+    # Quantitative finance: entry points take List[HestonParams] / List[List[Float64]]
+    # correlation matrices and UInt64 Philox coordinates, none of which the generator's
+    # scalar sample values can synthesise (the same reason `determinism` is skipped).
+    # Hand-written suite + inline benchmark gates instead.
+    "quantfin",
 }
 
 # ── Hand-written test protection ──────────────────────────────────────────────
@@ -263,6 +268,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_survival_analysis_hazard.mojo",
         "test_survival_analysis_km.mojo",
         "test_survival_analysis_parametric.mojo",
+        "test_quantfin_heston.mojo",
 }
 )
 

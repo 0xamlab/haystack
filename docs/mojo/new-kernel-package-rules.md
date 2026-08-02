@@ -231,7 +231,7 @@ Freeze verification, which must stay empty for existing kernel files:
 
 ```bash
 git diff --stat eea8e045 -- mojo/engine/ \
-  | grep -v -E 'algenta_runtime/|columnar/|query/|determinism/|canonical/|numeric/|sparse_numerics/|optimization/|optmodel/|graph_analytics/|retrieval/|hostio/|sheet/|tensorx/|gemm/|attnk/|normk/|mlpk/|lossk/|accel/|forecasting/|inference/|causal_inference/|survival_analysis/|streaming/|geospatial/|discrete_event/|evaluation/|data_quality/|strategy/|exactnum/|dispatch_generated|main\.mojo'
+  | grep -v -E 'algenta_runtime/|columnar/|query/|determinism/|canonical/|numeric/|sparse_numerics/|optimization/|optmodel/|graph_analytics/|retrieval/|hostio/|sheet/|tensorx/|gemm/|attnk/|normk/|mlpk/|lossk/|accel/|forecasting/|inference/|causal_inference/|survival_analysis/|streaming/|geospatial/|discrete_event/|evaluation/|data_quality/|strategy/|exactnum/|quantfin/|dispatch_generated|main\.mojo'
 git diff eea8e045 -- mojo/tests/libs/ | grep '^-' | grep -v '^---'
 ```
 
