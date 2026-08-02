@@ -4,12 +4,18 @@ This is the RealRace phase: install the real opponents, run the **same checkpoin
 prompt**, the **same generation length**, through all three engines, on this machine, and report
 the honest tokens/sec — win or lose.
 
-**Honest headline (superseded by the 2026-08-02 ReRace addendum below — read that section for the
-current, correct verdict): Algenta loses, by a lot, and the bottleneck is named and quantified
-below.** The original numbers and diagnosis in this section are kept verbatim as the historical
-record the FastGEMV/MetalRoute phases built on. **No gitbook page ships, then or now** — the
-standing rule ("outright win only ships a page") is still not met after the decode-path
-optimization; see the addendum for the current gap and what is still missing.
+**Honest headline (superseded — read the final section, "Four-way race (2026-08-02, later the same
+day)", for the current, correct verdict): Algenta loses, by a lot, and the bottleneck is named and
+quantified below.** The original numbers and diagnosis in this section are kept verbatim as the
+historical record the FastGEMV/MetalRoute/residentk phases built on. **No gitbook page ships, then
+or now** — the standing rule ("outright win only ships a page") is still not met after the
+decode-path optimizations; see the final section for the current gap and what is still missing.
+
+Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
+addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
+measured together. **Where two sections disagree, the last one is right** — in particular the
+ReRace addendum's "Metal is 8.1x-13.6x slower at decode" was an artifact of a one-shot API call
+shape and is corrected in the final section.
 
 ## Setup
 
@@ -334,3 +340,361 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo ru
 # Reference cross-check:
 /tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base
 ```
+
+---
+
+## Resident-GPU addendum (2026-08-02): `residentk` — 171 dispatches, everything on-device, ~3x the CPU arm and still losing
+
+The ReRace addendum above concluded "Metal is the wrong lever for decode" from
+`decode_metal_probe.mojo`, which measured `accel.gemm_metal_flat` at the decode shape. That
+measurement is correct and its conclusion was wrong, and the reason is worth stating precisely
+because it is the whole content of this phase.
+
+`gemm_metal_flat` is a ONE-SHOT call. Decomposed stage by stage at `m=1, k=1024, n=3072`
+(compiled binary, median of 9 after 3 warm):
+
+```
+    DeviceContext()                        107 us    2.5%
+    3x enqueue_create_buffer                18 us    0.4%
+    narrow+upload ACTIVATION (1024 f64)    418 us    9.9%
+    narrow+upload WEIGHT (3.1M f64)       2239 us   53.3%   <-- reconverted EVERY call
+    enqueue_function                      1035 us   24.6%
+    synchronize                             52 us    1.2%
+    widen+download RESULT (3072 f32)       335 us    8.0%
+```
+
+**53% of that call is re-narrowing a weight that never changes between tokens, and another 12% is
+opening a context and allocating buffers that are thrown away.** The probe was not measuring the
+GPU; it was measuring the API shape. The correct response was residency, not abandonment.
+
+### What was built
+
+`mojo/engine/residentk/` — a new additive namespace (status codes 600-619) owning GPU state that
+outlives a call. `accel/`, `gemm/`, `attnk/`, `normk/`, `mlpk/` and `llmk/` are untouched, and
+`qwen3_generate.mojo`'s Float64 CPU decode loop is unmodified and still runnable — it is the
+baseline below.
+
+- one `DeviceContext` per generation session, opened once;
+- every weight converted Float64 -> Float32 **once at load**, transposed to `[out, in]` on the host
+  so a 32-lane SIMD group reads one output column's coefficients contiguously, and uploaded to
+  device buffers that live for the whole run (2.50 GB resident);
+- the **KV cache resident on-device at fixed capacity and written one slot IN PLACE per step**, from
+  inside the RoPE kernel;
+- per decode step, **one integer in** (the token id — the embedding row is gathered on-device from
+  the resident table, so not even the activation vector is uploaded) and **eight bytes out** (the
+  winning logit and its id — the 151,936-wide logits row is never materialised off-device);
+- **171 dispatches per token**, not ~560: six fused kernels per layer plus three fixed. The count is
+  a contract function (`residentk_dispatch_budget`) and the driver hard-fails if the session issues
+  a different number.
+
+Fusion is a correctness condition here, not an optimization. `ctx.enqueue_function` **BLOCKS until
+the kernel completes** on this backend — fed a 20 ms kernel it returns in 20.392 ms and the
+following `synchronize()` costs 35 us; `ctx.stream()` raises `"Metal stream not implemented"`. So a
+token costs the SUM of submission-plus-kernel over every dispatch with no overlap, and a naive
+one-op-per-dispatch port would have been ~100 ms/token of pure host overhead — slower than the CPU
+path it replaces. Measured with no-op kernels, this design's 171-dispatch mix costs **17.0 ms/token
+of submission alone (58.7 tok/s ceiling)** in a light-load window and 43.9 ms in a heavy one.
+
+### Correctness first: the token ids, then the speed
+
+All 16 greedy tokens match the independent `transformers`-CPU (float32) reference exactly, position
+by position — `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718,
+13]`, `" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."` — the same
+sequence the Float64 CPU arm, llama.cpp and mlx-lm produce. Max per-step logit delta against the
+reference: **1.34e-05**.
+
+Against the Float64 Mojo CPU arm, the number that isolates the precision change:
+
+| | value |
+|---|---|
+| token divergences | **0 / 16** |
+| max absolute per-step logit delta | **6.97e-06** |
+| max relative per-step logit delta | **2.73e-07** |
+
+2.73e-07 is a small multiple of Float32's 1.19e-07 epsilon, which is what a correct Float32 path
+should look like over 28 layers. **Float32 is sufficient for greedy decoding on this model at this
+prompt** — stated as a measured result for this prompt and this checkpoint, not as a general claim:
+a base model's argmax margins are sometimes small (the Q4_K_M row in the original RealRace table is
+what happens when they are not), and a different prompt could in principle land inside 7e-06.
+
+### The numbers
+
+Decode-only tokens/sec (excludes weight load AND prefill), greedy, 16 tokens, prompt
+`"The capital of France is"` — the same definition every row above uses. Interleaved
+CPU/GPU pairs on this machine (a busy shared dev box; the two arms were run seconds apart in the
+same window so the PAIRED ratio is sound even though the absolute numbers move with load):
+
+| Arm | Precision | Compute | Decode tok/s (range) | Median |
+|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV + #501's in-place KV) | float64 | CPU, 12 perf cores | 6.35 – 7.80 | **~7.3** |
+| **Algenta resident GPU (`qwen3_generate_metal.mojo`)** | float32 | Apple GPU (Metal) | **19.1 – 20.6** | **~20.1** |
+| paired speedup, same window | | | 2.51x – 3.18x | **~2.8x** |
+
+Five interleaved pairs at load 11-12, rebased onto `#501` (which landed the reserved-capacity KV
+append on the CPU plane while this work was in flight — see below). Ten earlier pairs against the
+pre-`#501` CPU arm at load 14-20 gave CPU 6.36-7.83 and GPU 19.1-30.8, i.e. the same CPU range and
+a wider GPU one: `#501` does not measurably change the CPU arm at 15 tokens, and the GPU arm's
+spread is load, not variance in the design. An earlier, much heavier window (load 22, cold page
+cache) gave CPU 2.9-3.4 and GPU 11.9-15.1 — same story, both arms depressed, ratio 3.5-5.1x. The
+GPU arm is markedly LESS load-sensitive, which is expected: it occupies one host thread against the
+CPU arm's twelve.
+
+**One-time cost, which a resident design front-loads and must therefore report separately:**
+
+| stage | ms |
+|---|---|
+| session open (context + 2.50 GB of device allocations + 8 shaders compiled) | 6 – 344 (cold shader cache once) |
+| read the Float64 blob from disk | 525 – 1700 (page-cache dependent) |
+| narrow to Float32 + transpose + upload | **1311 – 1724** |
+| **total** | **1841 – 4595** |
+
+Against the CPU arm's 610-632 ms weight load. The resident arm pays ~1.3 s more, once, and earns it
+back after roughly 10 tokens.
+
+**The second win — the KV copying that stops existing — was reached independently on both planes.**
+`llmk.generate.kv_cache_append_flat` allocates `cache_len + n_new` elements and copies the whole
+cache on every call, twice per layer per step: O(N^2) across a generation. Replaying that append
+pattern at this run's shapes measures **11.2 – 47.9 ms** of pure copying (10,321,920 Float64
+elements) across 15 decode steps. The resident device cache copies **zero**.
+
+Stated honestly: this is **no longer a GPU-versus-CPU difference.** `#501` landed the same fix on
+the CPU plane while this work was in flight — `qwen3_generate.mojo` now reserves `max_pos` elements
+with `_kv_cache_reserve_flat` and appends in place with `_kv_cache_append_into_flat`, exactly the
+shape the resident device cache uses. Two agents reached the same answer on two planes. The number
+above is therefore what BOTH arms stopped paying, and the CPU rows in the table are measured AFTER
+that fix, so none of the speedup below is attributable to it. It is reported because it is the one
+place the cost is quantified, and because at 15 tokens it is a few percent while the growth rate is
+quadratic — a 500-token generation is where it would have mattered.
+
+### Verdict, unchanged: still no page
+
+Algenta's best decode arm is now ~20 tok/s (peak 31). llama.cpp CPU-only remeasured at ~41 tok/s in
+the ReRace session, llama.cpp GPU at ~261 and mlx-lm at ~307. **The standing rule — an outright win
+against BOTH opponents' best measured numbers — is not met, so no gitbook page ships.** A ~3x
+decode speedup on top of the FastGEMV chain's ~5x is a real, reproducible engineering result and is
+reported as exactly that.
+
+### Where the remaining gap is, named
+
+At 20 tok/s a token is ~49 ms: ~17 ms of MAX submission for 171 dispatches and ~32 ms of kernel
+time against a **6.1 ms** bandwidth floor (2.50 GB at this host's measured 411 GB/s streaming
+ceiling). So two distinct levers remain, and neither is "the hardware":
+
+1. **The kernels are ~5x off the bandwidth bound.** The GEMV is one SIMD group per output column
+   with a scalar inner loop; vectorised loads and more output columns per group are the obvious
+   next step. Raw Metal running the same *unfused* split-K GEMVs over the same 2.38 GB measured
+   7.198 ms/token (331 GB/s) in the Recon phase, so the headroom is real and measured.
+2. **MAX's submission path.** ~100 us per dispatch, blocking, no async. Raw Metal's dispatch floor
+   on the same machine is 4.03 us in one command buffer. The only lever that reaches mlx-class
+   numbers is driving `MTLCommandBuffer` directly, which would mean Metal Shading Language strings
+   instead of Mojo kernels — a trade this phase deliberately did not make.
+
+fp16 weights would halve the 6.1 ms floor and are the largest single kernel-side lever after (1).
+
+### Reproduction
+
+```bash
+cd /Users/angel/Developer/decision-engine/mojo_env
+# resident GPU arm
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate_metal.mojo -o /tmp/qwen3_metal
+mkdir -p /tmp/bb/qwen3_ckpt/mojo_generate_metal
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/qwen3_metal
+# CPU arm, unchanged
+pixi run mojo build -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/qwen3_cpu
+/tmp/qwen3_cpu
+# reference + cross-check
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_residentk
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_metal/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_residentk/reference_generated.json
+```
+
+### Gates
+
+- freeze verification: this change adds ZERO lines to `git diff --stat eea8e045 -- mojo/engine/`
+  filtered by the rules-doc alternation (compared before and after — identical file list);
+  `git status --porcelain mojo/engine/accel/ mojo/engine/gemm/ mojo/engine/llmk/ mojo/engine/attnk/
+  mojo/engine/normk/ mojo/engine/mlpk/` is empty. `residentk/` was added to the alternation in the
+  same commit, as `mojo_freeze_namespaces` requires.
+- `make inventory-refresh` run unconditionally, then `make inventory-check`: clean. The only
+  regenerated-artifact change is `residentk.contract` / `residentk.probe` entering the contract,
+  the dispatch, the capability manifest and the catalog.
+- `scripts/capability_manifest_gate.py`: no new undeclared kernels.
+- `python3 -m scripts.reliability_guards`: no new violations.
+- `tests/generate_mojo_tests.py --check`: 192 hand-written suites protected, 465 generated fresh.
+- `mojo/tests/libs/test_residentk_session.mojo`: 29/29 with `-D ALGENTA_GPU`, 22/22 without it and
+  22/22 under `--target-accelerator=none`.
+- `tests/test_accel_gpu_isolation.py`: 15 passed, after generalising it beyond `accel.` — see that
+  file for the two holes this phase found in it.
+
+---
+
+## Four-way race (2026-08-02, later the same day): every arm remeasured together — Algenta still loses
+
+The addenda above were written from paired CPU-vs-GPU runs, with the opponents' numbers carried
+forward from the earlier ReRace session. This section replaces that: **all five arms were run
+interleaved, one after another inside the same round, six rounds**, so every number below comes
+from the same machine in the same load window and the cross-arm ratios are measured rather than
+assembled from separate sessions.
+
+Same everything as every section above: `Qwen/Qwen3-0.6B-Base` at `/private/tmp/qwen3-0.6b-base`,
+prompt `"The capital of France is"`, 16 greedy tokens, decode-only tok/s (excludes weight load and
+prefill). Opponents are the installs already on this machine — llama.cpp `10210` (brew,
+AppleClang, Metal) on the F16 GGUF at `/tmp/bb/qwen3-0.6b-base-f16.gguf`, and mlx-lm `0.31.3` on
+mlx `0.32.0` against the original safetensors. Nothing was reinstalled or reconverted.
+
+Machine: Apple M4 Max, 16 physical cores (12 performance + 4 efficiency), macOS. Shared dev box;
+1-minute load average **10.87 – 12.91** across the six rounds, recorded at the top of each round.
+
+### Correctness first, again
+
+Both Algenta arms were checked **position by position against a `transformers`-CPU reference
+generated fresh in this session** (`reference_generate.py`, same checkpoint), not against a stored
+one:
+
+| Arm | tokens matching the reference | max per-step logit delta |
+|---|---|---|
+| Algenta resident GPU (float32) | **16 / 16** | **1.34e-05** |
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | **8.89e-06** |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."`
+
+Both opponents emit the same text in every one of the six rounds: llama.cpp (`-ngl 0` and
+`-ngl 99`) `' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'`, mlx-lm
+`'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` (mlx-lm's detokenizer
+does not re-emit the leading space the prompt's trailing space consumed; the token content is the
+same). **No arm diverged in any round.** Five implementations, one sequence.
+
+### The numbers
+
+Decode-only tokens/sec. Six interleaved rounds; `n = 6` per arm.
+
+| Arm | Precision | Compute | Range | Median | Median vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 6.66 – 7.23 | **6.88** | 0.34x |
+| **Algenta resident GPU (`qwen3_generate_metal.mojo`)** | float32 | Apple GPU (Metal, MAX) | 20.08 – 20.41 | **20.28** | 1x (Algenta's best) |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 27.23 – 46.36 | **41.91** | **2.07x faster** |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 253.81 – 258.42 | **257.11** | **12.68x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 299.17 – 320.77 | **315.51** | **15.56x faster** |
+
+Per-round values, in round order, so nothing is hidden behind a median:
+
+```
+algenta_gpu   20.15  20.08  20.28  20.13  20.41  20.41
+algenta_cpu    7.23   7.23   6.86   6.66   6.79   6.88
+llama_cpu     46.36  44.28  41.91  27.70  27.23  35.84
+llama_gpu    257.11 258.32 254.38 254.02 258.42 253.81
+mlx          320.77 299.17 313.19 319.60 315.51 309.80
+```
+
+The resident GPU arm's paired speedup over the CPU arm, computed per round rather than from the
+medians: **2.78x, 2.78x, 2.96x, 3.02x, 3.01x, 2.97x** — median **2.96x**. That is the result this
+chain produced, and it reproduces tightly.
+
+The llama.cpp CPU arm has by far the widest spread (27.23 – 46.36, ±26% about its midpoint) because
+it is the other arm competing for the same 12 performance cores on a shared box; the three GPU arms
+vary by under 4%. That spread does not rescue Algenta: **llama.cpp's slowest CPU round (27.23) is
+still 1.33x faster than Algenta's fastest round of any kind (20.41).** There is no load window in
+this session in which Algenta wins.
+
+### Publication decision: no gitbook page
+
+The standing rule is an outright win against the field's best real installed opponent, measured on
+this machine. Algenta's best arm is 20.28 tok/s. It loses to llama.cpp CPU-only by **2.07x**, to
+llama.cpp GPU by **12.68x**, and to mlx-lm by **15.56x**. **No page ships, and none is drafted.**
+A 2.96x decode speedup over the CPU arm — on top of the FastGEMV chain's ~5x — is a real,
+reproducible engineering result, and it is reported here as exactly that, not as a win.
+
+### The resident-versus-one-shot correction, stated plainly
+
+This is worth recording independently of the ranking, because it reversed a conclusion this
+document previously published.
+
+The ReRace addendum concluded, from `decode_metal_probe.mojo`, that **"Metal is 8.1x–13.6x slower
+than the CPU path at decode"** and that Metal was therefore the wrong lever for decode. That
+measurement was accurate and the conclusion drawn from it was wrong. The probe measured
+`accel.gemm_metal_flat`, a **one-shot** call that reopens a `DeviceContext`, reallocates buffers and
+re-narrows the weight matrix from Float64 to Float32 on **every invocation**. Decomposed at the
+decode shape (`m=1, k=1024, n=3072`), **53% of that call is re-narrowing a weight that does not
+change between tokens and a further 12% is opening and discarding a context.** The probe was
+measuring the API's call shape, not the GPU.
+
+What the resident design measures instead, with the same kernels on the same hardware and the
+conversion hoisted out of the per-token path: **20.28 tok/s versus the CPU arm's 6.88 — the GPU is
+2.96x FASTER at decode, not 8-13x slower.** The sign of the comparison flips entirely. The correct
+response to the original probe was residency, not abandonment, and "the GPU is slow at this shape"
+should have been read as "this API is being called in the wrong shape."
+
+### Where the remaining 49.3 ms/token goes — measured, not apportioned by guess
+
+At the median 20.28 tok/s a token is **49.31 ms**. Three terms, two of them measured directly in
+this session:
+
+| term | ms | share | how it was obtained |
+|---|---|---|---|
+| MAX dispatch submission, 171 dispatches | **16.45** | 33.4% | measured: 171 **no-op** kernels at this design's exact grid mix, best of 7, `/tmp/race4/submit_floor.mojo` |
+| irreducible weight reads | **6.09** | 12.3% | 2.5016 GB of resident Float32 at this host's measured 411 GB/s streaming ceiling |
+| kernel time above the bandwidth bound | **26.77** | 54.3% | the residual |
+
+Two consequences, both hard:
+
+1. **The kernels are the largest single term, and they are ~5.4x off the bandwidth bound.** The
+   GEMV is one SIMD group per output column with a scalar inner loop. This is ordinary Mojo work
+   inside `residentk`, with no toolchain risk.
+2. **Submission is a hard ceiling on this toolchain.** With *zero* kernel time, 171 blocking
+   dispatches cost 16.45 ms — a ceiling of **60.79 tok/s**. `ctx.enqueue_function` blocks until
+   completion on the Metal backend and `ctx.stream()` raises `"Metal stream not implemented"`, so
+   there is no async path to hide it behind. Raw Metal's dispatch floor on this same machine is
+   4.03 us in one command buffer, i.e. 0.69 ms for 171 — the cost is MAX's submission path, not
+   the hardware.
+
+So even a perfect-kernel version of this exact design tops out at 60.79 tok/s: it would beat
+llama.cpp CPU-only (41.91) and would still lose to llama.cpp GPU by 4.2x and to mlx-lm by 5.2x.
+**Winning outright requires all three of** near-bandwidth kernels, raw-Metal command-buffer
+submission, and fp16/bf16 weights (which halves the 6.09 ms floor — and note that both GPU
+opponents already read half the bytes Algenta does). mlx-lm's 315.51 tok/s is 3.17 ms/token, which
+for ~1.25 GB of bf16 weights is ~394 GB/s: **mlx-lm is running at 96% of this machine's measured
+streaming ceiling.** Beating it is a bandwidth-bound problem with no slack left in it, and that
+should be stated before anyone plans to.
+
+### The single highest-value next lever
+
+**Kernel efficiency inside `residentk.kernels`** — 26.77 ms of a 49.31 ms token, the largest term,
+and the only one of the three that needs neither a new toolchain path nor a precision change.
+Vectorised loads and more output columns per SIMD group are the obvious next step. Expected
+magnitude if the GEMV reaches the bandwidth bound: 49.31 ms -> 22.54 ms, i.e. **20.28 -> ~44 tok/s,
+about 2.2x**, which would move Algenta past llama.cpp CPU-only (41.91) and no further. It does not
+by itself produce a publishable win, and it should not be started under the impression that it
+would.
+
+### Reproduction
+
+```bash
+# build both Algenta arms from this worktree
+cd /Users/angel/Developer/decision-engine/mojo_env
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I <worktree>/mojo/engine <worktree>/benchmarks/llm_smoke/qwen3_generate_metal.mojo -o /tmp/race4_gpu
+pixi run mojo build -I <worktree>/mojo/engine \
+    <worktree>/benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race4_cpu
+
+# one round = every arm once, back to back (from benchmarks/llm_smoke/)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race4_gpu
+/tmp/race4_cpu
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_race4
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_metal/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_race4/reference_generated.json
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_llmfwd/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_race4/reference_generated.json
+```
+
+One-time costs measured in this session, for completeness: the resident arm pays 4.74 ms session
+open + 1131.9 ms blob read + 1345.5 ms narrow/transpose/upload = **2482.5 ms**, against the CPU
+arm's **1233.0 ms** weight load. The ~1250 ms difference is earned back after **13 tokens**.

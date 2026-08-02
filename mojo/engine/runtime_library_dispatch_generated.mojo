@@ -5827,6 +5827,21 @@ from reservoir import (
     sample_without_replacement as _reservoir__sample_without_replacement,
 )
 
+from residentk.contract import (
+    residentk_status_name as _residentk_contract__residentk_status_name,
+    residentk_dims_check as _residentk_contract__residentk_dims_check,
+    residentk_context_check as _residentk_contract__residentk_context_check,
+    residentk_dispatch_budget as _residentk_contract__residentk_dispatch_budget,
+    residentk_weight_elems as _residentk_contract__residentk_weight_elems,
+    residentk_scalars_ok as _residentk_contract__residentk_scalars_ok,
+)
+
+from residentk.probe import (
+    resident_gpu_kernels_compiled as _residentk_probe__resident_gpu_kernels_compiled,
+    resident_available as _residentk_probe__resident_available,
+    resident_session_probe as _residentk_probe__resident_session_probe,
+)
+
 from retrieval.fuse import (
     rrf_fuse_flat as _retrieval_fuse__rrf_fuse_flat,
     rrf_provenance_flat as _retrieval_fuse__rrf_provenance_flat,
@@ -8612,6 +8627,10 @@ from regression import (
 
 from regression_tree import (
     RegressionTree,
+)
+
+from residentk.probe import (
+    ResidentProbe,
 )
 
 from retrieval.fuse import (
@@ -18034,6 +18053,22 @@ fn _to_json_residresult(value: ResidResult) raises -> String:
     result += _to_json_list_float64(value.out)
     result += ","
     result += _to_json_int(value.n)
+    result += ","
+    result += _to_json_int(value.status)
+    result += "]}"
+    return result
+
+fn _to_json_residentprobe(value: ResidentProbe) raises -> String:
+    var result = String("{\"__algenta_struct\":\"ResidentProbe\",\"v\":[")
+    result += _to_json_bool(value.kernels_compiled)
+    result += ","
+    result += _to_json_bool(value.device_present)
+    result += ","
+    result += _to_json_bool(value.session_possible)
+    result += ","
+    result += _to_json_int(value.dispatch_budget)
+    result += ","
+    result += _to_json_int(value.resident_f32_elems)
     result += ","
     result += _to_json_int(value.status)
     result += "]}"
@@ -117525,6 +117560,181 @@ fn _dispatch_reservoir(function_name: String, args_array: String) raises -> Stri
         "Function '" + function_name + "' is not registered for module reservoir."
     )
 
+fn _dispatch_residentk__contract(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "residentk_status_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _residentk_contract__residentk_status_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_status_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_status_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_dims_check":
+        if arg_count == 5:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var result = _residentk_contract__residentk_dims_check(arg_0, arg_1, arg_2, arg_3, arg_4)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_dims_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_dims_check expected 5 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_context_check":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _residentk_contract__residentk_context_check(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_context_check."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_context_check expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_dispatch_budget":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _residentk_contract__residentk_dispatch_budget(arg_0)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_dispatch_budget."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_dispatch_budget expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_weight_elems":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _residentk_contract__residentk_weight_elems(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_weight_elems."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_weight_elems expected 7 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_scalars_ok":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var result = _residentk_contract__residentk_scalars_ok(arg_0, arg_1)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_scalars_ok."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_scalars_ok expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module residentk.contract."
+    )
+
+fn _dispatch_residentk__probe(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "resident_gpu_kernels_compiled":
+        if arg_count == 0:
+            try:
+                var result = _residentk_probe__resident_gpu_kernels_compiled()
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.probe.resident_gpu_kernels_compiled."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.probe.resident_gpu_kernels_compiled expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resident_available":
+        if arg_count == 0:
+            try:
+                var result = _residentk_probe__resident_available()
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.probe.resident_available."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.probe.resident_available expected 0 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "resident_session_probe":
+        if arg_count == 7:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var result = _residentk_probe__resident_session_probe(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6)
+                var result_json = _to_json_residentprobe(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.probe.resident_session_probe."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.probe.resident_session_probe expected 7 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module residentk.probe."
+    )
+
 fn _dispatch_retrieval__fuse(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "rrf_fuse_flat":
@@ -152462,6 +152672,10 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_rerank_eval(function_name, args_array)
     if module_name == "reservoir":
         return _dispatch_reservoir(function_name, args_array)
+    if module_name == "residentk.contract":
+        return _dispatch_residentk__contract(function_name, args_array)
+    if module_name == "residentk.probe":
+        return _dispatch_residentk__probe(function_name, args_array)
     if module_name == "retrieval.fuse":
         return _dispatch_retrieval__fuse(function_name, args_array)
     if module_name == "retrieval.score":

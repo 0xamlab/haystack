@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **632 modules** and **5972 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **634 modules** and **5981 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -334,7 +334,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-413 modules.
+415 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -647,6 +647,8 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `reliability` | 11 |
 | `rerank_eval` | 9 |
 | `reservoir` | 7 |
+| `residentk.contract` | 6 |
+| `residentk.probe` | 3 |
 | `rheology` | 10 |
 | `risk` | 11 |
 | `rlhf_dpo` | 10 |

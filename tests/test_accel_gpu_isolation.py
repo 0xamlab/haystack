@@ -44,13 +44,85 @@ ENGINE = Path(__file__).resolve().parents[1] / "mojo" / "engine"
 ACCEL = ENGINE / "accel"
 DISPATCH = ENGINE / "runtime_library_dispatch_generated.mojo"
 
-#: The one call that makes the Mojo compiler emit a GPU shader.
-_LAUNCH_CALL = re.compile(r"\benqueue_function\b")
+#: The calls that make the Mojo compiler emit a GPU shader.
+#:
+#: `enqueue_function\w*` rather than `enqueue_function\b`, and that widening is not cosmetic: this
+#: regex used to be `\benqueue_function\b`, which does NOT match `enqueue_function_unchecked` —
+#: the `\b` fails against the following underscore. `residentk.session` launches exclusively
+#: through the unchecked form (the only spelling whose compiled-handle type can be written down as
+#: a struct field), so every one of its launches was invisible to this file until the regex was
+#: widened. A guard that silently matches nothing is worse than no guard.
+#:
+#: `compile_function` is included for the same reason and it is the sharper case: it is not a
+#: launch, but it is what actually triggers metallib generation for a kernel, so an UNGATED
+#: `compile_function` breaks a shader-compiler-less build exactly as a launch does. Measured, not
+#: assumed — building `mojo/tests/libs/test_residentk_session.mojo` with the flag unset but the
+#: session constructor reachable failed with `Metal Compiler failed to compile metallib`, and the
+#: only GPU call on that path was `compile_function_unchecked`.
+_LAUNCH_CALL = re.compile(r"\b(?:enqueue_function|compile_function)\w*")
 #: The compile-time branch that removes a launch before codegen. A RUNTIME `if` does not count
 #: and must not match: codegen happens at compile time for anything reachable.
-_COMPILE_TIME_GATE = re.compile(r"@parameter\s*\n\s*if\s+(?:not\s+)?ACCEL_GPU_BUILD")
+#:
+#: The name is matched as ``*_GPU_BUILD`` rather than literally ``ACCEL_GPU_BUILD``. When this file
+#: was written `accel` was the only package with a GPU launch, so the filter below also said
+#: ``accel.``; `residentk` (resident decode state) is the second, and it declares its own
+#: ``RESIDENT_GPU_BUILD`` off the same ``is_defined["ALGENTA_GPU"]``. A per-package constant is the
+#: right shape — a package should not import a launch-containing module just to read a boolean —
+#: but a test that hardcoded one package's spelling would have gone silently vacuous for the
+#: second one, which is the failure mode this whole file exists to prevent.
+_GPU_BUILD_GATE_NAME = re.compile(r"\b[A-Z][A-Z0-9_]*_GPU_BUILD\b")
+_COMPILE_TIME_GATE = re.compile(r"@parameter\s*\n\s*if\s+(?:not\s+)?[A-Z][A-Z0-9_]*_GPU_BUILD")
 #: A module-level function, i.e. one that starts in column 0.
 _MODULE_FN = re.compile(r"^(?:fn|def)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.MULTILINE)
+
+
+def _docstring_line_numbers(text: str) -> set[int]:
+    """1-indexed lines that sit inside a triple-quoted string.
+
+    These files DOCUMENT `enqueue_function` heavily — `accel/launch.mojo` spells out the launch
+    idiom that "cost six attempts to find", and `residentk` records the measurement that
+    `enqueue_function` BLOCKS on the Metal backend. Prose is not a call site, and a checker that
+    could not tell the difference would either fire on every well-documented module or push authors
+    to stop naming the thing they are documenting.
+
+    Deliberately a triple-quote-fence toggle rather than a Mojo parser: a docstring fence appearing
+    inside an ordinary single-line string literal would fool it, no such line exists in this tree,
+    and a second implementation of Mojo's grammar living in a test is worse than this limitation.
+    """
+    inside: set[int] = set()
+    open_block = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        fences = line.count('"""')
+        if open_block:
+            inside.add(number)
+            if fences % 2 == 1:
+                open_block = False
+        elif fences:
+            inside.add(number)
+            if fences % 2 == 1:
+                open_block = True
+    return inside
+
+
+def _code_only(text: str) -> str:
+    """`text` with every docstring line and every whole-line `#` comment blanked.
+
+    Line NUMBERS are preserved — blanked lines become empty rather than disappearing — because the
+    callers report the line a violation sits on and an off-by-N there would send a reader to the
+    wrong place.
+
+    Whole-line comments only. A trailing `#` comment on a line of real code is left alone: cutting
+    at the first `#` would also cut one inside a string literal, and a line that both launches a
+    kernel and talks about launching one is a launch either way.
+    """
+    docs = _docstring_line_numbers(text)
+    kept: list[str] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if number in docs or line.lstrip().startswith("#"):
+            kept.append("")
+        else:
+            kept.append(line)
+    return "\n".join(kept)
 
 
 def _module_level_functions(path: Path) -> list[str]:
@@ -59,7 +131,7 @@ def _module_level_functions(path: Path) -> list[str]:
 
 def _launching_helpers(text: str) -> set[str]:
     """Names of module-level functions in `text` whose body contains a launch."""
-    lines = text.splitlines()
+    lines = _code_only(text).splitlines()
     current: str | None = None
     launching: set[str] = set()
     for line in lines:
@@ -74,7 +146,7 @@ def _launching_helpers(text: str) -> set[str]:
 
 
 def _gated_line_numbers(text: str) -> set[int]:
-    """1-indexed lines that sit inside a `@parameter if ...ACCEL_GPU_BUILD` block.
+    """1-indexed lines that sit inside a `@parameter if ...<PKG>_GPU_BUILD` block.
 
     Indentation-based, which is enough here and deliberately simple: a real parser would be a second
     implementation of Mojo's grammar living in a test, and the thing being guarded is one specific
@@ -86,7 +158,7 @@ def _gated_line_numbers(text: str) -> set[int]:
     while i < len(lines):
         if lines[i].strip() == "@parameter" and i + 1 < len(lines):
             head = lines[i + 1]
-            if "ACCEL_GPU_BUILD" in head and head.strip().startswith("if "):
+            if _GPU_BUILD_GATE_NAME.search(head) and head.strip().startswith("if "):
                 indent = len(head) - len(head.lstrip(" "))
                 j = i + 2
                 while j < len(lines):
@@ -121,7 +193,7 @@ def test_launch_module_exports_nothing_public() -> None:
 def test_the_launch_module_still_contains_a_launch() -> None:
     """The guard above is only meaningful while there is something to guard."""
     launch = ACCEL / "launch.mojo"
-    assert _LAUNCH_CALL.search(launch.read_text(encoding="utf-8")), (
+    assert _LAUNCH_CALL.search(_code_only(launch.read_text(encoding="utf-8"))), (
         "accel/launch.mojo no longer launches a kernel, so the isolation test above proves "
         "nothing. Either restore the launch or retire both tests deliberately."
     )
@@ -144,18 +216,24 @@ def test_every_contract_reachable_launch_is_compile_time_gated() -> None:
     exposed = {
         module.import_path: module.path
         for module in discover_runtime_library_modules(ENGINE)
-        if module.import_path.startswith("accel.")
     }
-    assert exposed, "accel exposes nothing through the contract; this test would pass vacuously"
+    assert exposed, "nothing is exposed through the contract; this test would pass vacuously"
+    # The property is about the CONTRACT, not about one package. Restricting this to `accel.` (as it
+    # originally was) meant a second package with a GPU launch would be invisible here — and
+    # `residentk` is that second package. Every contract-reachable module in the tree is checked.
+    assert any(path.startswith("accel.") for path in exposed), (
+        "accel vanished from the contract; this test lost the case it was written for"
+    )
 
     ungated: dict[str, str] = {}
     for import_path, path in exposed.items():
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8")
+        text = _code_only(raw)
         if not _LAUNCH_CALL.search(text):
             continue
 
-        gated_lines = _gated_line_numbers(text)
-        helpers = _launching_helpers(text)
+        gated_lines = _gated_line_numbers(raw)
+        helpers = _launching_helpers(raw)
         lines = text.splitlines()
 
         # A launch is safe under EITHER pattern:
@@ -193,7 +271,7 @@ def test_every_contract_reachable_launch_is_compile_time_gated() -> None:
     assert not ungated, (
         f"{ungated} are reachable from the generated dispatch and launch a GPU kernel without a "
         "compile-time gate. Every build host would need a shader compiler. Wrap the launch in "
-        "`@parameter if ACCEL_GPU_BUILD:`."
+        "`@parameter if <PKG>_GPU_BUILD:`."
     )
 
 
@@ -260,7 +338,7 @@ def test_device_module_may_import_gpu_without_launching() -> None:
     device = ACCEL / "device.mojo"
     text = device.read_text(encoding="utf-8")
     assert "std.gpu" in text, "accel/device.mojo no longer queries the GPU at all"
-    assert not _LAUNCH_CALL.search(text), "accel/device.mojo must not launch a kernel"
+    assert not _LAUNCH_CALL.search(_code_only(text)), "accel/device.mojo must not launch a kernel"
 
 def test_the_gpu_gemm_is_reachable_through_the_generated_dispatch() -> None:
     """The positive half: gating the launch must not have made the kernel uncallable.
@@ -282,3 +360,139 @@ def test_the_gpu_gemm_is_reachable_through_the_generated_dispatch() -> None:
             f"{fn} is not reachable from the generated dispatch; the GPU GEMM is not callable"
         )
     assert "accel.gemm_metal" in text, "the GPU GEMM module is not imported by the dispatch"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# residentk — the SECOND package with GPU launches, and the first to prove the
+# generalisations above are load-bearing rather than decorative.
+# ─────────────────────────────────────────────────────────────────────────────
+
+RESIDENTK = ENGINE / "residentk"
+
+
+def test_residentk_launch_modules_export_nothing_public() -> None:
+    """`residentk.kernels` and `residentk.session` follow `accel/launch.mojo`'s rule exactly.
+
+    Both contain `enqueue_function`. Neither may export a public name: the generated dispatch calls
+    every public function of every contract module, so one missing underscore would put a resident
+    GPU session in the worker's call graph and every build host would need a Metal compiler.
+    """
+    assert RESIDENTK.is_dir(), "residentk/ moved; update this test rather than deleting it"
+    for name in ("kernels.mojo", "session.mojo"):
+        path = RESIDENTK / name
+        assert path.is_file(), f"residentk/{name} moved; update this test rather than deleting it"
+        public = [fn for fn in _module_level_functions(path) if not fn.startswith("_")]
+        assert not public, (
+            f"residentk/{name} exports {public} publicly. Public functions enter the runtime "
+            "contract, so the generated dispatch would import and call them — putting a GPU launch "
+            "in its call graph and making every build host require a shader compiler. Prefix with "
+            "an underscore."
+        )
+
+
+def test_the_residentk_launch_modules_still_contain_a_launch() -> None:
+    """The guard above is only meaningful while there is something to guard."""
+    launching = [
+        name
+        for name in ("kernels.mojo", "session.mojo")
+        if _LAUNCH_CALL.search(_code_only((RESIDENTK / name).read_text(encoding="utf-8")))
+    ]
+    assert launching, (
+        "neither residentk/kernels.mojo nor residentk/session.mojo launches a kernel any more, so "
+        "the isolation test above proves nothing. Either restore the launch or retire both tests "
+        "deliberately."
+    )
+
+
+def test_residentk_launch_modules_are_absent_from_the_contract() -> None:
+    """Stated as its own assertion because it is the property, not an implementation detail."""
+    paths = {m.import_path for m in discover_runtime_library_modules(ENGINE)}
+    assert "residentk.session" not in paths
+    assert "residentk.kernels" not in paths
+    # ...while the CPU-side modules ARE exposed. Without this half, deleting residentk entirely
+    # would pass every assertion in this file.
+    assert "residentk.contract" in paths
+    assert "residentk.probe" in paths
+
+
+def test_residentk_session_gates_every_launch_at_compile_time() -> None:
+    """Belt AND braces: private is the first defence, the compile-time gate is the second.
+
+    `residentk.session` is not contract-reachable, so `test_every_contract_reachable_launch_is_...`
+    does not reach it. That is exactly why this is asserted separately: the day someone makes it
+    reachable, the gate has to already be there.
+    """
+    raw = (RESIDENTK / "session.mojo").read_text(encoding="utf-8")
+    gated = _gated_line_numbers(raw)
+    ungated = [
+        number
+        for number, line in enumerate(_code_only(raw).splitlines(), start=1)
+        if "enqueue_function" in line and number not in gated
+    ]
+    assert not ungated, (
+        f"residentk/session.mojo launches a kernel ungated at line(s) {ungated}. With "
+        "-D ALGENTA_GPU unset the launch must be removed BEFORE shader codegen, or a host with no "
+        "Metal compiler cannot build the file at all. Wrap it in `@parameter if RESIDENT_GPU_BUILD:`."
+    )
+
+
+def test_the_resident_session_is_only_ever_constructed_behind_the_gate() -> None:
+    """The one GPU call in `residentk` that CANNOT carry its own gate, guarded at its call sites.
+
+    `_ResidentQwen3.__init__` opens a `DeviceContext` and calls `compile_function_unchecked` eight
+    times. A constructor cannot open with `@parameter if not RESIDENT_GPU_BUILD: return <status>` —
+    it has to initialise every field, and there is no Float32 stand-in for a `DeviceContext`. So the
+    protection is structural: the struct is constructed ONLY from inside a
+    `@parameter if RESIDENT_GPU_BUILD` branch, and on a build without the flag the constructor is
+    therefore never elaborated.
+
+    THIS IS NOT HYPOTHETICAL. `mojo/tests/libs/test_residentk_session.mojo` was first written with
+    the GPU section after an early `return` inside the parameter branch rather than inside its
+    `else:`. An early return does not prune what follows it, so the constructor stayed reachable,
+    and the default build failed with `Metal Compiler failed to compile metallib` — the exact
+    whole-CI failure this file exists to prevent, reproduced in the change that added the second GPU
+    package. One `else:` was the fix, and nothing but this assertion would catch it recurring.
+
+    `compile_function`, not just `enqueue_function`, is what triggers metallib generation. That is
+    the measured lesson from the same failure: there was no launch on the reachable path at all.
+    """
+    root = ENGINE.parents[1]
+    sites: list[str] = []
+    for path in sorted(root.glob("**/*.mojo")):
+        if "residentk/session.mojo" in path.as_posix():
+            continue
+        raw = path.read_text(encoding="utf-8")
+        if "_ResidentQwen3(" not in raw:
+            continue
+        gated = _gated_line_numbers(raw)
+        for number, line in enumerate(_code_only(raw).splitlines(), start=1):
+            if "_ResidentQwen3(" in line and number not in gated:
+                sites.append(f"{path.relative_to(root)}:{number}")
+    assert not sites, (
+        f"{sites} construct a resident GPU session outside a `@parameter if RESIDENT_GPU_BUILD` "
+        "block. The constructor compiles eight Metal shaders, so every build host would need a "
+        "shader compiler. Note that an early `return` inside the parameter branch does NOT prune "
+        "what follows it — the construction must sit inside the branch's `else:`."
+    )
+
+
+def test_every_gpu_build_gate_keys_off_the_same_define() -> None:
+    """One flag turns GPU kernels on for the whole tree.
+
+    Each package declares its own `<PKG>_GPU_BUILD` constant rather than importing another
+    package's — importing `accel.gemm_metal` merely to read a boolean would drag a launch-containing
+    module onto the importer's graph for no benefit. The cost of that choice is that the constants
+    can drift apart, producing a binary with a Metal GEMM but no Metal decode, which nobody would
+    ever want and nothing else would catch. So it is asserted.
+    """
+    declarations = {
+        "accel/gemm_metal.mojo": "ACCEL_GPU_BUILD",
+        "residentk/probe.mojo": "RESIDENT_GPU_BUILD",
+        "residentk/session.mojo": "RESIDENT_GPU_BUILD",
+    }
+    for relative, constant in declarations.items():
+        text = (ENGINE / relative).read_text(encoding="utf-8")
+        assert f'{constant}: Bool = is_defined["ALGENTA_GPU"]()' in text, (
+            f"{relative} no longer declares {constant} off is_defined[\"ALGENTA_GPU\"]; the GPU "
+            "build flag has fragmented and a binary can now have some GPU kernels but not others"
+        )
