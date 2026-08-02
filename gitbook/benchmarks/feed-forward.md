@@ -74,7 +74,6 @@ That is the argument for a sparse gradient representation, quantified rather tha
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Normalization](normalization.md) — the other half of a transformer block.
 * [Attention](attention.md) — attention kernel results.
-* [Generation](generation.md) — the decode-loop primitives that call these kernels per step.
 
 ## Reproduce
 
