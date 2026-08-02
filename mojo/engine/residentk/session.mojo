@@ -171,7 +171,10 @@ struct _LayerGpu(Copyable, Movable):
     "three projections, one dispatch" and "two projections, one dispatch" possible at all; it
     happens once, on the host, during upload.
 
-    `ck`/`cv` are `[RESIDENT_MAX_CONTEXT, h_kv, d_head]` and are written one slot per step in place.
+    `ck`/`cv` are `[max_ctx, h_kv, d_head]` — `max_ctx` a genuine RUNTIME value the caller chose at
+    session-open time (bounded by `RESIDENT_MAX_CONTEXT`, a safety ceiling, not the allocation size
+    — see that constant's own docstring in `residentk.contract`) — and are written one slot per step
+    in place.
     """
 
     var ln1: DeviceBuffer[DType.float32]

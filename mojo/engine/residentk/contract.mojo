@@ -51,9 +51,12 @@ the arithmetic the session actually implements, exported so a test asserts it.
 Public API:
   residentk_status_name(code)                                    — the status vocabulary
   residentk_dims_check(d_model, h_q, h_kv, d_head, d_ff)         — is this a shape the session holds
-  residentk_context_check(pos, n_new, max_ctx)                   — does the whole run fit the cache
+  residentk_context_check(pos, n_new, max_ctx)                   — does the whole run fit the cache,
+                                                                    and is max_ctx itself sane
   residentk_dispatch_budget(n_layers)                            — GPU dispatches for ONE token
-  residentk_weight_elems(d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab)  — resident Float32 count
+  residentk_cache_elements(n_layers, h_kv, d_head, max_ctx)      — KV-cache Float32 count at max_ctx
+  residentk_weight_elems(d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx=512)
+                                                                  — resident Float32 count
 """
 
 from tensorx.contract import tx_finite
@@ -82,9 +85,12 @@ comptime RESIDENT_ERR_NO_DEVICE: Int = 605
 """Built with GPU kernels, but this host has no accelerator."""
 
 comptime RESIDENT_ERR_CONTEXT_FULL: Int = 606
-"""The requested run would need more KV-cache positions than `RESIDENT_MAX_CONTEXT`. The cache is
-allocated once and written IN PLACE, so its capacity is fixed at session open — refusing here is
-what stops a step from writing past the last slot, which on a GPU is silent corruption."""
+"""The requested run would need more KV-cache positions than the session's OWN `max_ctx` — the
+runtime capacity that particular session was opened with, not the `RESIDENT_MAX_CONTEXT` safety
+ceiling (a request past THAT ceiling is `RESIDENT_ERR_DIM_TOO_LARGE` instead, refused before the
+question of whether a run fits is even asked). The cache is allocated once and written IN PLACE, so
+its capacity is fixed at session open — refusing here is what stops a step from writing past the
+last slot, which on a GPU is silent corruption."""
 
 comptime RESIDENT_ERR_UPLOAD_LENGTH: Int = 607
 """A weight handed to the session is not the element count its declared shape implies."""
@@ -116,18 +122,33 @@ comptime RESIDENT_MAX_HEAD_DIM: Int = 256
 thread per head element, so this is a threadgroup size — 256 is the portable ceiling and also the
 largest tree reduction those kernels perform."""
 
-comptime RESIDENT_MAX_CONTEXT: Int = 512
-"""Positions the resident KV cache holds, fixed at session open.
+comptime RESIDENT_MAX_CONTEXT: Int = 65536
+"""SAFETY CEILING on `max_ctx`, not the allocation size. `_ResidentQwen3` (and every sibling arm in
+`residentk.session`, and every `_MBQwen3*` arm in `metaldispatch.session`) allocates its KV cache at
+`n_layers * 2 * max_ctx * h_kv * d_head` Float32 elements where `max_ctx` is a genuine RUNTIME
+parameter the caller passes at session-open time — exactly like `n_layers`, `h_kv` and `d_head`
+already are. The cache is still allocated ONCE and written one slot per step IN PLACE (that is the
+point of the design: `llmk.generate.kv_cache_append_flat` builds a NEW buffer of `cache_len + n_new`
+and copies the whole cache every call, twice per layer per step, which is O(N^2) copying across a
+generation; here there is no copy at all, at ANY `max_ctx`), so this constant's only remaining job
+is `residentk_context_check`'s refusal of a nonsensical or pathological request (a caller asking
+for billions of positions) BEFORE a device is touched — it no longer bounds what a session may
+actually hold.
 
-Allocated once as `n_layers * 2 * RESIDENT_MAX_CONTEXT * h_kv * d_head` Float32 and written one slot
-per step IN PLACE. That is the point of the design: `llmk.generate.kv_cache_append_flat` builds a
-NEW buffer of `cache_len + n_new` and copies the whole cache every call, twice per layer per step,
-which is O(N^2) copying across a generation. Here there is no copy at all.
+65536 rather than 512: 512 was never a Metal or Mojo limitation, it was this constant doing double
+duty as both the ceiling and the allocation size, which made every caller's session exactly as big
+as the ceiling whether it needed to be or not. 65536 comfortably covers Qwen3's native 32,768
+context with headroom, while a session that asks for less (the default below, or anything else a
+caller chooses) pays only for what it asked for — see `residentk_cache_elements` for that byte math,
+and `RESIDENT_DEFAULT_CONTEXT` for the value every call site in this tree requested before this
+constant's role changed."""
 
-512 rather than a larger number because the allocation is unconditional: at Qwen3-0.6B's shape
-(28 layers, 8 KV heads, 128 head dim) it is 117 MB of device memory that is paid whether the run
-uses 20 positions or 500. A longer context is a real feature and a real allocation decision, not a
-constant to raise casually."""
+comptime RESIDENT_DEFAULT_CONTEXT: Int = 512
+"""The `max_ctx` every call site in this tree requested back when `RESIDENT_MAX_CONTEXT` was both
+the ceiling and the allocation size. Kept as its own named constant, rather than inlining `512`, so
+every existing race binary and test that wants "today's behaviour, unchanged" has one symbol to
+import — `residentk_weight_elems`'s own default parameter is the clearest example. Nothing about
+this value is special to Qwen3-0.6B or to Metal; it is a historical default, not a second ceiling."""
 
 comptime RESIDENT_MAX_LAYERS: Int = 128
 """Layer ceiling. Bounds the number of weight buffers a session allocates, which is the thing that
@@ -245,11 +266,19 @@ fn residentk_dims_check(d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: In
 
 
 fn residentk_context_check(n_prompt: Int, n_new: Int, max_ctx: Int) -> Int:
-    """Does a whole run — prompt plus every generated token — fit the fixed-capacity KV cache?
+    """Does a whole run — prompt plus every generated token — fit the session's OWN fixed-capacity
+    KV cache, and is the requested capacity itself sane?
 
     Asked ONCE, before the first step, rather than per step. The cache is written in place and its
-    capacity was fixed at session open, so the honest time to refuse is before any token is produced
-    rather than after the caller has half a sequence.
+    capacity — `max_ctx`, a genuine runtime value the caller chooses at session-open time, not a
+    fixed constant — is fixed AT THAT OPEN, so the honest time to refuse is before any token is
+    produced rather than after the caller has half a sequence.
+
+    Two independent refusals live here, deliberately not split into two functions because a caller
+    always needs both answered before opening a session: `max_ctx` itself might be nonsensical (0,
+    negative, or past `RESIDENT_MAX_CONTEXT`'s safety ceiling — billions of positions was never a
+    request this package should attempt to satisfy), or `max_ctx` might be perfectly reasonable but
+    too small for THIS run's own `n_prompt + n_new`.
 
     @capability residentk_context_check
     complexity: O(1)
@@ -266,6 +295,35 @@ fn residentk_context_check(n_prompt: Int, n_new: Int, max_ctx: Int) -> Int:
     if n_prompt > max_ctx - n_new:
         return RESIDENT_ERR_CONTEXT_FULL
     return RESIDENT_OK
+
+
+fn residentk_cache_elements(n_layers: Int, h_kv: Int, d_head: Int, max_ctx: Int) -> Int:
+    """Float32 elements the KV cache holds for a session opened at `max_ctx` positions, or 0 if any
+    dimension is unsupported. `n_layers * 2 * max_ctx * h_kv * d_head` — one `ck` and one `cv`
+    buffer per layer, each `max_ctx * h_kv * d_head` elements, exactly what
+    `residentk.session._ResidentQwen3.__init__` (and every sibling arm, including every
+    `metaldispatch._MBQwen3*` arm) actually allocates via `ctx.enqueue_create_buffer`.
+
+    Extracted as its own function, rather than left inline in `residentk_weight_elems`, so a caller
+    can ask "how much memory would THIS `max_ctx` cost" independently of the full resident-weight
+    total — which is exactly what sizing a deployment before opening a session needs, and exactly
+    what let this function's own docstring replace `residentk_weight_elems`'s previous inline use of
+    the (now much larger) `RESIDENT_MAX_CONTEXT` safety ceiling as if it were the allocation size.
+
+    @capability residentk_cache_elements
+    complexity: O(1)
+    counts:
+    - dim n_layers <= RESIDENT_MAX_LAYERS [kernel_validated]
+    - dim max_ctx <= RESIDENT_MAX_CONTEXT [kernel_validated]
+    @endcapability
+    """
+    if n_layers < 1 or n_layers > RESIDENT_MAX_LAYERS:
+        return 0
+    if h_kv < 1 or d_head < 1:
+        return 0
+    if max_ctx < 1 or max_ctx > RESIDENT_MAX_CONTEXT:
+        return 0
+    return n_layers * 2 * max_ctx * h_kv * d_head
 
 
 fn residentk_dispatch_budget(n_layers: Int) -> Int:
@@ -288,7 +346,8 @@ fn residentk_dispatch_budget(n_layers: Int) -> Int:
 
 
 fn residentk_weight_elems(
-    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int, vocab: Int
+    d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int, n_layers: Int, vocab: Int,
+    max_ctx: Int = RESIDENT_DEFAULT_CONTEXT,
 ) -> Int:
     """Float32 elements a session holds resident on the device, or 0 if the shape is unsupported.
 
@@ -296,7 +355,13 @@ fn residentk_weight_elems(
     matrix `(h_q + 2*h_kv) * d_head` by `d_model`, `o_proj` `d_model` by `h_q * d_head`, the fused
     gate/up matrix `2 * d_ff` by `d_model`, and `down_proj` `d_model` by `d_ff`. Plus, once: the tied
     embedding/lm_head table `vocab` by `d_model`, the final norm gain, and the KV cache at
-    `n_layers * 2 * RESIDENT_MAX_CONTEXT * h_kv * d_head`.
+    `residentk_cache_elements(n_layers, h_kv, d_head, max_ctx)`.
+
+    `max_ctx` defaults to `RESIDENT_DEFAULT_CONTEXT` (512, this package's historical fixed size)
+    rather than to `RESIDENT_MAX_CONTEXT` (now a much larger safety ceiling, not a size) so every
+    existing call site that predates `max_ctx` becoming a real parameter here — this function's own
+    golden-vector test among them — reports the EXACT same number it always did, with no call site
+    changes required. A caller sizing a session at a different `max_ctx` passes it explicitly.
 
     The number matters because it IS the one-time cost the resident design front-loads, and because
     at 4 bytes each it is also the per-token memory traffic floor: nothing can decode faster than
@@ -307,6 +372,7 @@ fn residentk_weight_elems(
     counts:
     - dim n_layers <= RESIDENT_MAX_LAYERS [kernel_validated]
     - dim vocab <= RESIDENT_MAX_VOCAB [kernel_validated]
+    - dim max_ctx <= RESIDENT_MAX_CONTEXT [kernel_validated]
     @endcapability
     """
     if residentk_dims_check(d_model, h_q, h_kv, d_head, d_ff) != RESIDENT_OK:
@@ -315,6 +381,9 @@ fn residentk_weight_elems(
         return 0
     if vocab < 1 or vocab > RESIDENT_MAX_VOCAB:
         return 0
+    var cache = residentk_cache_elements(n_layers, h_kv, d_head, max_ctx)
+    if cache <= 0:
+        return 0
 
     var n_qkv = (h_q + 2 * h_kv) * d_head
     var per_layer = 2 * d_model + 2 * d_head
@@ -322,8 +391,7 @@ fn residentk_weight_elems(
     per_layer += d_model * (h_q * d_head)
     per_layer += 2 * d_ff * d_model
     per_layer += d_model * d_ff
-    var cache = 2 * RESIDENT_MAX_CONTEXT * h_kv * d_head
-    return n_layers * (per_layer + cache) + vocab * d_model + d_model
+    return n_layers * per_layer + cache + vocab * d_model + d_model
 
 
 fn residentk_scalars_ok(eps: Float64, scale: Float64) -> Bool:

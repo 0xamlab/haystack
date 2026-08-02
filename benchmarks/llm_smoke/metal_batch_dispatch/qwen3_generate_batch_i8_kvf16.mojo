@@ -48,7 +48,7 @@ from json.parser import json_get_array, json_get_float, json_get_int, json_get_o
 from conv import parse_int
 from attnk.rope import rope_table
 from attnk.contract import ATTN_OK
-from residentk.contract import RESIDENT_MAX_CONTEXT
+from residentk.contract import RESIDENT_DEFAULT_CONTEXT
 from metaldispatch.contract import MB_OK, metaldispatch_dispatch_budget, metaldispatch_status_name
 from metaldispatch.session import _MBQwen3I8KVF16, _mb_preflight, MB_GPU_BUILD
 
@@ -146,7 +146,7 @@ def main() raises:
         raise Error("qwen3_generate_batch_i8_kvf16: manifest config did not parse")
 
     var scale = 1.0 / sqrt(Float64(d_head))
-    var max_ctx = RESIDENT_MAX_CONTEXT
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
 
     print("qwen3_generate_batch_i8_kvf16: d_model=", d_model, "n_layers=", n_layers, "h_q=", h_q,
           "h_kv=", h_kv, "d_head=", d_head, "d_ff=", d_ff, "vocab=", vocab_size,

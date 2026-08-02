@@ -24,7 +24,7 @@ from json.parser import json_get_array, json_get_float, json_get_int, json_get_o
 from conv import parse_int
 from attnk.rope import rope_table
 from attnk.contract import ATTN_OK
-from residentk.contract import RESIDENT_MAX_CONTEXT, RESIDENT_OK, RESIDENT_MAX_D_MODEL
+from residentk.contract import RESIDENT_DEFAULT_CONTEXT, RESIDENT_OK, RESIDENT_MAX_D_MODEL
 from residentk.session import RESIDENT_GPU_BUILD, _ResidentQwen3I4
 
 comptime MANIFEST_PATH: String = "/tmp/qwen3smoke/manifest.json"
@@ -150,7 +150,7 @@ def main() raises:
     var eps = json_get_float(config, "rms_norm_eps", -1.0)
     var n_prompt = json_get_int(config, "n_tokens", -1)
     var scale = 1.0 / sqrt(Float64(d_head))
-    var max_ctx = RESIDENT_MAX_CONTEXT
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
 
     var ids_arr = json_get_array(manifest, "input_ids")
     var id_tokens = json_array_tokens(ids_arr)

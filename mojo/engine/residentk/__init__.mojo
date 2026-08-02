@@ -66,10 +66,12 @@ The KV cache is the second, independent win
 `llmk.generate.kv_cache_append_flat` allocates a NEW list of `cache_len + n_new` elements and copies
 the whole cache on every call, twice per layer per step. Across a generation that is O(N^2) copying:
 28 layers x 2 x sum over steps of the running cache length. This package's cache is allocated once
-at `RESIDENT_MAX_CONTEXT` positions and each step writes ONE slot in place from inside the RoPE
-kernel, so the copy disappears entirely rather than being made faster. That win is measured
-separately in `benchmarks/llm_smoke/qwen3_generate_metal.mojo`, because it is not the same lever as
-residency and conflating them would make neither attributable.
+at `max_ctx` positions — a genuine RUNTIME parameter the caller chooses at session-open time,
+bounded by `RESIDENT_MAX_CONTEXT`'s safety ceiling rather than fixed to it — and each step writes
+ONE slot in place from inside the RoPE kernel, so the copy disappears entirely rather than being
+made faster, at any requested context length. That win is measured separately in
+`benchmarks/llm_smoke/qwen3_generate_metal.mojo`, because it is not the same lever as residency and
+conflating them would make neither attributable.
 
 Precision, stated up front
 -----------------------------

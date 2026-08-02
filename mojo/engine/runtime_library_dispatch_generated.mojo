@@ -5836,6 +5836,7 @@ from residentk.contract import (
     residentk_status_name as _residentk_contract__residentk_status_name,
     residentk_dims_check as _residentk_contract__residentk_dims_check,
     residentk_context_check as _residentk_contract__residentk_context_check,
+    residentk_cache_elements as _residentk_contract__residentk_cache_elements,
     residentk_dispatch_budget as _residentk_contract__residentk_dispatch_budget,
     residentk_weight_elems as _residentk_contract__residentk_weight_elems,
     residentk_scalars_ok as _residentk_contract__residentk_scalars_ok,
@@ -117784,6 +117785,25 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
             "invalid_arguments",
             "Function residentk.contract.residentk_context_check expected 3 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "residentk_cache_elements":
+        if arg_count == 4:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var result = _residentk_contract__residentk_cache_elements(arg_0, arg_1, arg_2, arg_3)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_cache_elements."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_cache_elements expected 4 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "residentk_dispatch_budget":
         if arg_count == 1:
             try:
@@ -117818,9 +117838,27 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
                     "mojo_library_execution_failed",
                     "Mojo library execution failed for residentk.contract.residentk_weight_elems."
                 )
+        if arg_count == 8:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var arg_3 = _parse_int_token(json_array_get(args_array, 3))
+                var arg_4 = _parse_int_token(json_array_get(args_array, 4))
+                var arg_5 = _parse_int_token(json_array_get(args_array, 5))
+                var arg_6 = _parse_int_token(json_array_get(args_array, 6))
+                var arg_7 = _parse_int_token(json_array_get(args_array, 7))
+                var result = _residentk_contract__residentk_weight_elems(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_weight_elems."
+                )
         return _error_json(
             "invalid_arguments",
-            "Function residentk.contract.residentk_weight_elems expected 7 arguments, received " + String(arg_count) + "."
+            "Function residentk.contract.residentk_weight_elems expected 7 or 8 arguments, received " + String(arg_count) + "."
         )
     if function_name == "residentk_scalars_ok":
         if arg_count == 2:

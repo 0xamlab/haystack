@@ -72,7 +72,7 @@ from attnk.contract import ATTN_OK
 from llmk.generate import kv_cache_append_flat
 from llmk.contract import LLMK_OK
 from residentk.contract import (
-    RESIDENT_MAX_CONTEXT,
+    RESIDENT_DEFAULT_CONTEXT,
     RESIDENT_OK,
     residentk_dispatch_budget,
     residentk_status_name,
@@ -185,7 +185,7 @@ def main() raises:
         raise Error("qwen3_generate_metal_fp16: manifest config did not parse")
 
     var scale = 1.0 / sqrt(Float64(d_head))
-    var max_ctx = RESIDENT_MAX_CONTEXT
+    var max_ctx = RESIDENT_DEFAULT_CONTEXT
 
     print("qwen3_generate_metal_fp16: d_model=", d_model, "n_layers=", n_layers, "h_q=", h_q,
           "h_kv=", h_kv, "d_head=", d_head, "d_ff=", d_ff, "vocab=", vocab_size,
