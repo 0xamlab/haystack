@@ -992,6 +992,11 @@ bench-optmodel-mirror:
 	PYTHONPATH=. python3 benchmarks/optmodel_plane/make_mirror_instances.py
 	PYTHONPATH=. python3 benchmarks/optmodel_plane/harness.py --mirror $${ARGS:-}
 
+## End-to-end pass@1: LLM writes a formulation from NL text, optmodel solves + judges it (spends real LLM tokens; owner-gated)
+bench-optmodel-llm-e2e:
+	PYTHONPATH=. python3 benchmarks/optmodel_plane/make_mirror_instances.py
+	PYTHONPATH=. python3 benchmarks/optmodel_plane/llm_e2e.py $${ARGS:-}
+
 bench-optimization:
 	@if [ -d mojo_env ] && command -v pixi >/dev/null 2>&1; then \
 		cd mojo_env && pixi run mojo run -I../mojo/engine ../benchmarks/mojo_benchmarks/bench_optimization.mojo; \
