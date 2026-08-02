@@ -357,6 +357,20 @@ fn _materialize(
     var c0 = rng.c
     var r1 = rng.d
     var c1 = rng.e
+    # clamp WHOLE-COLUMN (`F:F`) and WHOLE-ROW (`3:7`) refs to the sheet's
+    # USED range: they nominally span 2^20 rows / 2^14 columns, and Excel does
+    # not evaluate past the used range either. Only the unbounded edge is
+    # clamped — an EXPLICIT A3:A7 keeps all five rows even when A7 is blank —
+    # and the clamp is SHEET-wide, so every whole-column operand in one
+    # expression still broadcasts against the same shape.
+    if r1 == MAX_ROWS - 1 or c1 == MAX_COLS - 1:
+        var umr = 0
+        var umc = 0
+        if wb.used_extent(rng.a, umr, umc):
+            if r1 == MAX_ROWS - 1 and r1 > umr:
+                r1 = umr if umr >= r0 else r0
+            if c1 == MAX_COLS - 1 and c1 > umc:
+                c1 = umc if umc >= c0 else c0
     rows = r1 - r0 + 1
     cols = c1 - c0 + 1
     if rows <= 0 or cols <= 0:
@@ -755,9 +769,13 @@ fn _crit_of(v: CellValue) -> _Crit:
     elif n >= 1 and Int(bs[0]) == 61:
         c.op = _CEQ
         i = 1
-    var body = String("")
+    # byte-preserving slice: chr() on bytes >= 0x80 would re-encode them as
+    # code points and non-ASCII criteria ("JESUS MAGAÑA") would never match
+    # — found by corpus self-validation (spreadsheetbench 31202)
+    var bbuf = List[UInt8]()
     for j in range(i, n):
-        body += chr(Int(bs[j]))
+        bbuf.append(bs[j])
+    var body = _bs_str(bbuf)
     if len(body) == 0:
         c.kind = _CK_EMPTY
         return c^
@@ -1283,7 +1301,10 @@ fn _call_function(wb: Workbook, mut st: _EngineState, ctx: _Ctx, ni: Int, depth:
         actx.array_mode = True
     var args = List[CellValue]()
     for i in range(argc):
-        var v = _eval(wb, st, actx, wb.pool[arg0 + i], depth + 1)
+        var sctx = actx.copy()
+        if _array_ctx_slot(fid, i):
+            sctx.array_mode = True
+        var v = _eval(wb, st, sctx, wb.pool[arg0 + i], depth + 1)
         if v.kind == VK_PENDING:
             return v^
         args.append(v^)
@@ -2347,12 +2368,17 @@ fn _fn_index(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
     if len(args) < 2 or len(args) > 3:
         return cv_err(ERR_VALUE)
     var rng = args[0].copy()
-    if rng.kind != VK_RANGE:
+    var is_arr = rng.kind == VK_ARRAY
+    if rng.kind != VK_RANGE and not is_arr:
         if _taint_rank(rng) > 0:
             return rng^
+        if rng.kind == VK_ERR:
+            return rng^  # INDEX(#REF!,...) is #REF!, not #VALUE! (sb 54590)
         return cv_err(ERR_VALUE)
-    var rows = rng.d - rng.b + 1
-    var cols = rng.e - rng.c + 1
+    # a computed array (INDEX((A=x)*(B=y),0) — spreadsheetbench 3413) indexes
+    # by its pooled shape; a range by its rectangle
+    var rows = rng.b if is_arr else (rng.d - rng.b + 1)
+    var cols = rng.c if is_arr else (rng.e - rng.c + 1)
     var rv = _to_scalar(wb, st, ctx, args[1])
     if _taint_rank(rv) > 0:
         return rv^
@@ -2388,6 +2414,26 @@ fn _fn_index(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue
         return cv_err(ERR_VALUE)
     if rn > rows or cn > cols:
         return cv_err(ERR_REF)
+    if is_arr:
+        if rn > 0 and cn > 0:
+            return _array_elem(st, rng, rn - 1, cn - 1)
+        if rn == 0 and cn == 0:
+            return rng^  # whole array
+        # one zero index: a row or column slice, materialized in the pool
+        var ar0 = rn - 1 if rn > 0 else 0
+        var ar1 = rn - 1 if rn > 0 else rows - 1
+        var ac0 = cn - 1 if cn > 0 else 0
+        var ac1 = cn - 1 if cn > 0 else cols - 1
+        var start = len(st.arr_pool)
+        for r in range(ar0, ar1 + 1):
+            for c in range(ac0, ac1 + 1):
+                st.arr_pool.append(_array_elem(st, rng, r, c))
+        var outv = CellValue()
+        outv.kind = VK_ARRAY
+        outv.a = start
+        outv.b = ar1 - ar0 + 1
+        outv.c = ac1 - ac0 + 1
+        return outv^
     var r0 = rng.b + (rn - 1 if rn > 0 else 0)
     var c0 = rng.c + (cn - 1 if cn > 0 else 0)
     var r1 = r0 if rn > 0 else rng.d
@@ -3236,6 +3282,60 @@ fn _fn_sumifs(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     return cv_num(total)
 
 
+fn _lookup_over_array(
+    wb: Workbook,
+    mut st: _EngineState,
+    ctx: _Ctx,
+    lookup: CellValue,
+    vec: CellValue,
+    args: List[CellValue],
+) -> CellValue:
+    """LOOKUP over a COMPUTED array — the corpus's dominant last-match idiom
+    `LOOKUP(2,1/(cond),vec)`, where the search vector is {#DIV/0! | 1} and
+    Excel simply SKIPS the error elements (found by corpus self-validation:
+    spreadsheetbench 54490/55039). Positions are dense, so the scan is by
+    linear index; the answer comes from the result vector at that index (or
+    from the searched array itself in the 2-argument form)."""
+    var n = vec.b * vec.c
+    if n <= 0:
+        return cv_err(ERR_NA)
+    if not st.charge(n):
+        return cv_unsup(String("BUDGET"))
+    var best_pos = -1
+    for i in range(n):
+        var cand = _array_elem(st, vec, i // vec.c, i % vec.c)
+        if _taint_rank(cand) > 0:
+            return cand^
+        if not _lookup_compatible(lookup, cand):
+            continue  # errors and mismatched types are skipped, never fatal
+        if _lookup_cmp(lookup, cand) <= 0:
+            best_pos = i
+        # NOTE: no early break — Excel's documented contract assumes a sorted
+        # vector, but the 1/(cond) idiom is NOT sorted and Excel returns the
+        # LAST qualifying position, which is what the corpus cached values say
+    if best_pos < 0:
+        return cv_err(ERR_NA)
+    if len(args) == 2:
+        return _array_elem(st, vec, best_pos // vec.c, best_pos % vec.c)
+    var res = args[2].copy()
+    if res.kind == VK_ARRAY:
+        if best_pos >= res.b * res.c:
+            return cv_err(ERR_NA)
+        return _array_elem(st, res, best_pos // res.c, best_pos % res.c)
+    if res.kind != VK_RANGE:
+        if _taint_rank(res) > 0:
+            return res^
+        return cv_err(ERR_NA)
+    var target = -1
+    if res.e > res.c and res.d == res.b:
+        target = wb.find_cell(res.a, res.b, res.c + best_pos)
+    else:
+        target = wb.find_cell(res.a, res.b + best_pos, res.c)
+    if target < 0:
+        return cv_empty()
+    return _deref_cell(wb, st, target)
+
+
 fn _fn_lookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]) -> CellValue:
     """Vector-form LOOKUP: last value <= lookup in the (assumed sorted)
     lookup vector, result from the result vector (or the lookup vector). The
@@ -3249,10 +3349,29 @@ fn _fn_lookup(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValu
     if lookup.kind == VK_ERR:
         return lookup^
     var vec = args[1].copy()
+    if vec.kind == VK_ARRAY:
+        return _lookup_over_array(wb, st, ctx, lookup, vec, args)
     if vec.kind != VK_RANGE:
         if _taint_rank(vec) > 0:
             return vec^
-        return cv_err(ERR_NA)
+        # a SCALAR search vector is a one-element vector (a 1x1 range collapses
+        # to a scalar, so `LOOKUP(2,1/($A$3:$A3<>""),$A$3:$A3)` — the corpus's
+        # last-non-blank idiom on its first row — lands here; sb 54490)
+        if not _lookup_compatible(lookup, vec) or _lookup_cmp(lookup, vec) > 0:
+            return cv_err(ERR_NA)
+        if len(args) == 2:
+            return vec^
+        var res1 = args[2].copy()
+        if res1.kind == VK_ARRAY:
+            return _array_elem(st, res1, 0, 0)
+        if res1.kind != VK_RANGE:
+            if _taint_rank(res1) > 0:
+                return res1^
+            return res1^  # scalar result vector: its single element
+        var t1 = wb.find_cell(res1.a, res1.b, res1.c)
+        if t1 < 0:
+            return cv_empty()
+        return _deref_cell(wb, st, t1)
     var s_r0 = vec.b
     var s_c0 = vec.c
     var s_r1 = vec.d
@@ -3560,6 +3679,22 @@ fn _fn_date(wb: Workbook, mut st: _EngineState, ctx: _Ctx, args: List[CellValue]
 
 
 # ── Array lifting of scalar-slot arguments ────────────────────────────────────
+fn _array_ctx_slot(fid: Int, i: Int) -> Bool:
+    """True when slot `i` of `fid` is a VECTOR/REFERENCE slot: Excel performs
+    NO implicit intersection there, so a computed operand inside it must stay
+    an array. Without this, `LOOKUP(2,1/($A$3:$A7<>""),$A$3:$A7)` in a row
+    that happens to intersect the range collapses to that row's single value
+    and answers the wrong cell (found by corpus self-validation, sb 54490 —
+    the answer silently depended on the formula's own row)."""
+    if fid == FID_LOOKUP:
+        return i == 1 or i == 2
+    if fid == FID_INDEX:
+        return i == 0
+    if fid == FID_MATCH:
+        return i == 1
+    return False
+
+
 fn _lift_slot(fid: Int, i: Int, argc: Int) -> Bool:
     """True when argument slot `i` of `fid` is a SCALAR slot that broadcasts
     when given an array. Range-consuming slots (lookup tables, criteria

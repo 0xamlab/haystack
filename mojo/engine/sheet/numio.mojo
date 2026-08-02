@@ -125,7 +125,10 @@ fn _parse_number_trimmed(text: String, mut value: Float64) -> Bool:
             break
     if e <= a:
         return False
-    var body = String("")
+    # byte-preserving slice (chr() would re-encode bytes >= 0x80); non-ASCII
+    # bodies fail strtod either way, but the text must reach it unmangled
+    var bbuf = List[UInt8]()
     for i in range(a, e):
-        body += chr(Int(bs[i]))
+        bbuf.append(bs[i])
+    var body = _bs_str(bbuf)
     return _parse_number(body, value)

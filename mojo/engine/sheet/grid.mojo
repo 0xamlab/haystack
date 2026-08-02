@@ -172,6 +172,27 @@ struct Workbook(Copyable, Movable):
                 return self.perm_row[mid]
         return -1
 
+    fn used_extent(self, sheet: Int, mut max_row: Int, mut max_col: Int) -> Bool:
+        """Last stored row and column of a sheet — its USED range. Excel never
+        evaluates past it, and neither should array materialisation: without
+        this, one `LOOKUP(2,1/(F:F<>""),F:F)` would materialise 1,048,576
+        elements per call. The row-major index is sorted, so the last entry of
+        the sheet's slice carries the largest row; the column-major index the
+        largest column. False when the sheet has no stored cells."""
+        if sheet < 0 or sheet >= len(self.sheet_names):
+            return False
+        var a = self.sheet_row_start[sheet]
+        var b = self.sheet_row_start[sheet + 1]
+        if b <= a:
+            return False
+        max_row = self.c_coord[self.perm_row[b - 1]] // MAX_COLS
+        var ca = self.sheet_col_start[sheet]
+        var cb = self.sheet_col_start[sheet + 1]
+        if cb <= ca:
+            return False
+        max_col = self.c_coord[self.perm_col[cb - 1]] % MAX_COLS
+        return True
+
     fn row_slice_bounds(self, sheet: Int, coord_lo: Int, coord_hi: Int, mut lo: Int, mut hi: Int) -> Bool:
         """[lo, hi) into perm_row covering coords in [coord_lo, coord_hi]."""
         if sheet < 0 or sheet >= len(self.sheet_names):

@@ -61,6 +61,35 @@ xlsx ──(staged Python reader)──▶ .swt text ──▶ grid loader ─�
 * The harness (`scripts/sheet_plane/validate_corpus.py`) asserts per workbook
   that the buckets sum exactly to the formula-cell count: a cell that
   vanishes from every bucket fails the workbook.
+* **The tolerance is not a hiding place** — proven by mutation at corpus
+  scale, not by assertion. Three mutants of the shipped engine were run over
+  a whole corpus: SUM off by 1e-8 relative (10x the tolerance), every scalar
+  ADD off by 1e-8, and — the decisive one — every ADD off by **2e-10, five
+  times SMALLER than the 1e-9 tolerance**. All three are caught: the
+  sub-tolerance mutant still fails 56,451 cells and collapses `matched_exact`
+  from 182,105 to 106,813, because a near-tolerance error amplifies through
+  dependency chains and because the EXACT bucket is the load-bearing number.
+
+## A mismatch is a lead, not a statistic
+
+Corpus self-validation is only worth the compute if the mismatches get
+opened. Four defects in this engine were found that way and none was
+reachable from a hand-written test, because each needed a real workbook to
+express it:
+
+| symptom in the corpus | root cause |
+|---|---|
+| `SUMIFS(...,"JESUS MAGAÑA")` summed 0 | the criteria parser rebuilt its body with `chr()`, re-encoding every byte >= 0x80 |
+| `MATCH(1,INDEX((A=x)*(B=y),0),0)` → #VALUE! | INDEX rejected a COMPUTED array; only ranges were indexable |
+| `INDEX(#REF!,MATCH(..))` → #VALUE! (cached #REF!) | INDEX turned an error argument into #VALUE! instead of propagating it |
+| `LOOKUP(2,1/($A$3:$A$7<>""),$A$3:$A$7)` answered a different row per copy | implicit intersection collapsed the search vector — the answer depended on the formula's own row |
+
+The rest of the mismatch mass is diagnosed, not merely counted: cells that
+disagree because the FILE disagrees with itself (SpreadsheetBench-2's
+Debugging tasks inject a bug into the formula text and keep the pre-injection
+cached value — `SUM(F4,F6,F4)` cached as `F4+F6`), cells whose inputs Excel
+serialized at fewer digits than it computed with, and named unimplemented
+functions.
 
 ## Functions
 
@@ -78,6 +107,16 @@ IF / IFERROR / CHOOSE are special forms: laziness is semantics
 (`IF(TRUE,1,1/0)` is 1). The 1900 date system keeps Excel's leap-year legend
 (serial 60 is the fake 1900-02-29; DATE(1900,3,1) is 61); the 1904 system is
 refused (zero corpus workbooks use it).
+
+**Vector slots take no implicit intersection.** LOOKUP's search/result vectors,
+INDEX's array and MATCH's lookup vector are REFERENCE slots: a computed
+operand inside them stays an array. Without that rule the corpus's
+last-non-blank idiom `LOOKUP(2,1/($A$3:$A$7<>""),$A$3:$A$7)` collapses to the
+formula's OWN row and silently answers a different cell — the kind of bug
+only corpus-scale self-validation finds, because it is invisible in any
+workbook whose formula happens to sit outside the range. Whole-column (`F:F`)
+and whole-row operands materialise clamped to the sheet's USED range, which
+is also what Excel evaluates; explicit ranges keep their blank tail.
 
 ## Validation numbers
 
@@ -98,8 +137,10 @@ python3 -P scripts/sheet_plane/validate_corpus.py \
 
 * `mojo/tests/libs/test_sheet_{refs,formula,engine,functions}.mojo` —
   hand-checkable known values (a five-cell workbook computed by hand, the
-  named-cycle case, #DIV/0! chains, 68 function cells with hand-derived
-  cached values). Registered in `HANDWRITTEN_TESTS`; mutation-tested (ADD→SUB,
+  named-cycle case, #DIV/0! chains, 72 function cells with hand-derived
+  cached values — including the two corpus-found regressions: non-ASCII
+  criteria bytes and INDEX(computed_array, 0)). Registered in
+  `HANDWRITTEN_TESTS`; mutation-tested (ADD→SUB,
   swallowed cycles, STDEV divisor, SUM dropping an operand — each caught by
   exactly the assertion that owns it).
 * `benchmarks/mojo_benchmarks/bench_sheet_plane.mojo` — BENCH_GATE on

@@ -19,6 +19,8 @@ fn _wb_head() -> String:
     t += "C\t0\tA1\tn\t2\nC\t0\tA2\tn\t4\nC\t0\tA3\tn\t4\nC\t0\tA4\tn\t4\n"
     t += "C\t0\tA5\tn\t5\nC\t0\tA6\tn\t5\nC\t0\tA7\tn\t7\nC\t0\tA8\tn\t9\n"
     t += "C\t0\tB1\ts\tapple\nC\t0\tB2\tn\t10\nC\t0\tB3\ts\tbanana\nC\t0\tB4\tb\t1\n"
+    t += "C\t0\tB5\ts\tMAGAÑA\n"  # non-ASCII bytes for the criteria regression
+    t += "C\t0\tC2\tn\t20\nC\t0\tC6\tn\t60\n"  # sparse column for the LOOKUP idiom
     t += "C\t0\tD1\tn\t1\nC\t0\tE1\ts\tone\n"
     t += "C\t0\tD2\tn\t3\nC\t0\tE2\ts\tthree\n"
     t += "C\t0\tD3\tn\t5\nC\t0\tE3\ts\tfive\n"
@@ -152,10 +154,51 @@ fn main() raises:
     t += _f(String("G66"), String("DATE(1900,1,1)"), String("n"), String("1"))
     t += _f(String("G67"), String("DATE(1900,3,1)"), String("n"), String("61"))
     t += _f(String("G68"), String("DATE(2024,2,29)"), String("n"), String("45351"))
-    n_formulas = 68
+    # ── corpus-found regressions (fixed after the first validation pass) ─────
+    # criteria with non-ASCII bytes must match byte-identically: the operator
+    # strip re-encoded Ñ via chr() and "MAGAÑA" never matched (sb 31202)
+    t += _f(String("G69"), String('SUMIF(B5:B5,B5,A1:A1)'), String("n"), String("2"))
+    t += _f(String("G70"), String('COUNTIF(B5:B5,"MAGAÑA")'), String("n"), String("1"))
+    # INDEX(computed_array, 0) is the whole-column form (sb 3413): A1:A8 is
+    # {2,4,4,4,5,5,7,9} so (=4)*(>3) is {0,1,1,1,0,0,0,0} and MATCH finds 2
+    t += _f(
+        String("G71"),
+        String("MATCH(1,INDEX((A1:A8=4)*(A1:A8>3),0),0)"),
+        String("n"),
+        String("2"),
+    )
+    # INDEX(computed_array, n) picks the n-th element: (>4)*1 = {0,0,0,0,1,...}
+    t += _f(String("G72"), String("INDEX((A1:A8>4)*1,5)"), String("n"), String("1"))
+    # INDEX propagates an ERROR first argument as itself, not as #VALUE!
+    # (sb 54590: INDEX(#REF!,MATCH(..)) caches #REF!)
+    t += _f(String("G73"), String("INDEX(#REF!,1)"), String("e"), String("#REF!"))
+    # the last-non-blank idiom: LOOKUP over a computed {1|#DIV/0!} vector must
+    # SKIP the errors and answer the LAST hit. C1:C8 is blank except C2/C6, so
+    # the last non-blank is C6 = 60 (sb 54490). Critically, the answer must NOT
+    # depend on the formula's own row: G74 and G75 are identical formulas in
+    # different rows and both must be 60 — the implicit-intersection bug made
+    # the row-3 copy answer 20.
+    t += _f(
+        String("G74"),
+        String('LOOKUP(2,1/($C$1:$C$8<>""),$C$1:$C$8)'),
+        String("n"),
+        String("60"),
+    )
+    t += _f(
+        String("G75"),
+        String('LOOKUP(2,1/($C$1:$C$8<>""),$C$1:$C$8)'),
+        String("n"),
+        String("60"),
+    )
+    # a WHOLE-COLUMN operand in a vector slot clamps to the sheet's used range
+    # (F:F is nominally 2^20 rows); the answer is still the last non-blank, and
+    # an EXPLICIT range keeps its blank tail (G77 counts all 8 rows of C1:C8)
+    t += _f(String("G76"), String('LOOKUP(2,1/($C:$C<>""),$C:$C)'), String("n"), String("60"))
+    t += _f(String("G77"), String("ROWS($C$1:$C$8)"), String("n"), String("8"))
+    n_formulas = 77
 
     var rep = sheet_recalc_report(t, 0)
-    var err_expected = 4  # G11, G23, G36, G54 match as typed errors
+    var err_expected = 5  # G11, G23, G36, G54, G73 match as typed errors
     if (
         rep.status == 1320
         and rep.formula_cells == n_formulas
@@ -166,7 +209,7 @@ fn main() raises:
         and rep.unsupported == 0
     ):
         passed += 1
-        print("  ✅ all 68 census-order function cells match their hand values exactly")
+        print("  ✅ all 77 census-order function cells match their hand values exactly")
     else:
         failed += 1
         print(
