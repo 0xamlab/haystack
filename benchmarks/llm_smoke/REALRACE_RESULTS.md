@@ -46,6 +46,19 @@ next token is always the varying fill-in-the-blank slot). No mechanism was built
 survived, no race was run — there is nothing new to race, and the 243.06 tok/s verdict above is
 unchanged.**
 
+**Update (2026-08-02, later still again): SDPA's own reduction MECHANISM, not its precision or
+storage, was attacked next — read "SDPA SIMD-group-shuffle reduction addendum" for the result. A
+real, verified win: `_sdpa_kernel_simd` replaces the barrier-synchronized shared-memory tree (nine
+`barrier()` calls per key) with a two-level hardware SIMD-group-shuffle reduction (two per key),
+same online-softmax math, same Float32 KV cache. Same-session decode-only tok/s: int8 baseline
+~243 tok/s -> ~294 tok/s (+21%). SDPA's own GPU-counter share of the token drops from ~28.6% to
+~14.3% (avg 43.76us -> 18.87us per dispatch). Token sequence still matches the transformers-CPU
+reference exactly. Against this doc's LAST-RECORDED (not freshly re-raced this session)
+llama.cpp-GPU/mlx-lm numbers (258.25 / 315.54 tok/s), the new arm's ~294 tok/s would clear
+llama.cpp but still trail mlx-lm — informational only, since the standing rule needs a FRESH
+same-session three-way race, which this addendum does not attempt (out of this task's scope; see
+the addendum for exactly what was and was not re-measured). No gitbook page yet.**
+
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
 measured together. **Where two sections disagree, the last one is right** — in particular the
@@ -2880,3 +2893,227 @@ for arm in i8 i8_kvf16; do
   DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_$arm
 done
 ```
+
+## SDPA SIMD-group-shuffle reduction addendum (2026-08-02, later still again): the reduction MECHANISM, not precision or storage — a real, verified win
+
+Every lever above this section attacked SDPA's precision (`_sdpa_kernel_kvf16`) or its storage
+bandwidth. None touched the reduction's own internal STRATEGY. PR #510's GPU-counter measurement
+named `sdpa` as 26.85% of per-token time; PR #512's own Shrink-phase diagnosis went one step
+further and pinned the cost to the per-key barrier-synchronized shared-memory tree reduction
+(`log2(d_head)` halving steps, each a full threadgroup `barrier()`, plus one more "safety" barrier
+before the next key's write can reuse the same shared array — 9 barrier hits per key at this
+model's real `d_head = 128`), not to the single-scalar-per-thread cache read the fp16-KV-cache
+axis already halved with zero measured effect. This is that untried target.
+
+### What was found
+
+`d_head = 128` and Apple's real hardware SIMD-group width (`std.gpu.WARP_SIZE` under
+`is_apple_gpu()`) is 32 — confirmed on this M4 Max by a device-side probe
+(`std.gpu.primitives.id.lane_id()`/`warp_id()` read back and checked against `thread_idx.x % / //
+32`, not assumed), so one `_sdpa_kernel` threadgroup's 128 threads are FOUR separate SIMD-groups,
+not one. A single-level `std.gpu.primitives.warp.sum` call only reduces within one 32-lane group —
+it would fold each quarter of the dot product to its own partial sum and stop. The fix is a
+two-level reduction: `warp.sum` (a butterfly `shuffle_xor` pattern lowered to
+`llvm.air.simd_shuffle_xor` on this target, confirmed via GitHub code search against
+`modular/modular`'s real, current `mojo/stdlib/std/gpu/primitives/warp.mojo` source at the pinned
+nightly, not guessed) reduces each 32-lane group with NO barrier at all (SIMD-group execution is
+lockstep by hardware construction), then one shared-memory combine across the `d_head / 32 = 4`
+per-group partial sums needs exactly TWO `barrier()` calls per key (one so every thread sees the
+four partial sums written, one "safety" barrier so a fast thread cannot start the next key's write
+before a slow thread finishes reading this key's values) — down from nine.
+
+New kernel: `residentk.kernels._sdpa_kernel_simd` (Float32 KV cache, the current production
+weight/cache pairing) plus `_sdpa_kernel_simd_kvf16` (composes with the fp16-KV-cache axis too,
+built and verified alongside it since the two axes share no code). Wired into new additive session
+twins: `residentk.session._ResidentQwen3I8SDPASimd` and
+`metaldispatch.session._MBQwen3I8SDPASimd`, both refusing (`raise Error`, before any GPU work) a
+`d_head` that is not an exact multiple of `WARP_SIZE` — `_sdpa_kernel_simd`'s reduction needs every
+SIMD-group it launches fully populated, which the real `d_head = 128` satisfies but an arbitrary
+shape might not.
+
+### Staged correctness, exactly this package's own protocol
+
+1. **Controlled small case, hand-verified against an independent host reference.**
+   `benchmarks/llm_smoke/sdpa_simd_reduce_probe.mojo`: barrier-tree and SIMD-shuffle reductions
+   both agree with a pure-host Float64 online-softmax reference to `~5.9e-8` (single-key) and
+   `~1e-7`-`3e-7` (multi-key, `n_keys` up to 64, 16 heads at once) — real hardware, not a thought
+   experiment. `mojo/tests/libs/test_residentk_sdpa_simd_kernel.mojo` (new, hand-written, permanent)
+   repeats this at the kernel level with `D_HEAD = 128` (the real model's shape, not the shared
+   suite's `D_HEAD = 8`, which is smaller than one SIMD-group and not a valid shape for this
+   kernel): barrier-tree vs SIMD-shuffle vs host-f64 reference all agree to `~1.19e-7` — exactly
+   one Float32 unit-roundoff, the expected signature of a reordered-but-equally-valid summation,
+   not a bug. The `_kvf16`-composed pair (`_sdpa_kernel_kvf16` vs `_sdpa_kernel_simd_kvf16`) agrees
+   to `~1.49e-7`. 4/4 passed. `test_residentk_session.mojo` (51/51) and
+   `test_residentk_kvcache_fp16_kernel.mojo` (4/4) reconfirmed green — no regression from the two
+   new additive structs.
+2. **Full single-token decode step vs. the existing barrier-tree kernel.** Same real checkpoint,
+   same prompt: `_ResidentQwen3I8SDPASimd`'s first generated token's logit (`21.033050537109375`)
+   vs `_MBQwen3I8`'s own (`21.03304672241211`) — delta `~4e-6`, an argmax-irrelevant Float32
+   reordering difference, same token id either way.
+3. **Full 16-token greedy generation vs. the transformers-CPU reference.** `qwen3_generate_batch_i8_sdpasimd.mojo`
+   (built on `_MBQwen3I8SDPASimd`) generated, from `"The capital of France is"`:
+
+   ```
+   12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13
+   ```
+
+   Byte-for-byte the SAME sequence this doc's own "Correctness first" section established against
+   an independent `transformers`-CPU reference, and the SAME sequence the unmodified
+   `qwen3_generate_batch_i8.mojo` (barrier-tree `_sdpa_kernel`) produces on this run, run back to
+   back. No divergence anywhere in the 16 tokens.
+
+### Measured, real, hardware numbers — only reported because all three stages above passed
+
+**Decode-only tok/s**, same methodology as this doc's own (16 greedy tokens, prompt `"The capital
+of France is"`), fresh same-session A/B, four interleaved rounds each:
+
+| Arm | Round 1 | Round 2 | Round 3 | Round 4 | Median |
+|---|---|---|---|---|---|
+| int8 baseline (`_sdpa_kernel`, unmodified `qwen3_generate_batch_i8.mojo`) | 241.10 | 244.83 | 243.10 | 244.50 | **~243.8** |
+| int8 + SDPA-simd (`_sdpa_kernel_simd`, `qwen3_generate_batch_i8_sdpasimd.mojo`) | 288.94 | 292.64 | 296.65 | 299.50 | **~294.6** |
+
+**+20.8% decode-only tok/s**, same weights, same checkpoint, same prompt, same 171-dispatch budget
+per token, only the SDPA role's reduction mechanism differing.
+
+**SDPA-specific GPU-counter timing**, `qwen3_probe_counters_i8.mojo` (baseline) vs the new
+`qwen3_probe_counters_i8_sdpasimd.mojo` (direct twin, `_MBQwen3I8SDPASimd` substituted for
+`_MBQwen3I8`), same OFF/ON/OFF/ON alternated-order methodology PR #510 built, 30 ON-phase decode
+steps each, same calibrated GPU-tick-to-ns conversion:
+
+| Arm | `sdpa` avg per dispatch | `sdpa` share of the summed per-dispatch residual |
+|---|---|---|
+| barrier-tree (`_sdpa_kernel`) | 43.76 us | 28.58% |
+| SIMD-shuffle (`_sdpa_kernel_simd`) | 18.87 us | 14.33% |
+
+SDPA's own GPU time per dispatch drops **56.9%** (43.76us -> 18.87us, a 2.32x speedup on the role
+itself), and its share of the token roughly halves — closely matching PR #510's original 26.85%
+baseline figure (this run's own OFF-phase baseline reads 28.58%, within normal run-to-run/machine-
+load variance) and confirming this is a fair apples-to-apples before/after on the exact mechanism
+PR #510/#512 identified.
+
+### What this does and does not close
+
+Against this doc's own LAST-RECORDED (not freshly re-raced this session) llama.cpp-GPU (258.25
+tok/s) and mlx-lm (315.54 tok/s) numbers from the "fp16 KV-cache" section above, this arm's ~294.6
+tok/s would CLEAR llama.cpp's number but still trail mlx-lm's — **informational only**, since the
+standing publication rule requires an outright win against both, measured FRESH in the same
+session, which this addendum does not attempt (out of scope for the SDPA-reduction-mechanism task
+this addendum reports; a fresh three-way re-race is the natural next step for whoever races this
+next). No gitbook page ships from this addendum alone.
+
+### Gates
+
+`git diff --stat origin/main -- mojo/engine/` shows only the three additive files this addendum
+touched (`residentk/kernels.mojo`, `residentk/session.mojo`, `metaldispatch/session.mojo`) — the
+freeze-gate alternation already lists both `residentk/` and `metaldispatch/` as this week's own
+actively-developed packages. `make inventory-refresh` produced no diff (every new symbol here is
+leading-underscore, `surfaces: none`, exactly like every other kernel/session pair in these two
+packages). `inventory-check`, `capability_manifest_gate.py` and `tests/generate_mojo_tests.py
+--check` (198 hand-written suites protected, up from 197) all clean.
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed
+
+# the standalone kernel probe (Stage 1, no shim needed)
+pixi run mojo run -D ALGENTA_GPU -I../mojo/engine \
+    ../benchmarks/llm_smoke/sdpa_simd_reduce_probe.mojo
+
+# the permanent kernel-level golden-vector test
+pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+    ../mojo/tests/libs/test_residentk_sdpa_simd_kernel.mojo -o /tmp/test_sdpa_simd_kernel
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/test_sdpa_simd_kernel
+
+# the batched-shim decode-only tok/s A/B (needs batch_shim.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+for f in qwen3_generate_batch_i8 qwen3_generate_batch_i8_sdpasimd; do
+  pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+      ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/$f \
+      -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/$f
+done
+
+# the SDPA-specific GPU-counter before/after (needs batch_shim_counters.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
+    -o /tmp/batch_shim_counters.o
+for f in qwen3_probe_counters_i8 qwen3_probe_counters_i8_sdpasimd; do
+  pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+      ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/$f \
+      -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/$f
+done
+```
+
+## Fresh three-way race for the SDPA-simd result (2026-08-02, later still again): closest yet, still short of mlx-lm
+
+The SDPA hardware-SIMD-group-reduction addendum immediately above measured its win against
+STALE llama.cpp/mlx-lm numbers carried over from the fp16-KV-cache section, and said so plainly
+("informational only... a fresh three-way re-race is the natural next step"). This section is
+that fresh re-race, all six arms interleaved in the same six rounds, run back to back, right now.
+
+### Correctness first, on this exact run
+
+A `transformers`-CPU reference was regenerated fresh
+(`reference_generate.py` -> `/tmp/bb/qwen3_ckpt/reference_generate_sdpasimd_final/`), and both
+Algenta arms' `generated_ids.txt` from this run's own binaries were checked against it
+position-by-position with `verify_generation.py`: **16/16 for both** the int8 baseline
+(`qwen3_generate_batch_i8.mojo`, barrier-tree `_sdpa_kernel`) and the SDPA-simd arm
+(`qwen3_generate_batch_i8_sdpasimd.mojo`, `_sdpa_kernel_simd`) -- `12095, 13, 576, 6722, 315,
+9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13`, `" Paris. The capital of Germany is
+Berlin. The capital of Italy is Rome."`. No divergence.
+
+### The numbers
+
+Six rounds, each round running all six arms back to back (Algenta CPU, Algenta int8 baseline,
+Algenta int8+SDPA-simd, llama.cpp CPU, llama.cpp GPU, mlx-lm), load average 7.4-12.6 across the
+session:
+
+| Arm | Median tok/s | vs Algenta's best |
+|---|---|---|
+| Algenta CPU (float64, FastGEMV) | 7.58 | 0.026x |
+| Algenta batched-shim GPU, int8 (barrier-tree SDPA) | 244.89 | 0.824x |
+| **Algenta batched-shim GPU, int8 + SDPA-simd** | **297.17** | **1x (best)** |
+| llama.cpp CPU (`-ngl 0`) | 41.07 (noisy, 24.3-54.5 range) | **7.24x faster (Algenta wins)** |
+| llama.cpp GPU (`-ngl 99`) | 259.32 | **Algenta wins, 1.146x faster** |
+| mlx-lm | 311.63 | **1.049x faster than Algenta -- still ahead** |
+
+**Algenta now beats llama.cpp GPU outright** (297.17 vs 259.32 tok/s, every one of the 6 rounds,
+not just the median -- Algenta's worst round, 291.11, still beat llama.cpp GPU's best round,
+262.85). This did not happen with any earlier arm today.
+
+**mlx-lm still wins, every round, no exception**: round-by-round, Algenta-sdpasimd vs mlx-lm was
+297.19/304.60, 299.96/309.34, 297.15/320.86, 291.24/316.12, 291.11/313.93, 299.91/306.39 -- mlx-lm
+ahead in all six, by margins ranging 2.1% (round 6, the closest) to 7.9% (round 4, the widest).
+The gap never closed to zero in any single round, so this is not "sometimes wins, sometimes
+loses" noise -- mlx-lm is consistently, if narrowly, ahead.
+
+### Publication decision: no gitbook page -- closest yet, but the standing rule requires beating BOTH
+
+The standing rule is an outright win against the field's BEST real installed opponent, not merely
+*an* opponent. Algenta clears llama.cpp (both CPU and GPU) outright today for the first time, but
+mlx-lm -- the actual best -- remains ahead in every round measured. No page ships, none is
+drafted. This is reported as the real, honest state: not a loss on the same order as every prior
+section in this document (12x-15x back at the start of today's chain), but still a loss, by
+1.02x-1.08x depending on the round, at the very top of the field.
+
+### What would close the remaining ~4.9% (median-to-median)
+
+Per PR #510's own per-role breakdown, re-measured fresh with SDPA-simd in place earlier in this
+document: SDPA dropped from 28.58% to 14.33% of the token. The three GEMV-shaped roles (QKV-proj,
+o_proj+down_proj, gate-up) are now the largest remaining share by a wide margin, and this
+document's own int4-weights section (two sections above) already found that lever blocked by a
+real correctness failure on this model, not an unexplored option. The other structural levers
+this document has named all day -- a lower-per-dispatch-cost submission mechanism (blocked,
+Mojo/MAX exposes no command-buffer batching on Metal, confirmed twice today) or a genuinely
+persistent decode loop that never returns to the host between tokens -- remain the only paths to
+close a gap this small, and both are still multi-day, high-risk redesigns outside today's scope.
+
+### Gates
+
+`git diff --stat origin/main -- mojo/engine/` shows only the three additive files the SDPA-simd
+addendum already documented (`residentk/kernels.mojo`, `residentk/session.mojo`,
+`metaldispatch/session.mojo`) -- unchanged by this section, which adds no code, only this
+race + writeup. Worktree already at `origin/main` tip (`#512`) -- no rebase needed.

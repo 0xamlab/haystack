@@ -103,6 +103,27 @@ arm above: that arm's own correctness failure means there is nothing usable to c
 `residentk.session._ResidentQwen3I8KVF16`'s own docstring and the RealRace addendum this axis's
 task added).
 
+A SIXTH, additive axis, orthogonal to every precision arm above (weights AND the KV cache):
+`_sdpa_kernel`'s per-key REDUCTION MECHANISM, not its math or its storage dtype. PR #510's GPU-
+counter measurement put `sdpa` at 26.85% of per-token time, and PR #510/#512's own diagnosis named
+the reason: the kernel's cost is dominated by a per-key barrier-synchronized shared-memory tree
+reduction (`log2(d_head)` levels, each a full threadgroup `barrier()`, plus one more "safety"
+barrier before the next key's write can safely reuse `red` — 9 barrier hits per key at this model's
+`d_head = 128`), not by the single-scalar KV-cache read `_sdpa_kernel_kvf16`'s narrower storage
+already halved. `_sdpa_kernel_simd` (Float32 KV cache) and `_sdpa_kernel_simd_kvf16` (Float16 KV
+cache) replace that tree with a two-level reduction: `std.gpu.primitives.warp.sum` reduces each
+32-lane SIMD-group via hardware shuffle (`llvm.air.simd_shuffle_xor`, confirmed on this Apple Silicon
+target — `std.gpu.WARP_SIZE` resolves to 32 under `is_apple_gpu()`) with NO barrier at all — SIMD-
+group execution is lockstep by hardware construction — then a shared-memory combine across the
+`d_head / 32` per-group partial sums, needing exactly TWO `barrier()` calls per key instead of nine
+(one so every thread sees the per-group partial sums written to shared memory, one so a fast thread
+cannot start the next key's write to that same shared array before a slow thread has finished
+reading this key's values out of it — the same "safety barrier" purpose `_sdpa_kernel`'s own trailing
+barrier serves, one level up). Same
+online-softmax math, same accumulator types, same everything except HOW the per-key dot product's
+`d_head` partial products collapse to one scalar. Composes with every weight-precision arm exactly as
+`_sdpa_kernel`/`_sdpa_kernel_kvf16` already do, since neither touches a weight matrix.
+
 Every remaining boundary is a genuine grid-wide dependency — an rmsnorm needs the whole vector the
 previous projection produced, and at `d_ff = 3072` that vector spans 384 threadgroups. Fusing across
 one would need a persistent kernel with a device-scope spin barrier; deliberately not attempted.
@@ -134,8 +155,9 @@ session re-checks the one dimension that changes per step (`pos < max_ctx`) at e
 """
 
 from std.builtin.type_aliases import MutAnyOrigin
-from std.gpu import barrier, block_idx, grid_dim, thread_idx
+from std.gpu import barrier, block_idx, grid_dim, lane_id, thread_idx, warp_id, WARP_SIZE
 from std.gpu.memory import AddressSpace
+from std.gpu.primitives.warp import sum as _warp_sum
 from std.math import exp, sqrt
 from std.memory import stack_allocation
 from residentk.contract import RESIDENT_MAX_D_MODEL, RESIDENT_MAX_HEAD_DIM
@@ -1531,6 +1553,141 @@ fn _sdpa_kernel_kvf16(
             barrier()
             stride //= 2
         var s = red[0] * scale
+        barrier()
+
+        var nm = m if m > s else s
+        var corr = exp(m - nm)
+        var w = exp(s - nm)
+        o = o * corr + w * Float32(cv[kb + e])
+        denom = denom * corr + w
+        m = nm
+
+    attn_out[h * d_head + e] = o / denom
+
+
+fn _sdpa_kernel_simd(
+    attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The REDUCTION-MECHANISM twin of `_sdpa_kernel` — IDENTICAL online-softmax math, IDENTICAL
+    Float32 KV-cache storage, only HOW each key's `d_head`-wide dot product collapses to one scalar
+    differs.
+
+    `_sdpa_kernel` reduces with a shared-memory tree: every one of the `log2(d_head)` halving steps
+    is a full threadgroup `barrier()`, plus one more "safety" barrier so the next key's write cannot
+    race a slow lane still reading this key's score — 9 barrier hits per key at this model's
+    `d_head = 128` (see that kernel's own docstring for exactly what the safety barrier guards).
+    PR #510's GPU-counter measurement found `sdpa` at 26.85% of per-token time; PR #512's Shrink
+    phase named THIS reduction, not the per-scalar cache read, as the reason.
+
+    `d_head = 128` and Apple's hardware SIMD-group width (`std.gpu.WARP_SIZE` under
+    `is_apple_gpu()`) is 32 — confirmed on this M4 Max by `benchmarks/llm_smoke/
+    sdpa_simd_reduce_probe.mojo`'s own device-side probe, not assumed — so one `_sdpa_kernel`
+    threadgroup's `d_head` threads are FOUR separate SIMD-groups, not one. A single-level
+    `std.gpu.primitives.warp.sum` call only reduces WITHIN one 32-lane group; it would fold each
+    32-lane quarter of the dot product to its own partial sum and stop there. This kernel therefore
+    uses a TWO-level reduction:
+
+    1. `_warp_sum(partial)` — `std.gpu.primitives.warp.sum`, a butterfly `shuffle_xor` pattern
+       lowered to `llvm.air.simd_shuffle_xor` on this target — reduces each of the four 32-lane
+       SIMD-groups to that group's total, broadcast to every lane in the group. Hardware lockstep
+       execution within a SIMD-group means this needs NO `barrier()` at all.
+    2. The lane at `lane_id() == 0` in each group (there are `d_head // WARP_SIZE` of them) writes
+       its group's total into a small shared array; a `barrier()` makes those writes visible to
+       every thread; every thread then sums that array's `d_head // WARP_SIZE` entries itself
+       (cheap — at most 8 adds). A SECOND `barrier()` follows the read, for the exact same reason
+       `_sdpa_kernel`'s own trailing "safety" barrier exists: without it, a fast thread could reach
+       the NEXT key's `lane_id() == 0` write to this same shared array before a slow thread has
+       finished reading THIS key's values out of it.
+
+    Two barriers per key instead of nine. Everything else — the running max `m`, the running
+    normalizer `denom`, the running output accumulator `o`, the rescale-and-accumulate arithmetic —
+    is copied byte-for-byte from `_sdpa_kernel`'s own loop body, because the math this kernel
+    computes must be, and is verified to be, IDENTICAL.
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    """Fixed upper bound on the number of SIMD-groups one threadgroup can contain, sized off the
+    same `RESIDENT_MAX_HEAD_DIM` ceiling `red`'s allocation above uses for the same reason: the real
+    `d_head` is a runtime value, but `stack_allocation` needs a compile-time size. At this model's
+    `d_head = 128` only the first 4 of these 8 slots are ever touched."""
+    var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
+    var h = Int(block_idx.x)
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    for j in range(n_keys):
+        var kb = (j * h_kv + hk) * d_head
+        var partial = qv * ck[kb + e]
+        var group_total = _warp_sum(partial)
+        if lane == 0:
+            grp[grp_id] = group_total
+        barrier()
+        var s = Float32(0.0)
+        for g in range(n_groups):
+            s += grp[g]
+        s *= scale
+        # Safety barrier, same purpose as `_sdpa_kernel`'s own trailing one: every thread has now
+        # READ every slot of `grp`, but without this barrier a fast thread could reach the NEXT
+        # key's `if lane == 0: grp[grp_id] = ...` write before a slow thread (possibly in a
+        # DIFFERENT SIMD-group, which this barrier -- unlike the warp-shuffle above -- CAN order
+        # against) has finished this key's read above. Two barriers per key total, against nine for
+        # the barrier-tree kernel.
+        barrier()
+
+        var nm = m if m > s else s
+        var corr = exp(m - nm)
+        var w = exp(s - nm)
+        o = o * corr + w * cv[kb + e]
+        denom = denom * corr + w
+        m = nm
+
+    attn_out[h * d_head + e] = o / denom
+
+
+fn _sdpa_kernel_simd_kvf16(
+    attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
+    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The fp16-KV-cache twin of `_sdpa_kernel_simd`, composing the reduction-mechanism axis with
+    the KV-cache-precision axis exactly as `_sdpa_kernel_kvf16` composes the ORIGINAL barrier-tree
+    reduction with fp16 KV-cache storage — see that kernel's docstring for the widen-immediately
+    discipline (`Float32(ck[kb + e])`/`Float32(cv[kb + e])` the instant each element is read, before
+    it touches the dot product or the online-softmax accumulator). Every reduction-mechanism detail
+    is identical to `_sdpa_kernel_simd`'s own docstring; only `ck`/`cv`'s storage type differs.
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    var grp = stack_allocation[_SIMD_GROUPS, DType.float32, address_space = AddressSpace.SHARED]()
+    var h = Int(block_idx.x)
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    for j in range(n_keys):
+        var kb = (j * h_kv + hk) * d_head
+        var partial = qv * Float32(ck[kb + e])
+        var group_total = _warp_sum(partial)
+        if lane == 0:
+            grp[grp_id] = group_total
+        barrier()
+        var s = Float32(0.0)
+        for g in range(n_groups):
+            s += grp[g]
+        s *= scale
         barrier()
 
         var nm = m if m > s else s
