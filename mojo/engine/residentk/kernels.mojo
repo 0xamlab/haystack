@@ -2255,6 +2255,142 @@ fn _lmhead_argmax_kernel_i8(
         blk_idx[Int(block_idx.x)] = bi
 
 
+fn _lmhead_argmax_kernel_simd_i8(
+    blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
+    k: Int, n: Int, eps: Float32, n_iters: Int,
+):
+    """The REDUCTION-MECHANISM twin of `_lmhead_argmax_kernel_i8` — IDENTICAL final rmsnorm, tied
+    lm_head projection and per-threadgroup argmax math, only HOW its two internal reductions
+    collapse to a scalar differs. Same relationship `_norm_gemv_kernel_simd_i8` has to
+    `_norm_gemv_kernel_i8` (see that docstring for the fuller account this one leans on), applied to
+    the SAME two reduction shapes PLUS the argmax bookkeeping layered on top of shape 2 — see
+    `lmhead_argmax_simd_reduce_probe.mojo` for the device-side confirmation this docstring's claims
+    rest on, not assumed. This is the single largest individual dispatch in the whole per-token
+    cost (~12-13% of per-token GPU time per PR #510's counters, tied with the embedding table for
+    the largest resident matrix in the model), and had never been examined through this lens before.
+
+    `_lmhead_argmax_kernel_i8` has TWO barrier-tree reductions, run `1 + n_iters` times total:
+
+    1. Sum-of-squares over the whole `k`-length vector, reduced across all `_TG = 256` threads —
+       run ONCE per launch. EXACTLY the same shape as `_norm_gemv_kernel_simd_i8`'s stage 1: 8 full
+       32-lane SIMD-groups on this hardware, confirmed by device probe, not assumed. Fixed
+       identically: per-group `_warp_sum` with no barrier (hardware lockstep), one lane per group
+       writes its group's total into an `_SUBS`-slot shared array, ONE combine `barrier()` makes
+       those writes visible, every thread sums the 8 entries itself. 8 barriers -> 1.
+
+    2. Each output column's dot product, reduced across its own `_LANES = 32`-wide SIMD group —
+       run ONCE PER ITERATION of the `for it in range(n_iters)` loop, because this kernel walks the
+       WHOLE `n`-row vocabulary in `_SUBS`-column strides (unlike a plain GEMV kernel's single pass
+       over one column per thread), `_SUBS = 8` independent columns per iteration, `log2(32) = 5`
+       barrier-synchronized halving levels PER ITERATION, plus ONE trailing "safety" `barrier()`
+       the ORIGINAL kernel pays per iteration that exists ONLY to stop a fast thread from starting
+       the next iteration's `red[tid] = acc` write before every thread in its group has finished
+       reading `red[]` for the CURRENT iteration's argmax update — `6` barriers/iteration, `6 *
+       n_iters` total for this stage alone.
+
+       This shape is the SAME one `_gemv_accum_kernel_simd_i8`'s own per-column stage already
+       fixed: one SIMD group maps 1:1 to one output column with NOTHING to combine across groups,
+       so a single-level `_warp_sum` — no shared array, no barrier at all — IS the complete
+       reduction, broadcasting the column's total to every lane in the group so `lane == 0` can
+       compare it against its own LOCAL `best`/`best_i` registers directly, with no shared memory
+       touched anywhere in this stage. Because `red[]` is never written or read here, the trailing
+       safety barrier the tree version needs has nothing left to guard either — verified by reading
+       every use of `red[]`/`best`/`best_i` in `_lmhead_argmax_kernel_i8`: `best`/`best_i` are
+       per-thread registers, updated every iteration and only ever read back by the SAME thread on
+       a LATER iteration or after the loop; `sv`/`si` (the only place `best`/`best_i` reach shared
+       memory) are written exactly once, AFTER the full `it` loop ends. No iteration of this stage
+       depends on any other iteration's shared-memory state, so removing every barrier from it —
+       not just the 5 tree levels, but the 6th trailing one too — changes nothing about what gets
+       read. `6 * n_iters` barriers -> `0`.
+
+    `8 + 6 * n_iters` barriers collapse to `1` per launch. Every other line — the normalization
+    arithmetic, the int8 dequantization (`Float32(i8) * wscale[row]`, inside the loop, immediately
+    on load), the vectorized `char4`-shaped load, the per-column argmax bookkeeping and its
+    tie-break (lowest `id` wins — unchanged: `lane == 0`'s `if total > best` is still a strict `>`,
+    evaluated in the same `it` order, so an exact tie still resolves the same way it did against
+    `red[sub * _LANES]`), and the final per-threadgroup combine over `sv`/`si` — is copied
+    byte-for-byte from `_lmhead_argmax_kernel_i8`, because the math this kernel computes must be,
+    and is verified to be, IDENTICAL; only the summation order across lanes/groups (and which
+    barriers that reordering makes unnecessary) differs.
+    """
+    var xs = stack_allocation[_STAGE, DType.float32, address_space = AddressSpace.SHARED]()
+    var grp = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var sv = stack_allocation[_SUBS, DType.float32, address_space = AddressSpace.SHARED]()
+    var si = stack_allocation[_SUBS, DType.int32, address_space = AddressSpace.SHARED]()
+    var tid = Int(thread_idx.x)
+    var lane = tid % _LANES
+    var sub = tid // _LANES
+
+    # ── 1. sum of squares over the whole vector, two-level SIMD-shuffle reduced ──
+    var ss = Float32(0.0)
+    var i = tid
+    while i < k:
+        var v = x[i]
+        ss += v * v
+        i += _TG
+    var ss_group = _warp_sum(ss)
+    if lane == 0:
+        grp[sub] = ss_group
+    barrier()
+    var ss_total = Float32(0.0)
+    for g in range(_SUBS):
+        ss_total += grp[g]
+    var inv = 1.0 / sqrt(ss_total / Float32(k) + eps)
+
+    # ── 2. stage the normalized, gamma-scaled vector in threadgroup memory ──────
+    var st0 = tid
+    while st0 < k:
+        xs[st0] = x[st0] * inv * gamma[st0]
+        st0 += _TG
+    barrier()
+
+    # ── 3. one SIMD group per output column, single-level SIMD-shuffle reduction, no barrier at
+    # all across the whole `it` loop -- `red[]` is gone entirely, `best`/`best_i` are registers ──
+    var stride_cols = Int(grid_dim.x) * _SUBS
+    var best = _NEG_HUGE
+    var best_i = Int32(-1)
+    var k_vec = (k // _VEC_STRIDE_I8) * _VEC_STRIDE_I8
+
+    for it in range(n_iters):
+        var j = Int(block_idx.x) * _SUBS + sub + it * stride_cols
+        var acc = Float32(0.0)
+        if j < n:
+            var base = j * k
+            var srow = wscale[j]
+            var srow_v = SIMD[DType.float32, _VEC_I8](srow)
+            var t = lane * _VEC_I8
+            while t < k_vec:
+                var xv = xs.load[width=_VEC_I8](t)
+                var wv = w.load[width=_VEC_I8](base + t).cast[DType.float32]() * srow_v
+                var pv = xv * wv
+                for lane_e in range(_VEC_I8):
+                    acc += pv[lane_e]
+                t += _VEC_STRIDE_I8
+            var tt = k_vec + lane
+            while tt < k:
+                acc += xs[tt] * (Float32(w[base + tt]) * srow)
+                tt += _LANES
+        var total = _warp_sum(acc)
+        if lane == 0 and j < n:
+            if total > best:
+                best = total
+                best_i = Int32(j)
+
+    if lane == 0:
+        sv[sub] = best
+        si[sub] = best_i
+    barrier()
+    if tid == 0:
+        var bv = sv[0]
+        var bi = si[0]
+        for u in range(1, _SUBS):
+            if sv[u] > bv:
+                bv = sv[u]
+                bi = si[u]
+        blk_val[Int(block_idx.x)] = bv
+        blk_idx[Int(block_idx.x)] = bi
+
+
 fn _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
     """Collapse the per-threadgroup `(logit, id)` pairs to one. `grid_dim = 1`, `block_dim = 256`.
 

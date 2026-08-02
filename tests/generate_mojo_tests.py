@@ -217,6 +217,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_accel_gemm_metal.mojo",
         "test_residentk_session.mojo",
         "test_residentk_kvcache_fp16_kernel.mojo",
+        "test_residentk_lmhead_simd_kernel.mojo",
         "test_metaldispatch_session.mojo",
         "test_metaldispatch_session_f16.mojo",
         "test_metaldispatch_session_i8.mojo",

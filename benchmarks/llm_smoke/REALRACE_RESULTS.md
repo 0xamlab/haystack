@@ -59,14 +59,26 @@ llama.cpp but still trail mlx-lm — informational only, since the standing rule
 same-session three-way race, which this addendum does not attempt (out of this task's scope; see
 the addendum for exactly what was and was not re-measured). No gitbook page yet.**
 
-**Update (2026-08-02, final for this chain): the GEMV-reduction-mechanism fix (the addendum
-immediately above the closing section) was raced fresh, seven arms, six interleaved rounds — read
-"Seven-arm race for the GEMV-simd result" (the closing section) for the full numbers. Algenta's
-best arm (int8 + SDPA-simd + GEMV-simd) reaches a **311.55 tok/s median, 1.24% behind mlx-lm's
-315.41** — the closest this entire day's chain has come, down from a 15.56x gap at this morning's
-float64 CPU baseline. It is not a publishable win: mlx-lm still wins outright in 3 of 6 rounds
+**Update (2026-08-02, later still): the GEMV-reduction-mechanism fix (the addendum
+immediately above the "Seven-arm race" section) was raced fresh, seven arms, six interleaved rounds
+— read "Seven-arm race for the GEMV-simd result" for the full numbers. Algenta's best arm (int8 +
+SDPA-simd + GEMV-simd) reaches a **311.55 tok/s median, 1.24% behind mlx-lm's 315.41** — the
+closest this entire day's chain had come at that point, down from a 15.56x gap at this morning's
+float64 CPU baseline. It was not a publishable win: mlx-lm still won outright in 3 of 6 rounds
 (including one round where a machine-load spike dropped Algenta's own arm to 167 tok/s), so the
-standing "every round, not just median" bar is not met. No gitbook page ships.**
+standing "every round, not just median" bar was not met. No gitbook page shipped from that section.**
+
+**Update (2026-08-02, final for today): a fourth reduction-mechanism fix — `lm_head`'s own argmax
+reduction — was attacked next and raced fresh, eight arms, eight interleaved rounds — read
+"Eight-arm race for the lm_head-simd result" (the closing section) for the full numbers. Algenta's
+new best arm (int8 + SDPA-simd + GEMV-simd + lm_head-simd) reaches a **315.25 tok/s median**,
+**ahead of** this run's own mlx-lm median (309.74) by **1.78%** — the first session in this
+entire day's chain where Algenta's median genuinely leads mlx-lm's, a swing of just over 3
+percentage points from the 1.24%-behind result immediately above. It is still not a publishable
+win: mlx-lm wins outright in 3 of 8 rounds on this run (3 of the first 6, too — the same split
+count PR #514's own race recorded), so the standing "every round, not just median" bar is still
+not met. No gitbook page ships. The kernel fix itself merges regardless, exactly like every prior
+link in this chain — a correctness-verified optimization ships whether or not it wins the race.**
 
 Sections below, in the order they were written: the original RealRace, the FastGEMV ReRace
 addendum, the resident-GPU addendum, and finally the four-way race in which all five arms were
@@ -3500,5 +3512,219 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_
 for arm in mojo_generate_llmfwd mojo_generate_batch_i8 mojo_generate_batch_i8_sdpasimd mojo_generate_batch_i8_allsimd; do
   /tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/$arm/generated_ids.txt \
       /tmp/bb/qwen3_ckpt/reference_generate_gemvchain_final/reference_generated.json
+done
+```
+
+## Eight-arm race for the lm_head-simd result (2026-08-02, later still): median swings ahead of mlx-lm for the first time — still not an every-round win
+
+`_lmhead_argmax_kernel_i8` — the single largest individual GPU dispatch in the whole per-token cost
+(~12–13% of per-token time per PR #510's counters, tied with the embedding table for the largest
+resident matrix in the model) — had the same two barrier-tree reduction shapes already fixed
+elsewhere (PR #513's SDPA-simd, PR #514's GEMV-simd) but had never itself been examined through
+this lens. This section supersedes none of the numbers above (SDPA-simd and GEMV-simd both still
+stand as shipped, unchanged), it **adds** a fourth reduction-mechanism fix on top and re-races the
+whole field, exactly the way the "Seven-arm race" section above closed the GEMV-simd chain.
+
+### Rebase — none needed this time
+
+Unlike the two prior links in this chain, this branch's own merge-base (`fe7b39f5` on top of
+`5f404da9`) **is** `origin/main`'s current tip — `origin/main` had not moved since PR #514 merged,
+so there was nothing to rebase onto. Every gate below was still rerun fresh, unconditionally, per
+this task's own instruction, not skipped because the rebase step itself was a no-op.
+
+### Gates, rerun fresh
+
+- `git diff --stat origin/main -- mojo/engine/`: exactly the three additive files this chain's own
+  commit (`fe7b39f5`) touches — `residentk/kernels.mojo` (+136), `residentk/session.mojo` (+362),
+  `metaldispatch/session.mojo` (+512) — 1010 insertions, 0 deletions, nothing else. No residual
+  files this time (no rebase means no ancestor-drift noise to carry).
+- `make inventory-refresh`: zero diff (every new symbol — `_lmhead_argmax_kernel_simd_i8`,
+  `_ResidentQwen3I8AllSimd2`, `_MBQwen3I8AllSimd2` — is leading-underscore).
+- `make inventory-check`: clean — runtime contract OK, capability manifest OK (122/655 modules
+  fully declared, 595 undeclared against the unchanged 595 ceiling), `runtime-library-catalog.md`
+  OK (635 modules).
+- `tests/generate_mojo_tests.py --check`: **200 hand-written suites protected** (up from 199, this
+  chain's own `test_residentk_lmhead_simd_kernel.mojo`), 466 generated suites fresh.
+- `python3 -m scripts.reliability_guards`: clean (the same pre-existing baselined debt this
+  document's every prior addendum carries — `boundary_imports`/`egress_sdk_clients`/`raw_egress`,
+  unrelated to this task — no new violations).
+- All twelve `residentk`/`metaldispatch` suites rebuilt and rerun fresh: `test_residentk_session.mojo`
+  (51/51), `test_residentk_kvcache_fp16_kernel.mojo` (4/4), `test_residentk_sdpa_simd_kernel.mojo`
+  (4/4), `test_residentk_gemv_simd_kernel.mojo` (3/3), `test_residentk_lmhead_simd_kernel.mojo`
+  (1/1), `test_residentk_contract.mojo` (6/6), `test_residentk_probe.mojo` (3/3),
+  `test_metaldispatch_session.mojo` (11/11), `test_metaldispatch_session_f16.mojo` (8/8),
+  `test_metaldispatch_session_i8.mojo` (8/8), `test_metaldispatch_session_i8_kvf16.mojo` (8/8),
+  `test_metaldispatch_contract.mojo` (2/2) — **109/109**.
+- `lmhead_argmax_simd_reduce_probe.mojo` rerun fresh: SIMD-group width confirmed 32 (8 full groups
+  inside `_TG=256`); barrier-tree vs. SIMD-shuffle agree with a host-f64 reference to
+  `~4.0e-5` worst case and with **each other to exactly `0.0`** at every shape checked, including
+  the novel multi-iteration zero-barrier register-reuse case (`k=1024, n=19, grid_n=1, n_iters=3`).
+- The permanent golden-vector test (`K=137` non-power-of-anything, `N=67` forcing a partially
+  populated final iteration, `GRID_DIM=3` forcing `N_ITERS=3`): barrier-tree and SIMD-shuffle agree
+  with the host reference and each other to `0.0` on value, exact argmax-index match at every
+  block, across all three multi-iteration passes.
+
+### Correctness, verified independently on this exact run
+
+A fresh `transformers`-CPU reference was regenerated in this session
+(`reference_generate.py` → `/tmp/bb/qwen3_ckpt/reference_generate_lmheadsimd_final/`):
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]`
+(`' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'`). Every Algenta arm's
+own per-step decode log was checked against it position-by-position (not merely eyeballed):
+
+| Arm | Round 1 | Round 8 |
+|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | 16 / 16 | 16 / 16 |
+| Algenta GPU, int8 (pre-SDPA-simd baseline) | 16 / 16 | 16 / 16 |
+| Algenta GPU, int8 + SDPA-simd (#513) | 16 / 16 | 16 / 16 |
+| Algenta GPU, int8 + SDPA-simd + GEMV-simd (#514) | 16 / 16 | 16 / 16 |
+| **Algenta GPU, int8 + SDPA-simd + GEMV-simd + lm_head-simd (this chain)** | 16 / 16 | 16 / 16 |
+
+Both real opponents' round-1 and round-8 output text was checked too: llama.cpp (`-ngl 0` and
+`-ngl 99`) printed `' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` and
+mlx-lm printed `'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` in both
+rounds — the same leading-space detokenizer difference this document notes throughout, identical
+token content. **No arm diverged from any other, in either round checked.**
+
+### The numbers
+
+Same checkpoint (`/private/tmp/qwen3-0.6b-base`), same prompt (`"The capital of France is"`), 16
+greedy decode tokens, decode-only tok/s, **eight** interleaved rounds (more than the "at least 6"
+this task asked for, matching the rigor of this chain's own same-session self-measurement), fixed
+order Algenta CPU → int8 baseline → SDPA-simd (#513) → SDPA-simd+GEMV-simd (#514, standing best) →
+SDPA-simd+GEMV-simd+lm_head-simd (this chain) → llama.cpp CPU (`-ngl 0`) → llama.cpp GPU
+(`-ngl 99`) → mlx-lm, all back to back per round, one full round before the next begins.
+
+This session ran considerably **more loaded** than the "Seven-arm race" session above (1-minute
+load average there: 7.4–23.2; here: 19.1–42.3 — this machine had a stray, long-running
+`bench_vs_gemm.mojo` process pegging a full core for over a day, on top of the usual shared-machine
+traffic, neither started nor stopped by this task). `llama.cpp CPU`'s own numbers (0.51–33.45
+tok/s, vs. its last-recorded ~43 tok/s median) show the contention plainly — it is reported as
+measured, not discarded or re-run selectively, matching this document's standing practice.
+The GPU arms (all three engines) are far less exposed to single-core host contention and stayed in
+range of their own historical numbers, as the table below shows.
+
+| Arm | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 | Median | Range |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Algenta CPU (float64, FastGEMV) | 5.44 | 4.26 | 5.72 | 4.60 | 4.29 | 6.47 | 4.89 | 3.98 | **4.75** | 3.98 – 6.47 |
+| Algenta GPU, int8 (pre-SDPA-simd baseline) | 241.65 | 213.94 | 236.01 | 242.60 | 238.87 | 243.56 | 236.85 | 219.50 | **237.86** | 213.94 – 243.56 |
+| Algenta GPU, int8 + SDPA-simd (#513) | 287.86 | 267.27 | 292.08 | 279.34 | 281.88 | 268.48 | 281.29 | 292.00 | **281.58** | 267.27 – 292.08 |
+| Algenta GPU, int8 + SDPA-simd + GEMV-simd (#514, standing best) | 312.10 | 310.09 | 305.22 | 315.19 | 286.07 | 246.60 | 261.17 | 306.67 | **305.94** | 246.60 – 315.19 |
+| **Algenta GPU, int8 + SDPA-simd + GEMV-simd + lm_head-simd (this chain)** | 326.04 | 317.81 | 284.18 | 301.10 | 238.65 | 312.68 | 331.16 | 326.90 | **315.25** | 238.65 – 331.16 |
+| llama.cpp CPU (`-ngl 0`) | 1.23 | 15.78 | 18.99 | 0.51 | 3.17 | 9.88 | 12.54 | 33.45 | **11.21** | 0.51 – 33.45 |
+| llama.cpp GPU (`-ngl 99`) | 251.17 | 250.03 | 235.63 | 206.47 | 250.43 | 241.02 | 247.17 | 255.75 | **248.60** | 206.47 – 255.75 |
+| mlx-lm | 313.28 | 317.49 | 310.38 | 304.56 | 293.48 | 309.09 | 302.79 | 316.74 | **309.74** | 293.48 – 317.49 |
+
+**Round 5 is this run's own load-spike round** (1-minute load average 42.33, the highest recorded
+for any round this session) — every GPU arm, including both real opponents, dipped that round
+(Algenta's new arm to 238.65, its own session low; mlx-lm to 293.48, also its own session low). It
+is kept in the table and in every statistic below, not discarded, matching this document's own
+standing practice for round 3 of the "Seven-arm race" above.
+
+### Against PR #514's own last-recorded numbers, explicitly
+
+PR #514's race: Algenta `allsimd` median **311.55** tok/s vs. mlx-lm median **315.41** tok/s (mlx-lm
+ahead by **1.24%**), per-round ratios `[1.03, 1.002, 0.522, 1.005, 0.974, 0.768]`, 3 wins / 3 losses.
+
+This run, fresh same-session re-measurement of that same standing-best arm (`algenta_allsimd`):
+median **305.94** vs. this run's own mlx-lm median **309.74** — ratio **0.9877**, mlx-lm ahead by
+**1.24%** — reproducing PR #514's own 1.24% gap almost exactly, to two decimal places, under a
+completely different absolute load level. This is the honest cross-check that the two sessions are
+measuring the same real effect, not an artifact of one session's particular machine load.
+
+This run's new arm (`algenta_allsimd2`, this chain's lm_head-simd): median **315.25** vs. the same
+mlx-lm median **309.74** — ratio **1.0178**. **The median relationship flips**: mlx-lm was ahead of
+Algenta's best arm by 1.24% at PR #514; Algenta's new arm is now ahead of mlx-lm by **1.78%** on
+median — a swing of just over 3 percentage points, the direct, measured effect of this chain's own
+fix (lm_head-simd over GEMV-simd, same-session: **315.25 / 305.94 = 1.0304, +3.0%**, smaller than
+this task's own same-session A/B (+4.4%) but directionally identical, the difference explained
+by this session's higher ambient noise, not a different effect).
+
+**Every-round-win check — the bar that actually decides publication:**
+
+- **vs. llama.cpp GPU**: the new arm wins **7 of 8 rounds** (1.21x–1.46x faster), losing only round
+  5 (238.65 vs. 250.43, that round's load spike). Not an every-round win, but close.
+- **vs. mlx-lm**: the new arm wins **5 of 8 rounds** — R1 (1.041x), R2 (1.001x), R6 (1.012x), R7
+  (1.094x), R8 (1.032x) — and **loses 3 of 8** — R3 (0.916x), R4 (0.989x), R5 (0.813x, the load-spike
+  round). Restricting to exactly the first six rounds (this task's own "at least 6", and precedent's
+  own round count) changes nothing: **3 wins / 3 losses**, the identical split PR #514's own six-round
+  race recorded, just on different rounds (there: R1,R2,R4 won, R3,R5,R6 lost; here: R1,R2,R6 won,
+  R3,R4,R5 lost).
+
+### Publication decision: no gitbook page — median crossed, every-round bar still not met
+
+**The standing rule is an outright win against mlx-lm, every single round, not the median.** This
+run's median genuinely crosses — Algenta's new arm is now 1.78% ahead of mlx-lm on median, having
+been 1.24% behind at PR #514 — but 3 of 8 rounds (or 3 of the first 6, matching precedent's own
+round count) still lose outright, including one by a real margin (round 5, 0.813x — a load-spike
+round for every arm, not unique to Algenta, but a loss on this run regardless of cause). **No
+gitbook page ships. None is drafted.** This is the same bar this document has applied all day,
+including to PR #514's own 1.24%-gap, every-round-mixed result — a closer median is not a
+different rule.
+
+Separately, per this repository's own standing rule: even if the bar had been met, a page
+framed around "closing the gap to mlx-lm" would itself risk reading as disclosure of an internal
+weakness rather than a win — the GitBook-external-only and never-internal-bottlenecks rules this
+document has followed all day apply regardless of the numeric outcome. Not the deciding factor
+here (the every-round bar alone is dispositive), but consistent with it.
+
+### What is left, stated plainly
+
+Four reduction-mechanism fixes deep (SDPA-simd, GEMV-simd, lm_head-simd, stacked), the median gap
+to mlx-lm has not just closed but reversed — genuinely the first session in this entire day's chain
+where Algenta's own median number is the larger one. What has not changed is the *reliability* of
+that win: on a machine this noisy, a single bad round (load spike or otherwise) still flips the
+per-round verdict, and this run's own 3-loss rounds are proof, not a hypothetical. The two
+structural levers this document has named all day and not yet attempted (a lower-per-dispatch-cost
+submission mechanism, or a persistent decode loop that never returns to host between tokens) remain
+the only levers that would make the win robust to this kind of noise rather than dependent on
+getting a quiet six rounds. `_argmax_reduce_kernel` (the tiny grid_dim=1 final-collapse kernel,
+~0.3–0.4% of total time) remains investigated-but-unmodified, per this task's own explicit
+instruction not to let it block the two real fixes — `std.gpu.primitives.warp` exposes `sum`/`max`
+but no paired argmax primitive; a hand-rolled `shuffle_xor` compare-exchange butterfly is possible
+but not attempted, the time share too small to justify the correctness surface right now.
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed
+
+# the standalone kernel probe (Stage 1, no shim needed)
+pixi run mojo run -D ALGENTA_GPU -I../mojo/engine \
+    ../benchmarks/llm_smoke/lmhead_argmax_simd_reduce_probe.mojo
+
+# the permanent kernel-level golden-vector test
+pixi run mojo build -D ALGENTA_GPU -I../mojo/engine \
+    ../mojo/tests/libs/test_residentk_lmhead_simd_kernel.mojo -o /tmp/test_lmhead_simd_kernel
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/test_lmhead_simd_kernel
+
+# every batched-shim GPU arm (needs batch_shim.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+for f in qwen3_generate_batch_i8 qwen3_generate_batch_i8_sdpasimd qwen3_generate_batch_i8_allsimd qwen3_generate_batch_i8_allsimd2; do
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+      -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/$f.mojo -o /tmp/race_$f \
+      -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+done
+
+# one round = all eight arms, back to back, interleaved (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8_sdpasimd
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8_allsimd
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_qwen3_generate_batch_i8_allsimd2
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+# repeat this block 8x for eight rounds
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_lmheadsimd_final
+for arm in mojo_generate_llmfwd mojo_generate_batch_i8 mojo_generate_batch_i8_sdpasimd mojo_generate_batch_i8_allsimd mojo_generate_batch_i8_allsimd2; do
+  /tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/$arm/generated_ids.txt \
+      /tmp/bb/qwen3_ckpt/reference_generate_lmheadsimd_final/reference_generated.json
 done
 ```
