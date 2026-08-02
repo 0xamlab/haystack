@@ -23,6 +23,13 @@ precision tier on top of it (241.83 tok/s — closer, still short of both oppone
 "Dispatch-fusion + packed-int8-load addendum" for two more levers tried and confirmed dead ends
 (no kernel change, no new number).**
 
+**Update (2026-08-02, later still again): read "fp16 KV-cache + the int4-weights sibling check"
+(the final section) for the current, correct verdict — a fourth precision tier (KV-cache storage,
+orthogonal to weights) landed but measures a genuine null result (243.64 tok/s median, +0.43% over
+the standing int8 baseline, within noise), and the sibling int4-weights tier that could have
+stacked with it is a diagnosed correctness dead end (PR #511), not a pending item. Gap unchanged:
+1.060x short of llama.cpp GPU, 1.295x short of mlx-lm. No gitbook page.**
+
 **Update (2026-08-02, final for today): the full field was re-raced together — Algenta CPU/fp16/
 int8, llama.cpp CPU/GPU, mlx-lm — six interleaved rounds, fresh token verification. Read
 "Final real race (2026-08-02): every arm, six rounds, verdict for today" for the closing numbers.
@@ -2650,4 +2657,226 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo ru
     -I../mojo/engine ../mojo/tests/libs/test_residentk_session.mojo
 DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo run \
     -I../mojo/engine ../mojo/tests/libs/test_residentk_session.mojo
+```
+
+## fp16 KV-cache + the int4-weights sibling check (2026-08-02, later still again): another honest null result, no gitbook page
+
+This section closes the KV-cache-precision chain and checks in the sibling int4-weights track
+before racing. **The int4-weights track has landed on `origin/main` (PR #511) but with no usable
+result to combine**: it is a precisely-diagnosed correctness FAILURE, not a speed number — stage
+(b) (single decode step) already flips the argmax (int8 picks the correct token 12095; int4 picks
+279, logit-gap 0.0095), and stage (c) (full 16-token generation) diverges at step 0 against the
+`transformers`-CPU reference. Per the int4 PR's own text: "a failed correctness stage means no
+speed number and no race — nothing to publish either way." There is therefore nothing to stack
+with the fp16-KV-cache arm below; this section races the KV-cache change alone, on top of the
+standing int8-weight baseline, exactly as the fp16-KV-cache task itself anticipated ("int4 weights
+are still pending in a sibling track" — except the sibling track's real result is now in, and it is
+a dead end, not a pending item).
+
+### What the fp16-KV-cache arm is
+
+`_qk_rope_write_kernel_kvf16` (write) / `_sdpa_kernel_kvf16` (read) in `residentk/kernels.mojo`:
+`ck`/`cv` (the resident K/V cache) become Float16 instead of Float32, narrowed at the write-kernel's
+final store and widened to Float32 the instant they are read back, before touching the online-
+softmax math. Orthogonal to weight precision — combined here with the current int8-weight
+production baseline (`_ResidentQwen3I8KVF16` / `_MBQwen3I8KVF16`), since the int4-weight arm it
+could otherwise have combined with is the correctness failure above.
+
+### Correctness first, on this exact run
+
+A `transformers`-CPU reference was regenerated fresh in this session
+(`reference_generate.py` → `/tmp/bb/qwen3_ckpt/reference_generate_realrace_kvf16/`) and every
+Algenta arm's generated-ids file from this run's binaries was checked against it position-by-position
+with `verify_generation.py`, all four arms 16/16:
+
+| Arm | tokens matching reference | max per-step logit delta |
+|---|---|---|
+| Algenta CPU (float64, FastGEMV) | **16 / 16** | 1.02e-05 |
+| Algenta batched-shim GPU, fp16 | **16 / 16** | 1.14e-05 |
+| Algenta batched-shim GPU, int8 | **16 / 16** | 2.36e-01 |
+| Algenta batched-shim GPU, int8 + fp16 KV-cache | **16 / 16** | 2.33e-01 |
+
+`[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374, 21718, 13]` —
+`" Paris. The capital of Germany is Berlin. The capital of Italy is Rome."` — llama.cpp printed
+`' Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` and mlx-lm printed
+`'Paris. The capital of Germany is Berlin. The capital of Italy is Rome.'` (same leading-space
+detokenizer difference this document notes throughout — same token content), both confirmed on
+this run. **No arm diverged.**
+
+### The numbers
+
+Same checkpoint, prompt, 16 greedy tokens, decode-only tok/s, six interleaved rounds, fixed order
+Algenta CPU → Algenta batched-shim GPU fp16 → Algenta batched-shim GPU int8 → Algenta batched-shim
+GPU int8+fp16-KV-cache → llama.cpp CPU → llama.cpp GPU → mlx-lm:
+
+| Arm | Precision | Compute | Range | Median | vs Algenta's best |
+|---|---|---|---|---|---|
+| Algenta CPU (`qwen3_generate.mojo`, FastGEMV) | float64 | CPU, 12 perf cores | 6.76 – 8.41 | 7.93 | 0.033x |
+| Algenta batched-shim GPU, fp16 | mixed (fp16 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 200.05 – 211.46 | 209.28 | 0.859x |
+| Algenta batched-shim GPU, int8 | mixed (int8 storage, fp32 compute) | Apple GPU (Metal, raw shim) | 238.28 – 246.04 | 242.60 | 0.996x |
+| **Algenta batched-shim GPU, int8 + fp16 KV-cache (this chain)** | mixed (int8 weights, fp16 cache, fp32 compute) | Apple GPU (Metal, raw shim) | 230.34 – 246.71 | **243.64** | **1x (best)** |
+| llama.cpp `-ngl 0` | F16 | CPU (ggml) | 29.34 – 59.58¹ | 39.09¹ | 1.62x faster |
+| llama.cpp `-ngl 99` | F16 | Apple GPU (Metal) | 245.27 – 261.85 | 258.25 | **1.060x faster** |
+| mlx-lm | bf16 | Apple GPU (Metal) | 309.37 – 320.45 | **315.54** | **1.295x faster** |
+
+¹ llama.cpp CPU remains inherently noisy on this host across every session today (6.65–63.06 across
+the day's various six-round series) — not this race's binding comparison, does not change the
+verdict.
+
+Per-round values, in round order:
+
+```
+algenta_cpu             8.406   8.068   8.029   7.205   7.838   6.757
+algenta_gpu_f16       211.461 209.436 200.045 210.034 207.909 209.132
+algenta_gpu_i8        246.043 238.284 242.189 245.058 243.002 241.387
+algenta_gpu_i8_kvf16  246.500 230.337 246.711 242.711 235.209 244.575
+llama_cpp_cpu          43.548  36.776  29.886  29.338  59.576  41.411
+llama_cpp_gpu         258.044 258.461 254.013 258.557 261.853 245.271
+mlx_lm                320.454 314.988 316.090 310.376 309.368 316.296
+```
+
+**fp16 KV-cache vs. the standing int8 baseline, isolated**: median 243.64 vs. 242.60 tok/s — a
+**+0.43%** difference, with the two arms' six-round ranges (238.28–246.04 vs. 230.34–246.71) heavily
+overlapping. This is noise, not a win, and matches the Shrink phase's own kernel-level finding
+exactly (see below): the KV-cache-precision axis is a genuine, correctly-implemented, orthogonal
+lever that measurably narrows the cache's bytes-per-entry and produces zero measurable aggregate
+speedup on this benchmark's shape.
+
+**int8+fp16-cache vs. the field, on this run**: llama.cpp GPU (258.25) beats Algenta's best arm by
+**1.060x**; mlx-lm (315.54) beats it by **1.295x**. Both ratios match every prior same-day
+measurement of the int8 baseline (1.055x–1.06x, 1.29x–1.31x) to within normal measurement noise —
+consistent with "this arm did not actually change speed," which is exactly the honest finding
+above.
+
+### Real SDPA-specific timing, before/after — reconfirmed fresh on this run
+
+Rebuilt the hardware-counter probe for both arms fresh
+(`benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m` + both
+`qwen3_probe_counters_i8.mojo` and the new `qwen3_probe_counters_i8_kvf16.mojo`), three runs each,
+diagnostic-only, zero production files touched:
+
+| Arm | Run 1 | Run 2 | Run 3 | Avg µs/dispatch |
+|---|---|---|---|---|
+| int8 weights, Float32 KV-cache (baseline) | 43.734 | 43.708 | 43.794 | **43.75** |
+| int8 weights, fp16 KV-cache (this chain) | 44.040 | 44.072 | 44.343 | **44.15** |
+
+**No speedup — if anything, marginally slower (+0.9%), within this probe's own run-to-run noise
+(each run's own min/max span 22.8–67.9 µs, since `_sdpa_kernel`'s cost is proportional to
+`n_keys = pos + 1` and this is an average over positions 0–27).** This matches the Shrink phase's
+own isolated finding (~44.04 µs Float32-cache vs. ~44.14 µs fp16-cache, reported before this
+addendum re-verified it independently) to within run-to-run noise. Diagnosis, unchanged from the
+Shrink phase's report: `_sdpa_kernel` reads `ck`/`cv` as one scalar per thread per key, with no
+vectorized load, and its cost is dominated by the per-key barrier-synchronized tree reduction (a
+7-level reduction plus a safety barrier, every key) — not by the single-scalar cache-read bandwidth
+this change halves. Halving bytes that are not the bottleneck does not move the measured number.
+This is why int8 KV-cache (a more aggressive version of the same lever) was correctly not attempted
+by the Shrink phase, and is not attempted here either: the isolated fp16 measurement above already
+demonstrates the lever has no purchase on this kernel's actual bottleneck.
+
+### Publication decision: no gitbook page
+
+**Standing rule: an outright win against BOTH llama.cpp's best (258.25 tok/s median, GPU, measured
+on this run) AND mlx-lm's real number (315.54 tok/s median, measured on this run).** Algenta's best
+arm today — int8 weights + fp16 KV-cache, 243.64 tok/s median — loses to both: **1.060x short of
+llama.cpp GPU, 1.295x short of mlx-lm.** No gitbook page ships, and none is drafted.
+
+### Honest summary of the full day's chain, combined
+
+Today's full compounding chain, in order: Qwen3 forward pass → KV-cache decode → parallel GEMV →
+resident GPU → kernel efficiency + fp16 → batched raw-Metal dispatch → int8 → dispatch-fusion
+investigation (dead end) → GPU hardware-counter per-role attribution (dead end) → speculative
+decoding (dead end, no-go before a kernel) → int4 weights (dead end — correctness fails) → fp16
+KV-cache (this addendum — measurable null result, no aggregate speedup). Every named lever in this
+document has now been either landed (float32 → fp16 → int8 weights, batched dispatch, per-channel
+quantization) or tried and confirmed dead for this exact benchmark shape on this toolchain,
+including BOTH of the two precision-axis extensions (int4 weights, fp16 KV-cache) proposed as the
+next concrete step after the "Final race" section's own per-role attribution table. **The remaining
+gap is 1.060x vs. llama.cpp GPU and 1.295x vs. mlx-lm, unchanged (to within normal measurement
+noise) from every prior addendum today** — this is a real, stable, honestly-measured ceiling for
+this specific toolchain/benchmark, not a moving target this session's work failed to close.
+
+### Gates, rebased onto `origin/main` tip (`55b3e7a6`, `#511`, int4 weights no-go), all rerun after the rebase
+
+- `git fetch origin main` then `git rebase origin/main`: two files conflicted
+  (`mojo/engine/residentk/session.mojo`, `mojo/tests/libs/test_residentk_session.mojo` — plus a
+  trivial one-line import conflict already resolved the same way) because PR #511's int4-weights
+  struct and this branch's fp16-KV-cache struct are both additive insertions at the same location
+  in each file. Resolved by keeping BOTH structs, sequentially (int4 first, matching its merge
+  order on `origin/main`, then the fp16-KV-cache struct after it), renumbering this axis's own
+  module-docstring paragraph from "FOURTH" to "FIFTH" additive axis (int4 is now the fourth
+  weight-storage arm on `origin/main`) and noting in both docstrings that the int4 arm is a
+  diagnosed correctness dead end, not something this arm combines with. No other file touched by
+  the conflict.
+- `git diff --stat origin/main -- mojo/engine/`: exactly the three files this task's commit
+  touched (`residentk/kernels.mojo`, `residentk/session.mojo`, `metaldispatch/session.mojo`),
+  1025 insertions, 2 deletions (the two docstring renumbering edits) — zero unrelated drift.
+- `make inventory-refresh`: zero diff. `make inventory-check`: clean (runtime contract OK,
+  capability manifest OK, runtime-library-catalog OK, 122/655 modules fully declared, 595
+  undeclared against the unchanged 595 ceiling). `make capability-check`: clean.
+- `python3 -m scripts.reliability_guards --guard mojo_freeze_namespaces`: clean, no new violations.
+- `python3 tests/generate_mojo_tests.py --check`: clean (197 hand-written suites protected, 466
+  generated fresh).
+- Every touched/added suite rerun fresh, post-rebase, both build modes where applicable:
+  `test_residentk_kvcache_fp16_kernel.mojo` 1/1 (default) + 4/4 (real-GPU build);
+  `test_residentk_session.mojo` 51/51 (real-GPU build, now covering float32/fp16/int8/int4/
+  int8+kvf16 — five arms in one binary, no collision, matching int4's own already-established
+  discipline for why this file specifically is collision-safe);
+  `test_metaldispatch_session_i8_kvf16.mojo` 8/8 (real-GPU build, its own binary, linked against
+  `batch_shim.m`); `test_metaldispatch_session_i8.mojo` 8/8, `test_metaldispatch_session_f16.mojo`
+  8/8, `test_metaldispatch_session.mojo` 3/3, `test_metaldispatch_contract.mojo` 2/2,
+  `test_residentk_contract.mojo` 6/6, `test_residentk_probe.mojo` 3/3 — all reconfirmed green, no
+  regressions, on both the default (no-GPU) build and the real `-D ALGENTA_GPU` build on this M4
+  Max.
+
+### Reproduction
+
+```bash
+# rebase
+git fetch origin main
+git rebase origin/main
+
+# build the shim + all four Algenta race arms (from mojo_env/)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m -o /tmp/batch_shim.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build \
+    -I../mojo/engine ../benchmarks/llm_smoke/qwen3_generate.mojo -o /tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_f16.mojo \
+    -o /tmp/race_gpu_f16 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8.mojo \
+    -o /tmp/race_gpu_i8 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8_kvf16.mojo \
+    -o /tmp/race_gpu_i8_kvf16 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+
+# one round = every arm once, back to back, interleaved (from benchmarks/llm_smoke/)
+/tmp/race_cpu
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_f16
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_gpu_i8_kvf16
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 0  --runs 1
+/tmp/bb/bin/python -P realrace_llama_cpp.py --gguf /tmp/bb/qwen3-0.6b-base-f16.gguf --ngl 99 --runs 1
+/tmp/bb/bin/python -P realrace_mlx_lm.py --checkpoint /private/tmp/qwen3-0.6b-base
+# repeat this block 6x for six rounds
+
+# token agreement, against a reference regenerated in the same session
+/tmp/bb/bin/python3 -P reference_generate.py --checkpoint /private/tmp/qwen3-0.6b-base \
+    --out /tmp/bb/qwen3_ckpt/reference_generate_realrace_kvf16
+/tmp/bb/bin/python3 -P verify_generation.py /tmp/bb/qwen3_ckpt/mojo_generate_batch_i8_kvf16/generated_ids.txt \
+    /tmp/bb/qwen3_ckpt/reference_generate_realrace_kvf16/reference_generated.json
+
+# the per-role GPU counter probe, both cache-precision arms (from mojo_env/)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
+    -o /tmp/batch_shim_counters.o
+for arm in i8 i8_kvf16; do
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+      -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_$arm.mojo \
+      -o /tmp/probe_$arm \
+      -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+      -Xlinker -framework -Xlinker Foundation
+  DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_$arm
+done
 ```

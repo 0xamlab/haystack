@@ -94,6 +94,7 @@ from residentk.probe import (
 from residentk.session import _ResidentQwen3, _ResidentQwen3F16, _resident_preflight
 from residentk.session import _ResidentQwen3I8
 from residentk.session import _ResidentQwen3I4
+from residentk.session import _ResidentQwen3I8KVF16
 
 # ── the small-but-complete model this suite decodes with ──────────────────────
 comptime D_MODEL: Int = 32
@@ -935,5 +936,110 @@ def main() raises:
         else:
             failed += 1
             print("  ❌ an int4-arm out-of-range token id was gathered from the embedding table")
+        # ══ the fp16-KV-cache arm, on top of int8 weights: SAME model, SAME prompt, judged against
+        # BOTH the Float64 CPU reference AND the int8+Float32-cache arm just above ═══════════════
+        # `_ResidentQwen3I8KVF16` reads exactly the checkpoint above, quantized to int8 exactly the
+        # way `s8` above was, through the SAME `_i8` GEMV kernels — the ONLY difference from `s8`
+        # is that its `ck`/`cv` are resident Float16 instead of Float32, read/written through the
+        # `_kvf16` rope-write/sdpa twins. So the delta against `s8`'s own logit (not just against
+        # the Float64 reference) isolates KV-cache-precision error alone, exactly the comparison
+        # this arm's task explicitly asked for.
+        var s8k = _ResidentQwen3I8KVF16(
+            D_MODEL, H_Q, H_KV, D_HEAD, D_FF, N_LAYERS, VOCAB, MAX_CTX, EPS, scale
+        )
+        var up8k = s8k.upload_globals(embed, final_norm, rt.cos_table, rt.sin_table, MAX_CTX)
+        for l in range(N_LAYERS):
+            if up8k == RESIDENT_OK:
+                up8k = s8k.upload_layer(
+                    l, ln1[l], ln2[l], qn[l], kn[l], wq[l], wk[l], wv[l], wo[l], wg[l], wu[l], wd[l]
+                )
+        if up8k == RESIDENT_OK:
+            up8k = s8k.seal()
+        if up8k == RESIDENT_OK:
+            passed += 1
+            print("  ✅ every weight per-row-quantized to Int8 (same as the int8 arm) and the KV",
+                  "cache allocated Float16, uploaded once, on", s8k.device_name())
+        else:
+            failed += 1
+            print("  ❌ the int8+kvf16 upload failed:", residentk_status_name(up8k))
+
+        var gpu8k_id = -1
+        var gpu8k_logit = 0.0
+        var gpu8k_status = RESIDENT_OK
+        var issued8k = 0
+        for t in range(len(prompt)):
+            var r8k = s8k.step(prompt[t], t)
+            gpu8k_status = r8k.status
+            gpu8k_id = r8k.token_id
+            gpu8k_logit = r8k.logit
+            issued8k = r8k.dispatches
+            if r8k.status != RESIDENT_OK:
+                break
+
+        if gpu8k_status == RESIDENT_OK:
+            passed += 1
+            print("  ✅ four tokens ran on the int8+kvf16 resident session, cache written in place",
+                  "each step")
+        else:
+            failed += 1
+            print("  ❌ an int8+kvf16 step failed:", residentk_status_name(gpu8k_status))
+
+        if issued8k == residentk_dispatch_budget(N_LAYERS):
+            passed += 1
+            print("  ✅ the int8+kvf16 session issued exactly the budgeted", issued8k,
+                  "dispatches per token")
+        else:
+            failed += 1
+            print("  ❌ int8+kvf16 dispatch drift:", issued8k, "issued against a budget of",
+                  residentk_dispatch_budget(N_LAYERS))
+
+        # THE ISOLATED KV-CACHE-PRECISION COMPARISON: `s8k` vs `s8`, not vs the Float64 reference —
+        # same int8 weights, same dispatch plan, only the KV-cache dtype differs.
+        var delta_cache_vs_i8 = _abs(gpu8k_logit - gpu8_logit)
+        print("  •  int8+fp16-cache vs int8+Float32-cache (SAME int8 weights, same dispatch plan,",
+              "KV-cache dtype only): logit delta", delta_cache_vs_i8,
+              "( fp16-cache=", gpu8k_logit, " f32-cache=", gpu8_logit, " cpu_f64=", cpu_ref.logit, ")")
+
+        # Bound scaled by `N_LAYERS * D_HEAD` roundtrips (one narrow-then-widen per layer's
+        # attention output element), not by the GEMV-style `depth` term the weight-precision arms'
+        # own bounds use — see `test_residentk_kvcache_fp16_kernel.mojo`'s module docstring for why
+        # a softmax-weighted convex combination gets a different-shaped bound than an accumulated
+        # dot product.
+        var cache_bound = f16_eps * Float64(N_LAYERS * D_HEAD) * (1.0 + _abs(gpu8_logit))
+        if delta_cache_vs_i8 <= cache_bound:
+            passed += 1
+            print("  ✅ the int8+fp16-cache logit agrees with the int8+Float32-cache arm to",
+                  delta_cache_vs_i8, "within a Float16 bound of", cache_bound)
+        else:
+            failed += 1
+            print("  ❌ the int8+fp16-cache logit is outside even the loose Float16-cache bound:",
+                  delta_cache_vs_i8, "bound", cache_bound)
+
+        # NOT asserted as a pass/fail gate, same reasoning the f16/i8 arms' own blocks above use.
+        if gpu8k_id == cpu_ref.token_id:
+            print("  •  int8+kvf16 greedy token MATCHES the Float64 reference on this small model:",
+                  gpu8k_id)
+        else:
+            print("  •  int8+kvf16 greedy token DIVERGES on this small model: int8+kvf16", gpu8k_id,
+                  "vs cpu", cpu_ref.token_id, "— informational, not a failure; see module docs")
+
+        # ── refusals the session itself must make at run time ────────────────────
+        var past_end8k = s8k.step(0, MAX_CTX)
+        if past_end8k.status == RESIDENT_ERR_CONTEXT_FULL:
+            passed += 1
+            print("  ✅ an int8+kvf16-arm step past the last KV slot is refused, not written out of",
+                  "bounds")
+        else:
+            failed += 1
+            print("  ❌ an int8+kvf16-arm step past the cache capacity was accepted")
+
+        var bad_tok8k = s8k.step(VOCAB + 7, 0)
+        if bad_tok8k.status != RESIDENT_OK:
+            passed += 1
+            print("  ✅ an int8+kvf16-arm token id past the vocabulary is refused before the",
+                  "embedding gather")
+        else:
+            failed += 1
+            print("  ❌ an int8+kvf16-arm out-of-range token id was gathered from the embedding table")
 
         print("  [residentk.session] Passed:", passed, "Failed:", failed)

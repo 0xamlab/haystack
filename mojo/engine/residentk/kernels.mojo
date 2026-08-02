@@ -81,7 +81,27 @@ down. See `_I4P`'s docstring for the packing convention and the mask+shift unpac
 `_VEC_I4B`'s for the packed-byte vector-width measurement this arm required that int8 did not (a
 packed int4 byte holds two elements, so the byte-width-vs-element-count choice int8 inherited
 unchanged from Float32 does not transfer automatically). `residentk.session._ResidentQwen3I4` is
-the fourth twin session.
+the fourth twin session. **Correctness FAILS on the real 0.6B checkpoint** (a razor-thin argmax
+flip at decode step 0, logit-gap 0.0095 — see `_ResidentQwen3I4`'s own docstring and
+`benchmarks/llm_smoke/REALRACE_RESULTS.md`'s int4 addendum); kept in-tree as a precisely-diagnosed
+dead end, never raced, never combined with anything else.
+
+A FIFTH, additive axis, orthogonal to all four weight-storage arms above (including the failing
+int4 one — this axis touches neither `w_qkv`/`w_o`/`w_gu`/`w_down` nor the embedding table): the KV
+CACHE itself (`ck`/`cv`, written once per token by `_qk_rope_write_kernel` and read `n_keys` times
+per token by `_sdpa_kernel`) is Float32 in every weight arm shipped so far — narrowing WEIGHTS never
+touched it. `_qk_rope_write_kernel_kvf16` (write) and `_sdpa_kernel_kvf16` (read) are the fp16-KV-
+cache twins: `ck`/`cv` become resident Float16 buffers, narrowed on write and widened to Float32
+immediately on read, same discipline as `_HP`'s weight arm. Independent of weight precision because
+neither kernel touches a weight MATRIX — `_qk_rope_write_kernel_kvf16` combines with
+`_norm_gemv_kernel_i8` and friends exactly as freely as with the Float32 GEMV kernels, since the two
+axes share no buffer. `_sdpa_kernel`'s own docstring already establishes that its cost is real
+per-key compute that grows with `n_keys = pos + 1`, not padding (PR #510's GPU-counter measurement:
+26.85% of per-token time, 28 dispatches) — halving `ck`/`cv`'s bytes-per-entry halves what that
+kernel actually streams per key, which is the whole point of this axis. Not combined with the int4
+arm above: that arm's own correctness failure means there is nothing usable to combine with (see
+`residentk.session._ResidentQwen3I8KVF16`'s own docstring and the RealRace addendum this axis's
+task added).
 
 Every remaining boundary is a genuine grid-wide dependency — an rmsnorm needs the whole vector the
 previous projection produced, and at `d_ff = 3072` that vector spans 384 threadgroups. Fusing across
@@ -1337,6 +1357,77 @@ fn _qk_rope_write_kernel(
         cv[(pos * h_kv + head) * d_head + e] = qkv[(h_q + h_kv + head) * d_head + e]
 
 
+fn _qk_rope_write_kernel_kvf16(
+    q_rot: _FP, ck: _HP, cv: _HP, qkv: _FP, qn_w: _FP, kn_w: _FP,
+    cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
+):
+    """The fp16-KV-CACHE twin of `_qk_rope_write_kernel` — a THIRD precision axis, orthogonal to the
+    `_f16`/`_i8` WEIGHT-storage twins above. `ck`/`cv` are resident Float16 here instead of Float32;
+    every other buffer (`q_rot`, `qkv`, the norm gains, the RoPE tables) stays `_FP` (Float32),
+    exactly the same "only the resident buffer this arm targets narrows" discipline `_HP`'s own
+    docstring establishes for weights, applied to the KV CACHE instead of a weight matrix.
+
+    The q_norm/k_norm/RoPE arithmetic itself is BYTE-IDENTICAL to `_qk_rope_write_kernel` — computed
+    in Float32 exactly as before, on the same `qkv` (Float32 activation) input. Narrowing happens
+    only at the final store: `ck[...] = Float16(o0)` instead of `ck[...] = o0`. Nothing upstream of
+    that store differs, so any numerical difference between this kernel's cache contents and the
+    Float32 kernel's is attributable to that one narrowing, not to a different rotation or a
+    different normalization.
+
+    `q_rot` (the query for THIS step) is never written to the cache and stays Float32 — only `ck`/
+    `cv` (the keys/values of every PAST step, read back by `_sdpa_kernel_kvf16` for as many future
+    steps as the position stays resident) are the narrowed buffers, since those are what this arm's
+    task is reducing the bytes-per-entry of.
+    """
+    var xs = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var red = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var b = Int(block_idx.x)
+    var e = Int(thread_idx.x)
+    var is_q = b < h_q
+    var head = b if is_q else b - h_q
+
+    var src_off = head * d_head + e if is_q else (h_q + head) * d_head + e
+    var v = qkv[src_off]
+    var g = qn_w[e] if is_q else kn_w[e]
+
+    red[e] = v * v
+    barrier()
+    var stride = d_head // 2
+    while stride > 0:
+        if e < stride:
+            red[e] = red[e] + red[e + stride]
+        barrier()
+        stride //= 2
+    var inv = 1.0 / sqrt(red[0] / Float32(d_head) + eps)
+    xs[e] = v * inv * g
+    barrier()
+
+    var n_pairs = d_head // 2
+    if e < n_pairs:
+        var c = cos_t[pos * n_pairs + e]
+        var s = sin_t[pos * n_pairs + e]
+        var a0 = xs[e]
+        var a1 = xs[e + n_pairs]
+        var o0 = a0 * c - a1 * s
+        var o1 = a0 * s + a1 * c
+        if is_q:
+            var qb = head * d_head
+            q_rot[qb + e] = o0
+            q_rot[qb + e + n_pairs] = o1
+        else:
+            var kb = (pos * h_kv + head) * d_head
+            ck[kb + e] = Float16(o0)
+            ck[kb + e + n_pairs] = Float16(o1)
+
+    # V, narrowed at the store exactly like K above — see this kernel's own docstring.
+    if not is_q:
+        cv[(pos * h_kv + head) * d_head + e] = Float16(qkv[(h_q + h_kv + head) * d_head + e])
+
+
 fn _sdpa_kernel(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
@@ -1390,6 +1481,62 @@ fn _sdpa_kernel(
         var corr = exp(m - nm)
         var w = exp(s - nm)
         o = o * corr + w * cv[kb + e]
+        denom = denom * corr + w
+        m = nm
+
+    attn_out[h * d_head + e] = o / denom
+
+
+fn _sdpa_kernel_kvf16(
+    attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
+    n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The fp16-KV-cache twin of `_sdpa_kernel` — the READ half of the KV-cache-precision arm, paired
+    with `_qk_rope_write_kernel_kvf16`'s WRITE half. `ck`/`cv` are resident Float16; `q_rot` (this
+    step's query, never cached) and `attn_out` stay Float32.
+
+    THE WIDEN-IMMEDIATELY DISCIPLINE, same as every weight-precision arm: each Float16 element read
+    from `ck`/`cv` is cast to Float32 (`Float32(ck[kb + e])` / `Float32(cv[kb + e])`) the INSTANT it
+    is read, before it touches the dot product or the online-softmax accumulator. The running max
+    `m`, the running normalizer `denom` and the running output accumulator `o` are Float32
+    throughout — IDENTICAL to `_sdpa_kernel`'s own — so this kernel never accumulates in the narrow
+    type; only the STORAGE `ck`/`cv` sit in shrinks.
+
+    This is the kernel whose real per-key cost is the target this arm's task names: `_sdpa_kernel`'s
+    own docstring already states the cost grows with `n_keys = pos + 1` (real per-key compute, not
+    padding — see PR #510's GPU-counter finding, `sdpa` at 26.85% of per-token time). Halving each
+    cached K/V element's bytes halves the bytes THIS kernel actually streams per key, independent of
+    whatever the weight-precision track does to the four GEMV-shaped kernels elsewhere in this file.
+    """
+    var red = stack_allocation[
+        RESIDENT_MAX_HEAD_DIM, DType.float32, address_space = AddressSpace.SHARED
+    ]()
+    var h = Int(block_idx.x)
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[h * d_head + e]
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    for j in range(n_keys):
+        var kb = (j * h_kv + hk) * d_head
+        red[e] = qv * Float32(ck[kb + e])
+        barrier()
+        var stride = d_head // 2
+        while stride > 0:
+            if e < stride:
+                red[e] = red[e] + red[e + stride]
+            barrier()
+            stride //= 2
+        var s = red[0] * scale
+        barrier()
+
+        var nm = m if m > s else s
+        var corr = exp(m - nm)
+        var w = exp(s - nm)
+        o = o * corr + w * Float32(cv[kb + e])
         denom = denom * corr + w
         m = nm
 
