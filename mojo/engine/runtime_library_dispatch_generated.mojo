@@ -2104,6 +2104,16 @@ from ergonomics import (
     body_mass_index as _ergonomics__body_mass_index,
 )
 
+from esrnn.global_residual import (
+    esrnn_method_name as _esrnn_global_residual__esrnn_method_name,
+    esrnn_backbone_forecast as _esrnn_global_residual__esrnn_backbone_forecast,
+    esrnn_select_backbone as _esrnn_global_residual__esrnn_select_backbone,
+    esrnn_window_scale as _esrnn_global_residual__esrnn_window_scale,
+    esrnn_scaled_window as _esrnn_global_residual__esrnn_scaled_window,
+    esrnn_residual as _esrnn_global_residual__esrnn_residual,
+    esrnn_apply_correction as _esrnn_global_residual__esrnn_apply_correction,
+)
+
 from etiology import (
     relative_risk as _etiology__relative_risk,
     odds_ratio as _etiology__odds_ratio,
@@ -8049,6 +8059,10 @@ from eigen_full import (
     SVDResult,
 )
 
+from esrnn.global_residual import (
+    BackboneFit,
+)
+
 from evaluation.binning import (
     BinAssignment,
     BinCounts,
@@ -10334,6 +10348,22 @@ fn _to_json_assumptionverdict(value: AssumptionVerdict) raises -> String:
     result += _to_json_float64(value.variance_ratio)
     result += ","
     result += _to_json_bool(value.variance_ratio_known)
+    result += "]}"
+    return result
+
+fn _to_json_backbonefit(value: BackboneFit) raises -> String:
+    var result = String("{\"__algenta_struct\":\"BackboneFit\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_int(value.method_id)
+    result += ","
+    result += _to_json_bool(value.has_forecast)
+    result += ","
+    result += _to_json_list_float64(value.values)
+    result += ","
+    result += _to_json_float64(value.insample_mae)
+    result += ","
+    result += _to_json_string(value.status_name)
     result += "]}"
     return result
 
@@ -55364,6 +55394,137 @@ fn _dispatch_ergonomics(function_name: String, args_array: String) raises -> Str
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module ergonomics."
+    )
+
+fn _dispatch_esrnn__global_residual(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "esrnn_method_name":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _esrnn_global_residual__esrnn_method_name(arg_0)
+                var result_json = _to_json_string(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_method_name."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_method_name expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_backbone_forecast":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _esrnn_global_residual__esrnn_backbone_forecast(arg_0, arg_1, arg_2)
+                var result_json = _to_json_backbonefit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_backbone_forecast."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_backbone_forecast expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_select_backbone":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _esrnn_global_residual__esrnn_select_backbone(arg_0, arg_1)
+                var result_json = _to_json_backbonefit(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_select_backbone."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_select_backbone expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_window_scale":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var result = _esrnn_global_residual__esrnn_window_scale(arg_0)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "esrnn.global_residual.esrnn_window_scale produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_window_scale."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_window_scale expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_scaled_window":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_float64_token(json_array_get(args_array, 2))
+                var result = _esrnn_global_residual__esrnn_scaled_window(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_scaled_window."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_scaled_window expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_residual":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _esrnn_global_residual__esrnn_residual(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_residual."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_residual expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "esrnn_apply_correction":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _esrnn_global_residual__esrnn_apply_correction(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for esrnn.global_residual.esrnn_apply_correction."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function esrnn.global_residual.esrnn_apply_correction expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module esrnn.global_residual."
     )
 
 fn _dispatch_etiology(function_name: String, args_array: String) raises -> String:
@@ -151324,6 +151485,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_epigenetics(function_name, args_array)
     if module_name == "ergonomics":
         return _dispatch_ergonomics(function_name, args_array)
+    if module_name == "esrnn.global_residual":
+        return _dispatch_esrnn__global_residual(function_name, args_array)
     if module_name == "etiology":
         return _dispatch_etiology(function_name, args_array)
     if module_name == "evaluation.binning":

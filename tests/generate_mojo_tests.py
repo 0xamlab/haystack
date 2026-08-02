@@ -172,6 +172,10 @@ HANDWRITTEN_TESTS = frozenset(
         "test_optmodel_formulation.mojo",
         "test_optmodel_solve.mojo",
         "test_optmodel_judge.mojo",
+        # esrnn: ES-RNN-class residual correction over the fitted Holt/Damped/Theta
+        # backbone. Hand-written known-value suite (backbone selection outcomes, the
+        # exact tie, call-only bit-exactness, refusal-not-truncation arithmetic).
+        "test_esrnn_global_residual.mojo",
         "test_retrieval_score.mojo",
         "test_pls.mojo",
         "test_seq_nn.mojo",
