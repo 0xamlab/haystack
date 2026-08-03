@@ -14,6 +14,24 @@ The order matters, and it is the shape of the whole surface: **you backtest firs
 band comes out of the backtest.** A band derived from the residuals of a model scored on its
 own training data is not a prediction interval, and nothing in a fitted model can tell you so.
 
+{% hint style="danger" %}
+**For Holt, damped-trend and ETS(A,A,A), call `forecasting.fitted`, not the hand-parameterized
+methods in `forecasting.point` below.** `forecasting.point.ets_aan_forecast` and
+`ets_aaa_forecast` take `alpha`/`beta`/`phi` as arguments you must already know, and their
+initial level/trend come from the frozen `timeseries_stats.holt_linear`, which copies
+`l0 = y[0]`, `b0 = y[1] - y[0]` from the first two observations unfitted. At the smoothing
+weights the M4 corpus actually selects, that one noisy first difference is extrapolated across
+the entire forecast horizon. Measured on the same 95,000 M4 series, same metric: the frozen-init
+kernel at its SSE-optimal parameters scores Monthly sMAPE **44.13** — worse than a naive
+compensating parameter fit (18.05) — while `forecasting.fitted.holt_fitted`, which fits the
+initial state jointly with the smoothing parameters, scores **13.97**, matching statsforecast
+2.1.1's own state-space fit to 1e-10 on all 100,000 M4 series. See
+[Fit the model instead of guessing its parameters](#fit-the-model-instead-of-guessing-its-parameters)
+below before reaching for `ets_aan_forecast` or `ets_aaa_forecast` on real data. The other
+`forecasting.point` methods — Theta, the AR forecast, the four baselines, seasonal adjustment —
+are unaffected; this defect is specific to the Holt-family frozen initial state.
+{% endhint %}
+
 ```python
 from algenta import MojoRuntime
 
@@ -50,10 +68,79 @@ any statistic you want later can be computed without re-running anything.
 | --- | --- |
 | `forecasting.contract` | the package's one vocabulary: status names, method ids, size ceilings, the single empirical quantile, and one validator per class of input |
 | `forecasting.point` | ETS(A,N,N) / ETS(A,A,N) with damped trend / ETS(A,A,A), Theta and a trend-reproducing Theta variant, a validated AR forecast, four baselines, and seasonal adjustment with a reversibility check |
+| `forecasting.fitted` | `holt_fitted`, `damped_fitted` and `ets_aaa_fitted` — the same three model families as above, but with the smoothing parameters AND the initial level/trend/seasonal state fitted jointly by the reference Nelder-Mead optimizer, closing the frozen initial-state defect described above |
 | `forecasting.backtest` | rolling-origin evaluation — per-origin and pooled errors, the worst origin, and MAE / RMSE / MAPE / sMAPE / MASE each with its own presence flag and undefined count |
 | `forecasting.interval` | prediction bands from backtest residuals, per lead time, empirical or seeded-bootstrap, plus a measurement of the coverage they actually achieved |
 | `forecasting.hierarchy` | bottom-up and top-down reconciliation of forecasts that must add up, and an audit of a hierarchy somebody else produced |
 | `forecasting.intermittent` | mostly-zero demand: Croston with its bias-corrected variants, and an ADI / CV² classification of the series |
+
+## Fit the model instead of guessing its parameters
+
+`forecasting.fitted.holt_fitted(y, horizon)` and `damped_fitted(y, horizon)` fit `alpha`,
+`beta` (and, for the damped driver, `phi`) by the same Nelder-Mead search statsforecast 2.1.1
+uses, and fit the initial level and trend jointly with them rather than copying them from the
+first two observations. `ets_aaa_fitted(y, period, horizon)` does the same for ETS(A,A,A),
+additionally fitting the seasonal indices.
+
+The corrupted-first-difference series below makes the defect concrete: `y[0] = 107`, then
+`y_t = 100 + 3t`. The true trend is `+3`; the frozen kernel's unfitted `b0 = y[1] - y[0] = -4`
+is the OPPOSITE sign, and at the small-beta regime a real fit selects, that one bad difference
+never gets corrected:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+y = [107.0] + [100.0 + 3.0 * t for t in range(1, 12)]
+
+fitted = runtime.execute("forecasting.fitted", "holt_fitted", [y, 6])["result"]
+fitted["trend"]          # 2.7322175161337428 — recovers the true +3 trend
+fitted["values"][5]      # 148.50739437590457 — 1.7% off the truth of 151
+
+# the frozen, unfitted-init driver at the same small-beta regime a real fit selects
+frozen = runtime.execute("forecasting.point", "ets_aan_forecast",
+                         [y, 0.5, 0.0001, 1.0, 6])["result"]
+frozen["trend"]          # -3.993701415029936 — extrapolates the corrupted first difference
+frozen["values"][5]      # 102.04953508158104 — 32% off the truth of 151
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const y = [107.0, ...Array.from({ length: 11 }, (_, i) => 100.0 + 3.0 * (i + 1))];
+
+const { result: fitted } = await runtime.execute("forecasting.fitted", "holt_fitted", [y, 6]) as {
+  result: { trend: number; values: number[] };
+};
+fitted.trend;        // 2.7322175161337428 — recovers the true +3 trend
+fitted.values[5];    // 148.50739437590457 — 1.7% off the truth of 151
+
+const { result: frozen } = await runtime.execute("forecasting.point", "ets_aan_forecast", [
+  y, 0.5, 0.0001, 1.0, 6,
+]) as { result: { trend: number; values: number[] } };
+frozen.trend;        // -3.993701415029936 — extrapolates the corrupted first difference
+frozen.values[5];    // 102.04953508158104 — 32% off the truth of 151
+```
+{% endtab %}
+{% endtabs %}
+
+`init_status` / `init_solved` on the returned struct report the initial-state provenance
+separately from `status`: for the non-seasonal drivers, a singular 2x2 system still forecasts
+but is flagged; for `ets_aaa_fitted` there is no closed-form audit of a jointly-fitted seasonal
+state, so it reports `init_status = FC_OK` with `init_solved = False` by construction.
+`fitted_init_solve(y, alpha, beta, phi)` exposes the closed-form solve on its own, for a caller
+who already has fitted smoothing parameters from elsewhere and only wants the matching initial
+state.
+
+`ets_aaa_fitted` with `period == 1` reduces to `holt_fitted` (`gamma` reported `0.0`) rather
+than being refused, matching `forecasting.point.ets_aaa_forecast`'s own convention.
 
 ## Requested, run and refused are three different numbers
 

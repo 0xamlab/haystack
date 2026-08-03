@@ -68,6 +68,42 @@ Position embeddings can be extended to longer contexts under more than one conve
 
 Algenta does not pick one silently. The convention is selected explicitly, and the difference between the two is reported as a number rather than resolved behind the caller's back. A model loaded under the wrong convention does not fail; it produces fluent text that degrades as the context grows, which reads as a disappointing model rather than a configuration error.
 
+`attnk.rope`'s `rope_theta_agreement(base, original_context, target_context)` is exactly that
+report, callable directly:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+r = runtime.execute("attnk.rope", "rope_theta_agreement", [10000.0, 2048.0, 8192.0])["result"]
+r["squared_convention"]   # 160000.0
+r["linear_convention"]    # 40000.0
+r["ratio"]                 # 4.0
+r["agree"]                 # False — a real 4x disagreement, not rounding noise
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const { result } = await runtime.execute("attnk.rope", "rope_theta_agreement", [
+  10000.0, 2048.0, 8192.0,
+]) as { result: { squared_convention: number; linear_convention: number; ratio: number; agree: boolean } };
+
+result.squared_convention;   // 160000.0
+result.linear_convention;    // 40000.0
+result.ratio;                 // 4.0
+result.agree;                 // false — a real 4x disagreement, not rounding noise
+```
+{% endtab %}
+{% endtabs %}
+
 ## What is not claimed
 
 * That tiled attention is faster than direct attention at short sequence lengths. Measured at a size where both fit in cache, the two are within 2% of each other, and that is reported above rather than omitted.
@@ -79,13 +115,4 @@ Algenta does not pick one silently. The convention is selected explicitly, and t
 * [Compute kernels](compute-kernels.md) — the matrix kernels attention is built on.
 * [Normalization](normalization.md) — the layer norms that surround attention in a transformer block.
 * [Decode throughput](decode-throughput.md) — this kernel measured end to end, against real installed mlx-lm and llama.cpp.
-
-## Reproduce
-
-Every table on this page comes from one command:
-
-```text title="benchmark"
-mojo run benchmarks/mojo_benchmarks/bench_attnk.mojo
-```
-
-The benchmark prints its own gate results, and fails on the properties described above rather than on absolute times, which vary by machine, thermal state and concurrent load.
+* [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function, including `attnk.rope`, `attnk.flash`, `attnk.sdpa` and `attnk.mask` above.

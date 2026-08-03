@@ -74,6 +74,51 @@ The gradient with respect to the scale parameter sums across rows. Computing it 
 
 Algenta splits that reduction by column instead — each worker owns whole columns and sums them in row order. The result is **bit-identical** to a single-threaded reference across 4,096 rows, regardless of how many cores run it.
 
+## Call it yourself
+
+`normk.rmsnorm`'s `rmsnorm_fwd_flat(x, gamma, n_rows, n_cols, eps)` is the forward pass
+measured above, callable directly on a flat row-major buffer:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+x = [1.0, 2.0, 3.0, 4.0]      # one row, four columns
+gamma = [1.0, 1.0, 1.0, 1.0]
+
+out = runtime.execute("normk.rmsnorm", "rmsnorm_fwd_flat", [x, gamma, 1, 4, 1e-6])["result"]
+out["status"]   # 380 — NORM_OK
+out["y"]        # [0.3651..., 0.7303..., 1.0954..., 1.4606...]
+out["rstd"]     # [0.3651...] — the per-row reciprocal deviation the backward pass needs
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const x = [1.0, 2.0, 3.0, 4.0];
+const gamma = [1.0, 1.0, 1.0, 1.0];
+
+const { result: out } = await runtime.execute("normk.rmsnorm", "rmsnorm_fwd_flat", [
+  x, gamma, 1, 4, 1e-6,
+]) as { result: { status: number; y: number[]; rstd: number[] } };
+
+out.status;   // 380 — NORM_OK
+out.y;        // [0.3651..., 0.7303..., 1.0954..., 1.4606...]
+out.rstd;     // [0.3651...] — the per-row reciprocal deviation the backward pass needs
+```
+{% endtab %}
+{% endtabs %}
+
+`rmsnorm_bwd_flat(dy, x, gamma, rstd, n_rows, n_cols)` takes that same `rstd` back in for the
+backward pass measured above; `normk.layernorm` mirrors both functions for LayerNorm.
+
 ## What is not claimed
 
 * Any comparison against a third-party normalization implementation.
@@ -84,6 +129,7 @@ Algenta splits that reduction by column instead — each worker owns whole colum
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Attention](attention.md) — the attention kernels these norms surround.
 * [Feed-forward](feed-forward.md) — the other half of a transformer block.
+* [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function, including `normk.rmsnorm` and `normk.layernorm` above.
 
 ## Reproduce
 

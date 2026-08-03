@@ -116,6 +116,7 @@ not widen the ops hash to fix that: it would put rows in the hash. If header ide
 ever wanted it goes in as a separate `schema_hash` field.
 """
 from std.math import isinf, isnan
+from std.sys import info
 from json.parser import (
     find_key,
     json_array_len,
@@ -148,7 +149,8 @@ from numeric.contract import (
     parse_aggregation,
     unknown_aggregation_error,
 )
-from query.aggregate import GroupedResult, group_by, group_by_multi
+from query.aggregate import ManyGroupedResult, planned_workers
+from query.composed import group_by_composed_parallel
 from query.executor import (
     describe_batch_shape,
     distinct_rows,
@@ -1396,18 +1398,30 @@ fn _resolve_column_list(
 # ── execution ─────────────────────────────────────────────────────────────────
 
 
-fn _grouped_to_batch(result: GroupedResult, key_name: String, value_name: String) -> RecordBatch:
-    """A GroupedResult as a two-column batch, so it composes with other operators."""
+fn _many_single_to_batch(
+    result: ManyGroupedResult, key_name: String, value_name: String
+) -> RecordBatch:
+    """A width-1, one-aggregate `ManyGroupedResult` as a two-column batch, so
+    it composes with other operators — the single-key `aggregate` op's output
+    shape, whichever route (`query.composed`, falling back to the shipped
+    `group_by_many_parallel`) answered the call.
+
+    Not `GroupedResult`'s own accessors (`.keys`/`.values`/`.present` at a flat
+    per-group index): `ManyGroupedResult` lays `values`/`present` out
+    `group * n_aggs + agg`, and `value_at`/`present_at` are that indexing's
+    only correct readers. It collapses to the same number at `agg=0, n_aggs=1`
+    only because this call site always asks for exactly one aggregate.
+    """
+    var n = result.n_groups()
     var keys = List[Float64]()
     var key_mask = List[Bool]()
     var values = List[Float64]()
-    for i in range(result.n_groups()):
-        keys.append(result.keys[i])
-        key_mask.append(True)
-        values.append(result.values[i])
     var present = List[Bool]()
-    for i in range(result.n_groups()):
-        present.append(result.present[i])
+    for i in range(n):
+        keys.append(result.key_tuples[i])
+        key_mask.append(True)
+        values.append(result.value_at(i, 0))
+        present.append(result.present_at(i, 0))
 
     var columns = List[Float64Array]()
     columns.append(float64_with_nulls(keys^, key_mask))
@@ -1418,7 +1432,7 @@ fn _grouped_to_batch(result: GroupedResult, key_name: String, value_name: String
     var dtypes = List[Int]()
     dtypes.append(0)
     dtypes.append(0)
-    return RecordBatch(Schema(names^, dtypes^), columns^, result.n_groups())
+    return RecordBatch(Schema(names^, dtypes^), columns^, n)
 
 
 fn apply_op(batch: RecordBatch, op_json: String, strict: Bool) raises -> RecordBatch:
@@ -1571,7 +1585,24 @@ fn apply_op_detailed(
         var by_array = json_raw_array(op_json, "by")
         if len(by_array) > 0:
             var key_columns = _resolve_column_list(batch.schema, by_array, "group")
-            var multi = group_by_multi(batch, key_columns, value, opcode)
+            # Routed through the composed scan strategy (dense / packed / fused
+            # radix — see query.composed), NOT re-implemented: at the SAME worker
+            # count `group_by_multi` itself would pick, every route it can choose
+            # is bit-identical to `group_by_many_parallel(..., workers)`, which is
+            # bit-identical to `group_by_multi_parallel(..., workers)` in turn
+            # (test_query_aggregate_fused's EQUIVALENCE suite, composite-key
+            # case). A shape composed does not recognise falls through to
+            # `group_by_many_parallel` itself — still that same equivalence, not
+            # a third implementation. `value`/`opcode` ride as one-element lists
+            # because this call site always aggregates exactly one column.
+            var one_value = List[Int]()
+            one_value.append(value)
+            var one_opcode = List[Int]()
+            one_opcode.append(opcode)
+            var workers = planned_workers(batch.n_rows, info.num_physical_cores())
+            var multi = group_by_composed_parallel(
+                batch, key_columns, one_value, one_opcode, workers
+            )
             # Rebuild as a batch: one column per key plus the aggregate.
             var columns = List[Float64Array]()
             var names = List[String]()
@@ -1602,9 +1633,21 @@ fn apply_op_detailed(
         if len(single_by) == 0:
             raise Error("aggregate requires 'by' (a column name or an array)")
         var key = _resolve_column(batch.schema, single_by, "group")
-        return _grouped_to_batch(
-            group_by(batch, key, value, opcode), single_by, value_name
+        # Same substitution as the multi-key branch above, at width 1: composed,
+        # at the worker count `group_by` itself would use, is bit-identical to
+        # `group_by_many_parallel(..., workers)` == `group_by_parallel(...,
+        # workers)` (the fused suite's single-column EQUIVALENCE case).
+        var single_key = List[Int]()
+        single_key.append(key)
+        var single_value = List[Int]()
+        single_value.append(value)
+        var single_opcode = List[Int]()
+        single_opcode.append(opcode)
+        var workers = planned_workers(batch.n_rows, info.num_physical_cores())
+        var single_result = group_by_composed_parallel(
+            batch, single_key, single_value, single_opcode, workers
         )
+        return _many_single_to_batch(single_result, single_by, value_name)
 
     if op == "join":
         return _apply_join(batch, op_json, tables, detail)

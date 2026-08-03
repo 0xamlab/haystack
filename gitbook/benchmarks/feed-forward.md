@@ -49,6 +49,43 @@ That gap is far too small to notice in any single output and far too large to ig
 The error-function form is accurate to about 2e-8, limited by the underlying error-function routine rather than by the kernel. It is named for the convention it implements, not described as exact. That is five orders of magnitude closer to the convention than the tanh form, which is what makes the distinction worth having — it is not a claim of bit-for-bit parity with any other framework.
 {% endhint %}
 
+`mlpk.activation`'s `mlp_gelu_agreement(lo, hi, samples)` is that measurement, callable
+directly rather than read off this page:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+r = runtime.execute("mlpk.activation", "mlp_gelu_agreement", [-6.0, 6.0, 4801])["result"]
+r["max_abs_delta"]      # 0.0004732056909777732 — the 4.7e-4 figure above
+r["argmax_input"]       # 2.7 — where the two conventions disagree most
+r["within_tolerance"]   # False — expected: these are different activations, not two roundings of one
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const { result } = await runtime.execute("mlpk.activation", "mlp_gelu_agreement", [
+  -6.0, 6.0, 4801,
+]) as { result: { max_abs_delta: number; argmax_input: number; within_tolerance: boolean } };
+
+result.max_abs_delta;      // 0.0004732056909777732 — the 4.7e-4 figure above
+result.argmax_input;       // 2.7 — where the two conventions disagree most
+result.within_tolerance;   // false — expected: these are different activations, not two roundings of one
+```
+{% endtab %}
+{% endtabs %}
+
+The gated activation itself is `gated_ffn_fwd_flat(value, gate, n_tok, d_ff, kind)`, with
+`kind` `0` for SwiGLU, `1` for the tanh GEGLU and `2` for the erf GEGLU measured above.
+
 ## Embedding
 
 | Operation | Time |
@@ -75,13 +112,4 @@ That is the argument for a sparse gradient representation, quantified rather tha
 * [Normalization](normalization.md) — the other half of a transformer block.
 * [Attention](attention.md) — attention kernel results.
 * [Decode throughput](decode-throughput.md) — these kernels measured end to end, against real installed mlx-lm and llama.cpp.
-
-## Reproduce
-
-Every table on this page comes from one command:
-
-```text title="benchmark"
-mojo run benchmarks/mojo_benchmarks/bench_mlpk.mojo
-```
-
-The benchmark prints its own gate results, and fails on the properties described above rather than on absolute times, which vary by machine, thermal state and concurrent load.
+* [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function, including `mlpk.activation` and `mlpk.embedding` above.
