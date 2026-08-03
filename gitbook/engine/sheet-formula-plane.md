@@ -31,7 +31,8 @@ cell = runtime.execute("sheet.api", "sheet_eval_cell",
 cell["found"]    # True
 cell["kind"]     # 1 — VK_NUM
 cell["num"]      # 5.0
-cell["status"]   # 1300 — the workbook loaded and the cell resolved
+cell["status"]   # 1320 — RECALC_OK; the loader's own 1300 (SHEET_OK) is overwritten by
+                 # the recalc status once loading succeeds ("Every refusal names itself" below)
 ```
 
 `sheet_eval_cell` recalculates the whole workbook and returns one cell's value, addressed by
