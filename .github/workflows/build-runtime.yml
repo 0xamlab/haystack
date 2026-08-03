@@ -35,6 +35,12 @@ jobs:
             # macOS compresses and swaps dynamically, so the compiler's peak is
             # absorbed by the OS rather than by a fixed swapfile. No ceiling.
             shard_max_rss_mb: 0
+            # GitHub's macos-14 runners are real Apple Silicon with Xcode's Metal toolchain
+            # preinstalled, so this leg is the one place `-D ALGENTA_GPU` can build for real.
+            # Without this, every Metal-gated entry point (accel.gemm_metal,
+            # metaldispatch.qwen3_decode) would ship compiled out and always report
+            # shader_toolchain_absent, even to a user on real Metal hardware.
+            metal_gpu: "1"
           - target: linux-x86_64
             runs-on: ubuntu-22.04
             platform: linux
@@ -45,6 +51,9 @@ jobs:
             # machine fails with a named diagnostic instead of taking the runner
             # VM down with a bare exit 143.
             shard_max_rss_mb: 8000
+            # There is no Metal on Linux; build_mojo_binary.sh itself refuses
+            # MOJO_BUILD_METAL_GPU=1 on non-Darwin, so this leg stays default-off.
+            metal_gpu: "0"
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -136,6 +145,7 @@ jobs:
       - name: Compile bounded runtime worker shards
         env:
           MOJO_BUILD_MCPU: ${{ matrix.mcpu }}
+          MOJO_BUILD_METAL_GPU: ${{ matrix.metal_gpu }}
           PIXI_HOME: ${{ github.workspace }}/.pixi
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
         run: |
