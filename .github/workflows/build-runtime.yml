@@ -142,6 +142,28 @@ jobs:
           fi
           echo "RUNTIME_SHARD_MAX_RSS_MB=$(( total_mib * 80 / 100 ))" >> "$GITHUB_ENV"
 
+      - name: Select an Xcode with the Metal toolchain Mojo requires (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          # macos-14 runners default xcode-select to Xcode 15.4, but Mojo's Metal
+          # backend refuses anything below Xcode 16.0 ("Please make sure Xcode
+          # version is at least 16.0..."). The runner image ships several Xcode
+          # versions side by side under /Applications -- 16.2 is present as of this
+          # writing (confirmed via a diagnostic run on this exact runner image) --
+          # just not the one xcode-select points at by default. Select explicitly
+          # rather than trust the default, and fail loudly if it is ever removed
+          # from the image rather than silently falling back to the too-old default.
+          newest_xcode=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [[ -z "${newest_xcode}" ]]; then
+            echo "::error::no Xcode >= 16.0 found under /Applications on this runner image;" \
+                 "Mojo's Metal backend requires one. Installed versions:" >&2
+            ls -d /Applications/Xcode*.app >&2 || true
+            exit 1
+          fi
+          echo "selecting ${newest_xcode}" >&2
+          sudo xcode-select -s "${newest_xcode}/Contents/Developer"
+          xcodebuild -version
+
       - name: Compile bounded runtime worker shards
         env:
           MOJO_BUILD_MCPU: ${{ matrix.mcpu }}

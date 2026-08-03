@@ -34,6 +34,15 @@ MOJO_BUILD_MCPU="${MOJO_BUILD_MCPU:-}"
 # is refused rather than silently ignored there (see the platform check below).
 MOJO_BUILD_METAL_GPU="${MOJO_BUILD_METAL_GPU:-0}"
 METAL_SHIM_SOURCE_PATH="${METAL_SHIM_SOURCE_PATH:-${REPO_ROOT}/benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m}"
+# `mojo build` defaults --target-accelerator to a live query of the build host's GPU, exactly like
+# --target-cpu -- but GitHub's hosted macOS runners are virtualized and expose no queryable GPU
+# device, so that query fails with "Unknown GPU architecture detected" even though -D ALGENTA_GPU
+# compiled the Metal code paths in. An explicit target sidesteps the query entirely. `apple-m1` (the
+# oldest supported family, no -metal4 suffix) is the portable choice -- Apple GPU binaries compiled
+# for one chip family run on that family and newer, so this is the same "portable, not host-native"
+# choice MOJO_BUILD_MCPU already makes for CPU builds. Override with MOJO_BUILD_METAL_TARGET if a
+# narrower target is ever needed.
+MOJO_BUILD_METAL_TARGET="${MOJO_BUILD_METAL_TARGET:-apple-m1}"
 
 PIXI_HOME_EXPLICIT=0
 if [[ -n "${PIXI_HOME:-}" ]]; then
@@ -223,7 +232,8 @@ if [[ -n "${MOJO_BUILD_MCPU}" ]]; then
     echo "[build_mojo_binary] target CPU: ${MOJO_BUILD_MCPU} (portable; not host-native)" >&2
 fi
 if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
-    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU)
+    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU --target-accelerator "${MOJO_BUILD_METAL_TARGET}")
+    echo "[build_mojo_binary] target accelerator: ${MOJO_BUILD_METAL_TARGET} (portable; not host-queried)" >&2
 fi
 (
     cd "${PIXI_ENV_DIR}"
