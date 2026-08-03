@@ -4274,3 +4274,161 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_longct
 # repeat 3x, alternating the order of the three lines above
 ```
 
+## Barrier-batched split-K kernel (2026-08-02, later still): correct, but a real regression — per-key barrier count ruled out as the dominant remaining long-context lever
+
+A Profile phase (this same day, this same chain) measured exactly what dominates the long-context
+gap that remains after the split-K fix above: `splitk_partial`+`splitk_merge` are 71.5-73.1% of
+per-token GPU time at `n_keys=4000`, a from-scratch `n_splits` retune found occupancy already
+saturated around 16-32 splits (ruling out more parallelism), and named the per-key `barrier()`
+count itself — two hits per key, ~500 per threadgroup at this model's `n_keys/n_splits ~= 250` —
+as the one lever left untried, sized at "genuinely untested, magnitude unknown until built." Of the
+two structural levers this document has named in every addendum since the split-K section above
+(a cheaper submission mechanism, a persistent no-host-round-trip decode loop), that same Profile
+phase measured BOTH ceilings directly (not by extrapolation) and found them smaller than the barrier
+lever's own untested one — 24.4% and 8.1% of the remaining gap respectively, against the barrier
+lever's unmeasured but plausibly larger share of the 71.5-73.1%-of-GPU-time role — and explicitly
+deferred the persistent decode loop as not worth its engineering risk at that ceiling. This section
+races the barrier lever instead, as the phase itself recommended.
+
+### What was built
+
+One new kernel, `_splitk_partial_kernel_simd_batched4` (`residentk.kernels`) — IDENTICAL math to
+`_splitk_partial_kernel_simd` (same split-range partition, same two-level SIMD-shuffle-then-shared-
+array per-key reduction, same online-softmax recurrence), batching 4 keys into one `barrier()` round
+instead of one key into two barriers, cutting barrier COUNT by ~4x. `_splitk_partial_kernel_simd`
+itself is byte-unmodified. One new session struct, `_MBQwen3I8AllSimd4` (`metaldispatch.session`) —
+byte-identical to `_MBQwen3I8AllSimd3` except `_ensure_deep_initialized` compiles the batched kernel
+for the split role instead of the unbatched one (same descriptor plan, same buffers, same grid/block
+shapes — only WHICH compiled pipeline the split dispatch resolves to differs). `_MBQwen3I8AllSimd3`
+is untouched; a new struct was required, not a branch inside it, because this file's own
+one-pipeline-per-role-per-binary discipline forbids compiling the unbatched and batched split
+kernels together (both truncate to a name containing `splitk_part`, `_classify_splitk_pipeline`'s
+own match substring).
+
+### Correctness: verified at every stage, bit-exact everywhere it was checked
+
+1. **Isolated kernel probe** (`test_residentk_attn_splitk_batched_kernel.mojo`, new, following
+   `test_residentk_attn_splitk_kernel.mojo`'s own four-way pattern plus a fifth: batched vs. host-f64,
+   vs. `_sdpa_kernel_simd`, vs. the UNBATCHED split kernel, at even/ragged/more-splits-than-keys/
+   single-split/deep(600)/very-deep(4000) cases): 30/30 passed, and `split_vs_batched` — the batched
+   kernel against its unbatched twin — read EXACTLY `0.0` in every single case, not merely within a
+   reorder-sized bound.
+2. **Shallow (16-token) regression**: `qwen3_generate_batch_i8_allsimd4.mojo` reproduced the
+   published sequence `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374,
+   21718, 13]` exactly (below `_ATTN_SPLITK_THRESHOLD`, this arm takes the byte-identical shallow
+   path `_MBQwen3I8AllSimd3` does, so this is close to a tautology, but verified directly rather than
+   assumed), and every logit matched a freshly regenerated `transformers`-CPU reference within
+   ordinary Float32 tolerance (`verify_generation.py`, 16/16).
+3. **Deep teacher-forced spot-check**: `teacher_forced_spotcheck.py`'s own methodology (feed
+   Algenta's own already-generated prefix back into a from-scratch `transformers`-CPU float32
+   forward pass and check its argmax against what Algenta actually chose), at positions 500, 1000,
+   2000, 3000, 4000, 4095 of a real 4096-token `_MBQwen3I8AllSimd4` generation: **6/6 agree exactly**
+   with the reference, gap `0.0000` at every position.
+4. **Full generation match, both lengths**: the 16-token run above, AND a full 4096-token generation
+   (`max_ctx=8192`) compared token-by-token and logit-by-logit against `_MBQwen3I8AllSimd3`'s own
+   4096-token run on the identical prompt/checkpoint — **zero token mismatches, max logit delta
+   `0.0`**, across the shallow path, the 256-511 dead zone, and the entire deep split-K range to
+   `n_keys=4100`. Re-run after an efficiency fix found mid-investigation (below) with the same result.
+
+### Performance: a real, reproducible regression, not the hoped-for win
+
+GPU-counter isolation (`qwen3_probe_counters_i8_allsimd4_splitk_deepctx.mojo` vs. `..._allsimd3_
+splitk_deepctx.mojo`, identical descriptor plan, same machine, back-to-back, `n_keys=4000`), for the
+FINAL shipped kernel (`_BATCH_K=4`, `kb` cached once per key — see the footnote below for why that
+caching was added):
+
+| | unbatched (`_splitk_partial_kernel_simd`) | batched4, final (`_splitk_partial_kernel_simd_batched4`) |
+|---|---|---|
+| `splitk_partial` deep GPU time, per round (ms), 7 rounds each | 7.713, 7.703, 7.687, 7.828, 7.773, 7.753, 7.620 | 8.113, 8.056, 8.091, 8.088, 8.006, 8.065, 8.147 |
+| mean (7 rounds) | 7.725 ms | 8.081 ms |
+| ratio (after/before) | — | **1.046x — a reproducible ~4.6% REGRESSION** |
+
+Two earlier variants of this same kernel were also measured and regressed by MORE, not less,
+narrowing toward (never past) the number above:
+- **First version**, before any efficiency fix: recomputed each key's `kb` byte offset TWICE (once
+  before the barrier for the `ck` read, once after for the `cv` read) instead of caching it once the
+  way the unbatched kernel's single tight loop naturally does — 3 rounds read 8.551, 8.434, 8.311 ms
+  (~8-10% regression) against the SAME unbatched baseline. Caching `kb` in a small `_BATCH_K`-element
+  per-thread array (the version in the table above) narrowed this but did not close it — recomputing
+  `kb` was a real, measurable cost, but not the dominant one.
+- **`_BATCH_K=2`** (half the shipped batch size, same `kb`-caching fix): 2 rounds read 8.346,
+  8.377 ms against a 7.844/7.831 ms baseline (~6-7% regression) — ruling out "not enough batching
+  yet, try a bigger `_BATCH_K`" as the fix; a SMALLER batch regressed by a similar amount, not less.
+
+**A real, reproducible REGRESSION on the exact role this fix targeted, at every batch size and every
+version of the kernel tried (~4-10% across all variants measured, ~4.6% for the final shipped
+kernel).** The most likely cause, per the kernel's own docstring:
+a `barrier()` across this specific small threadgroup shape (`block_dim=d_head=128`, 4 SIMD-groups)
+is not expensive enough on this Apple GPU for cutting 3 of every 4 barrier pairs to show up as a net
+win, while the batched loop's own structure (an outer `while` with a per-iteration `min()`, two
+separate `for kk in range(batch_n)` passes instead of one tight `for j in range(key_start, key_end)`
+loop, extra register/shared-memory footprint) adds real overhead the compiler does not fully hide.
+This does not generalize to "GPU barriers are cheap everywhere" — only that batching keys between
+barriers, implemented this way, for this kernel, on this hardware, is a net loss.
+
+The full 4096-token wall-clock throughput number is NOT reported as performance evidence here: a
+same-binary AllSimd3 re-run taken during this comparison read 17.7 tok/s decode-only — versus
+114-127 tok/s for both AllSimd3 and AllSimd4 measured earlier the same day — a >6x swing on
+UNCHANGED code, conclusively a symptom of this shared machine's own documented, highly variable
+contention, not a code effect. The GPU-counter numbers above are tightly clustered within each
+group (max spread ~0.2ms out of ~7.8-8.2ms) across 7 rounds taken at different points in this task,
+including immediately after the wall-clock number's own contention spike — they are the reliable
+signal; the aggregate tok/s number is not, on this machine, at this time.
+
+### Conclusion: this lever is ruled out, not confirmed
+
+Per-key barrier count inside `_splitk_partial_kernel_simd` was the one lever this chain's own
+Profile phase had not yet built and measured. Built and measured, it is a real, correctness-clean,
+reproducible LOSS, not a win — most plausibly because barrier cost on this specific kernel's
+occupancy/register shape is smaller than the loop-restructuring overhead needed to reduce it. This
+is a different, narrower finding than "GPU barriers are cheap in general" or "memory bandwidth is
+not the bottleneck" (the fp16-KV-cache investigation's own, unrelated null result): it says
+specifically that batching KEYS between barriers, the way this kernel does it, does not pay for
+itself on this hardware. The kernel and the struct that exercises it still land, additive,
+correctness-verified, and unwired from anything the published race depends on — matching this
+chain's own practice for a real investigation that did not pan out (e.g. the fp16-KV-cache "zero
+speedup" result, PR #512). No gitbook change: this is not a race result at all, in either direction.
+
+### Gates, this section
+
+Freeze-gate diff (`git diff --stat origin/main -- mojo/engine/` filtered to non-`residentk`/
+`metaldispatch` paths) clean — only those two directories changed (`kernels.mojo`: one new kernel;
+`session.mojo`: one new struct). `inventory-check`, `capability_manifest_gate.py`,
+`generate_mojo_tests.py --check`, and `verify_dispatch_struct_construction.py` all green. Every
+pre-existing `residentk`/`metaldispatch` suite rebuilt and rerun fresh: `test_residentk_{contract,
+probe,session,sdpa_simd_kernel,gemv_simd_kernel,lmhead_simd_kernel,argmax_reduce_simd_kernel,
+kvcache_fp16_kernel,attn_splitk_kernel}` and `test_metaldispatch_{contract,session,session_f16,
+session_i8,session_i8_kvf16}` — 100% pass, zero regressions. The new isolated suite, `test_
+residentk_attn_splitk_batched_kernel.mojo` — 30/30, `split_vs_batched` exactly `0.0` at every depth.
+
+### Reproduction
+
+```bash
+# from mojo_env/, with DEVELOPER_DIR set to a real Xcode with the Metal toolchain installed
+
+# the isolated kernel-level golden-vector suite
+pixi run mojo run -D ALGENTA_GPU -I../mojo/engine \
+    ../mojo/tests/libs/test_residentk_attn_splitk_batched_kernel.mojo
+
+# the GPU-counter self-comparison (needs batch_shim_counters.m linked)
+clang -c -fobjc-arc -O2 ../benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m -o /tmp/batch_shim_counters.o
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8_allsimd3_splitk_deepctx.mojo \
+    -o /tmp/probe_unbatched -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_counters_i8_allsimd4_splitk_deepctx.mojo \
+    -o /tmp/probe_batched4 -Xlinker /tmp/batch_shim_counters.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_unbatched 20 4000 8192
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/probe_batched4 20 4000 8192
+
+# full 4096-token generation match (needs batch_shim.m linked)
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer pixi run mojo build -D ALGENTA_GPU \
+    -I../mojo/engine ../benchmarks/llm_smoke/metal_batch_dispatch/qwen3_generate_batch_i8_allsimd4_longctx_probe.mojo \
+    -o /tmp/race_longctx_allsimd4 -Xlinker /tmp/batch_shim.o -Xlinker -framework -Xlinker Metal \
+    -Xlinker -framework -Xlinker Foundation
+DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_longctx_allsimd4 8192 4096
+# then diff generated_ids.txt token/logit columns against the allsimd3 longctx probe's own output
+```
+

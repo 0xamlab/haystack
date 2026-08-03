@@ -2105,6 +2105,181 @@ fn _splitk_merge_kernel_simd(
     attn_out[h * d_head + e] = o / denom
 
 
+fn _splitk_partial_kernel_simd_batched4(
+    m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The BARRIER-BATCHING twin of `_splitk_partial_kernel_simd` — IDENTICAL math (same online-
+    softmax accumulation, same split-range partition, same two-level SIMD-shuffle-then-shared-array
+    reduction per key), only how many keys' worth of reduction happen between one `barrier()` pair
+    and the next differs: `_BATCH_K = 4` keys per round here, instead of `_splitk_partial_kernel_
+    simd`'s one.
+
+    HONEST RESULT, STATED FIRST: this kernel is CORRECT (bit-exact against `_splitk_partial_kernel_
+    simd` in every case this pair's own isolated suite checks, `test_residentk_attn_splitk_batched_
+    kernel.mojo` — `split_vs_batched` reads exactly `0.0` at every depth tested, including `n_keys=
+    4000`) but it is NOT FASTER — it is measurably, reproducibly SLOWER than the kernel it was meant
+    to improve on. GPU-counter measurement (`qwen3_probe_counters_i8_allsimd4_splitk_deepctx.mojo`
+    vs. `qwen3_probe_counters_i8_allsimd3_splitk_deepctx.mojo`, identical descriptor plan, identical
+    machine, back-to-back, 3 rounds each) found this kernel's own `splitk_partial` role costing
+    ~8.0-8.5ms at `n_keys=4000` against the unbatched kernel's own ~7.7-7.8ms there — a real ~4-10%
+    REGRESSION, not the hoped-for win — reproduced at `_BATCH_K=2` as well (~8.3-8.4ms, no better),
+    ruling out "not enough batching yet" as the explanation. See MOTIVATION below for why this was
+    tried, and CONCLUSION at the end of this docstring for the most likely explanation and what this
+    rules out. This kernel remains landed, additive, and unwired from anything the published race
+    depends on — an honest, verified null result, matching this codebase's own established practice
+    for a real investigation that did not pan out (e.g. the fp16-KV-cache "zero speedup" finding).
+
+    MOTIVATION (this task's own Profile phase, `_splitk_partial_kernel_simd`'s per-key loop, GPU-
+    counter-isolated): `_splitk_partial`+`_splitk_merge` are 71.5-73.1% of per-token GPU time at
+    `n_keys=4000` even after the split-K occupancy fix (PR #520) — by far the largest single-role
+    share left — and a from-scratch `n_splits` retune (this same Profile phase) found occupancy
+    already saturated around 16-32 splits, ruling out "more parallelism" as a further lever. What was
+    hypothesized to be left, per that phase's own conclusion, was the per-key reduction ITSELF:
+    `_splitk_partial_kernel_simd`'s loop body (copied byte-for-byte from `_sdpa_kernel_simd`'s own,
+    per that kernel's docstring) pays TWO `barrier()` hits per key — one to publish each SIMD-group's
+    partial dot-product sum to shared memory, one "safety" hit so a fast thread cannot race the NEXT
+    key's write against a slow thread still reading THIS key's values — and the working assumption
+    was that a real GPU `barrier()` is not free: every thread in the whole threadgroup must reach it
+    before any proceeds, and at `n_keys/n_splits ~= 250` (4000 keys / 16 splits, this model's shipped
+    depth) that is 500 barrier hits per threadgroup for ONE token's ONE layer's ONE split. THE
+    MEASURED RESULT ABOVE SHOWS THIS ASSUMPTION WAS WRONG for this kernel shape on this hardware —
+    see CONCLUSION.
+
+    THE CHANGE: batch `_BATCH_K` keys into ONE barrier round instead of one key into two barriers.
+    Per batch of (up to) `_BATCH_K` keys:
+      1. For each of the batch's keys, compute this thread's own `qv * ck[...]` product and reduce it
+         to a per-SIMD-group total via `_warp_sum` — hardware-lockstep, NO barrier needed (identical
+         to `_splitk_partial_kernel_simd`'s own per-key use of `_warp_sum`) — and have lane 0 of each
+         group write that key's group-total into `grp[key_in_batch * n_groups + group_id]`. This is
+         PURE register/shuffle work across `_BATCH_K` keys with no cross-thread ordering requirement
+         yet, so it needs no barrier between keys within the batch.
+      2. ONE `barrier()` — makes every key-in-batch's every group-total write visible to every thread.
+      3. For each of the batch's keys IN ORDER, every thread sums that key's `n_groups` shared
+         group-totals (>= identical arithmetic to `_splitk_partial_kernel_simd`'s own per-key sum),
+         scales it, and folds it into the running online-softmax `(m, denom, o)` — the SAME sequential
+         rescale-and-accumulate recurrence `_splitk_partial_kernel_simd`'s own per-key loop already
+         uses, just executed `_BATCH_K` times per barrier round instead of once.
+      4. ONE more `barrier()` — the same "safety" purpose as the original's trailing barrier: every
+         thread has now READ every slot of this batch's `grp` region, so the barrier orders that read
+         against the NEXT batch's step-1 writes to the SAME shared array before any thread proceeds.
+
+    Two `barrier()` hits per `_BATCH_K`-key batch instead of per key — roughly a 4x reduction in
+    barrier COUNT (not, per the HONEST RESULT above, a 4x reduction in wall time — see CONCLUSION),
+    with the identical online-softmax recurrence and identical per-key arithmetic order within a
+    batch (key 0 before key 1 before key 2 before key 3, exactly as `_splitk_partial_kernel_simd`'s
+    sequential loop already visits them) — so the reordering this introduces is confined to WHEN
+    shared-memory writes become visible, never to the order the accumulators themselves are updated
+    in. `grp` grows from `_SIMD_GROUPS` slots to `_SIMD_GROUPS * _BATCH_K` (32 Float32 at this
+    model's `d_head=128`, still a trivial shared-memory footprint) to hold one batch's worth of
+    per-key group-totals at once.
+
+    The FINAL batch of a split's key range may hold fewer than `_BATCH_K` keys (`key_end - key_start`
+    is not guaranteed to be a multiple of 4) — `batch_n = min(_BATCH_K, key_end - j)` bounds both
+    loops to the keys that actually remain, the same "a short last batch just does less work, no
+    special-case branch" shape `_splitk_partial_kernel_simd`'s own empty-split handling already
+    relies on (see that kernel's docstring). Verified against a host Float64 reference AND against
+    `_splitk_partial_kernel_simd` itself, at multiple depths including ragged (`key_end - key_start`
+    not a multiple of `_BATCH_K`) and more-than-one-batch-empty-tail cases, in this pair's own
+    isolated kernel-level suite (`test_residentk_attn_splitk_batched_kernel.mojo`) before any
+    production code depends on it — see that file for the four-way comparison this kernel's own
+    unbatched twin's suite already established the pattern for.
+
+    CONCLUSION, from the measured regression (HONEST RESULT above), attempted a SECOND time with an
+    obvious efficiency fix (caching each key's `kb` byte offset once, in a small `_BATCH_K`-element
+    per-thread array, instead of recomputing it a second time in phase 3 — the first version of this
+    kernel computed `kb` twice per key, once per phase; caching it narrowed but did not close the
+    regression, so redundant address arithmetic was A real cost but not THE dominant one) and a third
+    time at `_BATCH_K=2` (same ~4-10% regression, ruling out "not enough batching yet"): the most
+    likely explanation is that a `barrier()` across this kernel's own small, single-threadgroup shape
+    (`block_dim=d_head=128` = exactly 4 SIMD-groups, likely resident on relatively few of this Apple
+    GPU's ALU clusters at once) is simply not expensive enough on this hardware for removing 3 out of
+    4 of them to show up as a net win, while the batched loop structure itself (an outer `while` with
+    a per-iteration `min()` and two separate `for kk in range(batch_n)` passes, replacing the
+    unbatched kernel's single tight `for j in range(key_start, key_end)` loop) adds real register-
+    pressure and instruction-count overhead the compiler does not fully hide. This is a DIFFERENT
+    conclusion from the fp16-KV-cache investigation's own "memory bandwidth is not the bottleneck"
+    finding — that investigation is about bytes read; this one is about `barrier()` itself, on THIS
+    kernel's specific occupancy/register shape, and does not generalize to a claim that GPU barriers
+    are cheap everywhere (a much larger threadgroup, or a kernel already register-starved for other
+    reasons, could measure differently) — only that batching keys between barriers, done this way,
+    for THIS kernel, on THIS hardware, is a net loss. Per-key barrier count is therefore RULED OUT,
+    not confirmed, as the dominant remaining long-context lever this codebase's own Profile phase
+    hypothesized it might be.
+
+    ADDITIVE ONLY: `_splitk_partial_kernel_simd` (this kernel's unbatched twin) is byte-unmodified.
+    Must be compiled into its OWN binary, never alongside `_splitk_partial_kernel_simd` — same
+    truncated-Metal-AIR-name substring collision every other role-variant pair in this file's sibling
+    module (`metaldispatch.session`) documents: both kernel names contain `splitk_part`, `_classify_
+    splitk_pipeline`'s own match substring, so two pipelines matching one role in the same binary
+    would collide with no way to tell them apart.
+    """
+    comptime _SIMD_GROUPS: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    comptime _BATCH_K: Int = 4
+    var grp = stack_allocation[_SIMD_GROUPS * _BATCH_K, DType.float32, address_space = AddressSpace.SHARED]()
+    var idx = Int(block_idx.x)
+    var h = idx // n_splits
+    var sidx = idx % n_splits
+    var e = Int(thread_idx.x)
+    var hk = h // (h_q // h_kv)
+    var qv = q_rot[h * d_head + e]
+    var lane = lane_id()
+    var grp_id = warp_id()
+    var n_groups = d_head // WARP_SIZE
+
+    var key_start = (n_keys * sidx) // n_splits
+    var key_end = (n_keys * (sidx + 1)) // n_splits
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = Float32(0.0)
+
+    var j = key_start
+    while j < key_end:
+        var batch_n = min(_BATCH_K, key_end - j)
+
+        var kb_arr = InlineArray[Int, _BATCH_K](fill=0)
+        """Per-key key-block byte offsets, computed ONCE per key in the first phase below and reused
+        in the second — `_splitk_partial_kernel_simd`'s own single-pass loop computes this same `kb`
+        once per key and uses it for BOTH the `ck` read (phase 1's job here) and the `cv` read
+        (phase 2's), since both happen in the same loop iteration there; splitting the two reads
+        across a barrier means the SAME `kb` value is needed again after the barrier, so it is
+        cached in this small (`_BATCH_K`-element, plain per-thread) array rather than recomputed —
+        recomputing it turned out to measurably cost more than the barrier savings this kernel
+        exists to capture (this file's own commit history has the before/after GPU-counter numbers
+        that caught it)."""
+
+        for kk in range(batch_n):
+            var kb = ((j + kk) * h_kv + hk) * d_head
+            kb_arr[kk] = kb
+            var partial = qv * ck[kb + e]
+            var group_total = _warp_sum(partial)
+            if lane == 0:
+                grp[kk * n_groups + grp_id] = group_total
+        barrier()
+
+        for kk in range(batch_n):
+            var s = Float32(0.0)
+            for g in range(n_groups):
+                s += grp[kk * n_groups + g]
+            s *= scale
+
+            var nm = m if m > s else s
+            var corr = exp(m - nm)
+            var w = exp(s - nm)
+            var kb = kb_arr[kk]
+            o = o * corr + w * cv[kb + e]
+            denom = denom * corr + w
+            m = nm
+        barrier()
+
+        j += batch_n
+
+    m_out[idx] = m
+    l_out[idx] = denom
+    o_out[idx * d_head + e] = o
+
+
 fn _lmhead_argmax_kernel(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _FP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
