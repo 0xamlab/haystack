@@ -2280,6 +2280,196 @@ fn _splitk_partial_kernel_simd_batched4(
     o_out[idx * d_head + e] = o
 
 
+fn _splitk_partial_kernel_simd_native(
+    m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
+    n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
+):
+    """The REDUCTION-SHAPE twin of `_splitk_partial_kernel_simd` — IDENTICAL online-softmax math,
+    IDENTICAL split-range partition, IDENTICAL `(m, l, o)` output contract; only HOW one (head,
+    split)'s `d_head`-wide per-key dot product collapses to a scalar differs, and by how much of
+    `d_head` one thread owns while doing it.
+
+    HONEST RESULT, STATED FIRST: this kernel is CORRECT (bit-exact-within-Float32-reordering-noise
+    against `_splitk_partial_kernel_simd` and an independent host-Float64 reference, worst delta
+    2.28e-07 at `n_keys=4000` — see `test_residentk_attn_splitk_native_kernel.mojo`'s own numbers)
+    but it is NOT FASTER at `n_splits=16` (this task's own scope, deliberately unchanged) — it is
+    measurably, reproducibly SLOWER than the kernel it was meant to improve on, and the regression
+    GROWS with depth. GPU-counter measurement (`qwen3_probe_counters_i8_allsimd5_splitk_deepctx.mojo`
+    vs. `qwen3_probe_counters_i8_allsimd3_splitk_deepctx.mojo`, identical descriptor plan, identical
+    machine, back-to-back, repeated rounds) found this kernel's own `splitk_partial` role costing
+    ~1.2ms at `n_keys=50` (a small WIN, ~1.04x, over the two-level kernel's ~1.26ms there) but ~3.0ms
+    at `n_keys=500` (~1.3x REGRESSION vs ~2.3ms), ~9.1ms at `n_keys=2000` (~1.9x regression vs
+    ~4.7ms), and ~17.8-18.0ms at `n_keys=4000` (~2.3x regression vs the two-level kernel's own
+    ~7.6-7.7ms there) — a regression that WIDENS with depth, the opposite shape from the design
+    phase's own isolated scratch-probe projection (which measured this exact reduction-shape change
+    WINNING, and winning MORE at greater depth: 1.20x at 512, 1.44x at 2000 and 4000, 1.78x at 8000).
+    The full-token effect matches the role-level finding, not the projection: a real, teacher-forced
+    4096-token generation (`qwen3_generate_batch_i8_allsimd5_longctx_probe.mojo` vs. `_allsimd3_`'s
+    own, same checkpoint, same prompt) produced BIT-IDENTICAL token ids at all 4096 positions (zero
+    mismatches, max logit delta 3.36e-04, well within this codebase's own established Float32-
+    reordering tolerance) but measured 75.6-77.7 decode tok/s against the two-level kernel's own
+    114.9-125.7 tok/s over the same run, interleaved, repeated rounds — a real, reproducible ~1.5-1.6x
+    SLOWDOWN, not the projected +27% speedup. See MOTIVATION below for why this was tried, and
+    CONCLUSION at the end of this docstring for the most likely explanation and what this rules out.
+    This kernel remains landed, additive, and unwired from anything the published race depends on —
+    an honest, verified null result, matching this codebase's own established practice for a real
+    investigation that did not pan out (e.g. `_splitk_partial_kernel_simd_batched4`'s own barrier-
+    count finding, or the fp16-KV-cache "zero speedup" finding).
+
+    MOTIVATION: two REAL, installed, independently-implemented opponents on the identical checkpoint/
+    prompt (mlx-lm's `sdpa_vector`/`sdpa_vector_2pass_1`; llama.cpp's `kernel_flash_attn_ext_vec`)
+    both confine this exact reduction to one 32-lane SIMD-group with zero `threadgroup_barrier` calls,
+    and an isolated scratch probe (design phase, not committed) measured this same reduction-shape
+    change winning in isolation at `n_splits=16` unchanged — see ROOT CAUSE below for the full
+    grounding. The isolated probe's methodology ran the candidate kernel ALONE, back-to-back, nothing
+    else competing for the GPU; this kernel's own measurement above is the FIRST time the identical
+    change was measured EMBEDDED in the real 199-descriptor, 28-layer, 7-dispatches-per-layer
+    pipeline `_MBQwen3I8AllSimd5` (`metaldispatch.session`) actually submits — see that struct's own
+    docstring for the harness.
+
+    ROOT CAUSE THIS KERNEL FIXES, grounded in real source, not assumption: `_splitk_partial_kernel_
+    simd` (this kernel's unbatched twin, immediately above) launches `block_dim = d_head = 128` — one
+    thread per head-dimension scalar — copied byte-for-byte from `_sdpa_kernel_simd`'s own loop body
+    per that kernel's docstring. Apple's SIMD-group width (`std.gpu.WARP_SIZE` under `is_apple_gpu()`)
+    is 32, so those 128 threads are FOUR separate SIMD-groups, and folding one key's dot product back
+    to a single scalar needs a shared-memory publish plus TWO `barrier()` calls per key (one so every
+    thread sees the four groups' partial sums, one "safety" barrier so a fast thread cannot race the
+    NEXT key's write against a slow thread still reading THIS key's values — see that kernel's own
+    docstring, inherited from `_sdpa_kernel_simd`'s, for the full account). Two REAL, installed,
+    independently-implemented opponents on the identical checkpoint/prompt (mlx-lm's `sdpa_vector`/
+    `sdpa_vector_2pass_1`, `mlx/backend/metal/kernels/sdpa_vector.h`; llama.cpp's `kernel_flash_attn_
+    ext_vec`, `ggml-metal.metal:7280`) both confine this exact reduction to ONE 32-lane SIMD-group —
+    each lane sums `d_head / WARP_SIZE` elements in registers, one `simd_sum`/`_warp_sum` fold, ZERO
+    `threadgroup_barrier` calls anywhere in the per-key loop — where Algenta's kernel is the only one
+    of the three built the other way around. `_splitk_partial_kernel_simd_batched4`'s own honest null
+    result (this file, directly above) already ruled out "the same expensive barrier, just fewer of
+    them" as a fix on this exact hot path; this kernel changes the reduction's SHAPE instead, matching
+    both real opponents' own approach rather than retrying a barrier-count tweak on the shape that
+    already failed.
+
+    THE CHANGE: `block_dim = WARP_SIZE = 32` — one (head, split) pair is now exactly ONE SIMD-group,
+    not four. Each lane owns `d_head / WARP_SIZE` head-dimension elements AT STRIDE `WARP_SIZE` (lane
+    `e` owns `{e, e + 32, e + 64, ...}, e < 32` — at this model's `d_head = 128` that is 4 elements
+    per lane), pre-loaded into a small per-thread `InlineArray` (register-resident, no shared memory
+    at all) once before the key loop, exactly the way `_sdpa_kernel_simd`'s own per-thread `qv` is
+    loaded once before ITS key loop, just `d_head / WARP_SIZE` values instead of one. Per key: each
+    lane sums its OWN `d_head / WARP_SIZE` partial products in registers, THEN one single-level
+    `_warp_sum` — `std.gpu.primitives.warp.sum`, the same butterfly `shuffle_xor` every other single-
+    SIMD-group reduction in this file already uses (`_gemv_accum_kernel_simd_i8`'s own docstring has
+    the fullest account of why one SIMD group owning one independent unit of work, with NOTHING to
+    combine across groups, needs no shared array and no barrier at all) — folds the 32 lane-partials
+    to the complete `d_head`-wide dot product, broadcast to every lane in the group. Every lane then
+    independently recomputes the SAME online-softmax step (`nm`/`corr`/`w`) from that one broadcast
+    scalar — cheap, redundant, register-only work, the same redundancy `_sdpa_kernel_simd`'s own four
+    SIMD-groups already each pay for `m`/`denom` today — and folds its OWN `d_head / WARP_SIZE` output
+    elements into a register-resident `o` accumulator. ZERO `barrier()` calls anywhere in this kernel,
+    not just in the per-key loop: unlike the two-level twin above, there is no shared array at all for
+    a "safety" barrier to protect between keys.
+
+    Reproduces the *exact* output of both `_splitk_partial_kernel_simd` (this kernel's two-level twin)
+    and an independent host-Float64 reference to within Float32 reordering noise — a pure summation-
+    associativity reorder (per-lane partial sums accumulated in a different register order before the
+    SAME `_warp_sum` butterfly, not a different set of additions), the same category of change this
+    codebase already accepted for the original `_sdpa_kernel_simd` SIMD-shuffle fix and for `_splitk_
+    partial_kernel_simd_batched4`'s barrier-batching change. Verified against BOTH at a multi-head,
+    multi-depth sweep including ragged (`n_keys` not a multiple of `n_splits`) and `n_splits > n_keys`
+    (genuinely empty split) cases in this kernel's own isolated suite, `test_residentk_attn_splitk_
+    native_kernel.mojo`, before any production code depends on it — see that file for the numbers.
+
+    GENERALITY GAP, closed by an EXISTING check, not a new one: this kernel's `d_head / WARP_SIZE`
+    elements-per-lane mapping needs `d_head` to be a positive multiple of `WARP_SIZE` (a `d_head`
+    narrower than one 32-lane warp has no well-defined "elements at stride 32" mapping at all). Every
+    session struct that could ever dispatch this kernel inherits `_MBQwen3I8AllSimd3`'s own `__init__`
+    refusal — `if d_head % WARP_SIZE != 0: raise Error(...)`, BEFORE any GPU work happens — which
+    already rejects exactly the shapes this generality gap would otherwise let through; nothing
+    further is needed here specifically because that refusal is already inherited, not because the
+    gap does not exist in principle for a kernel used outside that discipline.
+
+    `n_splits` UNCHANGED from `_splitk_partial_kernel_simd`'s own shipped value (16) — this kernel
+    fixes the reduction SHAPE only, deliberately isolated from any occupancy/grid-width change, so a
+    regression (if any) is attributable to exactly one variable. `_splitk_merge_kernel_simd` (this
+    file, above) is reused COMPLETELY UNCHANGED: this kernel writes the identical `(m, l, o)` per-
+    (head, split) layout — `m_out[idx]`, `l_out[idx]`, `o_out[idx * d_head + e]` for every `e` in
+    `[0, d_head)`, just visited as `lane + i * WARP_SIZE` instead of a single `e = thread_idx.x` — so
+    the merge kernel's own per-column read has no way to tell which partial kernel produced its input.
+
+    ADDITIVE ONLY: `_splitk_partial_kernel_simd` (the two-level twin) is byte-unmodified. Must be
+    compiled into its OWN binary, never alongside `_splitk_partial_kernel_simd` or `_splitk_partial_
+    kernel_simd_batched4` — the same truncated-Metal-AIR-name substring collision `_classify_splitk_
+    pipeline`'s own docstring documents for every sibling pair: all three kernel names share the
+    `splitk_part` 11-character prefix that survives Metal's name truncation on this target, so two (or
+    three) pipelines matching the same role in one binary would collide with no way to tell them apart.
+
+    CONCLUSION, from the measured regression (HONEST RESULT above), widening with depth: the most
+    likely explanation is OCCUPANCY, not a bug in the arithmetic (correctness is independently
+    verified to Float32-reordering noise, both at the kernel level and across a real 4096-token
+    generation). `block_dim = WARP_SIZE` shrinks each threadgroup from 128 threads (4 SIMD-groups) to
+    32 (1), so at this task's own deliberately-UNCHANGED `n_splits = 16`, the TOTAL number of warps
+    this dispatch puts in flight GPU-wide drops 4x (`h_q * n_splits` warps instead of `h_q * n_splits
+    * 4`) for the identical grid width (`h_q * n_splits` threadgroups, unchanged) — each of the
+    remaining warps now does 4x the register-resident work per key (4 sequential loads + 4 sequential
+    FMAs instead of 1) to make up for it. At shallow `n_keys` (50: near parity, a small real win) that
+    trade is roughly even; as `n_keys` grows, each surviving warp issues proportionally MORE
+    sequential device-memory loads with 4x FEWER concurrent warps GPU-wide available to hide that
+    per-load latency by scheduling other work in the gaps — a classic occupancy-vs-per-thread-work
+    trade that gets WORSE, not better, with more iterations per thread, matching the exact "regression
+    widens with depth" shape measured. This is also the most likely reason the isolated design-phase
+    scratch probe (kernel alone, back-to-back, nothing else competing for the GPU) measured a WIN
+    that widened with depth (2.16x at `n_keys=4000` with `n_splits` widened to 64, i.e. occupancy
+    RESTORED by recruiting more splits) while this kernel's own embedded measurement — at the SAME
+    `n_splits = 16` that isolated table's OWN "n_splits=16" column also used — measured a regression
+    that widens with depth instead: an isolated probe with no other GPU work queued may not surface
+    an occupancy shortfall a real, 199-descriptor, 28-layer pipeline's own GPU scheduling exposes.
+    Per-key barrier elimination alone, WITHOUT recruiting the freed SIMD-groups' worth of parallelism
+    back via more splits, is therefore RULED OUT as a standalone win here — exactly the gap the
+    design plan's own Candidate 1 (widen `_ATTN_SPLITK_N_SPLITS` to recruit the freed SIMD-groups as
+    more key-parallel workers) exists to close, and exactly why that candidate is a SEPARATE,
+    subsequent step rather than folded into this one.
+    """
+    comptime _MAX_PER_LANE: Int = RESIDENT_MAX_HEAD_DIM // WARP_SIZE
+    """Upper bound on elements one lane can own, sized off the same `RESIDENT_MAX_HEAD_DIM` ceiling
+    `_SIMD_GROUPS` above uses for the identical reason: `d_head` is a runtime value but `InlineArray`
+    needs a compile-time size. At this model's `d_head = 128` only the first 4 of these 8 slots are
+    ever touched."""
+    var idx = Int(block_idx.x)
+    var h = idx // n_splits
+    var sidx = idx % n_splits
+    var lane = lane_id()
+    var hk = h // (h_q // h_kv)
+    var per_lane = d_head // WARP_SIZE
+
+    var qv = InlineArray[Float32, _MAX_PER_LANE](fill=0.0)
+    for i in range(per_lane):
+        qv[i] = q_rot[h * d_head + lane + i * WARP_SIZE]
+
+    var key_start = (n_keys * sidx) // n_splits
+    var key_end = (n_keys * (sidx + 1)) // n_splits
+
+    var m = _NEG_HUGE
+    var denom = Float32(0.0)
+    var o = InlineArray[Float32, _MAX_PER_LANE](fill=0.0)
+
+    for j in range(key_start, key_end):
+        var kb = (j * h_kv + hk) * d_head
+        var partial = Float32(0.0)
+        for i in range(per_lane):
+            partial += qv[i] * ck[kb + lane + i * WARP_SIZE]
+        var s = _warp_sum(partial) * scale
+
+        var nm = m if m > s else s
+        var corr = exp(m - nm)
+        var w = exp(s - nm)
+        for i in range(per_lane):
+            o[i] = o[i] * corr + w * cv[kb + lane + i * WARP_SIZE]
+        denom = denom * corr + w
+        m = nm
+
+    m_out[idx] = m
+    l_out[idx] = denom
+    for i in range(per_lane):
+        o_out[idx * d_head + lane + i * WARP_SIZE] = o[i]
+
+
 fn _lmhead_argmax_kernel(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _FP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
