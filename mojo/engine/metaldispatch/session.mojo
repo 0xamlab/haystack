@@ -3497,6 +3497,20 @@ struct _MBQwen3I8AllSimd3(Movable):
     values. `_sdpa_kernel_simd` itself, and every byte of the `self.descriptors` table and the
     branch that submits it, are UNTOUCHED by this addition — the published race's own short-context
     (16-token) behavior takes that exact, unmodified path.
+
+    A SIXTH addition, fixing a real (if modest) side effect of the fifth: `self.descriptors_deep` and
+    its two kernel compiles / three scratch buffers are now built LAZILY, by `_ensure_deep_
+    initialized`, the first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` — not
+    unconditionally in `__init__` the way the fifth addition first shipped them. A controlled,
+    interleaved A/B against real installed mlx-lm found the FIFTH addition's unconditional
+    construction-time cost (~560us, measured: ~71.5us kernel compiles + ~486us buffer allocs + ~13us
+    descriptor-table alloc/build) was small in absolute terms but real and structural, present in
+    EVERY session including one that only ever runs shallow (e.g. the published 16-token race), which
+    the owner's zero-tolerance-for-regression bar does not accept even at this size. See
+    `_ensure_deep_initialized`'s own docstring for why deferring it is safe: `_sdpa_kernel_simd`, the
+    `self.descriptors` table, and the branch that submits it remain UNTOUCHED (as the fifth addition's
+    own docstring above already establishes) — this sixth addition only changes WHEN the deep path's
+    OWN one-time setup cost is paid, never what either path computes.
     """
 
     var d_model: Int
@@ -3562,15 +3576,18 @@ struct _MBQwen3I8AllSimd3(Movable):
     var token_id_offset_deep: Int
     var pos_offsets_deep: List[Int]
     var nkeys_offsets_deep: List[Int]
-    """See `_ATTN_SPLITK_THRESHOLD`'s own docstring and this struct's `step()` for the full account
-    of the two fields above `descriptors_deep` onward: a SECOND, fully independent, fixed descriptor
-    table built once at construction (`_build_descriptors_deep`) alongside the original
-    `descriptors` — never a replacement for it. `step()` picks WHICH table to patch-and-submit each
-    call based on the CURRENT `n_keys`; the other table's stale contents from a previous call simply
-    do not matter until it is chosen again, at which point its own `pos`/`n_keys` slots are repatched
-    fresh before submission — the same "mutate this step's arguments into an already-built plan"
-    discipline `step()`'s pre-existing `pos_offsets`/`nkeys_offsets` patching already relies on, just
-    duplicated across two plans instead of one."""
+    var deep_ready: Bool
+    """See `_ATTN_SPLITK_THRESHOLD`'s own docstring, `_ensure_deep_initialized`'s, and this struct's
+    `step()` for the full account of the fields above `descriptors_deep` onward: a SECOND, fully
+    independent, fixed descriptor table built once, LAZILY (on the first `step()` call that crosses
+    `_ATTN_SPLITK_THRESHOLD`, via `_ensure_deep_initialized`, guarded by `deep_ready`) — never a
+    replacement for `descriptors`, and never built at all for a session that stays shallow its whole
+    life. `step()` picks WHICH table to patch-and-submit each call based on the CURRENT `n_keys`; the
+    other table's stale contents from a previous call simply do not matter until it is chosen again,
+    at which point its own `pos`/`n_keys` slots are repatched fresh before submission — the same
+    "mutate this step's arguments into an already-built plan" discipline `step()`'s pre-existing
+    `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
+    of one."""
 
     fn __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
@@ -3619,11 +3636,16 @@ struct _MBQwen3I8AllSimd3(Movable):
         _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
         _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
         _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
-        # ── the deep-context occupancy fix's two kernels — ADDITIVE, alongside `_sdpa_kernel_simd`
-        # above, never a replacement for it. See `_ATTN_SPLITK_THRESHOLD`'s own docstring and this
-        # struct's `step()` for why BOTH are compiled into this one binary.
-        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
-        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+        # ── the deep-context occupancy fix's two kernels are DELIBERATELY NOT compiled here.
+        # `_ensure_deep_initialized` (below) calls `compile_function_unchecked` on both, lazily, the
+        # first time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD` -- see that method's own
+        # docstring for why. This does NOT remove either kernel from THIS binary: both are still
+        # referenced by a `compile_function_unchecked[...]` call reachable from this struct (just a
+        # later one), which is all the whole-program build needs to embed their `.metallib` blobs in
+        # `__TEXT,__const` -- see this file's own module docstring ("The pipeline table is discovered
+        # by NAME, not by call order") for why deferring WHEN this Mojo statement executes changes
+        # neither which pipelines `_mb_open_session` below discovers nor their names, only when the
+        # (measured, real, ~71.5us for both) cost of the two calls themselves is paid.
 
         var opened = _mb_open_session()
         if opened < 0:
@@ -3769,15 +3791,14 @@ struct _MBQwen3I8AllSimd3(Movable):
         # way `q_rot`/`attn_out` already are (attention for layer L+1 never starts before layer L's
         # own SDPA role has both read and finished with its inputs, so overwriting this scratch next
         # layer is safe -- the same sequencing argument this file's docstring makes for `attn_out`).
+        # NOT allocated here: a session that never crosses `_ATTN_SPLITK_THRESHOLD` never needs this
+        # scratch, so `_ensure_deep_initialized` (below) allocates it lazily, the first time `step()`
+        # actually needs it. Every field still gets a value now (a null placeholder) -- Mojo requires
+        # `self` fully initialized before `__init__` returns, and `_ensure_deep_initialized` is a
+        # separate `mut self` method, not a continuation of this constructor.
         self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
         self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
         self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
-        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
-            raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
-        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * 4, self.l_partial_addr, self.l_partial_ptr) < 0:
-            raise Error("metaldispatch: buffer alloc failed (attn splitk l_partial)")
-        if _mb_alloc_buffer(h_q * _ATTN_SPLITK_N_SPLITS * d_head * 4, self.o_partial_addr, self.o_partial_ptr) < 0:
-            raise Error("metaldispatch: buffer alloc failed (attn splitk o_partial)")
 
         self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
         self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
@@ -3785,18 +3806,68 @@ struct _MBQwen3I8AllSimd3(Movable):
         self.pos_offsets = List[Int]()
         self.nkeys_offsets = List[Int]()
 
-        # ── the SECOND, deep-context descriptor table's OWN fields, allocated here (every field
-        # must hold a value before `self` is "fully constructed enough" to call a method on it, so
-        # this cannot wait until after `self._build_descriptors(n_qkv)` below) -- see `step()`'s own
-        # docstring for the gate this table exists to serve.
+        # ── the SECOND, deep-context descriptor table's OWN fields. `n_descriptors_deep` is pure
+        # arithmetic (no allocation, no measurable cost) so it stays here -- `step()`'s dispatch-count
+        # bookkeeping and `_ensure_deep_initialized`'s own budget check both need it before either
+        # runs. `descriptors_deep` itself is a null placeholder until `_ensure_deep_initialized`
+        # allocates and builds it lazily -- see that method's own docstring for why (the measured,
+        # real, one-time construction cost this whole block used to pay: ~3us for the allocation,
+        # ~10us for `_build_descriptors_deep` itself, on top of the two kernels' ~71.5us compile and
+        # the three scratch buffers' ~486us alloc above -- ~560us total, paid even by a session that
+        # never once crosses `_ATTN_SPLITK_THRESHOLD`, which is exactly the published 16-token race's
+        # own session).
         self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
-        self.descriptors_deep = _mb_alloc_descriptors(self.n_descriptors_deep)
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
         self.token_id_offset_deep = -1
         self.pos_offsets_deep = List[Int]()
         self.nkeys_offsets_deep = List[Int]()
+        self.deep_ready = False
 
         self._build_descriptors(n_qkv)
+
+    fn _ensure_deep_initialized(mut self) raises:
+        """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
+        compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
+        FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
+        `__init__` for every session regardless of whether it ever goes deep. Idempotent (`self.
+        deep_ready` guards it) since `step()` calls this on EVERY deep-branch call, not just the
+        first.
+
+        Why this is safe to defer, item by item (each is now measured, see the RootCause investigation
+        this fix implements):
+          - `compile_function_unchecked[_splitk_partial_kernel_simd]`/`[_splitk_merge_kernel_simd]`:
+            deferring WHEN this Mojo statement executes does not change WHICH pipelines
+            `_mb_open_session` discovers in `__init__` (this file's own module docstring: pipeline
+            discovery is driven by scanning this binary's embedded `.metallib` blobs by NAME, not by
+            `compile_function_unchecked` call order) — `self.pipeline_idx_split`/`pipeline_idx_merge`
+            are already resolved by `__init__`'s existing discovery loop before this method ever runs.
+            What IS deferred is the real, measured ~71.5us cost of executing the two calls themselves.
+          - The three `_mb_alloc_buffer` calls: real GPU buffer allocations (measured ~486us for these
+            three), genuinely skipped, not merely postponed, for any session that never goes deep.
+          - `_mb_alloc_descriptors` + `_build_descriptors_deep`: a CPU-side heap allocation (~3us)
+            plus filling it in (~10us), same reasoning.
+
+        `step()`'s own docstring has the gate this method serves; correctness is unaffected either
+        way — `_build_descriptors_deep`'s plan is unchanged, just built once, later, instead of once,
+        immediately."""
+        if self.deep_ready:
+            return
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd]()
+        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+
+        if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
+        if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * 4, self.l_partial_addr, self.l_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk l_partial)")
+        if _mb_alloc_buffer(self.h_q * _ATTN_SPLITK_N_SPLITS * self.d_head * 4, self.o_partial_addr, self.o_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk o_partial)")
+
+        self.descriptors_deep = _mb_alloc_descriptors(self.n_descriptors_deep)
+        var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
         self._build_descriptors_deep(n_qkv)
+        self.deep_ready = True
 
     fn _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
@@ -3953,6 +4024,11 @@ struct _MBQwen3I8AllSimd3(Movable):
         `step()` did not pick on the PREVIOUS call left no residue either plan depends on, since
         `qk_rope` fully overwrites this step's KV-cache slot and `q_rot` regardless of which table
         runs it.
+
+        Called from `_ensure_deep_initialized`, lazily, the first time `step()` crosses
+        `_ATTN_SPLITK_THRESHOLD` — NOT from `__init__` (see that method's own docstring for why).
+        `self.descriptors_deep` must already be allocated (by the caller) before this runs; this
+        method only fills it in, exactly as it always did.
         """
         var n_q = self.h_q * self.d_head
         var n_kv = self.h_kv * self.d_head
@@ -4215,6 +4291,13 @@ struct _MBQwen3I8AllSimd3(Movable):
         suggested the number: at `n_keys=256` (below threshold) this branch is never taken; the
         split path's own first real win starts around `n_keys ~= 500` and only grows from there, so
         512 leaves margin on both sides of the measured crossover rather than sitting on top of it.
+
+        The deep branch's FIRST call (per session) also pays `_ensure_deep_initialized`'s one-time
+        cost (kernel compiles + scratch-buffer allocs + building `self.descriptors_deep`) — see that
+        method's own docstring. A session that never crosses `_ATTN_SPLITK_THRESHOLD` never calls it
+        at all, which is the whole point of this gate existing (a shallow-only session, e.g. the
+        published 16-token race, now pays NONE of that cost, where it used to pay all of it
+        unconditionally in `__init__`).
         """
 
         @parameter
@@ -4239,6 +4322,7 @@ struct _MBQwen3I8AllSimd3(Movable):
                 if rc != 0:
                     return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
             else:
+                self._ensure_deep_initialized()
                 dispatches_used = self.n_descriptors_deep
                 _mb_set_arg_int(self.descriptors_deep, self.token_id_offset_deep, 3, token_id)
                 for layer in range(self.n_layers):

@@ -18,6 +18,13 @@ is the same probe technique aimed at the other table, needed because the two tab
 per-layer descriptor layouts (6 roles/layer in the original table, 7 in this one — `splitk_partial`
 and `splitk_merge` REPLACE the one `sdpa` slot) and therefore need their own role table.
 
+`s.descriptors_deep` is now built LAZILY (`_MBQwen3I8AllSimd3._ensure_deep_initialized`, called from
+`step()`'s own deep branch on first crossing `_ATTN_SPLITK_THRESHOLD` — see `metaldispatch.session`'s
+own fix for the shallow-context session-open regression this lazy-init closes). This probe reaches
+into `s.descriptors_deep` directly, bypassing `step()` entirely, so it calls `s._ensure_deep_
+initialized()` itself, right after weights are uploaded/sealed and before building the role table --
+otherwise `s.descriptors_deep` would still be the null placeholder `__init__` leaves it at.
+
     cd /Users/angel/Developer/decision-engine/mojo_env
     clang -c -fobjc-arc -O2 <worktree>/benchmarks/llm_smoke/metal_batch_dispatch/batch_shim_counters.m \
         -o /tmp/batch_shim_counters.o
@@ -355,6 +362,11 @@ def main() raises:
             _check_mb(s.upload_layer(layer, ln1, ln2, qn, kn, wq, wk, wv, wo, wg, wu, wd))
         _ = s.seal()
         print("  weights loaded + sealed")
+
+        # `s.descriptors_deep` is built lazily now -- this probe reaches into it directly (never
+        # calls `step()`), so it must force that lazy init itself before touching the field. See the
+        # module docstring above.
+        s._ensure_deep_initialized()
 
         var roles = _build_role_table_deep(n_layers, s.n_descriptors_deep)
         _verify_role_table_deep(s, roles)
