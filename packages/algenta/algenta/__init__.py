@@ -624,6 +624,18 @@ _LAZY_EXPORTS = {
     "CountRelation": ("algenta.capabilities", "CountRelation"),
     "UndeclaredCapability": ("algenta.capabilities", "UndeclaredCapability"),
     "capabilities": ("algenta.capabilities", "capabilities"),
+    # ── Qwen3-0.6B-Base decode: one model shape, one hardware family (Apple Silicon/Metal) ──────
+    # Appended, never reordered, so no existing export moves. Lazy like the rest: importing
+    # `algenta` still probes no engine, and no GPU/checkpoint work happens until
+    # `qwen3_i8_allsimd7_decode()` or `prepare_checkpoint()` is actually called.
+    "Qwen3DecodeError": ("algenta.qwen3_decode", "Qwen3DecodeError"),
+    "Qwen3DecodeResult": ("algenta.qwen3_decode", "Qwen3DecodeResult"),
+    "UnsupportedCheckpointArchitectureError": (
+        "algenta.qwen3_decode",
+        "UnsupportedCheckpointArchitectureError",
+    ),
+    "prepare_qwen3_checkpoint": ("algenta.qwen3_decode", "prepare_checkpoint"),
+    "qwen3_i8_allsimd7_decode": ("algenta.qwen3_decode", "qwen3_i8_allsimd7_decode"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(

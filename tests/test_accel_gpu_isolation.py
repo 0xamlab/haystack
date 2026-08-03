@@ -476,6 +476,37 @@ def test_the_resident_session_is_only_ever_constructed_behind_the_gate() -> None
     )
 
 
+def test_qwen3_decode_constructs_the_gpu_struct_only_behind_the_gate() -> None:
+    """`metaldispatch.qwen3_decode` is the FIRST public, contract-reachable entry point that
+    constructs a `metaldispatch.session` GPU struct (`_MBQwen3I8AllSimd7`) directly — `accel.
+    gemm_metal`'s public functions launch through a private helper instead (pattern (b) above), and
+    `residentk.session`'s own struct is never contract-reachable at all. So this file's own gate is
+    asserted directly rather than only by the general contract-wide sweep: a missed gate here is not
+    only a GPU-less build failure, it is THE one new capability this task added.
+    """
+    path = ENGINE / "metaldispatch" / "qwen3_decode.mojo"
+    assert path.is_file(), "metaldispatch/qwen3_decode.mojo moved; update this test rather than deleting it"
+    raw = path.read_text(encoding="utf-8")
+    assert "_MBQwen3I8AllSimd7(" in _code_only(raw), (
+        "metaldispatch/qwen3_decode.mojo no longer constructs _MBQwen3I8AllSimd7; the isolation "
+        "check below proves nothing. Either restore the construction or retire this test deliberately."
+    )
+    gated = _gated_line_numbers(raw)
+    ungated = [
+        number
+        for number, line in enumerate(_code_only(raw).splitlines(), start=1)
+        if "_MBQwen3I8AllSimd7(" in line and number not in gated
+    ]
+    assert not ungated, (
+        f"metaldispatch/qwen3_decode.mojo constructs _MBQwen3I8AllSimd7 outside a `@parameter if "
+        f"MB_GPU_BUILD` block at line(s) {ungated}. That constructor compiles eight Metal shaders, "
+        "so every build host — including every Linux CI runner — would need a shader compiler."
+    )
+    assert "metaldispatch.qwen3_decode" in {
+        module.import_path for module in discover_runtime_library_modules(ENGINE)
+    }, "metaldispatch.qwen3_decode is no longer contract-reachable; this test's premise is gone"
+
+
 def test_every_gpu_build_gate_keys_off_the_same_define() -> None:
     """One flag turns GPU kernels on for the whole tree.
 

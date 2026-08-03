@@ -528,7 +528,7 @@
       {
         "bytes": 151,
         "language": "bash",
-        "line": 117,
+        "line": 121,
         "path": "benchmarks/decode-throughput.md",
         "sha256": "f46f087d58d8c1e79baa1fe328f40ed609af74808f938348cf96ce158b50c64f",
         "validation": "command_inventory"
@@ -3974,6 +3974,30 @@
         "validation": "parsed"
       },
       {
+        "bytes": 485,
+        "language": "python",
+        "line": 17,
+        "path": "engine/qwen3-metal-decode.md",
+        "sha256": "f5b501218bfba43ff1533499a3f59464629290fe3900c57acb7592ddd7c1ebaa",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 233,
+        "language": "python",
+        "line": 54,
+        "path": "engine/qwen3-metal-decode.md",
+        "sha256": "2c332269bc799b415b19983a2c663ae2a788c0182ae763a495d41de2caac9c01",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 193,
+        "language": "python",
+        "line": 75,
+        "path": "engine/qwen3-metal-decode.md",
+        "sha256": "365428952ed39a3b71233766726cba97d2bcf05cbdd4e9a930b2b7c1ed7fda4d",
+        "validation": "parsed"
+      },
+      {
         "bytes": 541,
         "language": "python",
         "line": 13,
@@ -6251,6 +6275,62 @@
         "line": 125,
         "path": "guides/run-a-decision.md",
         "sha256": "f11e4d4a0b9e9f446a91b2596e1dc2c9a8817fb155f93831a1aefda0acce69bc",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 83,
+        "language": "bash",
+        "line": 37,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "9b9aa074c7a5397bc98bf3bca5638f102a299f88f611c23576a98e144756bc38",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 22,
+        "language": "bash",
+        "line": 47,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "ecf1d531766d5d51012e6392e7b5936f770ebe47f8c216f6b3c48545f02827b0",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 263,
+        "language": "bash",
+        "line": 59,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "0d1670e30555182ddc89d579b87014720ee5662580cb3c3d04e1bb409e791039",
+        "validation": "command_inventory"
+      },
+      {
+        "bytes": 193,
+        "language": "python",
+        "line": 79,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "214a20dcacad502ef97c41ee52cee0623a30c9bb293d54f3c66e333321b72ee6",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 247,
+        "language": "python",
+        "line": 92,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "4e9aa8d27124901dee84adfe129e959092a2d2d37dccfc1126d29793ce240674",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 153,
+        "language": "python",
+        "line": 111,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "1938d491e0c691ae0a2111cae0759974247b0bf630b8c9cc5c4e7e50ca917fa0",
+        "validation": "parsed"
+      },
+      {
+        "bytes": 286,
+        "language": "python",
+        "line": 137,
+        "path": "guides/run-qwen3-decode.md",
+        "sha256": "30a490c21df194d8a1e5bc88a126bd50472b33ea4f95febd259916cd474f43be",
         "validation": "parsed"
       },
       {
@@ -17342,6 +17422,15 @@
       },
       {
         "authority_match": true,
+        "endpoint": "/v1/libraries/execute",
+        "line": 104,
+        "match_kind": "exact",
+        "method": "POST",
+        "path": "engine/qwen3-metal-decode.md",
+        "scope": "algenta"
+      },
+      {
+        "authority_match": true,
         "endpoint": "/v1/libraries*",
         "line": 13,
         "match_kind": "wildcard_family",
@@ -17478,7 +17567,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries",
-        "line": 764,
+        "line": 765,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17487,7 +17576,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/health",
-        "line": 764,
+        "line": 765,
         "match_kind": "exact",
         "method": "GET",
         "path": "engine/runtime-library-catalog.md",
@@ -17496,7 +17585,7 @@
       {
         "authority_match": true,
         "endpoint": "/v1/libraries/execute",
-        "line": 764,
+        "line": 765,
         "match_kind": "exact",
         "method": "POST",
         "path": "engine/runtime-library-catalog.md",
@@ -27789,1079 +27878,1091 @@
         "kind": "internal",
         "line": 20,
         "path": "SUMMARY.md",
-        "target": "engine/capabilities.md"
+        "target": "engine/qwen3-metal-decode.md"
       },
       {
         "kind": "internal",
         "line": 21,
         "path": "SUMMARY.md",
-        "target": "engine/coarse-execution.md"
+        "target": "engine/capabilities.md"
       },
       {
         "kind": "internal",
         "line": 22,
         "path": "SUMMARY.md",
-        "target": "engine/columnar-queries.md"
+        "target": "engine/coarse-execution.md"
       },
       {
         "kind": "internal",
         "line": 23,
         "path": "SUMMARY.md",
-        "target": "engine/reproducibility.md"
+        "target": "engine/columnar-queries.md"
       },
       {
         "kind": "internal",
         "line": 24,
         "path": "SUMMARY.md",
-        "target": "engine/sparse-and-graph.md"
+        "target": "engine/reproducibility.md"
       },
       {
         "kind": "internal",
         "line": 25,
         "path": "SUMMARY.md",
-        "target": "engine/optimization.md"
+        "target": "engine/sparse-and-graph.md"
       },
       {
         "kind": "internal",
         "line": 26,
         "path": "SUMMARY.md",
-        "target": "engine/optimization-heuristics.md"
+        "target": "engine/optimization.md"
       },
       {
         "kind": "internal",
         "line": 27,
         "path": "SUMMARY.md",
-        "target": "engine/retrieval.md"
+        "target": "engine/optimization-heuristics.md"
       },
       {
         "kind": "internal",
         "line": 28,
         "path": "SUMMARY.md",
-        "target": "engine/forecast-scoring.md"
+        "target": "engine/retrieval.md"
       },
       {
         "kind": "internal",
         "line": 29,
         "path": "SUMMARY.md",
-        "target": "engine/reproducible-search.md"
+        "target": "engine/forecast-scoring.md"
       },
       {
         "kind": "internal",
         "line": 30,
         "path": "SUMMARY.md",
-        "target": "engine/degradation-state.md"
+        "target": "engine/reproducible-search.md"
       },
       {
         "kind": "internal",
         "line": 31,
         "path": "SUMMARY.md",
-        "target": "engine/contest-strategy.md"
+        "target": "engine/degradation-state.md"
       },
       {
         "kind": "internal",
         "line": 32,
         "path": "SUMMARY.md",
-        "target": "engine/ml-model-selection.md"
+        "target": "engine/contest-strategy.md"
       },
       {
         "kind": "internal",
         "line": 33,
         "path": "SUMMARY.md",
-        "target": "engine/ml-model-comparison.md"
+        "target": "engine/ml-model-selection.md"
       },
       {
         "kind": "internal",
         "line": 34,
         "path": "SUMMARY.md",
-        "target": "engine/ml-calibration.md"
+        "target": "engine/ml-model-comparison.md"
       },
       {
         "kind": "internal",
         "line": 35,
         "path": "SUMMARY.md",
-        "target": "engine/ml-tensor2d.md"
+        "target": "engine/ml-calibration.md"
       },
       {
         "kind": "internal",
         "line": 36,
         "path": "SUMMARY.md",
-        "target": "engine/ml-sequence-cells.md"
+        "target": "engine/ml-tensor2d.md"
       },
       {
         "kind": "internal",
         "line": 37,
         "path": "SUMMARY.md",
-        "target": "engine/ml-sequence-training.md"
+        "target": "engine/ml-sequence-cells.md"
       },
       {
         "kind": "internal",
         "line": 38,
         "path": "SUMMARY.md",
-        "target": "engine/ml-serialization.md"
+        "target": "engine/ml-sequence-training.md"
       },
       {
         "kind": "internal",
         "line": 39,
         "path": "SUMMARY.md",
-        "target": "engine/ml-gradient-boosting.md"
+        "target": "engine/ml-serialization.md"
       },
       {
         "kind": "internal",
         "line": 40,
         "path": "SUMMARY.md",
-        "target": "engine/ml-mixture-models.md"
+        "target": "engine/ml-gradient-boosting.md"
       },
       {
         "kind": "internal",
         "line": 41,
         "path": "SUMMARY.md",
-        "target": "engine/ml-hmm.md"
+        "target": "engine/ml-mixture-models.md"
       },
       {
         "kind": "internal",
         "line": 42,
         "path": "SUMMARY.md",
-        "target": "engine/ml-imbalance.md"
+        "target": "engine/ml-hmm.md"
       },
       {
         "kind": "internal",
         "line": 43,
         "path": "SUMMARY.md",
-        "target": "engine/ml-ensembles.md"
+        "target": "engine/ml-imbalance.md"
       },
       {
         "kind": "internal",
         "line": 44,
         "path": "SUMMARY.md",
-        "target": "engine/ml-conformal.md"
+        "target": "engine/ml-ensembles.md"
       },
       {
         "kind": "internal",
         "line": 45,
         "path": "SUMMARY.md",
-        "target": "engine/ml-explainability.md"
+        "target": "engine/ml-conformal.md"
       },
       {
         "kind": "internal",
         "line": 46,
         "path": "SUMMARY.md",
-        "target": "engine/ml-gaussian-processes.md"
+        "target": "engine/ml-explainability.md"
       },
       {
         "kind": "internal",
         "line": 47,
         "path": "SUMMARY.md",
-        "target": "engine/ml-automl.md"
+        "target": "engine/ml-gaussian-processes.md"
       },
       {
         "kind": "internal",
         "line": 48,
         "path": "SUMMARY.md",
-        "target": "engine/ml-pipelines.md"
+        "target": "engine/ml-automl.md"
       },
       {
         "kind": "internal",
         "line": 49,
         "path": "SUMMARY.md",
-        "target": "engine/ml-linear-models.md"
+        "target": "engine/ml-pipelines.md"
       },
       {
         "kind": "internal",
         "line": 50,
         "path": "SUMMARY.md",
-        "target": "engine/ml-eigendecomposition.md"
+        "target": "engine/ml-linear-models.md"
       },
       {
         "kind": "internal",
         "line": 51,
         "path": "SUMMARY.md",
-        "target": "engine/ml-arima.md"
+        "target": "engine/ml-eigendecomposition.md"
       },
       {
         "kind": "internal",
         "line": 52,
         "path": "SUMMARY.md",
-        "target": "engine/ml-feature-hashing.md"
+        "target": "engine/ml-arima.md"
       },
       {
         "kind": "internal",
         "line": 53,
         "path": "SUMMARY.md",
-        "target": "engine/ml-pls.md"
+        "target": "engine/ml-feature-hashing.md"
       },
       {
         "kind": "internal",
         "line": 54,
         "path": "SUMMARY.md",
-        "target": "engine/ml-svm.md"
+        "target": "engine/ml-pls.md"
       },
       {
         "kind": "internal",
         "line": 55,
         "path": "SUMMARY.md",
-        "target": "engine/forecasting.md"
+        "target": "engine/ml-svm.md"
       },
       {
         "kind": "internal",
         "line": 56,
         "path": "SUMMARY.md",
-        "target": "engine/statistical-inference.md"
+        "target": "engine/forecasting.md"
       },
       {
         "kind": "internal",
         "line": 57,
         "path": "SUMMARY.md",
-        "target": "engine/causal-inference.md"
+        "target": "engine/statistical-inference.md"
       },
       {
         "kind": "internal",
         "line": 58,
         "path": "SUMMARY.md",
-        "target": "engine/ml-chain-greeks.md"
+        "target": "engine/causal-inference.md"
       },
       {
         "kind": "internal",
         "line": 59,
         "path": "SUMMARY.md",
-        "target": "concepts/engine.md"
+        "target": "engine/ml-chain-greeks.md"
       },
       {
         "kind": "internal",
         "line": 60,
         "path": "SUMMARY.md",
-        "target": "engine/survival-analysis.md"
+        "target": "concepts/engine.md"
       },
       {
         "kind": "internal",
         "line": 61,
         "path": "SUMMARY.md",
-        "target": "engine/data-quality.md"
+        "target": "engine/survival-analysis.md"
       },
       {
         "kind": "internal",
         "line": 62,
         "path": "SUMMARY.md",
-        "target": "engine/geospatial.md"
+        "target": "engine/data-quality.md"
       },
       {
         "kind": "internal",
         "line": 63,
         "path": "SUMMARY.md",
-        "target": "engine/streaming-sketches.md"
+        "target": "engine/geospatial.md"
       },
       {
         "kind": "internal",
         "line": 64,
         "path": "SUMMARY.md",
-        "target": "engine/streaming-windows.md"
+        "target": "engine/streaming-sketches.md"
       },
       {
         "kind": "internal",
         "line": 65,
         "path": "SUMMARY.md",
-        "target": "engine/discrete-event-simulation.md"
+        "target": "engine/streaming-windows.md"
       },
       {
         "kind": "internal",
         "line": 66,
         "path": "SUMMARY.md",
-        "target": "engine/evaluation-calibration.md"
+        "target": "engine/discrete-event-simulation.md"
       },
       {
         "kind": "internal",
         "line": 67,
         "path": "SUMMARY.md",
-        "target": "engine/strategy-simulation.md"
+        "target": "engine/evaluation-calibration.md"
       },
       {
         "kind": "internal",
-        "line": 71,
+        "line": 68,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-service.md"
+        "target": "engine/strategy-simulation.md"
       },
       {
         "kind": "internal",
         "line": 72,
         "path": "SUMMARY.md",
-        "target": "concepts/governed-data.md"
+        "target": "concepts/decision-service.md"
       },
       {
         "kind": "internal",
         "line": 73,
         "path": "SUMMARY.md",
-        "target": "concepts/capability-plane.md"
+        "target": "concepts/governed-data.md"
       },
       {
         "kind": "internal",
         "line": 74,
         "path": "SUMMARY.md",
-        "target": "concepts/simulation-models.md"
+        "target": "concepts/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 75,
         "path": "SUMMARY.md",
-        "target": "concepts/decision-memory.md"
+        "target": "concepts/simulation-models.md"
       },
       {
         "kind": "internal",
         "line": 76,
         "path": "SUMMARY.md",
-        "target": "concepts/execution-ownership.md"
+        "target": "concepts/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 77,
         "path": "SUMMARY.md",
-        "target": "concepts/deployment-modes.md"
+        "target": "concepts/execution-ownership.md"
       },
       {
         "kind": "internal",
-        "line": 81,
+        "line": 78,
         "path": "SUMMARY.md",
-        "target": "guides/first-query.md"
+        "target": "concepts/deployment-modes.md"
       },
       {
         "kind": "internal",
         "line": 82,
         "path": "SUMMARY.md",
-        "target": "guides/run-a-decision.md"
+        "target": "guides/first-query.md"
       },
       {
         "kind": "internal",
         "line": 83,
         "path": "SUMMARY.md",
-        "target": "guides/governed-decisions.md"
+        "target": "guides/run-a-decision.md"
       },
       {
         "kind": "internal",
         "line": 84,
         "path": "SUMMARY.md",
-        "target": "guides/renewal-capacity-allocation.md"
+        "target": "guides/governed-decisions.md"
       },
       {
         "kind": "internal",
         "line": 85,
         "path": "SUMMARY.md",
-        "target": "guides/simulate.md"
+        "target": "guides/renewal-capacity-allocation.md"
       },
       {
         "kind": "internal",
         "line": 86,
         "path": "SUMMARY.md",
-        "target": "guides/what-if.md"
+        "target": "guides/simulate.md"
       },
       {
         "kind": "internal",
         "line": 87,
         "path": "SUMMARY.md",
-        "target": "guides/recommend-and-score.md"
+        "target": "guides/what-if.md"
       },
       {
         "kind": "internal",
         "line": 88,
         "path": "SUMMARY.md",
-        "target": "guides/governed-query.md"
+        "target": "guides/recommend-and-score.md"
       },
       {
         "kind": "internal",
         "line": 89,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory.md"
+        "target": "guides/governed-query.md"
       },
       {
         "kind": "internal",
         "line": 90,
         "path": "SUMMARY.md",
-        "target": "guides/decision-memory-api.md"
+        "target": "guides/decision-memory.md"
       },
       {
         "kind": "internal",
         "line": 91,
         "path": "SUMMARY.md",
-        "target": "guides/execution-policy.md"
+        "target": "guides/decision-memory-api.md"
       },
       {
         "kind": "internal",
         "line": 92,
         "path": "SUMMARY.md",
-        "target": "guides/connect-data.md"
+        "target": "guides/execution-policy.md"
       },
       {
         "kind": "internal",
         "line": 93,
         "path": "SUMMARY.md",
-        "target": "guides/instant-map.md"
+        "target": "guides/connect-data.md"
       },
       {
         "kind": "internal",
         "line": 94,
         "path": "SUMMARY.md",
-        "target": "guides/capabilities.md"
+        "target": "guides/instant-map.md"
       },
       {
         "kind": "internal",
         "line": 95,
         "path": "SUMMARY.md",
-        "target": "guides/capability-bindings.md"
+        "target": "guides/capabilities.md"
       },
       {
         "kind": "internal",
         "line": 96,
         "path": "SUMMARY.md",
-        "target": "guides/external-mcp.md"
+        "target": "guides/capability-bindings.md"
       },
       {
         "kind": "internal",
         "line": 97,
         "path": "SUMMARY.md",
-        "target": "guides/agent-runs.md"
+        "target": "guides/external-mcp.md"
       },
       {
         "kind": "internal",
         "line": 98,
         "path": "SUMMARY.md",
-        "target": "guides/async-jobs.md"
+        "target": "guides/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 99,
         "path": "SUMMARY.md",
-        "target": "guides/repository-intelligence.md"
+        "target": "guides/async-jobs.md"
       },
       {
         "kind": "internal",
         "line": 100,
         "path": "SUMMARY.md",
-        "target": "guides/repository-fix.md"
+        "target": "guides/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 101,
         "path": "SUMMARY.md",
-        "target": "guides/security-analysis.md"
+        "target": "guides/repository-fix.md"
       },
       {
         "kind": "internal",
         "line": 102,
         "path": "SUMMARY.md",
-        "target": "guides/triggers.md"
+        "target": "guides/security-analysis.md"
       },
       {
         "kind": "internal",
         "line": 103,
         "path": "SUMMARY.md",
-        "target": "guides/webhooks.md"
+        "target": "guides/triggers.md"
       },
       {
         "kind": "internal",
         "line": 104,
         "path": "SUMMARY.md",
-        "target": "guides/byok.md"
+        "target": "guides/webhooks.md"
       },
       {
         "kind": "internal",
         "line": 105,
         "path": "SUMMARY.md",
-        "target": "guides/device-binding.md"
+        "target": "guides/byok.md"
       },
       {
         "kind": "internal",
         "line": 106,
         "path": "SUMMARY.md",
-        "target": "guides/air-gapped.md"
+        "target": "guides/device-binding.md"
       },
       {
         "kind": "internal",
         "line": 107,
         "path": "SUMMARY.md",
+        "target": "guides/air-gapped.md"
+      },
+      {
+        "kind": "internal",
+        "line": 108,
+        "path": "SUMMARY.md",
         "target": "guides/ci-cd.md"
       },
       {
         "kind": "internal",
-        "line": 111,
+        "line": 109,
         "path": "SUMMARY.md",
-        "target": "llm/models.md"
-      },
-      {
-        "kind": "internal",
-        "line": 112,
-        "path": "SUMMARY.md",
-        "target": "llm/completions.md"
+        "target": "guides/run-qwen3-decode.md"
       },
       {
         "kind": "internal",
         "line": 113,
         "path": "SUMMARY.md",
+        "target": "llm/models.md"
+      },
+      {
+        "kind": "internal",
+        "line": 114,
+        "path": "SUMMARY.md",
+        "target": "llm/completions.md"
+      },
+      {
+        "kind": "internal",
+        "line": 115,
+        "path": "SUMMARY.md",
         "target": "llm/embeddings.md"
-      },
-      {
-        "kind": "internal",
-        "line": 117,
-        "path": "SUMMARY.md",
-        "target": "sdk/python.md"
-      },
-      {
-        "kind": "internal",
-        "line": 118,
-        "path": "SUMMARY.md",
-        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 119,
         "path": "SUMMARY.md",
-        "target": "sdk/python/simulations-and-queries.md"
+        "target": "sdk/python.md"
       },
       {
         "kind": "internal",
         "line": 120,
         "path": "SUMMARY.md",
-        "target": "sdk/python/decisions-and-products.md"
+        "target": "sdk/python/overview.md"
       },
       {
         "kind": "internal",
         "line": 121,
         "path": "SUMMARY.md",
-        "target": "sdk/python/connectors-and-data.md"
+        "target": "sdk/python/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 122,
         "path": "SUMMARY.md",
-        "target": "sdk/python/repositories.md"
+        "target": "sdk/python/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 123,
         "path": "SUMMARY.md",
-        "target": "sdk/python/llm.md"
+        "target": "sdk/python/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 124,
         "path": "SUMMARY.md",
-        "target": "sdk/python/agent-runs.md"
+        "target": "sdk/python/repositories.md"
       },
       {
         "kind": "internal",
         "line": 125,
         "path": "SUMMARY.md",
-        "target": "sdk/python/jobs-triggers-capabilities.md"
+        "target": "sdk/python/llm.md"
       },
       {
         "kind": "internal",
         "line": 126,
         "path": "SUMMARY.md",
-        "target": "sdk/python/account-and-control-plane.md"
+        "target": "sdk/python/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 127,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript.md"
+        "target": "sdk/python/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 128,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/overview.md"
+        "target": "sdk/python/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 129,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/simulations-and-queries.md"
+        "target": "sdk/typescript.md"
       },
       {
         "kind": "internal",
         "line": 130,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/decisions-and-products.md"
+        "target": "sdk/typescript/overview.md"
       },
       {
         "kind": "internal",
         "line": 131,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/llm.md"
+        "target": "sdk/typescript/simulations-and-queries.md"
       },
       {
         "kind": "internal",
         "line": 132,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/connectors-and-data.md"
+        "target": "sdk/typescript/decisions-and-products.md"
       },
       {
         "kind": "internal",
         "line": 133,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/repositories.md"
+        "target": "sdk/typescript/llm.md"
       },
       {
         "kind": "internal",
         "line": 134,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/agent-runs.md"
+        "target": "sdk/typescript/connectors-and-data.md"
       },
       {
         "kind": "internal",
         "line": 135,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/jobs-triggers-capabilities.md"
+        "target": "sdk/typescript/repositories.md"
       },
       {
         "kind": "internal",
         "line": 136,
         "path": "SUMMARY.md",
-        "target": "sdk/typescript/account-and-control-plane.md"
+        "target": "sdk/typescript/agent-runs.md"
       },
       {
         "kind": "internal",
         "line": 137,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp.md"
+        "target": "sdk/typescript/jobs-triggers-capabilities.md"
       },
       {
         "kind": "internal",
         "line": 138,
         "path": "SUMMARY.md",
-        "target": "sdk/mcp-registry.md"
+        "target": "sdk/typescript/account-and-control-plane.md"
       },
       {
         "kind": "internal",
         "line": 139,
         "path": "SUMMARY.md",
-        "target": "sdk/tool-discovery.md"
+        "target": "sdk/mcp.md"
       },
       {
         "kind": "internal",
         "line": 140,
         "path": "SUMMARY.md",
-        "target": "sdk/testing.md"
+        "target": "sdk/mcp-registry.md"
       },
       {
         "kind": "internal",
         "line": 141,
         "path": "SUMMARY.md",
+        "target": "sdk/tool-discovery.md"
+      },
+      {
+        "kind": "internal",
+        "line": 142,
+        "path": "SUMMARY.md",
+        "target": "sdk/testing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 143,
+        "path": "SUMMARY.md",
         "target": "cli.md"
-      },
-      {
-        "kind": "internal",
-        "line": 145,
-        "path": "SUMMARY.md",
-        "target": "mcp-tools/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 146,
-        "path": "SUMMARY.md",
-        "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
         "line": 147,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/connectors.md"
+        "target": "mcp-tools/overview.md"
       },
       {
         "kind": "internal",
         "line": 148,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/query.md"
+        "target": "mcp-tools/data.md"
       },
       {
         "kind": "internal",
         "line": 149,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/repository-intelligence.md"
+        "target": "mcp-tools/connectors.md"
       },
       {
         "kind": "internal",
         "line": 150,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/llm.md"
+        "target": "mcp-tools/query.md"
       },
       {
         "kind": "internal",
         "line": 151,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/capability-plane.md"
+        "target": "mcp-tools/repository-intelligence.md"
       },
       {
         "kind": "internal",
         "line": 152,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/decisions.md"
+        "target": "mcp-tools/llm.md"
       },
       {
         "kind": "internal",
         "line": 153,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/jobs-and-triggers.md"
+        "target": "mcp-tools/capability-plane.md"
       },
       {
         "kind": "internal",
         "line": 154,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/agent-runs.md"
+        "target": "mcp-tools/decisions.md"
       },
       {
         "kind": "internal",
         "line": 155,
         "path": "SUMMARY.md",
-        "target": "mcp-tools/control-plane.md"
+        "target": "mcp-tools/jobs-and-triggers.md"
       },
       {
         "kind": "internal",
         "line": 156,
         "path": "SUMMARY.md",
+        "target": "mcp-tools/agent-runs.md"
+      },
+      {
+        "kind": "internal",
+        "line": 157,
+        "path": "SUMMARY.md",
+        "target": "mcp-tools/control-plane.md"
+      },
+      {
+        "kind": "internal",
+        "line": 158,
+        "path": "SUMMARY.md",
         "target": "mcp-tools/account-and-meta.md"
-      },
-      {
-        "kind": "internal",
-        "line": 160,
-        "path": "SUMMARY.md",
-        "target": "integrations/microsoft/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 161,
-        "path": "SUMMARY.md",
-        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 162,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/excel.md"
+        "target": "integrations/microsoft/overview.md"
       },
       {
         "kind": "internal",
         "line": 163,
         "path": "SUMMARY.md",
-        "target": "integrations/microsoft/entra-sso.md"
+        "target": "integrations/microsoft/copilot-teams.md"
       },
       {
         "kind": "internal",
         "line": 164,
         "path": "SUMMARY.md",
+        "target": "integrations/microsoft/excel.md"
+      },
+      {
+        "kind": "internal",
+        "line": 165,
+        "path": "SUMMARY.md",
+        "target": "integrations/microsoft/entra-sso.md"
+      },
+      {
+        "kind": "internal",
+        "line": 166,
+        "path": "SUMMARY.md",
         "target": "integrations/azure/gateway.md"
-      },
-      {
-        "kind": "internal",
-        "line": 168,
-        "path": "SUMMARY.md",
-        "target": "self-hosting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 169,
-        "path": "SUMMARY.md",
-        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 170,
         "path": "SUMMARY.md",
-        "target": "operate/monitoring.md"
+        "target": "self-hosting.md"
       },
       {
         "kind": "internal",
         "line": 171,
         "path": "SUMMARY.md",
-        "target": "operate/byok-kms.md"
+        "target": "configuration.md"
       },
       {
         "kind": "internal",
         "line": 172,
         "path": "SUMMARY.md",
-        "target": "operate/device-key-store.md"
+        "target": "operate/monitoring.md"
       },
       {
         "kind": "internal",
         "line": 173,
         "path": "SUMMARY.md",
-        "target": "operate/privacy-egress.md"
+        "target": "operate/byok-kms.md"
       },
       {
         "kind": "internal",
         "line": 174,
         "path": "SUMMARY.md",
-        "target": "operate/teams-rbac.md"
+        "target": "operate/device-key-store.md"
       },
       {
         "kind": "internal",
         "line": 175,
         "path": "SUMMARY.md",
-        "target": "operate/deployments-and-nodes.md"
+        "target": "operate/privacy-egress.md"
       },
       {
         "kind": "internal",
         "line": 176,
         "path": "SUMMARY.md",
-        "target": "licensing.md"
+        "target": "operate/teams-rbac.md"
       },
       {
         "kind": "internal",
         "line": 177,
         "path": "SUMMARY.md",
+        "target": "operate/deployments-and-nodes.md"
+      },
+      {
+        "kind": "internal",
+        "line": 178,
+        "path": "SUMMARY.md",
+        "target": "licensing.md"
+      },
+      {
+        "kind": "internal",
+        "line": 179,
+        "path": "SUMMARY.md",
         "target": "billing.md"
-      },
-      {
-        "kind": "internal",
-        "line": 181,
-        "path": "SUMMARY.md",
-        "target": "api/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 182,
-        "path": "SUMMARY.md",
-        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 183,
         "path": "SUMMARY.md",
-        "target": "api/streaming.md"
+        "target": "api/overview.md"
       },
       {
         "kind": "internal",
         "line": 184,
         "path": "SUMMARY.md",
-        "target": "api/explorer.md"
+        "target": "api/reference.md"
       },
       {
         "kind": "internal",
         "line": 185,
         "path": "SUMMARY.md",
-        "target": "api/errors.md"
+        "target": "api/streaming.md"
       },
       {
         "kind": "internal",
         "line": 186,
         "path": "SUMMARY.md",
+        "target": "api/explorer.md"
+      },
+      {
+        "kind": "internal",
+        "line": 187,
+        "path": "SUMMARY.md",
+        "target": "api/errors.md"
+      },
+      {
+        "kind": "internal",
+        "line": 188,
+        "path": "SUMMARY.md",
         "target": "api/rate-limits.md"
-      },
-      {
-        "kind": "internal",
-        "line": 190,
-        "path": "SUMMARY.md",
-        "target": "connectors/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 191,
-        "path": "SUMMARY.md",
-        "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
         "line": 192,
         "path": "SUMMARY.md",
-        "target": "connectors/reference.md"
+        "target": "connectors/overview.md"
       },
       {
         "kind": "internal",
         "line": 193,
         "path": "SUMMARY.md",
-        "target": "connectors/snowflake.md"
+        "target": "connectors/databases.md"
       },
       {
         "kind": "internal",
         "line": 194,
         "path": "SUMMARY.md",
-        "target": "connectors/bigquery.md"
+        "target": "connectors/reference.md"
       },
       {
         "kind": "internal",
         "line": 195,
         "path": "SUMMARY.md",
-        "target": "connectors/clickhouse.md"
+        "target": "connectors/snowflake.md"
       },
       {
         "kind": "internal",
         "line": 196,
         "path": "SUMMARY.md",
-        "target": "connectors/postgres.md"
+        "target": "connectors/bigquery.md"
       },
       {
         "kind": "internal",
         "line": 197,
         "path": "SUMMARY.md",
-        "target": "connectors/oracle.md"
+        "target": "connectors/clickhouse.md"
       },
       {
         "kind": "internal",
         "line": 198,
         "path": "SUMMARY.md",
-        "target": "connectors/mysql.md"
+        "target": "connectors/postgres.md"
       },
       {
         "kind": "internal",
         "line": 199,
         "path": "SUMMARY.md",
-        "target": "connectors/mssql.md"
+        "target": "connectors/oracle.md"
       },
       {
         "kind": "internal",
         "line": 200,
         "path": "SUMMARY.md",
-        "target": "connectors/sqlite.md"
+        "target": "connectors/mysql.md"
       },
       {
         "kind": "internal",
         "line": 201,
         "path": "SUMMARY.md",
-        "target": "connectors/redshift.md"
+        "target": "connectors/mssql.md"
       },
       {
         "kind": "internal",
         "line": 202,
         "path": "SUMMARY.md",
-        "target": "connectors/s3.md"
+        "target": "connectors/sqlite.md"
       },
       {
         "kind": "internal",
         "line": 203,
         "path": "SUMMARY.md",
-        "target": "connectors/gcs.md"
+        "target": "connectors/redshift.md"
       },
       {
         "kind": "internal",
         "line": 204,
         "path": "SUMMARY.md",
-        "target": "connectors/azure-blob.md"
+        "target": "connectors/s3.md"
       },
       {
         "kind": "internal",
         "line": 205,
         "path": "SUMMARY.md",
-        "target": "connectors/redis.md"
+        "target": "connectors/gcs.md"
       },
       {
         "kind": "internal",
         "line": 206,
         "path": "SUMMARY.md",
-        "target": "connectors/neo4j.md"
+        "target": "connectors/azure-blob.md"
       },
       {
         "kind": "internal",
         "line": 207,
         "path": "SUMMARY.md",
-        "target": "connectors/elasticsearch.md"
+        "target": "connectors/redis.md"
       },
       {
         "kind": "internal",
         "line": 208,
         "path": "SUMMARY.md",
-        "target": "connectors/files.md"
+        "target": "connectors/neo4j.md"
       },
       {
         "kind": "internal",
         "line": 209,
         "path": "SUMMARY.md",
-        "target": "connectors/code-repositories.md"
+        "target": "connectors/elasticsearch.md"
       },
       {
         "kind": "internal",
         "line": 210,
         "path": "SUMMARY.md",
+        "target": "connectors/files.md"
+      },
+      {
+        "kind": "internal",
+        "line": 211,
+        "path": "SUMMARY.md",
+        "target": "connectors/code-repositories.md"
+      },
+      {
+        "kind": "internal",
+        "line": 212,
+        "path": "SUMMARY.md",
         "target": "connectors/rest-api.md"
-      },
-      {
-        "kind": "internal",
-        "line": 214,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/overview.md"
-      },
-      {
-        "kind": "internal",
-        "line": 215,
-        "path": "SUMMARY.md",
-        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 216,
         "path": "SUMMARY.md",
-        "target": "benchmarks/attention.md"
+        "target": "benchmarks/overview.md"
       },
       {
         "kind": "internal",
         "line": 217,
         "path": "SUMMARY.md",
-        "target": "benchmarks/normalization.md"
+        "target": "benchmarks/compute-kernels.md"
       },
       {
         "kind": "internal",
         "line": 218,
         "path": "SUMMARY.md",
-        "target": "benchmarks/feed-forward.md"
+        "target": "benchmarks/attention.md"
       },
       {
         "kind": "internal",
         "line": 219,
         "path": "SUMMARY.md",
-        "target": "benchmarks/code-retrieval.md"
+        "target": "benchmarks/normalization.md"
       },
       {
         "kind": "internal",
         "line": 220,
         "path": "SUMMARY.md",
-        "target": "benchmarks/dataframe-groupby.md"
+        "target": "benchmarks/feed-forward.md"
       },
       {
         "kind": "internal",
         "line": 221,
         "path": "SUMMARY.md",
-        "target": "benchmarks/least-squares-accuracy.md"
+        "target": "benchmarks/code-retrieval.md"
       },
       {
         "kind": "internal",
         "line": 222,
         "path": "SUMMARY.md",
-        "target": "benchmarks/forecasting-joint-axis.md"
+        "target": "benchmarks/dataframe-groupby.md"
       },
       {
         "kind": "internal",
         "line": 223,
         "path": "SUMMARY.md",
-        "target": "benchmarks/finqa-exact-execution.md"
+        "target": "benchmarks/least-squares-accuracy.md"
       },
       {
         "kind": "internal",
         "line": 224,
         "path": "SUMMARY.md",
+        "target": "benchmarks/forecasting-joint-axis.md"
+      },
+      {
+        "kind": "internal",
+        "line": 225,
+        "path": "SUMMARY.md",
+        "target": "benchmarks/finqa-exact-execution.md"
+      },
+      {
+        "kind": "internal",
+        "line": 226,
+        "path": "SUMMARY.md",
         "target": "benchmarks/decode-throughput.md"
-      },
-      {
-        "kind": "internal",
-        "line": 228,
-        "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
-      },
-      {
-        "kind": "internal",
-        "line": 229,
-        "path": "SUMMARY.md",
-        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 230,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
         "line": 231,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 232,
+        "path": "SUMMARY.md",
+        "target": "help/quick-reference.md"
+      },
+      {
+        "kind": "internal",
+        "line": 233,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 234,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -29152,6 +29253,18 @@
         "line": 110,
         "path": "benchmarks/decode-throughput.md",
         "target": "attention.md"
+      },
+      {
+        "kind": "internal",
+        "line": 111,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "../engine/qwen3-metal-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 113,
+        "path": "benchmarks/decode-throughput.md",
+        "target": "../guides/run-qwen3-decode.md"
       },
       {
         "kind": "internal",
@@ -31465,6 +31578,30 @@
       },
       {
         "kind": "internal",
+        "line": 10,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "../benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 102,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "../benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 103,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "runtime-libraries.md"
+      },
+      {
+        "kind": "internal",
+        "line": 106,
+        "path": "engine/qwen3-metal-decode.md",
+        "target": "retrieval.md"
+      },
+      {
+        "kind": "internal",
         "line": 72,
         "path": "engine/reproducibility.md",
         "target": "columnar-queries.md"
@@ -31567,13 +31704,7 @@
       },
       {
         "kind": "internal",
-        "line": 764,
-        "path": "engine/runtime-library-catalog.md",
-        "target": "runtime-libraries.md"
-      },
-      {
-        "kind": "internal",
-        "line": 769,
+        "line": 765,
         "path": "engine/runtime-library-catalog.md",
         "target": "runtime-libraries.md"
       },
@@ -31581,11 +31712,17 @@
         "kind": "internal",
         "line": 770,
         "path": "engine/runtime-library-catalog.md",
-        "target": "catalog.md"
+        "target": "runtime-libraries.md"
       },
       {
         "kind": "internal",
         "line": 771,
+        "path": "engine/runtime-library-catalog.md",
+        "target": "catalog.md"
+      },
+      {
+        "kind": "internal",
+        "line": 772,
         "path": "engine/runtime-library-catalog.md",
         "target": "../concepts/engine.md"
       },
@@ -32632,6 +32769,42 @@
         "line": 200,
         "path": "guides/run-a-decision.md",
         "target": "../concepts/decision-memory.md"
+      },
+      {
+        "kind": "anchor",
+        "line": 10,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "#requirements"
+      },
+      {
+        "kind": "anchor",
+        "line": 10,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "#limitations"
+      },
+      {
+        "kind": "external",
+        "line": 16,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "https://huggingface.co/Qwen/Qwen3-0.6B-Base"
+      },
+      {
+        "kind": "internal",
+        "line": 154,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "../engine/qwen3-metal-decode.md"
+      },
+      {
+        "kind": "internal",
+        "line": 158,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "../benchmarks/decode-throughput.md"
+      },
+      {
+        "kind": "internal",
+        "line": 162,
+        "path": "guides/run-qwen3-decode.md",
+        "target": "../install.md"
       },
       {
         "kind": "internal",
@@ -34789,17 +34962,17 @@
         "term": "algenta"
       },
       {
-        "line": 107,
+        "line": 108,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 140,
+        "line": 142,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
       {
-        "line": 160,
+        "line": 162,
         "path": "SUMMARY.md",
         "term": "algenta"
       },
@@ -35189,7 +35362,7 @@
         "term": "algenta"
       },
       {
-        "line": 125,
+        "line": 129,
         "path": "benchmarks/decode-throughput.md",
         "term": "algenta"
       },
@@ -36609,6 +36782,11 @@
         "term": "algenta"
       },
       {
+        "line": 18,
+        "path": "engine/qwen3-metal-decode.md",
+        "term": "algenta"
+      },
+      {
         "line": 14,
         "path": "engine/reproducible-search.md",
         "term": "algenta"
@@ -37601,6 +37779,61 @@
       {
         "line": 182,
         "path": "guides/run-a-decision.md",
+        "term": "algenta"
+      },
+      {
+        "line": 3,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 8,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 15,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 17,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 29,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 35,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 40,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 48,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 93,
+        "path": "guides/run-qwen3-decode.md",
+        "term": "algenta"
+      },
+      {
+        "line": 138,
+        "path": "guides/run-qwen3-decode.md",
         "term": "algenta"
       },
       {
@@ -40245,7 +40478,7 @@
         "classification": "environment_mutating",
         "command": "pip install mlx-lm",
         "executed": false,
-        "line": 118,
+        "line": 122,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -40253,7 +40486,7 @@
         "classification": "static_only",
         "command": "brew install llama.cpp",
         "executed": false,
-        "line": 119,
+        "line": 123,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -40261,7 +40494,7 @@
         "classification": "requires_environment",
         "command": "python3 -c \"from huggingface_hub import snapshot_download; snapshot_download(repo_id='Qwen/Qwen3-0.6B-Base')\"",
         "executed": false,
-        "line": 120,
+        "line": 124,
         "path": "benchmarks/decode-throughput.md",
         "syntax_valid": true
       },
@@ -44602,6 +44835,54 @@
         "syntax_valid": true
       },
       {
+        "classification": "static_only",
+        "command": "python3.14 -m venv .venv",
+        "executed": false,
+        "line": 38,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "static_only",
+        "command": "source .venv/bin/activate",
+        "executed": false,
+        "line": 39,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "environment_mutating",
+        "command": "pip install \"algenta[benchmark]\"",
+        "executed": false,
+        "line": 40,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "algenta runtime doctor",
+        "executed": false,
+        "line": 48,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "environment_mutating",
+        "command": "pip install huggingface_hub",
+        "executed": false,
+        "line": 60,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
+        "classification": "requires_environment",
+        "command": "python3 -c \"\nfrom huggingface_hub import snapshot_download\nsnapshot_download(\nrepo_id='Qwen/Qwen3-0.6B-Base',\nlocal_dir='./qwen3-0.6b-base',\nallow_patterns=['*.json', '*.safetensors', 'tokenizer*', 'vocab*', 'merges*'],\n)\n\"",
+        "executed": false,
+        "line": 61,
+        "path": "guides/run-qwen3-decode.md",
+        "syntax_valid": true
+      },
+      {
         "classification": "external_or_mutating",
         "command": "curl -sS -X POST \"https://api.algenta.ai/v1/repositories/$REPOSITORY_ID/security-analyses\" \\\n-H \"Authorization: Bearer $ALGENTA_API_KEY\" \\\n-H \"Content-Type: application/json\" \\\n-d '{\n\"snapshot_id\": \"'\"$SNAPSHOT_ID\"'\",\n\"sarif_digest\": \"sha256:9c1f...\",\n\"scanner\": { \"name\": \"codeql\", \"version\": \"2.17.0\" },\n\"findings\": [\n{\n\"canonical_id\": \"finding-sql-injection-001\",\n\"rule_id\": \"py/sql-injection\",\n\"finding_kind\": \"sql-injection\",\n\"severity\": \"high\",\n\"primary_location\": { \"uri\": \"src/api/orders.py\", \"start_line\": 142 }\n}\n]\n}'",
         "executed": false,
@@ -46735,8 +47016,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 191,
-      "links": 191,
+      "internal_links": 193,
+      "links": 193,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -47035,8 +47316,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 3,
-      "links": 3,
+      "internal_links": 5,
+      "links": 5,
       "path": "benchmarks/decode-throughput.md",
       "product_claims": {
         "algenta": 8,
@@ -49074,6 +49355,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 3,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 1,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 4,
+      "path": "engine/qwen3-metal-decode.md",
+      "product_claims": {
+        "algenta": 1,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 0,
       "command_counts": {
         "destructive_mutation": 0,
@@ -49897,6 +50203,31 @@
         "mission": 0
       },
       "shell_commands": 3
+    },
+    {
+      "code_fences": 7,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 2,
+        "external_or_mutating": 0,
+        "requires_environment": 2,
+        "safe_static": 0,
+        "static_only": 2
+      },
+      "endpoint_mentions": 0,
+      "external_links": 1,
+      "internal_links": 3,
+      "links": 6,
+      "path": "guides/run-qwen3-decode.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 6
     },
     {
       "code_fences": 7,
@@ -51533,11 +51864,11 @@
     "source_paths": 222
   },
   "snippets": {
-    "code_fences": 1224,
+    "code_fences": 1234,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
-    "shell_commands": 814,
-    "static_or_guarded_commands": 747
+    "shell_commands": 820,
+    "static_or_guarded_commands": 753
   },
   "source": "gitbook",
   "source_claims": {
@@ -51547,64 +51878,64 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1000,
+    "claim_mentions": 1012,
     "command_execution_percent": 100.0,
-    "commands_classified": 814,
+    "commands_classified": 820,
     "commands_executed": 67,
     "commands_unexecuted": 0,
-    "endpoint_mentions": 1990,
+    "endpoint_mentions": 1991,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1177,
+    "links_checked": 1191,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 192,
+    "pages_checked": 194,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 748,
-    "snippets_checked": 1224,
+    "skips": 754,
+    "snippets_checked": 1234,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6205,
+    "source_items_inventoried": 6248,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1000,
-    "code_fences": 1224,
+    "claim_mentions": 1012,
+    "code_fences": 1234,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
-    "endpoint_mentions": 1990,
-    "environment_mutating_commands": 21,
+    "endpoint_mentions": 1991,
+    "environment_mutating_commands": 23,
     "executed_commands": 67,
-    "external_links": 4,
+    "external_links": 5,
     "external_or_mutating_commands": 268,
     "failures": 0,
     "fixes": 0,
-    "guarded_commands": 747,
-    "internal_links": 1154,
-    "links": 1177,
-    "pages": 192,
+    "guarded_commands": 753,
+    "internal_links": 1165,
+    "links": 1191,
+    "pages": 194,
     "product_claims": {
-      "algenta": 991,
+      "algenta": 1003,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 9
     },
-    "public_pages": 191,
-    "requires_environment_commands": 376,
+    "public_pages": 193,
+    "requires_environment_commands": 378,
     "runnable_commands": 67,
     "safe_static_commands": 67,
-    "shell_commands": 814,
-    "shell_syntax_validated_commands": 814,
+    "shell_commands": 820,
+    "shell_syntax_validated_commands": 820,
     "shell_syntax_validation_percent": 100.0,
-    "skips": 748,
+    "skips": 754,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6205,
-    "static_only_commands": 64,
-    "static_or_guarded_commands": 747,
+    "source_items_inventoried": 6248,
+    "static_only_commands": 66,
+    "static_or_guarded_commands": 753,
     "unexecuted_runnable_commands": 0,
     "unique_endpoint_operations": 409,
     "warnings": 0

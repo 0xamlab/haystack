@@ -3959,6 +3959,10 @@ from metaldispatch.contract import (
     metaldispatch_dispatch_budget as _metaldispatch_contract__metaldispatch_dispatch_budget,
 )
 
+from metaldispatch.qwen3_decode import (
+    qwen3_i8_allsimd7_decode_flat as _metaldispatch_qwen3_decode__qwen3_i8_allsimd7_decode_flat,
+)
+
 from metallurgy import (
     hall_petch as _metallurgy__hall_petch,
     johnson_cook_flow_stress as _metallurgy__johnson_cook_flow_stress,
@@ -8462,6 +8466,10 @@ from lossk.cross_entropy import (
     CeGrad,
     CeMemory,
     CeOut,
+)
+
+from metaldispatch.qwen3_decode import (
+    Qwen3DecodeResult,
 )
 
 from metrics_agg import (
@@ -17742,6 +17750,24 @@ fn _to_json_queuerun(value: QueueRun) raises -> String:
     result += _to_json_bool(value.little_law_consistent)
     result += ","
     result += _to_json_float64(value.little_law_gap)
+    result += "]}"
+    return result
+
+fn _to_json_qwen3decoderesult(value: Qwen3DecodeResult) raises -> String:
+    var result = String("{\"__algenta_struct\":\"Qwen3DecodeResult\",\"v\":[")
+    result += _to_json_int(value.status)
+    result += ","
+    result += _to_json_string(value.error_message)
+    result += ","
+    result += _to_json_list_int(value.token_ids)
+    result += ","
+    result += _to_json_int(value.n_prompt)
+    result += ","
+    result += _to_json_bool(value.stopped_on_eos)
+    result += ","
+    result += _to_json_int(value.dispatches_per_token)
+    result += ","
+    result += _to_json_float64(value.decode_tokens_per_sec)
     result += "]}"
     return result
 
@@ -85996,6 +86022,30 @@ fn _dispatch_metaldispatch__contract(function_name: String, args_array: String) 
         "Function '" + function_name + "' is not registered for module metaldispatch.contract."
     )
 
+fn _dispatch_metaldispatch__qwen3_decode(function_name: String, args_array: String) raises -> String:
+    var arg_count = json_array_len(args_array)
+    if function_name == "qwen3_i8_allsimd7_decode_flat":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _metaldispatch_qwen3_decode__qwen3_i8_allsimd7_decode_flat(arg_0, arg_1)
+                var result_json = _to_json_qwen3decoderesult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for metaldispatch.qwen3_decode.qwen3_i8_allsimd7_decode_flat."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function metaldispatch.qwen3_decode.qwen3_i8_allsimd7_decode_flat expected 2 arguments, received " + String(arg_count) + "."
+        )
+    return _error_json(
+        "function_not_registered",
+        "Function '" + function_name + "' is not registered for module metaldispatch.qwen3_decode."
+    )
+
 fn _dispatch_metallurgy(function_name: String, args_array: String) raises -> String:
     var arg_count = json_array_len(args_array)
     if function_name == "hall_petch":
@@ -153210,6 +153260,8 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_metabolomics(function_name, args_array)
     if module_name == "metaldispatch.contract":
         return _dispatch_metaldispatch__contract(function_name, args_array)
+    if module_name == "metaldispatch.qwen3_decode":
+        return _dispatch_metaldispatch__qwen3_decode(function_name, args_array)
     if module_name == "metallurgy":
         return _dispatch_metallurgy(function_name, args_array)
     if module_name == "meteorology":

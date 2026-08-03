@@ -93,6 +93,20 @@ Same defensive assertion `residentk.session.step` makes for its own dispatch cou
 comptime MB_ERR_CODE_OUT_OF_RANGE: Int = 630
 """Not one of the codes above. Returned by `metaldispatch_status_name` for an unrecognized code."""
 
+comptime MB_ERR_CHECKPOINT_UNREADABLE: Int = 631
+"""`metaldispatch.qwen3_decode`'s own addition (still inside this package's 620-639 range, per the
+per-package ledger rule): the caller-supplied checkpoint directory's `manifest.json` or
+`weights.blob` could not be read or did not parse as this package's own converted-checkpoint
+format. Distinguished from every 62x code above because nothing GPU-related was touched yet — this
+is a filesystem/format refusal, not a shim or device one."""
+
+comptime MB_ERR_UNSUPPORTED_ARCHITECTURE: Int = 632
+"""`metaldispatch.qwen3_decode`'s own addition: the checkpoint parsed fine, but its architecture
+(`hidden_size`/`num_hidden_layers`/`num_attention_heads`/`num_key_value_heads`/`head_dim`/
+`intermediate_size`/`vocab_size`) does not match the EXACT shape `_MBQwen3I8AllSimd7`'s compiled
+kernels were sized for (Qwen3-0.6B-Base). This is the "no silent fallback" gate for a
+shape-specialized kernel: refuse by name rather than run the wrong arithmetic on a different model."""
+
 
 fn metaldispatch_status_name(code: Int) -> String:
     """Human-readable name for a `metaldispatch` status code.
@@ -121,6 +135,10 @@ fn metaldispatch_status_name(code: Int) -> String:
         return "metaldispatch_dispatch_failed"
     if code == MB_ERR_DISPATCH_COUNT_MISMATCH:
         return "metaldispatch_dispatch_count_mismatch"
+    if code == MB_ERR_CHECKPOINT_UNREADABLE:
+        return "metaldispatch_checkpoint_unreadable"
+    if code == MB_ERR_UNSUPPORTED_ARCHITECTURE:
+        return "metaldispatch_unsupported_architecture"
     return "metaldispatch_code_out_of_range"
 
 

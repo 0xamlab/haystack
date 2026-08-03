@@ -22,6 +22,18 @@ MOJO_RUNTIME_MODULE_FILTER_RAW="${MOJO_RUNTIME_MODULE_FILTER:-}"
 # host CPU without it (Fly runs AMD EPYC: avx2/fma/bmi2, NO avx512). Set MOJO_BUILD_MCPU (e.g.
 # x86-64-v3) for a portable deploy binary; unset (local builds) keeps the fast native default.
 MOJO_BUILD_MCPU="${MOJO_BUILD_MCPU:-}"
+# Opt-IN Metal GPU build. Default OFF, on every platform, deliberately: `-D ALGENTA_GPU` is what
+# compiles accel/residentk/metaldispatch's Metal shaders in at all (see
+# docs/mojo/new-kernel-package-rules.md rule 3 and tests/test_accel_gpu_isolation.py), and a
+# Linux CI runner has no shader compiler at all -- the DEFAULT build of this script must keep
+# working there unchanged. Set MOJO_BUILD_METAL_GPU=1 to additionally pass `-D ALGENTA_GPU`,
+# compile the Objective-C batched-dispatch shim `metaldispatch.session`'s FFI layer calls into, and
+# link it plus the Metal/Foundation/IOKit frameworks -- producing a worker binary whose
+# `metaldispatch.qwen3_decode` (and `accel.gemm_metal`) entry points actually run their GPU kernels
+# instead of reporting `shader_toolchain_absent`. Darwin only: there is no Metal on Linux, so this
+# is refused rather than silently ignored there (see the platform check below).
+MOJO_BUILD_METAL_GPU="${MOJO_BUILD_METAL_GPU:-0}"
+METAL_SHIM_SOURCE_PATH="${METAL_SHIM_SOURCE_PATH:-${REPO_ROOT}/benchmarks/llm_smoke/metal_batch_dispatch/batch_shim.m}"
 
 PIXI_HOME_EXPLICIT=0
 if [[ -n "${PIXI_HOME:-}" ]]; then
@@ -130,6 +142,23 @@ if [[ -z "${CLANG_BIN}" || ! -x "${CLANG_BIN}" ]]; then
     exit 1
 fi
 
+METAL_GPU_BUILD=0
+case "${MOJO_BUILD_METAL_GPU}" in
+    1 | true | TRUE | yes | YES) METAL_GPU_BUILD=1 ;;
+esac
+if [[ "${METAL_GPU_BUILD}" == "1" && "$(uname -s)" != "Darwin" ]]; then
+    # Refused, not silently downgraded to a non-GPU build: a caller who set this expects a binary
+    # that runs Metal kernels, and Linux has no Metal at all -- reporting that loudly here is cheaper
+    # than a build that "succeeds" and then answers shader_toolchain_absent forever on every host.
+    echo "MOJO_BUILD_METAL_GPU=1 requested on $(uname -s); Metal is Darwin-only. Unset it for a" \
+        "portable build, or build on a Mac." >&2
+    exit 1
+fi
+if [[ "${METAL_GPU_BUILD}" == "1" && ! -f "${METAL_SHIM_SOURCE_PATH}" ]]; then
+    echo "METAL_SHIM_SOURCE_PATH not found: ${METAL_SHIM_SOURCE_PATH}" >&2
+    exit 1
+fi
+
 SDKROOT_PATH="${SDKROOT:-}"
 if [[ -z "${SDKROOT_PATH}" ]]; then
     SDKROOT_PATH="$(xcrun --show-sdk-path 2>/dev/null || true)"
@@ -142,6 +171,17 @@ mkdir -p \
     "$(dirname "${TEMP_BINARY_PATH}")" \
     "$(dirname "${DISPATCH_OUTPUT_PATH}")"
 rm -f "${TEMP_OBJECT_PATH}" "${TEMP_BINARY_PATH}"
+
+METAL_SHIM_OBJECT_PATH="${BUILD_DIR}/metal_batch_shim.o"
+if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
+    if [[ -z "${SDKROOT_PATH}" || ! -d "${SDKROOT_PATH}" ]]; then
+        echo "macOS SDK not found; cannot compile the Metal batch-dispatch shim" >&2
+        exit 1
+    fi
+    echo "[build_mojo_binary] Metal GPU build: compiling ${METAL_SHIM_SOURCE_PATH}" >&2
+    "${CLANG_BIN}" -c -fobjc-arc -O2 -isysroot "${SDKROOT_PATH}" \
+        "${METAL_SHIM_SOURCE_PATH}" -o "${METAL_SHIM_OBJECT_PATH}"
+fi
 
 # A module-FILTERED build must not write its dispatch over the tracked artifact. Left alone, the
 # lines below hand the generator `--output <tracked> --modules <subset>`, which replaces the whole
@@ -182,6 +222,9 @@ if [[ -n "${MOJO_BUILD_MCPU}" ]]; then
     MOJO_TARGET_ARGS+=(--mcpu "${MOJO_BUILD_MCPU}")
     echo "[build_mojo_binary] target CPU: ${MOJO_BUILD_MCPU} (portable; not host-native)" >&2
 fi
+if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
+    MOJO_TARGET_ARGS+=(-D ALGENTA_GPU)
+fi
 (
     cd "${PIXI_ENV_DIR}"
     "${PIXI_BIN_RESOLVED}" run mojo build \
@@ -205,6 +248,13 @@ case "$(uname -s)" in
             echo "Python runtime library not found at ${PYTHON_RUNTIME_LIB}" >&2
             exit 1
         fi
+        DARWIN_METAL_LINK_ARGS=()
+        if [[ "${METAL_GPU_BUILD}" == "1" ]]; then
+            DARWIN_METAL_LINK_ARGS+=(
+                "${METAL_SHIM_OBJECT_PATH}"
+                -framework Metal -framework Foundation -framework IOKit
+            )
+        fi
         "${CLANG_BIN}" "${TEMP_OBJECT_PATH}" -o "${TEMP_BINARY_PATH}" \
             -isysroot "${SDKROOT_PATH}" \
             -L "${LIB_DIR}" \
@@ -216,7 +266,8 @@ case "$(uname -s)" in
             -lAsyncRTMojoBindings \
             -lMSupportGlobals \
             "${PYTHON_RUNTIME_LIB}" \
-            -lc++
+            -lc++ \
+            "${DARWIN_METAL_LINK_ARGS[@]+"${DARWIN_METAL_LINK_ARGS[@]}"}"
         ;;
     Linux)
         PYTHON_RUNTIME_LIB="$(find "${LIB_DIR}" -maxdepth 1 -name "lib${PYTHON_RUNTIME_STEM}.so*" | sort | head -n 1)"
