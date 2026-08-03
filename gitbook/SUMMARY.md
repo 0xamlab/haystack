@@ -81,6 +81,7 @@
 ## Guides
 
 * [Make your first query](guides/first-query.md)
+* [Group data locally with Query.group_by()](guides/local-query-groupby.md)
 * [Run a decision](guides/run-a-decision.md)
 * [Drive a governed decision](guides/governed-decisions.md)
 * [Renewal Capacity Allocation pack](guides/renewal-capacity-allocation.md)

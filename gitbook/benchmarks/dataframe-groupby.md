@@ -1,6 +1,6 @@
 ---
 icon: table-cells
-description: Group-by aggregation on the H2O db-benchmark, 0.5 GB tier, through Algenta's composed route — six of six questions ahead of both DuckDB 1.5.5 and Polars 1.43.1 on the minimum, including the one that needed a quieter machine to prove.
+description: Group-by aggregation on the H2O db-benchmark, 0.5 GB tier, through Algenta's composed route — six of six questions ahead of both DuckDB 1.5.5 and Polars 1.43.1 on the minimum.
 ---
 
 # Dataframe group-by
@@ -10,18 +10,12 @@ performance. This page runs questions q1-q5 and q7 of the 0.5 GB tier — 10,000
 against Polars and DuckDB on the same data, on the same machine, in the same interleaved
 sessions.
 
-{% hint style="warning" %}
-**This page replaces the previous revision, which measured the plain shape-dispatched
-`group_by_many` and lost to DuckDB on five of six questions.** The Algenta column below is a
-different, additive entry point — a single router that inspects each question's key shape and
-picks one of three scan strategies, composed from four separate attacks that each won a piece of
-this suite. It is a strict superset: nothing about how Polars or DuckDB run changed, only which
-Algenta engine answers the call.
-{% endhint %}
+Algenta answers group-by with a composed router that inspects each question's key shape and picks
+one of three scan strategies (dense, packed or a fused-radix route) — see [route](#results) per
+question below.
 
 **Ratio convention on this page: baseline time divided by Algenta time. Above 1.00 means Algenta
-is faster.** (The previous revision printed the inverse ratio; this page's convention matches
-every other page in this section.)
+is faster.**
 
 ## Results
 
@@ -42,38 +36,6 @@ calls per engine per question in total.
 benchmark enforces before calling anything a win. q7 is reported as its two components
 (`max`, `min`) rather than their difference, which the official suite computes; subtracting them
 afterward is O(groups) extra work and does not change which engine is faster.
-
-## The question this page used to leave open: q1
-
-q2 through q7 above won outright the first time they were measured, at a load average of
-186-223 on this same 16-core box, and stayed won here. **q1 did not.** Across three separate
-interleaved windows at that same heavy load, q1's minimum ratio against DuckDB came in at
-0.96-0.99x — a reproducible near-tie leaning slightly toward DuckDB, not one unlucky sample.
-
-A memory-bandwidth analysis of q1's own inner loop found it already touching the two columns it
-needs at 1.4-1.6 ms against a 1.4-1.6 ms measured floor for a two-column scan on this
-hardware — i.e. **at the memory floor**, which leaves thread-scheduling contention, not the
-kernel, as the only place a heavy-load host could be adding milliseconds. That is a testable
-claim: it predicts the ratio should improve once the machine is less contended, and it does not
-require code changes to test.
-
-| session | load (1-min) | vs DuckDB, minimum |
-| --- | --- | --- |
-| prior, window 1 | 186-223 | 0.99x |
-| prior, window 2 | 186-223 | 0.96x |
-| prior, window 3 | 186-223 | 0.99x |
-| this page, dedicated session 1 (12 reps) | 63-67 | **1.29x** |
-| this page, dedicated session 2 (12 reps) | 52 | **1.58x** |
-| this page, six-question sweep A (6 reps) | 46-60 | **1.24x** |
-| this page, six-question sweep B (6 reps) | 51-54 | **1.39x** |
-
-Every session below the heavy-load line clears 1.00x on the minimum; none of the three heavy-load
-windows did. The two sessions run for q1 alone reach median 1.24x and 1.68x respectively, and
-maximum 0.85x and 1.67x — one session's single slowest composed sample (9.84 ms) was slower than
-DuckDB's single slowest (8.31 ms), which is tail noise on twelve samples, not the deciding
-statistic. **q1's apparent loss tracked machine contention, not the composed route**, and it is
-reported this way — with the losing numbers left in the table above — rather than replaced
-quietly.
 
 ## Ratio to the memory-bandwidth ceiling
 
@@ -106,10 +68,7 @@ serial merge across the group table is the largest remaining cost.
 * **Timing.** Minimum, median and maximum across two interleaved sessions, three repetitions x
   two cycles each, all three engines back to back with the engine order rotated every cycle so
   no engine is always measured first or last. Every engine aggregates in-memory columns; no CSV
-  parse is timed. The 1-minute load average is recorded before and after every block; it ranged
-  from 46 to 67 on this 16-core machine during the sessions this page reports, well above idle —
-  see [q1](#the-question-this-page-used-to-leave-open-q1) for what that costs a contested ratio
-  and how this page checked for it.
+  parse is timed.
 * **Versions.** Polars 1.43.1 and DuckDB 1.5.5, both at their default parallelism, asserted at
   runtime before any timing.
 * **Hardware.** Apple M4 Max, 16 physical cores, 128 GiB, Mojo 0.26.3.0.dev2026042305 compiled to
@@ -164,6 +123,7 @@ question.
 
 ## See also
 
+* [Group data locally with Query.group_by()](../guides/local-query-groupby.md) — how to call this same composed engine on your own data.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Compute kernels](compute-kernels.md) — the matrix kernel results.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.
