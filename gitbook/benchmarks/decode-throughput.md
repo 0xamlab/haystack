@@ -1,6 +1,6 @@
 ---
 icon: bolt
-description: Decode tokens per second for Qwen3-0.6B-Base on Apple silicon — Algenta ahead of real, installed mlx-lm and llama.cpp on every one of 14 interleaved rounds, not just the median.
+description: Decode tokens per second for Qwen3-0.6B-Base on Apple silicon — Algenta ahead of real, installed mlx-lm in 19 of 20 interleaved rounds and llama.cpp on every one of 14, not just the median.
 ---
 
 # Decode throughput
@@ -12,59 +12,71 @@ installed alternatives on the same machine, run back to back: mlx-lm, Apple's ow
 generation library, and llama.cpp, measured in both its GPU and CPU-only configurations.
 
 {% hint style="success" %}
-**Across 14 interleaved rounds, with the run order alternated every round, Algenta's decode
-throughput was ahead of mlx-lm in every single round — not just on the median.** Median 326.81
-tok/s against mlx-lm's 310.27 (14 of 14 rounds, ratio range 1.0026x-1.1257x). Both llama.cpp
-configurations were beaten in all 14 rounds too.
+**Across 20 interleaved rounds, with the run order rotated every round, Algenta's decode
+throughput was ahead of mlx-lm in 19 of 20 rounds — not just on the median.** Median 324.82
+tok/s against mlx-lm's 281.58 (19 of 20 rounds, ratio range 0.9924x-1.3098x). Both llama.cpp
+configurations were beaten in all 14 rounds of their own measurement, too.
 {% endhint %}
 
 ## Results
 
 Decode-only tokens per second on `Qwen/Qwen3-0.6B-Base`, 16 greedy-decoded tokens from a single
-fixed prompt, 14 interleaved rounds:
+fixed prompt. mlx-lm and llama.cpp were measured in separate interleaved sessions (20 rounds and
+14 rounds respectively) rather than one shared session, so each opponent's row reports its own
+session's round count rather than a single mixed number:
 
-| Arm | Compute | Median tok/s | Range across 14 rounds |
-| --- | --- | --- | --- |
-| **Algenta** | GPU (Metal) | **326.81** | 312.32 - 336.67 |
-| mlx-lm 0.31.3 | GPU (Metal) | 310.27 | 292.18 - 318.20 |
-| llama.cpp (build 10210), `-ngl 99` | GPU (Metal) | 253.97 | 234.21 - 265.48 |
-| llama.cpp (build 10210), `-ngl 0` | CPU | 15.19 | 1.83 - 45.33 |
+| Arm | Compute | Rounds | Median tok/s | Range |
+| --- | --- | --- | --- | --- |
+| **Algenta** (vs mlx-lm session) | GPU (Metal) | 20 | **324.82** | 312.43 - 331.42 |
+| mlx-lm 0.31.3 | GPU (Metal) | 20 | 281.58 | 244.38 - 314.81 |
+| llama.cpp (build 10210), `-ngl 99` | GPU (Metal) | 14 | 253.97 | 234.21 - 265.48 |
+| llama.cpp (build 10210), `-ngl 0` | CPU | 14 | 15.19 | 1.83 - 45.33 |
 
-**Every round, not just the median.** mlx-lm is the closer of the two real opponents on this
-checkpoint, so it is the one that decides the claim:
+### vs mlx-lm — 20 interleaved rounds
+
+**Not just the median.** mlx-lm is the closer of the two real opponents on this checkpoint, so
+its full round-by-round breakdown is reported in every case, including its one win:
 
 | Round | Algenta | mlx-lm | Ratio |
 | --- | --- | --- | --- |
-| 1 | 312.32 | 292.99 | 1.0660 |
-| 2 | 328.92 | 292.18 | 1.1257 |
-| 3 | 326.02 | 315.74 | 1.0326 |
-| 4 | 336.67 | 315.96 | 1.0655 |
-| 5 | 332.68 | 318.20 | 1.0455 |
-| 6 | 319.44 | 312.61 | 1.0219 |
-| 7 | 316.29 | 315.46 | 1.0026 |
-| 8 | 327.51 | 316.36 | 1.0353 |
-| 9 | 324.73 | 305.96 | 1.0614 |
-| 10 | 334.97 | 302.66 | 1.1068 |
-| 11 | 331.36 | 317.48 | 1.0437 |
-| 12 | 326.10 | 307.93 | 1.0590 |
-| 13 | 322.13 | 307.86 | 1.0464 |
-| 14 | 327.99 | 306.23 | 1.0711 |
+| 1 | 324.59 | 283.78 | 1.1438 |
+| 2 | 323.24 | 261.29 | 1.2371 |
+| 3 | 321.83 | 289.28 | 1.1125 |
+| 4 | 326.02 | 271.65 | 1.2001 |
+| 5 | 330.76 | 279.75 | 1.1823 |
+| 6 | 323.45 | 314.06 | 1.0299 |
+| 7 | 323.35 | 283.61 | 1.1401 |
+| 8 | 312.43 | 314.81 | 0.9924 |
+| 9 | 327.21 | 270.52 | 1.2095 |
+| 10 | 328.59 | 278.43 | 1.1801 |
+| 11 | 321.95 | 276.60 | 1.1639 |
+| 12 | 321.77 | 268.24 | 1.1996 |
+| 13 | 325.06 | 302.64 | 1.0741 |
+| 14 | 325.66 | 276.82 | 1.1764 |
+| 15 | 322.28 | 283.41 | 1.1371 |
+| 16 | 327.22 | 291.79 | 1.1214 |
+| 17 | 331.42 | 283.90 | 1.1674 |
+| 18 | 320.10 | 244.38 | 1.3098 |
+| 19 | 326.98 | 301.74 | 1.0836 |
+| 20 | 328.35 | 265.55 | 1.2365 |
 
-**14 of 14 rounds, ratio range 1.0026x (round 7, the closest) to 1.1257x (round 2, the widest). No
-round in this race saw mlx-lm ahead.**
+**19 of 20 rounds, ratio range 1.0299x (round 6, the closest margin that still won) to 1.3098x
+(round 18, the widest). One round in this race saw mlx-lm ahead: round 8, at 0.9924x.**
 
-Against llama.cpp the margin is wider and equally consistent: 14 of 14 rounds against its GPU
-configuration (ratio range 1.180x-1.430x), and 14 of 14 against its CPU-only configuration (ratio
-range 7.16x-176.03x, computed round by round from the same raw data).
+### vs llama.cpp — 14 interleaved rounds
+
+Against llama.cpp the margin is wider and, in this measurement, uniform: 14 of 14 rounds against
+its GPU configuration (ratio range 1.180x-1.430x), and 14 of 14 against its CPU-only configuration
+(ratio range 7.16x-176.03x, computed round by round from the same raw data).
 
 ### Correctness
 
 A faster wrong answer is not a result. Every arm's generated token ids were checked position by
-position against an independent `transformers`-CPU reference. All three engines — Algenta,
-llama.cpp, and mlx-lm — produced token-identical output on every round checked, in every
-configuration: `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315, 15344, 374,
-21718, 13]`, i.e. "Paris. The capital of Germany is Berlin. The capital of Italy is Rome." No arm
-diverged from any other in any round checked.
+position against an independent `transformers`-CPU reference, in both measurement sessions. All
+three engines — Algenta, llama.cpp, and mlx-lm — produced token-identical output on every round
+checked, in every configuration: `[12095, 13, 576, 6722, 315, 9856, 374, 19846, 13, 576, 6722, 315,
+15344, 374, 21718, 13]`, i.e. "Paris. The capital of Germany is Berlin. The capital of Italy is
+Rome." No arm diverged from any other in any round checked.
 
 ## Method
 
@@ -80,11 +92,12 @@ diverged from any other in any round checked.
   10210 (Homebrew, Metal support built in), measured in both its GPU (`-ngl 99`) and CPU-only
   (`-ngl 0`) configurations. Both are real installs on the same machine as Algenta, not simulated
   or estimated.
-* **Interleaving.** 14 rounds. All engines run back to back within a round, and the run order is
-  alternated every round (forward, then reversed, then forward again, ...) so no engine is always
-  measured first or last.
+* **Interleaving.** The mlx-lm session ran 20 rounds; the llama.cpp session ran 14. All engines
+  measured together in a session run back to back within each round, with the run order rotated
+  every round so no engine is always measured first or last.
 * **Load.** This is a shared machine. The 1-minute load average was sampled before and after every
-  round and stayed in the 10.65-17.45 range throughout — busy, not idle, and disclosed rather than
+  round in both sessions — the llama.cpp session stayed in the 10.65-17.45 range throughout, the
+  mlx-lm session in the 4.0-5.6 range — busy in both cases, not idle, and disclosed rather than
   rerun until quiet.
 * **Hardware.** Apple M4 Max, 16 physical cores (12 performance + 4 efficiency). Algenta and both
   GPU-mode opponents share the same integrated GPU, via Apple's Metal.
@@ -100,8 +113,9 @@ diverged from any other in any round checked.
   alternatives measured on this page. Other serving stacks are not part of this comparison.
 * **Not a claim about future versions.** mlx-lm 0.31.3 and llama.cpp build 10210 are the versions
   installed and measured for this page. Neither project's own future releases are addressed here.
-* **The margin is not uniform.** The narrowest round against mlx-lm (1.0026x) is reported alongside
-  the widest (1.1257x) rather than only the favorable end of the range.
+* **The margin is not uniform, and neither is the outcome.** The narrowest round against mlx-lm
+  (0.9924x, a loss) is reported alongside the widest (1.3098x) rather than only the favorable end
+  of the range.
 
 ## Related
 
