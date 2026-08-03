@@ -220,6 +220,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_residentk_sdpa_simd_kernel.mojo",
         "test_residentk_attn_splitk_kernel.mojo",
         "test_residentk_attn_splitk_native_kernel.mojo",
+        "test_residentk_splitk_policy.mojo",
         "test_residentk_gemv_simd_kernel.mojo",
         "test_residentk_lmhead_simd_kernel.mojo",
         "test_residentk_argmax_reduce_simd_kernel.mojo",

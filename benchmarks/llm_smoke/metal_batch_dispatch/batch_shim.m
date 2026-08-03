@@ -37,6 +37,7 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <dispatch/dispatch.h>
+#import <IOKit/IOKitLib.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
 #include <stdint.h>
@@ -148,6 +149,58 @@ int64_t algenta_open_session(void) {
 
 int64_t algenta_pipeline_count(void) {
     return g_pipeline_count;
+}
+
+/* GPU core count, read from the IOKit registry -- the ONE property that answers this question on
+ * Apple Silicon at all, since `MTLDevice`'s own public API has none (confirmed by direct inspection
+ * of this SDK's `MTLDevice` protocol before writing this function: no `coreCount`, no equivalent, on
+ * this toolchain). Every Apple GPU accelerator instance registers an `IOService` named
+ * "AGXAccelerator" (the same class `Metal.framework` itself talks to under the hood) carrying an
+ * integer property "gpu-core-count" -- verified against this machine's own `system_profiler
+ * SPDisplaysDataType` ("Total Number of Cores: 40") returning the identical value, 40, via this exact
+ * lookup, so this is reading the same fact `system_profiler` reports, not a different one that
+ * happens to agree here.
+ *
+ * Deliberately independent of `g_device`/`algenta_open_session` -- a caller may want the core count
+ * before opening a dispatch session (to size split-K scratch buffers at construction time), so this
+ * walks the IOKit registry directly rather than asking the already-open `MTLDevice` for anything.
+ *
+ * Returns the core count (> 0) on success, or -1 if no matching IOService was found, the property
+ * was absent, or the property was present but not the integer type expected -- a typed failure, not
+ * a guess, matching this codebase's own `accel.device` convention (report "could not determine",
+ * let the CALLER decide the fallback, never silently invent a number here). */
+int64_t algenta_gpu_core_count(void) {
+    @autoreleasepool {
+        CFMutableDictionaryRef matching = IOServiceMatching("AGXAccelerator");
+        if (!matching) {
+            return -1;
+        }
+        io_iterator_t iter = IO_OBJECT_NULL;
+        kern_return_t kr = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter);
+        if (kr != KERN_SUCCESS) {
+            return -1;
+        }
+        int64_t result = -1;
+        io_service_t service;
+        while ((service = IOIteratorNext(iter))) {
+            if (result < 0) {
+                CFTypeRef prop = IORegistryEntryCreateCFProperty(
+                    service, CFSTR("gpu-core-count"), kCFAllocatorDefault, 0);
+                if (prop) {
+                    if (CFGetTypeID(prop) == CFNumberGetTypeID()) {
+                        int64_t val = 0;
+                        if (CFNumberGetValue((CFNumberRef)prop, kCFNumberSInt64Type, &val) && val > 0) {
+                            result = val;
+                        }
+                    }
+                    CFRelease(prop);
+                }
+            }
+            IOObjectRelease(service);
+        }
+        IOObjectRelease(iter);
+        return result;
+    }
 }
 
 /* Copies pipeline `idx`'s Metal function name (as resolved from the loaded MTLLibrary -- the exact

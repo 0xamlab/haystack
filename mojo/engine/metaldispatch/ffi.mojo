@@ -1,6 +1,7 @@
 """
-metaldispatch.ffi — thin, typed wrappers around `batch_shim.m`'s four exported C functions. Zero
-Python, zero kernel logic (every wrapper here is a one-line `external_call`).
+metaldispatch.ffi — thin, typed wrappers around `batch_shim.m`'s exported C functions (five as of
+`_mb_gpu_core_count`). Zero Python, zero kernel logic (every wrapper here is a one-line
+`external_call`).
 
 @capability-module
 deterministic: true
@@ -74,6 +75,15 @@ fn _mb_open_session() -> Int:
 
 fn _mb_pipeline_count() -> Int:
     return Int(external_call["algenta_pipeline_count", Int64]())
+
+
+fn _mb_gpu_core_count() -> Int:
+    """Calls `algenta_gpu_core_count` (IOKit `AGXAccelerator`/`gpu-core-count` registry read — see
+    that C function's own docstring). Returns the core count (> 0), or -1 if the probe could not
+    determine one on this host. `residentk.contract.residentk_splitk_policy` documents the fallback
+    a caller should apply on a negative result; this wrapper itself never substitutes one, matching
+    every other typed-failure wrapper in this file (`_mb_pipeline_name`, `_mb_alloc_buffer`)."""
+    return Int(external_call["algenta_gpu_core_count", Int64]())
 
 
 fn _mb_pipeline_name(idx: Int, mut out: String) -> Int:

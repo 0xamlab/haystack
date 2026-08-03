@@ -5840,6 +5840,9 @@ from residentk.contract import (
     residentk_dispatch_budget as _residentk_contract__residentk_dispatch_budget,
     residentk_weight_elems as _residentk_contract__residentk_weight_elems,
     residentk_scalars_ok as _residentk_contract__residentk_scalars_ok,
+    residentk_splitk_should_split as _residentk_contract__residentk_splitk_should_split,
+    residentk_splitk_max_n_splits as _residentk_contract__residentk_splitk_max_n_splits,
+    residentk_splitk_policy as _residentk_contract__residentk_splitk_policy,
 )
 
 from residentk.probe import (
@@ -117876,6 +117879,57 @@ fn _dispatch_residentk__contract(function_name: String, args_array: String) rais
         return _error_json(
             "invalid_arguments",
             "Function residentk.contract.residentk_scalars_ok expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_splitk_should_split":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var result = _residentk_contract__residentk_splitk_should_split(arg_0)
+                var result_json = _to_json_bool(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_splitk_should_split."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_splitk_should_split expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_splitk_max_n_splits":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _residentk_contract__residentk_splitk_max_n_splits(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_splitk_max_n_splits."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_splitk_max_n_splits expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "residentk_splitk_policy":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_int_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _residentk_contract__residentk_splitk_policy(arg_0, arg_1, arg_2)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for residentk.contract.residentk_splitk_policy."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function residentk.contract.residentk_splitk_policy expected 3 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",

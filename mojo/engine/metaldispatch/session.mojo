@@ -85,7 +85,12 @@ from std.builtin.type_aliases import MutAnyOrigin
 from std.gpu import WARP_SIZE
 from std.math import abs
 from std.sys import has_accelerator
-from residentk.contract import RESIDENT_MAX_CONTEXT
+from residentk.contract import (
+    RESIDENT_MAX_CONTEXT,
+    residentk_splitk_should_split,
+    residentk_splitk_policy,
+    residentk_splitk_max_n_splits,
+)
 from residentk.kernels import (
     _TG,
     _SUBS,
@@ -137,6 +142,7 @@ from metaldispatch.contract import (
 from metaldispatch.ffi import (
     _mb_alloc_buffer,
     _mb_alloc_descriptors,
+    _mb_gpu_core_count,
     _mb_open_session,
     _mb_pipeline_count,
     _mb_pipeline_name,
@@ -7173,6 +7179,879 @@ struct _MBQwen3I8AllSimd6(Movable):
                     # arg index 6, not 4: `_splitk_partial_kernel_simd_native`'s own signature puts
                     # `n_keys` after the THREE partial-output pointers plus `q_rot`/`ck`/`cv` (6
                     # pointer args before it), where `_sdpa_kernel_simd`'s puts it after 4.
+                    _mb_set_arg_int(self.descriptors_deep, self.nkeys_offsets_deep[layer], 6, n_keys)
+
+                var rc = _mb_run_token(self.descriptors_deep, self.n_descriptors_deep)
+                if rc != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors_deep, MB_ERR_DISPATCH_FAILED)
+
+            var tok = Int(self.out_idx_ptr.bitcast[Int32]()[0])
+            var lg = Float64(self.out_val_ptr.bitcast[Float32]()[0])
+            if tok < 0 or tok >= self.vocab:
+                return _StepOut(-1, 0.0, dispatches_used, MB_ERR_DISPATCH_FAILED)
+            return _StepOut(tok, lg, dispatches_used, MB_OK)
+
+
+struct _MBQwen3I8AllSimd7(Movable):
+    """The GENUINELY DYNAMIC, PER-STEP split-K twin of `_MBQwen3I8AllSimd6` — byte-identical shallow
+    path, byte-identical `_splitk_partial_kernel_simd_native`/`_splitk_merge_kernel_simd` deep
+    dispatch pair, byte-identical descriptor PLAN, but replaces BOTH of `_MBQwen3I8AllSimd6`'s fixed
+    constants (`_ATTN_SPLITK_THRESHOLD = 512`, `_ATTN_SPLITK_N_SPLITS_NATIVE = 80`) with the calibrated
+    formula in `residentk.contract` (`residentk_splitk_should_split`/`residentk_splitk_policy`/
+    `residentk_splitk_max_n_splits` — see that module's own docstring for the full calibration and
+    independent-re-verification account before trusting either number below).
+
+    WHY A FIXED CONSTANT WAS NEVER GOING TO BE ENOUGH, restated from the calibration record: PR #523
+    tuned `_ATTN_SPLITK_N_SPLITS_NATIVE = 80` at ONE depth (`n_keys=4000`) and measured a real
+    ~11-12% narrowing of the gap THERE, but the AGGREGATE effect across a full generation barely
+    moved, because a real decode's `n_keys` sweeps from 1 up to whatever context length the run
+    reaches, passing through the untouched 256-511 "dead zone" and every shallow depth below it on
+    the way — a single depth's own optimum does not generalize across that whole range. This struct
+    computes the split count FRESH, from THIS step's own `n_keys` and THIS session's own detected GPU
+    core count, exactly the same shape llama.cpp's own `nwg` formula takes (`nwg=32; nsg=1; while
+    (2*nwg*nsg*32 < n_keys && nsg<4) nsg*=2` — a formula evaluated per dispatch, not a table entry).
+
+    TWO THINGS ARE NOW DYNAMIC, NOT ONE:
+      1. `n_cores` — queried ONCE, at session-open, via `metaldispatch.ffi._mb_gpu_core_count` (a new,
+         additive IOKit `AGXAccelerator`/`gpu-core-count` registry probe in `batch_shim.m` — neither
+         `accel.device`'s existing probe nor `MTLDevice`'s own public API expose a core count on this
+         toolchain, confirmed by direct inspection before adding a new one). Stored as `self.n_cores`,
+         whatever the probe returns (including a failure sentinel `<= 0`) — every place that reads it
+         is a `residentk.contract` function that ALREADY applies the documented fallback
+         (`RESIDENT_SPLITK_FALLBACK_N_CORES = 40`, chosen specifically because it reproduces PR #523's
+         own `_ATTN_SPLITK_N_SPLITS_NATIVE = 80` exactly), so this struct never duplicates that
+         fallback logic itself.
+      2. `n_splits` — recomputed from `residentk_splitk_policy(n_keys, self.n_cores, self.h_q)` on
+         EVERY deep-branch `step()` call, but only actually RE-PATCHED into the descriptor table
+         (`_apply_n_splits`, below) when it differs from the previous step's value
+         (`self.deep_last_n_splits`) — cheap either way (pure host arithmetic plus, at most, `7 *
+         n_layers` small pointer writes, no device call), but skipping the write entirely on the
+         (common, since the formula is a coarse log2 step, not a value that changes every single
+         token) steps where the depth bucket has not changed yet is strictly cheaper and still
+         correct, matching this task's own "once per step, or once when n_keys crosses into a new
+         regime, whichever is cheaper" guidance.
+
+    BUFFER SIZING, decided ONCE, matching PR #521's own lazy-init discipline: `self.n_splits_max =
+    residentk_splitk_max_n_splits(self.n_cores, self.h_q)` — the ceiling `residentk_splitk_policy`
+    could EVER return for this session's own `(n_cores, h_q)` — computed once in `__init__` (pure
+    arithmetic, no allocation yet) and used by `_ensure_deep_initialized` to size `m_partial`/
+    `l_partial`/`o_partial` ONCE, lazily, the first time `step()` actually calls it — exactly
+    `_MBQwen3I8AllSimd6`'s own account of why those three allocations are deferred, just sized from a
+    runtime-computed ceiling instead of the comptime `_ATTN_SPLITK_N_SPLITS_NATIVE`. Every subsequent
+    `_apply_n_splits` call only ever NARROWS the grid width and the two kernels' `n_splits` value
+    arguments to some `new_n_splits <= self.n_splits_max` (`residentk_splitk_policy`'s own ceiling
+    clamp guarantees this), so a smaller step never touches memory past what the buffers were sized
+    for at construction — the identical safety argument `_MBQwen3I8SplitKSweep.set_n_splits`'s own
+    docstring makes for the calibration sweep tool this struct's `_apply_n_splits` is modeled on.
+
+    RETIRES THE FIXED THRESHOLD TOO: `_ATTN_SPLITK_THRESHOLD = 512` is never read here.
+    `residentk_splitk_should_split` gates at `n_keys = 32` instead — the calibration record's own
+    dead-zone extension (and this task's own independent re-verification of it) found the native
+    kernel a real, growing win from `n_keys = 32` onward (a measured ~1.4x at 32, ~1.8-2.8x at
+    64-256), not merely "no longer a loss" — so the old, much higher gate was leaving a real win on
+    the table across that whole range, not just at the one depth PR #523 tuned for.
+
+    CORRECTNESS IS UNCHANGED FROM `_MBQwen3I8AllSimd6`: this struct dispatches the SAME two kernels
+    (`_splitk_partial_kernel_simd_native`, `_splitk_merge_kernel_simd`, both byte-unmodified, both
+    proven correct for ANY `n_splits` including `n_splits > n_keys` — see that kernel's own
+    docstring) through the SAME descriptor plan; only WHICH `n_splits` value and WHICH GPU core count
+    feed that plan's arithmetic are now runtime-computed instead of comptime constants. See this
+    task's own staged-correctness account (isolated probe, shallow 16-token regression, deep teacher-
+    forced spot-check, full generation match) for the verification this claim rests on before any
+    speed comparison was trusted.
+
+    Same additive, one-struct-per-experiment discipline every sibling in this file follows:
+    `_MBQwen3I8AllSimd6` (this struct's immediate predecessor) is byte-unmodified by this addition,
+    and so is every kernel in `residentk.kernels`.
+    """
+
+    var d_model: Int
+    var h_q: Int
+    var h_kv: Int
+    var d_head: Int
+    var d_ff: Int
+    var n_layers: Int
+    var vocab: Int
+    var max_ctx: Int
+    var eps: Float32
+    var scale: Float32
+
+    var pipeline_idx: List[Int]
+
+    var layers: List[_MBLayerBufI8]
+    var embed_addr: UInt64
+    var embed_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var embed_scale_addr: UInt64
+    var embed_scale_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var final_norm_addr: UInt64
+    var final_norm_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var cos_addr: UInt64
+    var cos_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var sin_addr: UInt64
+    var sin_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var hidden_addr: UInt64
+    var hidden_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var qkv_addr: UInt64
+    var qkv_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var q_rot_addr: UInt64
+    var q_rot_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var attn_out_addr: UInt64
+    var attn_out_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var act_addr: UInt64
+    var act_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_val_addr: UInt64
+    var blk_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var blk_idx_addr: UInt64
+    var blk_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_val_addr: UInt64
+    var out_val_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var out_idx_addr: UInt64
+    var out_idx_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+
+    var descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors: Int
+    var token_id_offset: Int
+    var pos_offsets: List[Int]
+    var nkeys_offsets: List[Int]
+
+    var pipeline_idx_split: Int
+    var pipeline_idx_merge: Int
+    var n_cores: Int
+    """Detected GPU core count, queried ONCE via `_mb_gpu_core_count()` in `__init__` — see the
+    struct docstring. May be `<= 0` (probe failed); every reader is a `residentk.contract` function
+    that already applies the documented fallback, so this field is stored exactly as the probe
+    returned it, never pre-corrected here."""
+    var n_splits_max: Int
+    """`residentk_splitk_max_n_splits(self.n_cores, self.h_q)` — the ceiling the three scratch
+    buffers below are sized for. Computed once in `__init__`; never recomputed after, since `n_cores`
+    and `h_q` are themselves fixed for this session's whole life."""
+    var deep_last_n_splits: Int
+    """The `n_splits` value currently patched into `self.descriptors_deep` (or -1 before the first
+    deep-branch call) — lets `step()` skip `_apply_n_splits` entirely on a step whose policy-computed
+    `n_splits` has not changed from the previous deep step's, per the struct docstring's account of
+    why that is cheaper and still correct."""
+    var m_partial_addr: UInt64
+    var m_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var l_partial_addr: UInt64
+    var l_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var o_partial_addr: UInt64
+    var o_partial_ptr: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var descriptors_deep: UnsafePointer[UInt8, origin=MutAnyOrigin]
+    var n_descriptors_deep: Int
+    var token_id_offset_deep: Int
+    var pos_offsets_deep: List[Int]
+    var nkeys_offsets_deep: List[Int]
+    var deep_ready: Bool
+    """See `_MBQwen3I8AllSimd6`'s own field docstring for the full account of the lazy, two-table
+    discipline these fields (from `descriptors_deep` onward) implement — unchanged here except that
+    the deep table's OWN `n_splits` is no longer fixed at construction; see `_apply_n_splits`."""
+
+    fn __init__(
+        out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
+        n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64,
+    ) raises:
+        """Identical refusal to `_MBQwen3I8AllSimd6.__init__`'s own — see that constructor's
+        docstring for why `d_head` must be a positive multiple of `WARP_SIZE`."""
+        if d_head % WARP_SIZE != 0:
+            raise Error(
+                "_MBQwen3I8AllSimd7: d_head=" + String(d_head) + " is not a multiple of WARP_SIZE="
+                + String(WARP_SIZE) + " -- _sdpa_kernel_simd's SIMD-group reduction requires every "
+                + "group full; use _MBQwen3I8 (the barrier-tree _sdpa_kernel) for this shape instead"
+            )
+        self.d_model = d_model
+        self.h_q = h_q
+        self.h_kv = h_kv
+        self.d_head = d_head
+        self.d_ff = d_ff
+        self.n_layers = n_layers
+        self.vocab = vocab
+        self.max_ctx = max_ctx
+        self.eps = Float32(eps)
+        self.scale = Float32(scale)
+
+        # ── same kernel set as `_MBQwen3I8AllSimd6.__init__` -- see that constructor's own docstring
+        # for why the deep-context pair is deliberately NOT compiled here (deferred to
+        # `_ensure_deep_initialized`).
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_embed_row_kernel_i8]()
+        _ = cctx.compile_function_unchecked[_norm_gemv_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_gemv_accum_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_norm_gemv2_swiglu_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_qk_rope_write_kernel]()
+        _ = cctx.compile_function_unchecked[_sdpa_kernel_simd]()
+        _ = cctx.compile_function_unchecked[_lmhead_argmax_kernel_simd_i8]()
+        _ = cctx.compile_function_unchecked[_argmax_reduce_kernel_simd]()
+
+        var opened = _mb_open_session()
+        if opened < 0:
+            raise Error("metaldispatch: algenta_open_session failed, status=" + String(MB_ERR_SESSION_OPEN_FAILED))
+
+        # ── the ONE new runtime query this struct adds over `_MBQwen3I8AllSimd6`: this host's GPU
+        # core count, read ONCE here (never per step -- the hardware does not change mid-session) via
+        # the IOKit-registry probe `metaldispatch.ffi._mb_gpu_core_count` added alongside this struct.
+        # A negative/zero result (probe failed) is stored AS-IS, not corrected here -- see the field's
+        # own docstring for why every reader already handles that case.
+        self.n_cores = _mb_gpu_core_count()
+        self.n_splits_max = residentk_splitk_max_n_splits(self.n_cores, self.h_q)
+        self.deep_last_n_splits = -1
+
+        self.pipeline_idx = List[Int]()
+        for _ in range(_N_ROLES):
+            self.pipeline_idx.append(-1)
+        var count = _mb_pipeline_count()
+        self.pipeline_idx_split = -1
+        self.pipeline_idx_merge = -1
+        for i in range(count):
+            var name = String()
+            _ = _mb_pipeline_name(i, name)
+            var role = _classify_pipeline(name)
+            if role >= 0:
+                self.pipeline_idx[role] = i
+            var splitk_role = _classify_splitk_pipeline(name)
+            if splitk_role == 0:
+                self.pipeline_idx_split = i
+            elif splitk_role == 1:
+                self.pipeline_idx_merge = i
+        for role in range(_N_ROLES):
+            if self.pipeline_idx[role] < 0:
+                raise Error(
+                    "metaldispatch: pipeline role " + String(role)
+                    + " not found among " + String(count) + " discovered pipelines, status="
+                    + String(MB_ERR_PIPELINE_NOT_FOUND)
+                )
+        if self.pipeline_idx_split < 0 or self.pipeline_idx_merge < 0:
+            raise Error(
+                "metaldispatch: _MBQwen3I8AllSimd7 attn-splitk pipeline(s) not found among "
+                + String(count) + " discovered pipelines (split=" + String(self.pipeline_idx_split)
+                + " merge=" + String(self.pipeline_idx_merge) + "), status="
+                + String(MB_ERR_PIPELINE_NOT_FOUND)
+            )
+
+        # ── resident buffers: SAME shapes as `_MBQwen3I8AllSimd6`.
+        var n_qkv = (h_q + 2 * h_kv) * d_head
+        var n_pairs = d_head // 2
+
+        self.layers = List[_MBLayerBufI8]()
+        for _ in range(n_layers):
+            var ln1a = UInt64(0); var ln1p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var ln2a = UInt64(0); var ln2p = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var qna = UInt64(0); var qnp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var kna = UInt64(0); var knp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkva = UInt64(0); var wqkvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wqkvsa = UInt64(0); var wqkvsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var woa = UInt64(0); var wop = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wosa = UInt64(0); var wosp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgua = UInt64(0); var wgup = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wgusa = UInt64(0); var wgusp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdowna = UInt64(0); var wdownp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var wdownsa = UInt64(0); var wdownsp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cka = UInt64(0); var ckp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            var cva = UInt64(0); var cvp = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+            if _mb_alloc_buffer(d_model * 4, ln1a, ln1p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln1), status=" + String(MB_ERR_BUFFER_ALLOC_FAILED))
+            if _mb_alloc_buffer(d_model * 4, ln2a, ln2p) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ln2)")
+            if _mb_alloc_buffer(d_head * 4, qna, qnp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (qn)")
+            if _mb_alloc_buffer(d_head * 4, kna, knp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (kn)")
+            if _mb_alloc_buffer(n_qkv * d_model * 1, wqkva, wqkvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv i8)")
+            if _mb_alloc_buffer(n_qkv * 4, wqkvsa, wqkvsp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_qkv_scale)")
+            if _mb_alloc_buffer(d_model * h_q * d_head * 1, woa, wop) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o i8)")
+            if _mb_alloc_buffer(d_model * 4, wosa, wosp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_o_scale)")
+            if _mb_alloc_buffer(2 * d_ff * d_model * 1, wgua, wgup) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu i8)")
+            if _mb_alloc_buffer(2 * d_ff * 4, wgusa, wgusp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_gu_scale)")
+            if _mb_alloc_buffer(d_model * d_ff * 1, wdowna, wdownp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down i8)")
+            if _mb_alloc_buffer(d_model * 4, wdownsa, wdownsp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (w_down_scale)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cka, ckp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (ck)")
+            if _mb_alloc_buffer(max_ctx * h_kv * d_head * 4, cva, cvp) < 0:
+                raise Error("metaldispatch: buffer alloc failed (cv)")
+            self.layers.append(_MBLayerBufI8(
+                ln1a, ln1p, ln2a, ln2p, qna, qnp, kna, knp,
+                wqkva, wqkvp, wqkvsa, wqkvsp,
+                woa, wop, wosa, wosp,
+                wgua, wgup, wgusa, wgusp,
+                wdowna, wdownp, wdownsa, wdownsp,
+                cka, ckp, cva, cvp,
+            ))
+
+        self.embed_addr = UInt64(0); self.embed_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.embed_scale_addr = UInt64(0); self.embed_scale_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.final_norm_addr = UInt64(0); self.final_norm_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.cos_addr = UInt64(0); self.cos_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.sin_addr = UInt64(0); self.sin_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(vocab * d_model * 1, self.embed_addr, self.embed_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed i8)")
+        if _mb_alloc_buffer(vocab * 4, self.embed_scale_addr, self.embed_scale_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (embed_scale)")
+        if _mb_alloc_buffer(d_model * 4, self.final_norm_addr, self.final_norm_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (final_norm)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.cos_addr, self.cos_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (cos)")
+        if _mb_alloc_buffer(max_ctx * n_pairs * 4, self.sin_addr, self.sin_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (sin)")
+
+        self.hidden_addr = UInt64(0); self.hidden_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.qkv_addr = UInt64(0); self.qkv_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.q_rot_addr = UInt64(0); self.q_rot_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.attn_out_addr = UInt64(0); self.attn_out_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.act_addr = UInt64(0); self.act_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_val_addr = UInt64(0); self.blk_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.blk_idx_addr = UInt64(0); self.blk_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_val_addr = UInt64(0); self.out_val_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.out_idx_addr = UInt64(0); self.out_idx_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        if _mb_alloc_buffer(d_model * 4, self.hidden_addr, self.hidden_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (hidden)")
+        if _mb_alloc_buffer(n_qkv * 4, self.qkv_addr, self.qkv_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (qkv)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.q_rot_addr, self.q_rot_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (q_rot)")
+        if _mb_alloc_buffer(h_q * d_head * 4, self.attn_out_addr, self.attn_out_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn_out)")
+        if _mb_alloc_buffer(d_ff * 4, self.act_addr, self.act_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (act)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_val_addr, self.blk_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_val)")
+        if _mb_alloc_buffer(_LM_BLOCKS * 4, self.blk_idx_addr, self.blk_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (blk_idx)")
+        if _mb_alloc_buffer(4, self.out_val_addr, self.out_val_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_val)")
+        if _mb_alloc_buffer(4, self.out_idx_addr, self.out_idx_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (out_idx)")
+
+        # ── deep-context split/merge scratch: sized for `self.n_splits_max` (the runtime-computed
+        # ceiling), not the old comptime `_ATTN_SPLITK_N_SPLITS_NATIVE` -- see the struct docstring's
+        # "BUFFER SIZING" paragraph. Still a null placeholder until `_ensure_deep_initialized`
+        # allocates lazily, same discipline as `_MBQwen3I8AllSimd6`.
+        self.m_partial_addr = UInt64(0); self.m_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.l_partial_addr = UInt64(0); self.l_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.o_partial_addr = UInt64(0); self.o_partial_ptr = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+
+        self.n_descriptors = metaldispatch_dispatch_budget(n_layers)
+        self.descriptors = _mb_alloc_descriptors(self.n_descriptors)
+        self.token_id_offset = -1
+        self.pos_offsets = List[Int]()
+        self.nkeys_offsets = List[Int]()
+
+        self.n_descriptors_deep = 1 + self.n_layers * 7 + 2
+        self.descriptors_deep = UnsafePointer[UInt8, origin=MutAnyOrigin]()
+        self.token_id_offset_deep = -1
+        self.pos_offsets_deep = List[Int]()
+        self.nkeys_offsets_deep = List[Int]()
+        self.deep_ready = False
+
+        self._build_descriptors(n_qkv)
+
+    fn _ensure_deep_initialized(mut self) raises:
+        """Identical lazy-init discipline to `_MBQwen3I8AllSimd6._ensure_deep_initialized` — see
+        that method's own docstring for the full account of why deferring each of these four costs
+        (two kernel compiles, three buffer allocs, the descriptor build) to the first deep-branch
+        `step()` call is safe. The only difference: the three scratch buffers are sized for
+        `self.n_splits_max` (computed once in `__init__` from the runtime-detected core count),
+        not a comptime constant."""
+        if self.deep_ready:
+            return
+        from std.gpu.host import DeviceContext
+        var cctx = DeviceContext()
+        _ = cctx.compile_function_unchecked[_splitk_partial_kernel_simd_native]()
+        _ = cctx.compile_function_unchecked[_splitk_merge_kernel_simd]()
+
+        if _mb_alloc_buffer(self.h_q * self.n_splits_max * 4, self.m_partial_addr, self.m_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk m_partial)")
+        if _mb_alloc_buffer(self.h_q * self.n_splits_max * 4, self.l_partial_addr, self.l_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk l_partial)")
+        if _mb_alloc_buffer(self.h_q * self.n_splits_max * self.d_head * 4, self.o_partial_addr, self.o_partial_ptr) < 0:
+            raise Error("metaldispatch: buffer alloc failed (attn splitk o_partial)")
+
+        self.descriptors_deep = _mb_alloc_descriptors(self.n_descriptors_deep)
+        var n_qkv = (self.h_q + 2 * self.h_kv) * self.d_head
+        self._build_descriptors_deep(n_qkv)
+        self.deep_ready = True
+
+    fn _build_descriptors(mut self, n_qkv: Int) raises:
+        """Byte-identical plan to `_MBQwen3I8AllSimd6._build_descriptors` — see that method's own
+        docstring."""
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors, d, 3, 0)  # token_id, patched per step
+        self.token_id_offset = d
+        _mb_set_arg_int(self.descriptors, d, 4, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 6, n_qkv)
+            _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors, d, 8, 0)  # pos, patched per step
+            self.pos_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 12, self.eps)
+            d += 1
+
+            _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_SDPA], self.h_q, self.d_head, 9)
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, 0)  # n_keys, patched per step
+            self.nkeys_offsets.append(d)
+            _mb_set_arg_int(self.descriptors, d, 5, self.h_q)
+            _mb_set_arg_int(self.descriptors, d, 6, self.h_kv)
+            _mb_set_arg_int(self.descriptors, d, 7, self.d_head)
+            _mb_set_arg_f32(self.descriptors, d, 8, self.scale)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, n_q)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 4, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors, d, 6, self.d_ff)
+            _mb_set_arg_f32(self.descriptors, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors, d, 4, self.d_ff)
+            _mb_set_arg_int(self.descriptors, d, 5, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors, d, 9, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors:
+            raise Error(
+                "metaldispatch: built " + String(d) + " descriptors but the budget says "
+                + String(self.n_descriptors) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+        """Byte-identical PLAN to `_MBQwen3I8AllSimd6._build_descriptors_deep` -- same roles, same
+        order, same argument layout -- with exactly one difference: the split dispatch's initial grid
+        width and both kernels' initial `n_splits` value arguments are seeded from `self.n_splits_max`
+        (the runtime-computed ceiling) instead of the comptime `_ATTN_SPLITK_N_SPLITS_NATIVE`. This
+        initial value is provisional -- `step()` calls `_apply_n_splits` with the REAL, policy-
+        computed value for that step's own `n_keys` before ever submitting this table for the first
+        time, exactly the same "build wide, then narrow before first use" sequencing `_MBQwen3I8
+        SplitKSweep`'s own `__init__`/`set_n_splits` pair already established for the calibration
+        sweep tool this method is modeled on."""
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        var d = 0
+
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_EMBED], _ceil_div(self.d_model, _TG), _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 3, 0)  # token_id, patched per step
+        self.token_id_offset_deep = d
+        _mb_set_arg_int(self.descriptors_deep, d, 4, self.d_model)
+        d += 1
+
+        for layer in range(self.n_layers):
+            ref lw = self.layers[layer]
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_NORM_GEMV],
+                _ceil_div(n_qkv, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.ln1_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.w_qkv_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, n_qkv)
+            _mb_set_arg_f32(self.descriptors_deep, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_QK_ROPE],
+                self.h_q + self.h_kv, self.d_head, 13,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.cv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.qkv_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.qn_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 5, lw.kn_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 6, self.cos_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 7, self.sin_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 8, 0)  # pos, patched per step
+            self.pos_offsets_deep.append(d)
+            _mb_set_arg_int(self.descriptors_deep, d, 9, self.h_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 10, self.h_kv)
+            _mb_set_arg_int(self.descriptors_deep, d, 11, self.d_head)
+            _mb_set_arg_f32(self.descriptors_deep, d, 12, self.eps)
+            d += 1
+
+            # ── split: unnormalized partial (m, l, o) per (head, split) — grid width seeded from
+            # `self.n_splits_max` here; `_apply_n_splits` narrows both this header's `grid_x` and the
+            # `n_splits` value argument below to the real per-step value before first use.
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx_split,
+                self.h_q * self.n_splits_max, WARP_SIZE, 12,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.m_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.l_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.o_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.q_rot_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.ck_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 5, lw.cv_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, 0)  # n_keys, patched per step
+            self.nkeys_offsets_deep.append(d)
+            _mb_set_arg_int(self.descriptors_deep, d, 7, self.n_splits_max)
+            _mb_set_arg_int(self.descriptors_deep, d, 8, self.h_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 9, self.h_kv)
+            _mb_set_arg_int(self.descriptors_deep, d, 10, self.d_head)
+            _mb_set_arg_f32(self.descriptors_deep, d, 11, self.scale)
+            d += 1
+
+            # ── merge: the (currently `self.n_splits_max`, later `_apply_n_splits`-narrowed) partials
+            # -> ONE normalized attn_out, same shape (`grid_x=h_q`) the SDPA dispatch it replaces used.
+            _mb_set_header(self.descriptors_deep, d, self.pipeline_idx_merge, self.h_q, self.d_head, 6)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.m_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.l_partial_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.o_partial_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, self.n_splits_max)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_head)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.attn_out_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.w_o_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_o_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, n_q)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_NORM_GEMV2_SWIGLU],
+                _ceil_div(self.d_ff, _SUBS), _TG, 8,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.ln2_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_gu_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 4, lw.w_gu_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            _mb_set_arg_int(self.descriptors_deep, d, 6, self.d_ff)
+            _mb_set_arg_f32(self.descriptors_deep, d, 7, self.eps)
+            d += 1
+
+            _mb_set_header(
+                self.descriptors_deep, d, self.pipeline_idx[_ROLE_GEMV_ACCUM],
+                _ceil_div(self.d_model, _SUBS), _TG, 6,
+            )
+            _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.hidden_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.act_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 2, lw.w_down_addr)
+            _mb_set_arg_ptr(self.descriptors_deep, d, 3, lw.w_down_scale_addr)
+            _mb_set_arg_int(self.descriptors_deep, d, 4, self.d_ff)
+            _mb_set_arg_int(self.descriptors_deep, d, 5, self.d_model)
+            d += 1
+
+        var n_iters = _ceil_div(self.vocab, _LM_BLOCKS * _SUBS)
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_LMHEAD_ARGMAX], _LM_BLOCKS, _TG, 10)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.blk_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.hidden_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.final_norm_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 4, self.embed_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 5, self.embed_scale_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 6, self.d_model)
+        _mb_set_arg_int(self.descriptors_deep, d, 7, self.vocab)
+        _mb_set_arg_f32(self.descriptors_deep, d, 8, self.eps)
+        _mb_set_arg_int(self.descriptors_deep, d, 9, n_iters)
+        d += 1
+
+        _mb_set_header(self.descriptors_deep, d, self.pipeline_idx[_ROLE_ARGMAX_REDUCE], 1, _TG, 5)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 0, self.out_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 1, self.out_idx_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 2, self.blk_val_addr)
+        _mb_set_arg_ptr(self.descriptors_deep, d, 3, self.blk_idx_addr)
+        _mb_set_arg_int(self.descriptors_deep, d, 4, _LM_BLOCKS)
+        d += 1
+
+        if d != self.n_descriptors_deep:
+            raise Error(
+                "metaldispatch: built " + String(d) + " deep descriptors but the budget says "
+                + String(self.n_descriptors_deep) + " -- the design and the code disagree, status="
+                + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
+            )
+
+    fn _apply_n_splits(mut self, new_n_splits: Int) raises:
+        """Re-patches the split dispatch's grid width and both kernels' `n_splits` value arguments
+        for every layer, IN PLACE, to `new_n_splits` — the production twin of `_MBQwen3I8SplitKSweep.
+        set_n_splits` (`benchmarks/llm_smoke/metal_batch_dispatch/qwen3_probe_splitk_native_sweep.
+        mojo`, this struct's own calibration tool), same offsets, same safety argument: `_mb_set_
+        header` only ever writes a descriptor's 16-byte HEADER, never the args area, so narrowing
+        `grid_x` here cannot corrupt any argument already in that same descriptor; the two `n_splits`
+        VALUE arguments (`splitk_partial`'s arg index 7, `splitk_merge`'s arg index 4) are repatched
+        separately, right after. Safe for any `new_n_splits` in `[1, self.n_splits_max]` — the three
+        scratch buffers stay sized for `self.n_splits_max` (`_ensure_deep_initialized`), so a smaller
+        grid width and a smaller `n_splits` value together only ever address a PREFIX of each buffer.
+        `residentk_splitk_policy`'s own ceiling clamp guarantees every value `step()` ever passes here
+        already satisfies that bound — this method does not re-check it, matching `set_n_splits`'s own
+        precedent of trusting its caller's own clamp rather than re-deriving it.
+
+        Does not touch `n_keys` (arg index 6 on the split descriptor) — `step()`'s own pre-existing
+        `nkeys_offsets_deep` patching sets that separately, exactly as every other per-step-varying
+        argument in this file already works."""
+        for layer in range(self.n_layers):
+            var d_split = 1 + 7 * layer + 2
+            var d_merge = 1 + 7 * layer + 3
+            _mb_set_header(
+                self.descriptors_deep, d_split, self.pipeline_idx_split,
+                self.h_q * new_n_splits, WARP_SIZE, 12,
+            )
+            _mb_set_arg_int(self.descriptors_deep, d_split, 7, new_n_splits)
+            _mb_set_arg_int(self.descriptors_deep, d_merge, 4, new_n_splits)
+
+    fn device_name(self) -> String:
+        return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction, DYNAMIC per-step n_splits policy)"
+
+    fn dispatch_budget(self) -> Int:
+        return self.n_descriptors
+
+    fn n_cores_detected(self) -> Int:
+        """The GPU core count this session queried at open time (may be `<= 0` if the probe failed —
+        see the `n_cores` field's own docstring). Exposed read-only for observability (probes/tests
+        that want to print or assert on what this session actually detected), never mutated after
+        `__init__`."""
+        return self.n_cores
+
+    fn n_splits_currently_applied(self) -> Int:
+        """The `n_splits` value currently patched into the deep descriptor table, or -1 if `step()`
+        has never taken the deep branch yet this session. Exposed for the same observability reason
+        as `n_cores_detected` — lets a probe log/assert which policy-computed configuration a given
+        depth actually ran with, without re-deriving it independently."""
+        return self.deep_last_n_splits
+
+    fn upload_globals(
+        mut self, embed: List[Float64], final_norm: List[Float64],
+        cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
+    ) raises -> Int:
+        var n_pairs = self.d_head // 2
+        if n_pos > self.max_ctx:
+            return MB_ERR_CONTEXT_FULL
+        var s = _quantize_into_i8(
+            self.embed_ptr, self.embed_scale_ptr, embed, self.vocab, self.d_model, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _narrow_into(self.final_norm_ptr, final_norm, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        if len(cos_t) < n_pos * n_pairs or len(sin_t) < n_pos * n_pairs:
+            return MB_ERR_UPLOAD_LENGTH
+        var cos_f = self.cos_ptr.bitcast[Float32]()
+        var sin_f = self.sin_ptr.bitcast[Float32]()
+        for i in range(n_pos * n_pairs):
+            cos_f[i] = Float32(cos_t[i])
+            sin_f[i] = Float32(sin_t[i])
+        return MB_OK
+
+    fn upload_layer(
+        mut self, layer: Int,
+        ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
+        wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
+        wgate: List[Float64], wup: List[Float64], wdown: List[Float64],
+    ) raises -> Int:
+        if layer < 0 or layer >= self.n_layers:
+            return MB_ERR_UPLOAD_LENGTH
+        ref lw = self.layers[layer]
+        var s = _narrow_into(lw.ln1_ptr, ln1, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.ln2_ptr, ln2, self.d_model, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.qn_ptr, qn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+        s = _narrow_into(lw.kn_ptr, kn, self.d_head, 0)
+        if s != MB_OK:
+            return s
+
+        var n_q = self.h_q * self.d_head
+        var n_kv = self.h_kv * self.d_head
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wq, self.d_model, n_q, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wk, self.d_model, n_kv, n_q, n_q
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_qkv_ptr, lw.w_qkv_scale_ptr, wv, self.d_model, n_kv, n_q + n_kv, n_q + n_kv
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(lw.w_o_ptr, lw.w_o_scale_ptr, wo, n_q, self.d_model, 0, 0)
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_gu_ptr, lw.w_gu_scale_ptr, wgate, self.d_model, self.d_ff, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_gu_ptr, lw.w_gu_scale_ptr, wup, self.d_model, self.d_ff, self.d_ff, self.d_ff
+        )
+        if s != MB_OK:
+            return s
+        s = _quantize_transposed_into_i8(
+            lw.w_down_ptr, lw.w_down_scale_ptr, wdown, self.d_ff, self.d_model, 0, 0
+        )
+        if s != MB_OK:
+            return s
+        return MB_OK
+
+    fn seal(mut self) -> Int:
+        return MB_OK
+
+    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+        """`_MBQwen3I8AllSimd6.step`'s own body, PLUS the dynamic policy: the branch gate is now
+        `residentk_splitk_should_split(n_keys)` (32) instead of the fixed `_ATTN_SPLITK_THRESHOLD`
+        (512), and the deep branch computes `n_splits = residentk_splitk_policy(n_keys, self.n_cores,
+        self.h_q)` FRESH every call, applying it via `_apply_n_splits` only when it differs from the
+        previous deep step's value — see the struct docstring's "TWO THINGS ARE NOW DYNAMIC" section
+        for the full account of why recompute-every-step-but-only-patch-on-change is both cheap and
+        correct.
+
+        Below the gate, this is BYTE-FOR-BYTE `_MBQwen3I8AllSimd6`'s own shallow branch — patching and
+        submitting `self.descriptors`, no policy call at all, so a session that never crosses the
+        (now much lower) gate pays nothing extra over any sibling struct's own shallow path."""
+
+        @parameter
+        if not MB_GPU_BUILD:
+            return _StepOut(-1, 0.0, 0, MB_ERR_SHADER_TOOLCHAIN_ABSENT)
+        else:
+            if pos < 0 or pos >= self.max_ctx:
+                return _StepOut(-1, 0.0, 0, MB_ERR_CONTEXT_FULL)
+            if token_id < 0 or token_id >= self.vocab:
+                return _StepOut(-1, 0.0, 0, MB_ERR_UPLOAD_LENGTH)
+
+            var n_keys = pos + 1
+            var dispatches_used = self.n_descriptors
+
+            if not residentk_splitk_should_split(n_keys):
+                _mb_set_arg_int(self.descriptors, self.token_id_offset, 3, token_id)
+                for layer in range(self.n_layers):
+                    _mb_set_arg_int(self.descriptors, self.pos_offsets[layer], 8, pos)
+                    _mb_set_arg_int(self.descriptors, self.nkeys_offsets[layer], 4, n_keys)
+
+                var rc = _mb_run_token(self.descriptors, self.n_descriptors)
+                if rc != 0:
+                    return _StepOut(-1, 0.0, self.n_descriptors, MB_ERR_DISPATCH_FAILED)
+            else:
+                self._ensure_deep_initialized()
+                dispatches_used = self.n_descriptors_deep
+
+                var n_splits = residentk_splitk_policy(n_keys, self.n_cores, self.h_q)
+                if n_splits != self.deep_last_n_splits:
+                    self._apply_n_splits(n_splits)
+                    self.deep_last_n_splits = n_splits
+
+                _mb_set_arg_int(self.descriptors_deep, self.token_id_offset_deep, 3, token_id)
+                for layer in range(self.n_layers):
+                    _mb_set_arg_int(self.descriptors_deep, self.pos_offsets_deep[layer], 8, pos)
                     _mb_set_arg_int(self.descriptors_deep, self.nkeys_offsets_deep[layer], 6, n_keys)
 
                 var rc = _mb_run_token(self.descriptors_deep, self.n_descriptors_deep)

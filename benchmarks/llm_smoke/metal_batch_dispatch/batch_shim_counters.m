@@ -44,6 +44,7 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <dispatch/dispatch.h>
+#import <IOKit/IOKitLib.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
 #include <stdint.h>
@@ -159,6 +160,45 @@ int64_t algenta_open_session(void) {
 
 int64_t algenta_pipeline_count(void) {
     return g_pipeline_count;
+}
+
+/* Same IOKit-registry GPU-core-count probe as `batch_shim.m`'s own `algenta_gpu_core_count` -- see
+ * that file's docstring for the full account (verified against `system_profiler
+ * SPDisplaysDataType`'s "Total Number of Cores" on this machine). Duplicated rather than shared via
+ * a header because this whole package links exactly one `.m` file into a given binary (never both),
+ * matching every other symbol both shim files already carry in parallel. */
+int64_t algenta_gpu_core_count(void) {
+    @autoreleasepool {
+        CFMutableDictionaryRef matching = IOServiceMatching("AGXAccelerator");
+        if (!matching) {
+            return -1;
+        }
+        io_iterator_t iter = IO_OBJECT_NULL;
+        kern_return_t kr = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter);
+        if (kr != KERN_SUCCESS) {
+            return -1;
+        }
+        int64_t result = -1;
+        io_service_t service;
+        while ((service = IOIteratorNext(iter))) {
+            if (result < 0) {
+                CFTypeRef prop = IORegistryEntryCreateCFProperty(
+                    service, CFSTR("gpu-core-count"), kCFAllocatorDefault, 0);
+                if (prop) {
+                    if (CFGetTypeID(prop) == CFNumberGetTypeID()) {
+                        int64_t val = 0;
+                        if (CFNumberGetValue((CFNumberRef)prop, kCFNumberSInt64Type, &val) && val > 0) {
+                            result = val;
+                        }
+                    }
+                    CFRelease(prop);
+                }
+            }
+            IOObjectRelease(service);
+        }
+        IOObjectRelease(iter);
+        return result;
+    }
 }
 
 /* Copies pipeline `idx`'s Metal function name (as resolved from the loaded MTLLibrary -- the exact

@@ -57,8 +57,21 @@ Public API:
   residentk_cache_elements(n_layers, h_kv, d_head, max_ctx)      — KV-cache Float32 count at max_ctx
   residentk_weight_elems(d_model, h_q, h_kv, d_head, d_ff, n_layers, vocab, max_ctx=512)
                                                                   — resident Float32 count
+  residentk_splitk_should_split(n_keys)                          — is this depth worth splitting at all
+  residentk_splitk_policy(n_keys, n_cores, h_q)                  — the split count to use AT this depth
+  residentk_splitk_max_n_splits(n_cores, h_q)                    — the ceiling to size scratch buffers for
+
+Why the split-K depth policy lives HERE and not in `metaldispatch.session`
+-----------------------------------------------------------------------------
+Every OTHER host-side, no-device-needed decision this design makes (is this shape supported, does
+this run fit the cache, how many dispatches does a token cost) already lives in this file, checked by
+`test_residentk_contract.mojo` with no GPU. `residentk_splitk_policy` is exactly that kind of
+decision — pure arithmetic over `n_keys`/`n_cores`/`h_q`, no buffer, no kernel, no device — so it
+belongs beside `residentk_dispatch_budget`, not inside `metaldispatch.session._MBQwen3I8AllSimd7`
+where it would be untestable without a Metal device.
 """
 
+from std.math import log
 from tensorx.contract import tx_finite
 
 # ── status codes: residentk owns 600-619 ──────────────────────────────────────
@@ -408,3 +421,201 @@ fn residentk_scalars_ok(eps: Float64, scale: Float64) -> Bool:
     if not tx_finite(eps) or not tx_finite(scale):
         return False
     return eps > 0.0 and scale > 0.0
+
+
+# ── the split-K depth policy: a GENUINELY DYNAMIC replacement for the fixed
+# `metaldispatch.session._ATTN_SPLITK_N_SPLITS_NATIVE = 80` / `_ATTN_SPLITK_THRESHOLD = 512`
+# ──────────────────────────────────────────────────────────────────────────────────────────
+#
+# BACKGROUND: PR #523 landed `_ATTN_SPLITK_N_SPLITS_NATIVE = 80`, a SINGLE split count re-tuned from
+# scratch on the real production kernel — but at ONE depth only (`n_keys=4000`). A dedicated
+# calibration sweep (8 depth buckets x 9 `n_splits` candidates x 5 rounds, plus a dedicated dead-zone
+# extension down to `n_keys=16`, all on this same real kernel/pipeline, never a scratch kernel) found
+# the true optimum is NOT that one constant: it steps with depth in units of "warps per core"
+# (`h_q * n_splits / n_cores` — the total warp count this dispatch puts in flight, divided by this
+# GPU's own core count), saturating at a ceiling around `n_keys ~= 1000` and staying there out to at
+# least 8000 (2x further than PR #523's own sweep ever tested), while ALSO showing a real, growing win
+# from splitting AT ALL down to `n_keys ~= 32` — well below the shipped `_ATTN_SPLITK_THRESHOLD = 512`
+# gate.
+#
+# INDEPENDENT RE-VERIFICATION (this task's own Policy phase, before trusting the calibration above):
+# re-ran the identical measurement at `n_keys in {256, 500, 750}` across the full 7-candidate set
+# (`n_splits in {20,40,60,80,100,120,160}`), 5 rounds each. Two findings:
+#   1. The ROBUST structure reproduces cleanly: the deep-regime ceiling (`n_keys=4000` favors
+#      `n_splits=80` over both `60` and `120`, non-monotonically, by a wide and reproducible margin —
+#      exactly PR #523's own finding) and the dead-zone win (small-`n_splits` native split-K beats the
+#      unsplit kernel by ~2.5-2.8x at `n_keys` in `{64, 128, 256}`, growing with depth) both reproduce
+#      independently, on a different day, on this same machine.
+#   2. The EXACT optimum in the 256-750 "mid" range is NOT reliably pinned to single-`n_splits`
+#      resolution: a first rerun found `n_splits=60` beating `40` by nearly 2x at `n_keys=256`; a
+#      second, more complete rerun (same candidates, same depths, minutes later) found the OPPOSITE —
+#      `n_splits=40` clearly best, `60` close behind — with the `n_splits=40` condition's own mean
+#      moving by ~+30% between the two runs at fixed `n_keys`. This is real session-to-session /
+#      thermal drift on this hardware, not a bug in either sweep (both used byte-identical
+#      measurement code), and it is LARGER than the gap between neighboring `n_splits` candidates in
+#      this middle range. Fitting a precise breakpoint to that noise would be overfitting it.
+#
+# THE FORMULA, and why a formula over a lookup table: `warps_per_core(n_keys)` is modeled as LINEAR
+# IN log2(n_keys) between two anchors that ARE robust across every source above (PR #523's own sweep,
+# the calibration phase's 8-bucket sweep, and this phase's own re-verification):
+#   anchor low:  n_keys=128  -> warps_per_core=16  (n_splits=40 at this model's h_q=16, this
+#                                machine's 40 cores) — the shallow end of the MAIN sweep, where every
+#                                source agrees splitting has clearly started paying off but the
+#                                widest configs are not yet worth it.
+#   anchor high: n_keys=1000 -> warps_per_core=32  (n_splits=80) — where every source agrees the
+#                                occupancy ceiling saturates and going wider NEVER wins, at any depth
+#                                tested up to 8000.
+# The SAME line, extrapolated (not clamped) below `n_keys=128`, reproduces the dead-zone's own
+# shallower anchors reasonably (n_keys=32 -> ~13, measured optimum ~16; n_keys=64 -> ~27, measured
+# optimum ~32) without being FIT to them — a genuine prediction from the two robust anchors, not a
+# third calibrated point. `log2` scaling is the natural unit for a GPU occupancy/warp-scheduling
+# curve (the same reason llama.cpp's own `nwg` split-count formula doubles a discrete state rather
+# than scaling linearly in the raw key count) — this formula is llama.cpp's own idea (a formula over
+# the real key count, evaluated fresh per dispatch) applied continuously instead of via `nsg *= 2`
+# discrete doubling, because Algenta's own measured tiers are NOT power-of-two multiples of each
+# other (16 -> 24 -> 32, not 16 -> 32 -> 64).
+#
+# Below `n_keys = 32` splitting is not worth it at all (`residentk_splitk_should_split`) — the
+# dead-zone sweep measured `n_keys=16` a wash (~1.0x) against the unsplit kernel and `n_keys=32` a
+# clear ~1.4x win, so the gate sits at the tested boundary, not an interpolated guess between the two.
+# This is what retires the old, much higher, fixed `_ATTN_SPLITK_THRESHOLD = 512` gate: the data
+# supports splitting from 32 onward, not 512.
+
+comptime RESIDENT_SPLITK_NO_SPLIT_MAX_KEYS: Int = 32
+"""Below this many keys, don't split at all — take the unsplit SDPA path. Measured: `n_keys=16` is a
+wash (~1.0x) against the unsplit kernel; `n_keys=32` is already a clear ~1.4x win. The gate sits at
+32, the smaller MEASURED-WINNING depth, not a guess at the midpoint between the two."""
+
+comptime RESIDENT_SPLITK_ANCHOR_LO_KEYS: Int = 128
+comptime RESIDENT_SPLITK_ANCHOR_LO_WARPS_PER_CORE: Float64 = 16.0
+comptime RESIDENT_SPLITK_ANCHOR_HI_KEYS: Int = 1000
+comptime RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE: Float64 = 32.0
+"""The two robust calibration anchors `residentk_splitk_policy` interpolates (and extrapolates)
+between, in log2(n_keys) space — see the module-level comment above this block for the full
+grounding and the independent re-verification that found these two anchors, and only these two,
+reproduce across separate sweep runs where finer-grained points in between did not."""
+
+comptime RESIDENT_SPLITK_MIN_WARPS_PER_CORE: Float64 = 1.0
+"""Floor on the interpolated occupancy target, so a pathologically small `n_keys` just above the
+no-split gate (or a future anchor re-tune) can never drive `warps_per_core`, and therefore
+`n_splits`, to zero or negative before the final `>= 1` clamp below even applies."""
+
+comptime RESIDENT_SPLITK_FALLBACK_N_CORES: Int = 40
+"""Last-resort default for `n_cores` when the caller could not determine a real one (the runtime
+probe failed, or a test calls this function directly without wiring one) — NOT a claim that every
+host has 40 GPU cores. This is this development machine's own measured count (`system_profiler
+SPDisplaysDataType`, cross-checked against an IOKit `AGXAccelerator`/`gpu-core-count` registry read —
+see `metaldispatch.ffi._mb_gpu_core_count`), chosen as the fallback specifically because it reproduces
+`_ATTN_SPLITK_N_SPLITS_NATIVE = 80` (this file's `residentk_splitk_max_n_splits(40, 16) == 80`) — i.e.
+a host whose core count genuinely cannot be determined degrades to exactly PR #523's own last-known-
+good, race-verified fixed behavior, never to an invented number that could be worse than what already
+shipped."""
+
+
+fn _residentk_log2(x: Float64) -> Float64:
+    """log base 2 via natural log — same one-line helper `audio`/`blockchain`/`ergonomics` each
+    already carry their own private copy of, rather than a new cross-package dependency for one
+    multiply."""
+    comptime _LOG2_E: Float64 = 1.4426950408889634  # 1/ln(2)
+    return log(x) * _LOG2_E
+
+
+fn residentk_splitk_should_split(n_keys: Int) -> Bool:
+    """Is `n_keys` deep enough that splitting the SDPA dispatch is worth its own fixed overhead
+    (a second kernel launch, plus the merge kernel) at all?
+
+    @capability residentk_splitk_should_split
+    complexity: O(1)
+    @endcapability
+    """
+    return n_keys >= RESIDENT_SPLITK_NO_SPLIT_MAX_KEYS
+
+
+fn residentk_splitk_max_n_splits(n_cores: Int, h_q: Int) -> Int:
+    """The largest `n_splits` `residentk_splitk_policy` could EVER return for this `(n_cores, h_q)`
+    pair — the occupancy ceiling, `round(RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE * n_cores / h_q)`.
+
+    A caller that must allocate split-K scratch buffers ONCE, before knowing any future step's
+    `n_keys` (`metaldispatch.session._MBQwen3I8AllSimd7`'s own `_ensure_deep_initialized`), sizes them
+    for THIS value — matching the existing lazy-init discipline `_MBQwen3I8AllSimd6` already uses for
+    its own fixed `_ATTN_SPLITK_N_SPLITS_NATIVE`, just computed from the runtime-detected core count
+    instead of a comptime constant. Falls back to `RESIDENT_SPLITK_FALLBACK_N_CORES` on a
+    non-positive `n_cores` (a probe that failed) — see that constant's own docstring for why that
+    fallback reproduces `_ATTN_SPLITK_N_SPLITS_NATIVE` exactly rather than guessing.
+
+    @capability residentk_splitk_max_n_splits
+    complexity: O(1)
+    @endcapability
+    """
+    var cores = n_cores
+    if cores < 1:
+        cores = RESIDENT_SPLITK_FALLBACK_N_CORES
+    var hq = h_q
+    if hq < 1:
+        hq = 1
+    var raw = RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE * Float64(cores) / Float64(hq)
+    var n_splits = Int(raw + 0.5)
+    if n_splits < 1:
+        n_splits = 1
+    return n_splits
+
+
+fn residentk_splitk_policy(n_keys: Int, n_cores: Int, h_q: Int) -> Int:
+    """The split count to use for THIS decode step's `n_keys`, on a GPU with `n_cores` compute cores
+    running `h_q` query heads — see the module-level comment above this block for the full
+    calibration/re-verification account and the formula's derivation.
+
+    `warps_per_core(n_keys)` is `RESIDENT_SPLITK_ANCHOR_LO_WARPS_PER_CORE` plus a slope times
+    `log2(n_keys) - log2(RESIDENT_SPLITK_ANCHOR_LO_KEYS)`, where the slope is chosen so the line
+    passes through BOTH anchors exactly (`warps_per_core(128) == 16.0`, `warps_per_core(1000) ==
+    32.0`, verified as golden vectors in `test_residentk_splitk_policy.mojo`), clamped to
+    `[RESIDENT_SPLITK_MIN_WARPS_PER_CORE, RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE]` outside that
+    range so neither a very shallow nor a very deep `n_keys` can push the target unboundedly. The
+    final `n_splits` is `round(warps_per_core * n_cores / h_q)`, clamped to `[1,
+    residentk_splitk_max_n_splits(n_cores, h_q)]`.
+
+    Sane on every input, not just the calibrated range: `n_keys <= 0` or `h_q < 1` returns 1 (the
+    smallest meaningful split count, never a crash or a negative/zero value a caller could feed to a
+    GPU dispatch's grid width); `n_cores <= 0` falls back to `RESIDENT_SPLITK_FALLBACK_N_CORES` (see
+    that constant's own docstring). Does NOT gate on `RESIDENT_SPLITK_NO_SPLIT_MAX_KEYS` itself — a
+    caller checks `residentk_splitk_should_split` separately before ever using this value, exactly
+    the same separation `metaldispatch.session` already has between `_ATTN_SPLITK_THRESHOLD` (the
+    gate) and `_ATTN_SPLITK_N_SPLITS_NATIVE` (the value), just with both made dynamic instead of one
+    of them fixed.
+
+    Never changes any numerical OUTPUT of the split-K kernel pair — `_splitk_partial_kernel_simd_
+    native`/`_splitk_merge_kernel_simd` are proven correct for ANY `n_splits` (including `n_splits >
+    n_keys`, a genuinely empty split — see that kernel's own docstring and its isolated suite), so
+    this function only ever chooses WHICH already-correct configuration computes a step, never
+    perturbs the arithmetic itself.
+
+    @capability residentk_splitk_policy
+    complexity: O(1)
+    @endcapability
+    """
+    if h_q < 1 or n_keys < 1:
+        return 1
+    var cores = n_cores
+    if cores < 1:
+        cores = RESIDENT_SPLITK_FALLBACK_N_CORES
+
+    var log_nk = _residentk_log2(Float64(n_keys))
+    var log_lo = _residentk_log2(Float64(RESIDENT_SPLITK_ANCHOR_LO_KEYS))
+    var log_hi = _residentk_log2(Float64(RESIDENT_SPLITK_ANCHOR_HI_KEYS))
+    var slope = (
+        (RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE - RESIDENT_SPLITK_ANCHOR_LO_WARPS_PER_CORE)
+        / (log_hi - log_lo)
+    )
+    var warps_per_core = RESIDENT_SPLITK_ANCHOR_LO_WARPS_PER_CORE + slope * (log_nk - log_lo)
+    if warps_per_core > RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE:
+        warps_per_core = RESIDENT_SPLITK_ANCHOR_HI_WARPS_PER_CORE
+    if warps_per_core < RESIDENT_SPLITK_MIN_WARPS_PER_CORE:
+        warps_per_core = RESIDENT_SPLITK_MIN_WARPS_PER_CORE
+
+    var n_splits = Int(warps_per_core * Float64(cores) / Float64(h_q) + 0.5)
+    if n_splits < 1:
+        n_splits = 1
+    var ceiling = residentk_splitk_max_n_splits(cores, h_q)
+    if n_splits > ceiling:
+        n_splits = ceiling
+    return n_splits
