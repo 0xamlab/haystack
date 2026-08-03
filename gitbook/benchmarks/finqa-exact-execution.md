@@ -183,6 +183,112 @@ exactness to compare it to.
   narrative — and reproducing it end-to-end would require paid third-party LLM API calls this
   page does not make. This page is unrelated to that benchmark and makes no claim about it.
 
+## How to use `progexec.exec`
+
+`progexec.exec` is a general-purpose runtime library module, callable like any other through
+`MojoRuntime.execute` (Python) or `MojoRuntime.execute` (TypeScript) — nothing about it is
+specific to this benchmark's harness. It executes one already-resolved, flat-list program: a
+list of op codes, two tagged operands per step (a literal, a back-reference to an earlier
+step's result, or — for the four table aggregates — a slice of an already-extracted table
+row), and returns the final step's value. Deciding which operation and which table row is
+program generation and happens before this call; `progexec_run_flat` is the arithmetic only.
+
+**Op codes** (`progexec.contract`, matching the official evaluator's own `all_ops` order):
+
+| Code | Op | Code | Op |
+| --- | --- | --- | --- |
+| 0 | `add` | 5 | `greater` |
+| 1 | `subtract` | 6 | `table_max` |
+| 2 | `multiply` | 7 | `table_min` |
+| 3 | `divide` | 8 | `table_sum` |
+| 4 | `exp` | 9 | `table_average` |
+
+**Argument-kind tags**, one per operand slot:
+
+| Code | Kind | Meaning |
+| --- | --- | --- |
+| 0 | `ARG_LITERAL` | the operand's value directly |
+| 1 | `ARG_REF` | `Float64(j)` for an earlier step index `j < i` |
+| 2 | `ARG_TABLE_ROW` | valid for `arg1` on a `table_*` op only — the row lives in `table_values[table_offset[i], table_offset[i] + table_len[i])` |
+
+**Status codes** (`progexec.contract`, range 1400-1419): `1400` `ok`, `1401`
+`empty_program`, `1402` `length_mismatch`, `1403` `unknown_op`, `1404` `bad_arg_kind`, `1405`
+`bad_ref`, `1406` `table_range`, `1407` `empty_table_row`, `1408` `divide_by_zero`, `1409`
+`non_finite`.
+
+The call is `progexec_run_flat(ops, arg1_kind, arg1_num, arg2_kind, arg2_num, table_values,
+table_offset, table_len, n_steps)`, and it returns `value` (already rounded to `round(x, 5)`,
+round-half-to-even), `is_bool` / `bool_value` (a `greater` final step), `present` (`False` on
+any refusal — no fabricated `0.0`), and `status`.
+
+Here is the dataset's own first divergent-baseline example — `ADI/2009/page_49.pdf-1`,
+program `divide(100,100), divide(3.8,#0)`, gold `exe_ans` 3.8 — run for real, both ways:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+OP_DIVIDE = 3
+ARG_LITERAL, ARG_REF = 0, 1
+
+# divide(100, 100) -> step 0; divide(3.8, #0) -> step 1
+ops = [OP_DIVIDE, OP_DIVIDE]
+arg1_kind = [ARG_LITERAL, ARG_LITERAL]
+arg1_num = [100.0, 3.8]
+arg2_kind = [ARG_LITERAL, ARG_REF]
+arg2_num = [100.0, 0.0]        # step 1's arg2 is a reference to step #0
+table_values, table_offset, table_len = [], [0, 0], [0, 0]
+
+result = runtime.execute("progexec.exec", "progexec_run_flat", [
+    ops, arg1_kind, arg1_num, arg2_kind, arg2_num,
+    table_values, table_offset, table_len, 2,
+])["result"]
+
+result["status"]    # 1400 — "ok"
+result["present"]   # True
+result["is_bool"]   # False
+result["value"]     # 3.8 — exactly the dataset's exe_ans
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const OP_DIVIDE = 3;
+const ARG_LITERAL = 0, ARG_REF = 1;
+
+const ops = [OP_DIVIDE, OP_DIVIDE];
+const arg1Kind = [ARG_LITERAL, ARG_LITERAL];
+const arg1Num = [100.0, 3.8];
+const arg2Kind = [ARG_LITERAL, ARG_REF];
+const arg2Num = [100.0, 0.0];
+const tableValues: number[] = [];
+const tableOffset = [0, 0];
+const tableLen = [0, 0];
+
+const { result } = await runtime.execute("progexec.exec", "progexec_run_flat", [
+  ops, arg1Kind, arg1Num, arg2Kind, arg2Num,
+  tableValues, tableOffset, tableLen, 2,
+]) as { result: { status: number; present: boolean; is_bool: boolean; value: number } };
+
+result.status;    // 1400 — "ok"
+result.present;   // true
+result.is_bool;   // false
+result.value;     // 3.8 — exactly the dataset's exe_ans
+```
+{% endtab %}
+{% endtabs %}
+
+This is the same call shape `emit_specs.py` builds at corpus scale for every one of the 8,281
+gold programs scored above — one step per `(op, arg1, arg2)` triple, with `table_offset` /
+`table_len` only meaningful on a `table_*` step.
+
 ## Reproduce
 
 Clone the real dataset (not vendored in this repository; MIT licensed, ~104MB across the three

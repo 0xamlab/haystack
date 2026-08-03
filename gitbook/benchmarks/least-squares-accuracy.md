@@ -216,6 +216,91 @@ vector units as the shapes grow, so the ratio rises with size rather than fallin
 * **Eleven datasets are the whole published linear-regression suite.** None was added or removed
   after measuring.
 
+## Call it yourself
+
+`exactnum.lstsq` and `exactnum.eft` are ordinary runtime-library modules — reachable through
+`MojoRuntime.execute` like any other, not only through the benchmark harness above.
+
+`exactnum.eft` is the error-free-transform layer the compensated solve is built on: two
+floats in, an unevaluated `hi + lo` pair out, with `hi + lo` exactly equal to the true sum or
+product. Called with real (non-constant-folded) operands, where plain float64 addition
+genuinely rounds away the smaller term, the residual survives in `lo`:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+from algenta import MojoRuntime
+
+runtime = MojoRuntime(mode="local")
+
+r = runtime.execute("exactnum.eft", "eft_two_sum", [1.0, 1.0e-17])["result"]
+r["hi"]    # 1.0 — the float64 that plain addition also returns
+r["lo"]    # 1e-17 — the exact residual float64 addition discards
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+import { MojoRuntime } from "algenta-sdk";
+
+const runtime = new MojoRuntime();
+
+const { result } = await runtime.execute("exactnum.eft", "eft_two_sum", [1.0, 1.0e-17]) as {
+  result: { hi: number; lo: number };
+};
+result.hi;    // 1.0 — the float64 that plain addition also returns
+result.lo;    // 1e-17 — the exact residual float64 addition discards
+```
+{% endtab %}
+{% endtabs %}
+
+`exactnum.lstsq`'s `dd_lstsq_flat(a, rows, cols, b, refine)` is the compensated solver itself:
+`a` is the design matrix, `rows * cols` values row-major, `b` is the response, and `refine` is
+the number of iterative-refinement steps (0-8). It returns `coefficients` (the double-double
+solution rounded once to float64), `coefficients_lo` (the discarded tail — identically zero
+would mean the compensation degraded to plain float64), `rank`, `residual_norm`, and the two
+pivot diagnostics described above. A tiny exact-fit example, `y = 2 + 3x` at four points:
+
+{% tabs %}
+{% tab title="Python" %}
+```python
+rows, cols = 4, 2
+a = []          # row-major [1, x] design matrix
+b = []
+for t in range(4):
+    a += [1.0, float(t)]
+    b.append(2.0 + 3.0 * t)
+
+r = runtime.execute("exactnum.lstsq", "dd_lstsq_flat", [a, rows, cols, b, 2])["result"]
+r["status"]          # 810 — LSTSQ_OK
+r["coefficients"]     # [2.0, 3.0] — exact, because this design is exact
+r["residual_norm"]    # 0.0
+```
+{% endtab %}
+
+{% tab title="TypeScript" %}
+```ts
+const rows = 4, cols = 2;
+const a: number[] = [];
+const b: number[] = [];
+for (let t = 0; t < 4; t++) {
+  a.push(1.0, t);
+  b.push(2.0 + 3.0 * t);
+}
+
+const { result } = await runtime.execute("exactnum.lstsq", "dd_lstsq_flat", [a, rows, cols, b, 2]) as {
+  result: { status: number; coefficients: number[]; residual_norm: number };
+};
+result.status;          // 810 — LSTSQ_OK
+result.coefficients;    // [2.0, 3.0] — exact, because this design is exact
+result.residual_norm;   // 0.0
+```
+{% endtab %}
+{% endtabs %}
+
+`f64_lstsq_flat` takes the same four arguments (no `refine`) and runs the identical algorithm
+in plain float64 — the control arm the results table above measures against.
+
 ## Reproduce
 
 The eleven datasets are the NIST StRD linear-regression files. The engine side runs from the

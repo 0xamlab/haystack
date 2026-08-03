@@ -66,6 +66,7 @@
 * [Discrete-event simulation & queueing](engine/discrete-event-simulation.md)
 * [Evaluation & calibration gates](engine/evaluation-calibration.md)
 * [Strategy comparison & simulation](engine/strategy-simulation.md)
+* [Spreadsheet formula plane](engine/sheet-formula-plane.md)
 
 ## Concepts
 
