@@ -4976,3 +4976,259 @@ DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer /tmp/race_longct
 # substituting qwen3_generate_batch_i8_allsimd7 for the arm under test (needs -framework IOKit too)
 ```
 
+### Lever recomputation (2026-08-03): both structural submission-mechanism levers now closed, no persistent decode loop built
+
+The section above named two structural levers, unattempted at the time: (1) a cheaper per-
+dispatch/per-token submission mechanism, and (2) a persistent, no-host-round-trip multi-token
+decode loop -- one command-buffer submission covering N decode steps, each step's embedding lookup
+reading the PREVIOUS step's argmax'd token id from a GPU-resident buffer instead of a host round
+trip. Lever 1 was already closed by the raw-Metal FFI dispatch investigation above (no cheaper
+mechanism exists at the single-command-buffer-per-token granularity on this machine). This section
+redoes lever 2's ceiling with current, post-split-K-policy numbers (the GPU compute per token has
+dropped substantially since the ~8%-at-one-depth estimate that predated this whole kernel chain),
+tests the mechanism's feasibility directly, and reports the verdict: **no persistent multi-token
+decode loop was built.**
+
+**Mechanism feasibility** (the single most safety-critical open question: does a kernel reliably
+see a value an EARLIER encoder in the SAME command buffer wrote, given this codebase's own
+`gpuAddress`/`setBytes` argument-binding convention, not a generic Metal binding call):
+
+- `cross_encoder_hazard_probe_gpuaddr.m` -- two sequential encoders, one command buffer, one
+  commit/wait, as a genuine positive/negative control pair: WITH `useResource:usage:` declared on
+  both encoders (the production pattern `algenta_run_token` already uses) 1000/1000 iterations read
+  the correct written value; WITHOUT it (negative control) only 443/1000 do. This confirms
+  `useResource:` is the operative synchronization mechanism -- not this GPU/driver simply always
+  ordering things correctly regardless -- and that the probe can actually detect a real ordering
+  break, so the WITH-useResource clean pass is meaningful evidence, not a tautology.
+- `cross_encoder_hazard_probe_chain_gpuaddr.m` -- 1592 sequential encoders (199 dispatches x 8
+  steps, matching real per-token/multi-step production scale) chained in ONE command buffer, one
+  commit/wait, each depending on the value the previous one wrote: 50/50 iterations correct.
+- Verdict: the mechanism lever 2 needs is real and reliable on this hardware/driver, given the
+  production binding ABI. Feasibility is not the blocker.
+
+**Ceiling recomputation**, against REAL production pipeline objects, not a synthetic kernel (the
+first attempt, `submission_fixed_vs_marginal_probe.m`'s hand-written no-op MSL kernel, measurably
+UNDER-estimates real per-dispatch cost -- swapping `setComputePipelineState` between complex, real,
+high-register/high-threadgroup-memory compiled kernels is not free even at a trivial grid size, and
+a one-line synthetic kernel does not reproduce that cost; discarded in favor of
+`submit_floor_batch_deep_allsimd7_vary_n.mojo`, which sweeps k <= 199 real deep-table descriptors
+through `_MBQwen3I8AllSimd7`'s own compiled pipelines with every grid shrunk to 1
+threadgroup/32 threads so kernel EXECUTION time is negligible at every k, then fits `time_us =
+fixed_us + marginal_us_per_dispatch * k` by OLS):
+
+- fixed_us (one-time, per-command-buffer cost): **124.3us**. marginal_us_per_dispatch: **8.5us**.
+  The fit predicts 1815.7us at k=199; the measured single-shot floor was ~1806-1828us --
+  consistent.
+- A companion probe (`useresource_cost_probe.m`) isolates the per-buffer `useResource:`
+  registration cost specifically (`_MBQwen3I8AllSimd7` allocates roughly 409 buffers, all
+  re-declared resident on the session's one encoder every token): the marginal per-buffer cost is
+  statistically indistinguishable from zero (-0.01us/buffer, i.e. noise). That ~409-buffer
+  residency loop's cost is itself dominated by a FIXED per-encoder overhead, not a cost that scales
+  with buffer count. This sets a real implementation constraint on lever 2, not just a detail: this
+  fixed cost is paid ONCE PER ENCODER (Apple's own `useResource(_:usage:)` contract), so a naive
+  implementation built as "N sequentially-encoded encoders, one per decode step" inside one command
+  buffer would NOT amortize it (still N encoders, still ~N x this cost) -- only a design that keeps
+  ONE continuous encoder open across the entire N-token batch (switching
+  `setComputePipelineState` per dispatch, never calling `endEncoding` until the whole batch
+  completes) would amortize it down to once per batch instead of once per token. Any future attempt
+  that skips this and just chains per-step encoders naively would collect a smaller saving than the
+  ceiling computed below, not the full ceiling.
+- Real per-token time at production depth, taken directly from this chain's own longctx run
+  (`/tmp/bb/qwen3_ckpt/mojo_generate_batch_i8_allsimd7_longctx_8192_4096/generated_ids.txt`):
+  **3.299ms** at depth ~50 (9-sample window, steps 41-49) and **8.816ms** at depth ~4000 (steps
+  3991-3999). So the fixed-cost ceiling is 124.3/3299 = **3.8%** of per-token time at shallow depth,
+  shrinking to 124.3/8816 = **1.4%** at depth 4000 -- it shrinks with depth because it is a constant
+  CPU-side submission cost while the denominator (GPU split-K compute) grows with depth. This is the
+  opposite of where this whole chain's remaining gap is concentrated (the gap WIDENS with depth):
+  lever 2's ceiling is smallest exactly where the problem is largest.
+- Aggregate effect, computed directly from this run's own full 4095-token generation (26.387s
+  total decode time, 155.2 tok/s this specific round): removing the fixed_us cost from every token
+  after the first (the best case -- as if all 4095 tokens' dispatches were merged into one
+  submission) saves (4095-1) x 124.3us = 509ms, moving this round from 155.2 to 158.2 tok/s
+  (+1.97%). Applied to the long-context race's own 3-round aggregate mean above (150.6 -> ~153.5
+  tok/s), that narrows the gap to mlx-lm (mean 228.4) from 1.517x to 1.488x -- closing **5.6%** of
+  the remaining gap -- and to llama.cpp GPU (mean 205.7) from 1.366x to 1.340x -- closing **7.1%**
+  of the remaining gap. **Neither race flips.**
+
+**Independent verification performed for this section** (not a re-quote of a prior pass's numbers):
+rebuilt and reran `cross_encoder_hazard_probe_gpuaddr.m` (1000/1000 vs. 443/1000, exact match) and
+`cross_encoder_hazard_probe_chain_gpuaddr.m` (50/50, exact match); rebuilt and reran
+`submit_floor_batch_deep_allsimd7_vary_n.mojo`'s compiled binary (fixed_us=124.3/marginal_us=8.5
+reproduced directly, not copied); built and ran `useresource_cost_probe.m` for the first time (not
+previously run); recomputed the depth-50/depth-4000 window averages by hand directly from
+`generated_ids.txt` (3.299ms / 8.816ms, exact match); recomputed the aggregate-speedup and
+gap-closure percentages independently from the raw per-token log and this document's own published
+race means (+1.97% aggregate, 5.6%/7.1% gap closure -- both matching within rounding). Freeze-gate
+diff (`git diff --stat origin/main -- mojo/engine/ | grep -v -E 'residentk/|metaldispatch/|dispatch_generated'`)
+confirmed empty; `make inventory-check` and `capability_manifest_gate.py` both pass with zero newly
+undeclared kernels, and `tests/generate_mojo_tests.py --check` reports every generated suite fresh
+-- nothing under `mojo/engine/` changed by this section.
+
+**Decision: STOP. No persistent multi-token decode loop was built.** The mechanism is real and
+verified, but lever 2's own ceiling -- 1.4%-3.8% of per-token time, shrinking further with depth --
+does not clear the bar this chain has held every prior structural-lever investigation to (the
+raw-Metal dispatch dead-end above, #509's speculative-decoding no-go, #511/#512's int4/fp16
+correctness dead-ends): best case, full closure moves the aggregate long-context race from ~150.6 to
+~153.5 tok/s, closing 5.6% of the mlx-lm gap and 7.1% of the llama.cpp GPU gap, flipping neither.
+Against that small and still-shrinking ceiling, the implementation would carry the largest
+correctness-risk surface any lever in this chain has considered -- a GPU-resident argmax -> next-
+step-embedding-lookup data dependency with no host-mediated control flow, checkable only via a
+single end-of-batch readback, exactly the "wrong tokens, not a crash" failure mode the standing
+rules for this investigation flagged -- plus the continuous-encoder design constraint above that a
+naive implementation would likely get wrong. Building the actual kernel/session would not change
+this arithmetic; it would only spend that risk to collect a ceiling already known to be too small
+to matter. No kernel or session code under `mojo/engine/` was written or changed; this section's own
+investigation artifacts are committed under `benchmarks/llm_smoke/metal_batch_dispatch/`, this
+chain's own established location for investigation-only probes, alongside this addendum. **Both
+structural submission-mechanism levers named since the original split-K section are now closed for
+this chain.** Remaining headroom is GPU-compute-side kernel work -- the 256-511 dead-zone kernel,
+split-K curve-shape tuning against the mid-range noise floor the prior section already flagged --
+not either dispatch-mechanism lever.
+
+## Final state of this investigation (2026-08-03): closing summary across the whole day's chain (#504-524, plus the structural-lever recomputation above)
+
+This section closes out one continuous, same-day investigation into Qwen3-0.6B-Base decode
+throughput on this Apple M4 Max, run as 21 sequential PRs (#504-524) plus the structural-lever
+recomputation immediately above (docs-only, no PR number assigned since nothing under `mojo/engine/`
+changed). It exists to answer, plainly, the two questions this whole chain has been organized
+around: what is the real, final gap, and does this specific model/hardware/architecture combination
+have a realistic path to closing it without a much larger rewrite.
+
+### What was tried, in order
+
+- **Submission-mechanism floor (#504).** Raw-Metal FFI dispatch, probed directly against
+  `batch_shim.m`'s own one-command-buffer-per-token pattern: confirmed no cheaper submission
+  mechanism exists at that granularity on this machine. Honest no-go, no kernel change.
+- **Weight/compute precision and layout (#505-508).** Vectorized GEMV + fp16 weights (+22.7%),
+  then batched Metal dispatch + vectorized-GEMV + fp16 combined (10.2x over the original
+  baseline), then int8 per-channel weight quantization (further ground closed). #508's "final
+  RealRace" of that sub-chain: int8 still short of both real opponents, 1.06x behind llama.cpp GPU
+  and 1.29x behind mlx-lm at 16-token decode. Real, landed, verified improvements throughout; no
+  win yet.
+- **Two honest dead ends (#509, #511-512).** Speculative decoding investigated and declined before
+  any kernel was written (no plausible win at this model size/batch-1 decode shape). int4 weights
+  investigated and found to fail correctness on the real (non-toy) model, precisely diagnosed
+  rather than shipped anyway. fp16 KV-cache + an int4 sibling check: honest null result. All three
+  logged as negative results, matching this chain's own standing practice of publishing null
+  results rather than silently dropping them.
+- **GPU-counter attribution (#510).** Per-role timing instrumentation isolated lm_head and SDPA as
+  the roles worth investigating further -- itself an honest null result at the time (no kernel
+  change), but it correctly pointed at what #513-516 then fixed.
+- **SIMD-shuffle reductions, short-context (#513-516).** SDPA SIMD-shuffle (+20.8% decode, beat
+  llama.cpp GPU outright, still short of mlx-lm) -> GEMV SIMD-shuffle (+21-44% decode, gap to
+  mlx-lm down to 1.24% median) -> lm_head SIMD-shuffle (median flips ahead of mlx-lm) ->
+  argmax-reduce SIMD-shuffle (decisive win vs. mlx-lm, every round). This four-PR sequence is what
+  actually closed the short-context gap, one dispatch role at a time, each landing as its own
+  independently-verified, race-checked PR.
+- **Short-context gitbook page (#517).** Published on a genuine 14/14 win at 16-token decode
+  against both mlx-lm and llama.cpp (GPU and CPU). This page's claim was true when published and
+  remains scoped honestly (one checkpoint, one prompt, one decode length -- see its own "What is
+  not claimed" section); it does not claim anything about long context, which is the axis this
+  whole rest of the chain (#518-524 plus this section) went on to investigate and has never won.
+- **Long-context substrate and first fixes (#518-521).** The tensorx shape/buffer/elementwise/
+  reduce substrate (groundwork, not itself a decode change); dynamic KV-cache `max_ctx` (removed a
+  fixed 512-token ceiling that would have made anything past that length either wrong or
+  impossible); flash-decoding split-K (first real narrowing of SDPA's long-context occupancy
+  collapse); a lazy-init fix that closed a shallow-context regression the split-K path had
+  introduced. Necessary, real, but not sufficient on their own.
+- **Split-K kernel iteration (#522-524).** A barrier-batched split-K variant that was correct but a
+  real, measured regression -- ruled out and left out, not shipped anyway (#522). A SIMD-group-
+  native reduction plus re-tuned split count: a real, independently-verified improvement at depth,
+  gap narrowed but not closed, short-context regressed to 13/14 (#523). A calibration-backed,
+  genuinely dynamic per-step split policy (tied to real per-depth calibration and a real per-host
+  core-count probe, not a guess): the largest single narrowing of the long-context aggregate gap
+  this whole chain recorded, aggregate ratio down to ~1.52x (mlx-lm) / ~1.37x (llama.cpp GPU) from
+  the original ~1.90x/~2.06x -- short-context back to 12/14 vs. mlx-lm, 13/14 vs. llama.cpp GPU,
+  14/14 vs. llama.cpp CPU (#524). Real, landed, verified; still a loss in aggregate, every round.
+- **Structural-lever recomputation (this file, immediately above, 2026-08-03).** Both levers named
+  since the original split-K section -- a cheaper submission mechanism, and a persistent no-host-
+  round-trip multi-token decode loop -- assessed with current post-#524 numbers. Lever 1 was
+  already closed by #504. Lever 2's GPU-side chaining mechanism was verified to genuinely work
+  (production-ABI positive/negative control probes, production-scale 1592-encoder chain probe,
+  all independently reproduced in this pass), but its own ceiling -- 1.4%-3.8% of per-token time,
+  shrinking with depth, i.e. smallest exactly where the gap is largest -- does not clear this
+  chain's bar against the correctness-risk and implementation complexity it would cost (a GPU-
+  resident data dependency checkable only by a full end-of-batch readback). Declined; no kernel or
+  session code written.
+
+### The real, final gap
+
+- **Short-context (16 tokens):** near-tie-to-narrow-win territory, run-dependent -- 12-14 of 14
+  rounds against mlx-lm and 13-14 of 14 against llama.cpp GPU depending on the exact run (14/14
+  against llama.cpp CPU consistently). The one outright 14/14-both-axes win recorded in this whole
+  chain (#516/#517) has not been reproduced on every subsequent run once long-context-motivated
+  kernel changes (#518-524) started sharing the same session/kernel code path; the two sub-14
+  reruns since then (#523's 13/14, #524's 12/14) each show one small real loss plus one large
+  outlier this document attributes, with instrumented evidence, to host-side scheduling noise on a
+  shared, busy machine rather than a kernel or policy regression -- but the standing rule gates on
+  the measured outcome, not the attribution, so neither reproduces the win.
+- **Long-context (4096 tokens):** a clear, consistent loss, every round, at every position checked
+  from ~250 tokens onward. Aggregate ratio ~1.52x behind mlx-lm, ~1.37x behind llama.cpp GPU as of
+  #524 -- narrowed from ~1.90x/~2.06x at the start of the split-K work, a real ~20-25 percentage
+  point improvement, but still a 37-52% throughput deficit in aggregate. The gap is not flat with
+  depth: at pos=50 Algenta is ahead of mlx-lm in every round measured; by pos=4000 Algenta is
+  roughly half mlx-lm's rate. Nothing in this chain has changed that shape, only its steepness.
+
+### Honest assessment: is outright long-context parity reachable without a much larger rewrite?
+
+My own reasoned view, weighing what this chain actually found rather than what would be convenient
+to conclude:
+
+Short-context parity is real and has been demonstrated (#516/#517), even if it is fragile against
+whatever host-side noise or session-code-path sharing has knocked two of the last three reruns down
+to 12-13/14 -- that's a tuning/robustness problem on top of a genuine win, not a ceiling. If a
+gitbook update is ever revisited for the short-context page, that fragility (not the original
+14/14 claim, which was true when measured) is the open item, and it is a session/scheduling
+question, not a kernel-architecture one.
+
+Long-context is a different, harder story, and I do not think it is close to parity, for reasons
+this chain's own evidence supports rather than a hunch:
+
+1. **The gap widens with depth, and every lever tried so far has a ceiling that shrinks with
+   depth.** The split-K kernel work (#520-524) is real and the largest single improvement this
+   chain found, but it operates on the SAME asymptotic shape (attention cost growing with context
+   length) rather than changing it. The structural-submission levers (#504, and lever 2 above) are
+   the opposite: their ceiling is a FIXED per-token/per-command-buffer cost, which becomes a
+   *smaller* fraction of a *larger* per-token time as depth grows -- exactly backwards from where
+   the gap is concentrated. Both of this chain's two structural levers and its compute-kernel
+   lever are, in different ways, fighting the wrong asymptote at long depth.
+2. **The still-unexplored levers left on the table (the 256-511 "dead zone" kernel, split-K curve-
+   shape tuning) are correctly identified by #524's own "What is left" section as being close to
+   THEIR OWN practical ceiling too** -- the mid-range noise floor this chain's own reruns found is
+   already larger than the signal available to tune against. There is no reason to expect another
+   round of the same kind of kernel-tuning work to do more than #520-524 already did (a real but
+   partial narrowing).
+3. **mlx-lm and llama.cpp are not doing something exotic that Algenta's kernels structurally
+   cannot do** -- both are mature, general-purpose serving engines with attention implementations
+   that handle the long-context regime as a first-class case (proper flash-attention-style tiling
+   with online softmax, KV-cache layouts and memory access patterns tuned specifically for the
+   growing-context regime, and, in llama.cpp's case, years of Apple-GPU-specific kernel tuning
+   upstream). Algenta's current attention kernel (`_sdpa_kernel_simd` plus the split-K family
+   layered on top of it) was built incrementally, fix-by-fix, on top of an architecture whose
+   original shape was not designed around the long-context case from the start. The split-K work
+   in this chain is, honestly, a retrofit -- a real and substantial one, but a retrofit -- of
+   occupancy and reduction fixes onto that shape, not a redesign of the shape itself.
+4. **A from-scratch, long-context-first attention kernel architecture (proper tiled/flash-style
+   attention with online softmax and a KV-cache memory layout designed for the deep-context case
+   from the beginning, rather than split-K bolted onto a kernel designed for the shallow case) is
+   the kind of change that plausibly *could* close this gap** -- but it is a materially larger
+   undertaking than anything in this 21-PR chain (a new kernel family, new correctness
+   infrastructure, a new round of the same staged-correctness discipline this chain has followed
+   throughout, and real risk that it regresses the short-context win while fixing long-context).
+   That is a legitimate next investment to consider, but it is a different scale of project than
+   "the next incremental fix," and nothing in today's evidence says it is guaranteed to work either
+   -- only that it targets the actual asymptotic shape of the problem, which nothing shipped so far
+   does.
+
+**Conclusion: this chain has reached a genuine, well-evidenced practical ceiling for incremental
+fixes to the current attention-kernel architecture.** Short-context parity is real (with a
+robustness caveat). Long-context parity is not reachable by the next increment of this same kind of
+work -- every lever this chain named, structural and compute-kernel alike, has now been tried,
+measured, and found to have a ceiling too small (structural levers) or too close to its own noise
+floor (compute-kernel levers) to close a 37-52% aggregate deficit that grows with depth. Closing it
+for real would need the from-scratch attention-architecture investment described above, not another
+PR in this series's own style. Nothing in this file's own numbers justifies a gitbook change:
+short-context is not consistently 14/14 anymore and long-context has never been a win, so the
+standing publication rule (outright win, every round, at both short and long context) is not met
+today, and this docs-only recomputation does not change that.
+
