@@ -1,19 +1,30 @@
-# H2O db-benchmark join track, 0.5 GB tier — current unrouted hash-join baseline
+# H2O db-benchmark join track, 0.5 GB tier — serial baseline, then a real parallel probe+gather
 
-**Not a win. This stays in `benchmarks/`, never `gitbook/`, per this project's own
-standing rule: a GitBook page publishes only on a minimum ratio > 1.00 against BOTH
-DuckDB and Polars, on every question.** That bar is cleared on exactly one of the five
-questions against one of the two references (q1 vs DuckDB) and missed everywhere else,
-most badly against Polars (15x-27x slower on every question) and on the "big"
-near-1:1 dimension tier against DuckDB (5.3x slower) — the exact risk the feasibility
-research flagged before this measurement pass started.
+**Still not a win, after a real fix. This stays in `benchmarks/`, never `gitbook/`, per
+this project's own standing rule: a GitBook page publishes only on a minimum ratio >
+1.00 against BOTH DuckDB and Polars, on every question.** The original serial baseline
+below cleared that bar on exactly one of five questions against one of two references
+(q1 vs DuckDB). `mojo/engine/query/join.mojo`'s probe and gather have since been
+parallelized (row-banded, same blueprint as `query.aggregate.group_by_many_radix`'s
+counted scatter — see that file's own "Parallel probe and gather" docstring section),
+and the **"Update (2026-08)" section below is the current, honest picture**: Algenta
+now wins outright against DuckDB on 4 of 5 questions and roughly halves the Polars gap
+on all 5 — but every question is still a loss against Polars (6.4x-12.1x), so the page
+still does not ship. The two sections below are kept in chronological order —
+"Results" is the original serial-path measurement (now superseded), "Update (2026-08)"
+is the current parallel-path measurement — so the gap-closure is visible, not just the
+final number.
 
-This is the honest "before" picture for the join-track work the feasibility research
+This was the honest "before" picture for the join-track work the feasibility research
 proposed (a shape-aware router + a partitioned/radix hash-join variant, mirroring the
-groupby page's own playbook — see `gitbook/benchmarks/dataframe-groupby.md`). No
-engine code changed for this pass; this is measurement only, of the plane exactly as it
-ships today: `Query.join()` → `plan._apply_join` → always `hash_join_indices` (the
-`method` field defaults to `"hash"` and nothing inspects key shape).
+groupby page's own playbook — see `gitbook/benchmarks/dataframe-groupby.md`). At the
+time this table was measured, no engine code had changed for this pass: this was
+measurement only, of the plane exactly as it shipped then: `Query.join()` →
+`plan._apply_join` → always `hash_join_indices` (the `method` field defaults to
+`"hash"` and nothing inspects key shape). It still describes the serial path exactly —
+`hash_join_indices` and `materialize` still take this path below their own new
+row-count thresholds (see the Update section) — so it is retained as ground truth for
+what the parallel path is compared against, not deleted.
 
 ## Results
 
@@ -110,6 +121,101 @@ genuinely competitive strategies to choose between, and today there is one, and 
 not yet competitive with either reference engine on 4 of 5 questions, nor with Polars on
 any of them.
 
+## Update (2026-08): the probe and gather are now parallel — real gap closure, still not a win
+
+The recommendation above undersold one path: this section's own root-cause read (single
+core, largest on the biggest build side) turned out to be directly fixable with an
+in-tree technique, not a from-scratch redesign. `mojo/engine/query/join.mojo`'s
+`hash_join_indices` probe loop and `materialize`'s per-column gather now fan out over
+row bands — the same row-banded-parallel-over-ranges blueprint
+`mojo/engine/query/composed.mojo`'s `group_by_many_parallel` established and the
+GitBook groupby page published a win on (`gitbook/benchmarks/dataframe-groupby.md`),
+adapted here to a per-row VARIABLE-size output (a probe emits 0, 1 or a whole
+duplicate-key chain per row, unlike a fixed-slot group merge) via the same two-pass
+"counted scatter" `query.aggregate.group_by_many_radix` already uses for the identical
+reason: pass A counts survivors per worker with the same branch the serial walk takes, a
+cheap serial prefix sum over `workers` (not rows) turns those counts into disjoint write
+offsets, and pass B re-walks the same bands and writes at its own cursor with raw
+indexed stores. Both new paths carry their own measured, real minimum-row threshold
+below which the plain serial walk still runs unchanged (`JOIN_PROBE_PARALLEL_MIN_ROWS =
+1<<19`, `JOIN_GATHER_PARALLEL_MIN_ROWS = 1<<18` — see the two constants' own docstrings
+in `join.mojo` for the quiet/under-load overhead measurement they're derived from), and
+the scatter's own write-cursor invariant is checked after every parallel run and falls
+back to the serial walk on any mismatch rather than trust a mis-sized result. The build
+side (`_build_right_index`) and `merge_join_indices` are unchanged — see the module
+docstring's "Parallel probe and gather" section for the full design and why those two
+were left for separate, harder follow-on work.
+
+**Frozen-baseline discipline held exactly**: `hash_join_indices`'s and
+`merge_join_indices`'s signatures, numeric semantics, and NaN/null-key handling are
+byte-for-byte what this file's Correctness section above already documented — nothing
+about what a join means changed, only how the existing single-threaded answer gets
+computed. `mojo/tests/libs/test_query_join.mojo` (the original 33-case known-value
+suite, unchanged) still passes 33/33. A new suite,
+`mojo/tests/libs/test_query_join_parallel.mojo` (28/28), pins the parallel probe and
+gather against their serial references row-for-row (not merely same-row-count or
+same-multiset) at several worker counts including non-power-of-two ones, at scales past
+both new thresholds, and re-runs every NaN/null/duplicate-key/unmatched-row edge case at
+that scale.
+
+### Correctness, re-checked at H2O scale before trusting any new timing
+
+Same protocol as the original Correctness section: the parallel binary and a freshly
+rebuilt, byte-for-byte **unmodified-serial** binary (from the commit the parallel branch
+forked from) were run against the identical generated `/tmp/h2o_join` data, same
+session. Row counts are identical to the original table above and to this session's
+DuckDB/Polars run on every question (q1=8,997,136 / q2=9,001,606 / q3=10,000,000 /
+q4=9,001,606 / q5=9,000,000), and the cross-engine checksum (`sum(v1) + sum(v2)`) is
+**bit-identical between the serial and parallel Algenta binaries on every question**
+(e.g. q1: `900289106.2571583`, both) — not merely close, exactly equal — and agrees with
+DuckDB/Polars to the same ~1e-11-class relative tolerance already disclosed above.
+
+### Results — parallel path, same protocol as the original table
+
+Minimum of 3 reps per engine per question, all three engines run back to back on the
+identical generated data, same machine, same session (still not yet the groupby page's
+full rotated-interleaved methodology — see Scope, unchanged). Ratio convention is
+unchanged from above: **Algenta time / baseline time; above 1.00 means Algenta is
+slower.**
+
+| Question | Algenta-parallel (min) | DuckDB (min) | Polars (min) | Algenta/DuckDB | Algenta/Polars |
+| --- | --- | --- | --- | --- | --- |
+| q1 — small inner on id1 | 0.163s | 0.328s | 0.017s | **0.50x (faster)** | **9.87x** |
+| q2 — medium inner on id2 | 0.221s | 0.348s | 0.019s | **0.64x (faster)** | **11.56x** |
+| q3 — medium left on id2 | 0.228s | 0.432s | 0.036s | **0.53x (faster)** | **6.40x** |
+| q4 — medium inner on id2* | 0.219s | 0.339s | 0.018s | **0.65x (faster)** | **11.90x** |
+| q5 — **big** inner on id3 | 1.184s | 0.376s | 0.098s | **3.15x** | **12.05x** |
+
+For reference, this same session's re-verified **unmodified-serial** Algenta binary
+(built from the pre-parallelization commit, same data, same session) measured
+0.347s/0.520s/0.558s/0.523s/2.287s on q1-q5 — a real, reproducible ~2.1x-3.2x
+probe+gather speedup from parallelization alone, consistent with the isolated
+probe-only measurement taken while this change was being built.
+
+**Against DuckDB**: Algenta now wins outright on 4 of 5 questions (q1-q4, all four of
+which were losses or breakeven before — q1 goes from 0.92x to 0.50x, q2-q4 from
+1.15x-1.40x losses to 0.53x-0.65x wins), and q5's big-tier loss — the one the original
+"Why the gap" section named as "structurally fixable with the exact tool the research
+proposed" — shrinks from 5.33x to 3.15x, a real ~41% reduction in that specific gap, not
+a full close. **Against Polars**: every ratio roughly halves (e.g. q2: 27.5x → 11.56x,
+q3: 15.7x → 6.40x) but **all five questions remain losses**, in the 6.4x-12.1x range —
+exactly what the original "Why the gap" section predicted: Polars' advantage reads as a
+flat per-row SIMD/vectorization constant factor, not a parallelism gap, and parallelism
+does not touch a constant factor.
+
+### Recommendation, updated
+
+**Per the standing publish rule (minimum ratio > 1.00 against BOTH DuckDB and Polars,
+every question), this still does not clear the bar — Polars alone blocks it, on all
+five questions, exactly as predicted.** The DuckDB-side recommendation from the original
+pass is now substantially executed (parallel probe+gather closed 4 of 5 DuckDB losses
+into wins and shrank the fifth); the Polars-side recommendation stands exactly as
+written above and is now the only remaining blocker: closing it needs the surviving
+serial arithmetic in the probe's hash-and-chain-walk and the gather's per-cell bounds
+check to get faster per row (SIMD-friendly hashing/comparison, fewer allocations),
+not more threads — parallelism was the DuckDB-shaped half of this gap, not the
+Polars-shaped half, and this pass closed the half it was built for.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
@@ -151,9 +257,17 @@ any of them.
   50 GB tiers are not measured at all.
 * **q4 is not an independent measurement**, for the reason given above and in
   `bench_h2o_join.mojo`'s docstring.
-* **No router, no radix/partitioned hash-join variant exists yet.** This file measures
-  the engine exactly as it ships on `origin/main` today; no engine code changed for this
-  pass.
+* **The original table above measured the engine with no engine code changed.** That
+  is no longer true of the current engine: the Update section's row-banded parallel
+  probe and gather are real, merged-into-this-file's-history engine changes, kept
+  disclosed above rather than silently overwriting the original table.
+* **Still no router, no radix/partitioned hash-join variant, and the build side
+  (`_build_right_index`) and `merge_join_indices` are still fully serial** — the Update
+  section's parallelism is scoped to the probe and the gather only, per that section's
+  own "what was left unchanged" note. The 5 GB and 50 GB tiers are still not measured.
+  The Update section's own timing is likewise 3 reps, one session, not yet
+  rotated-interleaved — the same caveat as the bullet above, carried forward rather than
+  quietly upgraded.
 * **Not comparable to the public leaderboard.** Same disclosure as the groupby page:
   the official suite's categorical join keys are strings; every engine here got integer
   dictionary codes instead, for internal comparability among the three engines measured
@@ -172,4 +286,14 @@ mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join.mojo -o /tmp
 
 ```text title="DuckDB and Polars baselines"
 python benchmarks/h2o_join/run_baselines.py
+```
+
+The parallel probe and gather (see the Update section above) are the default,
+unconditional path in `join.mojo` above their own row-count thresholds — no build flag
+or env var switches them on; the same `bench_h2o_join.mojo` build above already
+measures the parallel path.
+
+```text title="correctness suites for the parallel path"
+mojo build -I mojo/engine mojo/tests/libs/test_query_join.mojo -o /tmp/test_query_join && /tmp/test_query_join
+mojo build -I mojo/engine mojo/tests/libs/test_query_join_parallel.mojo -o /tmp/test_query_join_parallel && /tmp/test_query_join_parallel
 ```
