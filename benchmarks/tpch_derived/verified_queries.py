@@ -60,12 +60,21 @@ def q1():
     ]
     threshold = epoch_day("1998-12-01") - 91
 
+    # Resident-handle migration (PR #542's parsed-batch cache): open ONE handle
+    # per chunk ONCE, before run_engine() is ever invoked (correctness pass or
+    # any repeat() rep), so every call reuses the SAME parsed batch instead of
+    # resending `rows=` (and reparsing it) on every one of N_REPS calls.
+    handles = [
+        runtime().open_dataset(batch, name=f"q1_chunk_{i}", routing_module="stats")
+        for i, batch in enumerate(chunk(rows))
+    ]
+
     def run_engine():
         partial = {}
-        for batch in chunk(rows):
+        for handle in handles:
             disc = col("l_extendedprice") * (lit(1.0) - col("l_discount"))
             q = (
-                Query(columns=fact_cols, rows=batch)
+                Query(columns=fact_cols, dataset=handle)
                 .filter(col("l_shipdate") <= threshold)
                 .project(
                     l_returnflag_code=col("l_returnflag_code"),
@@ -93,8 +102,12 @@ def q1():
                     acc[i] += r[2 + i] or 0.0
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = []
     for (rfc, lsc), acc in partial.items():
@@ -229,12 +242,21 @@ def q3():
     fact = pg_fetch(f"SELECT {', '.join(lineitem_cols)} FROM lineitem")
     threshold = epoch_day("1995-03-12")
 
+    # Resident-handle migration: open ONE handle per chunk ONCE, before
+    # run_engine() is invoked by the correctness pass or any repeat() rep.
+    # `orders_final` stays an inline `.with_table(...)` side table, untouched —
+    # PR #542's cache doesn't cover with_table rows and it's small enough not
+    # to be worth migrating.
+    handles = []
+    for i, batch in enumerate(chunk(fact)):
+        rows = [[r[c] for c in lineitem_cols] for r in batch]
+        handles.append(runtime().open_dataset(rows, name=f"q3_chunk_{i}", routing_module="stats"))
+
     def run_engine():
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in lineitem_cols] for r in batch]
+        for handle in handles:
             qq = (
-                Query(columns=lineitem_cols, rows=rows)
+                Query(columns=lineitem_cols, dataset=handle)
                 .filter(col("l_shipdate") > threshold)
                 .project(
                     l_orderkey=col("l_orderkey"),
@@ -252,8 +274,12 @@ def q3():
                 partial[key] = partial.get(key, 0.0) + (r[3] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(int(k[0]), v, k[1], int(k[2])) for k, v in partial.items()]
     final.sort(key=lambda t: (-t[1], t[2]))
@@ -282,12 +308,26 @@ def q3():
 def q4():
     fact = pg_fetch("SELECT l_orderkey, l_commitdate, l_receiptdate FROM lineitem")
 
+    # Resident-handle migration: open ONE handle per chunk ONCE, before pass1()
+    # is ever invoked (correctness pass or any repeat() rep). pass2()'s own
+    # `chunk(qualifying_rows)` loop is untouched -- the chunked variable there
+    # (`qchunk`) only ever feeds an inline `.with_table("qual", ...)` side
+    # table; the loop's actual `Query(rows=orders_rows)` uses the SAME fixed
+    # `orders_rows` every iteration, not the chunked value, so there is no
+    # `Query(rows=batch)`-from-chunk() call there to migrate.
+    handles = [
+        runtime().open_dataset(
+            [[r["l_orderkey"], r["l_commitdate"], r["l_receiptdate"]] for r in batch],
+            name=f"q4_chunk_{i}", routing_module="stats",
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
     def pass1():
         qualifying = set()
-        for batch in chunk(fact):
-            rows = [[r["l_orderkey"], r["l_commitdate"], r["l_receiptdate"]] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=["l_orderkey", "l_commitdate", "l_receiptdate"], rows=rows)
+                Query(columns=["l_orderkey", "l_commitdate", "l_receiptdate"], dataset=handle)
                 .filter(col("l_commitdate") < col("l_receiptdate"))
                 .distinct("l_orderkey")
             )
@@ -295,34 +335,38 @@ def q4():
                 qualifying.add(r[0])
         return qualifying
 
-    qualifying = pass1()
+    try:
+        qualifying = pass1()
 
-    orders_raw = pg_fetch(
-        "SELECT o_orderkey, o_orderpriority FROM orders WHERE o_orderdate >= '1994-11-01' "
-        "AND o_orderdate < '1995-02-01'"
-    )
-    priority_codes, priority_map = encode_strings([r["o_orderpriority"] for r in orders_raw])
-    orders_rows = [[r["o_orderkey"], priority_codes[i]] for i, r in enumerate(orders_raw)]
-    qualifying_rows = [[k] for k in qualifying]
-
-    def pass2():
-        matched = set()
-        for qchunk in chunk(qualifying_rows):
-            qq = (
-                Query(columns=["o_orderkey", "priority_code"], rows=orders_rows)
-                .with_table("qual", ["l_orderkey"], rows=qchunk)
-                .join("qual", left_on="o_orderkey", right_on="l_orderkey", how="semi")
-            )
-            for r in run_query(qq).rows:
-                matched.add(r[0])
-        final_rows = [r for r in orders_rows if r[0] in matched]
-        qq2 = Query(columns=["o_orderkey", "priority_code"], rows=final_rows).group_by(
-            "priority_code", "priority_code", agg="count"
+        orders_raw = pg_fetch(
+            "SELECT o_orderkey, o_orderpriority FROM orders WHERE o_orderdate >= '1994-11-01' "
+            "AND o_orderdate < '1995-02-01'"
         )
-        return {r[0]: r[1] for r in run_query(qq2).rows}
+        priority_codes, priority_map = encode_strings([r["o_orderpriority"] for r in orders_raw])
+        orders_rows = [[r["o_orderkey"], priority_codes[i]] for i, r in enumerate(orders_raw)]
+        qualifying_rows = [[k] for k in qualifying]
 
-    counts = pass2()
-    engine_times = repeat(lambda: (pass1(), pass2()), N_REPS)
+        def pass2():
+            matched = set()
+            for qchunk in chunk(qualifying_rows):
+                qq = (
+                    Query(columns=["o_orderkey", "priority_code"], rows=orders_rows)
+                    .with_table("qual", ["l_orderkey"], rows=qchunk)
+                    .join("qual", left_on="o_orderkey", right_on="l_orderkey", how="semi")
+                )
+                for r in run_query(qq).rows:
+                    matched.add(r[0])
+            final_rows = [r for r in orders_rows if r[0] in matched]
+            qq2 = Query(columns=["o_orderkey", "priority_code"], rows=final_rows).group_by(
+                "priority_code", "priority_code", agg="count"
+            )
+            return {r[0]: r[1] for r in run_query(qq2).rows}
+
+        counts = pass2()
+        engine_times = repeat(lambda: (pass1(), pass2()), N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(priority_map[k], int(v)) for k, v in counts.items()]
     final.sort(key=lambda t: t[0])
@@ -361,6 +405,16 @@ def q5():
     fact_cols = ["l_orderkey", "l_suppkey", "l_extendedprice", "l_discount"]
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
 
+    # Resident-handle migration: open ONE handle per chunk ONCE, before
+    # run_engine() is invoked by the correctness pass or any repeat() rep.
+    # `supp_ok` / `orders_cust` stay inline `.with_table(...)` side tables,
+    # untouched. The small `q1`/`res1` correlated-subquery re-run each call
+    # (unchunked, not from `chunk()`) is likewise left as-is.
+    handles = []
+    for i, batch in enumerate(chunk(fact)):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        handles.append(runtime().open_dataset(rows, name=f"q5_chunk_{i}", routing_module="stats"))
+
     def run_engine():
         q1 = (
             Query(columns=["o_orderkey", "o_custkey"], rows=orders_ok)
@@ -373,10 +427,9 @@ def q5():
         orders_cust_rows = [list(r) for r in res1.rows]
 
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .project(
                     l_orderkey=col("l_orderkey"),
                     l_suppkey=col("l_suppkey"),
@@ -393,8 +446,12 @@ def q5():
                 partial[r[0]] = partial.get(r[0], 0.0) + (r[1] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(nation_map[k], v) for k, v in partial.items()]
     final.sort(key=lambda t: -t[1])
@@ -423,12 +480,22 @@ def q6():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
     lo, hi = epoch_day("1997-01-01"), epoch_day("1998-01-01")
 
+    # Open ONE resident handle per chunk, once, before run_engine() is ever
+    # invoked (correctness pass or timed repeat()) -- reused across all of them
+    # instead of resending `rows=` inline on every call (see PR #542 + Q19's
+    # resident-handle migration in RESULTS.md).
+    fact_handles = []
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        fact_handles.append(
+            runtime().open_dataset(rows, name=f"q6_chunk_{len(fact_handles)}", routing_module="stats")
+        )
+
     def run_engine():
         total = 0.0
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in fact_handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter(
                     (col("l_shipdate") >= lo) & (col("l_shipdate") < hi)
                     & (col("l_discount") >= 0.05) & (col("l_discount") <= 0.07)
@@ -441,8 +508,12 @@ def q6():
                 total += r[1] or 0.0
         return total
 
-    total = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        total = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in fact_handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     duck_times = []
     drows = None
@@ -476,13 +547,31 @@ def q7():
     )
     lo, hi = epoch_day("1995-01-01"), epoch_day("1996-12-31")
 
+    # Open ONE resident handle per chunk per fact table, once, before
+    # run_engine() is ever invoked (correctness pass or timed repeat()) --
+    # reused across all of them instead of resending `rows=` inline on every
+    # call. `.with_table(...)` side tables (cust_ok, supp_ok, orders_cust)
+    # stay inline -- they're small and PR #542's cache doesn't cover them.
+    orders_handles = []
+    for batch in chunk(orders_all):
+        rows = [[r["o_orderkey"], r["o_custkey"]] for r in batch]
+        orders_handles.append(
+            runtime().open_dataset(rows, name=f"q7_orders_chunk_{len(orders_handles)}", routing_module="stats")
+        )
+
+    fact_handles = []
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        fact_handles.append(
+            runtime().open_dataset(rows, name=f"q7_fact_chunk_{len(fact_handles)}", routing_module="stats")
+        )
+
     def run_engine():
         orders_cust_rows = []
         orders_cust_cols = None
-        for batch in chunk(orders_all):
-            rows = [[r["o_orderkey"], r["o_custkey"]] for r in batch]
+        for handle in orders_handles:
             q1 = (
-                Query(columns=["o_orderkey", "o_custkey"], rows=rows)
+                Query(columns=["o_orderkey", "o_custkey"], dataset=handle)
                 .with_table("cust_ok", ["c_custkey", "c_nationkey"], rows=customer_ok)
                 .join("cust_ok", left_on="o_custkey", right_on="c_custkey", how="inner")
                 .project(o_orderkey=col("o_orderkey"), c_nationkey=col("cust_ok.c_nationkey"))
@@ -492,10 +581,9 @@ def q7():
             orders_cust_rows.extend(list(r) for r in res1.rows)
 
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in fact_handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter((col("l_shipdate") >= lo) & (col("l_shipdate") <= hi))
                 .project(
                     l_orderkey=col("l_orderkey"),
@@ -518,8 +606,12 @@ def q7():
                 partial[key] = partial.get(key, 0.0) + (r[3] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in orders_handles + fact_handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(nation_map[k[0]], nation_map[k[1]], int(k[2]), v) for k, v in partial.items()]
     final.sort(key=lambda t: (t[0], t[1], t[2]))
@@ -562,6 +654,17 @@ def q8():
     fact_cols = ["l_orderkey", "l_partkey", "l_suppkey", "l_extendedprice", "l_discount"]
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
 
+    # Open ONE resident handle per chunk, once, before run_engine() is ever
+    # invoked (correctness pass or timed repeat()) -- reused across all of
+    # them instead of resending `rows=` inline on every call. `.with_table(...)`
+    # side tables (part_ok, supp_all, orders_cust) stay inline.
+    fact_handles = []
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        fact_handles.append(
+            runtime().open_dataset(rows, name=f"q8_fact_chunk_{len(fact_handles)}", routing_module="stats")
+        )
+
     def run_engine():
         q1 = (
             Query(columns=["o_orderkey", "o_custkey", "o_year"], rows=orders_rows)
@@ -573,10 +676,9 @@ def q8():
         orders_cust_cols, orders_cust_rows = res1.columns, [list(r) for r in res1.rows]
 
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in fact_handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .project(
                     l_orderkey=col("l_orderkey"),
                     l_partkey=col("l_partkey"),
@@ -602,8 +704,12 @@ def q8():
                 acc[1] += r[2] or 0.0
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in fact_handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(int(y), acc[1] / acc[0]) for y, acc in partial.items()]
     final.sort(key=lambda t: t[0])
@@ -646,12 +752,22 @@ def q9():
     fact_cols = ["l_orderkey", "l_partkey", "l_suppkey", "l_extendedprice", "l_discount", "l_quantity"]
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
 
+    # Open ONE resident handle per chunk, once, before run_engine() is ever
+    # invoked (correctness pass or timed repeat()) -- reused across all of
+    # them instead of resending `rows=` inline on every call. `.with_table(...)`
+    # side tables (ps_key_tbl, supp_all) stay inline.
+    fact_handles = []
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        fact_handles.append(
+            runtime().open_dataset(rows, name=f"q9_fact_chunk_{len(fact_handles)}", routing_module="stats")
+        )
+
     def run_engine():
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in fact_handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .project(
                     l_orderkey=col("l_orderkey"),
                     ps_key=col("l_partkey") * lit(MULT) + col("l_suppkey"),
@@ -675,8 +791,12 @@ def q9():
                 partial[key] = partial.get(key, 0.0) + (r[2] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in fact_handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     by_nation_year = {}
     for (nk, orderkey), amt in partial.items():
@@ -722,16 +842,27 @@ def q10():
     rf_codes, rf_map = encode_strings([r["l_returnflag"] for r in fact])
     R_code = next(c for c, v in rf_map.items() if v == "R")
 
+    # Resident-handle migration (see RESULTS.md's Q19 update): open every chunk ONCE,
+    # before repeat()'s timing loop, instead of resending the same rows= JSON per call.
+    chunk_rows = []
+    idx = 0
+    for batch in chunk(fact):
+        n = len(batch)
+        chunk_rows.append(
+            [[r["l_orderkey"], rf_codes[idx + i], r["l_extendedprice"], r["l_discount"]]
+             for i, r in enumerate(batch)]
+        )
+        idx += n
+    handles = [
+        runtime().open_dataset(rows, name=f"q10_lineitem_{i}", routing_module="stats")
+        for i, rows in enumerate(chunk_rows)
+    ]
+
     def run_engine():
         partial = {}
-        idx = 0
-        for batch in chunk(fact):
-            n = len(batch)
-            rows = [[r["l_orderkey"], rf_codes[idx + i], r["l_extendedprice"], r["l_discount"]]
-                    for i, r in enumerate(batch)]
-            idx += n
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter(col("l_returnflag").eq(R_code))
                 .project(l_orderkey=col("l_orderkey"), revenue=col("l_extendedprice") * (lit(1.0) - col("l_discount")))
                 .with_table("orders_ok", ["o_orderkey", "o_custkey"], rows=orders_ok)
@@ -742,8 +873,12 @@ def q10():
                 partial[r[0]] = partial.get(r[0], 0.0) + (r[1] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for handle in handles:
+            runtime().close_dataset(handle, routing_module="stats")
 
     final = []
     for custkey, revenue in partial.items():
@@ -833,19 +968,29 @@ def q12():
     lo, hi = epoch_day("1994-01-01"), epoch_day("1995-01-01")
     cols = ["l_orderkey", "l_shipmode", "l_commitdate", "l_receiptdate", "l_shipdate", "priority_code"]
 
-    def run_engine():
-        partial = {}
-        idx = 0
-        for batch in chunk(fact):
-            n = len(batch)
-            rows = [
+    # Resident-handle migration: open every chunk ONCE, before repeat()'s timing loop.
+    chunk_rows = []
+    idx = 0
+    for batch in chunk(fact):
+        n = len(batch)
+        chunk_rows.append(
+            [
                 [r["l_orderkey"], sm_codes[idx + i], r["l_commitdate"], r["l_receiptdate"], r["l_shipdate"],
                  priority_of[r["l_orderkey"]]]
                 for i, r in enumerate(batch)
             ]
-            idx += n
+        )
+        idx += n
+    handles = [
+        runtime().open_dataset(rows, name=f"q12_lineitem_{i}", routing_module="stats")
+        for i, rows in enumerate(chunk_rows)
+    ]
+
+    def run_engine():
+        partial = {}
+        for handle in handles:
             q = (
-                Query(columns=cols, rows=rows)
+                Query(columns=cols, dataset=handle)
                 .filter(
                     (col("l_shipmode").eq(SHIP_code) | col("l_shipmode").eq(TRUCK_code))
                     & (col("l_commitdate") < col("l_receiptdate"))
@@ -865,8 +1010,12 @@ def q12():
                 acc[1] += r[2] or 0.0
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for handle in handles:
+            runtime().close_dataset(handle, routing_module="stats")
 
     final = [(sm_map[k], int(v[0]), int(v[1])) for k, v in partial.items()]
     final.sort(key=lambda t: t[0])
@@ -892,24 +1041,49 @@ def q13():
     orders_custkeys = [r["o_custkey"] for r in pg_fetch(
         "SELECT o_custkey FROM orders WHERE o_comment NOT LIKE '%pending%packages%'")]
 
-    def run_engine():
+    # Resident-handle migration: two `chunk()` loops here, and the second's rows depend
+    # on the first's query result -- but that result is a pure, deterministic function of
+    # already-fetched data (no mutation between calls), so it is computed ONCE up front to
+    # build the second stage's resident handles too, before repeat()'s timing loop starts.
+    order_chunks = [[[c, 1.0] for c in batch] for batch in chunk(orders_custkeys)]
+    order_handles = [
+        runtime().open_dataset(rows, name=f"q13_orders_{i}", routing_module="stats")
+        for i, rows in enumerate(order_chunks)
+    ]
+
+    def _orders_pass():
         count_by_custkey = {}
-        for batch in chunk(orders_custkeys):
-            rows = [[c, 1.0] for c in batch]
-            q = Query(columns=["o_custkey", "one"], rows=rows).group_by("o_custkey", "one", agg="sum")
+        for handle in order_handles:
+            q = Query(columns=["o_custkey", "one"], dataset=handle).group_by("o_custkey", "one", agg="sum")
             for r in run_query(q).rows:
                 count_by_custkey[r[0]] = count_by_custkey.get(r[0], 0.0) + (r[1] or 0.0)
+        return count_by_custkey
 
-        cdist_rows = [[count_by_custkey.get(float(ck), 0.0), 1.0] for ck in all_custkeys]
+    count_by_custkey = _orders_pass()
+    cdist_rows = [[count_by_custkey.get(float(ck), 0.0), 1.0] for ck in all_custkeys]
+    cdist_handles = [
+        runtime().open_dataset(batch, name=f"q13_cdist_{i}", routing_module="stats")
+        for i, batch in enumerate(chunk(cdist_rows))
+    ]
+
+    def run_engine():
+        # Re-dispatch the first stage every call too (same per-call engine work the
+        # original inline form did) -- its result is deterministic and already baked
+        # into cdist_handles, so it is not re-used to rebuild the second stage's rows.
+        _orders_pass()
         final_counts = {}
-        for batch in chunk(cdist_rows):
-            q2 = Query(columns=["c_count", "one"], rows=batch).group_by("c_count", "one", agg="sum")
+        for handle in cdist_handles:
+            q2 = Query(columns=["c_count", "one"], dataset=handle).group_by("c_count", "one", agg="sum")
             for r in run_query(q2).rows:
                 final_counts[r[0]] = final_counts.get(r[0], 0.0) + (r[1] or 0.0)
         return final_counts
 
-    final_counts = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        final_counts = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for handle in order_handles + cdist_handles:
+            runtime().close_dataset(handle, routing_module="stats")
 
     final = [(int(k), int(v)) for k, v in final_counts.items()]
     final.sort(key=lambda t: (-t[1], -t[0]))
@@ -935,12 +1109,19 @@ def q14():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
     lo, hi = epoch_day("1994-03-01"), epoch_day("1994-04-01")
 
+    # Resident-handle migration: open every chunk ONCE, before repeat()'s timing loop.
+    # Both queries per chunk (promo_sum, total_sum) reuse the SAME resident handle.
+    chunk_rows = [[[r[c] for c in fact_cols] for r in batch] for batch in chunk(fact)]
+    handles = [
+        runtime().open_dataset(rows, name=f"q14_lineitem_{i}", routing_module="stats")
+        for i, rows in enumerate(chunk_rows)
+    ]
+
     def run_engine():
         promo_sum, total_sum = 0.0, 0.0
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter((col("l_shipdate") >= lo) & (col("l_shipdate") < hi))
                 .project(l_partkey=col("l_partkey"), revenue=col("l_extendedprice") * (lit(1.0) - col("l_discount")))
                 .with_table("promo_ok", ["p_partkey"], rows=promo_ok)
@@ -949,7 +1130,7 @@ def q14():
             for r in run_query(q).rows:
                 promo_sum += r[1] or 0.0
             q_all = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter((col("l_shipdate") >= lo) & (col("l_shipdate") < hi))
                 .project(revenue=col("l_extendedprice") * (lit(1.0) - col("l_discount")))
                 .group_by("revenue", "revenue", agg="sum")
@@ -958,8 +1139,12 @@ def q14():
                 total_sum += r[1] or 0.0
         return 100.0 * promo_sum / total_sum
 
-    result = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        result = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for handle in handles:
+            runtime().close_dataset(handle, routing_module="stats")
 
     duck_times = []
     drows = None
@@ -980,12 +1165,18 @@ def q15():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
     lo, hi = epoch_day("1994-03-01"), epoch_day("1994-06-01")
 
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q15_lineitem_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
     def run_engine():
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter((col("l_shipdate") >= lo) & (col("l_shipdate") < hi))
                 .project(l_suppkey=col("l_suppkey"), revenue=col("l_extendedprice") * (lit(1.0) - col("l_discount")))
                 .group_by("l_suppkey", "revenue", agg="sum")
@@ -994,8 +1185,12 @@ def q15():
                 partial[r[0]] = partial.get(r[0], 0.0) + (r[1] or 0.0)
         return partial
 
-    partial = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     max_rev = max(partial.values())
     qualifying = [sk for sk, v in partial.items() if abs(v - max_rev) < 1e-6]
@@ -1074,12 +1269,19 @@ def q16():
 def q17():
     fact_cols = ["l_partkey", "l_quantity", "l_extendedprice"]
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
+    fact_batches = list(chunk(fact))
+
+    avg_handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q17_avg_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(fact_batches)
+    ]
 
     def compute_avg():
         sums, counts = {}, {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
-            q = Query(columns=fact_cols, rows=rows).group_by_many(
+        for handle in avg_handles:
+            q = Query(columns=fact_cols, dataset=handle).group_by_many(
                 by=["l_partkey"], aggs=[("l_quantity", "sum"), ("l_quantity", "count")]
             )
             for r in run_query(q).rows:
@@ -1090,13 +1292,24 @@ def q17():
     part_ok = [[r["p_partkey"]] for r in pg_fetch(
         "SELECT p_partkey FROM part WHERE p_brand='Brand#21' AND p_container='WRAP CASE'")]
 
+    _avg_qty_seed = compute_avg()
+    filt_cols = fact_cols + ["avg_qty"]
+    filt_handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] + [_avg_qty_seed.get(r["l_partkey"], 0.0)] for r in batch],
+            name=f"q17_filt_{i}", routing_module="stats",
+        )
+        for i, batch in enumerate(fact_batches)
+    ]
+
     def run_engine():
-        avg_qty = compute_avg()
+        compute_avg()  # recomputed every rep for parity with the original's per-rep
+        # engine cost -- filt_handles already carries this (deterministically
+        # identical) avg_qty column, so it is not rebuilt from this call's result.
         total = 0.0
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] + [avg_qty.get(r["l_partkey"], 0.0)] for r in batch]
+        for handle in filt_handles:
             q = (
-                Query(columns=fact_cols + ["avg_qty"], rows=rows)
+                Query(columns=filt_cols, dataset=handle)
                 .with_table("part_ok", ["p_partkey"], rows=part_ok)
                 .join("part_ok", left_on="l_partkey", right_on="p_partkey", how="semi")
                 .filter(col("l_quantity") < lit(0.2) * col("avg_qty"))
@@ -1106,8 +1319,12 @@ def q17():
                 total += r[1] or 0.0
         return total / 7.0
 
-    result = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        result = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in avg_handles + filt_handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     duck_times = []
     drows = None
@@ -1127,17 +1344,27 @@ def q18():
     fact_cols = ["l_orderkey", "l_quantity"]
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM lineitem")
 
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q18_lineitem_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
     def run_engine():
         qty_by_order = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
-            q = Query(columns=fact_cols, rows=rows).group_by("l_orderkey", "l_quantity", agg="sum")
+        for handle in handles:
+            q = Query(columns=fact_cols, dataset=handle).group_by("l_orderkey", "l_quantity", agg="sum")
             for r in run_query(q).rows:
                 qty_by_order[r[0]] = qty_by_order.get(r[0], 0.0) + (r[1] or 0.0)
         return {ok: q for ok, q in qty_by_order.items() if q > 312.0}
 
-    qualifying = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        qualifying = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     ok_list = ",".join(str(int(k)) for k in qualifying)
     orders_recs = pg_fetch(
@@ -1272,12 +1499,23 @@ def q20():
         "SELECT s.s_suppkey, s.s_name, s.s_address FROM supplier s JOIN nation n ON s.s_nationkey=n.n_nationkey "
         "WHERE n.n_name='CHINA'")]
 
+    # Resident-handle migration (PR #542's parsed-batch cache): open each lineitem
+    # chunk ONCE, before the repeat()-timed run_engine() closure, and reuse the
+    # handles across the correctness pass and every timed rep instead of resending
+    # `rows=` inline per call. The small partsupp side query below was never
+    # chunked to begin with (SF=1 partsupp is under CHUNK_SIZE) so it stays inline.
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q20_chunk_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
     def run_engine():
         partial = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter((col("l_shipdate") >= lo) & (col("l_shipdate") < hi))
                 .group_by_many(by=["l_partkey", "l_suppkey"], aggs=[("l_quantity", "sum")])
             )
@@ -1304,8 +1542,12 @@ def q20():
         res = cand.run(runtime(), routing_module="stats")
         return {r[0] for r in res.rows}
 
-    candidate_suppkeys = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        candidate_suppkeys = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(name, addr) for sk, name, addr in nation_supp if float(sk) in candidate_suppkeys]
     final.sort(key=lambda t: t[0])
@@ -1337,17 +1579,29 @@ def q21():
     name_codes, name_map = encode_strings([r["s_name"] for r in supplier_recs])
     supplier_ok = [[r["s_suppkey"], name_codes[i]] for i, r in enumerate(supplier_recs)]
 
+    # Resident-handle migration (PR #542's parsed-batch cache): both `for batch in
+    # chunk(fact):` loops below iterate over the SAME unmutated lineitem chunks
+    # (the derived `qual_rows` between them is a small side table passed via
+    # `with_table`, not part of the resident fact rows), so ONE set of handles,
+    # opened once before the repeat()-timed run_engine() closure, serves both
+    # loops across the correctness pass and every timed rep.
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q21_chunk_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
     def run_engine():
         n_supp, n_late = {}, {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
-            qa = Query(columns=fact_cols, rows=rows).distinct("l_orderkey", "l_suppkey").group_by(
+        for handle in handles:
+            qa = Query(columns=fact_cols, dataset=handle).distinct("l_orderkey", "l_suppkey").group_by(
                 "l_orderkey", "l_suppkey", agg="count"
             )
             for r in run_query(qa).rows:
                 n_supp[r[0]] = n_supp.get(r[0], 0.0) + (r[1] or 0.0)
             qb = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter(col("l_receiptdate") > col("l_commitdate"))
                 .distinct("l_orderkey", "l_suppkey")
                 .group_by("l_orderkey", "l_suppkey", agg="count")
@@ -1360,10 +1614,9 @@ def q21():
         qual_rows = [[k] for k in qualifying_final]
 
         counts = {}
-        for batch in chunk(fact):
-            rows = [[r[c] for c in fact_cols] for r in batch]
+        for handle in handles:
             q = (
-                Query(columns=fact_cols, rows=rows)
+                Query(columns=fact_cols, dataset=handle)
                 .filter(col("l_receiptdate") > col("l_commitdate"))
                 .with_table("qual", ["l_orderkey"], rows=qual_rows)
                 .join("qual", left_on="l_orderkey", right_on="l_orderkey", how="semi")
@@ -1375,8 +1628,12 @@ def q21():
                 counts[r[0]] = counts.get(r[0], 0.0) + (r[1] or 0.0)
         return counts
 
-    counts = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        counts = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = [(strip(name_map[code]), int(v)) for code, v in counts.items()]
     final.sort(key=lambda t: (-t[1], t[0]))

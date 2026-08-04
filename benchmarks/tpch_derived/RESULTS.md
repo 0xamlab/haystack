@@ -468,3 +468,95 @@ four orders of magnitude, landing it at two. No GitBook page follows from this, 
 Migrating the remaining 21 queries is believed to close a comparable fraction of each query's own
 gap (most of this page's queries share Q19's inline-`rows`-per-chunk-per-call shape), but that
 migration has not been done or measured, and is not claimed here.
+
+## Update, 2026-08-04 (later): 17 of the remaining 21 queries migrated onto the resident-handle
+## path too — real, verified, aggregate gap closure, still not a win
+
+The prior update migrated exactly one query (Q19) onto `open_dataset`/`dataset=` residency and
+left the other 21 as the open item. This update closes most of that item: **17 of the 21** — every
+query whose chunked fact-table rows are unmutated between calls (the mechanical precondition the
+Q19 migration already established) — are now migrated the same way: each chunk's `open_dataset`
+handle is opened once, reused across the correctness pass and every `repeat()` rep, and closed in
+a `finally` block. **4 queries are intentionally left untouched, unmigrated, on `main`**:
+
+| Q | Why left on the inline `rows=` path |
+|---|---|
+| 2  | No `chunk()` loop at all — decorrelated MIN over `partsupp`/`part_ok`, small enough to never chunk |
+| 11 | No `chunk()` loop at all — single non-chunked query over `partsupp` |
+| 16 | No `chunk()` loop at all — single non-chunked anti-join + distinct/count over `partsupp` |
+| 22 | No `chunk()` loop at all — single non-chunked query over the `customer` dimension |
+
+(Q19 was already migrated by the prior update, so it is unchanged here too — 22 total, 17 newly
+migrated + 1 already migrated + 4 with no chunked loop to migrate = 22.) None of the 4 above ever
+had a `for batch in chunk(...)` loop feeding a `Query(rows=...)` call to begin with — there was
+nothing mechanically eligible to convert, not a blocked or reverted migration attempt. This is
+disclosed per-query, not "skipped" in the sense of a tried-and-abandoned case.
+
+**Regression gate**: a single fresh worktree off `origin/main` (`5e3f801d`), all 17 migrations
+applied, then the **full, real, live 22-query suite** run once end to end —
+`ALGENTA_RUNTIME_WORKER=$PWD/mojo_build/simulate_queryplane ALGENTA_RUNTIME_FALLBACK_MODE=allow
+python3 benchmarks/tpch_derived/verified_queries.py` — same isolated Postgres DB
+(`tpch_derived_bench_20260804`), same DuckDB oracle file, same `N_REPS=3` harness. **22 of 22
+passed, 0 mismatches, exit code 0, 1,718.7s total wall time** (this run's own reported summary:
+`22 of 22 attempted queries passed`). This is the actual gate, not a re-assertion of the five
+migration batches' own self-reported correctness — every one of the 22 outputs was independently
+re-verified against DuckDB in this single run, migrated queries and untouched queries alike:
+
+| Q | Migrated? | Before (median, original table above) | After (median, this run) | Δ |
+|---|---|---|---|---|
+| 1  | yes | 46,821.1 ms | 2,680.0 ms | **17.5x** |
+| 2  | no  | 5,529.4 ms | 5,533.9 ms | unchanged (noise) |
+| 3  | yes | 41,698.6 ms | 6,218.5 ms | **6.7x** |
+| 4  | yes | 36,212.4 ms | 7,758.2 ms | **4.7x** |
+| 5  | yes | 37,642.3 ms | 2,872.2 ms | **13.1x** |
+| 6  | yes | 32,518.1 ms | 766.2 ms | **42.5x** |
+| 7  | yes | 59,855.9 ms | 3,934.6 ms | **15.2x** |
+| 8  | yes | 49,555.8 ms | 5,658.3 ms | **8.8x** |
+| 9  | yes | 54,159.4 ms | 4,140.5 ms | **13.1x** |
+| 10 | yes | 35,575.3 ms | 1,685.5 ms | **21.1x** |
+| 11 | no  | 4,264.7 ms | 4,332.8 ms | unchanged (noise) |
+| 12 | yes | 48,890.7 ms | 529.7 ms | **92.3x** |
+| 13 | yes | 4,766.8 ms | 311.9 ms | **15.3x** |
+| 14 | yes | 67,995.8 ms | 958.9 ms | **70.9x** |
+| 15 | yes | 34,059.0 ms | 348.5 ms | **97.8x** |
+| 16 | no  | 2,486.5 ms | 2,541.0 ms | unchanged (noise) |
+| 17 | yes | 75,113.1 ms | 3,959.7 ms | **19.0x** |
+| 18 | yes | 22,575.9 ms | 2,904.4 ms | **7.8x** |
+| 19 | yes (prior update) | 128,123.4 ms | 127,472.6 ms\* | see note |
+| 20 | yes | 41,596.5 ms | 8,122.4 ms | **5.1x** |
+| 21 | yes | 118,683.7 ms | 10,431.3 ms | **11.4x** |
+| 22 | no  | 424.9 ms | 426.9 ms | unchanged (noise) |
+
+\*Q19's own checked-in `verified_queries.py` function still uses the inline `rows=` form — its
+prior update's resident-handle result (69x slower than DuckDB, ~113x gap closure) lives only in an
+uncommitted standalone script, never landed in this file, exactly as that update disclosed. So
+Q19's row here is the same inline dispatch measured twice, ~10 hours apart — the ~0.5% delta is
+run-to-run noise, not a regression, consistent with the untouched queries' own noise band.
+
+**Aggregate, for the 17 queries actually migrated in this update** (median-engine-time sum, same
+`N_REPS=3` methodology both sides — the original per-query table above and this run's own numbers
+are both this harness's `timing_stats` median, so summing is apples-to-apples): before
+**807,720.4 ms**, after **63,280.8 ms** — **~12.8x aggregate reduction** in engine dispatch time
+across those 17 queries. The 4 never-chunked queries (2, 11, 16, 22) sum to 12,705.5 ms before and
+12,834.6 ms after — flat, within noise, as expected since nothing about them changed. This is a
+sum of medians, not a claim about total suite wall time (which also includes one-time Postgres
+fetches, DuckDB reruns, and the untimed correctness pass, all excluded from `timing_stats` by
+design — see `repeat()`'s own docstring in `engine_harness.py`).
+
+**This does not flip the verdict for any of the 22 queries.** Every migrated query is still an
+outright loss against DuckDB after this change — by roughly two to three orders of magnitude in
+most cases (e.g. Q15: DuckDB median 7.4ms vs. engine 348.5ms after migration, still ~47x slower;
+Q1: DuckDB 21.5ms vs. engine 2,680.0ms, still ~125x slower). This is exactly what the Q19 update
+predicted ("Migrating the remaining 21 queries is believed to close a comparable fraction of each
+query's own gap ... but that migration has not been done or measured") — the gap-closure pattern
+generalizes, the win does not. **No GitBook page follows from this**, per this repo's standing
+publication policy: a real, substantial, honestly-measured throughput improvement is not the same
+thing as an outright win over the oracle, and this repo publishes external-facing pages only on
+the latter.
+
+Landed via 5 independent batches (q1/q3/q4/q5; q6/q7/q8/q9; q10/q12/q13/q14; q15/q17/q18;
+q20/q21), each migrating a disjoint subset of the 21-query open item, then assembled into one
+branch, applied against a fresh worktree off `origin/main`, and re-verified end to end as the
+single regression gate reported above (the batches' own individual before/after numbers, measured
+in their own separate worktrees at slightly different times, are consistent with this run's within
+normal machine-load variance, but this run's own numbers are the ones of record for this update).
