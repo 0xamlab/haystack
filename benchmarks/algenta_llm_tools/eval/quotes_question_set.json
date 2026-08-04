@@ -1,0 +1,161 @@
+{
+  "_meta": {
+    "description": "Objective, numerically-scoreable question set against the real Processed_Quotes.csv corpus, for benchmarking an LLM+tool-calling system's arithmetic/statistics answers against ground truth computed independently of the system under test.",
+    "dataset": {
+      "path": "test_files/Processed_Quotes.csv",
+      "raw_line_count": 46573,
+      "note_on_raw_line_count": "wc -l reports 46573 because several fields contain embedded newlines inside quoted CSV cells; a correct CSV parser reads 33125 data rows. This was cross-checked with two independent parsers (pandas.read_csv and Python's stdlib csv.DictReader) which agree exactly.",
+      "parsed_row_count": 33125,
+      "columns_used": [
+        "UNIT_PRICE",
+        "EXT_PRICE",
+        "QUANTITY",
+        "STATUS",
+        "CUST_TYPE",
+        "CUSTOMER_NO",
+        "AUTO_QUOTED"
+      ]
+    },
+    "ground_truth_method": "Every ground_truth value below was computed directly with pandas/numpy on test_files/Processed_Quotes.csv (never via the Algenta SDK/Mojo kernels under test, so a shared bug in the system under test cannot make both sides agree falsely). Four values (count of STATUS=='LOST', min/max UNIT_PRICE, sum of QUANTITY, nunique CUSTOMER_NO) were additionally cross-checked with Python's stdlib csv.DictReader as a second, independent parser/implementation; all matched pandas exactly. All ground_truth values, the scoring rule, and the tolerance for every question were fixed BEFORE any LLM/tool-calling answer was produced, so scoring cannot be adjusted after the fact to fit results.",
+    "scoring_rule_types": {
+      "exact_int": "The answer must equal ground_truth exactly as an integer (no tolerance).",
+      "exact_string": "The answer must equal ground_truth exactly as a string (case-sensitive, e.g. a category label).",
+      "tolerance_abs": "The answer must be within +/- tolerance of ground_truth (absolute, same units as ground_truth).",
+      "tolerance_abs_multi": "Same as tolerance_abs, but the response must supply every named sub-field (e.g. min AND max, or category label AND its average) and each numeric sub-field is scored independently against its own tolerance; the string sub-field is scored exact_string."
+    },
+    "generated_on": "2026-08-03",
+    "generated_by": "pandas 2.x / numpy, ad hoc script run against the corpus in this worktree; see benchmarks/algenta_llm_tools/eval/README.md for the exact commands used to derive and spot-check every value."
+  },
+  "questions": [
+    {
+      "id": "q01_p90_unit_price",
+      "question": "What is the 90th percentile of UNIT_PRICE across all quote line items with a non-null UNIT_PRICE?",
+      "pandas_equiv": "df['UNIT_PRICE'].dropna().quantile(0.9)",
+      "ground_truth": 1905.48,
+      "n": 29204,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q02_p25_ext_price",
+      "question": "What is the 25th percentile of EXT_PRICE across all quote line items with a non-null EXT_PRICE?",
+      "pandas_equiv": "df['EXT_PRICE'].dropna().quantile(0.25)",
+      "ground_truth": 1275.25,
+      "n": 29205,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q03_median_ext_price",
+      "question": "What is the median (50th percentile) EXT_PRICE across all quote line items with a non-null EXT_PRICE?",
+      "pandas_equiv": "df['EXT_PRICE'].dropna().quantile(0.5)",
+      "ground_truth": 6052.1,
+      "n": 29205,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q04_mean_unit_price",
+      "question": "What is the mean (average) UNIT_PRICE across all quote line items with a non-null UNIT_PRICE?",
+      "pandas_equiv": "df['UNIT_PRICE'].mean()",
+      "ground_truth": 779.182035,
+      "n": 29204,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q05_std_unit_price",
+      "question": "What is the sample standard deviation (ddof=1) of UNIT_PRICE across all quote line items with a non-null UNIT_PRICE?",
+      "pandas_equiv": "df['UNIT_PRICE'].std(ddof=1)",
+      "ground_truth": 2331.963152,
+      "n": 29204,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q06_min_max_unit_price",
+      "question": "What are the minimum and maximum UNIT_PRICE values across all quote line items with a non-null UNIT_PRICE?",
+      "pandas_equiv": "df['UNIT_PRICE'].min(), df['UNIT_PRICE'].max()",
+      "ground_truth": {"min_unit_price": 0.0, "max_unit_price": 215000.0},
+      "n": 29204,
+      "note": "Both extremes were hand-checked against the raw rows: the min ($0.00) rows are real, unpriced-yet quote lines (e.g. PART_NUMBER SL-2221M2C8, STATUS QTE); the max ($215,000.00) row is PART_NUMBER 902-00001-05 (STATUS LOST), where EXT_PRICE ($430,000.00) is exactly 2x UNIT_PRICE, consistent with a quantity of 2 even though this row's QUANTITY cell is itself null.",
+      "scoring": {"type": "tolerance_abs_multi", "fields": {"min_unit_price": {"tolerance": 0.0}, "max_unit_price": {"tolerance": 0.0}}}
+    },
+    {
+      "id": "q07_count_status_lost",
+      "question": "How many quote line items have STATUS exactly equal to 'LOST' (case-sensitive; note the dataset separately has a distinct 'Lost' status which does NOT count here)?",
+      "pandas_equiv": "(df['STATUS'] == 'LOST').sum()",
+      "ground_truth": 14673,
+      "scoring": {"type": "exact_int", "tolerance": 0}
+    },
+    {
+      "id": "q08_sum_ext_price_oem",
+      "question": "What is the total (sum) EXT_PRICE across all quote line items where CUST_TYPE is exactly 'OEM'?",
+      "pandas_equiv": "df.loc[df['CUST_TYPE'] == 'OEM', 'EXT_PRICE'].sum()",
+      "ground_truth": 169562999.02,
+      "n": 5618,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.5}
+    },
+    {
+      "id": "q09_avg_quantity_order",
+      "question": "What is the average QUANTITY across all quote line items where STATUS is exactly 'ORDER'?",
+      "pandas_equiv": "df.loc[df['STATUS'] == 'ORDER', 'QUANTITY'].mean()",
+      "ground_truth": 261.723926,
+      "n": 4238,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.01}
+    },
+    {
+      "id": "q10_sum_quantity_all",
+      "question": "What is the total (sum) QUANTITY across all quote line items with a non-null QUANTITY?",
+      "pandas_equiv": "df['QUANTITY'].sum()",
+      "ground_truth": 3436556.0,
+      "n": 27066,
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.5}
+    },
+    {
+      "id": "q11_nunique_customer_no",
+      "question": "How many distinct (unique) values of CUSTOMER_NO appear in the dataset (ignoring null values)?",
+      "pandas_equiv": "df['CUSTOMER_NO'].nunique()",
+      "ground_truth": 2008,
+      "scoring": {"type": "exact_int", "tolerance": 0}
+    },
+    {
+      "id": "q12_nunique_status",
+      "question": "How many distinct non-null STATUS values appear in the dataset?",
+      "pandas_equiv": "df['STATUS'].dropna().nunique()",
+      "ground_truth": 12,
+      "note": "The 12 values are: CO Created, Cancelled, LOST, Lost, NQTE, OPEN, ORDER, Planned, QTE, Released, Revised, Won. Note LOST and Lost are distinct values in the raw data.",
+      "scoring": {"type": "exact_int", "tolerance": 0}
+    },
+    {
+      "id": "q13_frac_auto_quoted_y",
+      "question": "Of the quote line items with a non-null AUTO_QUOTED flag, what fraction have AUTO_QUOTED exactly equal to 'Y'? Answer as a decimal fraction between 0 and 1 (e.g. 0.05 for 5%).",
+      "pandas_equiv": "(df['AUTO_QUOTED'] == 'Y').sum() / df['AUTO_QUOTED'].notna().sum()",
+      "ground_truth": 0.03963,
+      "supporting_counts": {"n_auto_quoted_y": 1081, "n_auto_quoted_notna": 27277},
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.0005}
+    },
+    {
+      "id": "q14_top_cust_type_by_avg_unit_price",
+      "question": "Grouping quote line items by CUST_TYPE, which single CUST_TYPE value has the highest average UNIT_PRICE, and what is that average (across CUST_TYPE groups with at least one non-null UNIT_PRICE value)?",
+      "pandas_equiv": "df.groupby('CUST_TYPE')['UNIT_PRICE'].mean().sort_values(ascending=False)",
+      "ground_truth": {"cust_type": "MILITARY", "avg_unit_price": 12515.95},
+      "note": "This group has only n=3 UNIT_PRICE observations (a real, small-sample quirk of the raw data, not an error): MILITARY is nonetheless the objectively correct top group by mean UNIT_PRICE across all 30 CUST_TYPE values present. Runner-up is ENGSHP at $2,245.91 (n=19), for reference.",
+      "n": 3,
+      "scoring": {"type": "tolerance_abs_multi", "fields": {"cust_type": {"type": "exact_string"}, "avg_unit_price": {"tolerance": 0.01}}}
+    },
+    {
+      "id": "q15_top_status_by_avg_ext_price",
+      "question": "Grouping quote line items by STATUS, which single STATUS value has the highest average EXT_PRICE, and what is that average (across STATUS groups with at least one non-null EXT_PRICE value)?",
+      "pandas_equiv": "df.groupby('STATUS')['EXT_PRICE'].mean().sort_values(ascending=False)",
+      "ground_truth": {"status": "QTE", "avg_ext_price": 60485.014002},
+      "n": 842,
+      "note": "Runner-up is 'Revised' at $50,733.34 (n=14), for reference. STATUS values NQTE and OPEN have zero non-null EXT_PRICE observations and are excluded from the comparison.",
+      "scoring": {"type": "tolerance_abs_multi", "fields": {"status": {"type": "exact_string"}, "avg_ext_price": {"tolerance": 0.01}}}
+    },
+    {
+      "id": "q16_corr_unit_price_quantity",
+      "question": "What is the Pearson correlation coefficient between UNIT_PRICE and QUANTITY, restricted to quote line items where both are non-null?",
+      "pandas_equiv": "df.dropna(subset=['UNIT_PRICE','QUANTITY'])[['UNIT_PRICE','QUANTITY']].corr().iloc[0,1]",
+      "ground_truth": -0.071331,
+      "n": 23269,
+      "note": "Weak negative correlation -- higher-unit-price line items tend to be quoted in slightly smaller quantities, though the effect is small. Not the trivial UNIT_PRICE-vs-EXT_PRICE pair (which would be strongly positive largely by construction, EXT_PRICE ~= UNIT_PRICE * QUANTITY for ~80% of rows); this pair is a genuine, non-tautological correlation test.",
+      "scoring": {"type": "tolerance_abs", "tolerance": 0.001}
+    }
+  ]
+}

@@ -6625,6 +6625,8 @@ from stat_tests import (
     shapiro_wilk_approx as _stat_tests__shapiro_wilk_approx,
     pearson_r as _stat_tests__pearson_r,
     spearman_r as _stat_tests__spearman_r,
+    pearson_r_strict as _stat_tests__pearson_r_strict,
+    spearman_r_strict as _stat_tests__spearman_r_strict,
 )
 
 from state_space_models import (
@@ -131074,6 +131076,40 @@ fn _dispatch_stat_tests(function_name: String, args_array: String) raises -> Str
         return _error_json(
             "invalid_arguments",
             "Function stat_tests.spearman_r expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "pearson_r_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _stat_tests__pearson_r_strict(arg_0, arg_1)
+                var result_json = _to_json_corrresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for stat_tests.pearson_r_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function stat_tests.pearson_r_strict expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "spearman_r_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _stat_tests__spearman_r_strict(arg_0, arg_1)
+                var result_json = _to_json_corrresult(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for stat_tests.spearman_r_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function stat_tests.spearman_r_strict expected 2 arguments, received " + String(arg_count) + "."
         )
     return _error_json(
         "function_not_registered",

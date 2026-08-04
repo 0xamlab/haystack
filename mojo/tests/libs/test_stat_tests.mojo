@@ -1,6 +1,6 @@
 """test_stat_tests.mojo — auto-generated tests for stat_tests."""
 from std.math import isnan, isinf
-from stat_tests import ks_test_2sample, ks_test_normal, t_test_1sample, t_test_2sample, chi_squared_test, anderson_darling_normal, shapiro_wilk_approx, pearson_r, spearman_r
+from stat_tests import ks_test_2sample, ks_test_normal, t_test_1sample, t_test_2sample, chi_squared_test, anderson_darling_normal, shapiro_wilk_approx, pearson_r, spearman_r, pearson_r_strict, spearman_r_strict
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -60,5 +60,9 @@ def main() raises:
     passed += 1; print("  ✅ stat_tests::pearson_r")
     _ = spearman_r(_lf5, _lf5)
     passed += 1; print("  ✅ stat_tests::spearman_r")
+    _ = pearson_r_strict(_lf5, _lf5)
+    passed += 1; print("  ✅ stat_tests::pearson_r_strict")
+    _ = spearman_r_strict(_lf5, _lf5)
+    passed += 1; print("  ✅ stat_tests::spearman_r_strict")
 
     print("  [stat_tests] Passed:", passed, "Failed:", failed)

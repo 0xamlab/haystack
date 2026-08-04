@@ -11,9 +11,22 @@ Public API:
   TestResult struct
   ks_test_2sample, ks_test_normal, t_test_1sample, t_test_2sample,
   chi_squared_test, anderson_darling_normal, shapiro_wilk_approx,
-  pearson_r, spearman_r
+  pearson_r, spearman_r, pearson_r_strict, spearman_r_strict
+
+NaN/Inf safety
+--------------
+`pearson_r`/`spearman_r` are EXISTING-FROZEN (see `data_quality/leakage.mojo`'s
+"Frozen kernels called" section, which documents and relies on their exact current
+return-value contract for `n < 3` and a zero denominator). Neither function checks
+its input for NaN/±Inf, so a single non-finite value silently poisons the running
+mean and the pair returns `CorrResult(NaN, NaN)` with every internal guard
+(`denom == 0.0`, the r-clamps, `r2 >= 1.0`, the p-value clamps) failing to fire,
+because none of those comparisons is ever true against NaN under IEEE-754.
+`pearson_r_strict`/`spearman_r_strict` are additive, NaN/Inf-safe siblings that
+validate first and raise a typed error naming which input list and which index held
+the non-finite value, rather than changing `pearson_r`/`spearman_r` themselves.
 """
-from std.math import sqrt, exp, log, abs as fabs, pow, sin
+from std.math import sqrt, exp, log, abs as fabs, pow, sin, isnan, isinf
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -713,6 +726,132 @@ fn spearman_r(x: List[Float64], y: List[Float64]) -> CorrResult:
     # Pearson correlation of ranks
     var result = pearson_r(rx, ry)
     return CorrResult(result.r, result.p_value)
+
+
+# ── NaN/Inf-safe siblings (additive; see the module docstring) ────────────────
+
+
+fn _first_non_finite_index(values: List[Float64], limit: Int) -> Int:
+    """Index of the first NaN/±Inf in `values[0:limit]`, or -1 if none.
+
+    `limit` lets a caller check exactly the range the frozen function actually reads
+    -- `pearson_r` runs `_mean` over the WHOLE list (even past `n = min(len(x),
+    len(y))`), while `spearman_r`'s `_rank` only ever touches the first `n` -- so one
+    helper serves both call sites honestly rather than over- or under-checking either.
+    """
+    for i in range(limit):
+        if isnan(values[i]) or isinf(values[i]):
+            return i
+    return -1
+
+
+fn pearson_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
+    """`pearson_r`, but NaN/±Inf in `x` or `y` raises instead of returning
+    `CorrResult(NaN, NaN)`.
+
+    Checks the WHOLE of both lists, matching what `pearson_r` itself reads: its mean
+    is taken over the full list, not just the first `min(len(x), len(y))` entries the
+    covariance loop uses. Raises naming which list (`x` or `y`) and which index held
+    the first non-finite value, and how many values that list has -- the same
+    "typed error naming the offending position" shape `query.plan`'s
+    `reject_non_json_literals` already uses for a non-finite JSON literal (naming row
+    and column there; naming list and index here), and the same policy
+    `numeric.reduce`/`numeric.__init__` already state for aggregation: "NaN and ±Inf
+    are rejected at ingest, never aggregated."
+
+    Does NOT change `pearson_r` -- that function is EXISTING-FROZEN (see the module
+    docstring) and its current return-value contract for `n < 3` / a zero denominator
+    is documented and relied upon elsewhere (`data_quality/leakage.mojo`). This is a
+    new, separate entry point for a caller that wants the NaN/Inf case to raise.
+
+    Also raises on `len(x) != len(y)`. `pearson_r` bounds its own loop to
+    `min(len(x), len(y))` rather than crashing on a length mismatch -- correct for a
+    caller who already aligned two columns, but a second silent-wrong-answer trap for
+    one who didn't: two columns fetched independently (e.g. each with its own
+    per-column null filter applied) can end up different lengths, and pairing the
+    first `min(len(x), len(y))` entries of each correlates the wrong rows against each
+    other without any error. A caller must align both lists to the same index space
+    (the same rows) before calling this -- an equal length is necessary for that, not
+    sufficient, but a mismatch is proof it wasn't done and is rejected here.
+    """
+    if len(x) != len(y):
+        raise Error(
+            "pearson_r_strict: x has "
+            + String(len(x))
+            + " values but y has "
+            + String(len(y))
+            + "; both must be aligned to the same rows before correlating -- pass"
+            " values from the same index space, not two independently-filtered"
+            " columns"
+        )
+    var bad_x = _first_non_finite_index(x, len(x))
+    if bad_x >= 0:
+        raise Error(
+            "pearson_r_strict: x["
+            + String(bad_x)
+            + "] is not finite (of "
+            + String(len(x))
+            + " values in x); NaN and ±Inf are rejected at ingest, never"
+            " aggregated into r or p_value"
+        )
+    var bad_y = _first_non_finite_index(y, len(y))
+    if bad_y >= 0:
+        raise Error(
+            "pearson_r_strict: y["
+            + String(bad_y)
+            + "] is not finite (of "
+            + String(len(y))
+            + " values in y); NaN and ±Inf are rejected at ingest, never"
+            " aggregated into r or p_value"
+        )
+    return pearson_r(x, y)
+
+
+fn spearman_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
+    """`spearman_r`, but NaN/±Inf in `x` or `y` raises instead of returning
+    `CorrResult(NaN, NaN)`.
+
+    Checks only the first `n = min(len(x), len(y))` entries of each list, matching
+    what `spearman_r` itself reads (`_rank` never looks past `n`) -- a non-finite
+    value past `n` is never read by `spearman_r` and so is not this function's
+    concern either. See `pearson_r_strict` for the full rationale; this is the same
+    fix applied to the rank-based sibling, including the same `len(x) != len(y)`
+    misalignment check.
+    """
+    if len(x) != len(y):
+        raise Error(
+            "spearman_r_strict: x has "
+            + String(len(x))
+            + " values but y has "
+            + String(len(y))
+            + "; both must be aligned to the same rows before correlating -- pass"
+            " values from the same index space, not two independently-filtered"
+            " columns"
+        )
+    var n = len(x)
+    if len(y) < n:
+        n = len(y)
+    var bad_x = _first_non_finite_index(x, n)
+    if bad_x >= 0:
+        raise Error(
+            "spearman_r_strict: x["
+            + String(bad_x)
+            + "] is not finite (of "
+            + String(n)
+            + " compared values); NaN and ±Inf are rejected at ingest, never"
+            " aggregated into rho or p_value"
+        )
+    var bad_y = _first_non_finite_index(y, n)
+    if bad_y >= 0:
+        raise Error(
+            "spearman_r_strict: y["
+            + String(bad_y)
+            + "] is not finite (of "
+            + String(n)
+            + " compared values); NaN and ±Inf are rejected at ingest, never"
+            " aggregated into rho or p_value"
+        )
+    return spearman_r(x, y)
 
 
 fn _rank(data: List[Float64], n: Int) -> List[Float64]:
