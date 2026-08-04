@@ -21,18 +21,41 @@ The public `hash_join_indices`/`materialize` entry points are ALSO checked direc
 at this scale (not just the private helpers), so the threshold dispatch inside
 `_hash_join_probe` and `materialize` itself is proven end to end, not merely its
 building blocks.
+
+Parallel build (2026-08 follow-on)
+-----------------------------------
+The section below ("build-parallel checks") does the identical job for
+`_build_right_index_parallel` (the radix-partitioned build) and its paired
+`_hash_join_probe_serial_partitioned`/`_hash_join_probe_parallel_partitioned`: every
+right-side shape here is at or above `JOIN_BUILD_PARALLEL_MIN_ROWS`, and every result
+is compared — row for row, not row count, not multiset — against the plain serial
+`_build_right_index` + `_hash_join_probe_serial` reference, at several worker counts.
+The heavy-duplicate-key shape is the one that specifically exercises "duplicate keys
+across different partitions must chain together correctly" (`_build_right_index_
+parallel`'s own docstring): with `n_rows` an order of magnitude above the key
+`modulus`, the same key is guaranteed to recur across many different worker BANDS
+(contiguous row ranges), while radix-partitioning guarantees every occurrence lands in
+the SAME partition regardless of which band it came from — this shape would silently
+under-count matches (each partition-local chain missing the other bands' rows of the
+same key) if that guarantee were ever violated. `hash_join_indices` itself is also
+checked end to end with a right side above the build threshold, so the real dispatch
+path — not just the private helpers — is proven, not merely its building blocks.
 """
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch, schema_of, take_column
 from query.join import (
+    JOIN_BUILD_PARALLEL_MIN_ROWS,
     JOIN_GATHER_PARALLEL_MIN_ROWS,
     JOIN_INNER,
     JOIN_LEFT,
     JOIN_PROBE_PARALLEL_MIN_ROWS,
     NO_ROW,
     _build_right_index,
+    _build_right_index_parallel,
     _hash_join_probe_parallel,
+    _hash_join_probe_parallel_partitioned,
     _hash_join_probe_serial,
+    _hash_join_probe_serial_partitioned,
     _take_column_join,
     hash_join_indices,
     materialize,
@@ -119,6 +142,31 @@ fn _right_batch(n_rows: Int, modulus: Int, seed: Int) -> RecordBatch:
     return _batch1("k", values^, mask^)
 
 
+fn _right_batch_with_hazards(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
+    """A right (build-side) key column WITH periodic NaN and null rows — unlike
+    `_right_batch` above, this exercises the parallel build's own unmatchable-key
+    handling (null_keys counting, and never inserting an unmatchable key into any
+    partition) at scale, not just the known-value suite's small-scale coverage of the
+    plain serial build."""
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    var state = UInt64(seed) + 1
+    var nan_value = Float64(0.0) / Float64(0.0)
+    for i in range(n_rows):
+        if nan_every > 0 and i % nan_every == 0:
+            values.append(nan_value)
+            mask.append(True)
+            continue
+        if null_every > 0 and i % null_every == 0:
+            values.append(0.0)
+            mask.append(False)
+            continue
+        state = _xorshift_next(state)
+        values.append(Float64(Int(state % UInt64(modulus))))
+        mask.append(True)
+    return _batch1("k", values^, mask^)
+
+
 fn _results_equal(a_left: List[Int], a_right: List[Int], b_left: List[Int], b_right: List[Int]) -> Bool:
     if len(a_left) != len(b_left) or len(a_right) != len(b_right):
         return False
@@ -180,6 +228,89 @@ fn _check_probe_matches_serial(
             "parallel_unmatched=" + String(parallel.left_unmatched),
             "serial_null=" + String(serial.null_key_rows),
             "parallel_null=" + String(parallel.null_key_rows),
+        )
+
+
+fn _check_build_matches_serial(
+    left: RecordBatch,
+    right: RecordBatch,
+    join_type: Int,
+    build_workers: Int,
+    mut passed: Int,
+    mut failed: Int,
+    label: String,
+):
+    """The radix-partitioned parallel build (`_build_right_index_parallel`), probed
+    both ways (serial-partitioned walk and parallel-partitioned scatter), compared
+    ROW FOR ROW against the plain serial build (`_build_right_index`) probed with the
+    plain serial walk (`_hash_join_probe_serial`) — the same reference every other
+    check in this file uses. `right.n_rows` is the caller's responsibility to keep at
+    or above `JOIN_BUILD_PARALLEL_MIN_ROWS`; this function does not gate on it, so a
+    caller can also use it to probe right below the threshold if it chooses.
+    """
+    var left_key = left.column(0)
+    var right_key = right.column(0)
+
+    var slot_of = HashIndex(64)
+    var ref_first_row = List[Int]()
+    var ref_next_row = List[Int]()
+    var ref_null_keys = _build_right_index(
+        right_key, right.n_rows, slot_of, ref_first_row, ref_next_row
+    )
+    var reference = _hash_join_probe_serial(
+        left_key, left.n_rows, slot_of, ref_first_row, ref_next_row, join_type
+    )
+
+    var tables = List[HashIndex]()
+    var p_first_row = List[List[Int]]()
+    var p_next_row = List[Int]()
+    var build_ok = True
+    var par_null_keys = _build_right_index_parallel(
+        right_key, right.n_rows, build_workers, tables, p_first_row, p_next_row, build_ok
+    )
+
+    if not build_ok:
+        failed += 1
+        print("  ❌", label, "build_workers=" + String(build_workers), "build reported ok=False")
+        return
+
+    var got_serial = _hash_join_probe_serial_partitioned(
+        left_key, left.n_rows, tables, p_first_row, p_next_row, join_type
+    )
+    var got_parallel = _hash_join_probe_parallel_partitioned(
+        left_key, left.n_rows, tables, p_first_row, p_next_row, join_type, build_workers
+    )
+
+    var serial_ok = reference.n_rows() == got_serial.n_rows() and _results_equal(
+        reference.left_rows, reference.right_rows, got_serial.left_rows, got_serial.right_rows
+    ) and reference.left_unmatched == got_serial.left_unmatched and reference.null_key_rows == got_serial.null_key_rows
+
+    var parallel_ok = reference.n_rows() == got_parallel.n_rows() and _results_equal(
+        reference.left_rows, reference.right_rows, got_parallel.left_rows, got_parallel.right_rows
+    ) and reference.left_unmatched == got_parallel.left_unmatched and reference.null_key_rows == got_parallel.null_key_rows
+
+    var null_keys_ok = ref_null_keys == par_null_keys
+
+    if serial_ok and parallel_ok and null_keys_ok:
+        passed += 1
+        print(
+            "  ✅", label,
+            "build_workers=" + String(build_workers),
+            "right_rows=" + String(right.n_rows),
+            "rows=" + String(reference.n_rows()),
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌", label,
+            "build_workers=" + String(build_workers),
+            "ref_rows=" + String(reference.n_rows()),
+            "serial_partitioned_rows=" + String(got_serial.n_rows()),
+            "parallel_partitioned_rows=" + String(got_parallel.n_rows()),
+            "ref_null_keys=" + String(ref_null_keys),
+            "par_null_keys=" + String(par_null_keys),
+            "serial_ok=" + String(serial_ok),
+            "parallel_ok=" + String(parallel_ok),
         )
 
 
@@ -333,6 +464,81 @@ fn main() raises:
     _check_end_to_end_matches_serial(
         left4, right4, JOIN_LEFT, passed, failed,
         "hash_join_indices dispatch, NaN + null keys, LEFT",
+    )
+    # right3 (near-1:1, big_n rows) is already at/above JOIN_BUILD_PARALLEL_MIN_ROWS,
+    # so this is the one end-to-end check that actually exercises the NEW parallel
+    # build inside `hash_join_indices`'s own dispatch, not just the small-build path
+    # every check above this one takes.
+    _check_end_to_end_matches_serial(
+        left3, right3, JOIN_INNER, passed, failed,
+        "hash_join_indices dispatch, near-1:1 build at/above JOIN_BUILD_PARALLEL_MIN_ROWS",
+    )
+
+    # ── build-parallel checks: `_build_right_index_parallel`'s radix-partitioned
+    #    build, at and above JOIN_BUILD_PARALLEL_MIN_ROWS, compared row for row
+    #    against the plain serial build — see the module docstring's "Parallel
+    #    build" section. ──────────────────────────────────────────────────────────
+    print("  JOIN_BUILD_PARALLEL_MIN_ROWS =", JOIN_BUILD_PARALLEL_MIN_ROWS)
+
+    var build_n = JOIN_BUILD_PARALLEL_MIN_ROWS + JOIN_BUILD_PARALLEL_MIN_ROWS // 8
+    var build_workers = _w4(2, 3, 7, 16)
+
+    # near-1:1 build side (right3/left3, already >= JOIN_BUILD_PARALLEL_MIN_ROWS):
+    # nearly every right row is its own distinct key, so almost no duplicate-key
+    # chaining happens anywhere — the tier the diagnosis found build dominates on.
+    for wi in range(len(build_workers)):
+        var w = build_workers[wi]
+        _check_build_matches_serial(
+            left3, right3, JOIN_INNER, w, passed, failed,
+            "build-parallel, near-1:1 (H2O q5 shape)",
+        )
+        _check_build_matches_serial(
+            left3, right3, JOIN_LEFT, w, passed, failed,
+            "build-parallel, near-1:1 (H2O q5 shape), LEFT",
+        )
+
+    # heavy duplicate keys spread across the WHOLE row range: `modulus` is two
+    # orders of magnitude below `build_n`, so the same key recurs across every
+    # worker band by construction — this is what would silently under-count if
+    # cross-partition duplicate chaining were ever wrong (see this fixture's own
+    # note in the module docstring).
+    var left6 = _left_batch(big_n, 20_000, 0, 0, 61)
+    var right6 = _right_batch(build_n, 20_000, 62)
+    for wi in range(len(build_workers)):
+        var w = build_workers[wi]
+        _check_build_matches_serial(
+            left6, right6, JOIN_INNER, w, passed, failed,
+            "build-parallel, heavy duplicate keys across bands",
+        )
+        _check_build_matches_serial(
+            left6, right6, JOIN_LEFT, w, passed, failed,
+            "build-parallel, heavy duplicate keys across bands, LEFT",
+        )
+
+    # NaN and null right-side rows at scale: never inserted into any partition,
+    # counted correctly, and a left row that would have matched one is unmatched
+    # like any other miss.
+    var left7 = _left_batch(big_n, 20_000, 53, 67, 71)
+    var right7 = _right_batch_with_hazards(build_n, 20_000, 97, 131, 72)
+    for wi in range(len(build_workers)):
+        var w = build_workers[wi]
+        _check_build_matches_serial(
+            left7, right7, JOIN_INNER, w, passed, failed,
+            "build-parallel, NaN + null right rows at scale",
+        )
+        _check_build_matches_serial(
+            left7, right7, JOIN_LEFT, w, passed, failed,
+            "build-parallel, NaN + null right rows at scale, LEFT",
+        )
+
+    # a right side just BELOW the build threshold must still match — proves the
+    # function itself is correct even when a caller uses it off the beaten path,
+    # not merely when `hash_join_indices`'s own dispatch would pick it.
+    var right8 = _right_batch(10_000, 3_000, 82)
+    var left8 = _left_batch(big_n, 3_000, 0, 0, 81)
+    _check_build_matches_serial(
+        left8, right8, JOIN_INNER, 4, passed, failed,
+        "build-parallel, below JOIN_BUILD_PARALLEL_MIN_ROWS (called directly)",
     )
 
     # ── gather: _take_column_join vs take_column, at and above the threshold ───

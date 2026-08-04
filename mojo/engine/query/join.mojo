@@ -93,17 +93,30 @@ are fully built, and never written again, before either pass starts —
 read of already-immutable state, the same argument `query.composed`'s
 `compose_exact_domain` makes for reading a key column from every worker.
 
-`_build_right_index` (the table build over the right side) and `merge_join_indices`
-are UNCHANGED by this — the build mutates one shared table per right row rather than
-touching independent rows, and no H2O join-track question exercises `merge_join`. Both
-are documented as separate, harder follow-on work, not attempted here.
+`_build_right_index` itself and `merge_join_indices` are UNCHANGED by this pass — the
+build mutates one shared table per right row rather than touching independent rows,
+which is a different hazard than a probe's read-only concurrent lookups, and no H2O
+join-track question exercises `merge_join`. The build's own follow-on is the next
+section.
+
+Parallel build (2026-08, follow-on)
+------------------------------------
+Per-phase telemetry on the parallel probe/gather above found `_build_right_index`
+responsible for most of what was left of the DuckDB and Polars gaps on q5 specifically
+(the one near-1:1, 10,000,000-row build side in the H2O join-track) while being noise
+on every other question — see `_build_right_index_parallel`'s own section docstring
+below for the full numbers and the radix-partitioned design that fixes it without ever
+mutating one `HashIndex` from two threads. `_build_right_index` itself stays exactly
+as it was above; `hash_join_indices` now has a second, additive way to reach the table
+its probe needs, gated by `JOIN_BUILD_PARALLEL_MIN_ROWS`.
 """
 from std.algorithm.functional import parallelize
+from std.memory import alloc
 from std.sys import info
 
 from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch, Schema, take_column
-from columnar.hash_index import HashIndex
+from columnar.hash_index import HashIndex, hash_bits, normalize_bits
 
 # Matches `query.executor.NO_ROW`. An index of -1 is what `take_column` turns into a
 # null, so an unmatched outer row needs no special case anywhere downstream.
@@ -140,6 +153,32 @@ pre-sized directly). Break-even against 16-way parallelism is ~27k-107k rows ove
 same quiet/under-load overhead range as above; 1<<18 = 262,144 sits comfortably past
 it with margin, and — again — three-plus orders of magnitude below the 9-10M row
 outputs the H2O join-track actually produces."""
+
+comptime JOIN_BUILD_RADIX_BITS: Int = 4
+comptime JOIN_BUILD_RADIX_PARTITIONS: Int = 1 << JOIN_BUILD_RADIX_BITS
+"""Partition fan-out for the parallel build (`_build_right_index_parallel`) below.
+
+Copied from `query.aggregate`'s own `RADIX_BITS` (4, so 16 partitions) rather than
+re-derived: same reasoning applies verbatim — 16 partitions gives every one of this
+host's 16 physical cores a task in the build's own pass 2 (one partition per task, see
+`_build_right_index_parallel`'s docstring), and the split is on the TOP bits of the same
+FNV-1a hash `HashIndex` already probes with on its LOW bits (`hash_bits(bits) & mask`),
+so partition routing and in-partition table position are independent signals from one
+hash rather than two, exactly `group_by_many_radix`'s own argument for the same split."""
+
+comptime JOIN_BUILD_PARALLEL_MIN_ROWS: Int = 1 << 19
+"""Right rows at or above which `hash_join_indices` builds the table with the
+radix-partitioned parallel build (`_build_right_index_parallel`) instead of the plain
+serial `_build_right_index`.
+
+Same order of magnitude as `JOIN_PROBE_PARALLEL_MIN_ROWS` and for the same reason: the
+parallel build pays for two `parallelize` calls over row bands (count, scatter) plus one
+more over the 16 partitions, so a small right side must not pay that fan-out for
+nothing. Measured on the H2O join-track's own shapes (see
+`benchmarks/h2o_join/RESULTS.md`'s 2026-08 build-phase update): q1-q4's build sides
+(10-10,000 rows) are nowhere near this threshold and always take the serial path
+unchanged; q5's 10,000,000-row near-1:1 build side is more than an order of magnitude
+past it, which is what this threshold exists for."""
 
 
 struct JoinResult(Copyable, Movable):
@@ -279,6 +318,516 @@ fn _build_right_index(
             next_row[last_row[slot]] = r
             last_row[slot] = r
     return null_keys
+
+
+# ─── Parallel radix-partitioned build (2026-08, build-phase parallelization) ──────
+#
+# `benchmarks/h2o_join/RESULTS.md`'s per-phase telemetry found `_build_right_index`
+# above -- the one phase the original "Parallel probe and gather" pass explicitly left
+# serial -- responsible for 87% of the remaining DuckDB-relative gap and 65% of the
+# Polars-relative gap on q5 (the H2O join-track's near-1:1, 10,000,000-row build side),
+# while being noise (<0.3% of runtime) on every other question. What follows is
+# additive: `hash_join_indices`'s own signature and every observable behaviour are
+# unchanged (see its own docstring); only its INTERNAL dispatch gains a second, faster
+# way to reach the same `JoinResult`, exactly the way `JOIN_PROBE_PARALLEL_MIN_ROWS`
+# and `JOIN_GATHER_PARALLEL_MIN_ROWS` already gate a second way to run the probe and
+# the gather without touching either's public contract.
+#
+# Why a single shared `HashIndex` cannot simply be filled by N workers each handed a
+# row band (the naive analog of the probe's own parallelization): `HashIndex.get_or_
+# assign` MUTATES shared state -- the open-addressed `slots`/`slot_keys` arrays, plus a
+# `_grow()` that reallocates them -- so two workers racing to insert two DIFFERENT keys
+# that happen to probe the same or adjacent table positions is a real data race, not a
+# theoretical one; and `_grow()` firing mid-insert from two threads at once would
+# corrupt the table for every key, not just the colliding two. There is no way to make
+# `get_or_assign` itself thread-safe without a lock on the hot path this measurement
+# just proved is 60%+ of build time on the tier that matters.
+#
+# The fix, adapted from `query.aggregate.group_by_many_radix`'s own solved version of
+# the identical problem (a group-by's accumulator table has the exact same shared-
+# mutable-state hazard): radix-partition the right side by the TOP bits of the same
+# FNV-1a hash `HashIndex` already probes with on its LOW bits, so two rows can share a
+# partition only if a real hash collision put them there -- which the equality check
+# inside that partition's own table still resolves correctly, exactly as it always has.
+# Partitioning on a DIFFERENT bit range of the SAME hash (not two different hashes)
+# means a key's partition and its in-partition table position are independent signals,
+# not two chances to disagree about identity.
+#
+#   pass A (parallel over `workers` contiguous row bands): hash each matchable right
+#     row ONCE (`hash_bits(normalize_bits(key))`), keep the hash in a row-indexed
+#     buffer, and COUNT the row into (worker, partition) -- no table touched yet, so
+#     nothing to race on.
+#
+#   prefix sum (serial, `workers x JOIN_BUILD_RADIX_PARTITIONS` entries -- cheap):
+#     counts become segment offsets, PARTITION-major with band order inside a
+#     partition, so partition p's whole region ends up in ascending global row order --
+#     the same layout `group_by_many_radix` uses and for the same reason: a later pass
+#     that just walks a partition's segment in order reproduces the serial algorithm's
+#     row order for free, no sort needed.
+#
+#   pass B (parallel, same bands): re-walk each band with the IDENTICAL matchable-key
+#     test pass A ran (deterministic, so the same rows survive), and write each
+#     survivor's (row index, hash) at its own (worker, partition) cursor with raw
+#     indexed stores -- disjoint by construction, the same cursor-bounds argument
+#     `_hash_join_probe_parallel` already makes for its own scatter. Checked afterward,
+#     not trusted; a mismatch abandons the whole parallel build for the serial one.
+#
+#   pass 2 (parallel, ONE task per partition -- `JOIN_BUILD_RADIX_PARTITIONS` of them,
+#     independent of `workers`, mirroring `group_by_many_radix`'s own pass 2): each
+#     partition builds its OWN PRIVATE `HashIndex` and its OWN slot-indexed `first_row`
+#     list, walking its segment in the ascending row order the prefix sum already
+#     established, using `get_or_assign_bits` to probe with the hash pass A already
+#     computed rather than re-deriving it. `next_row` (row-indexed, one shared list
+#     across every partition) is written directly by whichever partition's segment the
+#     row landed in -- safe because a right row belongs to EXACTLY ONE partition, so no
+#     two partitions ever write the same `next_row[r]`.
+#
+# Duplicate keys across a "band" boundary (pass A/B's worker split) chain together
+# correctly because band membership only decides WHEN a row is counted/hashed, never
+# which partition or table it lands in -- that is decided solely by the row's own key
+# hash, identically in pass A and pass B. Two rows with the same key are GUARANTEED the
+# same partition (same hash, same top bits) however far apart their row indices or
+# whichever worker's band each falls in, so they always chain together in the one
+# partition table that owns that key -- never silently split across two tables the way
+# a naive "one partition per worker, keyed by row range" scheme would.
+#
+# What this does NOT change: `_build_right_index` above (the plain serial build) is
+# byte-for-byte untouched and is exactly what a right side below
+# `JOIN_BUILD_PARALLEL_MIN_ROWS` still runs, and exactly what the parallel build itself
+# falls back to, whole, if its own scatter invariant ever fails its check.
+# `join_output_rows` and `semi_join_indices` also keep calling the plain serial build
+# unchanged -- neither is on the H2O join-track's measured path, and the size-estimation
+# and semi-join operators they serve are a separate, smaller-scoped follow-on, not
+# attempted here.
+
+
+fn _build_right_index_parallel(
+    right_key: Float64Array,
+    n_rows: Int,
+    workers: Int,
+    mut tables: List[HashIndex],
+    mut first_row: List[List[Int]],
+    mut next_row: List[Int],
+    mut ok: Bool,
+) -> Int:
+    """Radix-partitioned parallel build. Returns the unusable-key count, same as
+    `_build_right_index`. Fills `tables`/`first_row` with exactly
+    `JOIN_BUILD_RADIX_PARTITIONS` entries (partition `p`'s slot-indexed first-row list
+    is `first_row[p]`, its table is `tables[p]`) and `next_row` with one entry per right
+    row, matching `_build_right_index`'s own row-indexed layout exactly -- a caller
+    probing partition `p`'s slot with `next_row` needs no partition-aware indexing for
+    that array, only for `tables`/`first_row`.
+
+    Sets `ok = False` and leaves `tables`/`first_row`/`next_row` in an unspecified,
+    UNUSABLE state if the pass-B scatter's own write-cursor invariant fails -- the
+    caller MUST check `ok` and re-run the whole build serially via `_build_right_index`
+    rather than trust anything here, the same discipline
+    `_hash_join_probe_parallel` already applies to its own scatter, just surfaced
+    outward instead of handled internally, because unlike that function this one cannot
+    fall back to a same-shape alternative on its own: its OUTPUT shape (partitioned)
+    differs from `_build_right_index`'s (one flat table), so only the caller — which
+    also owns dispatching the matching probe shape — can pick the right whole
+    alternative.
+
+    `workers` MUST be >= 1; callers gate this behind `JOIN_BUILD_PARALLEL_MIN_ROWS` and
+    a computed worker count, exactly as `_hash_join_probe`'s own dispatch does for the
+    probe.
+    """
+    ok = True
+    next_row = List[Int](length=n_rows, fill=NO_ROW)
+    if n_rows <= 0:
+        tables = List[HashIndex]()
+        first_row = List[List[Int]]()
+        for _ in range(JOIN_BUILD_RADIX_PARTITIONS):
+            tables.append(HashIndex(64))
+            first_row.append(List[Int]())
+        return 0
+
+    var band = (n_rows + workers - 1) // workers
+
+    # ── pass A: hash every matchable row once, count into (worker, partition) ───────
+    var hrow = alloc[UInt64](n_rows)
+    var counts = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    var w_nulls = List[Int](length=workers, fill=0)
+    var cp = counts.unsafe_ptr()
+    var np = w_nulls.unsafe_ptr()
+
+    @parameter
+    fn count_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        var nulls = 0
+        for r in range(lo, hi):
+            if not is_matchable_key(right_key, r):
+                nulls += 1
+                continue
+            var h = hash_bits(normalize_bits(right_key.get(r)))
+            hrow[r] = h
+            lp[Int(h >> (64 - JOIN_BUILD_RADIX_BITS))] += 1
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            cp[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
+        np[w] = nulls
+
+    parallelize[count_worker](workers)
+
+    # ── prefix sum: counts to segment offsets, partition-major with band order
+    #    inside a partition (see the section docstring above) ───────────────────────
+    var offsets = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    var part_start = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS + 1, fill=0)
+    var running = 0
+    for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+        part_start[p] = running
+        for w in range(workers):
+            offsets[w * JOIN_BUILD_RADIX_PARTITIONS + p] = running
+            running += counts[w * JOIN_BUILD_RADIX_PARTITIONS + p]
+    part_start[JOIN_BUILD_RADIX_PARTITIONS] = running
+    var survivors = running
+
+    # ── pass B: write (row, hash) at each row's (worker, partition) cursor ──────────
+    var prow = alloc[Int](survivors if survivors > 0 else 1)
+    var phash = alloc[UInt64](survivors if survivors > 0 else 1)
+    var cursors = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    for i in range(workers * JOIN_BUILD_RADIX_PARTITIONS):
+        cursors[i] = offsets[i]
+    var up = cursors.unsafe_ptr()
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            lp[p] = up[w * JOIN_BUILD_RADIX_PARTITIONS + p]
+        for r in range(lo, hi):
+            if not is_matchable_key(right_key, r):
+                continue
+            var h = hrow[r]
+            var part = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var s = lp[part]
+            lp[part] = s + 1
+            prow[s] = r
+            phash[s] = h
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            up[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
+
+    parallelize[scatter_worker](workers)
+    hrow.free()
+
+    var scatter_ok = True
+    for i in range(workers * JOIN_BUILD_RADIX_PARTITIONS):
+        if cursors[i] != offsets[i] + counts[i]:
+            scatter_ok = False
+
+    if not scatter_ok:
+        prow.free()
+        phash.free()
+        print(
+            "query.join: build scatter write-cursor invariant violated;"
+            " falling back to the serial build"
+        )
+        ok = False
+        return 0
+
+    # ── pass 2: one task per partition, over its own contiguous, ascending-row-
+    #    order segment. Builds that partition's PRIVATE table and first_row list,
+    #    and writes `next_row` for its own rows only (disjoint across partitions by
+    #    construction -- see the section docstring above). ──────────────────────────
+    tables = List[HashIndex]()
+    first_row = List[List[Int]]()
+    for _ in range(JOIN_BUILD_RADIX_PARTITIONS):
+        tables.append(HashIndex(64))
+        first_row.append(List[Int]())
+    var tp = tables.unsafe_ptr()
+    var fp = first_row.unsafe_ptr()
+    var nrp = next_row.unsafe_ptr()
+
+    @parameter
+    fn partition_worker(p: Int):
+        var s0 = part_start[p]
+        var s1 = part_start[p + 1]
+        var last_row = List[Int]()
+        var group_count = 0
+        for s in range(s0, s1):
+            var r = prow[s]
+            var h = phash[s]
+            var bits = normalize_bits(right_key.get(r))
+            var slot = tp[p].get_or_assign_bits(bits, h, group_count)
+            if slot == group_count:
+                group_count += 1
+                fp[p].append(r)
+                last_row.append(r)
+            else:
+                nrp[last_row[slot]] = r
+                last_row[slot] = r
+
+    parallelize[partition_worker](JOIN_BUILD_RADIX_PARTITIONS)
+    prow.free()
+    phash.free()
+    # Keep the containers whose raw pointers the closures captured alive past the
+    # joins: Mojo destroys a value after its last USE and `unsafe_ptr()` is not one.
+    _ = len(counts) + len(offsets) + len(cursors) + len(tables) + len(first_row)
+
+    var null_keys = 0
+    for w in range(workers):
+        null_keys += w_nulls[w]
+    return null_keys
+
+
+fn _hash_join_probe_serial_partitioned(
+    left_key: Float64Array,
+    n_rows: Int,
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+) -> JoinResult:
+    """The serial probe walk over a PARTITIONED build (`_build_right_index_parallel`'s
+    output): the plain-table `_hash_join_probe_serial` above, adapted to look up a
+    left key's partition first (the same top-bits-of-hash split the build used) and
+    then find within that partition's own table. Below `JOIN_PROBE_PARALLEL_MIN_ROWS`,
+    or as the fallback target for `_hash_join_probe_parallel_partitioned`'s own
+    write-cursor check, exactly mirroring `_hash_join_probe`'s existing dispatch shape.
+    """
+    var out_left = List[Int]()
+    var out_right = List[Int]()
+    var unmatched = 0
+    var null_keys = 0
+
+    for l in range(n_rows):
+        if not is_matchable_key(left_key, l):
+            null_keys += 1
+            unmatched += 1
+            if join_type == JOIN_LEFT:
+                out_left.append(l)
+                out_right.append(NO_ROW)
+            continue
+
+        var key = left_key.get(l)
+        var h = hash_bits(normalize_bits(key))
+        var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+        var slot = tables[p].find(key)
+        if slot < 0:
+            unmatched += 1
+            if join_type == JOIN_LEFT:
+                out_left.append(l)
+                out_right.append(NO_ROW)
+            continue
+
+        var r = first_row[p][slot]
+        while r != NO_ROW:
+            out_left.append(l)
+            out_right.append(r)
+            r = next_row[r]
+
+    return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
+
+
+fn _hash_join_probe_parallel_partitioned(
+    left_key: Float64Array,
+    n_rows: Int,
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+    workers: Int,
+) -> JoinResult:
+    """`_hash_join_probe_parallel`'s exact two-pass counted-scatter blueprint, adapted
+    to a PARTITIONED build the same way the serial version above is: every per-row
+    lookup routes through the row's own partition first. Safety argument for the
+    concurrent reads is unchanged from the plain version -- every `tables[p]`/
+    `first_row[p]`/`next_row` entry is fully built and never written again before
+    either pass here starts, and `HashIndex.find` takes `self`, not `mut self`.
+
+    `chain_length` is a single flat buffer indexed by `slot_base[p] + slot` (partition
+    `p`'s slots occupy a contiguous range starting at `slot_base[p]`, the same
+    "segment per partition" layout the build's own pass 2 uses), computed once per
+    partition -- independent work across partitions, so it runs in its own
+    `parallelize` over the partitions rather than serially; this is a strict
+    improvement on the plain version's serial precompute, not a behavior change, since
+    chain length depends only on that partition's own `first_row`/`next_row`, never on
+    another partition's.
+    """
+    var slot_base = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS + 1, fill=0)
+    var running_slots = 0
+    for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+        slot_base[p] = running_slots
+        running_slots += len(first_row[p])
+    slot_base[JOIN_BUILD_RADIX_PARTITIONS] = running_slots
+    var total_slots = running_slots
+    var sbp = slot_base.unsafe_ptr()
+
+    var chain_len = alloc[Int](total_slots if total_slots > 0 else 1)
+    var fp = first_row.unsafe_ptr()
+
+    @parameter
+    fn chain_worker(p: Int):
+        var base = sbp[p]
+        for s in range(len(fp[p])):
+            var r = fp[p][s]
+            var length = 0
+            while r != NO_ROW:
+                length += 1
+                r = next_row[r]
+            chain_len[base + s] = length
+
+    parallelize[chain_worker](JOIN_BUILD_RADIX_PARTITIONS)
+
+    var band = (n_rows + workers - 1) // workers
+    var emit_unmatched = join_type == JOIN_LEFT
+
+    var counts = List[Int](length=workers, fill=0)
+    var w_unmatched = List[Int](length=workers, fill=0)
+    var w_null = List[Int](length=workers, fill=0)
+    var cp = counts.unsafe_ptr()
+    var ump = w_unmatched.unsafe_ptr()
+    var nlp = w_null.unsafe_ptr()
+
+    @parameter
+    fn count_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local_count = 0
+        var local_unmatched = 0
+        var local_null = 0
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                local_null += 1
+                local_unmatched += 1
+                if emit_unmatched:
+                    local_count += 1
+                continue
+            var key = left_key.get(l)
+            var h = hash_bits(normalize_bits(key))
+            var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var slot = tables[p].find(key)
+            if slot < 0:
+                local_unmatched += 1
+                if emit_unmatched:
+                    local_count += 1
+                continue
+            local_count += chain_len[sbp[p] + slot]
+        cp[w] = local_count
+        ump[w] = local_unmatched
+        nlp[w] = local_null
+
+    parallelize[count_worker](workers)
+
+    var offsets = List[Int](length=workers, fill=0)
+    var ofp = offsets.unsafe_ptr()
+    var running = 0
+    for w in range(workers):
+        ofp[w] = running
+        running += cp[w]
+    var total = running
+
+    var out_left = List[Int](length=total, fill=0)
+    var out_right = List[Int](length=total, fill=0)
+    var olp = out_left.unsafe_ptr()
+    var orp = out_right.unsafe_ptr()
+    var cursors = List[Int](length=workers, fill=0)
+    for w in range(workers):
+        cursors[w] = ofp[w]
+    var curp = cursors.unsafe_ptr()
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var cur = curp[w]
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                if emit_unmatched:
+                    olp[cur] = l
+                    orp[cur] = NO_ROW
+                    cur += 1
+                continue
+            var key = left_key.get(l)
+            var h = hash_bits(normalize_bits(key))
+            var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var slot = tables[p].find(key)
+            if slot < 0:
+                if emit_unmatched:
+                    olp[cur] = l
+                    orp[cur] = NO_ROW
+                    cur += 1
+                continue
+            var r = first_row[p][slot]
+            while r != NO_ROW:
+                olp[cur] = l
+                orp[cur] = r
+                cur += 1
+                r = next_row[r]
+        curp[w] = cur
+
+    parallelize[scatter_worker](workers)
+    chain_len.free()
+    _ = len(slot_base) + len(counts) + len(offsets)
+
+    var ok = True
+    for w in range(workers):
+        if curp[w] != ofp[w] + cp[w]:
+            ok = False
+
+    if not ok:
+        print(
+            "query.join: partitioned probe scatter write-cursor invariant violated;"
+            " falling back to the serial partitioned probe"
+        )
+        return _hash_join_probe_serial_partitioned(
+            left_key, n_rows, tables, first_row, next_row, join_type
+        )
+
+    var unmatched = 0
+    var null_keys = 0
+    for w in range(workers):
+        unmatched += ump[w]
+        null_keys += nlp[w]
+
+    return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
+
+
+fn _hash_join_probe_partitioned(
+    left_key: Float64Array,
+    n_rows: Int,
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+) -> JoinResult:
+    """Dispatch over a PARTITIONED build, mirroring `_hash_join_probe`'s own dispatch
+    exactly: below `JOIN_PROBE_PARALLEL_MIN_ROWS` or a collapsed worker count, run the
+    serial partitioned walk; above it, try the parallel scatter, which falls back to
+    the serial walk itself on its own invariant failure.
+    """
+    if n_rows < JOIN_PROBE_PARALLEL_MIN_ROWS:
+        return _hash_join_probe_serial_partitioned(
+            left_key, n_rows, tables, first_row, next_row, join_type
+        )
+
+    var workers = info.num_physical_cores()
+    if workers < 1:
+        workers = 1
+    if workers > n_rows:
+        workers = n_rows
+    if workers <= 1:
+        return _hash_join_probe_serial_partitioned(
+            left_key, n_rows, tables, first_row, next_row, join_type
+        )
+
+    return _hash_join_probe_parallel_partitioned(
+        left_key, n_rows, tables, first_row, next_row, join_type, workers
+    )
 
 
 fn _hash_join_probe_serial(
@@ -568,12 +1117,47 @@ fn hash_join_indices(
     join — so the one join that discards rows was the one that reported nothing about it,
     and `describe()` omitted the count entirely.
 
-    The build stays serial (`_build_right_index`); the probe fans out over left-row
-    bands above `JOIN_PROBE_PARALLEL_MIN_ROWS` — see the module docstring's "Parallel
-    probe and gather" section and `_hash_join_probe`'s own dispatch.
+    The build itself fans out above `JOIN_BUILD_PARALLEL_MIN_ROWS` (radix-partitioned,
+    see `_build_right_index_parallel`'s own section docstring), falling back to the
+    plain serial `_build_right_index` below that threshold or on the parallel build's
+    own invariant-check failure; the probe fans out over left-row bands above
+    `JOIN_PROBE_PARALLEL_MIN_ROWS` either way — see the module docstring's "Parallel
+    probe and gather" section and `_hash_join_probe`/`_hash_join_probe_partitioned`'s
+    own dispatch. Either path returns the identical `JoinResult` a right side of that
+    shape would always have produced; which path ran is an internal performance
+    decision, never part of this function's contract.
     """
     var left_key = left.column(left_key_column)
     var right_key = right.column(right_key_column)
+
+    if right.n_rows >= JOIN_BUILD_PARALLEL_MIN_ROWS:
+        var build_workers = info.num_physical_cores()
+        if build_workers < 1:
+            build_workers = 1
+        if build_workers > right.n_rows:
+            build_workers = right.n_rows
+        if build_workers > 1:
+            var tables = List[HashIndex]()
+            var p_first_row = List[List[Int]]()
+            var p_next_row = List[Int]()
+            var build_ok = True
+            _ = _build_right_index_parallel(
+                right_key,
+                right.n_rows,
+                build_workers,
+                tables,
+                p_first_row,
+                p_next_row,
+                build_ok,
+            )
+            if build_ok:
+                return _hash_join_probe_partitioned(
+                    left_key, left.n_rows, tables, p_first_row, p_next_row, join_type
+                )
+            # else: the parallel build's own scatter invariant failed. Fall through
+            # to the plain serial build+probe below rather than trust a partial
+            # partitioned result — same discipline as every other fallback in this
+            # module, just spanning both phases here since the two are paired.
 
     var slot_of = HashIndex(64)
     var first_row = List[Int]()

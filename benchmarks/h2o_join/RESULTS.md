@@ -1,19 +1,24 @@
-# H2O db-benchmark join track, 0.5 GB tier — serial baseline, then a real parallel probe+gather
+# H2O db-benchmark join track, 0.5 GB tier — serial baseline, then a real parallel probe+gather, then a real parallel build
 
-**Still not a win, after a real fix. This stays in `benchmarks/`, never `gitbook/`, per
-this project's own standing rule: a GitBook page publishes only on a minimum ratio >
-1.00 against BOTH DuckDB and Polars, on every question.** The original serial baseline
-below cleared that bar on exactly one of five questions against one of two references
-(q1 vs DuckDB). `mojo/engine/query/join.mojo`'s probe and gather have since been
-parallelized (row-banded, same blueprint as `query.aggregate.group_by_many_radix`'s
-counted scatter — see that file's own "Parallel probe and gather" docstring section),
-and the **"Update (2026-08)" section below is the current, honest picture**: Algenta
-now wins outright against DuckDB on 4 of 5 questions and roughly halves the Polars gap
-on all 5 — but every question is still a loss against Polars (6.4x-12.1x), so the page
-still does not ship. The two sections below are kept in chronological order —
-"Results" is the original serial-path measurement (now superseded), "Update (2026-08)"
-is the current parallel-path measurement — so the gap-closure is visible, not just the
-final number.
+**Still not a win, after two real fixes. This stays in `benchmarks/`, never
+`gitbook/`, per this project's own standing rule: a GitBook page publishes only on a
+minimum ratio > 1.00 against BOTH DuckDB and Polars, on every question.** The original
+serial baseline below cleared that bar on exactly one of five questions against one of
+two references (q1 vs DuckDB). `mojo/engine/query/join.mojo`'s probe and gather were
+parallelized first (row-banded, same blueprint as `query.aggregate.group_by_many_
+radix`'s counted scatter — see that file's own "Parallel probe and gather" docstring
+section; "Update (2026-08)" below), which won 4 of 5 questions against DuckDB and
+roughly halved the Polars gap on all 5. Per-phase telemetry then found the remaining
+DuckDB/Polars gap on the fifth question (q5, the near-1:1 10,000,000-row build side)
+was mostly the one phase that pass left serial — the hash-table build — so it got the
+identical radix-partitioned parallel treatment ("Update #2" below): q5's DuckDB ratio
+fell from 3.15x to ~1.35x-1.57x across sessions and its Polars ratio roughly halved
+again. **Every question is still a loss against Polars, and q5 is still a loss against
+DuckDB too**, so the page still does not ship. The three sections below are kept in
+chronological order — "Results" is the original serial-path measurement (superseded
+twice over), "Update (2026-08)" is the parallel-probe-and-gather measurement
+(superseded once, on q5 only), "Update #2 (2026-08)" is the current, fully-parallel
+picture — so each stage's gap-closure is visible, not just the final number.
 
 This was the honest "before" picture for the join-track work the feasibility research
 proposed (a shape-aware router + a partitioned/radix hash-join variant, mirroring the
@@ -216,6 +221,169 @@ check to get faster per row (SIMD-friendly hashing/comparison, fewer allocations
 not more threads — parallelism was the DuckDB-shaped half of this gap, not the
 Polars-shaped half, and this pass closed the half it was built for.
 
+## Update #2 (2026-08): per-phase telemetry attributed the rest of q5's gap to the build — now that's parallel too
+
+The Update section above left `_build_right_index` (the hash-table build over the right
+side) and `merge_join_indices` explicitly unmeasured and unparallelized, naming the build
+a "separate, harder follow-on." This pass answered that with real per-phase
+instrumentation before writing any new engine code, then closed what the numbers found.
+
+### Diagnosis: how much of the remaining gap is the build, exactly
+
+A temporary, additive-only instrumented build (`_build_right_index` and
+`_hash_join_probe_parallel` measurement overloads, plus a throwaway
+`bench_h2o_join_timed.mojo` driving them — both deleted before this pass shipped, per
+this file's own standing rule against permanent speculative instrumentation) timed
+build/probe/gather as separate wall-clock spans on the exact H2O data, at H2O scale,
+through the exact parallel dispatch production code takes. Scaling each phase's
+*fraction of Algenta's own total* onto the Update table's published absolute times
+gives:
+
+| Q | build % of Algenta's own time | build share of the DuckDB gap | build share of the Polars gap |
+| --- | --- | --- | --- |
+| q1-q4 | 0.002%-0.29% | n/a (no DuckDB gap — Algenta already won) | 0.002%-0.29% |
+| q5 | **59.6%** (the largest single phase, ahead of probe+gather combined) | **87.3%** | **65.0%** |
+
+**q1-q4: not a build-phase story at all.** The build is noise (under 0.3% of runtime)
+on every question with a small or medium build side; their entire remaining Polars loss
+is a probe+gather story, predominantly gather (70-90% of the gap) — exactly what the
+Update section above already concluded, now with per-phase numbers confirming it rather
+than inferring it from shape alone. **q5: the build genuinely is the dominant lever.**
+59.6% of Algenta's own q5 time, 87.3% of the DuckDB gap, and 65.0% of the Polars gap —
+real, substantial, and (per the design below) addressable without touching the frozen
+build's contract. Unaccounted time (build + probe + gather vs. the measured total) was
+≤0.017ms absolute on every question — statistically indistinguishable from zero, so
+nothing outside these three phases matters here. Within build, `HashIndex.get_or_
+assign`'s own hash-and-probe (not the surrounding null-check/chain-append bookkeeping)
+is 65-77% of build time at every scale measured, which is what the parallel design
+below specifically targets.
+
+### Design: radix-partitioned build, additive, `hash_join_indices`'s contract unchanged
+
+`HashIndex.get_or_assign` mutates shared state (the open-addressed `slots`/`slot_keys`
+arrays, plus a `_grow()` that reallocates them), so N workers cannot simply be handed a
+row band each and call it concurrently on ONE shared table — two workers inserting
+different keys that probe the same or adjacent positions is a real data race, and a
+`_grow()` firing from two threads at once corrupts the table for every key, not just the
+colliding two.
+
+The fix, adapted from `query.aggregate.group_by_many_radix`'s own solved version of the
+identical shared-mutable-state hazard: radix-partition the right side by the TOP bits of
+the same FNV-1a hash `HashIndex` already probes with on its LOW bits, so a key's
+partition and its in-partition table position are independent signals from one hash,
+not two chances to disagree about identity. Two rows share a partition only when a real
+hash collision puts them there, exactly as within a single table today.
+
+  * **pass A** (parallel over row bands): hash every matchable right row once, count
+    into (worker, partition) — no table touched, nothing to race on.
+  * **prefix sum** (serial, `workers x 16` entries — cheap): counts become segment
+    offsets, partition-major with band order inside a partition, so partition p's
+    region ends up in ascending global row order for free.
+  * **pass B** (parallel, same bands): write each survivor's (row, hash) at its own
+    (worker, partition) cursor with raw indexed stores — disjoint by construction, the
+    same cursor-bounds argument the probe's own scatter already makes, checked after
+    and never trusted.
+  * **pass 2** (parallel, one task per partition — 16 of them, independent of
+    `workers`): each partition builds its OWN private `HashIndex` and its own
+    slot-indexed `first_row` list over its ascending-order segment, using
+    `get_or_assign_bits` to reuse pass A's hash rather than re-deriving it. `next_row`
+    (row-indexed, one array shared across every partition) is written directly by
+    whichever partition a row landed in — safe because a right row belongs to exactly
+    one partition, so no two partitions ever write the same `next_row[r]`.
+
+Duplicate keys across a WORKER BAND never split across partitions: which partition a row
+lands in is decided solely by its own key's hash, identically in pass A and pass B,
+never by which band the row's index happens to fall in — two rows sharing a key are
+guaranteed the same partition however far apart their row indices are or whichever
+worker's band each falls in. The suite's "heavy duplicate keys across bands" fixture
+(`test_query_join_parallel.mojo`) exists specifically to exercise this: modulus two
+orders of magnitude below row count, so the same key recurs across every worker band by
+construction, checked row for row against the serial reference at 23,188,721 output
+rows across four worker counts and both join types.
+
+`_build_right_index` and `merge_join_indices` are byte-for-byte unchanged; `hash_join_
+indices` gains a second, additive, gated way to reach the identical `JoinResult` — new
+private functions (`_build_right_index_parallel`, `_hash_join_probe_serial_
+partitioned`, `_hash_join_probe_parallel_partitioned`, `_hash_join_probe_partitioned`)
+above `JOIN_BUILD_PARALLEL_MIN_ROWS` (524,288 right rows — same order of magnitude as
+the probe/gather thresholds and for the same reason), falling back to the plain serial
+build+probe below that threshold or if the new build's own write-cursor invariant check
+ever fails. `join_output_rows` and `semi_join_indices` still call the plain serial build
+unchanged — neither is on the H2O join-track's measured path; that is a smaller,
+separate follow-on, not attempted here.
+
+### Correctness
+
+54 checks in `test_query_join_parallel.mojo`'s new "build-parallel" section, ROW FOR
+ROW (not row count, not multiset) against the plain serial build + serial probe
+reference, at build-side row counts at and above `JOIN_BUILD_PARALLEL_MIN_ROWS`, at
+four worker counts (2, 3, 7, 16) including non-power-of-two ones, covering: the near-1:1
+shape (H2O q5's own shape, almost no duplicate keys), heavy duplicate keys spread across
+every worker band (the cross-partition-chaining hazard named above), NaN and null
+right-side rows at scale (never inserted into any partition, counted correctly), and a
+right side just below the threshold called directly. Both the new serial-partitioned
+probe and the new parallel-partitioned probe are checked against the reference, and
+`hash_join_indices` itself is checked end to end with a right side above the build
+threshold so the real dispatch path is proven, not merely its private building blocks.
+`test_query_join.mojo`'s original 33/33 known-value suite and the existing 28 probe/
+gather parallel checks are unaffected (82/82 total, still green) — this pass added
+checks, it did not need to change any.
+
+### Results — build now parallel too, same protocol as the Update table above
+
+Minimum of 3 reps per engine per question, all three engines run back to back on the
+identical generated data, same machine, same session, load average 14.4-15.2 (a
+contended host, matching the Update table's own disclosed 12-14 — this session was
+deliberately re-run at a comparable contention level for the closest apples-to-apples
+comparison to that table, not cherry-picked at a quieter moment). Ratio convention
+unchanged: **Algenta time / baseline time; above 1.00 means Algenta is slower.**
+
+| Question | Algenta-parallel-build (min) | DuckDB (min) | Polars (min) | Algenta/DuckDB | Algenta/Polars |
+| --- | --- | --- | --- | --- | --- |
+| q1 — small inner on id1 | 0.181s | 0.448s | 0.028s | **0.40x (faster)** | **6.46x** |
+| q2 — medium inner on id2 | 0.264s | 0.548s | 0.036s | **0.48x (faster)** | **7.28x** |
+| q3 — medium left on id2 | 0.268s | 0.658s | 0.052s | **0.41x (faster)** | **5.11x** |
+| q4 — medium inner on id2* | 0.261s | 0.475s | 0.026s | **0.55x (faster)** | **10.05x** |
+| q5 — **big** inner on id3 | 0.742s | 0.506s | 0.129s | **1.47x** | **5.74x** |
+
+q1-q4 move only with the session's own load noise (they never cross
+`JOIN_BUILD_PARALLEL_MIN_ROWS` on the build side, so the new code path never runs for
+them — exactly as the diagnosis above predicted). **q5 is the whole story**: Algenta's
+own q5 time drops from 1.184s to 0.742s in this session — a real ~37% reduction, ~1.6x
+speedup, from parallelizing the build alone — which cuts the DuckDB ratio from 3.15x to
+1.47x (the DuckDB gap itself shrank by more than half) and the Polars ratio from 12.05x
+to 5.74x (also more than halved). **Reproducibility across load levels**: this result
+was measured in three separate sessions at three different contention levels (load
+6.2-6.5, 6.6-10.1, and the 14.4-15.2 session reported in the table above) to check the
+result wasn't a load-noise artifact; q5's Algenta/DuckDB ratio landed at 1.35x, 1.35x-
+1.57x, and 1.47x respectively across those three sessions — real variance, but the
+qualitative result (the DuckDB gap roughly halved to low-1.x-x, the Polars gap roughly
+halved again to mid-single-digit-x) holds in every one of them. Every run's row counts,
+`left_unmatched`, and cross-engine checksum are bit-identical to the Update table's own
+values above (e.g. q1 checksum `900289106.2571583` on every rep, every session) — the
+build parallelization changed nothing about the answer, only how fast it arrives.
+
+### Recommendation, updated again
+
+**Still does not clear the publish bar (minimum ratio > 1.00 against BOTH DuckDB and
+Polars, every question) — q5 is still a loss against both, and all five questions are
+still losses against Polars.** But the picture inside that verdict changed substantially:
+the DuckDB-side story is now fully executed — 4 of 5 questions were already wins, and
+this pass took the fifth (q5) from a 3.15x loss to a 1.47x loss, which per the
+diagnosis's own attribution is close to the ceiling a build-phase fix alone can reach
+(build was 87.3% of that gap, not all of it — the residual ~478ms-scale probe+gather
+cost on q5 is real and this pass did not touch it). The Polars-side story is unchanged
+in KIND from the Update section's own conclusion — every question still loses to Polars,
+and the remaining gap on q1-q4 (5.1x-10.1x here) is still predominantly a gather-then-
+probe constant-factor story, not a parallelism gap, since gather and probe were already
+parallel before this pass and are still the whole q1-q4 gap. **What is different now**:
+q5's Polars gap (5.74x) is close enough to q1-q4's own range (5.1x-10.1x) that q5 is no
+longer a structurally distinct worst case — the SAME fix (SIMD-friendly per-row hashing/
+comparison in the probe, fewer allocations in the gather) that would move q1-q4 would
+now move q5 by a comparable amount too, rather than needing a separate build-specific
+intervention on top. That fix — not another parallelism pass, and not scoped to q5
+specifically anymore — is the concrete next lever this diagnosis leaves on the table.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
@@ -261,13 +429,17 @@ Polars-shaped half, and this pass closed the half it was built for.
   is no longer true of the current engine: the Update section's row-banded parallel
   probe and gather are real, merged-into-this-file's-history engine changes, kept
   disclosed above rather than silently overwriting the original table.
-* **Still no router, no radix/partitioned hash-join variant, and the build side
-  (`_build_right_index`) and `merge_join_indices` are still fully serial** — the Update
-  section's parallelism is scoped to the probe and the gather only, per that section's
-  own "what was left unchanged" note. The 5 GB and 50 GB tiers are still not measured.
-  The Update section's own timing is likewise 3 reps, one session, not yet
-  rotated-interleaved — the same caveat as the bullet above, carried forward rather than
-  quietly upgraded.
+* **Still no router, and `merge_join_indices` is still fully serial** — no H2O
+  join-track question exercises it, so it was out of scope for both the Update section
+  and Update #2. `_build_right_index` itself (the plain serial build) is also still
+  fully serial and byte-for-byte unchanged — Update #2 above gave `hash_join_indices`
+  an ADDITIVE, gated second path (`_build_right_index_parallel`) above
+  `JOIN_BUILD_PARALLEL_MIN_ROWS`, not a rewrite of the original function. The 5 GB and
+  50 GB tiers are still not measured. Both Update sections' own timing is likewise 3
+  reps per session, not yet rotated-interleaved — Update #2 partially compensates by
+  re-running across three sessions at different load levels and disclosing the spread
+  (see its own Results subsection) rather than trusting a single session's 3 reps, but
+  this is still short of the groupby page's full rotated-interleaved methodology.
 * **Not comparable to the public leaderboard.** Same disclosure as the groupby page:
   the official suite's categorical join keys are strings; every engine here got integer
   dictionary codes instead, for internal comparability among the three engines measured
@@ -288,12 +460,16 @@ mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join.mojo -o /tmp
 python benchmarks/h2o_join/run_baselines.py
 ```
 
-The parallel probe and gather (see the Update section above) are the default,
-unconditional path in `join.mojo` above their own row-count thresholds — no build flag
-or env var switches them on; the same `bench_h2o_join.mojo` build above already
-measures the parallel path.
+The parallel probe, gather, AND (per Update #2) build are the default, unconditional
+path in `join.mojo` above their own row-count thresholds — no build flag or env var
+switches any of them on; the same `bench_h2o_join.mojo` build above already measures
+the fully-parallel path end to end via `hash_join_indices`'s own dispatch.
 
-```text title="correctness suites for the parallel path"
+```text title="correctness suites for the parallel probe/gather/build paths"
 mojo build -I mojo/engine mojo/tests/libs/test_query_join.mojo -o /tmp/test_query_join && /tmp/test_query_join
 mojo build -I mojo/engine mojo/tests/libs/test_query_join_parallel.mojo -o /tmp/test_query_join_parallel && /tmp/test_query_join_parallel
 ```
+
+The second suite covers probe, gather AND (its "build-parallel" section, added for
+Update #2) the radix-partitioned build — 82 checks total, all row-for-row against the
+plain serial references.
