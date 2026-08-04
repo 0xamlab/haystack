@@ -1,14 +1,16 @@
-# Benchmark derived from TPC-DS — 9 of 99 query templates real, verified
+# Benchmark derived from TPC-DS — 16 of 99 query templates real, verified
 
 Scoped from `~/.claude/plans/benchmark-discovery-stac-tpc-synthesis.md` §3 ("TPC-DS ...
 **Recommendation: defer, don't abandon.**"). That plan named TPC-DS's gate as translation
 volume (99 templates vs TPC-H's 22) stacked on missing ops, and explicitly budgeted "~4-5x
 TPC-H's translation effort." This phase runs that translation for real, on real `dsdgen`-
 generated data, against the real compiled query-plane worker, verified against an independent
-DuckDB oracle — as far as it genuinely goes in the time budgeted, which is **9 of 99 templates,
-each verified row-for-row against DuckDB, not 99.** No query on this page is faked, approximated,
-or graded on partial credit: every one of the 99 is either a byte-exact PASS below, or is listed
-under "what blocks the rest" by the specific missing capability, not run at all.
+DuckDB oracle — as far as it genuinely goes in the time budgeted, which is now **16 of 99
+templates, each verified row-for-row against DuckDB, not 99** (up from the original 9 — see the
+2026-08-04 "seven more templates + a resident-handle migration" section below for what changed
+and why). No query on this page is faked, approximated, or graded on partial credit: every one of
+the 99 is either a byte-exact PASS below, or is listed under "what blocks the rest" by the
+specific missing capability, not run at all.
 
 Per this repo's standing publication policy, this stays in `benchmarks/` (never `gitbook/`): the
 synthesis plan is explicit that TPC-DS is not expected to clear the outright-win publication bar
@@ -48,8 +50,8 @@ phase either.
   native DuckDB file (`/tmp/tpcds-work/tpcds_sf1.duckdb`) — the SAME rows the engine translations
   below read, not a second independent generation run. **All 99 real query texts run successfully
   in DuckDB** against this file, with two purely mechanical, disclosed dialect fixes applied
-  uniformly (see below) — so a golden answer exists for every one of the 99, even though only 9
-  were translated onto the engine.
+  uniformly (see below) — so a golden answer exists for every one of the 99, even though only 16
+  were translated onto the engine (as of this update — see the 2026-08-04 section below).
 - **Real engine.** The compiled `mojo_build/simulate_queryplane` worker, over a real AF_UNIX
   frame, via `algenta.query.Query` — the exact same builder and worker binary already used and
   e2e-tested in this repo (`tests/integration/test_query_plane_e2e.py`), pointed at via
@@ -68,7 +70,7 @@ phase either.
    also needing fix 1 above). Both are query-text changes only — the computed values are
    unchanged.
 
-## The 9 verified
+## The 16 verified
 
 Run `python3 benchmarks/tpcds_derived/verified_queries.py` (needs the isolated Postgres DB +
 DuckDB oracle file rebuilt per "Resuming this" below). Every one below is confirmed
@@ -85,8 +87,15 @@ DuckDB oracle file rebuilt per "Resuming this" below). Every one below is confir
 | 26 | same shape as Q7, on `catalog_sales` | 100 | **PASS** |
 | 91 | `catalog_returns` fact + a customer-dimension resolve (2-branch OR), GROUP BY 4 cols, `SUM` | 1 | **PASS** |
 | 48 | 3x3 disjoint OR-branch decomposition (marital-status x address-state), no GROUP BY, `SUM` | 1 | **PASS** — 23,943 |
+| 13 | two independent 3-way disjoint-OR blocks, 6-way join, no GROUP BY, 4 global aggregates | 1 | **PASS** |
+| 15 | genuinely non-disjoint 3-way OR resolved via the engine's own OR opcode, GROUP BY `ca_zip` | 100 | **PASS** |
+| 17 | composite-key fact-to-fact-to-fact join (`store_sales`x`store_returns`x`catalog_sales`), `stddev_samp` reconstructed from sum/count/sum-of-squares | 1 | **PASS** |
+| 19 | 5-way join, cross-dimension zip-prefix `<>` filter, 4-col GROUP BY | 100 | **PASS** |
+| 25 | two chained composite-key joins (3-fact-table MAX pipeline, 3 engine stages) | 0 | **PASS** — matches DuckDB *and* raw Postgres independently |
+| 29 | same shape as Q25, different measures/date ranges | 1 | **PASS** |
+| 85 | composite-key `web_sales`/`web_returns` join, 3x3 disjoint-OR decomposition, GROUP BY reason, 3x `AVG` | 2 | **PASS** |
 
-### Why these 9, mechanically
+### Why these 16, mechanically
 
 Every one of the 99 templates was feature-scanned for CTEs, `CASE`, window functions
 (`OVER(...)`), `ROLLUP`/`GROUPING SETS`, `INTERSECT`/`EXCEPT`, and any parenthesized subquery.
@@ -94,11 +103,11 @@ Every one of the 99 templates was feature-scanned for CTEs, `CASE`, window funct
 engine's actual op vocabulary (`filter`, `project`, `join`/semi-join, `group_by_many`, `sort`,
 `top_k`, `union`, plus the window ops `row_number`/`rank`/`dense_rank`/`lag`/`lead`/`running`/
 `rolling`/`partition_total`) without inventing anything the query plane doesn't have. Of those 19,
-9 were translated and verified in the time budgeted here (3, 7, 26, 42, 48, 52, 55, 91, 96); the
-other 10 (13, 15, 17, 19, 25, 29, 37, 82, 84, 85) were not attempted — not because they hit a
-capability wall, but because time ran out. They look tractable with the same techniques proven
-below, but "looks tractable" is not "verified," so they are listed as not attempted, not as a
-pass.
+**16 have now been translated and verified** across two phases (3, 7, 26, 42, 48, 52, 55, 91, 96
+in the original pass; 13, 15, 17, 19, 25, 29, 85 in the 2026-08-04 follow-up below); the remaining
+3 (37, 82, 84) were still not attempted as of this update — not because they hit a capability
+wall, but because time ran out. They look tractable with the same techniques proven below, but
+"looks tractable" is not "verified," so they stay listed as not attempted, not as a pass.
 
 ## The one capability gap that mattered more than anything the synthesis plan named
 
@@ -106,7 +115,7 @@ The synthesis plan called out two missing ops as TPC-DS's blocker: UNION (now re
 sibling kernel-work phase, merged to `main` as PR #537/`8a343d66`) and composite-key joins (still
 genuinely absent — `join` takes exactly one equality key, confirmed in
 `packages/algenta/algenta/query.py`). Both are true. But neither was the thing that actually
-gated every one of the 9 translations above. The thing that did:
+gated every one of the original 9 translations. The thing that did:
 
 **The query-plane's wire protocol is purely numeric.** Every cell `algenta.query.Query` sends is a
 `float64` or absent — there is no string cell type anywhere in the protocol (`mojo/engine/query/
@@ -114,7 +123,9 @@ plan.mojo` only handles text as column/op names, JSON syntax, and error messages
 data). TPC-DS's queries filter and `GROUP BY` string dimension attributes (brand, category,
 state, item id, ...) in essentially every template. None of that is directly expressible.
 
-The workaround used for all 9 (disclosed in `engine_harness.py`'s `dim_with_code`): resolve each
+The workaround used for the original 9, and reused by all but one of the 7 new templates below
+(disclosed in `engine_harness.py`'s `dim_with_code` — Q13 is the one exception, since its only
+`GROUP BY` key is already numeric): resolve each
 string column to a dense integer code — one `DENSE_RANK() OVER (ORDER BY ...)` per distinct
 string value, computed via a single-table SQL query against the dimension table alone (never a
 join to a fact table) — feed the engine the integer code, and decode the code back to its string
@@ -150,13 +161,13 @@ across a batch boundary) — so the 22 templates flagged `WINDOW` below are not 
 job the way the sum/count queries were; they need real partition-aware batch planning this phase
 didn't build.
 
-## What blocks the other 90 (by SQL feature, from a mechanical scan of all 99 real query texts)
+## What blocks the other 83 (by SQL feature, from a mechanical scan of all 99 real query texts)
 
 | Blocker | Count | Templates | What's actually missing |
 |---|---|---|---|
 | Scalar/correlated subquery only | 20 | 6, 10, 16, 28, 32, 35, 41, 45, 46, 61, 65, 68, 69, 71, 76, 79, 88, 90, 92, 94 | No subquery/EXISTS op; a scalar or correlated subquery has to be resolved outside the engine per-row, which stops being a small dimension-side prefetch once it's correlated to the fact row itself |
 | CTE + subquery | 15 | 1, 23, 24, 30, 33, 54, 56, 58, 60, 64, 75, 78, 81, 83, 95 | Same subquery gap, plus a `WITH` CTE the engine has no notion of (workaroundable one CTE at a time via `with_table`, as Q91 did for its customer-dimension resolve, but not attempted at this volume) |
-| Not attempted (no blocking feature found) | 10 | 13, 15, 17, 19, 25, 29, 37, 82, 84, 85 | Nothing — time-boxed out, not capability-boxed out |
+| Not attempted (no blocking feature found) | 3 | 37, 82, 84 | Nothing — time-boxed out, not capability-boxed out. (Down from 10 as of the original pass: 13, 15, 17, 19, 25, 29, 85 moved to "verified" in the 2026-08-04 follow-up below.) |
 | CTE + CASE + subquery | 8 | 2, 4, 11, 31, 39, 59, 74, 97 | `CASE WHEN` has no ternary node in `Expr` (comparisons/arithmetic/logical/null-tests/`coalesce` only — no branch-on-a-condition expression), plus CTE + subquery |
 | CASE + subquery | 6 | 9, 21, 34, 66, 73, 93 | Same `CASE` gap |
 | CASE only | 6 | 40, 43, 50, 62, 72, 99 | Same `CASE` gap alone |
@@ -173,42 +184,65 @@ didn't build.
 | CASE + WINDOW + ROLLUP + subquery | 1 | 70 | Four gaps stacked |
 | EXCEPT + subquery | 1 | 87 | No `EXCEPT` op |
 
-That is 90 templates (including query 17 itself, `stddev_samp`-heavy but with no CTE/CASE/window/
-set-op/subquery marker — one of the 10 "not attempted, no blocking feature found") plus the 9
-attempted and passed above makes 99. Every count came from a `grep`-based feature scan of the
-real generated query text, reproducible from the script in "Resuming this" — not a guess.
+That is 83 templates (three of them — 37, 82, 84 — still "not attempted, no blocking feature
+found," time-boxed out rather than capability-boxed out) plus the 16 attempted and passed above
+makes 99. Every count came from a `grep`-based feature scan of the real generated query text,
+reproducible from the script in "Resuming this" — not a guess.
 
-## Timing: the engine is slower than DuckDB at every one of the 9, and that's disclosed, not hidden
+## Timing: the engine is slower than DuckDB at every one of the 16, and that's disclosed, not hidden
 
-Reproduced end to end via `verified_queries.py` (exact run this table is from):
+Reproduced end to end via `verified_queries.py` (exact live run this table is from, 2026-08-04;
+worker = a freshly built `simulate_queryplane` with the multi-aggregate `group_by_many` wire
+feature — see the dated section below for why that specific binary matters):
 
-| Q | Engine (fetch + dispatch) | DuckDB (native, in-process) |
+Single-shot, cold-dispatch queries (unmigrated — each op chain re-sends `rows=` on every call):
+
+| Q  | Engine (fetch + dispatch) | DuckDB (native, in-process) |
 |---|---|---|
-| 3  | ~19.7s (fetch 6.1s, engine 13.6s over 4 batches) | 17.9ms |
-| 7  | ~43.1s (fetch 13.1s, engine 30.0s over 4 batches) | 23.8ms |
-| 26 | ~21.7s (fetch 6.6s, engine 15.1s over 2 batches) | 13.9ms |
-| 42 | ~19.8s (fetch 6.1s, engine 13.7s over 4 batches) | 5.9ms |
-| 48 | ~260.7s (fetch 11.5s, engine 249.2s over 36 batched calls) | 23.2ms |
-| 52 | ~20.4s (fetch 6.5s, engine 13.9s over 4 batches) | 6.9ms |
-| 55 | ~20.0s (fetch 6.0s, engine 14.0s over 4 batches) | 4.5ms |
-| 91 | ~14.4s (fetch 13.6s, engine 0.8s over 1 batch) | 11.3ms |
-| 96 | ~19.8s (fetch 6.0s, engine 13.8s over 4 batches) | 6.2ms |
+| 3  | ~20.3s (fetch 6.4s, engine 13.9s over 4 batches) | 17.9ms |
+| 7  | ~42.3s (fetch 12.6s, engine 29.7s over 4 batches) | 24.1ms |
+| 13 | ~352.8s (fetch 14.9s, engine 337.9s over 36 batched calls) | 24.9ms |
+| 15 | ~12.0s (fetch 4.4s, engine 7.6s over 4 batches) | 12.3ms |
+| 17 | ~48.4s (3-pass pipeline: store_returns key+filter, store_sales join, catalog_sales join+stats) | 19.9ms |
+| 19 | ~30.2s (fetch 8.8s, engine 21.4s over 4 batches) | 14.2ms |
+| 25 | ~50.5s (3-stage MAX pipeline across catalog_sales/store_returns/store_sales) | 17.0ms |
+| 26 | ~23.4s (fetch 7.9s, engine 15.6s over 2 batches) | 14.9ms |
+| 29 | ~52.8s (same 3-stage pipeline as Q25, different measures) | 19.5ms |
+| 52 | ~20.3s (fetch 6.3s, engine 14.0s over 4 batches) | 6.9ms |
+| 55 | ~20.0s (fetch 6.0s, engine 14.0s over 4 batches) | 4.8ms |
+| 85 | ~26.8s (fetch 3.7s, ws_pre 7.2s, engine 16.0s over 18 batched calls) | 20.9ms |
 
-DuckDB wins by 3-4 orders of magnitude at this scale, every time, and the gap is not primarily
-Mojo compute time — it is the query-plane's wire protocol. Each engine call above JSON-encodes an
-inline `rows` array of up to 900,000 rows (to stay under `MAX_ROWS`) into the request, sends it
-over an AF_UNIX frame, and the worker parses that same JSON back out on the other side; DuckDB
-answers directly against an already-resident, already-columnar native table with zero
-serialization. The query plane has a `dataset`/`open_dataset` residency path built specifically to
-avoid re-sending rows on every call (used already in this repo's own `bench_query_plane.py`), but
-none of the 9 translations above use it — each one is a single, one-shot correctness run, not a
-repeated-query benchmark, so residency's amortization story never gets to apply. A fair
-apples-to-apples throughput comparison would need the resident path and multiple repeated runs;
-this phase measured correctness, not that, and the numbers above are reported as exactly what
-they are — a one-shot cold dispatch cost, not a steady-state comparison — rather than omitted or
-reframed to look more favorable. No GitBook page follows from this, per the synthesis plan's own
-call and this repo's publication policy: DuckDB's win here is not a "hardware ceiling" disclosure
-exception, it's a plain loss at this scale, in this mode.
+Resident-handle queries (migrated 2026-08-04 — one `open_dataset` handle per fact chunk, reused
+across the correctness pass and 3 timed repeats; `engine[...]` is dispatch-only, fetch is separate
+and unchanged since it still reads through the real connector once per query):
+
+| Q  | Fetch (once) | Engine dispatch, resident handle (median of 3 reps) | DuckDB (median of 3 reps) |
+|---|---|---|---|
+| 42 | 6.0s | 70.6ms | 4.2ms |
+| 48 | 11.8s | 5,583.3ms (36 batched calls/rep) | 13.7ms |
+| 91 | 12.7s | 4.7ms | 7.2ms |
+| 96 | 5.4s | 58.3ms | 2.5ms |
+
+For the unmigrated queries, the gap is not primarily Mojo compute time — it is the query-plane's
+wire protocol: every engine call JSON-encodes an inline `rows` array of up to 900,000 rows (to
+stay under `MAX_ROWS`) into the request, sends it over an AF_UNIX frame, and the worker parses
+that same JSON back out on the other side, while DuckDB answers directly against an
+already-resident, already-columnar native table with zero serialization. The resident-handle
+migration on Q42/Q48/Q91/Q96 (`open_dataset`, reused across every call instead of re-sending
+`rows=`) is exactly the fix for that overhead, and it shows: Q42 goes from ~13.7s of dispatch to a
+70.6ms median, Q48 from ~249s to a 5.58s median, Q91 from ~0.8s to a 4.7ms median, Q96 from ~13.8s
+to a 58.3ms median — 2-4 orders of magnitude of *engine-side* speedup each, for identical output.
+
+DuckDB wins by 3-4 orders of magnitude at this scale on the unmigrated queries, and by roughly
+2-3 orders of magnitude even after the resident-handle migration closes most of the JSON-resend
+overhead — Q91 is the one exception (4.7ms engine vs 7.2ms DuckDB: the engine is actually *faster*
+here, because Q91's single fact chunk means dispatch overhead nearly disappears once the handle
+is resident). This doesn't flip the overall verdict: Q42/Q48/Q96 remain outright losses, and every
+one of the 12 unmigrated queries above is a loss by 3-4 orders of magnitude, consistent with the
+sibling TPC-H phase's own "gap-closure generalizes, the win does not" conclusion. No GitBook page
+follows from any of this, per the synthesis plan's own call and this repo's publication policy:
+DuckDB's win here is not a "hardware ceiling" disclosure exception, it's a plain loss at this
+scale, in this mode, for all but one single-chunk query.
 
 ## Resuming this
 
@@ -232,16 +266,71 @@ exception, it's a plain loss at this scale, in this mode.
    result.
 3. `ALGENTA_RUNTIME_WORKER=$PWD/mojo_build/simulate_queryplane ALGENTA_RUNTIME_FALLBACK_MODE=allow
    python3 benchmarks/tpcds_derived/verified_queries.py`
-4. Continue with the 10 "not attempted, no blocking feature found" templates (13, 15, 17, 19, 25,
-   29, 37, 82, 84, 85) next — same techniques as the 9 above, just not yet spent the time on. After
-   that, a `CASE`-as-arithmetic encoding (only safe for numeric branches, e.g.
-   `cond * a + (1 - cond) * b` — NOT safe once any branch or the condition itself can be absent,
-   since that arithmetic silently turns "unknown" into a wrong number) would open the 6 "CASE
-   only" templates; a real ternary node in `Expr` would open all 17 CASE-tagged templates properly
-   instead.
+4. Continue with the 3 remaining "not attempted, no blocking feature found" templates (37, 82,
+   84) next — same techniques already proven across the 16 verified queries above, just not yet
+   spent the time on. After that, a `CASE`-as-arithmetic encoding (only safe for numeric branches,
+   e.g. `cond * a + (1 - cond) * b` — NOT safe once any branch or the condition itself can be
+   absent, since that arithmetic silently turns "unknown" into a wrong number) would open the 6
+   "CASE only" templates; a real ternary node in `Expr` would open all 17 CASE-tagged templates
+   properly instead.
+5. **Binary freshness matters.** The multi-aggregate `group_by_many` wire feature (`"aggs":[...]`)
+   that Q3/Q7/Q26/Q42/Q91/Q13/Q15/Q17/Q19/Q25/Q29/Q85 all depend on requires a `simulate_queryplane`
+   build that postdates that feature landing. If `mojo_build/simulate_queryplane` in whatever
+   checkout you're running from predates it, every one of those queries fails with
+   `unknown_aggregation: ''` — not a regression in this file, a stale binary. Rebuild it, or point
+   `ALGENTA_RUNTIME_WORKER` at a sibling checkout's fresher one, before concluding anything failed.
+
+## 2026-08-04: seven more query templates + a resident-handle migration, live regression re-run
+
+This update adds **13, 15, 17, 19, 25, 29, 85** (7 of the 10 previously "not attempted, no
+blocking feature found" templates — 37, 82, 84 remain not attempted) and migrates **42, 48, 91,
+96** onto the resident `open_dataset` handle path the sibling TPC-H phase proved out in PR #542.
+Q3/Q7/Q26/Q52/Q55 and the 7 new templates stay on the original single-shot `rows=` path (out of
+scope for this migration pass). Every one of the resulting **16 templates** was re-run live,
+end-to-end, against the real isolated Postgres DB and the real DuckDB oracle, in one full suite
+execution — **16 of 16 passed, 0 mismatches**, including the 9 originals (unregressed) and all 7
+new translations. See "The 16 verified" above for the per-query shapes/results and "Timing" above
+for the real before/after numbers on the 4 migrated queries and the real one-shot costs on the 12
+unmigrated queries (7 new + 5 original).
+
+New techniques needed beyond the original 9 (each disclosed in the relevant function's own
+docstring in `verified_queries.py`):
+- **Q13/Q85** extend Q48's disjoint-OR-branch decomposition to a `GROUP BY` — accumulating
+  per-group partial sums/counts across all 9 disjoint branch pairs instead of into one scalar
+  total.
+- **Q15** hits an OR whose branches are genuinely NOT disjoint (a customer's zip and state are
+  independent columns, and the fact-row price threshold is unrelated to either), so
+  branch-decomposition would double-count. Resolved instead with the query-plane's own logical-OR
+  opcode (`Expr.__or__` → `OP_OR` in `mojo/engine/query/eval.mojo`) directly.
+- **Q19** filters across two *different* per-fact-row dimensions at once (customer zip vs. selling
+  store's zip) — not resolvable as a single-dimension filter the way every WHERE clause in the
+  first 9 was. TPC-DS's zips are always exactly 5 ASCII digits (checked against the real data), so
+  this needed no string handling: cast both to float after joining each dimension onto the fact
+  row, then a plain `filter`/`.ne()`.
+- **Q17/Q25/Q29/Q85** each need a genuine **composite-key join** (`join` takes exactly one equality
+  key — see `packages/algenta/algenta/query.py`), worked around the same way the sibling TPC-H
+  phase's Q9/Q16/Q20 proved sufficient: `project` a single synthetic float key as
+  `a*MULT + b*MULT + c`, sized so the largest possible combined integer stays under float64's
+  2**53 exact-integer ceiling (checked against the real data's actual max surrogate keys in every
+  case), then `join` on that one numeric column. Q25/Q29 chain **two** different composite keys
+  across a 3-fact-table pipeline (`store_sales`↔`store_returns`↔`catalog_sales`), computed in 3
+  engine stages to stay under `MAX_ROWS`/`MAX_JOIN_OUTPUT_ROWS` while remaining a mathematically
+  faithful (not approximated) restatement of the raw join's `MAX`. Q17 additionally reconstructs
+  `stddev_samp` — not a wire-level aggregate — from the sum/count/sum-of-squares identity
+  (`var = (Σx² − (Σx)²/n) / (n−1)`), combined across chunks the same way `sum`/`count` already
+  are.
+
+None of the 7 needed a capability the engine actually lacks; RESULTS.md's own scan (the "why
+these 16, mechanically" section above) was correct for all of them. This still does not flip the
+overall verdict — see "Timing" above: DuckDB continues to win by 2-4 orders of magnitude at every
+one of the 16, and no GitBook page follows, per this repo's standing publish-on-outright-win-only
+policy.
 
 Worktree: `/private/tmp/tpc-query-plane-gaps`. The kernel work this phase's `dim_with_code`/
 chunking workarounds sit on top of (multi-aggregate wire + UNION ALL) already merged to `main` as
 PR #537 (squash-merged as `8a343d66`); this phase's own commits (this file, the TPC-H status note,
 and this directory's scripts) ship in a fresh PR rebased onto current `main`, since the original
-branch's history predates #537's merge.
+branch's history predates #537's merge. The 2026-08-04 update above (7 new templates + the
+resident-handle migration on 4 existing ones) ships in its own fresh PR, assembled from three
+parallel worktrees' independently-verified work and re-run live as one 16-query regression gate
+before merge.

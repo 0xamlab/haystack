@@ -68,7 +68,7 @@ import duckdb  # noqa: E402
 import psycopg2  # noqa: E402
 import psycopg2.extras  # noqa: E402
 from algenta.mojo_runtime import MojoRuntime  # noqa: E402
-from algenta.query import Query, col  # noqa: E402,F401  (col re-exported for query scripts)
+from algenta.query import Query, col, lit  # noqa: E402,F401  (col/lit re-exported for query scripts)
 
 PG_DSN = os.environ.get(
     "TPCDS_PG_DSN", "dbname=tpcds_derived_bench_20260804 host=localhost user=angel"
@@ -141,6 +141,29 @@ def chunk(rows: list, size: int = CHUNK_SIZE):
 
 def run_query(q: Query):
     return q.run(runtime(), routing_module="stats")
+
+
+def timing_stats(samples: list[float]) -> str:
+    s = sorted(samples)
+    n = len(s)
+    med = s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+    return f"min={s[0]*1000:.1f}ms median={med*1000:.1f}ms max={s[-1]*1000:.1f}ms (n={n})"
+
+
+def repeat(fn, n: int = 3) -> list[float]:
+    """Run `fn()` `n` times, discarding its return value, and return the wall
+    times. Same helper as the sibling `tpch_derived/engine_harness.py` uses for
+    its resident-handle migration (PR #542): used to get min/median/max across
+    repetitions for the SAME already-fetched/already-parsed data — never
+    re-fetches from Postgres and never re-runs the DuckDB query text, so what
+    varies between repetitions is dispatch/compute cost only, not I/O setup
+    cost counted once."""
+    times = []
+    for _ in range(n):
+        t0 = time.perf_counter()
+        fn()
+        times.append(time.perf_counter() - t0)
+    return times
 
 
 def dim_with_code(

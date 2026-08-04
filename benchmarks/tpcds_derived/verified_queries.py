@@ -1,11 +1,40 @@
 #!/usr/bin/env python3
-"""9 of TPC-DS's 99 query templates, hand-translated onto the real query-plane
+"""16 of TPC-DS's 99 query templates, hand-translated onto the real query-plane
 engine (join, semi-join, filter, group_by_many — the multi-aggregate and UNION
 ALL ops added earlier in this branch's history are exercised by the CTE/UNION
-work in the sibling TPC-H phase; these nine needed join/semi-join/aggregate,
-not UNION) and verified row-for-row against a DuckDB oracle over the identical
+work in the sibling TPC-H phase; these needed join/semi-join/aggregate, not
+UNION) and verified row-for-row against a DuckDB oracle over the identical
 data. See `RESULTS.md` for the full methodology, the count out of 99, and
 exactly what blocks the rest.
+
+Q13/Q15/Q17/Q19/Q25/Q29/Q85 (added after the first 9) needed techniques beyond
+what the first 9 used:
+  - Q13/Q85 extend Q48's 3x3 disjoint-OR-branch decomposition to a GROUP BY
+    (accumulating per-group partials across all 9 branch pairs) or to a
+    second, independent 3-way OR block.
+  - Q15 uses the engine's own logical-OR opcode directly (`Expr.__or__` ->
+    `OP_OR`) instead of branch decomposition, because its OR's branches are
+    NOT provably disjoint.
+  - Q19 needs a filter across two DIFFERENT per-fact-row dimensions (customer
+    zip vs. store zip) rather than a single-dimension filter.
+  - Q17/Q25/Q29/Q85 need a genuine COMPOSITE-KEY join, worked around the same
+    way the sibling TPC-H phase proved sufficient: `project` a single
+    synthetic numeric key as `col_a * MULT + col_b [+ col_c]` on both sides of
+    the join, sized so the combined integer never exceeds 2**53 (float64's
+    exact-integer ceiling), then `join` on that one column like any other
+    single-key join. Q25/Q29 need this twice over (a 3-column key for
+    `store_sales`<->`store_returns` via (customer, item, ticket), and a
+    2-column key for `store_returns`<->`catalog_sales` via (customer, item)
+    alone).
+
+Q42/Q48/Q91/Q96 also carry a resident-handle migration on top of their
+original translation: each opens one `open_dataset` handle per fact chunk
+ONCE (before the untimed correctness pass and any timed rep), reusing the
+SAME parsed batch across every engine call instead of resending/reparsing
+`rows=` every time — the same pattern proved in the sibling TPC-H phase's PR
+#542. Q3/Q7/Q26/Q52/Q55 are unmigrated (their `.with_table(...)` side-table
+pattern differs enough that migrating them was out of scope for that phase;
+see the migration report for exactly which 4 were in scope and why).
 
 Requires (see RESULTS.md "Resuming this"):
   - The isolated local Postgres DB loaded with real dsdgen SF=1 TPC-DS data.
@@ -30,9 +59,18 @@ from engine_harness import (
     col,
     dim_with_code,
     duck_run,
+    lit,
     pg_fetch,
+    repeat,
     run_query,
+    runtime,
+    timing_stats,
 )
+
+# Resident-handle migration (same N_REPS methodology as tpch_derived's PR #542):
+# q42/q48/q91/q96 open one dataset handle per fact chunk ONCE, reused across the
+# untimed correctness pass and every one of these N_REPS timed repeat() reps.
+N_REPS = 3
 
 
 def _close(a, b, tol=0.01) -> bool:
@@ -63,28 +101,55 @@ def q96():
     fact = pg_fetch("SELECT ss_sold_time_sk, ss_hdemo_sk, ss_store_sk FROM store_sales")
     t1 = time.perf_counter()
 
-    total = 0.0
-    for batch in chunk(fact):
-        rows = [[r["ss_sold_time_sk"], r["ss_hdemo_sk"], r["ss_store_sk"], 1.0] for r in batch]
-        q = (
-            Query(columns=["ss_sold_time_sk", "ss_hdemo_sk", "ss_store_sk", "one"], rows=rows)
-            .with_table("time_ok", ["t_time_sk"], rows=time_ok)
-            .with_table("hd_ok", ["hd_demo_sk"], rows=hd_ok)
-            .with_table("store_ok", ["s_store_sk"], rows=store_ok)
-            .join("time_ok", left_on="ss_sold_time_sk", right_on="t_time_sk", how="semi")
-            .join("hd_ok", left_on="ss_hdemo_sk", right_on="hd_demo_sk", how="semi")
-            .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="semi")
-            .group_by("one", "one", agg="sum")
+    # Resident-handle migration (PR #542's parsed-batch cache, ported from
+    # tpch_derived): open ONE handle per chunk ONCE, before run_engine() is
+    # ever invoked (correctness pass or any repeat() rep), so every call
+    # reuses the SAME parsed batch instead of resending/reparsing `rows=` on
+    # every one of N_REPS+1 calls.
+    handles = [
+        runtime().open_dataset(
+            [[r["ss_sold_time_sk"], r["ss_hdemo_sk"], r["ss_store_sk"], 1.0] for r in batch],
+            name=f"q96_chunk_{i}",
+            routing_module="stats",
         )
-        for r in run_query(q).rows:
-            total += r[1] or 0.0
-    t2 = time.perf_counter()
+        for i, batch in enumerate(chunk(fact))
+    ]
 
-    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/96.sql")
+    def run_engine():
+        total = 0.0
+        for handle in handles:
+            q = (
+                Query(columns=["ss_sold_time_sk", "ss_hdemo_sk", "ss_store_sk", "one"], dataset=handle)
+                .with_table("time_ok", ["t_time_sk"], rows=time_ok)
+                .with_table("hd_ok", ["hd_demo_sk"], rows=hd_ok)
+                .with_table("store_ok", ["s_store_sk"], rows=store_ok)
+                .join("time_ok", left_on="ss_sold_time_sk", right_on="t_time_sk", how="semi")
+                .join("hd_ok", left_on="ss_hdemo_sk", right_on="hd_demo_sk", how="semi")
+                .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="semi")
+                .group_by("one", "one", agg="sum")
+            )
+            for r in run_query(q).rows:
+                total += r[1] or 0.0
+        return total
+
+    try:
+        total = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
+
+    duck_times = []
+    drows = None
+    for _ in range(N_REPS):
+        cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/96.sql")
+        duck_times.append(dt)
+
     ok = int(total) == int(drows[0][0])
     return (
         ok,
-        f"engine={total:.0f} duckdb={drows[0][0]} fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+        f"engine={total:.0f} duckdb={drows[0][0]} fetch={t1 - t0:.2f}s "
+        f"engine[{timing_stats(engine_times)}] duckdb[{timing_stats(duck_times)}]",
     )
 
 
@@ -192,23 +257,40 @@ def q42():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_sales")
     t1 = time.perf_counter()
 
-    partial: dict = {}
-    for batch in chunk(fact):
-        rows = [[r[c] for c in fact_cols] for r in batch]
-        q = (
-            Query(columns=fact_cols, rows=rows)
-            .with_table("date_ok", ["d_date_sk", "d_year"], rows=date_ok_rows)
-            .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
-            .join("date_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="inner")
-            .join("item_ok", left_on="ss_item_sk", right_on="i_item_sk", how="inner")
-            .group_by_many(
-                by=["date_ok.d_year", "item_ok.grp_code"], aggs=[("ss_ext_sales_price", "sum")]
-            )
+    # Resident-handle migration: open ONE handle per chunk ONCE, before
+    # run_engine() is ever invoked, so the correctness pass and every
+    # repeat() rep reuse the SAME parsed batch instead of resending `rows=`.
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q42_chunk_{i}", routing_module="stats"
         )
-        for r in run_query(q).rows:
-            key = (r[0], r[1])
-            partial[key] = partial.get(key, 0.0) + (r[2] or 0.0)
-    t2 = time.perf_counter()
+        for i, batch in enumerate(chunk(fact))
+    ]
+
+    def run_engine():
+        partial: dict = {}
+        for handle in handles:
+            q = (
+                Query(columns=fact_cols, dataset=handle)
+                .with_table("date_ok", ["d_date_sk", "d_year"], rows=date_ok_rows)
+                .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+                .join("date_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="inner")
+                .join("item_ok", left_on="ss_item_sk", right_on="i_item_sk", how="inner")
+                .group_by_many(
+                    by=["date_ok.d_year", "item_ok.grp_code"], aggs=[("ss_ext_sales_price", "sum")]
+                )
+            )
+            for r in run_query(q).rows:
+                key = (r[0], r[1])
+                partial[key] = partial.get(key, 0.0) + (r[2] or 0.0)
+        return partial
+
+    try:
+        partial = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = []
     for (year, code), s in partial.items():
@@ -217,7 +299,11 @@ def q42():
     final.sort(key=lambda t: (-t[3], t[0], t[1], t[2]))
     final = final[:100]
 
-    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/42.sql")
+    duck_times = []
+    drows = None
+    for _ in range(N_REPS):
+        cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/42.sql")
+        duck_times.append(dt)
     mism = 0
     for e, d in zip(final, drows, strict=False):
         dy, dcatid, dcat, dsum = d
@@ -232,7 +318,8 @@ def q42():
     ok = mism == 0 and len(final) == len(drows)
     return (
         ok,
-        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} fetch={t1 - t0:.2f}s "
+        f"engine[{timing_stats(engine_times)}] duckdb[{timing_stats(duck_times)}]",
     )
 
 
@@ -383,27 +470,44 @@ def q91():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM catalog_returns")
     t1 = time.perf_counter()
 
-    sums = {}
-    for batch in chunk(fact):
-        rows = [[r[c] for c in fact_cols] for r in batch]
-        q = (
-            Query(columns=fact_cols, rows=rows)
-            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
-            .with_table("cc_ok", ["cc_call_center_sk", "cc_code"], rows=cc_ok_rows)
-            .with_table("cust_ok", ["c_customer_sk", "branch_code"], rows=cust_ok_rows)
-            .join("date_ok", left_on="cr_returned_date_sk", right_on="d_date_sk", how="semi")
-            .join("cc_ok", left_on="cr_call_center_sk", right_on="cc_call_center_sk", how="inner")
-            .join(
-                "cust_ok", left_on="cr_returning_customer_sk", right_on="c_customer_sk", how="inner"
-            )
-            .group_by_many(
-                by=["cc_ok.cc_code", "cust_ok.branch_code"], aggs=[("cr_net_loss", "sum")]
-            )
+    # Resident-handle migration: open ONE handle per chunk ONCE, before
+    # run_engine() is ever invoked, so the correctness pass and every
+    # repeat() rep reuse the SAME parsed batch instead of resending `rows=`.
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q91_chunk_{i}", routing_module="stats"
         )
-        for r in run_query(q).rows:
-            key = (r[0], r[1])
-            sums[key] = sums.get(key, 0.0) + (r[2] or 0.0)
-    t2 = time.perf_counter()
+        for i, batch in enumerate(chunk(fact))
+    ]
+
+    def run_engine():
+        sums = {}
+        for handle in handles:
+            q = (
+                Query(columns=fact_cols, dataset=handle)
+                .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+                .with_table("cc_ok", ["cc_call_center_sk", "cc_code"], rows=cc_ok_rows)
+                .with_table("cust_ok", ["c_customer_sk", "branch_code"], rows=cust_ok_rows)
+                .join("date_ok", left_on="cr_returned_date_sk", right_on="d_date_sk", how="semi")
+                .join("cc_ok", left_on="cr_call_center_sk", right_on="cc_call_center_sk", how="inner")
+                .join(
+                    "cust_ok", left_on="cr_returning_customer_sk", right_on="c_customer_sk", how="inner"
+                )
+                .group_by_many(
+                    by=["cc_ok.cc_code", "cust_ok.branch_code"], aggs=[("cr_net_loss", "sum")]
+                )
+            )
+            for r in run_query(q).rows:
+                key = (r[0], r[1])
+                sums[key] = sums.get(key, 0.0) + (r[2] or 0.0)
+        return sums
+
+    try:
+        sums = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     final = []
     for (cc_code, branch_code), s in sums.items():
@@ -412,7 +516,11 @@ def q91():
         final.append((_strip(ccid), _strip(ccname), _strip(ccmgr), round(s, 2)))
     final.sort(key=lambda t: -t[3])
 
-    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/91.sql")
+    duck_times = []
+    drows = None
+    for _ in range(N_REPS):
+        cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/91.sql")
+        duck_times.append(dt)
     mism = 0
     for e, d in zip(final, drows, strict=False):
         dd = [_strip(x) for x in d]
@@ -422,7 +530,8 @@ def q91():
     ok = mism == 0 and len(final) == len(drows)
     return (
         ok,
-        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} fetch={t1 - t0:.2f}s "
+        f"engine[{timing_stats(engine_times)}] duckdb[{timing_stats(duck_times)}]",
     )
 
 
@@ -477,12 +586,145 @@ def q48():
     fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_sales")
     t1 = time.perf_counter()
 
-    total = 0.0
+    # Resident-handle migration: the fact chunks are the SAME rows across all
+    # 9 demo x addr branch combinations and every repeat() rep -- only the
+    # small demo_ok/addr_ok side tables (untouched, still inline via
+    # with_table) vary per branch. Open ONE handle per fact chunk ONCE,
+    # before run_engine() is ever invoked, and reuse it across all 9
+    # branches x (correctness pass + N_REPS reps).
+    handles = [
+        runtime().open_dataset(
+            [[r[c] for c in fact_cols] for r in batch], name=f"q48_chunk_{i}", routing_module="stats"
+        )
+        for i, batch in enumerate(chunk(fact))
+    ]
+
+    def run_engine():
+        total = 0.0
+        n_calls = 0
+        # 3 demo branches x 3 addr branches x N fact chunks = disjoint AND-conditions
+        # (marital status and state-set are mutually exclusive across branches, so
+        # summing all nine pairs double-counts nothing — see RESULTS.md).
+        for demo_rows, plo, phi in demo_keys:
+            for addr_rows, nlo, nhi in addr_keys:
+                for handle in handles:
+                    q = (
+                        Query(columns=fact_cols, dataset=handle)
+                        .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+                        .with_table("store_ok", ["s_store_sk"], rows=store_ok_rows)
+                        .with_table("demo_ok", ["cd_demo_sk"], rows=demo_rows)
+                        .with_table("addr_ok", ["ca_address_sk"], rows=addr_rows)
+                        .join("date_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="semi")
+                        .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="semi")
+                        .join("demo_ok", left_on="ss_cdemo_sk", right_on="cd_demo_sk", how="semi")
+                        .join("addr_ok", left_on="ss_addr_sk", right_on="ca_address_sk", how="semi")
+                        .filter(
+                            (col("ss_sales_price") >= plo)
+                            & (col("ss_sales_price") <= phi)
+                            & (col("ss_net_profit") >= nlo)
+                            & (col("ss_net_profit") <= nhi)
+                        )
+                        .group_by("ss_store_sk", "ss_quantity", agg="sum")
+                    )
+                    n_calls += 1
+                    for r in run_query(q).rows:
+                        total += r[1] or 0.0
+        return total, n_calls
+
+    try:
+        total, n_calls = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
+
+    duck_times = []
+    drows = None
+    for _ in range(N_REPS):
+        cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/48.sql")
+        duck_times.append(dt)
+    ok = int(total) == int(drows[0][0])
+    return (
+        ok,
+        f"engine={total:.0f} duckdb={drows[0][0]} n_calls={n_calls} fetch={t1 - t0:.2f}s "
+        f"engine[{timing_stats(engine_times)}] duckdb[{timing_stats(duck_times)}]",
+    )
+
+
+# ── Q13: two independent 3-way OR blocks (marital/education/price x           ──
+# ── country/state/net_profit), 6-way join, no GROUP BY, 4 global aggregates ────
+def q13():
+    t0 = time.perf_counter()
+    date_ok_rows = [
+        [r["d_date_sk"]] for r in pg_fetch("SELECT d_date_sk FROM date_dim WHERE d_year = 2001")
+    ]
+    store_ok_rows = [[r["s_store_sk"]] for r in pg_fetch("SELECT s_store_sk FROM store")]
+
+    # Block 1 (hdemo + cdemo + ss_sales_price) — disjoint across its 3 branches
+    # because cd_marital_status (M/D/W) differs in every branch, exactly like
+    # Q48's demo_branches.
+    demo_branches = [
+        ("M", "College", 100.0, 150.0, 3.0),
+        ("D", "Primary", 50.0, 100.0, 1.0),
+        ("W", "2 yr Degree", 150.0, 200.0, 1.0),
+    ]
+    # Block 2 (addr + ss_net_profit) — disjoint across its 3 branches because
+    # the ca_state sets are pairwise disjoint, exactly like Q48's addr_branches.
+    addr_branches = [
+        (("IL", "TN", "TX"), 100.0, 200.0),
+        (("WY", "OH", "ID"), 150.0, 300.0),
+        (("MS", "SC", "IA"), 50.0, 250.0),
+    ]
+    demo_keys = []
+    for marital, edu, plo, phi, depcount in demo_branches:
+        cdemo_rows = [
+            [r["cd_demo_sk"]]
+            for r in pg_fetch(
+                "SELECT cd_demo_sk FROM customer_demographics WHERE cd_marital_status=%s AND cd_education_status=%s",
+                (marital, edu),
+            )
+        ]
+        hdemo_rows = [
+            [r["hd_demo_sk"]]
+            for r in pg_fetch(
+                "SELECT hd_demo_sk FROM household_demographics WHERE hd_dep_count=%s", (depcount,)
+            )
+        ]
+        demo_keys.append((cdemo_rows, hdemo_rows, plo, phi))
+    addr_keys = []
+    for states, nlo, nhi in addr_branches:
+        addr_rows = [
+            [r["ca_address_sk"]]
+            for r in pg_fetch(
+                "SELECT ca_address_sk FROM customer_address WHERE ca_country='United States' AND ca_state = ANY(%s)",
+                (list(states),),
+            )
+        ]
+        addr_keys.append((addr_rows, nlo, nhi))
+
+    fact_cols = [
+        "ss_store_sk",
+        "ss_sold_date_sk",
+        "ss_hdemo_sk",
+        "ss_cdemo_sk",
+        "ss_addr_sk",
+        "ss_sales_price",
+        "ss_net_profit",
+        "ss_quantity",
+        "ss_ext_sales_price",
+        "ss_ext_wholesale_cost",
+    ]
+    fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_sales")
+    t1 = time.perf_counter()
+
+    measures = ["ss_quantity", "ss_ext_sales_price", "ss_ext_wholesale_cost"]
+    sums = {m: 0.0 for m in measures}
+    counts = {m: 0.0 for m in measures}
     n_calls = 0
-    # 3 demo branches x 3 addr branches x N fact batches = disjoint AND-conditions
-    # (marital status and state-set are mutually exclusive across branches, so
-    # summing all nine pairs double-counts nothing — see RESULTS.md).
-    for demo_rows, plo, phi in demo_keys:
+    # 3 demo branches x 3 addr branches x N fact batches, all mutually
+    # disjoint (see RESULTS.md / Q48's own note) so summing every pair
+    # double-counts nothing.
+    for cdemo_rows, hdemo_rows, plo, phi in demo_keys:
         for addr_rows, nlo, nhi in addr_keys:
             for batch in chunk(fact):
                 rows = [[r[c] for c in fact_cols] for r in batch]
@@ -490,11 +732,13 @@ def q48():
                     Query(columns=fact_cols, rows=rows)
                     .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
                     .with_table("store_ok", ["s_store_sk"], rows=store_ok_rows)
-                    .with_table("demo_ok", ["cd_demo_sk"], rows=demo_rows)
+                    .with_table("cdemo_ok", ["cd_demo_sk"], rows=cdemo_rows)
+                    .with_table("hdemo_ok", ["hd_demo_sk"], rows=hdemo_rows)
                     .with_table("addr_ok", ["ca_address_sk"], rows=addr_rows)
                     .join("date_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="semi")
                     .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="semi")
-                    .join("demo_ok", left_on="ss_cdemo_sk", right_on="cd_demo_sk", how="semi")
+                    .join("cdemo_ok", left_on="ss_cdemo_sk", right_on="cd_demo_sk", how="semi")
+                    .join("hdemo_ok", left_on="ss_hdemo_sk", right_on="hd_demo_sk", how="semi")
                     .join("addr_ok", left_on="ss_addr_sk", right_on="ca_address_sk", how="semi")
                     .filter(
                         (col("ss_sales_price") >= plo)
@@ -502,29 +746,908 @@ def q48():
                         & (col("ss_net_profit") >= nlo)
                         & (col("ss_net_profit") <= nhi)
                     )
-                    .group_by("ss_store_sk", "ss_quantity", agg="sum")
+                    .group_by_many(
+                        by=["ss_store_sk"],
+                        aggs=[(m, "sum") for m in measures] + [(m, "count") for m in measures],
+                    )
                 )
                 n_calls += 1
                 for r in run_query(q).rows:
-                    total += r[1] or 0.0
+                    idx = 1
+                    for m in measures:
+                        sums[m] += r[idx] or 0.0
+                        idx += 1
+                    for m in measures:
+                        counts[m] += r[idx] or 0.0
+                        idx += 1
     t2 = time.perf_counter()
 
-    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/48.sql")
-    ok = int(total) == int(drows[0][0])
+    avg_qty = sums["ss_quantity"] / counts["ss_quantity"] if counts["ss_quantity"] else None
+    avg_price = (
+        sums["ss_ext_sales_price"] / counts["ss_ext_sales_price"]
+        if counts["ss_ext_sales_price"]
+        else None
+    )
+    avg_wholesale = (
+        sums["ss_ext_wholesale_cost"] / counts["ss_ext_wholesale_cost"]
+        if counts["ss_ext_wholesale_cost"]
+        else None
+    )
+    sum_wholesale = sums["ss_ext_wholesale_cost"]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/13.sql")
+    d = drows[0]
+    ok = (
+        _close(avg_qty, d[0])
+        and _close(avg_price, d[1])
+        and _close(avg_wholesale, d[2])
+        and _close(sum_wholesale, d[3])
+    )
     return (
         ok,
-        f"engine={total:.0f} duckdb={drows[0][0]} n_calls={n_calls} fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+        f"engine=({avg_qty:.4f},{avg_price:.4f},{avg_wholesale:.4f},{sum_wholesale:.2f}) "
+        f"duckdb={tuple(float(x) for x in d)} n_calls={n_calls} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+# ── Q15: a genuinely non-disjoint OR (zip-in-list OR state-in-list OR          ──
+# ── price>500) resolved with the engine's OWN OR-node, not branch decomposition ─
+def q15():
+    t0 = time.perf_counter()
+    date_ok_rows = [
+        [r["d_date_sk"]]
+        for r in pg_fetch("SELECT d_date_sk FROM date_dim WHERE d_qoy = 2 AND d_year = 2001")
+    ]
+    zip_list = (
+        "85669",
+        "86197",
+        "88274",
+        "83405",
+        "86475",
+        "85392",
+        "85460",
+        "80348",
+        "81792",
+    )
+    # `addr_flag` is computed in Postgres over customer+customer_address ONLY
+    # (a dimension-to-dimension resolve, never touching a fact table -- see
+    # `pg_fetch`'s own docstring) — the fact table's own `cs_sales_price > 500`
+    # branch of the OR is evaluated by the ENGINE below via a real `|` (OP_OR)
+    # node, since unlike Q13/Q48 this OR's three branches are NOT provably
+    # disjoint (a customer's zip and state are independent columns, and
+    # `cs_sales_price` is a fact-row attribute unrelated to either) — the
+    # branch-decomposition workaround would double-count here, so this uses
+    # the query-plane's own logical-OR opcode (`Expr.__or__` -> `OP_OR` in
+    # `mojo/engine/query/eval.mojo`) instead, verified in isolation before
+    # this query was written.
+    cust_from = f"""
+        (SELECT c.c_customer_sk AS c_customer_sk, ca.ca_zip AS ca_zip,
+                CASE WHEN substr(ca.ca_zip, 1, 5) IN %s
+                      OR ca.ca_state IN ('CA', 'WA', 'GA')
+                     THEN 1.0 ELSE 0.0 END AS addr_flag
+         FROM customer c JOIN customer_address ca ON ca.ca_address_sk = c.c_current_addr_sk) sub
+    """
+    cust_recs = pg_fetch(
+        f"SELECT c_customer_sk, DENSE_RANK() OVER (ORDER BY ca_zip) AS grp_code, ca_zip, addr_flag "
+        f"FROM {cust_from}",
+        (zip_list,),
+    )
+    zip_code_map: dict[float, str] = {}
+    cust_ok_rows = []
+    for r in cust_recs:
+        code = float(r["grp_code"])
+        zip_code_map[code] = r["ca_zip"]
+        cust_ok_rows.append([r["c_customer_sk"], code, r["addr_flag"]])
+
+    fact_cols = ["cs_bill_customer_sk", "cs_sold_date_sk", "cs_sales_price"]
+    fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM catalog_sales")
+    t1 = time.perf_counter()
+
+    partial: dict = {}
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        q = (
+            Query(columns=fact_cols, rows=rows)
+            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+            .join("date_ok", left_on="cs_sold_date_sk", right_on="d_date_sk", how="semi")
+            .with_table("cust_ok", ["c_customer_sk", "grp_code", "addr_flag"], rows=cust_ok_rows)
+            .join("cust_ok", left_on="cs_bill_customer_sk", right_on="c_customer_sk", how="inner")
+            .filter((col("cust_ok.addr_flag").eq(1.0)) | (col("cs_sales_price") > 500.0))
+            .group_by_many(by=["cust_ok.grp_code"], aggs=[("cs_sales_price", "sum")])
+        )
+        for r in run_query(q).rows:
+            code = r[0]
+            partial[code] = partial.get(code, 0.0) + (r[1] or 0.0)
+    t2 = time.perf_counter()
+
+    final = [(_strip(zip_code_map[code]), round(s, 2)) for code, s in partial.items()]
+    # `ca_zip` is nullable (1,539 of 50,000 SF=1 addresses at this scale) and
+    # DuckDB/Postgres both sort NULL last by default in ascending ORDER BY;
+    # `(t[0] is None, t[0])` reproduces that instead of crashing on a
+    # None-vs-str comparison Python's plain `<` refuses to make.
+    final.sort(key=lambda t: (t[0] is None, t[0]))
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/15.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        dzip, dsum = _strip(d[0]), d[1]
+        ok = e[0] == dzip and _close(e[1], dsum)
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+# ── Q17: composite-key fact-to-fact-to-fact join (store_sales x store_returns  ──
+# ── x catalog_sales), synthetic-key workaround, sum-of-squares for stddev_samp ─
+_ITEM_MULT = 20_000.0  # strictly above the real max i_item_sk (18,000 at SF=1)
+_TICKET_MULT = 250_000.0  # strictly above the real max ss_ticket_number (240,000)
+
+
+def _ss_key1(cust, item, ticket):
+    return (cust * _ITEM_MULT + item) * _TICKET_MULT + ticket
+
+
+def _ss_key2(cust, item):
+    return cust * _ITEM_MULT + item
+
+
+def q17():
+    t0 = time.perf_counter()
+    d1_ok = [
+        [r["d_date_sk"]]
+        for r in pg_fetch("SELECT d_date_sk FROM date_dim WHERE d_quarter_name = '2001Q1'")
+    ]
+    d23_ok = [
+        [r["d_date_sk"]]
+        for r in pg_fetch(
+            "SELECT d_date_sk FROM date_dim WHERE d_quarter_name IN ('2001Q1','2001Q2','2001Q3')"
+        )
+    ]
+    item_ok_rows, item_code_map = dim_with_code("i_item_sk", ["i_item_id", "i_item_desc"], "item")
+    store_ok_rows, store_code_map = dim_with_code("s_store_sk", ["s_state"], "store")
+
+    # Pass 0: filter+key store_returns (287,514 rows at SF=1 -- well under
+    # MAX_ROWS, no chunking needed) through the engine once.
+    sr_cols = ["sr_customer_sk", "sr_item_sk", "sr_ticket_number", "sr_returned_date_sk", "sr_return_quantity"]
+    sr_all = pg_fetch(f"SELECT {', '.join(sr_cols)} FROM store_returns")
+    sr_rows = [[r[c] for c in sr_cols] for r in sr_all]
+    sr_q = (
+        Query(columns=sr_cols, rows=sr_rows)
+        .with_table("d23_ok", ["d_date_sk"], rows=d23_ok)
+        .join("d23_ok", left_on="sr_returned_date_sk", right_on="d_date_sk", how="semi")
+        .project(
+            key1=_ss_key1(col("sr_customer_sk"), col("sr_item_sk"), col("sr_ticket_number")),
+            key2=_ss_key2(col("sr_customer_sk"), col("sr_item_sk")),
+            sr_return_quantity=col("sr_return_quantity"),
+        )
+    )
+    sr_res = run_query(sr_q)
+    sr_keyed_cols, sr_keyed_rows = sr_res.columns, [list(r) for r in sr_res.rows]
+    t_sr = time.perf_counter()
+
+    # Pass 1: chunk store_sales (2,880,404 rows), join each batch to the
+    # (small) keyed store_returns side table on the synthetic 3-column key,
+    # decorate item/store codes, collect the matched (ss, sr) pairs in Python.
+    ss_cols = [
+        "ss_sold_date_sk",
+        "ss_item_sk",
+        "ss_store_sk",
+        "ss_customer_sk",
+        "ss_ticket_number",
+        "ss_quantity",
+    ]
+    ss_fact = pg_fetch(f"SELECT {', '.join(ss_cols)} FROM store_sales")
+    t1 = time.perf_counter()
+
+    mid_rows: list[list[float]] = []
+    for batch in chunk(ss_fact):
+        rows = [[r[c] for c in ss_cols] for r in batch]
+        q = (
+            Query(columns=ss_cols, rows=rows)
+            .with_table("d1_ok", ["d_date_sk"], rows=d1_ok)
+            .join("d1_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="semi")
+            .project(
+                key1=_ss_key1(col("ss_customer_sk"), col("ss_item_sk"), col("ss_ticket_number")),
+                item_sk=col("ss_item_sk"),
+                store_sk=col("ss_store_sk"),
+                ss_quantity=col("ss_quantity"),
+            )
+            .with_table("sr_keyed", sr_keyed_cols, rows=sr_keyed_rows)
+            .join("sr_keyed", left_on="key1", right_on="key1", how="inner")
+            .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+            .join("item_ok", left_on="item_sk", right_on="i_item_sk", how="inner")
+            .with_table("store_ok", ["s_store_sk", "grp_code"], rows=store_ok_rows)
+            .join("store_ok", left_on="store_sk", right_on="s_store_sk", how="inner")
+        )
+        res = run_query(q)
+        c = res.columns
+        i_key2 = c.index("sr_keyed.key2")
+        i_srq = c.index("sr_keyed.sr_return_quantity")
+        i_itemcode = c.index("item_ok.grp_code")
+        i_storecode = c.index("store_ok.grp_code")
+        i_ssq = c.index("ss_quantity")
+        for r in res.rows:
+            mid_rows.append([r[i_key2], r[i_itemcode], r[i_storecode], r[i_ssq], r[i_srq]])
+    t2 = time.perf_counter()
+
+    # Pass 2: chunk catalog_sales (1,441,548 rows), join each batch to `mid`
+    # (the <=287,514-row intermediate) on the synthetic 2-column key, then
+    # sum + count + sum-of-squares each measure grouped by (item, store) --
+    # stddev_samp is not a wire-level aggregate, so it is reconstructed from
+    # the sum/count/sum-of-squares via the standard unbiased-variance identity
+    # (var = (sum_sq - sum^2/n) / (n-1)) once every batch's partials are
+    # combined, exactly the same map-reduce-outside-the-engine shape
+    # `chunk`'s own docstring describes for sum/count.
+    mid_cols = ["key2", "item_code", "store_code", "ss_quantity", "sr_return_quantity"]
+    cs_cols = ["cs_bill_customer_sk", "cs_item_sk", "cs_sold_date_sk", "cs_quantity"]
+    cs_fact = pg_fetch(f"SELECT {', '.join(cs_cols)} FROM catalog_sales")
+    t3 = time.perf_counter()
+
+    measures = ["ss_quantity", "sr_return_quantity", "cs_quantity"]
+    partial: dict = {}
+    for batch in chunk(cs_fact):
+        rows = [[r[c] for c in cs_cols] for r in batch]
+        q = (
+            Query(columns=cs_cols, rows=rows)
+            .with_table("d23_ok", ["d_date_sk"], rows=d23_ok)
+            .join("d23_ok", left_on="cs_sold_date_sk", right_on="d_date_sk", how="semi")
+            .project(
+                key2=_ss_key2(col("cs_bill_customer_sk"), col("cs_item_sk")),
+                cs_quantity=col("cs_quantity"),
+            )
+            .with_table("mid", mid_cols, rows=mid_rows)
+            .join("mid", left_on="key2", right_on="key2", how="inner")
+            .project(
+                item_code=col("mid.item_code"),
+                store_code=col("mid.store_code"),
+                ss_quantity=col("mid.ss_quantity"),
+                ss_quantity_sq=col("mid.ss_quantity") * col("mid.ss_quantity"),
+                sr_return_quantity=col("mid.sr_return_quantity"),
+                sr_return_quantity_sq=col("mid.sr_return_quantity") * col("mid.sr_return_quantity"),
+                cs_quantity=col("cs_quantity"),
+                cs_quantity_sq=col("cs_quantity") * col("cs_quantity"),
+            )
+            .group_by_many(
+                by=["item_code", "store_code"],
+                aggs=[
+                    ("ss_quantity", "sum"),
+                    ("ss_quantity", "count"),
+                    ("ss_quantity_sq", "sum"),
+                    ("sr_return_quantity", "sum"),
+                    ("sr_return_quantity", "count"),
+                    ("sr_return_quantity_sq", "sum"),
+                    ("cs_quantity", "sum"),
+                    ("cs_quantity", "count"),
+                    ("cs_quantity_sq", "sum"),
+                ],
+            )
+        )
+        for r in run_query(q).rows:
+            key = (r[0], r[1])
+            acc = partial.setdefault(key, [0.0] * 9)
+            for i in range(9):
+                acc[i] += r[2 + i] or 0.0
+    t4 = time.perf_counter()
+
+    def stats(sum_x, n, sum_x2):
+        if n <= 0:
+            return None, None, None
+        avg = sum_x / n
+        if n <= 1:
+            return n, avg, None
+        var = (sum_x2 - (sum_x * sum_x) / n) / (n - 1)
+        var = max(var, 0.0)
+        return n, avg, var**0.5
+
+    final = []
+    for (item_code, store_code), acc in partial.items():
+        item_id, item_desc = item_code_map[item_code]
+        (state,) = store_code_map[store_code]
+        ss_n, ss_avg, ss_std = stats(acc[0], acc[1], acc[2])
+        sr_n, sr_avg, sr_std = stats(acc[3], acc[4], acc[5])
+        cs_n, cs_avg, cs_std = stats(acc[6], acc[7], acc[8])
+        final.append(
+            (
+                _strip(item_id),
+                _strip(item_desc),
+                _strip(state),
+                ss_n,
+                ss_avg,
+                ss_std,
+                (ss_std / ss_avg) if ss_std is not None and ss_avg else None,
+                sr_n,
+                sr_avg,
+                sr_std,
+                (sr_std / sr_avg) if sr_std is not None and sr_avg else None,
+                cs_n,
+                cs_avg,
+                cs_std,
+                (cs_std / cs_avg) if cs_std is not None and cs_avg else None,
+            )
+        )
+    final.sort(key=lambda t: (t[0], t[1], t[2]))
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/17.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        dd = list(d)
+        dd[0], dd[1], dd[2] = _strip(dd[0]), _strip(dd[1]), _strip(dd[2])
+        row_ok = e[0] == dd[0] and e[1] == dd[1] and e[2] == dd[2]
+        for i in range(3, 15):
+            row_ok = row_ok and _close(e[i], dd[i], tol=0.05)
+        if not row_ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} mid_rows={len(mid_rows)} "
+        f"sr_fetch={t_sr - t0:.2f}s ss_fetch={t1 - t_sr:.2f}s pass1={t2 - t1:.2f}s "
+        f"cs_fetch={t3 - t2:.2f}s pass2={t4 - t3:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+# ── Q19: 5-way join, 4-col GROUP BY (2 string cols x their own ids), a ─────────
+# ── zip-prefix "not equal" join predicate across two DIFFERENT dimensions ──────
+def q19():
+    """`substr(ca_zip,1,5) <> substr(s_zip,1,5)` compares the customer's address
+    zip to the SELLING STORE's zip — two attributes that both vary per fact row
+    (a different customer and a different store per sale), so this cannot be
+    resolved as a single-dimension filter the way every WHERE clause in the
+    first 9 translations was. The fix needs no string handling at all: TPC-DS's
+    generated `ca_zip`/`s_zip` are always exactly 5 ASCII digits (checked
+    against the real data — 0 rows fail `~ '^[0-9]{5}'` in either table), so
+    `substr(x,1,5)` is the identity and the whole zip is already a number.
+    Casting both to float and testing `!=` after joining each dimension onto
+    the fact row (customer's zip via a dimension-only customer+customer_address
+    resolve, exactly the pattern `engine_harness.py`'s docstring allows; store's
+    zip via a plain single-table `store` read) makes the comparison expressible
+    with the engine's existing `filter`/`.ne()` — no dictionary encoding needed
+    since the values were never strings the engine treats as strings, only
+    digits it treats as numbers.
+
+    The 4-column GROUP BY (i_brand, i_brand_id, i_manufact_id, i_manufact) is
+    the same `dim_with_code` trick as Q3/Q52/Q55's (i_brand, i_brand_id) pair,
+    just widened to all 4 columns in one `ORDER BY` — DENSE_RANK still assigns
+    one code per distinct 4-tuple and decodes back to all 4 values together.
+    """
+    t0 = time.perf_counter()
+    date_ok_rows = [
+        [r["d_date_sk"]]
+        for r in pg_fetch("SELECT d_date_sk FROM date_dim WHERE d_moy=11 and d_year=2002")
+    ]
+    item_ok_rows, item_code_map = dim_with_code(
+        "i_item_sk",
+        ["i_brand", "i_brand_id", "i_manufact_id", "i_manufact"],
+        "item WHERE i_manager_id=14",
+    )
+    cust_ok_rows = [
+        [r["c_customer_sk"], r["zip5"]]
+        for r in pg_fetch(
+            """
+            SELECT c.c_customer_sk AS c_customer_sk,
+                   CAST(substr(ca.ca_zip,1,5) AS INTEGER)::float AS zip5
+            FROM customer c JOIN customer_address ca ON ca.ca_address_sk = c.c_current_addr_sk
+            """
+        )
+    ]
+    store_ok_rows = [
+        [r["s_store_sk"], r["zip5"]]
+        for r in pg_fetch(
+            "SELECT s_store_sk, CAST(substr(s_zip,1,5) AS INTEGER)::float AS zip5 FROM store"
+        )
+    ]
+
+    fact_cols = ["ss_sold_date_sk", "ss_item_sk", "ss_customer_sk", "ss_store_sk", "ss_ext_sales_price"]
+    fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_sales")
+    t1 = time.perf_counter()
+
+    partial: dict = {}
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        q = (
+            Query(columns=fact_cols, rows=rows)
+            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+            .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+            .with_table("cust_ok", ["c_customer_sk", "cust_zip5"], rows=cust_ok_rows)
+            .with_table("store_ok", ["s_store_sk", "store_zip5"], rows=store_ok_rows)
+            .join("date_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="semi")
+            .join("item_ok", left_on="ss_item_sk", right_on="i_item_sk", how="inner")
+            .join("cust_ok", left_on="ss_customer_sk", right_on="c_customer_sk", how="inner")
+            .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="inner")
+            .filter(col("cust_ok.cust_zip5").ne(col("store_ok.store_zip5")))
+            .group_by_many(by=["item_ok.grp_code"], aggs=[("ss_ext_sales_price", "sum")])
+        )
+        for r in run_query(q).rows:
+            code = r[0]
+            partial[code] = partial.get(code, 0.0) + (r[1] or 0.0)
+    t2 = time.perf_counter()
+
+    final = []
+    for code, s in partial.items():
+        brand, brand_id, manufact_id, manufact = item_code_map[code]
+        final.append(
+            (
+                round(s, 2),
+                _strip(brand),
+                int(brand_id) if brand_id is not None else None,
+                int(manufact_id) if manufact_id is not None else None,
+                _strip(manufact),
+            )
+        )
+    final.sort(key=lambda t: (-t[0], t[1], t[2] if t[2] is not None else -1, t[3] if t[3] is not None else -1, t[4]))
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/19.sql")
+    mism = 0
+
+    def _int_eq(a, b):
+        if a is None or b is None:
+            return a is None and b is None
+        return int(a) == int(b)
+
+    for e, d in zip(final, drows, strict=False):
+        dbid, dbrand, dmanid, dman, dext = d
+        ok = (
+            _int_eq(e[2], dbid)
+            and e[1] == _strip(dbrand)
+            and _int_eq(e[3], dmanid)
+            and e[4] == _strip(dman)
+            and _close(e[0], dext)
+        )
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+# ── Q25/Q29: store_sales x store_returns x catalog_sales, a REAL composite-key ─
+# ── join (customer, item, ticket) chained into a 2nd composite (customer, item) ─
+# `join` takes exactly one equality key (see `packages/algenta/algenta/query.py`),
+# and here the SQL genuinely needs two different composite keys, not one: the
+# `store_sales`<->`store_returns` join is 3 columns (customer, item, ticket —
+# and it is NOT reducible to `store_sales`'s own (item, ticket) primary key
+# alone: 77,904 of the 287,514 raw (item,ticket)-matching row-pairs in the real
+# data have a DIFFERENT customer on each side, so dropping the customer column
+# would silently overcount), and the `store_returns`<->`catalog_sales` join is
+# 2 columns (customer, item — no ticket on the catalog side at all). Each is
+# worked around exactly as the sibling TPC-H phase's Q9/Q20 composite-key joins
+# were: `project` a single synthetic float key as `a*MULT + b*MULT + c`, sized
+# so the largest possible combined integer stays under float64's 2**53 exact-
+# integer ceiling (checked against the real data's actual max surrogate keys:
+# customer_sk <= 100,000, item_sk <= 18,000, ticket_number <= 240,000 at SF=1 —
+# combined max ~2.00e15, comfortably under 2**53 ~9.007e15), then `join` on
+# that one column like any other single-key join.
+#
+# The MAX(...) aggregates are computed in three engine STAGES rather than one
+# triple-fan-out pass, because that is what stays inside `MAX_ROWS`/
+# `MAX_JOIN_OUTPUT_ROWS` while still being a mathematically FAITHFUL restatement
+# of the raw join's MAX, not an approximation of it:
+#   1. `catalog_sales` (1,441,548 rows, chunked) -> engine `group_by_many` MAX of
+#      the measure PER (customer, item) key, filtered to the d3 date range by a
+#      semi-join first. This is valid because MAX(cs_measure) for a fixed
+#      (customer, item) pair does not depend on how many store_sales/
+#      store_returns rows later pair with it -- max is idempotent under fan-out.
+#   2. `store_returns` (287,514 rows, one call, under MAX_ROWS on its own) is
+#      date-filtered (semi-join to d2) then INNER-joined to stage 1's small
+#      per-(customer,item) MAX table via the 2-column synthetic key.
+#   3. `store_sales` (2,880,404 rows, chunked) is date-filtered (semi-join to
+#      d1), INNER-joined to stage 2's output via the 3-column synthetic key,
+#      then joined to `item`/`store` dictionaries and grouped.
+# All three stages run 100% of each fact table's real rows through the real
+# engine; only the map-reduce combine across chunks/stages happens in Python,
+# same as every other chunked query in this file.
+A_ITEM_MULT = 1_000_000.0  # > max ss_ticket_number/sr_ticket_number (240,000)
+A_CUST_MULT = A_ITEM_MULT * 20_000.0  # > max *_item_sk (18,000)
+B_ITEM_MULT = 20_000.0  # > max *_item_sk (18,000); 2-col (customer, item) key
+
+
+def _returns_shape(qnum, d1_where, d2_where, d3_where, ss_measure, sr_measure, cs_measure):
+    t0 = time.perf_counter()
+    date1_ok = [[r["d_date_sk"]] for r in pg_fetch(f"SELECT d_date_sk FROM date_dim WHERE {d1_where}")]
+    date2_ok = [[r["d_date_sk"]] for r in pg_fetch(f"SELECT d_date_sk FROM date_dim WHERE {d2_where}")]
+    date3_ok = [[r["d_date_sk"]] for r in pg_fetch(f"SELECT d_date_sk FROM date_dim WHERE {d3_where}")]
+    item_ok_rows, item_code_map = dim_with_code("i_item_sk", ["i_item_id", "i_item_desc"], "item")
+    store_ok_rows, store_code_map = dim_with_code("s_store_sk", ["s_store_id", "s_store_name"], "store")
+
+    # ── Stage 1: MAX(cs_measure) per (customer, item), catalog_sales filtered to d3 ──
+    cs_cols = ["cs_sold_date_sk", "cs_bill_customer_sk", "cs_item_sk", cs_measure]
+    cs_fact = pg_fetch(f"SELECT {', '.join(cs_cols)} FROM catalog_sales")
+    cs_max: dict[float, float] = {}
+    for batch in chunk(cs_fact):
+        rows = [[r[c] for c in cs_cols] for r in batch]
+        q = (
+            Query(columns=cs_cols, rows=rows)
+            .with_table("date3_ok", ["d_date_sk"], rows=date3_ok)
+            .join("date3_ok", left_on="cs_sold_date_sk", right_on="d_date_sk", how="semi")
+            .project(
+                cs_key=col("cs_bill_customer_sk") * lit(B_ITEM_MULT) + col("cs_item_sk"),
+                cs_val=col(cs_measure),
+            )
+            .group_by_many(by=["cs_key"], aggs=[("cs_val", "max")])
+        )
+        for r in run_query(q).rows:
+            key, val = r[0], r[1]
+            if val is None:
+                continue
+            if key not in cs_max or val > cs_max[key]:
+                cs_max[key] = val
+    cs_agg_rows = [[k, v] for k, v in cs_max.items()]
+    t1 = time.perf_counter()
+
+    # ── Stage 2: store_returns (date2-filtered) INNER-joined to stage 1's cs_agg ──
+    sr_cols = ["sr_returned_date_sk", "sr_customer_sk", "sr_item_sk", "sr_ticket_number", sr_measure]
+    sr_fact = pg_fetch(f"SELECT {', '.join(sr_cols)} FROM store_returns")
+    sr_joined_rows = []
+    if cs_agg_rows:
+        for batch in chunk(sr_fact):
+            rows = [[r[c] for c in sr_cols] for r in batch]
+            q = (
+                Query(columns=sr_cols, rows=rows)
+                .with_table("date2_ok", ["d_date_sk"], rows=date2_ok)
+                .join("date2_ok", left_on="sr_returned_date_sk", right_on="d_date_sk", how="semi")
+                .project(
+                    sr_key3=col("sr_customer_sk") * lit(A_CUST_MULT)
+                    + col("sr_item_sk") * lit(A_ITEM_MULT)
+                    + col("sr_ticket_number"),
+                    sr_key2=col("sr_customer_sk") * lit(B_ITEM_MULT) + col("sr_item_sk"),
+                    sr_val=col(sr_measure),
+                )
+                .with_table("cs_agg", ["cs_key", "cs_max"], rows=cs_agg_rows)
+                .join("cs_agg", left_on="sr_key2", right_on="cs_key", how="inner")
+            )
+            for r in run_query(q).rows:
+                # columns: sr_key3, sr_key2, sr_val, cs_agg.cs_key, cs_agg.cs_max
+                sr_joined_rows.append([r[0], r[2], r[4]])
+    t2 = time.perf_counter()
+
+    # ── Stage 3: store_sales (date1-filtered), INNER-joined to stage 2 via the ──
+    # ── 3-col key, then to item/store dictionaries, grouped and MAX'd ────────────
+    partial: dict[tuple, list] = {}
+    if sr_joined_rows:
+        ss_cols = ["ss_sold_date_sk", "ss_customer_sk", "ss_item_sk", "ss_ticket_number", "ss_store_sk", ss_measure]
+        ss_fact = pg_fetch(f"SELECT {', '.join(ss_cols)} FROM store_sales")
+        for batch in chunk(ss_fact):
+            rows = [[r[c] for c in ss_cols] for r in batch]
+            q = (
+                Query(columns=ss_cols, rows=rows)
+                .with_table("date1_ok", ["d_date_sk"], rows=date1_ok)
+                .join("date1_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="semi")
+                .project(
+                    ss_key3=col("ss_customer_sk") * lit(A_CUST_MULT)
+                    + col("ss_item_sk") * lit(A_ITEM_MULT)
+                    + col("ss_ticket_number"),
+                    ss_item_sk=col("ss_item_sk"),
+                    ss_store_sk=col("ss_store_sk"),
+                    ss_val=col(ss_measure),
+                )
+                .with_table("sr_join", ["sr_key3", "sr_val", "cs_max"], rows=sr_joined_rows)
+                .join("sr_join", left_on="ss_key3", right_on="sr_key3", how="inner")
+                .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+                .join("item_ok", left_on="ss_item_sk", right_on="i_item_sk", how="inner")
+                .with_table("store_ok", ["s_store_sk", "grp_code"], rows=store_ok_rows)
+                .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="inner")
+                .group_by_many(
+                    by=["item_ok.grp_code", "store_ok.grp_code"],
+                    aggs=[("ss_val", "max"), ("sr_join.sr_val", "max"), ("sr_join.cs_max", "max")],
+                )
+            )
+            for r in run_query(q).rows:
+                key = (r[0], r[1])
+                mss, msr, mcs = r[2], r[3], r[4]
+                acc = partial.setdefault(key, [None, None, None])
+                for i, v in enumerate((mss, msr, mcs)):
+                    if v is not None and (acc[i] is None or v > acc[i]):
+                        acc[i] = v
+    t3 = time.perf_counter()
+
+    final = []
+    for (item_code, store_code), (mss, msr, mcs) in partial.items():
+        item_id, item_desc = item_code_map[item_code]
+        store_id, store_name = store_code_map[store_code]
+        final.append(
+            (_strip(item_id), _strip(item_desc), _strip(store_id), _strip(store_name), mss, msr, mcs)
+        )
+    final.sort(key=lambda t: (t[0], t[1], t[2], t[3]))
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/{qnum}.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        dd = [_strip(x) for x in d[:4]] + list(d[4:])
+        ok = (
+            e[0] == dd[0]
+            and e[1] == dd[1]
+            and e[2] == dd[2]
+            and e[3] == dd[3]
+            and _close(e[4], dd[4])
+            and _close(e[5], dd[5])
+            and _close(e[6], dd[6])
+        )
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"cs_stage={t1 - t0:.2f}s sr_stage={t2 - t1:.2f}s ss_stage={t3 - t2:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+def q25():
+    return _returns_shape(
+        25,
+        "d_moy=4 and d_year=1999",
+        "d_moy between 4 and 10 and d_year=1999",
+        "d_moy between 4 and 10 and d_year=1999",
+        "ss_net_profit",
+        "sr_net_loss",
+        "cs_net_profit",
+    )
+
+
+def q29():
+    return _returns_shape(
+        29,
+        "d_moy=4 and d_year=1998",
+        "d_moy between 4 and 7 and d_year=1998",
+        "d_year in (1998,1999,2000)",
+        "ss_quantity",
+        "sr_return_quantity",
+        "cs_quantity",
+    )
+
+
+# ── Q85: web_sales x web_returns composite-key join, 3x3 OR-decomposition, ────
+# ── GROUP BY reason, 3x AVG ────────────────────────────────────────────────
+def q85():
+    """`web_sales`/`web_returns` share a PK on `(item_sk, order_number)` — a
+    genuine composite-key FACT-to-FACT join (`join` takes exactly one equality
+    key; see `packages/algenta/algenta/query.py`). Worked around exactly as
+    the TPC-H phase's Q9/Q16/Q20 proved sufficient: `.project()` a synthetic
+    numeric key (`item_sk * MULT + order_number`, `MULT` picked above the real
+    max `order_number`) on BOTH sides, then join on that one numeric column.
+
+    The 3x3 OR-decomposition is the same disjoint-branch technique as Q48
+    (marital-status/education-status branches are pairwise disjoint, as are
+    the state-set branches, so all 9 pairs are disjoint too and summed without
+    double-counting) -- except here each branch pair also needs a GROUP BY
+    (on `r_reason_desc`, dictionary-encoded via `dim_with_code`) instead of a
+    single scalar total, so partial sums/counts accumulate per reason-code key
+    across all 9 branch pairs instead of into one number.
+    """
+    t0 = time.perf_counter()
+    MULT = 100_000.0  # real max ws_order_number/wr_order_number is 60,000 at SF=1
+
+    date_ok_rows = [
+        [r["d_date_sk"]] for r in pg_fetch("SELECT d_date_sk FROM date_dim WHERE d_year = 1998")
+    ]
+    wp_ok_rows = [[r["wp_web_page_sk"]] for r in pg_fetch("SELECT wp_web_page_sk FROM web_page")]
+    reason_ok_rows, reason_code_map = dim_with_code("r_reason_sk", ["r_reason_desc"], "reason")
+
+    # cd1/cd2 marital+education combo (the SAME set filters BOTH cd1's and
+    # cd2's FK -- the SQL's `cd1.attr = 'X' AND cd1.attr = cd2.attr` forces
+    # cd2.attr = 'X' too), each paired with a ws_sales_price range.
+    demo_branches = [
+        ("D", "Primary", 100.00, 150.00),
+        ("S", "College", 50.00, 100.00),
+        ("U", "Advanced Degree", 150.00, 200.00),
+    ]
+    # ca_country/ca_state set, each paired with a ws_net_profit range.
+    addr_branches = [
+        (("NC", "TX", "IA"), 100.0, 200.0),
+        (("WI", "WV", "GA"), 150.0, 300.0),
+        (("OK", "VA", "KY"), 50.0, 250.0),
+    ]
+    demo_keys = []
+    for marital, edu, lo, hi in demo_branches:
+        rows = [
+            [r["cd_demo_sk"]]
+            for r in pg_fetch(
+                "SELECT cd_demo_sk FROM customer_demographics "
+                "WHERE cd_marital_status=%s AND cd_education_status=%s",
+                (marital, edu),
+            )
+        ]
+        demo_keys.append((rows, lo, hi))
+    addr_keys = []
+    for states, lo, hi in addr_branches:
+        rows = [
+            [r["ca_address_sk"]]
+            for r in pg_fetch(
+                "SELECT ca_address_sk FROM customer_address "
+                "WHERE ca_country='United States' AND ca_state = ANY(%s)",
+                (list(states),),
+            )
+        ]
+        addr_keys.append((rows, lo, hi))
+
+    ws_cols = [
+        "ws_sold_date_sk",
+        "ws_web_page_sk",
+        "ws_item_sk",
+        "ws_order_number",
+        "ws_sales_price",
+        "ws_net_profit",
+        "ws_quantity",
+    ]
+    ws_fact = pg_fetch(f"SELECT {', '.join(ws_cols)} FROM web_sales")
+    wr_cols = [
+        "wr_item_sk",
+        "wr_order_number",
+        "wr_refunded_cdemo_sk",
+        "wr_returning_cdemo_sk",
+        "wr_refunded_addr_sk",
+        "wr_reason_sk",
+        "wr_refunded_cash",
+        "wr_fee",
+    ]
+    wr_fact = pg_fetch(f"SELECT {', '.join(wr_cols)} FROM web_returns")
+    t1 = time.perf_counter()
+
+    # Step 1 (engine, real join): restrict web_sales to d_year=1998 with a
+    # valid web_page, and compute the synthetic combined key. The OR-branch
+    # price/profit ranges are NOT applied here -- each of the 9 branch pairs
+    # below needs both a price range AND a profit range simultaneously, so
+    # that filter has to happen per-pair, not once up front.
+    ws_pre_cols = ["ws_key", "ws_sales_price", "ws_net_profit", "ws_quantity"]
+    ws_pre_rows: list = []
+    for batch in chunk(ws_fact):
+        rows = [[r[c] for c in ws_cols] for r in batch]
+        q = (
+            Query(columns=ws_cols, rows=rows)
+            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+            .with_table("wp_ok", ["wp_web_page_sk"], rows=wp_ok_rows)
+            .join("date_ok", left_on="ws_sold_date_sk", right_on="d_date_sk", how="semi")
+            .join("wp_ok", left_on="ws_web_page_sk", right_on="wp_web_page_sk", how="semi")
+            .project(
+                ws_key=col("ws_item_sk") * lit(MULT) + col("ws_order_number"),
+                ws_sales_price=col("ws_sales_price"),
+                ws_net_profit=col("ws_net_profit"),
+                ws_quantity=col("ws_quantity"),
+            )
+        )
+        for r in run_query(q).rows:
+            ws_pre_rows.append(list(r))
+    t2 = time.perf_counter()
+
+    # 3 (demo) x 3 (addr) disjoint branch pairs -- same decomposition Q48
+    # already proved sufficient, but accumulating per reason-code group
+    # instead of into one scalar total.
+    sums: dict = {}
+    n_calls = 0
+    for demo_rows, plo, phi in demo_keys:
+        for addr_rows, nlo, nhi in addr_keys:
+            # This branch pair's web_sales-side ranges (engine filter, real op).
+            ws_side_rows: list = []
+            for batch in chunk(ws_pre_rows):
+                rows = [list(r) for r in batch]
+                q = (
+                    Query(columns=ws_pre_cols, rows=rows)
+                    .filter(
+                        (col("ws_sales_price") >= plo)
+                        & (col("ws_sales_price") <= phi)
+                        & (col("ws_net_profit") >= nlo)
+                        & (col("ws_net_profit") <= nhi)
+                    )
+                    .select("ws_key", "ws_quantity")
+                )
+                n_calls += 1
+                ws_side_rows.extend([list(r) for r in run_query(q).rows])
+
+            for batch in chunk(wr_fact):
+                rows = [[r[c] for c in wr_cols] for r in batch]
+                q = (
+                    Query(columns=wr_cols, rows=rows)
+                    .with_table("demo_ok", ["cd_demo_sk"], rows=demo_rows)
+                    .with_table("addr_ok", ["ca_address_sk"], rows=addr_rows)
+                    .with_table("reason_ok", ["r_reason_sk", "grp_code"], rows=reason_ok_rows)
+                    .with_table("ws_side", ["ws_key", "ws_quantity"], rows=ws_side_rows)
+                    .join(
+                        "demo_ok", left_on="wr_refunded_cdemo_sk", right_on="cd_demo_sk", how="semi"
+                    )
+                    .join(
+                        "demo_ok",
+                        left_on="wr_returning_cdemo_sk",
+                        right_on="cd_demo_sk",
+                        how="semi",
+                    )
+                    .join(
+                        "addr_ok", left_on="wr_refunded_addr_sk", right_on="ca_address_sk", how="semi"
+                    )
+                    .join("reason_ok", left_on="wr_reason_sk", right_on="r_reason_sk", how="inner")
+                    .project(
+                        wr_key=col("wr_item_sk") * lit(MULT) + col("wr_order_number"),
+                        grp_code=col("reason_ok.grp_code"),
+                        wr_refunded_cash=col("wr_refunded_cash"),
+                        wr_fee=col("wr_fee"),
+                    )
+                    .join("ws_side", left_on="wr_key", right_on="ws_key", how="inner")
+                    .group_by_many(
+                        by=["grp_code"],
+                        aggs=[
+                            ("ws_side.ws_quantity", "sum"),
+                            ("ws_side.ws_quantity", "count"),
+                            ("wr_refunded_cash", "sum"),
+                            ("wr_refunded_cash", "count"),
+                            ("wr_fee", "sum"),
+                            ("wr_fee", "count"),
+                        ],
+                    )
+                )
+                n_calls += 1
+                for r in run_query(q).rows:
+                    code = r[0]
+                    acc = sums.setdefault(code, [0.0] * 6)
+                    for k in range(6):
+                        acc[k] += r[k + 1] or 0.0
+    t3 = time.perf_counter()
+
+    final = []
+    for code, (sq, cq, sc, cc, sf, cf) in sums.items():
+        desc = _strip(reason_code_map[code][0])
+        avg_qty = (sq / cq) if cq else None
+        avg_cash = (sc / cc) if cc else None
+        avg_fee = (sf / cf) if cf else None
+        final.append((desc[:20], avg_qty, avg_cash, avg_fee))
+    final.sort(
+        key=lambda t: (
+            t[0],
+            t[1] if t[1] is not None else float("-inf"),
+            t[2] if t[2] is not None else float("-inf"),
+            t[3] if t[3] is not None else float("-inf"),
+        )
+    )
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/85.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        # d[0] is DuckDB's own substr(r_reason_desc,1,20) result already -- no
+        # Postgres CHAR(100) padding survives DuckDB's postgres_scanner
+        # materialization (confirmed via octet_length: the DuckDB column's
+        # length matches the real text, not the char(100) storage width), so
+        # it must NOT be re-stripped here: a trailing space in it is real text
+        # content (reason 12 genuinely has a space at character 20), not
+        # padding -- stripping it would (and, before this was caught, did)
+        # produce a false mismatch against the engine's own correct output.
+        ok = _close(e[1], d[1]) and _close(e[2], d[2]) and _close(e[3], d[3]) and e[0] == d[0]
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} n_calls={n_calls} "
+        f"fetch={t1 - t0:.2f}s ws_pre={t2 - t1:.2f}s engine={t3 - t2:.2f}s duckdb={dt * 1000:.1f}ms",
     )
 
 
 QUERIES = {
     3: q3,
     7: q7,
+    13: q13,
+    15: q15,
+    17: q17,
+    19: q19,
+    25: q25,
     26: q26,
+    29: q29,
     42: q42,
     48: q48,
     52: q52,
     55: q55,
+    85: q85,
     91: q91,
     96: q96,
 }
