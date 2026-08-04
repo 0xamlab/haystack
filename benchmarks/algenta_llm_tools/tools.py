@@ -367,7 +367,7 @@ def execute(module: str, function: str, args: dict[str, Any] | None = None) -> d
     latency_ms = round((time.perf_counter() - started) * 1000, 3)
 
     shaped = shape_for_model(result)
-    return {
+    out = {
         "module": module,
         "function": function,
         "value": shaped["value"],
@@ -377,6 +377,10 @@ def execute(module: str, function: str, args: dict[str, Any] | None = None) -> d
         "latency_ms": latency_ms,
         "engine": "mojo",
     }
+    final_answer_note = _FINAL_ANSWER_NOTES.get((module, function))
+    if final_answer_note is not None:
+        out["note"] = final_answer_note
+    return out
 
 
 # ── tool 3: explain ────────────────────────────────────────────────────────────────
@@ -408,6 +412,27 @@ EXPLAIN_SCHEMA = {
     },
 }
 
+# One hand-authored sentence, scoped by exact (module, function) identity, for kernels
+# whose *name alone* invites an LLM caller to treat their result as an intermediate value
+# to double-check rather than the final answer. `stats.compute_std` is the concrete,
+# measured case this exists for (see the q05 root-cause note in
+# benchmarks/algenta_llm_tools/eval/README.md): the manifest's generic `docs` field is
+# "none" for every kernel in this library today (a real, separate gap in the manifest
+# generator, out of scope to fix here), so explain()/execute() would otherwise say nothing
+# at all about compute_std beyond its bare signature -- leaving a caller free to infer
+# "this might be one more intermediate statistic, like compute_variance" purely from
+# name-shape. This dict is additive-only: every other kernel's explain()/execute() output
+# is byte-for-byte unchanged; only (module, function) pairs listed here get an extra line.
+_FINAL_ANSWER_NOTES: dict[tuple[str, str], str] = {
+    ("stats", "compute_std"): (
+        "This IS the final sample standard deviation -- a complete answer to a std-dev "
+        "question by itself, not an intermediate value. Use this exact returned number "
+        "directly; do not also call compute_variance and take its square root yourself "
+        "(that manual, lower-precision path is exactly the bug this kernel exists to "
+        "remove -- see mojo/engine/stats.mojo's compute_std docstring)."
+    ),
+}
+
 
 def explain(module: str, function: str) -> str:
     """The real signature plus every declared capability field, as prose."""
@@ -433,6 +458,10 @@ def explain(module: str, function: str) -> str:
             "No prose docstring is declared for this kernel; the signature above is "
             "the whole public contract."
         )
+
+    final_answer_note = _FINAL_ANSWER_NOTES.get((module, function))
+    if final_answer_note is not None:
+        lines.append(final_answer_note)
 
     bits = _declared_bits(record)
     for name in ("stateful", "batch_capable", "stream_capable"):

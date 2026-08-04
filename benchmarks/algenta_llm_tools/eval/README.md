@@ -226,3 +226,77 @@ question above -- see whatever live-repetition investigation is recorded
 after this section (if any) for the authoritative read on that, since one
 run either way is not enough reps to characterize a possibly-nondeterministic
 miss.
+
+## q05 follow-up: a second, deeper miss found by repeated live reruns (2026-08-04)
+
+The single re-verification run above (one rep) passed, but one rep cannot
+distinguish "fixed" from "got lucky" against real model sampling variance. A
+follow-up diagnosis pass re-read every existing q05 transcript on `main` and
+every sibling `fix/uplift-*` branch looking for a specific, more insidious
+failure mode: a run that calls `stats.compute_std`, gets back the exact
+correct value, and then *overrides it anyway* with a manually-recomputed,
+wrong number in its final JSON answer. That exact sequence did not appear in
+any existing transcript on disk -- but static transcripts are not the same
+as a controlled repeated experiment, so this was tested live instead of
+being assumed absent.
+
+**Live baseline (2026-08-04, gpt-5-mini, TOOLS condition, real API calls, 5
+independent fresh-conversation reps of q05 alone, unmodified `run_benchmark.py`
+system prompt and `tools.py` -- run against a separate, unmodified checkout of
+this same commit, i.e. with `compute_std` already available but none of the
+prompt/schema changes below):** **4/5 passed, 1/5 failed** this exact way. Rep
+5's tool-call log shows `execute(stats.compute_std, ...)` returning the correct
+`2331.9631517502244` -- but the model's final JSON answer was
+`{"value": 2332.0030818899}`, a manually-recomputed number matching the
+historical "manual `sqrt(compute_variance(...))`" error signature, discarding
+the correct tool result it had just received. This is the real, live-reproduced
+failure mode the task set out to close -- a ~20% per-question rate in this
+5-rep sample, not a hypothetical. Full transcript in
+`q05_baseline_5x_before_fix_results.json`.
+
+**Fix:** two additive changes, neither touching scoring, ground truth, or any
+other tool's behavior:
+1. One added sentence in `run_benchmark.py`'s `TOOLS_SUFFIX` system prompt:
+   "Once a tool call's result already, directly, and completely answers the
+   question, use that exact returned value in your final answer -- do not
+   recompute it yourself by hand, and do not call a second kernel to derive
+   the same statistic a different way ... unless the question genuinely
+   requires combining multiple distinct statistics."
+2. A scoped, `(module, function)`-keyed note (`_FINAL_ANSWER_NOTES` in
+   `tools.py`) that appends one extra sentence to `explain()`'s and
+   `execute()`'s output *only* for `("stats", "compute_std")`:  "This IS the
+   final sample standard deviation ... do not also call compute_variance and
+   take its square root yourself." Every other kernel's `explain()`/`execute()`
+   output is byte-for-byte unchanged -- this closes the real gap found during
+   diagnosis, that the manifest's generic `docs` field is `"none"` for every
+   kernel in the library today (a separate, repo-wide gap in the manifest
+   generator, out of scope here), so nothing previously told a caller
+   `compute_std`'s result was final rather than intermediate.
+
+**Live re-verification of the fix (2026-08-04, gpt-5-mini, TOOLS condition,
+real API calls, 5 independent fresh-conversation reps of q05 alone, WITH both
+changes above):** **5/5 passed.** `compute_std` was called and its value used
+directly in all 5 reps; `compute_variance` was never called in any rep. Total
+cost: $0.0727 (47 API calls). Full transcript in
+`q05_prompt_trust_fix_rerun_results.json`.
+
+**Full 16-question regression check (2026-08-04, gpt-5-mini, same run, both
+conditions, WITH the fix applied):** **16/16 tools-condition correct** (up
+from 14/16 in the original `benchmark_results.json`, which predates the
+`compute_std`/`get_columns` fixes entirely), **1/16 bare-condition correct**
+(unchanged -- the bare/no-tools condition never sees any tool-facing text, so
+it cannot be affected by this change). No regression on any of the other 15
+questions; total run cost $0.2133 (118 tools-condition API calls, well under
+the historical run's $0.33). Full transcript in
+`full16_with_q05_trust_fix_rerun_results.json`;
+`rerun_full16_with_q05_trust_fix.py` reruns it.
+
+**Honest framing:** the diagnosis phase that preceded this fix found *zero*
+occurrences of the failure mode in every static transcript already on disk --
+it was only surfaced by deliberately running the exact same (then-unmodified)
+prompt+tools 5 times live and observing 1 real failure. A 5-rep sample cannot
+establish a precise failure rate (nor can 5/5 on the fix prove the rate is
+now exactly zero) -- but a real, reproducible miss was captured going in, and
+it did not recur once across 5 fix reps plus a full 16-question rerun (21
+tools-condition questions total, post-fix, all correct). That is a genuine,
+measured improvement, not an assumed one.

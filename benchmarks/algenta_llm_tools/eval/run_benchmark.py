@@ -108,7 +108,15 @@ need, try a different, more specific query string.
 - If a question needs a per-category value (e.g. "which CUST_TYPE has the highest average \
 X"), first call get_column(column=..., distinct=True) to see every real category value, \
 then compute the statistic for each one via get_column(filter_column=..., filter_value=...) \
-+ execute -- do not answer from only a truncated preview of the raw column."""
++ execute -- do not answer from only a truncated preview of the raw column.
+- Once a tool call's result already, directly, and completely answers the question, use \
+that exact returned value in your final answer -- do not recompute it yourself by hand, and \
+do not call a second kernel to derive the same statistic a different way (e.g. computing \
+variance and then manually taking its square root instead of using a std-dev result you \
+already have) unless the question genuinely requires combining multiple distinct \
+statistics. A value that came out of a compiled kernel is always more precise than the same \
+value re-derived in your own arithmetic -- trust the kernel's own output over a second, \
+redundant computation of it."""
 
 FINAL_FORMAT = """
 When you have your final answer, reply with ONLY a single JSON object (no markdown code \
