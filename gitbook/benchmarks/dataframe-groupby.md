@@ -124,6 +124,7 @@ question.
 ## See also
 
 * [Group data locally with Query.group_by()](../guides/local-query-groupby.md) — how to call this same composed engine on your own data.
+* [LLM tool-calling uplift](llm-tool-calling-uplift.md) — an LLM using a group-by tool over this same kind of data.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Compute kernels](compute-kernels.md) — the matrix kernel results.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.

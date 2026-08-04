@@ -678,6 +678,14 @@
         "validation": "static_inventory"
       },
       {
+        "bytes": 58,
+        "language": "text",
+        "line": 104,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "sha256": "db74a416f22769391b205c66d5636f359ad17e181c6a39edef2771f4fa970180",
+        "validation": "static_inventory"
+      },
+      {
         "bytes": 434,
         "language": "python",
         "line": 84,
@@ -29151,31 +29159,37 @@
       },
       {
         "kind": "internal",
-        "line": 232,
+        "line": 229,
         "path": "SUMMARY.md",
-        "target": "troubleshooting.md"
+        "target": "benchmarks/llm-tool-calling-uplift.md"
       },
       {
         "kind": "internal",
         "line": 233,
         "path": "SUMMARY.md",
-        "target": "help/glossary.md"
+        "target": "troubleshooting.md"
       },
       {
         "kind": "internal",
         "line": 234,
         "path": "SUMMARY.md",
-        "target": "help/quick-reference.md"
+        "target": "help/glossary.md"
       },
       {
         "kind": "internal",
         "line": 235,
         "path": "SUMMARY.md",
-        "target": "help/ai-access.md"
+        "target": "help/quick-reference.md"
       },
       {
         "kind": "internal",
         "line": 236,
+        "path": "SUMMARY.md",
+        "target": "help/ai-access.md"
+      },
+      {
+        "kind": "internal",
+        "line": 237,
         "path": "SUMMARY.md",
         "target": "changelog.md"
       },
@@ -29447,17 +29461,23 @@
         "kind": "internal",
         "line": 127,
         "path": "benchmarks/dataframe-groupby.md",
-        "target": "overview.md"
+        "target": "llm-tool-calling-uplift.md"
       },
       {
         "kind": "internal",
         "line": 128,
         "path": "benchmarks/dataframe-groupby.md",
-        "target": "compute-kernels.md"
+        "target": "overview.md"
       },
       {
         "kind": "internal",
         "line": 129,
+        "path": "benchmarks/dataframe-groupby.md",
+        "target": "compute-kernels.md"
+      },
+      {
+        "kind": "internal",
+        "line": 130,
         "path": "benchmarks/dataframe-groupby.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -29612,6 +29632,36 @@
         "target": "../engine/runtime-library-catalog.md"
       },
       {
+        "kind": "anchor",
+        "line": 24,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "#method"
+      },
+      {
+        "kind": "internal",
+        "line": 118,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "overview.md"
+      },
+      {
+        "kind": "internal",
+        "line": 119,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "dataframe-groupby.md"
+      },
+      {
+        "kind": "internal",
+        "line": 120,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "../engine/capabilities.md"
+      },
+      {
+        "kind": "internal",
+        "line": 121,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "target": "../guides/capabilities.md"
+      },
+      {
         "kind": "internal",
         "line": 129,
         "path": "benchmarks/normalization.md",
@@ -29637,43 +29687,49 @@
       },
       {
         "kind": "internal",
-        "line": 51,
+        "line": 52,
         "path": "benchmarks/overview.md",
         "target": "compute-kernels.md"
       },
       {
         "kind": "internal",
-        "line": 52,
+        "line": 53,
         "path": "benchmarks/overview.md",
         "target": "attention.md"
       },
       {
         "kind": "internal",
-        "line": 53,
+        "line": 54,
         "path": "benchmarks/overview.md",
         "target": "normalization.md"
       },
       {
         "kind": "internal",
-        "line": 54,
+        "line": 55,
         "path": "benchmarks/overview.md",
         "target": "feed-forward.md"
       },
       {
         "kind": "internal",
-        "line": 55,
+        "line": 56,
         "path": "benchmarks/overview.md",
         "target": "forecasting-joint-axis.md"
       },
       {
         "kind": "internal",
-        "line": 56,
+        "line": 57,
+        "path": "benchmarks/overview.md",
+        "target": "llm-tool-calling-uplift.md"
+      },
+      {
+        "kind": "internal",
+        "line": 58,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-libraries.md"
       },
       {
         "kind": "internal",
-        "line": 57,
+        "line": 59,
         "path": "benchmarks/overview.md",
         "target": "../engine/runtime-library-catalog.md"
       },
@@ -29700,6 +29756,12 @@
         "line": 20,
         "path": "benchmarks/overview.md",
         "target": "finqa-exact-execution.md"
+      },
+      {
+        "kind": "internal",
+        "line": 21,
+        "path": "benchmarks/overview.md",
+        "target": "llm-tool-calling-uplift.md"
       },
       {
         "kind": "internal",
@@ -31188,6 +31250,12 @@
         "line": 213,
         "path": "engine/capabilities.md",
         "target": "optimization.md"
+      },
+      {
+        "kind": "internal",
+        "line": 214,
+        "path": "engine/capabilities.md",
+        "target": "../benchmarks/llm-tool-calling-uplift.md"
       },
       {
         "kind": "internal",
@@ -35908,6 +35976,61 @@
         "term": "algenta"
       },
       {
+        "line": 3,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 9,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 15,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 22,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 24,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 63,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 64,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 113,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 114,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 114,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
+        "line": 119,
+        "path": "benchmarks/llm-tool-calling-uplift.md",
+        "term": "algenta"
+      },
+      {
         "line": 38,
         "path": "benchmarks/normalization.md",
         "term": "algenta"
@@ -35928,17 +36051,22 @@
         "term": "algenta"
       },
       {
-        "line": 31,
+        "line": 21,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 34,
+        "line": 32,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
       {
-        "line": 44,
+        "line": 35,
+        "path": "benchmarks/overview.md",
+        "term": "algenta"
+      },
+      {
+        "line": 45,
         "path": "benchmarks/overview.md",
         "term": "algenta"
       },
@@ -47436,8 +47564,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 195,
-      "links": 195,
+      "internal_links": 196,
+      "links": 196,
       "path": "SUMMARY.md",
       "product_claims": {
         "algenta": 4,
@@ -47711,8 +47839,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 4,
-      "links": 6,
+      "internal_links": 5,
+      "links": 7,
       "path": "benchmarks/dataframe-groupby.md",
       "product_claims": {
         "algenta": 7,
@@ -47850,6 +47978,31 @@
       "shell_commands": 0
     },
     {
+      "code_fences": 1,
+      "command_counts": {
+        "destructive_mutation": 0,
+        "environment_mutating": 0,
+        "external_or_mutating": 0,
+        "requires_environment": 0,
+        "safe_static": 0,
+        "static_only": 0
+      },
+      "endpoint_mentions": 0,
+      "external_links": 0,
+      "internal_links": 4,
+      "links": 5,
+      "path": "benchmarks/llm-tool-calling-uplift.md",
+      "product_claims": {
+        "algenta": 11,
+        "codna": 0,
+        "cohenta": 0,
+        "decimas": 0,
+        "escrypto": 0,
+        "mission": 0
+      },
+      "shell_commands": 0
+    },
+    {
       "code_fences": 3,
       "command_counts": {
         "destructive_mutation": 0,
@@ -47886,11 +48039,11 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 11,
-      "links": 11,
+      "internal_links": 13,
+      "links": 13,
       "path": "benchmarks/overview.md",
       "product_claims": {
-        "algenta": 4,
+        "algenta": 5,
         "codna": 0,
         "cohenta": 0,
         "decimas": 0,
@@ -48786,8 +48939,8 @@
       },
       "endpoint_mentions": 0,
       "external_links": 0,
-      "internal_links": 4,
-      "links": 4,
+      "internal_links": 5,
+      "links": 5,
       "path": "engine/capabilities.md",
       "product_claims": {
         "algenta": 3,
@@ -52334,7 +52487,7 @@
     "source_paths": 222
   },
   "snippets": {
-    "code_fences": 1258,
+    "code_fences": 1259,
     "executed_safe_commands": 67,
     "runnable_safe_commands": 67,
     "shell_commands": 823,
@@ -52348,7 +52501,7 @@
   "status": "pass",
   "summary": {
     "blockers": 0,
-    "claim_mentions": 1027,
+    "claim_mentions": 1039,
     "command_execution_percent": 100.0,
     "commands_classified": 823,
     "commands_executed": 67,
@@ -52356,22 +52509,22 @@
     "endpoint_mentions": 1992,
     "failures": 0,
     "fixes": 0,
-    "links_checked": 1211,
+    "links_checked": 1221,
     "live_markdown_page_coverage_percent": 0.0,
     "live_source_semantic_page_exact_percent": 0.0,
     "live_source_semantic_percent": 0.0,
-    "pages_checked": 196,
+    "pages_checked": 197,
     "shell_syntax_validation_percent": 100.0,
     "skips": 757,
-    "snippets_checked": 1258,
+    "snippets_checked": 1259,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6311,
+    "source_items_inventoried": 6334,
     "warnings": 0
   },
   "totals": {
     "blockers": 0,
-    "claim_mentions": 1027,
-    "code_fences": 1258,
+    "claim_mentions": 1039,
+    "code_fences": 1259,
     "command_classification_percent": 100.0,
     "command_execution_percent": 100.0,
     "destructive_mutation_commands": 18,
@@ -52383,18 +52536,18 @@
     "failures": 0,
     "fixes": 0,
     "guarded_commands": 756,
-    "internal_links": 1182,
-    "links": 1211,
-    "pages": 196,
+    "internal_links": 1191,
+    "links": 1221,
+    "pages": 197,
     "product_claims": {
-      "algenta": 1018,
+      "algenta": 1030,
       "codna": 0,
       "cohenta": 0,
       "decimas": 0,
       "escrypto": 0,
       "mission": 9
     },
-    "public_pages": 195,
+    "public_pages": 196,
     "requires_environment_commands": 378,
     "runnable_commands": 67,
     "safe_static_commands": 67,
@@ -52403,7 +52556,7 @@
     "shell_syntax_validation_percent": 100.0,
     "skips": 757,
     "source_inventory_percent": 100.0,
-    "source_items_inventoried": 6311,
+    "source_items_inventoried": 6334,
     "static_only_commands": 68,
     "static_or_guarded_commands": 756,
     "unexecuted_runnable_commands": 0,

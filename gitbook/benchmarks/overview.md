@@ -18,6 +18,7 @@ This section is the index. Each benchmark family has its own page with its own c
 <tr><td><strong>Least-squares accuracy</strong></td><td>Correct digits on the NIST StRD linear-regression suite, against fourteen numpy, scipy and statsmodels arms on the same data.</td><td><a href="least-squares-accuracy.md">least-squares-accuracy.md</a></td></tr>
 <tr><td><strong>Forecasting on the joint axis</strong></td><td>Accuracy and latency together on all 100,000 M4 series, against statsforecast 2.1.1 at matched parallelism.</td><td><a href="forecasting-joint-axis.md">forecasting-joint-axis.md</a></td></tr>
 <tr><td><strong>FinQA exact execution</strong></td><td>Execution accuracy on all 8,281 real FinQA gold programs, against three real naive-reimplementation arms on the same programs.</td><td><a href="finqa-exact-execution.md">finqa-exact-execution.md</a></td></tr>
+<tr><td><strong>LLM tool-calling uplift</strong></td><td>gpt-5-mini answering 16 real numeric questions with and without Algenta's tool-calling access to its own compiled engine.</td><td><a href="llm-tool-calling-uplift.md">llm-tool-calling-uplift.md</a></td></tr>
 </tbody>
 </table>
 
@@ -53,5 +54,6 @@ A result appears in this section only if it meets all of the following condition
 * [Normalization](normalization.md) — RMSNorm and LayerNorm, and the price of a safe variance.
 * [Feed-forward](feed-forward.md) — gated activations, the two GELU conventions, and embedding cost.
 * [Forecasting on the joint axis](forecasting-joint-axis.md) — M4 accuracy and latency measured together against statsforecast 2.1.1.
+* [LLM tool-calling uplift](llm-tool-calling-uplift.md) — an LLM answering the same questions with and without access to this engine.
 * [Runtime libraries](../engine/runtime-libraries.md) — the surface these kernels are exposed through.
 * [Runtime library catalog](../engine/runtime-library-catalog.md) — every module and function the runtime exposes.

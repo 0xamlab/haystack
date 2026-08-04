@@ -211,3 +211,4 @@ that happens to be wrong here.
 * [Runtime library catalog](runtime-library-catalog.md) — every module and function
 * [Batched and chained execution](coarse-execution.md) — many kernel calls in one frame
 * [Optimization & decision programs](optimization.md) — kernels that report when no answer exists
+* [LLM tool-calling uplift](../benchmarks/llm-tool-calling-uplift.md) — this catalog searched and called by an LLM instead of application code

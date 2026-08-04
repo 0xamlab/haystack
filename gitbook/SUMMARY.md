@@ -226,6 +226,7 @@
 * [Forecasting on the joint axis](benchmarks/forecasting-joint-axis.md)
 * [FinQA exact execution](benchmarks/finqa-exact-execution.md)
 * [Decode throughput](benchmarks/decode-throughput.md)
+* [LLM tool-calling uplift](benchmarks/llm-tool-calling-uplift.md)
 
 ## Help
 
