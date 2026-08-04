@@ -640,7 +640,7 @@ def _read_bundled_json(resource_name: str) -> Any | None:
     """Parsed bundled JSON, or None when this build does not ship that resource."""
     try:
         resource = resources.files("algenta").joinpath(resource_name)
-    except ModuleNotFoundError, TypeError:  # pragma: no cover - packaging edge
+    except (ModuleNotFoundError, TypeError):  # pragma: no cover - packaging edge
         return None
     try:
         if not resource.is_file():
