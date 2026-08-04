@@ -102,8 +102,26 @@ def pctile(v: List[Float64], n: Int, p: Int) -> Float64:
     kill for another. `quantile` already answers 0.0 for "no finite values", so this follows
     the convention this module already publishes rather than inventing a second one.
 
+    NAME-SIMILARITY HAZARD, DECLARED HERE RATHER THAN FIXED IN THE BODY: this is an O(1)
+    lookup into a buffer the CALLER must have already sorted -- it does not call
+    `sort_values` the way `quantile`/`percentile`/`median` do below. A caller who has not
+    read this docstring and reaches for the name closest to "percentile" gets `pctile` and a
+    confidently wrong, non-error number on unsorted input; nothing about the signature
+    distinguishes it from the safe functions. That is precisely the failure mode an
+    agentic/tool-calling caller is exposed to when a capability catalog offers `pctile`
+    alongside `quantile`/`percentile` by name alone, with no way to know "pre-sorted" is a
+    precondition. Per this module's frozen-kernel discipline the KERNEL does not change --
+    same signature, same O(1) contract, same internal callers (`engines/monte_carlo.mojo`)
+    keep working unmodified. The fix is `surfaces: internal` below, overriding this module's
+    default `library_execute, batch_execute`: it removes `pctile` from the discoverable/
+    agent-callable catalog (`algenta.capabilities()`, the capability-plane catalog) while
+    leaving it fully reachable via a direct `runtime.execute("stats", "pctile", args)` call
+    from a caller who already knows the pre-sorted precondition -- the same pattern
+    `quantfin.heston` already uses at module scope for an unaudited surface.
+
     @capability pctile
     complexity: O(1)
+    surfaces: internal
     counts:
     - n <= len(v) [enforced]
     @endcapability
