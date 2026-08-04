@@ -36,6 +36,7 @@ ignore = [
 "apps/cli/*.py" = ["T20"]
 "apps/platform_contract_constants.py" = ["E501"]
 "benchmarks/**/*.py" = ["S311", "T20"]
+"benchmarks/tpcds_derived/**/*.py" = ["E501", "S608", "S108"]
 "packages/algenta/algenta/cli.py" = ["T20"]
 "tests/**/*.py" = ["E501", "S", "T20"]
 "training/**/*.py" = ["S311", "T20"]
