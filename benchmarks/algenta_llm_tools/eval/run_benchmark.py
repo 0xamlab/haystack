@@ -109,6 +109,10 @@ an execute() argument without retyping thousands of values, set that argument's 
 - Call list_capabilities and/or explain first to find the exact module/function names and \
 their exact parameter names -- execute requires exact matches. If a search misses what you \
 need, try a different, more specific query string.
+- There is no dedicated min/max-of-column kernel. For a column's minimum or maximum, use \
+execute(module='stats', function='quantile', args={'v': ..., 'n': ..., 'q': 0.0}) for the \
+minimum and q=1.0 for the maximum -- do not spend turns searching for a min/max-named \
+function that does not exist.
 - If a question needs a per-category value (e.g. "which CUST_TYPE has the highest average \
 X"), first call get_column(column=..., distinct=True) to see every real category value, \
 then compute the statistic for each one via get_column(filter_column=..., filter_value=...) \

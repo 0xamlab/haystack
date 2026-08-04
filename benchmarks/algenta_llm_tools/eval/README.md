@@ -386,4 +386,47 @@ answering at all. q05's own result, the thing this fix targets, was correct
 in both the focused 8-rep run and the full-16 run, with zero occurrences of
 the guessed-mean pattern across all 9 tools-condition q05 executions
 observed post-fix. A single miss on an unrelated question is not evidence
+
+## Turn-budget exhaustion, root-caused: no min/max kernel exists (2026-08-04)
+
+The q14 miss above (45 turns, no final answer) and an earlier, separately-observed
+q06 miss (same symptom) share a real root cause, checked directly rather than assumed:
+there is no dedicated min/max-of-column kernel anywhere in the engine. `stats.mojo`
+has no `min`/`max` function, and `list_capabilities('min')`/`('max')` return mostly
+noise, since short common substrings match embedded inside dozens of unrelated
+function names across the ~640-module library (`streaming` and `priming` both
+contain "min"; `nitrogen_mineralisation` and `amino_acid_count` too). A model
+searching for a min/max kernel burns turns wading through that noise before
+eventually discovering (in every run that DID succeed) the real, correct, already-
+available substitute: `stats.quantile(v, n, q=0.0)` returns the exact minimum,
+`q=1.0` the exact maximum (verified directly against `quantile`'s own source: at
+`q=0.0`, `rank=0` so it returns `a[0]`; at `q=1.0`, `rank=m-1` triggers the early
+`return a[m - 1]` branch -- both are the sorted array's true endpoints, not an
+approximation).
+
+**Fix:** one added sentence in `TOOLS_SUFFIX` naming this directly -- "There is no
+dedicated min/max-of-column kernel... use `execute(module='stats',
+function='quantile', ...)` with `q=0.0`/`q=1.0`... do not spend turns searching for
+a min/max-named function that does not exist."
+
+**Live verification (2026-08-04, gpt-5-mini, TOOLS condition, real API calls, 8
+independent fresh-conversation reps of q06 alone):** **8/8 passed**, converging in
+4-7 turns each (previously 9-17 turns in successful runs, and as many as 45 with no
+answer at all in the failure case this fix targets). Full transcript logic in
+`/tmp/rerun_q06_hint.py` (not committed -- ad hoc verification script; the pattern
+is straightforward to reproduce via `run_with_tools` on `q06_min_max_unit_price`
+alone).
+
+**Full 16-question regression, fully combined state (2026-08-04, both this fix and
+the `compute_std_from_values` mean-guess fix above, together):** **16/16
+tools-condition correct**. q06 resolved in 2 tool calls, q14 in 1 -- both previously
+turn-budget risks, now trivial. Total tools-condition cost dropped to $0.053093 (75
+API calls, 327,161 prompt tokens, 77.7% cache hit rate) from the $0.2662 / 126-call
+/ 822,383-token baseline this benchmark started this investigation from. Full
+transcript is the regenerated `benchmark_results.json`.
+
+This does not claim every possible turn-exhaustion risk in this harness is now
+gone -- only that this specific, measured, root-caused one (the min/max search) is
+closed, verified by direct repetition rather than assumed fixed after one lucky run.
+A single miss on an unrelated question is not evidence
 this fix regressed anything, but it is also not swept under the rug here.
