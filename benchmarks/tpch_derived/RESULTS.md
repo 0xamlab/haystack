@@ -522,22 +522,25 @@ re-verified against DuckDB in this single run, migrated queries and untouched qu
 | 16 | no  | 2,486.5 ms | 2,541.0 ms | unchanged (noise) |
 | 17 | yes | 75,113.1 ms | 3,959.7 ms | **19.0x** |
 | 18 | yes | 22,575.9 ms | 2,904.4 ms | **7.8x** |
-| 19 | yes (prior update) | 128,123.4 ms | 127,472.6 ms\* | see note |
+| 19 | yes (this update) | 128,123.4 ms | 1,063.4 ms | **~120.5x** |
 | 20 | yes | 41,596.5 ms | 8,122.4 ms | **5.1x** |
 | 21 | yes | 118,683.7 ms | 10,431.3 ms | **11.4x** |
 | 22 | no  | 424.9 ms | 426.9 ms | unchanged (noise) |
 
-\*Q19's own checked-in `verified_queries.py` function still uses the inline `rows=` form — its
-prior update's resident-handle result (69x slower than DuckDB, ~113x gap closure) lives only in an
-uncommitted standalone script, never landed in this file, exactly as that update disclosed. So
-Q19's row here is the same inline dispatch measured twice, ~10 hours apart — the ~0.5% delta is
-run-to-run noise, not a regression, consistent with the untouched queries' own noise band.
+**Correction (2026-08-04, later the same day):** the note above was accurate when written — Q19's
+checked-in `verified_queries.py` function DID still use the inline `rows=` form at that point, and
+the resident-handle result lived only in an uncommitted standalone script. That gap is now closed:
+Q19's real function in `verified_queries.py` has been migrated the same way, verified `PASS` with
+zero mismatches in a full 22-query regression run, and now measures 1,063.4ms median engine time
+(120.5x faster than its pre-migration 128,123.4ms) — matching the earlier proof-of-concept's
+~1,000-1,200ms range. A documented-but-unshipped fix is not the same as a shipped one; this closes
+that distinction for real rather than leaving it as a permanent asterisk.
 
-**Aggregate, for the 17 queries actually migrated in this update** (median-engine-time sum, same
-`N_REPS=3` methodology both sides — the original per-query table above and this run's own numbers
-are both this harness's `timing_stats` median, so summing is apples-to-apples): before
-**807,720.4 ms**, after **63,280.8 ms** — **~12.8x aggregate reduction** in engine dispatch time
-across those 17 queries. The 4 never-chunked queries (2, 11, 16, 22) sum to 12,705.5 ms before and
+**Aggregate, for the 18 queries actually migrated (17 from this update, plus Q19)** (median-engine-time
+sum, same `N_REPS=3` methodology both sides — the original per-query table above and this run's own
+numbers are both this harness's `timing_stats` median, so summing is apples-to-apples): before
+**935,843.8 ms**, after **64,344.2 ms** — **~14.6x aggregate reduction** in engine dispatch time
+across those 18 queries. The 4 never-chunked queries (2, 11, 16, 22) sum to 12,705.5 ms before and
 12,834.6 ms after — flat, within noise, as expected since nothing about them changed. This is a
 sum of medians, not a claim about total suite wall time (which also includes one-time Postgres
 fetches, DuckDB reruns, and the untimed correctness pass, all excluded from `timing_stats` by

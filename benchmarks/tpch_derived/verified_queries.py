@@ -1441,20 +1441,30 @@ def q19():
             pred = pred | col("l_shipmode").eq(c)
         return pred
 
+    # Resident-handle migration (PR #542's parsed-batch cache): each chunk's rows are
+    # dispatched 3 times per repeat() call (once per brand branch), so precomputing the
+    # per-chunk `rows` ONCE and opening ONE handle per chunk -- instead of rebuilding
+    # `rows` and resending it inline on every one of the 3*N_REPS dispatches against that
+    # chunk -- is exactly this query's own worst-case shape for this fix (see RESULTS.md's
+    # 2026-08-04 Q19 update: ~113x faster reused across reps).
+    idx = 0
+    handles = []
+    for i, batch in enumerate(chunk(fact)):
+        n = len(batch)
+        rows = [
+            [r["l_partkey"], r["l_quantity"], r["l_extendedprice"], r["l_discount"], sm_codes[idx + j],
+             si_codes[idx + j]]
+            for j, r in enumerate(batch)
+        ]
+        idx += n
+        handles.append(runtime().open_dataset(rows, name=f"q19_chunk_{i}", routing_module="stats"))
+
     def run_engine():
         total = 0.0
-        idx = 0
-        for batch in chunk(fact):
-            n = len(batch)
-            rows = [
-                [r["l_partkey"], r["l_quantity"], r["l_extendedprice"], r["l_discount"], sm_codes[idx + i],
-                 si_codes[idx + i]]
-                for i, r in enumerate(batch)
-            ]
-            idx += n
+        for handle in handles:
             for part_rows, qlo, qhi in branch_parts:
                 qq = (
-                    Query(columns=fact_cols, rows=rows)
+                    Query(columns=fact_cols, dataset=handle)
                     .filter(
                         shipmode_pred()
                         & col("l_shipinstruct").eq(DIP)
@@ -1469,8 +1479,12 @@ def q19():
                     total += r[1] or 0.0
         return total
 
-    total = run_engine()
-    engine_times = repeat(run_engine, N_REPS)
+    try:
+        total = run_engine()
+        engine_times = repeat(run_engine, N_REPS)
+    finally:
+        for h in handles:
+            runtime().close_dataset(h, routing_module="stats")
 
     duck_times = []
     drows = None
