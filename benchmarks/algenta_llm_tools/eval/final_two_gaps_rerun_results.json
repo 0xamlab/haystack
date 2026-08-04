@@ -1,0 +1,1221 @@
+{
+  "summary": {
+    "model": "gpt-5-mini",
+    "pricing_per_1m": {
+      "input": 0.25,
+      "output": 2.0
+    },
+    "n_questions": 2,
+    "tools_pass": 2,
+    "tools_cost_usd": 0.017395,
+    "tools_tokens": {
+      "prompt": 54005,
+      "completion": 1947
+    },
+    "tools_api_calls": 13
+  },
+  "results": [
+    {
+      "id": "q05_std_unit_price",
+      "question": "What is the sample standard deviation (ddof=1) of UNIT_PRICE across all quote line items with a non-null UNIT_PRICE?",
+      "ground_truth": 2331.963152,
+      "scoring": {
+        "type": "tolerance_abs",
+        "tolerance": 0.01
+      },
+      "used_new_tool_or_kernel": true,
+      "tools": {
+        "answer": {
+          "value": 2331.9631517502244
+        },
+        "raw_content": "{\"value\":2331.9631517502244}",
+        "tool_calls": [
+          {
+            "tool": "list_capabilities",
+            "args": {
+              "query": "std"
+            },
+            "result": [
+              {
+                "module": "degradation_state",
+                "function": "pace_offset_stderr",
+                "signature": "(state: PaceState) -> Float64",
+                "description": "degradation_state.pace_offset_stderr(state: PaceState) -> Float64"
+              },
+              {
+                "module": "degradation_state",
+                "function": "pace_slope_stderr",
+                "signature": "(state: PaceState) -> Float64",
+                "description": "degradation_state.pace_slope_stderr(state: PaceState) -> Float64"
+              },
+              {
+                "module": "image_quality",
+                "function": "contrast_std",
+                "signature": "(image: List[List[Float64]]) -> Float64",
+                "description": "image_quality.contrast_std(image: List[List[Float64]]) -> Float64"
+              },
+              {
+                "module": "linear_models",
+                "function": "logistic_std_errors",
+                "signature": "(X: List[Float64], y: List[Int], weights: List[Float64], bias: Float64, l2: Float64) -> List[Float64]",
+                "description": "linear_models.logistic_std_errors(X: List[Float64], y: List[Int], weights: List[Float64], bias: Float64, l2: Float64) -> List[Float64]"
+              },
+              {
+                "module": "pandas_groupby",
+                "function": "group_std_from_variance",
+                "signature": "(m2: Float64, count: Float64, ddof: Float64) -> Float64",
+                "description": "pandas_groupby.group_std_from_variance(m2: Float64, count: Float64, ddof: Float64) -> Float64"
+              },
+              {
+                "module": "stats",
+                "function": "compute_std",
+                "signature": "(v: List[Float64], n: Int, mean: Float64) -> Float64",
+                "description": "stats.compute_std(v: List[Float64], n: Int, mean: Float64) -> Float64 -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "stats_bootstrap",
+                "function": "bootstrap_std_ci",
+                "signature": "(data: List[Float64], n_bootstrap: Int, confidence: Float64 = <default>) -> List[Float64]",
+                "description": "stats_bootstrap.bootstrap_std_ci(data: List[Float64], n_bootstrap: Int, confidence: Float64 = <default>) -> List[Float64]"
+              },
+              {
+                "module": "streaming.windows",
+                "function": "window_std",
+                "signature": "(values: List[Float64], window: Int) -> WindowSeries",
+                "description": "streaming.windows.window_std(values: List[Float64], window: Int) -> WindowSeries -- deterministic=True, complexity=O(len(values) * window), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "streaming.windows",
+                "function": "window_summary_std",
+                "signature": "(summary: WindowSummary) -> Float64",
+                "description": "streaming.windows.window_summary_std(summary: WindowSummary) -> Float64 -- deterministic=True, complexity=O(1), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "tensorx.reduce",
+                "function": "tx_reduce_stddev",
+                "signature": "(data: List[UInt8], n: Int, dtype: Int) -> TxReduction",
+                "description": "tensorx.reduce.tx_reduce_stddev(data: List[UInt8], n: Int, dtype: Int) -> TxReduction -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "timeseries_stats",
+                "function": "rolling_std",
+                "signature": "(data: List[Float64], window: Int) -> List[Float64]",
+                "description": "timeseries_stats.rolling_std(data: List[Float64], window: Int) -> List[Float64]"
+              }
+            ]
+          },
+          {
+            "tool": "list_capabilities",
+            "args": {
+              "query": "compute_mean"
+            },
+            "result": [
+              {
+                "module": "stats",
+                "function": "compute_mean",
+                "signature": "(v: List[Float64], n: Int) -> Float64",
+                "description": "stats.compute_mean(v: List[Float64], n: Int) -> Float64 -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              }
+            ]
+          },
+          {
+            "tool": "get_column",
+            "args": {
+              "column": "UNIT_PRICE",
+              "dropna": true
+            },
+            "result": {
+              "column": "UNIT_PRICE",
+              "filter": null,
+              "value": [
+                53.65,
+                193.24,
+                181.11,
+                193.24,
+                132.22,
+                20.63,
+                11.88,
+                1300.0,
+                21.82,
+                21.82,
+                21.82,
+                175.0,
+                24.8,
+                20.38,
+                34.6,
+                140.0,
+                215.85,
+                105.1,
+                48.32,
+                45.9,
+                186.78,
+                186.78,
+                190.52,
+                190.52,
+                3078.67,
+                70.5,
+                0.42,
+                8.75,
+                16.0,
+                245.89,
+                250.54,
+                186.78,
+                186.78,
+                190.52,
+                190.52,
+                79.8,
+                20.15,
+                21.02,
+                14.08,
+                364.83,
+                16.1,
+                75.77,
+                108.73,
+                48.0,
+                415.0,
+                23.5,
+                23.5,
+                2.05,
+                24.3,
+                121.5,
+                115.49,
+                138.4,
+                19.4,
+                10.73,
+                10.15,
+                137.96,
+                137.96,
+                137.96,
+                2.79,
+                17.25,
+                29.36,
+                29.36,
+                4.36,
+                4.36,
+                7.61,
+                88.06,
+                88.06,
+                13.49,
+                13.49,
+                7.27,
+                4.05,
+                4.05,
+                4.05,
+                4.05,
+                0.08,
+                30.73,
+                30.73,
+                4.0,
+                4.0,
+                605.35,
+                15.18,
+                6.89,
+                2.54,
+                27.22,
+                27.22,
+                48.05,
+                78.3,
+                16.6,
+                75.5,
+                120.0,
+                75.5,
+                170.0,
+                9.92,
+                84.0,
+                10.16,
+                15.9,
+                0.48,
+                102.65,
+                88.14,
+                46.35,
+                81.29,
+                153.97,
+                153.97,
+                21.69,
+                320.0,
+                187.85,
+                18.67,
+                19.31,
+                5.92,
+                1419.0,
+                1304.0,
+                1355.0,
+                1246.0,
+                83.5,
+                90.0,
+                85.16,
+                92.5,
+                195.43,
+                85.23,
+                18.8,
+                246.0,
+                405.0,
+                288.95,
+                311.05,
+                311.05,
+                61.35,
+                0.24,
+                0.35,
+                5.55,
+                477.52,
+                15.0,
+                205.76,
+                234.98,
+                42.56,
+                48.28,
+                100.36,
+                138.0,
+                43.28,
+                108.24,
+                0.0,
+                146.55,
+                346.55,
+                19.44,
+                16.06,
+                13.53,
+                53.45,
+                289.15,
+                289.15,
+                281.15,
+                1299.31,
+                25.0,
+                20.6,
+                14.41,
+                598.85,
+                12.95,
+                37.0,
+                42.95,
+                27.75,
+                161.42,
+                15.1,
+                38.53,
+                59.88,
+                201.37,
+                307.1,
+                209.34,
+                3.85,
+                43.28,
+                293.6,
+                274.0,
+                224.14,
+                573.28,
+                84.79,
+                15.85,
+                18.42,
+                2.35,
+                1986.31,
+                78.85,
+                215.21,
+                215.21,
+                18.85,
+                19.4,
+                19.4,
+                19.4,
+                19.4,
+                27.0,
+                147.0,
+                62.0,
+                199.1,
+                199.1,
+                199.1,
+                199.1,
+                199.1,
+                51.0,
+                3.5,
+                50.0,
+                100.0,
+                33.34,
+                58.68,
+                43.55,
+                123.5,
+                123.5,
+                123.5,
+                123.5,
+                555.89,
+                555.89,
+                555.89,
+                555.89,
+                555.89,
+                555.89,
+                555.89,
+                160.15,
+                1750.0,
+                0.63,
+                88.05,
+                88.05,
+                60.25,
+                60.25,
+                15.76,
+                62.0,
+                12.2,
+                13.0,
+                24.9,
+                45.3,
+                52.18,
+                44.55,
+                198.5,
+                390.0,
+                115.45,
+                100.35,
+                150.0,
+                115.0,
+                46.5,
+                125.6,
+                45.62,
+                47.0,
+                235.0,
+                1223.74,
+                10.24,
+                6.02,
+                310.0,
+                285.0,
+                139.53,
+                56.15,
+                24.4,
+                22.25,
+                106.19,
+                91.93,
+                13.39,
+                493.32,
+                505.0,
+                505.0,
+                795.0,
+                180.0,
+                180.0,
+                180.0,
+                180.0,
+                249.59,
+                3616.71,
+                155.95,
+                204.01,
+                83.02,
+                115.78,
+                46.0,
+                290.0,
+                189.49,
+                157.9,
+                138.35,
+                115.29,
+                202.19,
+                168.49,
+                202.19,
+                168.49,
+                7.25,
+                25.0,
+                55.96,
+                9.12,
+                8.59,
+                8.59,
+                8.59,
+                8.59,
+                8.59,
+                362.0,
+                67.0,
+                63.45,
+                75.0,
+                16.92,
+                82.84,
+                92.0,
+                85.67,
+                115.0,
+                37.74,
+                472.89,
+                24.05,
+                19.6,
+                91.32,
+                12.5,
+                16.62,
+                16.62,
+                16.62,
+                25.51,
+                44.5,
+                364.37,
+                12.33,
+                46.42,
+                85.51,
+                125.0,
+                82.2,
+                0.05,
+                141.52,
+                72.15,
+                26.88,
+                62.5,
+                207.48,
+                85.5,
+                357.45,
+                181.0,
+                56.82,
+                668.0,
+                47.0,
+                58.35,
+                138.0,
+                115.47,
+                0.53,
+                283.38,
+                107.05,
+                99.55,
+                103.18,
+                99.38,
+                149.38,
+                52.8,
+                42.57,
+                99.55,
+                86.5,
+                58.0,
+                5.15,
+                112.0,
+                112.0,
+                30.25,
+                30.25,
+                28.7,
+                80.0,
+                95.6,
+                0.5,
+                36.56,
+                18.15,
+                23.5,
+                64.84,
+                36.91,
+                16.42,
+                25.26,
+                32.75,
+                0.0,
+                37.22,
+                32.75,
+                49.61,
+                376.15,
+                11.88,
+                18.82,
+                46.76,
+                26.25,
+                29.67,
+                39.69,
+                44.37,
+                44.05,
+                272.5,
+                282.0,
+                311.0,
+                311.0,
+                311.0,
+                311.0,
+                311.0,
+                77.86,
+                421.0,
+                230.0,
+                280.0,
+                284.3,
+                0.21,
+                0.21,
+                0.21,
+                0.21,
+                0.22,
+                0.22,
+                4.05,
+                4.05,
+                3.75,
+                29.95,
+                29.95,
+                88.06,
+                88.06,
+                16.58,
+                15.08,
+                15.08,
+                22.85,
+                3888.25,
+                83.7,
+                118.87,
+                85.0,
+                1130.5,
+                18.67,
+                1205.0,
+                48.0,
+                9.19,
+                8.84,
+                7.45,
+                11.3,
+                13.11,
+                12.48,
+                14.98,
+                13.97,
+                10.05,
+                59.64,
+                13.0,
+                16.35,
+                14.67,
+                14.63,
+                12.66,
+                55.56,
+                39.94,
+                10.11,
+                10.84,
+                28.98,
+                68.65,
+                40.72,
+                48.24,
+                19.05,
+                56.05,
+                56.05,
+                56.05,
+                56.05,
+                56.05,
+                147.5,
+                147.5,
+                147.5,
+                147.5,
+                147.5,
+                147.5,
+                147.5,
+                74.0,
+                56.05,
+                32.68,
+                14.8,
+                74.8,
+                10.14,
+                12.07,
+                12.76,
+                13.45,
+                14.49,
+                15.87,
+                21.39,
+                23.11,
+                27.25,
+                41.67,
+                97.57,
+                0.0,
+                32.75,
+                41.55,
+                35.59,
+                177.5,
+                68.7,
+                99.95,
+                78.0,
+                68.8,
+                68.8,
+                75.6,
+                80.0,
+                73.35,
+                38.25,
+                18.12,
+                10.5,
+                10.5,
+                10.25,
+                20.9,
+                13.04,
+                13.04,
+                13.04,
+                13.9,
+                13.9,
+                19.4,
+                44.0,
+                86.45,
+                160.15,
+                289.15,
+                281.15,
+                118.07,
+                414.84,
+                16.75,
+                0.24,
+                16.5,
+                14.06,
+                13.1,
+                422.16,
+                101.6,
+                180.0,
+                9.6,
+                3.06,
+                338.5,
+                428.0,
+                428.0,
+                428.0,
+                428.0
+              ],
+              "truncated": true,
+              "element_count": 29204,
+              "result_id": "7c63cf2e30ba"
+            }
+          },
+          {
+            "tool": "explain",
+            "args": {
+              "module": "stats",
+              "function": "compute_std"
+            },
+            "result": "stats.compute_std(v: List[Float64], n: Int, mean: Float64) -> Float64\nNo prose docstring is declared for this kernel; the signature above is the whole public contract.\nDeclared: deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none, stateful=False, batch_capable=True, stream_capable=False\nCount relations: n <= len(v)"
+          },
+          {
+            "tool": "execute",
+            "args": {
+              "module": "stats",
+              "function": "compute_mean",
+              "args": {
+                "v": {
+                  "result_id": "7c63cf2e30ba"
+                },
+                "n": 29204
+              }
+            },
+            "result": {
+              "module": "stats",
+              "function": "compute_mean",
+              "value": 779.1820350636932,
+              "truncated": false,
+              "element_count": null,
+              "result_id": "d43d2dfce233",
+              "latency_ms": 213.828,
+              "engine": "mojo"
+            }
+          },
+          {
+            "tool": "execute",
+            "args": {
+              "module": "stats",
+              "function": "compute_std",
+              "args": {
+                "v": {
+                  "result_id": "7c63cf2e30ba"
+                },
+                "n": 29204,
+                "mean": 779.1820350636932
+              }
+            },
+            "result": {
+              "module": "stats",
+              "function": "compute_std",
+              "value": 2331.9631517502244,
+              "truncated": false,
+              "element_count": null,
+              "result_id": "ce224ae00e22",
+              "latency_ms": 30.82,
+              "engine": "mojo"
+            }
+          },
+          {
+            "tool": "list_capabilities",
+            "args": {
+              "query": "sum",
+              "limit": 50
+            },
+            "result": [
+              {
+                "module": "accounting",
+                "function": "sum_of_years_digits",
+                "signature": "(cost: Float64, salvage: Float64, useful_life: Int, year: Int) -> Float64",
+                "description": "accounting.sum_of_years_digits(cost: Float64, salvage: Float64, useful_life: Int, year: Int) -> Float64"
+              },
+              {
+                "module": "acoustics",
+                "function": "decibel_sum_2",
+                "signature": "(db1: Float64, db2: Float64) -> Float64",
+                "description": "acoustics.decibel_sum_2(db1: Float64, db2: Float64) -> Float64"
+              },
+              {
+                "module": "aquaculture",
+                "function": "dissolved_oxygen_consumption",
+                "signature": "(biomass_kg: Float64, rate_per_kg: Float64) -> Float64",
+                "description": "aquaculture.dissolved_oxygen_consumption(biomass_kg: Float64, rate_per_kg: Float64) -> Float64"
+              },
+              {
+                "module": "biogeochemistry",
+                "function": "weathering_co2_consumption",
+                "signature": "(cation_flux: Float64, charge_equivalents: Float64) -> Float64",
+                "description": "biogeochemistry.weathering_co2_consumption(cation_flux: Float64, charge_equivalents: Float64) -> Float64"
+              },
+              {
+                "module": "checksum",
+                "function": "adler32",
+                "signature": "(data: List[Int]) -> Int",
+                "description": "checksum.adler32(data: List[Int]) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "fletcher16",
+                "signature": "(data: List[Int]) -> Int",
+                "description": "checksum.fletcher16(data: List[Int]) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "internet_checksum",
+                "signature": "(data: List[Int]) -> Int",
+                "description": "checksum.internet_checksum(data: List[Int]) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "isbn10_check",
+                "signature": "(digits: List[Int]) -> Bool",
+                "description": "checksum.isbn10_check(digits: List[Int]) -> Bool"
+              },
+              {
+                "module": "checksum",
+                "function": "isbn13_check",
+                "signature": "(digits: List[Int]) -> Bool",
+                "description": "checksum.isbn13_check(digits: List[Int]) -> Bool"
+              },
+              {
+                "module": "checksum",
+                "function": "luhn_check",
+                "signature": "(digits: List[Int]) -> Bool",
+                "description": "checksum.luhn_check(digits: List[Int]) -> Bool"
+              },
+              {
+                "module": "checksum",
+                "function": "luhn_checksum",
+                "signature": "(digits: List[Int]) -> Int",
+                "description": "checksum.luhn_checksum(digits: List[Int]) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "modular_sum",
+                "signature": "(data: List[Int], modulus: Int = <default>) -> Int",
+                "description": "checksum.modular_sum(data: List[Int], modulus: Int = <default>) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "parity_bit",
+                "signature": "(data: List[Int]) -> Int",
+                "description": "checksum.parity_bit(data: List[Int]) -> Int"
+              },
+              {
+                "module": "checksum",
+                "function": "verhoeff_check",
+                "signature": "(digits: List[Int]) -> Bool",
+                "description": "checksum.verhoeff_check(digits: List[Int]) -> Bool"
+              },
+              {
+                "module": "checksum",
+                "function": "xor_checksum",
+                "signature": "(data: List[Int]) -> Int",
+                "description": "checksum.xor_checksum(data: List[Int]) -> Int"
+              },
+              {
+                "module": "combinatorial",
+                "function": "max_subarray_sum",
+                "signature": "(data: List[Float64]) -> Float64",
+                "description": "combinatorial.max_subarray_sum(data: List[Float64]) -> Float64"
+              },
+              {
+                "module": "combustion",
+                "function": "brake_specific_fuel_consumption",
+                "signature": "(fuel_rate: Float64, power: Float64) -> Float64",
+                "description": "combustion.brake_specific_fuel_consumption(fuel_rate: Float64, power: Float64) -> Float64"
+              },
+              {
+                "module": "compiler_theory",
+                "function": "instruction_latency_sum",
+                "signature": "(latencies: List[Int], n: Int) -> Int",
+                "description": "compiler_theory.instruction_latency_sum(latencies: List[Int], n: Int) -> Int"
+              },
+              {
+                "module": "dimensions",
+                "function": "can_sum",
+                "signature": "(dim: Int) -> Bool",
+                "description": "dimensions.can_sum(dim: Int) -> Bool"
+              },
+              {
+                "module": "ecophysiology",
+                "function": "oxygen_consumption_rate",
+                "signature": "(delta_o2_ppm: Float64, flow_rate_l_h: Float64, mass_kg: Float64) -> Float64",
+                "description": "ecophysiology.oxygen_consumption_rate(delta_o2_ppm: Float64, flow_rate_l_h: Float64, mass_kg: Float64) -> Float64"
+              },
+              {
+                "module": "elevator",
+                "function": "annual_energy_consumption",
+                "signature": "(power_kw: Float64, daily_trips: Float64, trip_time_s: Float64, days_per_year: Float64) -> Float64",
+                "description": "elevator.annual_energy_consumption(power_kw: Float64, daily_trips: Float64, trip_time_s: Float64, days_per_year: Float64) -> Float64"
+              },
+              {
+                "module": "exactnum.eft",
+                "function": "eft_fast_two_sum",
+                "signature": "(a: Float64, b: Float64) -> DD",
+                "description": "exactnum.eft.eft_fast_two_sum(a: Float64, b: Float64) -> DD -- deterministic=True, complexity=O(1), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "exactnum.eft",
+                "function": "eft_kahan_sum_f64",
+                "signature": "(x: List[Float64]) -> Float64",
+                "description": "exactnum.eft.eft_kahan_sum_f64(x: List[Float64]) -> Float64 -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "exactnum.eft",
+                "function": "eft_sum2",
+                "signature": "(x: List[Float64], n: Int) -> EftReduction",
+                "description": "exactnum.eft.eft_sum2(x: List[Float64], n: Int) -> EftReduction -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "exactnum.eft",
+                "function": "eft_two_sum",
+                "signature": "(a: Float64, b: Float64) -> DD",
+                "description": "exactnum.eft.eft_two_sum(a: Float64, b: Float64) -> DD -- deterministic=True, complexity=O(1), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "exactnum.eft",
+                "function": "eft_two_sum_pair",
+                "signature": "(a: Float64, b: Float64) -> DD",
+                "description": "exactnum.eft.eft_two_sum_pair(a: Float64, b: Float64) -> DD -- deterministic=True, complexity=O(1), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "fermentation",
+                "function": "substrate_consumption",
+                "signature": "(growth_rate: Float64, biomass_conc: Float64, yield_factor: Float64) -> Float64",
+                "description": "fermentation.substrate_consumption(growth_rate: Float64, biomass_conc: Float64, yield_factor: Float64) -> Float64"
+              },
+              {
+                "module": "flash_attention",
+                "function": "flash_block_sum_exp",
+                "signature": "(current_sum: Float64, old_max: Float64, new_max: Float64, new_score: Float64) -> Float64",
+                "description": "flash_attention.flash_block_sum_exp(current_sum: Float64, old_max: Float64, new_max: Float64, new_score: Float64) -> Float64"
+              },
+              {
+                "module": "forecasting.contract",
+                "function": "fc_sum_tolerance",
+                "signature": "(term_magnitude_sum: Float64, n_terms: Int, abs_tol: Float64) -> Float64",
+                "description": "forecasting.contract.fc_sum_tolerance(term_magnitude_sum: Float64, n_terms: Int, abs_tol: Float64) -> Float64"
+              },
+              {
+                "module": "graph_analytics.temporal",
+                "function": "temporal_activity_summary",
+                "signature": "(src: List[Int], dst: List[Int], weight: List[Float64], time: List[Float64], n_nodes: Int) -> TemporalActivity",
+                "description": "graph_analytics.temporal.temporal_activity_summary(src: List[Int], dst: List[Int], weight: List[Float64], time: List[Float64], n_nodes: Int) -> TemporalActivity"
+              },
+              {
+                "module": "hydroponics",
+                "function": "water_consumption_rate",
+                "signature": "(transpiration: Float64, area: Float64) -> Float64",
+                "description": "hydroponics.water_consumption_rate(transpiration: Float64, area: Float64) -> Float64"
+              },
+              {
+                "module": "image_resize",
+                "function": "box_sum",
+                "signature": "(integral: List[List[Float64]], r0: Int, c0: Int, r1: Int, c1: Int) -> Float64",
+                "description": "image_resize.box_sum(integral: List[List[Float64]], r0: Int, c0: Int, r1: Int, c1: Int) -> Float64"
+              },
+              {
+                "module": "inference.assume",
+                "function": "expected_counts_flat",
+                "signature": "(observed: List[Float64], expected: List[Float64], min_expected: Float64) -> CellCountVerdict",
+                "description": "inference.assume.expected_counts_flat(observed: List[Float64], expected: List[Float64], min_expected: Float64) -> CellCountVerdict -- deterministic=True, complexity=O(n), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "inference.assume",
+                "function": "proportion_test_checked_flat",
+                "signature": "(successes_a: Int, n_a: Int, successes_b: Int, n_b: Int, alpha: Float64) -> CheckedProportionTest",
+                "description": "inference.assume.proportion_test_checked_flat(successes_a: Int, n_a: Int, successes_b: Int, n_b: Int, alpha: Float64) -> CheckedProportionTest"
+              },
+              {
+                "module": "inference.assume",
+                "function": "residual_normality_flat",
+                "signature": "(residuals: List[Float64], n: Int, alpha: Float64) -> NormalityVerdict",
+                "description": "inference.assume.residual_normality_flat(residuals: List[Float64], n: Int, alpha: Float64) -> NormalityVerdict -- deterministic=True, complexity=O(n^2) \u2014 both frozen tests sort with an insertion sort, backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "inference.assume",
+                "function": "t_test_checked_flat",
+                "signature": "(values: List[Float64], n1: Int, n2: Int, alpha: Float64) -> CheckedTest",
+                "description": "inference.assume.t_test_checked_flat(values: List[Float64], n1: Int, n2: Int, alpha: Float64) -> CheckedTest -- deterministic=True, complexity=O((n1 + n2)^2) \u2014 the assumption checks sort, backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "inference.assume",
+                "function": "variance_homogeneity_flat",
+                "signature": "(values: List[Float64], group_lengths: List[Int], alpha: Float64) -> AssumptionVerdict",
+                "description": "inference.assume.variance_homogeneity_flat(values: List[Float64], group_lengths: List[Int], alpha: Float64) -> AssumptionVerdict -- deterministic=True, complexity=O(sum_j n_j^2) \u2014 the frozen per-group median insertion-sorts, backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "lottery",
+                "function": "annuity_vs_lump_sum",
+                "signature": "(annual_payment: Float64, years: Float64, discount_rate: Float64) -> Float64",
+                "description": "lottery.annuity_vs_lump_sum(annual_payment: Float64, years: Float64, discount_rate: Float64) -> Float64"
+              },
+              {
+                "module": "numerical_stability",
+                "function": "kahan_sum",
+                "signature": "(values: List[Float64]) -> Float64",
+                "description": "numerical_stability.kahan_sum(values: List[Float64]) -> Float64"
+              },
+              {
+                "module": "numerical_stability",
+                "function": "logsumexp",
+                "signature": "(values: List[Float64]) -> Float64",
+                "description": "numerical_stability.logsumexp(values: List[Float64]) -> Float64"
+              },
+              {
+                "module": "pandas_groupby",
+                "function": "group_sum_update",
+                "signature": "(current_sum: Float64, new_value: Float64) -> Float64",
+                "description": "pandas_groupby.group_sum_update(current_sum: Float64, new_value: Float64) -> Float64"
+              },
+              {
+                "module": "pension",
+                "function": "pension_lump_sum_from_annuity",
+                "signature": "(annual_pension: Float64, annuity_factor_val: Float64) -> Float64",
+                "description": "pension.pension_lump_sum_from_annuity(annual_pension: Float64, annuity_factor_val: Float64) -> Float64"
+              },
+              {
+                "module": "pipeline",
+                "function": "reduce_sum",
+                "signature": "(data: List[Float64]) -> Float64",
+                "description": "pipeline.reduce_sum(data: List[Float64]) -> Float64"
+              },
+              {
+                "module": "pneumatics",
+                "function": "air_consumption",
+                "signature": "(bore_diameter: Float64, stroke: Float64, pressure: Float64, cycles_per_min: Float64) -> Float64",
+                "description": "pneumatics.air_consumption(bore_diameter: Float64, stroke: Float64, pressure: Float64, cycles_per_min: Float64) -> Float64"
+              },
+              {
+                "module": "serialization_io",
+                "function": "string_checksum",
+                "signature": "(s: String) -> Float64",
+                "description": "serialization_io.string_checksum(s: String) -> Float64"
+              },
+              {
+                "module": "signal.dsp",
+                "function": "cumsum",
+                "signature": "(data: List[Float64]) -> List[Float64]",
+                "description": "signal.dsp.cumsum(data: List[Float64]) -> List[Float64]"
+              },
+              {
+                "module": "sparse_numerics.diagnostics",
+                "function": "sparse_health_summary_driver",
+                "signature": "(indptr: List[Int], indices: List[Int], values: List[Float64], nrows: Int, ncols: Int, tol: Float64) -> String",
+                "description": "sparse_numerics.diagnostics.sparse_health_summary_driver(indptr: List[Int], indices: List[Int], values: List[Float64], nrows: Int, ncols: Int, tol: Float64) -> String"
+              },
+              {
+                "module": "strategy.equilibrium",
+                "function": "eq_zero_sum_bounds_flat",
+                "signature": "(payoff_a: List[Float64], payoff_b: List[Float64], rows: Int, cols: Int, abs_tol: Float64) -> ZeroSumBounds",
+                "description": "strategy.equilibrium.eq_zero_sum_bounds_flat(payoff_a: List[Float64], payoff_b: List[Float64], rows: Int, cols: Int, abs_tol: Float64) -> ZeroSumBounds -- deterministic=True, complexity=O(rows * cols), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "streaming.drift",
+                "function": "page_hinkley_resume",
+                "signature": "(state: PageHinkleyState, values: List[Float64], delta: Float64, threshold: Float64) -> PageHinkleyState",
+                "description": "streaming.drift.page_hinkley_resume(state: PageHinkleyState, values: List[Float64], delta: Float64, threshold: Float64) -> PageHinkleyState -- deterministic=True, complexity=O(len(values)), backend=mojo, seed_requirements=none"
+              },
+              {
+                "module": "streaming.windows",
+                "function": "window_summary_prefix",
+                "signature": "(values: List[Float64], n: Int, window: Int) -> WindowSummary",
+                "description": "streaming.windows.window_summary_prefix(values: List[Float64], n: Int, window: Int) -> WindowSummary -- deterministic=True, complexity=O(window), backend=mojo, seed_requirements=none"
+              }
+            ]
+          }
+        ],
+        "turns": 8,
+        "correct": true,
+        "detail": "value=2331.9631517502244 vs ground_truth=2331.963152 tol=0.01"
+      }
+    },
+    {
+      "id": "q16_corr_unit_price_quantity",
+      "question": "What is the Pearson correlation coefficient between UNIT_PRICE and QUANTITY, restricted to quote line items where both are non-null?",
+      "ground_truth": -0.071331,
+      "scoring": {
+        "type": "tolerance_abs",
+        "tolerance": 0.001
+      },
+      "used_new_tool_or_kernel": true,
+      "tools": {
+        "answer": {
+          "value": -0.07133063138937178
+        },
+        "raw_content": "{\"value\": -0.07133063138937178}",
+        "tool_calls": [
+          {
+            "tool": "list_capabilities",
+            "args": {
+              "query": "pearson"
+            },
+            "result": [
+              {
+                "module": "stat_tests",
+                "function": "pearson_r",
+                "signature": "(x: List[Float64], y: List[Float64]) -> CorrResult",
+                "description": "stat_tests.pearson_r(x: List[Float64], y: List[Float64]) -> CorrResult"
+              },
+              {
+                "module": "stat_tests",
+                "function": "pearson_r_strict",
+                "signature": "(x: List[Float64], y: List[Float64]) -> CorrResult",
+                "description": "stat_tests.pearson_r_strict(x: List[Float64], y: List[Float64]) -> CorrResult"
+              },
+              {
+                "module": "vector_similarity",
+                "function": "pearson_correlation",
+                "signature": "(n: Float64, sum_xy: Float64, sum_x: Float64, sum_y: Float64, sum_x2: Float64, sum_y2: Float64) -> Float64",
+                "description": "vector_similarity.pearson_correlation(n: Float64, sum_xy: Float64, sum_x: Float64, sum_y: Float64, sum_x2: Float64, sum_y2: Float64) -> Float64"
+              }
+            ]
+          },
+          {
+            "tool": "explain",
+            "args": {
+              "module": "stat_tests",
+              "function": "pearson_r_strict"
+            },
+            "result": "stat_tests.pearson_r_strict(x: List[Float64], y: List[Float64]) -> CorrResult\nNo prose docstring is declared for this kernel; the signature above is the whole public contract."
+          },
+          {
+            "tool": "get_columns",
+            "args": {
+              "columns": [
+                "UNIT_PRICE",
+                "QUANTITY"
+              ]
+            },
+            "result": {
+              "columns": [
+                "UNIT_PRICE",
+                "QUANTITY"
+              ],
+              "filter": null,
+              "row_count": 23269,
+              "value": {
+                "columns": [
+                  "UNIT_PRICE",
+                  "QUANTITY"
+                ],
+                "rows": [
+                  {
+                    "UNIT_PRICE": 858.69,
+                    "QUANTITY": 23.0
+                  },
+                  {
+                    "UNIT_PRICE": 331.0,
+                    "QUANTITY": 42.0
+                  },
+                  {
+                    "UNIT_PRICE": 192.0,
+                    "QUANTITY": 14.0
+                  },
+                  {
+                    "UNIT_PRICE": 738.56,
+                    "QUANTITY": 25.0
+                  },
+                  {
+                    "UNIT_PRICE": 336.97,
+                    "QUANTITY": 25.0
+                  },
+                  {
+                    "UNIT_PRICE": 217.94,
+                    "QUANTITY": 2.0
+                  },
+                  {
+                    "UNIT_PRICE": 1445.36,
+                    "QUANTITY": 10.0
+                  },
+                  {
+                    "UNIT_PRICE": 911.34,
+                    "QUANTITY": 1.0
+                  },
+                  {
+                    "UNIT_PRICE": 386.64,
+                    "QUANTITY": 1.0
+                  },
+                  {
+                    "UNIT_PRICE": 377.86,
+                    "QUANTITY": 5.0
+                  },
+                  {
+                    "UNIT_PRICE": 1445.36,
+                    "QUANTITY": 10.0
+                  },
+                  {
+                    "UNIT_PRICE": 1478.21,
+                    "QUANTITY": 1.0
+                  },
+                  {
+                    "UNIT_PRICE": 374.16,
+                    "QUANTITY": 6.0
+                  },
+                  {
+                    "UNIT_PRICE": 113.38,
+                    "QUANTITY": 5.0
+                  },
+                  {
+                    "UNIT_PRICE": 696.34,
+                    "QUANTITY": 25.0
+                  },
+                  {
+                    "UNIT_PRICE": 209.48,
+                    "QUANTITY": 2.0
+                  },
+                  {
+                    "UNIT_PRICE": 108.0,
+                    "QUANTITY": 600.0
+                  },
+                  {
+                    "UNIT_PRICE": 108.0,
+                    "QUANTITY": 600.0
+                  },
+                  {
+                    "UNIT_PRICE": 108.0,
+                    "QUANTITY": 600.0
+                  },
+                  {
+                    "UNIT_PRICE": 108.0,
+                    "QUANTITY": 600.0
+                  },
+                  {
+                    "UNIT_PRICE": 914.63,
+                    "QUANTITY": 180.0
+                  },
+                  {
+                    "UNIT_PRICE": 370.0,
+                    "QUANTITY": 6.0
+                  },
+                  {
+                    "UNIT_PRICE": 824.0,
+                    "QUANTITY": 45.0
+                  },
+                  {
+                    "UNIT_PRICE": 463.56,
+                    "QUANTITY": 25.0
+                  },
+                  {
+                    "UNIT_PRICE": 337.19,
+                    "QUANTITY": 25.0
+                  }
+                ]
+              },
+              "truncated": true,
+              "result_ids": {
+                "UNIT_PRICE": "4c9d0d9523f2",
+                "QUANTITY": "49b05ebc5ce1"
+              }
+            }
+          },
+          {
+            "tool": "execute",
+            "args": {
+              "module": "stat_tests",
+              "function": "pearson_r_strict",
+              "args": {
+                "x": {
+                  "result_id": "4c9d0d9523f2"
+                },
+                "y": {
+                  "result_id": "49b05ebc5ce1"
+                }
+              }
+            },
+            "result": {
+              "module": "stat_tests",
+              "function": "pearson_r_strict",
+              "value": {
+                "r": -0.07133063138937178,
+                "p_value": 0.0
+              },
+              "truncated": false,
+              "element_count": null,
+              "result_id": "e9710fe5c907",
+              "latency_ms": 43.383,
+              "engine": "mojo"
+            }
+          }
+        ],
+        "turns": 5,
+        "correct": true,
+        "detail": "value=-0.07133063138937178 vs ground_truth=-0.071331 tol=0.001"
+      }
+    }
+  ]
+}

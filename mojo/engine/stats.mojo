@@ -65,6 +65,40 @@ def compute_variance(v: List[Float64], n: Int, mean: Float64) -> Float64:
         var d = v[i] - mean; s += d * d
     return s / Float64(n - 1)
 
+def compute_std(v: List[Float64], n: Int, mean: Float64) -> Float64:
+    """Sample standard deviation (ddof=1) of the first `n` values about a caller-supplied
+    `mean` -- `sqrt(compute_variance(v, n, mean))`, computed in ONE kernel call instead of
+    two plus a caller-side square root.
+
+    This exists because a caller without it has to call `compute_mean` then
+    `compute_variance` and then take the square root ITSELF, outside the kernel -- and a
+    manual client-side sqrt of a float already computed by this engine is exactly the kind
+    of second, independent recomputation this module's sibling kernels are built to avoid.
+    Measured concretely on `test_files/Processed_Quotes.csv`'s UNIT_PRICE column (see
+    `benchmarks/algenta_llm_tools/eval/probe_compute_std_kernel.py`): the uplift benchmark's
+    q05 previously had a tool-calling model do `execute(compute_mean)` +
+    `execute(compute_variance)` and then take a manual square root itself, landing on
+    2332.003 against a true `numpy(ddof=1)` value of 2331.963152 -- a real, measured error
+    from that extra, model-side arithmetic step. `sqrt(compute_variance(...))` computed
+    here, in double precision, in the same kernel call as the variance itself, removes that
+    step (and its error) entirely: there is no intermediate value for a caller to round,
+    retype, or misplace a digit of.
+
+    Delegates its read entirely to `compute_variance`, so the identical requirement applies
+    here unchanged: reads `v[i]` for `i` in `[0, n)` behind `compute_variance`'s own `n <= 1`
+    early return, and `n <= len(v)` is the complete read requirement. The non-finite-return
+    hazard noted on `compute_mean` and `compute_variance` applies to this result too --
+    `compute_variance` never returns a negative number for finite input, so `sqrt` here
+    never sees a negative argument and introduces no new failure mode of its own.
+
+    @capability compute_std
+    complexity: O(n)
+    counts:
+    - n <= len(v) [enforced]
+    @endcapability
+    """
+    return sqrt(compute_variance(v, n, mean))
+
 def pctile(v: List[Float64], n: Int, p: Int) -> Float64:
     """O(1) percentile index into a PRE-SORTED buffer of `n` values (`p` in [0,100]).
 

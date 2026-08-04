@@ -5,7 +5,7 @@ description: The full catalog of Algenta runtime-library modules — vision, LLM
 
 # Runtime library catalog
 
-The engine ships a compiled runtime library of **640 modules** and **6019 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
+The engine ships a compiled runtime library of **640 modules** and **6020 functions** — the low-level building blocks the high-level engines are made of. You can call any one directly with a `module` + `function` name; see [Runtime libraries](runtime-libraries.md) for how to list, check, and execute them.
 
 {% hint style="info" %}
 The catalog is **self-describing** — `GET /v1/libraries` returns every module and its exported functions live, and `GET /v1/libraries?q=<term>` filters by name (for example `?q=image` for the vision modules, `?q=llm` for sampling). This page groups the modules so you can see what is available; the endpoint is the authoritative, always-current list.
@@ -163,7 +163,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `scipy_stats_ops` | 10 |
 | `stat_tests` | 11 |
 | `stateful_runtime` | 10 |
-| `stats` | 12 |
+| `stats` | 13 |
 | `stats_bootstrap` | 10 |
 | `timeseries_stats` | 9 |
 

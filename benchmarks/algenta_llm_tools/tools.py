@@ -1,4 +1,4 @@
-"""Five LLM tool-calling functions over the real, public Algenta Python SDK.
+"""Six LLM tool-calling functions over the real, public Algenta Python SDK.
 
 Every number these tools return came out of a compiled Mojo kernel, dispatched
 through the exact same public surface any other ``pip install algenta`` caller
@@ -15,7 +15,7 @@ OpenAI-function-calling-compatible JSON schema (``*_SCHEMA``) in the
 ``{"type": "function", "function": {...}}`` shape this repo's own LLM benchmark code
 already speaks (see ``benchmarks/optmodel_plane/llm_e2e.py``'s ``response_format``
 usage for the same JSON-schema style, applied there to structured output instead of
-tool calls). ``TOOL_SCHEMAS`` / ``TOOL_FUNCTIONS`` bundle all five for a
+tool calls). ``TOOL_SCHEMAS`` / ``TOOL_FUNCTIONS`` bundle all six for a
 ``client.chat.completions.create(tools=TOOL_SCHEMAS, ...)`` call plus dispatch.
 
 Design notes worth reading before wiring this into an agent loop:
@@ -69,6 +69,7 @@ __all__ = [
     "execute",
     "explain",
     "get_column",
+    "get_columns",
     "group_by_aggregate",
     "configure_dataset",
     "get_stored_result",
@@ -76,6 +77,7 @@ __all__ = [
     "EXECUTE_SCHEMA",
     "EXPLAIN_SCHEMA",
     "GET_COLUMN_SCHEMA",
+    "GET_COLUMNS_SCHEMA",
     "GROUP_BY_AGGREGATE_SCHEMA",
     "TOOL_SCHEMAS",
     "TOOL_FUNCTIONS",
@@ -639,7 +641,150 @@ def get_column(
     }
 
 
-# ── tool 5: group_by_aggregate (added for the LLM-uplift eval; see module note below) ──
+# ── tool 5: get_columns (added to close a real uplift-eval gap; see note below) ────
+#
+# `get_column` reads exactly ONE column and drops ITS OWN nulls independently of any
+# other column. That is silently wrong the moment a caller needs two-plus columns
+# TOGETHER for one statistic -- a Pearson correlation, a joint aggregate, a scatter of
+# X vs Y -- because the two columns' null patterns are not guaranteed to match. A model
+# calling `get_column("UNIT_PRICE", dropna=True)` then `get_column("QUANTITY",
+# dropna=True)` gets back two lists whose positions no longer correspond to the same
+# real row the instant a row is null in one column but not the other: `col_a[i]` and
+# `col_b[i]` are no longer the same quote line item, and a kernel like
+# `stat_tests.pearson_r_strict` has no way to detect that after the fact -- it just
+# computes a correlation over misaligned pairs and returns a confidently wrong number.
+# This was a real, measured miss in this eval's q16 (Pearson correlation of UNIT_PRICE
+# vs QUANTITY): the model reached for `get_column` per column, exactly this way.
+#
+# `get_columns` (plural) is the real fix, not a workaround: it takes the list of
+# column names UP FRONT, drops a row if ANY of them is null there (matching
+# `df.dropna(subset=[...])[cols]`'s own semantics -- the correct row-alignment
+# contract for a joint statistic), and returns every column's values in that SAME,
+# jointly-filtered row order. `get_column` is left completely unchanged for the
+# single-column case it already serves correctly.
+
+GET_COLUMNS_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "get_columns",
+        "description": (
+            "Read TWO OR MORE columns' real values, PRE-ALIGNED to their common "
+            "non-null rows: a row is dropped if ANY requested column is null there, "
+            "and every returned column keeps that SAME row order, so column_a[i] and "
+            "column_b[i] always describe the same real row. PREFER THIS over calling "
+            "get_column once per column for ANY multi-column statistic -- Pearson/"
+            "Spearman correlation, a joint aggregate, a scatter of X vs Y, or anything "
+            "else that needs two-plus columns paired up. Calling get_column "
+            "separately per column drops each column's nulls INDEPENDENTLY, which "
+            "silently misaligns rows the instant the columns' null patterns differ, "
+            "and the kernel you feed the result into (e.g. "
+            "stat_tests.pearson_r_strict) has no way to detect that after the fact -- "
+            "it will just compute a confidently wrong answer over mismatched pairs. "
+            "Optionally filtered to rows where another column exactly equals a given "
+            "value, exactly like get_column. Large results are truncated for display "
+            "here (see 'truncated'/'row_count'); the full, aligned values for EACH "
+            "column are kept under 'result_ids' -- one id per requested column name, "
+            "ready to pass straight into execute()'s args as {'result_id': '<id>'} "
+            "for that kernel argument."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "columns": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "description": (
+                        "Two or more exact column names whose non-null values must be "
+                        "jointly aligned, e.g. ['UNIT_PRICE', 'QUANTITY']."
+                    ),
+                },
+                "filter_column": {
+                    "type": "string",
+                    "description": "Optional column to filter rows on (exact-match WHERE).",
+                },
+                "filter_value": {
+                    "type": "string",
+                    "description": "Value filter_column must exactly equal, as a string.",
+                },
+                "dropna": {
+                    "type": "boolean",
+                    "description": (
+                        "Drop a row if ANY requested column is null there (default "
+                        "true). Leave this true for any joint statistic; set false "
+                        "only if you specifically need every raw row, nulls included."
+                    ),
+                },
+            },
+            "required": ["columns"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def get_columns(
+    columns: list[str],
+    filter_column: str | None = None,
+    filter_value: str | None = None,
+    dropna: bool = True,
+) -> dict[str, Any]:
+    """Real values for TWO-PLUS columns, jointly aligned to their common non-null rows
+    (a row is dropped if ANY requested column is null there, matching
+    ``df.dropna(subset=columns)[columns]``) -- the correct row-alignment for any
+    multi-column statistic. Raises ``AlgentaToolError`` for fewer than two columns or
+    an unknown column/filter_column name -- never returns a guessed/misaligned result.
+    """
+    if (
+        not isinstance(columns, list)
+        or len(columns) < 2
+        or any(not isinstance(c, str) for c in columns)
+    ):
+        raise AlgentaToolError("columns must be a list of at least two column names.")
+    df = _quotes_df()
+    for column in columns:
+        if column not in df.columns:
+            raise AlgentaToolError(f"Unknown column {column!r}. Known columns: {list(df.columns)}")
+
+    working = df[list(columns)]
+    where = None
+    if filter_column is not None:
+        if filter_column not in df.columns:
+            raise AlgentaToolError(f"Unknown filter_column {filter_column!r}.")
+        mask = df[filter_column].astype(str) == str(filter_value)
+        working = working[mask]
+        where = f"{filter_column} == {filter_value!r}"
+    if dropna:
+        # Row-wise: dropped if ANY requested column is null there -- the joint
+        # alignment contract this tool exists to provide, not a per-column dropna.
+        working = working.dropna(subset=list(columns))
+
+    import pandas as pd  # local import, see configure_dataset()
+
+    per_column_values: dict[str, list[Any]] = {}
+    for column in columns:
+        series = working[column]
+        if pd.api.types.is_numeric_dtype(series):
+            per_column_values[column] = [None if pd.isna(x) else float(x) for x in series.tolist()]
+        else:
+            per_column_values[column] = [None if pd.isna(x) else str(x) for x in series.tolist()]
+
+    row_count = len(working)
+    rows_preview = [
+        {column: per_column_values[column][i] for column in columns} for i in range(row_count)
+    ]
+    shaped = shape_for_model(rows_preview)
+    return {
+        "columns": columns,
+        "filter": where,
+        "row_count": row_count,
+        "value": shaped["value"],
+        "truncated": shaped["truncated"],
+        "result_ids": {column: store_result(per_column_values[column]) for column in columns},
+    }
+
+
+# ── tool 6: group_by_aggregate (added for the LLM-uplift eval; see module note below) ──
 #
 # `execute` calls exactly one kernel by name, and `get_column` reads exactly one
 # column -- neither can answer "grouping by CUST_TYPE, which value has the highest
@@ -801,6 +946,7 @@ TOOL_SCHEMAS = [
     EXECUTE_SCHEMA,
     EXPLAIN_SCHEMA,
     GET_COLUMN_SCHEMA,
+    GET_COLUMNS_SCHEMA,
     GROUP_BY_AGGREGATE_SCHEMA,
 ]
 TOOL_FUNCTIONS = {
@@ -808,5 +954,6 @@ TOOL_FUNCTIONS = {
     "execute": execute,
     "explain": explain,
     "get_column": get_column,
+    "get_columns": get_columns,
     "group_by_aggregate": group_by_aggregate,
 }
