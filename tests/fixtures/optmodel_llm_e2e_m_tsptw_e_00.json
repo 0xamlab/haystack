@@ -1,0 +1,1219 @@
+{
+  "id": "m_tsptw_e_00",
+  "family": "routing",
+  "subcategory": "tsptw",
+  "difficulty": "easy",
+  "llm_formulation": {
+    "maximize": false,
+    "variables": [
+      {
+        "name": "x_0_1",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_0_2",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_0_3",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_0_4",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_1_0",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_1_2",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_1_3",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_1_4",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_2_0",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_2_1",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_2_3",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_2_4",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_3_0",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_3_1",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_3_2",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_3_4",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_4_0",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_4_1",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_4_2",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "x_4_3",
+        "kind": "binary",
+        "lower": null,
+        "upper": null
+      },
+      {
+        "name": "t_0",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "t_0_return",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "t_1",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "t_2",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "t_3",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "t_4",
+        "kind": "continuous",
+        "lower": 0,
+        "upper": null
+      },
+      {
+        "name": "u_1",
+        "kind": "integer",
+        "lower": 1,
+        "upper": 4
+      },
+      {
+        "name": "u_2",
+        "kind": "integer",
+        "lower": 1,
+        "upper": 4
+      },
+      {
+        "name": "u_3",
+        "kind": "integer",
+        "lower": 1,
+        "upper": 4
+      },
+      {
+        "name": "u_4",
+        "kind": "integer",
+        "lower": 1,
+        "upper": 4
+      }
+    ],
+    "objective": {
+      "terms": [
+        {
+          "var": "x_0_1",
+          "coeff": 54
+        },
+        {
+          "var": "x_0_2",
+          "coeff": 47
+        },
+        {
+          "var": "x_0_3",
+          "coeff": 15
+        },
+        {
+          "var": "x_0_4",
+          "coeff": 28
+        },
+        {
+          "var": "x_1_0",
+          "coeff": 54
+        },
+        {
+          "var": "x_1_2",
+          "coeff": 55
+        },
+        {
+          "var": "x_1_3",
+          "coeff": 39
+        },
+        {
+          "var": "x_1_4",
+          "coeff": 66
+        },
+        {
+          "var": "x_2_0",
+          "coeff": 47
+        },
+        {
+          "var": "x_2_1",
+          "coeff": 55
+        },
+        {
+          "var": "x_2_3",
+          "coeff": 46
+        },
+        {
+          "var": "x_2_4",
+          "coeff": 30
+        },
+        {
+          "var": "x_3_0",
+          "coeff": 15
+        },
+        {
+          "var": "x_3_1",
+          "coeff": 39
+        },
+        {
+          "var": "x_3_2",
+          "coeff": 46
+        },
+        {
+          "var": "x_3_4",
+          "coeff": 37
+        },
+        {
+          "var": "x_4_0",
+          "coeff": 28
+        },
+        {
+          "var": "x_4_1",
+          "coeff": 66
+        },
+        {
+          "var": "x_4_2",
+          "coeff": 30
+        },
+        {
+          "var": "x_4_3",
+          "coeff": 37
+        }
+      ],
+      "constant": 0
+    },
+    "constraints": [
+      {
+        "name": "depot_outgoing",
+        "terms": [
+          {
+            "var": "x_0_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_0_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_0_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_0_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "depot_incoming",
+        "terms": [
+          {
+            "var": "x_1_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_0",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust1_incoming",
+        "terms": [
+          {
+            "var": "x_0_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_1",
+            "coeff": 0
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust1_outgoing",
+        "terms": [
+          {
+            "var": "x_1_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust2_incoming",
+        "terms": [
+          {
+            "var": "x_0_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_2",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust2_outgoing",
+        "terms": [
+          {
+            "var": "x_2_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust3_incoming",
+        "terms": [
+          {
+            "var": "x_0_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_3",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_3",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust3_outgoing",
+        "terms": [
+          {
+            "var": "x_3_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust4_incoming",
+        "terms": [
+          {
+            "var": "x_0_4",
+            "coeff": 1
+          },
+          {
+            "var": "x_1_4",
+            "coeff": 1
+          },
+          {
+            "var": "x_2_4",
+            "coeff": 1
+          },
+          {
+            "var": "x_3_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "cust4_outgoing",
+        "terms": [
+          {
+            "var": "x_4_0",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_1",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_2",
+            "coeff": 1
+          },
+          {
+            "var": "x_4_3",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 1
+      },
+      {
+        "name": "time_0_1",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          },
+          {
+            "var": "t_0",
+            "coeff": -1
+          },
+          {
+            "var": "x_0_1",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 54
+      },
+      {
+        "name": "time_0_2",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          },
+          {
+            "var": "t_0",
+            "coeff": -1
+          },
+          {
+            "var": "x_0_2",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 47
+      },
+      {
+        "name": "time_0_3",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          },
+          {
+            "var": "t_0",
+            "coeff": -1
+          },
+          {
+            "var": "x_0_3",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 15
+      },
+      {
+        "name": "time_0_4",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          },
+          {
+            "var": "t_0",
+            "coeff": -1
+          },
+          {
+            "var": "x_0_4",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 28
+      },
+      {
+        "name": "time_1_0",
+        "terms": [
+          {
+            "var": "t_0_return",
+            "coeff": 1
+          },
+          {
+            "var": "t_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_0",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 56
+      },
+      {
+        "name": "time_1_2",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          },
+          {
+            "var": "t_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_2",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 57
+      },
+      {
+        "name": "time_1_3",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          },
+          {
+            "var": "t_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_3",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 41
+      },
+      {
+        "name": "time_1_4",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          },
+          {
+            "var": "t_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_4",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 68
+      },
+      {
+        "name": "time_2_0",
+        "terms": [
+          {
+            "var": "t_0_return",
+            "coeff": 1
+          },
+          {
+            "var": "t_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_0",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 49
+      },
+      {
+        "name": "time_2_1",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          },
+          {
+            "var": "t_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_1",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 57
+      },
+      {
+        "name": "time_2_3",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          },
+          {
+            "var": "t_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_3",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 48
+      },
+      {
+        "name": "time_2_4",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          },
+          {
+            "var": "t_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_4",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 32
+      },
+      {
+        "name": "time_3_0",
+        "terms": [
+          {
+            "var": "t_0_return",
+            "coeff": 1
+          },
+          {
+            "var": "t_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_0",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 17
+      },
+      {
+        "name": "time_3_1",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          },
+          {
+            "var": "t_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_1",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 41
+      },
+      {
+        "name": "time_3_2",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          },
+          {
+            "var": "t_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_2",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 48
+      },
+      {
+        "name": "time_3_4",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          },
+          {
+            "var": "t_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_4",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 39
+      },
+      {
+        "name": "time_4_0",
+        "terms": [
+          {
+            "var": "t_0_return",
+            "coeff": 1
+          },
+          {
+            "var": "t_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_0",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 30
+      },
+      {
+        "name": "time_4_1",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          },
+          {
+            "var": "t_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_1",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 68
+      },
+      {
+        "name": "time_4_2",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          },
+          {
+            "var": "t_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_2",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 32
+      },
+      {
+        "name": "time_4_3",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          },
+          {
+            "var": "t_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_3",
+            "coeff": -10000
+          }
+        ],
+        "sense": ">=",
+        "rhs": 39
+      },
+      {
+        "name": "t0_start_fixed",
+        "terms": [
+          {
+            "var": "t_0",
+            "coeff": 1
+          }
+        ],
+        "sense": "==",
+        "rhs": 0
+      },
+      {
+        "name": "tw_1_earliest",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          }
+        ],
+        "sense": ">=",
+        "rhs": 92
+      },
+      {
+        "name": "tw_1_latest",
+        "terms": [
+          {
+            "var": "t_1",
+            "coeff": 1
+          }
+        ],
+        "sense": "<=",
+        "rhs": 105
+      },
+      {
+        "name": "tw_2_earliest",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          }
+        ],
+        "sense": ">=",
+        "rhs": 173
+      },
+      {
+        "name": "tw_2_latest",
+        "terms": [
+          {
+            "var": "t_2",
+            "coeff": 1
+          }
+        ],
+        "sense": "<=",
+        "rhs": 193
+      },
+      {
+        "name": "tw_3_earliest",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          }
+        ],
+        "sense": ">=",
+        "rhs": 129
+      },
+      {
+        "name": "tw_3_latest",
+        "terms": [
+          {
+            "var": "t_3",
+            "coeff": 1
+          }
+        ],
+        "sense": "<=",
+        "rhs": 148
+      },
+      {
+        "name": "tw_4_earliest",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          }
+        ],
+        "sense": ">=",
+        "rhs": 23
+      },
+      {
+        "name": "tw_4_latest",
+        "terms": [
+          {
+            "var": "t_4",
+            "coeff": 1
+          }
+        ],
+        "sense": "<=",
+        "rhs": 40
+      },
+      {
+        "name": "mtz_1_2",
+        "terms": [
+          {
+            "var": "u_1",
+            "coeff": 1
+          },
+          {
+            "var": "u_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_2",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_1_3",
+        "terms": [
+          {
+            "var": "u_1",
+            "coeff": 1
+          },
+          {
+            "var": "u_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_3",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_1_4",
+        "terms": [
+          {
+            "var": "u_1",
+            "coeff": 1
+          },
+          {
+            "var": "u_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_1_4",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_2_1",
+        "terms": [
+          {
+            "var": "u_2",
+            "coeff": 1
+          },
+          {
+            "var": "u_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_1",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_2_3",
+        "terms": [
+          {
+            "var": "u_2",
+            "coeff": 1
+          },
+          {
+            "var": "u_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_3",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_2_4",
+        "terms": [
+          {
+            "var": "u_2",
+            "coeff": 1
+          },
+          {
+            "var": "u_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_2_4",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_3_1",
+        "terms": [
+          {
+            "var": "u_3",
+            "coeff": 1
+          },
+          {
+            "var": "u_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_1",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_3_2",
+        "terms": [
+          {
+            "var": "u_3",
+            "coeff": 1
+          },
+          {
+            "var": "u_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_2",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_3_4",
+        "terms": [
+          {
+            "var": "u_3",
+            "coeff": 1
+          },
+          {
+            "var": "u_4",
+            "coeff": -1
+          },
+          {
+            "var": "x_3_4",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_4_1",
+        "terms": [
+          {
+            "var": "u_4",
+            "coeff": 1
+          },
+          {
+            "var": "u_1",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_1",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_4_2",
+        "terms": [
+          {
+            "var": "u_4",
+            "coeff": 1
+          },
+          {
+            "var": "u_2",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_2",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      },
+      {
+        "name": "mtz_4_3",
+        "terms": [
+          {
+            "var": "u_4",
+            "coeff": 1
+          },
+          {
+            "var": "u_3",
+            "coeff": -1
+          },
+          {
+            "var": "x_4_3",
+            "coeff": 4
+          }
+        ],
+        "sense": "<=",
+        "rhs": 3
+      }
+    ]
+  }
+}

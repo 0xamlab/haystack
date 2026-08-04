@@ -67,8 +67,13 @@ MIRROR_PATH = BUILD / "mirror_instances.json"
 RESULTS_PATH = BUILD / "llm_e2e_results.json"
 
 MODEL = "gpt-5-mini"
-# Checked live 2026-08-01 at developers.openai.com/api/docs/pricing (per 1M tokens).
-PRICING = {"gpt-5-mini": {"input": 0.25, "output": 2.00}}
+# Checked live 2026-08-01 (gpt-5-mini) and 2026-08-03 (gpt-5.4, the frontier tier the
+# MM-OptBench paper's own "GPT-5.4-class" comparison bar names) at
+# developers.openai.com/api/docs/pricing (per 1M tokens).
+PRICING = {
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5.4": {"input": 2.50, "output": 15.00},
+}
 
 # One easy-tier instance per subcategory (full taxonomy coverage) plus one medium-tier
 # instance per family (difficulty variety), mirroring the families/subcategories the
@@ -197,10 +202,10 @@ RESPONSE_SCHEMA = {
 }
 
 
-def call_llm(client, problem_text: str) -> tuple[dict, int, int]:
+def call_llm(client, model: str, problem_text: str) -> tuple[dict, int, int]:
     """One structured-output call. Returns (formulation_dict, prompt_tokens, completion_tokens)."""
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": problem_text},
@@ -244,6 +249,14 @@ def llm_formulation_to_instance(original: dict, formulation: dict) -> dict:
     def _terms_to_coeffs(terms: list[dict], where: str) -> dict:
         coeffs: dict[str, float] = {}
         for t in terms:
+            # A term with coefficient EXACTLY 0.0 is a mathematical no-op regardless
+            # of whether the variable it names is declared — drop it before the
+            # undeclared-variable check rather than hard-failing the whole parse on
+            # it. This is an exact equality check on purpose: the LLM either wrote a
+            # literal 0 or it didn't, and a tolerance here could mask a real
+            # near-zero-but-nonzero coefficient that DOES need the strict check below.
+            if float(t["coeff"]) == 0.0:
+                continue
             name = t["var"]
             if name not in var_names:
                 raise ValueError(f"{where}: references undeclared variable {name!r}")
@@ -315,7 +328,17 @@ def main() -> None:
                              "re-spending on an already-good result)")
     parser.add_argument("--results-in", default=str(RESULTS_PATH),
                         help="existing results.json to merge --redo-ids into")
+    parser.add_argument("--model", default=MODEL, choices=sorted(PRICING),
+                        help="which model to run the sample through (must have a checked-live "
+                             "entry in PRICING)")
+    parser.add_argument("--results-out", default=None,
+                        help="where to write results.json (default: RESULTS_PATH, i.e. "
+                             "build/optmodel_plane/llm_e2e_results.json); pass a distinct path "
+                             "when running a different model so it doesn't clobber a prior "
+                             "model's saved results")
     args = parser.parse_args()
+    model = args.model
+    results_path = Path(args.results_out) if args.results_out else RESULTS_PATH
 
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -361,10 +384,10 @@ def main() -> None:
             results.append(r)
             continue
 
-        print(f"  {inst['id']}: calling {MODEL}...", flush=True)
+        print(f"  {inst['id']}: calling {model}...", flush=True)
         t0 = time.monotonic()
         try:
-            formulation, ptok, ctok = call_llm(client, problem_text)
+            formulation, ptok, ctok = call_llm(client, model, problem_text)
         except Exception as e:
             r.latency_s = time.monotonic() - t0
             r.status, r.reason = "api_error", repr(e)
@@ -391,12 +414,12 @@ def main() -> None:
               f"({len(formulation['variables'])} vars, {len(formulation['constraints'])} cons), "
               f"{ptok}+{ctok} tok, {r.latency_s:.1f}s", flush=True)
 
-    cost = (total_prompt_tok * PRICING[MODEL]["input"]
-            + total_completion_tok * PRICING[MODEL]["output"]) / 1_000_000
+    cost = (total_prompt_tok * PRICING[model]["input"]
+            + total_completion_tok * PRICING[model]["output"]) / 1_000_000
     print(f"\nLLM calls done: {len(llm_instances)}/{len(sample)} produced a well-formed "
           f"formulation; {total_prompt_tok} prompt + {total_completion_tok} completion "
-          f"tokens; cost ${cost:.4f} at {MODEL} pricing "
-          f"(${PRICING[MODEL]['input']}/${PRICING[MODEL]['output']} per 1M in/out)")
+          f"tokens; cost ${cost:.4f} at {model} pricing "
+          f"(${PRICING[model]['input']}/${PRICING[model]['output']} per 1M in/out)")
 
     if llm_instances:
         print(f"\nrunning {len(llm_instances)} LLM formulations through optmodel "
@@ -484,7 +507,7 @@ def main() -> None:
               f"{str(rd['paper_rule_pass']):<11}{(note or '')[:30]:<30}")
 
     out = {
-        "model": MODEL,
+        "model": model,
         "n_sample": len(all_results),
         "n_well_formed": sum(1 for rd in all_results if rd["status"] == "ok"),
         "total_prompt_tokens": combined_prompt_tok,
@@ -494,8 +517,8 @@ def main() -> None:
         "family_table": fam_table,
         "results": all_results,
     }
-    RESULTS_PATH.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    print(f"\nwrote {RESULTS_PATH}")
+    results_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    print(f"\nwrote {results_path}")
 
 
 if __name__ == "__main__":

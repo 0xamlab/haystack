@@ -151,6 +151,15 @@ of free-form language understanding than the withheld benchmark, though it still
 requires the model to read a scenario, recover every entity and number, and produce a
 correct mathematical formulation — the extraction skill MM-OptBench itself scores.
 
+**Solver-code caveat, stated plainly**: this harness's LLM is only ever asked to
+produce a structured JSON formulation object (the schema above), which this repo's
+own `solve.mojo` + `judge.mojo` then solve directly. MM-OptBench's actual published
+protocol additionally requires the model to write EXECUTABLE SOLVER CODE — a Python
+script using networkx/scipy/pulp/ortools/gurobipy/mip — that the benchmark's own
+harness runs and checks for correctness. This repo's number is therefore currently
+measuring a materially easier subtask than the real benchmark's contract: extracting
+a correct formulation, never having to also get solver-code correctness right.
+
 ### Measured result (2026-08-02, gpt-5-mini, single pass, real spend)
 
 Sample: 32 instances — all 26 subcategories at the easy tier (full taxonomy coverage,
@@ -202,3 +211,57 @@ paper's 52% figure describes. That gap (small proxy sample vs. the withheld 780-
 instance benchmark; single-model single-pass; no visual half) is real and stated
 here plainly. It is not, on its own, a claim of an outright win over the paper's
 number — see the repo's benchmark-page policy for what that requires.
+
+### Also measured with the frontier tier (2026-08-03, gpt-5.4, single pass, real spend)
+
+Same 32-instance sample, same fixed parser, same `harness.referee` anti-vacuity
+standard — this time with `gpt-5.4` (OpenAI), the exact frontier tier the paper's own
+"GPT-5.4-class frontier ~52% pass@1" comparison bar names, checked live against
+`developers.openai.com/api/docs/pricing` on 2026-08-03 ($2.50/$15.00 per 1M
+input/output tokens). `--model`/`--results-out` (added to `llm_e2e.py` alongside the
+parser fix above) let this run reuse the identical mirror sample and prompts without
+touching the gpt-5-mini artifact; prompt-token totals are byte-identical between the
+two runs (28,196), confirming this is the same 32 instances, not a resample.
+
+```
+family                        n   pass   pass@1
+combinatorial                  5      5   100.0%
+location_cover_assign          6      5    83.3%
+network                        6      6   100.0%
+planning                       5      4    80.0%
+routing                        5      4    80.0%
+scheduling                     5      3    60.0%
+TOTAL                         32     27    84.4%
+```
+
+**pass@1: 27/32 = 84.4%** — the identical count as the gpt-5-mini run above (also
+27/32), at a real cost of **$0.94892** (28,196 prompt + 58,562 completion tokens; the
+frontier model used far fewer completion/reasoning tokens per call than the mini tier
+did: 58,562 vs. 135,777 for the identical prompts). All 32/32 calls produced a
+well-formed structured formulation (vs. 31/32 for gpt-5-mini). Every non-passing
+instance was independently re-verified the same way as the mini run (HiGHS re-solve
+of the LLM's own formulation): all 5 are genuine LLM modelling defects, not plane
+misclassifications — 3 independently-confirmed infeasible formulations
+(`m_facility_location_m_00`, `m_hybrid_flow_shop_e_00`, and, notably,
+`m_tsptw_e_00` — which fails here for a *different* reason than under gpt-5-mini:
+mini produced a malformed, undeclared-variable formulation that never reached the
+solver, while gpt-5.4 produced a well-formed but genuinely infeasible model), plus 2
+near-misses that independently reproduce on HiGHS from the LLM's own stated model
+(`m_inventory_routing_e_00` at 133 vs. truth 112, an 18.75% miss — larger than
+gpt-5-mini's 113-vs-112 near-miss on the same instance; `m_job_shop_e_00` at 25 vs.
+truth 24, a 4.17% miss that passed cleanly under gpt-5-mini).
+
+**Both numbers together, stated plainly — neither clears the publication bar.**
+Fixing the parser and moving to the paper's own named frontier tier make this
+measurement more correct and more thorough, but they touch neither of the two gaps
+that keep it from being a fair reproduction of MM-OptBench's own published number:
+this still runs on the same 780-instance proxy corpus (not the withheld real
+benchmark), has no visual half, and — per the solver-code caveat above — never asks
+the model to write the executable solver code the real protocol requires, only to
+emit a structured formulation this repo's own kernels solve directly. A strong
+number from a named frontier model is easy to misread as "beats MM-OptBench's 52%
+frontier figure"; it does not, because it isn't measuring the same task. Per this
+repo's benchmark-page policy (publish only a reproduction of the opponent's own
+number under directly comparable conditions), that bar is still not cleared, and
+using the frontier tier doesn't change which two gaps are the blocker — so there is
+still no gitbook page for this benchmark.
