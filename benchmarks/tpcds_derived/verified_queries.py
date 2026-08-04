@@ -1633,6 +1633,336 @@ def q85():
     )
 
 
+# ── Q37: two DIFFERENT existence checks against two DIFFERENT fact tables, ────
+# ── no aggregate at all -- GROUP BY is pure DISTINCT dedup on the output cols ──
+def q37():
+    """Real text (`item, inventory, date_dim, catalog_sales`, price/manufact
+    filter, a date-ranged+quantity-ranged inventory join, and a bare
+    `cs_item_sk = i_item_sk` with no other predicate on `catalog_sales`) has
+    NO SUM/COUNT/AVG anywhere -- the SELECT list is exactly the GROUP BY list,
+    so the whole query reduces to: list the (item_id, item_desc, price) of
+    every item that is BOTH (a) in inventory with on-hand quantity 100-500 on
+    some date in the 61-day window, AND (b) sold at least once via
+    catalog_sales (ever, no other filter) -- i.e. two independent semi-join
+    existence checks ANDed together, with GROUP BY acting as DISTINCT rather
+    than as a real aggregation.
+
+    Translated as two passes, each a genuine engine join over a real fact
+    table, keyed on the SAME dictionary-encoded (item_id, item_desc) code (+
+    the item's own numeric `i_current_price`, needed in the key because a
+    handful of items share one (item_id, item_desc) pair across SCD versions
+    at a different price -- exactly the Q3/Q52/Q55 i_brand/i_brand_id lesson,
+    reapplied here to a 2-string + 1-numeric key instead of 2 strings):
+
+      Pass A: chunk `inventory` (11,745,000 rows -- the single largest fact
+      table in this whole exercise, needing 14 batches under `MAX_ROWS`),
+      semi-join each batch to the pre-filtered `date_dim` window, filter
+      `inv_quantity_on_hand` in [100,500], then INNER join the small `item_ok`
+      side table and collect the surviving (code, price) pairs into a Python
+      set -- that set IS the existence check, no aggregate needed.
+
+      Pass B: chunk `catalog_sales` (1,441,548 rows, 2 batches), INNER join
+      the SAME `item_ok` side table (no other filter -- `catalog_sales`
+      appears in the real query text with nothing but the equi-join), and
+      collect (code, price) pairs the same way.
+
+    The final answer is the SET INTERSECTION of the two passes (an item
+    passes only if it is in both), decoded back to (item_id, item_desc,
+    price) and sorted by item_id.
+
+    At SF=1, the real substituted parameters (`i_current_price BETWEEN 29 AND
+    59`, `i_manufact_id IN (705,742,777,944)`) happen to select ZERO items --
+    checked directly (`SELECT count(*) FROM item WHERE i_current_price
+    BETWEEN 29 AND 59 AND i_manufact_id IN (705,742,777,944)` returns 0 on the
+    real generated data), so both DuckDB and a raw independent Postgres run of
+    the identical query text also return 0 rows -- a genuine, disclosed 0-row
+    PASS, the same shape as Q25's. The join/semi-join mechanics themselves
+    were verified independently on non-trivial data before trusting that:
+    widening the price filter to `BETWEEN 0 AND 200` (same manufact_id list)
+    yields 21 qualifying items and an 11-row final answer, and the engine's
+    output on that widened query is byte-for-byte identical to DuckDB's own
+    run of the same widened text, in the same order -- so the 0-row result
+    for the official parameters is the query having no answer at this scale,
+    not the translation being untested.
+    """
+    t0 = time.perf_counter()
+    item_ok_rows, item_code_map = dim_with_code(
+        "i_item_sk",
+        ["i_item_id", "i_item_desc"],
+        "item WHERE i_current_price BETWEEN 29 AND 59 AND i_manufact_id IN (705,742,777,944)",
+        extra_cols=["i_current_price"],
+    )
+    date_ok_rows = [
+        [r["d_date_sk"]]
+        for r in pg_fetch(
+            "SELECT d_date_sk FROM date_dim WHERE d_date BETWEEN '2002-03-29' "
+            "AND ('2002-03-29'::date + INTERVAL '60 days')"
+        )
+    ]
+
+    inv_cols = ["inv_item_sk", "inv_date_sk", "inv_quantity_on_hand"]
+    inv_fact = pg_fetch(f"SELECT {', '.join(inv_cols)} FROM inventory")
+    t1 = time.perf_counter()
+
+    inv_pass: set[tuple] = set()
+    for batch in chunk(inv_fact):
+        rows = [[r[c] for c in inv_cols] for r in batch]
+        q = (
+            Query(columns=inv_cols, rows=rows)
+            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+            .join("date_ok", left_on="inv_date_sk", right_on="d_date_sk", how="semi")
+            .filter((col("inv_quantity_on_hand") >= 100.0) & (col("inv_quantity_on_hand") <= 500.0))
+            .with_table(
+                "item_ok", ["i_item_sk", "grp_code", "i_current_price"], rows=item_ok_rows
+            )
+            .join("item_ok", left_on="inv_item_sk", right_on="i_item_sk", how="inner")
+            .select("item_ok.grp_code", "item_ok.i_current_price")
+        )
+        for r in run_query(q).rows:
+            inv_pass.add((r[0], r[1]))
+    t2 = time.perf_counter()
+
+    cs_fact = pg_fetch("SELECT cs_item_sk FROM catalog_sales")
+    t3 = time.perf_counter()
+
+    cs_pass: set[tuple] = set()
+    for batch in chunk(cs_fact):
+        rows = [[r["cs_item_sk"]] for r in batch]
+        q = (
+            Query(columns=["cs_item_sk"], rows=rows)
+            .with_table(
+                "item_ok", ["i_item_sk", "grp_code", "i_current_price"], rows=item_ok_rows
+            )
+            .join("item_ok", left_on="cs_item_sk", right_on="i_item_sk", how="inner")
+            .select("item_ok.grp_code", "item_ok.i_current_price")
+        )
+        for r in run_query(q).rows:
+            cs_pass.add((r[0], r[1]))
+    t4 = time.perf_counter()
+
+    final = []
+    for code, price in inv_pass & cs_pass:
+        item_id, item_desc = item_code_map[code]
+        final.append((_strip(item_id), _strip(item_desc), price))
+    final.sort(key=lambda t: (t[0] is None, t[0]))
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/37.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        dd = (_strip(d[0]), _strip(d[1]), float(d[2]))
+        ok = e[0] == dd[0] and e[1] == dd[1] and _close(e[2], dd[2])
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"item_ok={len(item_ok_rows)} fetch={t1 - t0:.2f}s inv_engine={t2 - t1:.2f}s "
+        f"cs_fetch={t3 - t2:.2f}s cs_engine={t4 - t3:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+def q82():
+    """No aggregate function anywhere in the SELECT list -- `GROUP BY i_item_id,
+    i_item_desc, i_current_price` with nothing being summed/averaged is SQL's
+    way of asking for DISTINCT over those three columns, once the
+    item/inventory/store_sales join has narrowed the rows. That turns the
+    whole query into two existence checks against `item`'s dictionary-encoded
+    (i_item_id, i_item_desc, i_current_price) triple -- no aggregation, and no
+    map-reduce combine beyond a plain Python set union across fact-table
+    chunks:
+
+      1. an item qualifies if it has >=1 `inventory` row whose `inv_date_sk`
+         falls in the qualifying date range (resolved dimension-only against
+         `date_dim`, exactly like every other date filter in this file) AND
+         whose `inv_quantity_on_hand` is between 100 and 500 (a FACT table's
+         own numeric column, filtered by the engine's real `filter` op --
+         `(col(...) >= lo) & (col(...) <= hi)` -- the same way Q13/Q48 filter
+         `ss_sales_price`/`ss_net_profit`; not pre-filtered in Postgres);
+      2. AND it has >=1 `store_sales` row at all -- a second, unconditional
+         existence check, no predicate on that side beyond the join itself.
+
+    All three joins here (`inventory`-`date_dim` via a pre-resolved
+    `d_date_sk` set; `inventory`-`item` and `store_sales`-`item`) are plain
+    single-column equality joins on real surrogate keys -- no composite key
+    needed here, unlike Q17/Q25/Q29/Q85. `i_item_id`/`i_item_desc`/
+    `i_current_price` dictionary-encode as ONE 3-tuple via `dim_with_code`
+    (the same trick Q3/Q52/Q55 used for the (i_brand, i_brand_id) pair after
+    finding brand_id does not functionally determine brand): two items
+    sharing all three values collapse to one engine-side code automatically,
+    matching SQL GROUP BY's own tie rule, while a distinct `i_item_sk` with a
+    different desc/price is correctly kept as its own group.
+
+    Two CHAR/VARCHAR gotchas, both checked against the real generated data
+    rather than assumed: `i_item_id` is `char(16)` and always exactly 16
+    real characters at SF=1 (no Postgres CHAR-padding ever actually appears,
+    but it is stripped anyway for the same reason every other CHAR dimension
+    column in this file is); `i_item_desc` is `varchar(200)` -- NOT a CHAR
+    column, so a trailing space there (several qualifying rows have one) is
+    real DATA CONTENT, not padding, and stripping it would silently produce a
+    false PASS by discarding a real difference DuckDB's own output keeps --
+    exactly the class of bug Q85's own comment on `r_reason_desc` already
+    documents; verified directly against the raw Postgres bytes here too
+    (`length(i_item_desc)` includes the trailing space) before writing this.
+    """
+    t0 = time.perf_counter()
+    item_ok_rows, item_code_map = dim_with_code(
+        "i_item_sk",
+        ["i_item_id", "i_item_desc", "i_current_price"],
+        "item WHERE i_current_price BETWEEN 58 AND 88 AND i_manufact_id IN (259,559,580,485)",
+    )
+    date_ok_rows = [
+        [r["d_date_sk"]]
+        for r in pg_fetch(
+            "SELECT d_date_sk FROM date_dim WHERE d_date BETWEEN DATE '2001-01-13' "
+            "AND (DATE '2001-01-13' + INTERVAL '60 days')"
+        )
+    ]
+
+    inv_cols = ["inv_date_sk", "inv_item_sk", "inv_quantity_on_hand"]
+    inv = pg_fetch(f"SELECT {', '.join(inv_cols)} FROM inventory")
+    ss = pg_fetch("SELECT ss_item_sk FROM store_sales")
+    t1 = time.perf_counter()
+
+    inv_codes: set = set()
+    for batch in chunk(inv):
+        rows = [[r[c] for c in inv_cols] for r in batch]
+        q = (
+            Query(columns=inv_cols, rows=rows)
+            .with_table("date_ok", ["d_date_sk"], rows=date_ok_rows)
+            .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+            .filter(
+                (col("inv_quantity_on_hand") >= 100.0) & (col("inv_quantity_on_hand") <= 500.0)
+            )
+            .join("date_ok", left_on="inv_date_sk", right_on="d_date_sk", how="semi")
+            .join("item_ok", left_on="inv_item_sk", right_on="i_item_sk", how="inner")
+            .select("item_ok.grp_code")
+            .distinct("item_ok.grp_code")
+        )
+        for r in run_query(q).rows:
+            inv_codes.add(r[0])
+
+    ss_codes: set = set()
+    for batch in chunk(ss):
+        rows = [[r["ss_item_sk"]] for r in batch]
+        q = (
+            Query(columns=["ss_item_sk"], rows=rows)
+            .with_table("item_ok", ["i_item_sk", "grp_code"], rows=item_ok_rows)
+            .join("item_ok", left_on="ss_item_sk", right_on="i_item_sk", how="inner")
+            .select("item_ok.grp_code")
+            .distinct("item_ok.grp_code")
+        )
+        for r in run_query(q).rows:
+            ss_codes.add(r[0])
+    t2 = time.perf_counter()
+
+    final_codes = inv_codes & ss_codes
+    final = []
+    for code in final_codes:
+        item_id, item_desc, price = item_code_map[code]
+        # i_item_id: char(16), strip any CHAR-padding. i_item_desc: varchar(200)
+        # -- a trailing space there is real content, never stripped (see docstring).
+        final.append((_strip(item_id), item_desc, price))
+    final.sort(key=lambda t: t[0])
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/82.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        did, ddesc, dprice = d
+        ok = e[0] == _strip(did) and e[1] == ddesc and _close(e[2], dprice)
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
+# ── Q84: 6-way dimension bridge, no GROUP BY at all — raw row-level output ─────
+def q84():
+    t0 = time.perf_counter()
+    # customer_demographics is a pure FK bridge here (cd_demo_sk = c_current_cdemo_sk,
+    # no cd_* column is ever filtered/selected) -- confirmed empirically, not assumed:
+    # resolving the customer set WITH vs WITHOUT that join produces the identical 139
+    # rows at this filter, since dsdgen guarantees c_current_cdemo_sk is either NULL or
+    # a valid cd_demo_sk. Included anyway below for fidelity to the real query text; it
+    # costs nothing since it filters nothing.
+    #
+    # This is a dimension-to-dimension resolve ONLY (customer + its own address/
+    # demo/hdemo/income-band dimensions) -- no fact table, same shape as Q91's
+    # `cust_ok` resolve. The two output STRINGS (customer_id, customername) are
+    # dictionary-encoded together via `dim_with_code`, keyed by the customer's own
+    # `c_current_cdemo_sk` (which is what the fact table `store_returns` joins on).
+    # Since c_customer_id is globally unique per customer, no two customers ever
+    # collapse onto the same code (unlike i_brand_id/i_item_id's SCD collisions).
+    from_where = """
+      (SELECT c.c_current_cdemo_sk AS join_key,
+              c.c_customer_id AS customer_id,
+              btrim(coalesce(c.c_last_name,'')) || ', ' || btrim(coalesce(c.c_first_name,'')) AS customername
+         FROM customer c
+         JOIN customer_address ca ON ca.ca_address_sk = c.c_current_addr_sk
+         JOIN customer_demographics cd ON cd.cd_demo_sk = c.c_current_cdemo_sk
+         JOIN household_demographics hd ON hd.hd_demo_sk = c.c_current_hdemo_sk
+         JOIN income_band ib ON ib.ib_income_band_sk = hd.hd_income_band_sk
+        WHERE ca.ca_city = 'Woodland'
+          AND ib.ib_lower_bound >= 60306
+          AND ib.ib_upper_bound <= 60306 + 50000
+      ) t
+    """
+    cust_ok_rows, code_map = dim_with_code("join_key", ["customer_id", "customername"], from_where)
+
+    # The query has no aggregation in its own text, but the engine's wire protocol
+    # is row-in/row-out over a join -- so instead of materializing every individual
+    # (customer, store_return) output pair (which is what the real join naturally
+    # fans out to whenever a customer's cd_demo_sk matches more than one return, see
+    # RESULTS.md's/the answer set's duplicate "Vera, Tina" row), COUNT the matches
+    # per customer code inside the engine, then replicate each (customer_id,
+    # customername) tuple `count` times in Python. That reproduces the exact
+    # row-for-row fanout — including duplicates — without changing what the engine
+    # actually computes (a real inner join + a real count, not an approximation).
+    fact_cols = ["sr_cdemo_sk"]
+    fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_returns")
+    t1 = time.perf_counter()
+
+    counts: dict = {}
+    for batch in chunk(fact):  # store_returns = 287,514 rows at SF=1, one batch
+        rows = [[r[c] for c in fact_cols] for r in batch]
+        q = (
+            Query(columns=fact_cols, rows=rows)
+            .with_table("cust_ok", ["join_key", "grp_code"], rows=cust_ok_rows)
+            .join("cust_ok", left_on="sr_cdemo_sk", right_on="join_key", how="inner")
+            .group_by("cust_ok.grp_code", "cust_ok.grp_code", agg="count")
+        )
+        for r in run_query(q).rows:
+            code, cnt = r[0], r[1]
+            counts[code] = counts.get(code, 0.0) + (cnt or 0.0)
+    t2 = time.perf_counter()
+
+    final = []
+    for code, cnt in counts.items():
+        cust_id, custname = code_map[code]
+        final.extend([(_strip(cust_id), _strip(custname))] * int(cnt))
+    final.sort(key=lambda t: t[0])
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/84.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        ok = e[0] == _strip(d[0]) and e[1] == _strip(d[1])
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
 QUERIES = {
     3: q3,
     7: q7,
@@ -1643,10 +1973,13 @@ QUERIES = {
     25: q25,
     26: q26,
     29: q29,
+    37: q37,
     42: q42,
     48: q48,
     52: q52,
     55: q55,
+    82: q82,
+    84: q84,
     85: q85,
     91: q91,
     96: q96,

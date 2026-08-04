@@ -1,16 +1,15 @@
-# Benchmark derived from TPC-DS — 16 of 99 query templates real, verified
+# Benchmark derived from TPC-DS — 19 of 99 query templates real, verified
 
 Scoped from `~/.claude/plans/benchmark-discovery-stac-tpc-synthesis.md` §3 ("TPC-DS ...
 **Recommendation: defer, don't abandon.**"). That plan named TPC-DS's gate as translation
 volume (99 templates vs TPC-H's 22) stacked on missing ops, and explicitly budgeted "~4-5x
 TPC-H's translation effort." This phase runs that translation for real, on real `dsdgen`-
 generated data, against the real compiled query-plane worker, verified against an independent
-DuckDB oracle — as far as it genuinely goes in the time budgeted, which is now **16 of 99
+DuckDB oracle — as far as it genuinely goes in the time budgeted, which is now **19 of 99
 templates, each verified row-for-row against DuckDB, not 99** (up from the original 9 — see the
-2026-08-04 "seven more templates + a resident-handle migration" section below for what changed
-and why). No query on this page is faked, approximated, or graded on partial credit: every one of
-the 99 is either a byte-exact PASS below, or is listed under "what blocks the rest" by the
-specific missing capability, not run at all.
+2026-08-04 dated sections below for what changed and why). No query on this page is faked,
+approximated, or graded on partial credit: every one of the 99 is either a byte-exact PASS below,
+or is listed under "what blocks the rest" by the specific missing capability, not run at all.
 
 Per this repo's standing publication policy, this stays in `benchmarks/` (never `gitbook/`): the
 synthesis plan is explicit that TPC-DS is not expected to clear the outright-win publication bar
@@ -167,7 +166,6 @@ didn't build.
 |---|---|---|---|
 | Scalar/correlated subquery only | 20 | 6, 10, 16, 28, 32, 35, 41, 45, 46, 61, 65, 68, 69, 71, 76, 79, 88, 90, 92, 94 | No subquery/EXISTS op; a scalar or correlated subquery has to be resolved outside the engine per-row, which stops being a small dimension-side prefetch once it's correlated to the fact row itself |
 | CTE + subquery | 15 | 1, 23, 24, 30, 33, 54, 56, 58, 60, 64, 75, 78, 81, 83, 95 | Same subquery gap, plus a `WITH` CTE the engine has no notion of (workaroundable one CTE at a time via `with_table`, as Q91 did for its customer-dimension resolve, but not attempted at this volume) |
-| Not attempted (no blocking feature found) | 3 | 37, 82, 84 | Nothing — time-boxed out, not capability-boxed out. (Down from 10 as of the original pass: 13, 15, 17, 19, 25, 29, 85 moved to "verified" in the 2026-08-04 follow-up below.) |
 | CTE + CASE + subquery | 8 | 2, 4, 11, 31, 39, 59, 74, 97 | `CASE WHEN` has no ternary node in `Expr` (comparisons/arithmetic/logical/null-tests/`coalesce` only — no branch-on-a-condition expression), plus CTE + subquery |
 | CASE + subquery | 6 | 9, 21, 34, 66, 73, 93 | Same `CASE` gap |
 | CASE only | 6 | 40, 43, 50, 62, 72, 99 | Same `CASE` gap alone |
@@ -184,10 +182,12 @@ didn't build.
 | CASE + WINDOW + ROLLUP + subquery | 1 | 70 | Four gaps stacked |
 | EXCEPT + subquery | 1 | 87 | No `EXCEPT` op |
 
-That is 83 templates (three of them — 37, 82, 84 — still "not attempted, no blocking feature
-found," time-boxed out rather than capability-boxed out) plus the 16 attempted and passed above
-makes 99. Every count came from a `grep`-based feature scan of the real generated query text,
-reproducible from the script in "Resuming this" — not a guess.
+That is 80 templates plus the 19 attempted and passed above makes 99. Every count came from a
+`grep`-based feature scan of the real generated query text, reproducible from the script in
+"Resuming this" — not a guess. The "not attempted, no blocking feature found" bucket that existed
+here as of the prior update (37, 82, 84) is now empty — all three turned out genuinely tractable
+on retry (see the dated section below), same as the 7 before them. Every remaining unattempted
+template has a real, named, checked blocker.
 
 ## Timing: the engine is slower than DuckDB at every one of the 16, and that's disclosed, not hidden
 
@@ -334,3 +334,36 @@ branch's history predates #537's merge. The 2026-08-04 update above (7 new templ
 resident-handle migration on 4 existing ones) ships in its own fresh PR, assembled from three
 parallel worktrees' independently-verified work and re-run live as one 16-query regression gate
 before merge.
+
+## 2026-08-04: the last 3 "not attempted" templates, retried — all 3 tractable
+
+The prior update's "not attempted, no blocking feature found" bucket (37, 82, 84) was retried for
+real rather than left as a permanent asterisk, matching the exact same "time-boxed out, not
+capability-boxed out" hypothesis that already proved correct for 7 of its 10 original members.
+**All 3 succeeded.** The bucket is now empty.
+
+- **Q37** — no `SUM`/`COUNT`/`AVG` at all; `GROUP BY` equals the `SELECT` list, so the whole query
+  reduces to two independent existence checks (an item has a qualifying `inventory` row AND has
+  any `catalog_sales` row) intersected in Python. At SF=1 the real substituted filter parameters
+  select zero items — verified as a genuine 0-row answer (matching DuckDB and a raw independent
+  Postgres run of the identical text), not an untested path: the join mechanics were separately
+  checked against non-trivial data by widening the filter, which produced an 11-row answer
+  byte-for-byte identical to DuckDB's own run of the same widened text.
+- **Q82** — same "`GROUP BY` with no aggregate = `DISTINCT`" shape as Q37, over `inventory` +
+  `store_sales` instead of `catalog_sales`, with only single-column equality joins throughout (no
+  composite-key workaround needed). Caught a real bug in verification: `i_item_desc` is
+  `varchar(200)` with a genuinely significant trailing space on one qualifying row — stripping it
+  (correct for the `char(16)` `i_item_id`) would have silently produced a false PASS by discarding
+  real content, so only `i_item_id` is stripped, matching the same lesson already noted on Q85's
+  `r_reason_desc`.
+- **Q84** — a raw 6-way dimension join with no `GROUP BY` at all, whose real answer set legitimately
+  contains duplicate output rows (confirmed against the official TPC-DS reference answer set
+  before writing anything) because one customer's demographic key can match more than one
+  `store_returns` row. Translated as a real engine join producing a per-customer match COUNT, then
+  replicated in Python to reproduce the exact row-for-row fanout — not an approximation of it.
+
+None of the 3 needed a capability the engine actually lacks. Full live regression after assembly:
+**19 of 19 PASS, 0 mismatches** (the 16 prior queries unregressed, plus 37/82/84 new). Total
+verified count: **19 of 99** TPC-DS templates. This still does not flip the overall verdict —
+DuckDB continues to win by orders of magnitude at every one of the 19 (Q37's `inventory` chunking
+alone costs ~97s of engine dispatch against DuckDB's 6ms) — no GitBook page follows, per policy.
