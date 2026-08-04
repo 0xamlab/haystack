@@ -38,8 +38,12 @@ only ever says `"table":"<name>"`.
 from json.parser import json_get_array, json_get_string
 
 from algenta_runtime.session import ResidentDatasets
+from columnar.batch import RecordBatch
 from query.plan import (
+    build_batch,
     json_raw_array,
+    ops_validation_error,
+    run_query_execute_on_batch,
     run_query_execute_with_tables,
     substring,
     table_dataset_handles,
@@ -82,7 +86,7 @@ fn _rows_from_resident(value: String) -> String:
     return json_get_array(value, "rows")
 
 
-fn run_query(raw: String, datasets: ResidentDatasets) -> String:
+fn run_query(raw: String, mut datasets: ResidentDatasets) -> String:
     """Run a query plan, sourcing rows from `dataset` when present, else `rows`.
 
     `dataset` takes precedence when both are given, and that is stated rather than left
@@ -163,4 +167,32 @@ fn run_query(raw: String, datasets: ResidentDatasets) -> String:
             + "' holds no 'rows' array; store either a row array or an object with a"
             " 'rows' key",
         )
-    return run_query_execute_with_tables(raw, rows, table_rows, table_headers)
+
+    # Checked before touching the batch, in either branch below, so a request that is
+    # invalid both in `ops` and in its rows still fails with the SAME error
+    # `run_query_execute_with_tables` has always returned (the ops one) rather than
+    # whichever branch happened to run first. See `ops_validation_error`.
+    var ops_error = ops_validation_error(raw)
+    if len(ops_error) > 0:
+        return ops_error
+
+    # The resident dataset's PARSED form is cached by handle + exact `columns` text
+    # (see `algenta_runtime.session`'s module docstring): a plan run twice against the
+    # same open handle with the same header reuses the parse instead of re-tokenizing
+    # `rows` from scratch. Profiling found this reparse, not compute, dominating a
+    # `query_execute` against an already-open handle (~2.2s/900k rows, O(rows),
+    # repeating identically on every call) — this is what removes it from every call
+    # after the first for a given handle+header.
+    var signature = json_raw_array(raw, "columns")
+    if datasets.has_cached_batch(handle, signature):
+        return run_query_execute_on_batch(
+            raw, datasets.cached_batch(handle), table_rows, table_headers
+        )
+
+    var batch: RecordBatch
+    try:
+        batch = build_batch(raw, rows)
+    except e:
+        return _query_error("invalid_arguments", String(e))
+    datasets.cache_batch(handle, signature, batch.copy())
+    return run_query_execute_on_batch(raw, batch^, table_rows, table_headers)

@@ -41,12 +41,40 @@ Wire format
 
 A resident value is referenced from a batch or pipeline argument as `"@ds_1"`,
 mirroring the pipeline's `"$0"` node reference.
+
+Parsed-batch cache
+------------------
+`values` holds raw JSON text — `lookup()` never parses it, so a resident dataset
+addressed as a `query_execute` `dataset` handle was being re-tokenized by
+`build_batch`/`parse_rows` on EVERY call, even calls repeating the exact same request
+against the exact same still-open handle (confirmed by profiling: identical back-to-back
+calls cost the same ~2.4us/row every time, no warm-up speedup). The registry now also
+remembers, per handle, the one most-recently-parsed `RecordBatch` and the exact
+`columns` array text it was parsed under (`cache_keys` / `cache_batches`, parallel to
+`handles`). `algenta_runtime.query` checks `has_cached_batch` before asking
+`query/plan.mojo` to build one, so the tokenize/parse happens once per `dataset_open`
+handle-and-header combination instead of once per `query_execute`.
+
+Keyed by the columns text, not the handle alone, because `parse_rows`'s output depends
+on both the row text (fixed once a handle is open) AND the column count the request
+declares (`len(names)` — see `query/plan.mojo::build_batch`); a request with a
+narrower or reordered `columns` header must reparse, so caching by handle alone would
+silently replay one call's parse under a different call's header. One slot per handle:
+a different header simply overwrites the previous parse rather than accumulating one
+per header ever seen, which bounds the extra memory to one parsed copy per open handle.
 """
 from json.parser import json_get_array, json_get_object, json_get_string
+from columnar.array import Float64Array
+from columnar.batch import RecordBatch, Schema
 
 # Total resident bytes per connection. Generous for real datasets while still
 # bounding a single connection's memory.
 alias MAX_RESIDENT_BYTES = 512 * 1024 * 1024
+
+
+fn _empty_batch() -> RecordBatch:
+    """The cache's placeholder for "no parsed batch yet" at a given index."""
+    return RecordBatch(Schema(List[String](), List[Int]()), List[Float64Array](), 0)
 
 
 fn _session_error(code: String, message: String) -> String:
@@ -89,6 +117,11 @@ struct ResidentDatasets(Copyable, Movable):
     var values: List[String]
     var next_id: Int
     var total_bytes: Int
+    # Parallel to `handles`: the parsed-batch cache. `cache_keys[i] == ""` means "no
+    # cached parse for handles[i] yet" — safe because a cached signature is always the
+    # non-empty `columns` array text `build_batch` already requires to be non-empty.
+    var cache_keys: List[String]
+    var cache_batches: List[RecordBatch]
 
     fn __init__(out self):
         self.handles = List[String]()
@@ -96,6 +129,8 @@ struct ResidentDatasets(Copyable, Movable):
         self.values = List[String]()
         self.next_id = 1
         self.total_bytes = 0
+        self.cache_keys = List[String]()
+        self.cache_batches = List[RecordBatch]()
 
     fn count(self) -> Int:
         return len(self.handles)
@@ -112,6 +147,44 @@ struct ResidentDatasets(Copyable, Movable):
         if index < 0:
             return ""
         return self.values[index]
+
+    fn has_cached_batch(self, handle: String, signature: String) -> Bool:
+        """True when a parsed `RecordBatch` is cached for `handle` under exactly
+        `signature` (the request's raw `columns` array text). See the module docstring
+        for why the key is the header text, not the handle alone.
+        """
+        if len(signature) == 0:
+            return False
+        var index = self._index_of(handle)
+        if index < 0:
+            return False
+        return self.cache_keys[index] == signature
+
+    fn cached_batch(self, handle: String) -> RecordBatch:
+        """The batch most recently cached for `handle`.
+
+        Meaningful only right after `has_cached_batch` returned True for the same
+        `signature` — same check-then-read shape as `lookup`, just typed. Returns an
+        empty batch for an unknown handle rather than raising, so a caller that already
+        checked `has_cached_batch` never needs a try/except here either.
+        """
+        var index = self._index_of(handle)
+        if index < 0:
+            return _empty_batch()
+        return self.cache_batches[index].copy()
+
+    fn cache_batch(mut self, handle: String, signature: String, var batch: RecordBatch):
+        """Remember `batch` as the parse of `handle`'s resident rows under `signature`.
+
+        A no-op for an unknown handle (nothing to attach the cache to) rather than an
+        error: the caller already has its `batch`, whether or not the cache accepts it,
+        so there is nothing for a failure here to protect.
+        """
+        var index = self._index_of(handle)
+        if index < 0:
+            return
+        self.cache_keys[index] = signature
+        self.cache_batches[index] = batch^
 
     fn open_from_json(mut self, raw: String) -> String:
         var value = _extract_value_json(raw)
@@ -134,6 +207,9 @@ struct ResidentDatasets(Copyable, Movable):
         self.names.append(name)
         self.total_bytes += len(value)
         self.values.append(value)
+        # No parse yet for the new handle — "" never matches a real `columns` text.
+        self.cache_keys.append("")
+        self.cache_batches.append(_empty_batch())
 
         return (
             '{"handle":"'
@@ -159,19 +235,27 @@ struct ResidentDatasets(Copyable, Movable):
 
         self.total_bytes -= len(self.values[index])
         # Rebuild without the closed entry: handles are never reused, so the gap
-        # cannot be filled by a later open.
+        # cannot be filled by a later open. The cache arrays are rebuilt in the same
+        # pass, at the same index, so a closed handle's cached parse is freed with it
+        # rather than lingering for the life of the connection.
         var handles = List[String]()
         var names = List[String]()
         var values = List[String]()
+        var cache_keys = List[String]()
+        var cache_batches = List[RecordBatch]()
         for i in range(len(self.handles)):
             if i == index:
                 continue
             handles.append(self.handles[i])
             names.append(self.names[i])
             values.append(self.values[i])
+            cache_keys.append(self.cache_keys[i])
+            cache_batches.append(self.cache_batches[i].copy())
         self.handles = handles^
         self.names = names^
         self.values = values^
+        self.cache_keys = cache_keys^
+        self.cache_batches = cache_batches^
 
         return '{"closed":true,"count":' + String(self.count()) + "}"
 

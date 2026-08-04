@@ -302,6 +302,102 @@ omitted or reframed to look more favorable. **No GitBook page follows from this*
 synthesis plan's own call and this repo's publication policy: this is a plain loss at this scale,
 in this mode, disclosed in full — not a "hardware ceiling" exception.
 
+## Update, later the same day (2026-08-04, ~13:30 EDT): a real, verified fix to a *different*
+## bottleneck — this page's own numbers are unchanged, and here is why
+
+A precisely-profiled fix landed in `mojo/engine/algenta_runtime/session.mojo` +
+`mojo/engine/algenta_runtime/query.mojo` + `mojo/engine/query/plan.mojo` (same worktree,
+`/private/tmp/tpc-query-plane-gaps`, `feat/tpch-derived-translation`) after the original
+measurement above: `ResidentDatasets` now caches the parsed `RecordBatch` for a `dataset_open`
+handle, keyed by `(handle, columns-header-text)`. Profiling had found that a `query_execute`
+against an *already-open* resident handle re-tokenized/re-parsed the same `rows` JSON on **every**
+call — identical cost every time, no warm-up speedup — even though the handle's underlying rows
+never changed. `algenta_runtime.query` now checks the cache before calling `build_batch` again.
+
+**The fix itself is real and dramatic, confirmed with a standalone microbenchmark** (900k rows,
+one open handle, 5 identical `query_execute` calls against it — not part of the 22-query suite;
+script written for this check, not checked in) — before vs. after, same worktree, same machine,
+rebuilt binary either side of the diff:
+
+| Call | Pre-fix (ms) | Post-fix (ms) |
+|---|---|---|
+| 1st (must parse) | 1,015.9 | 1,006.1 |
+| 2nd | 1,018.6 | 23.8 |
+| 3rd | 1,020.6 | 24.1 |
+| 4th | 1,012.6 | 24.1 |
+| 5th | 1,016.9 | 23.6 |
+
+Every call after the first drops from ~1,017ms to ~24ms against the same open handle — **~42x**
+faster for repeat dispatch through a resident handle. (A genuine compile bug was also found and
+fixed while building this: `query.mojo` passed an owned `RecordBatch` to a `var`-parameter
+function without transferring ownership — `mojo build` rejected it outright, `error: value of
+type 'RecordBatch' cannot be implicitly copied`. Fixed with `batch^`; the fix would not have
+compiled at all otherwise.)
+
+**But this page's own 22 queries never take that code path, and this was already disclosed above,
+before the fix existed:** every `Query(...)` call in `verified_queries.py` is built with
+`rows=<inline python list>`, never `dataset=<handle>` (see the "Timing" section above: "none of
+the 22 translations above use it — each is a correctness-first, one-shot dispatch per
+repetition"). `algenta_runtime.query.run_query`'s inline-`rows` branch is untouched by this fix —
+it still calls straight into `run_query_execute_with_tables` exactly as before, ops-validation
+refactor aside (behaviorally identical, confirmed by the regression suite below). There is no
+handle for the cache to attach to, and no second call against "the same handle" ever happens,
+because there is no handle at all.
+
+**Re-ran the exact same timing methodology** (same harness, same isolated Postgres DB, same
+DuckDB oracle file, `N_REPS=3`, interleaved per-query, same machine) against a freshly rebuilt
+worker binary with the fix compiled in, for a representative subset spanning the shape space —
+fastest (Q22), heaviest (Q19), two single-table shapes (Q1 multi-aggregate, Q6 filter+aggregate),
+and one composite-key-join+LIKE-prefilter shape (Q9):
+
+| Q | Shape | Original engine median (first pass, above) | Re-measured engine median (post-fix) | Δ |
+|---|---|---|---|---|
+| 1  | Multi-aggregate GROUP BY | 46,821.1 ms | 46,444.9 ms | −0.8% |
+| 6  | Single-table filter+aggregate | 32,518.1 ms | 33,218.2 ms | +2.2% |
+| 9  | Composite key + LIKE, 6-way join | 54,159.4 ms | 54,460.1 ms | +0.6% |
+| 19 | 3-way OR-decomposition (heaviest) | 128,123.4 ms | 128,424.7 ms | +0.2% |
+| 22 | Anti-join + scalar AVG (fastest) | 424.9 ms | 428.0 ms | +0.7% |
+
+Every delta is inside this page's own already-reported min/median/max spread (compare, e.g.,
+Q19's original max of 155,667.0ms against its own median of 128,123.4ms — over 20% run-to-run
+noise already existed before this fix touched anything). DuckDB's own numbers on this rerun are
+equally unchanged (e.g. Q19: 21.2ms median here vs. 19.0ms originally minimum, same order). **The
+fix has zero measurable effect on this page's numbers, and that is the expected, honest result,
+not a failure to reproduce a win** — it targets a code path this benchmark was never exercising.
+
+**No, this does not get anywhere near closing the gap to DuckDB, let alone winning.** Every ratio
+in the "Timing" table above stands exactly as originally measured — DuckDB is still 3–4 orders of
+magnitude faster at every one of the 22 queries. Nothing on this page changes.
+
+**Is there a second-order bottleneck this fix exposes?** No — because the fix never took effect
+here, there is nothing new to expose. The dominant cost this page already disclosed before the
+fix — the query-plane wire JSON-encoding an inline `rows` array into every request and
+re-tokenizing it worker-side on every one-shot dispatch — remains exactly as dominant as before,
+unchanged, because every one of these 22 translations still sends `rows=` inline, every call,
+by design (this page's own stated correctness-first scope, not a regression). The fix's real
+~42x win lives on a different, not-yet-benchmarked code path (`dataset`/`open_dataset`
+residency), and even there, the ~24ms floor per repeat call against 900k resident rows (measured
+above) is itself unexplored territory — is that op-execution time, output serialization, or
+AF_UNIX frame overhead? That would need its own profiling pass, and is not claimed here. Building
+an apples-to-apples resident-path rerun of these 22 queries — the "fair comparison" the original
+Timing section named as the thing this phase did *not* attempt — remains open, unattempted, and
+un-scoped by this update. **This update does not declare, or move this page toward, an outright
+win; that determination is out of scope for this note and belongs to its own dedicated
+verification pass, per this repo's standing publication discipline.**
+
+**Regression check, same session:** `tests/integration/test_query_plane_e2e.py` — 73/73 passed
+against the rebuilt (fixed) worker binary, including `test_a_resident_dataset_serves_many_queries`
+(the exact scenario the fix targets: repeated `query_execute` against one open handle, asserted
+to match the inline form's rows and plan hash exactly) and
+`test_a_query_output_can_be_reopened_and_queried_again`. `mojo/tests/libs/test_algenta_runtime_session.mojo`
+— 12/12 passed (open/lookup/close/list/handle-non-reuse/capacity/`@handle`-parsing; this file
+predates the cache fields and does not exercise `cache_batch`/`has_cached_batch` directly, but
+confirms nothing about existing `ResidentDatasets` behavior broke). `mojo/tests/libs/test_query_plan.mojo`
+— 122/122 passed (the ops-prologue/batch-split refactor changed nothing observable: byte-budget
+refusals, non-finite-cell reporting, join-width/row limits, resident-header checks, all still
+agree). See this repo's PR for this phase's own commit for the complete regression run, including
+the broader query-plane suite.
+
 ## Resuming this / reproducing this
 
 1. Rebuild the isolated Postgres DB (owner cleanup note: drop `tpch_derived_bench_20260804`,

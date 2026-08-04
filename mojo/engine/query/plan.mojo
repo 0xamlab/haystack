@@ -2633,48 +2633,83 @@ fn run_query_execute(raw: String, rows_json: String) -> String:
     return run_query_execute_with_tables(raw, rows_json, no_rows, no_headers)
 
 
-fn run_query_execute_with_tables(
-    raw: String,
-    rows_json: String,
-    table_rows: List[String],
-    table_headers: List[String],
-) -> String:
-    """Execute a whole query plan and return columns, lineage and a plan hash.
+struct _OpsPrologue(Copyable, Movable):
+    """The ops-array parse + validation `run_query_execute_with_tables` used to do
+    inline, factored out so a caller with an ALREADY-BUILT batch (a cached parse of a
+    resident dataset — see `run_query_execute_on_batch`) can reuse it exactly, byte for
+    byte, without also reusing `build_batch`.
 
-    `rows_json` is supplied by the caller so `main.mojo` can substitute a resident
-    dataset's rows for an inline array without this module knowing about the registry.
-    `table_rows` / `table_headers` are the same substitution for each `tables` entry,
-    positionally — see `table_dataset_handles`.
+    `error` is non-empty exactly when the request should be rejected before a batch is
+    ever touched, mirroring the early-return order the inline version had: ops are
+    validated before anything about `rows`/`dataset` is parsed.
+    """
 
-    Side tables are resolved ONCE, here, before the op loop. So a table joined by twenty
-    ops is parsed once and shipped once: payload is O(1) in ops, and O(1) in requests too
-    when the entry uses the `dataset` form.
+    var ops: String
+    var op_tokens: List[String]
+    var op_count: Int
+    var error: String
+
+    fn __init__(
+        out self, var ops: String, var op_tokens: List[String], op_count: Int, var error: String
+    ):
+        self.ops = ops^
+        self.op_tokens = op_tokens^
+        self.op_count = op_count
+        self.error = error^
+
+
+fn _parse_ops_prologue(raw: String) -> _OpsPrologue:
+    """Validate `raw`'s `ops` array. See `_OpsPrologue`.
+
+    BEFORE `plan_hash`, which hands the ops text to the frozen `canonical.from_json`
+    transcoder, and before any op is read. A JSON extension literal in the ops array is
+    rejected as a plan error rather than reaching a frozen parser that can abort the
+    process. `apply_op_detailed` applies the same check, through the same function, to each
+    op it is handed directly.
     """
     var ops = json_raw_array(raw, "ops")
-    # BEFORE `plan_hash`, which hands the ops text to the frozen `canonical.from_json`
-    # transcoder, and before any op is read. A JSON extension literal in the ops array is
-    # rejected as a plan error rather than reaching a frozen parser that can abort the
-    # process. `apply_op_detailed` applies the same check, through the same function, to each
-    # op it is handed directly.
     var ops_problem = json_literal_problem(ops, False)
     if len(ops_problem) > 0:
-        return _plan_error("invalid_arguments", "the 'ops' array: " + ops_problem)
+        return _OpsPrologue(
+            ops,
+            List[String](),
+            0,
+            _plan_error("invalid_arguments", "the 'ops' array: " + ops_problem),
+        )
     var op_tokens = List[String]()
     if len(ops) > 0:
         op_tokens = json_raw_tokens(ops)
     var op_count = len(op_tokens)
     if op_count > MAX_OPS:
-        return _plan_error(
-            "too_many_ops",
-            "a plan may hold at most " + String(MAX_OPS) + " ops; got " + String(op_count),
+        return _OpsPrologue(
+            ops,
+            op_tokens^,
+            op_count,
+            _plan_error(
+                "too_many_ops",
+                "a plan may hold at most " + String(MAX_OPS) + " ops; got " + String(op_count),
+            ),
         )
+    return _OpsPrologue(ops, op_tokens^, op_count, "")
 
-    var batch: RecordBatch
-    try:
-        batch = build_batch(raw, rows_json)
-    except e:
-        return _plan_error("invalid_arguments", String(e))
 
+fn _finish_query_execute(
+    raw: String,
+    var batch: RecordBatch,
+    table_rows: List[String],
+    table_headers: List[String],
+    ops: String,
+    op_tokens: List[String],
+    op_count: Int,
+) -> String:
+    """Run the op loop over an already-validated `ops` and an already-built `batch`,
+    and return the response. The shared tail of `run_query_execute_with_tables` and
+    `run_query_execute_on_batch` — byte-identical either way a batch was obtained.
+
+    Side tables are resolved ONCE, here, before the op loop. So a table joined by twenty
+    ops is parsed once and shipped once: payload is O(1) in ops, and O(1) in requests too
+    when the entry uses the `dataset` form.
+    """
     # Table parsing and its limits are `invalid_arguments`, the code already in place, not
     # a new top-level code: a new code obliges docs regeneration and MEANINGS updates, and
     # nothing here is a failure a client would branch on.
@@ -2779,3 +2814,81 @@ fn run_query_execute_with_tables(
     out += hash_value
     out += '"}'
     return out
+
+
+fn ops_validation_error(raw: String) -> String:
+    """"" when `raw`'s `ops` array is valid, else the same error
+    `run_query_execute_with_tables` would return without going any further.
+
+    Exposed so `algenta_runtime.query` can check ops validity BEFORE deciding whether
+    to build a batch or reuse a cached one for a `dataset` handle. Without this, a
+    request that is invalid in two ways at once (a bad `ops` array AND rows that fail
+    to parse) could change WHICH error comes back depending on whether the caller
+    happened to build a batch first — this keeps the answer exactly what
+    `run_query_execute_with_tables` has always returned: the ops error, checked first.
+    """
+    return _parse_ops_prologue(raw).error
+
+
+fn run_query_execute_with_tables(
+    raw: String,
+    rows_json: String,
+    table_rows: List[String],
+    table_headers: List[String],
+) -> String:
+    """Execute a whole query plan and return columns, lineage and a plan hash.
+
+    `rows_json` is supplied by the caller so `main.mojo` can substitute a resident
+    dataset's rows for an inline array without this module knowing about the registry.
+    `table_rows` / `table_headers` are the same substitution for each `tables` entry,
+    positionally — see `table_dataset_handles`.
+
+    Ops are validated, then the batch is built, then `_finish_query_execute` runs the
+    op loop — the same three steps as before this was split, in the same order, just
+    named. See `run_query_execute_on_batch` for the sibling entry point that skips the
+    build when a caller already has a parsed batch.
+    """
+    var prologue = _parse_ops_prologue(raw)
+    if len(prologue.error) > 0:
+        return prologue.error
+
+    var batch: RecordBatch
+    try:
+        batch = build_batch(raw, rows_json)
+    except e:
+        return _plan_error("invalid_arguments", String(e))
+
+    return _finish_query_execute(
+        raw, batch^, table_rows, table_headers, prologue.ops, prologue.op_tokens, prologue.op_count
+    )
+
+
+fn run_query_execute_on_batch(
+    raw: String,
+    var batch: RecordBatch,
+    table_rows: List[String],
+    table_headers: List[String],
+) -> String:
+    """Execute a whole query plan against an ALREADY-PARSED `batch`.
+
+    Identical to `run_query_execute_with_tables` in every observable way — ops
+    validation, side tables, the op loop, response shape, error shapes — except that
+    `build_batch`'s tokenize/parse of `rows_json` is skipped because `batch` is
+    supplied directly. This is what lets `algenta_runtime.query` reuse a resident
+    dataset's PARSED form across repeated `query_execute` calls against the same
+    handle: the caller does the equivalent of `build_batch` once, caches the result,
+    and every later call with the same `columns` header reaches this function instead
+    of `run_query_execute_with_tables`, paying the ops-validation and op-loop cost
+    only, not the O(rows) reparse.
+
+    `query/plan.mojo` still knows nothing about handles or a session: the caller
+    resolved a handle into a batch before calling this, exactly as it resolves a
+    handle into `rows_json` before calling `run_query_execute_with_tables`.
+    """
+    var prologue = _parse_ops_prologue(raw)
+    if len(prologue.error) > 0:
+        return prologue.error
+
+    return _finish_query_execute(
+        raw, batch^, table_rows, table_headers, prologue.ops, prologue.op_tokens, prologue.op_count
+    )
