@@ -429,7 +429,23 @@ _FINAL_ANSWER_NOTES: dict[tuple[str, str], str] = {
         "question by itself, not an intermediate value. Use this exact returned number "
         "directly; do not also call compute_variance and take its square root yourself "
         "(that manual, lower-precision path is exactly the bug this kernel exists to "
-        "remove -- see mojo/engine/stats.mojo's compute_std docstring)."
+        "remove -- see mojo/engine/stats.mojo's compute_std docstring). Note that this "
+        "function REQUIRES a `mean` argument: unless you already have a real, kernel-"
+        "computed mean in hand (from an actual execute(stats.compute_mean, ...) call over "
+        "the full column, not a value you estimated or eyeballed from a truncated "
+        "preview), prefer compute_std_from_values instead -- it takes only `v`/`n` and "
+        "computes the mean itself internally, so there is no `mean` slot for a guessed or "
+        "stale value to occupy."
+    ),
+    ("stats", "compute_std_from_values"): (
+        "This IS the final sample standard deviation -- a complete answer to a std-dev "
+        "question by itself, not an intermediate value. This is the preferred, simplest, "
+        "safest way to get a column's sample standard deviation directly from raw values: "
+        "it takes only `v` and `n`, computing the mean internally, so unlike compute_std "
+        "there is no `mean` parameter for a caller to supply -- and therefore no way to "
+        "accidentally feed in a guessed, eyeballed, or preview-truncated mean instead of "
+        "the real one. Use this exact returned number directly; do not also call "
+        "compute_variance and take its square root yourself."
     ),
 }
 

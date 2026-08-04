@@ -99,6 +99,34 @@ def compute_std(v: List[Float64], n: Int, mean: Float64) -> Float64:
     """
     return sqrt(compute_variance(v, n, mean))
 
+def compute_std_from_values(v: List[Float64], n: Int) -> Float64:
+    """Sample standard deviation (ddof=1) of the first `n` values -- computes the mean
+    INTERNALLY (`compute_mean(v, n)`), then `compute_std(v, n, that_mean)`, so there is no
+    `mean` parameter for a caller to supply at all.
+
+    This exists because `compute_std(v, n, mean)` still lets a caller pass ANY float as
+    `mean` -- including one it estimated, eyeballed from a truncated preview, or otherwise
+    never got from a real `compute_mean` call. `compute_std`'s own docstring already removed
+    the caller-side square root as an error source; this removes the caller-side mean as
+    one too: a real, measured failure (uplift benchmark's q05) had a tool-calling model skip
+    `execute(compute_mean)` entirely, guess a mean from a 20-element preview of a 29,204-
+    element column, and feed that guess into `compute_std` -- the kernel computed exactly
+    what it was asked, correctly, on a wrong input, indistinguishable in the tool trace from
+    a genuine kernel answer. This kernel has no `mean` slot for that guess to occupy.
+
+    Reads `v[i]` for `i` in `[0, n)` twice (once via `compute_mean`, once via
+    `compute_variance`), so `n <= len(v)` is still the complete read requirement. The same
+    non-finite-return hazard noted on `compute_mean`/`compute_variance`/`compute_std`
+    applies here unchanged -- this delegates to all three, introducing no new failure mode.
+
+    @capability compute_std_from_values
+    complexity: O(n)
+    counts:
+    - n <= len(v) [enforced]
+    @endcapability
+    """
+    return compute_std(v, n, compute_mean(v, n))
+
 def pctile(v: List[Float64], n: Int, p: Int) -> Float64:
     """O(1) percentile index into a PRE-SORTED buffer of `n` values (`p` in [0,100]).
 

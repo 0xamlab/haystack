@@ -320,3 +320,70 @@ now exactly zero) -- but a real, reproducible miss was captured going in, and
 it did not recur once across 5 fix reps plus a full 16-question rerun (21
 tools-condition questions total, post-fix, all correct). That is a genuine,
 measured improvement, not an assumed one.
+
+## q05 footgun #2: a guessed mean fed into a correct kernel (2026-08-04)
+
+The two q05 fixes above close (1) a manual-sqrt precision error and (2) a
+correct-result-discarded-anyway error. Live re-verification of q05 during
+this same investigation surfaced a third, distinct failure mode, in the
+`q05_no_mean_footgun_rerun_results.json`-adjacent baseline transcript: the
+model never called `execute(stats.compute_mean, ...)` at all. It called
+`get_column('UNIT_PRICE', dropna=True)`, which -- per the earlier
+preview-size fix -- returns only 20 of the column's real 29,204 values
+(`truncated: true`) plus the true `element_count`, eyeballed a mean from that
+20-value preview, and fed its own guess straight into
+`execute(stats.compute_std, {"v": ..., "n": 29204, "mean": <guess>})`. The
+kernel computed exactly what it was asked, correctly, on a wrong input --
+indistinguishable in the tool trace from a genuine kernel answer, since
+`compute_std` has no way to know its `mean` argument didn't come from
+`compute_mean`. This is a different bug from footgun #1 above (that one
+discarded a correct tool result; this one poisons a correct tool's input) and
+neither existing fix touches it, because `compute_std(v, n, mean)` still has
+a `mean` parameter for a guess to occupy.
+
+- **Fix:** added `stats.compute_std_from_values(v, n) -> Float64`
+  (`mojo/engine/stats.mojo`) -- computes the mean internally
+  (`compute_std(v, n, compute_mean(v, n))`) and therefore has **no `mean`
+  parameter at all** for a guessed, eyeballed, or preview-truncated value to
+  occupy; wired into the runtime contract, capability manifest, dispatch
+  table, and golden-vector test suite exactly like the additive kernels
+  above. `compute_std`, `compute_mean`, and `compute_variance` are untouched.
+  Two additive prompt-surface changes steer a caller toward it without
+  forcing it: an extended `_FINAL_ANSWER_NOTES` entry in `tools.py` (on both
+  `("stats", "compute_std")` and the new `("stats",
+  "compute_std_from_values")`) and one added clause in `run_benchmark.py`'s
+  `TOOLS_SUFFIX` naming `compute_std_from_values` alongside
+  `compute_mean`/`compute_variance` as a visible `module='stats'` option.
+- **Live re-verification, 8 reps (2026-08-04, gpt-5-mini, TOOLS condition,
+  real API calls, 8 independent fresh-conversation reps of q05 alone, WITH
+  the fix, via `rerun_q05_no_mean_footgun.py`):** **8/8 passed.** Every rep
+  called `list_capabilities`/`get_column` then
+  `execute(stats.compute_std_from_values, ...)` directly -- `compute_std`,
+  `compute_mean`, and `compute_variance` were never called in any rep, so the
+  guessed-mean path had no opportunity to occur. Final answer
+  `2331.9631517502244` vs ground truth `2331.963152` (tol 0.01) in every rep.
+  Total cost: $0.014438 (39 API calls, 119,266 prompt tokens, 2,794
+  completion tokens). Full transcript in
+  `q05_no_mean_footgun_rerun_results.json`.
+- **Full 16-question regression check (2026-08-04, gpt-5-mini, same run,
+  both conditions, WITH the fix applied, via
+  `rerun_full16_with_no_mean_footgun_fix.py`'s underlying
+  `run_benchmark.main()`, written to `benchmark_results.json`):** **15/16
+  tools-condition correct**, 1/16 bare-condition correct (unchanged, as
+  always). q05 itself passed (`2331.9631517502244` vs `2331.963152`). The one
+  tools-condition miss was **q14** (`top_cust_type_by_avg_unit_price`, a
+  group-by/aggregate question unrelated to `stats.compute_std*` or any code
+  this fix touches) -- it ran 45 tool calls and exhausted
+  `MAX_TOOL_TURNS` without ever emitting a final parseable JSON answer, a
+  pre-existing turn-budget-exhaustion risk this fix neither caused nor
+  attempts to address. Total run cost $0.109267 (163 tools-condition API
+  calls, 959,188 prompt tokens, 89.6% cache hit rate). Full transcript is the
+  regenerated `benchmark_results.json`.
+
+**Honest framing:** this is not a clean 16/16 -- one question, unconnected
+to this fix, failed by running out of its tool-call turn budget before
+answering at all. q05's own result, the thing this fix targets, was correct
+in both the focused 8-rep run and the full-16 run, with zero occurrences of
+the guessed-mean pattern across all 9 tools-condition q05 executions
+observed post-fix. A single miss on an unrelated question is not evidence
+this fix regressed anything, but it is also not swept under the rug here.

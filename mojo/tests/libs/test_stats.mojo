@@ -1,6 +1,6 @@
 """test_stats.mojo — auto-generated tests for stats."""
 from std.math import isnan, isinf
-from stats import compute_mean, compute_variance, compute_std, pctile, count_below_zero, ilog2, sort_values, quantile, percentile, median
+from stats import compute_mean, compute_variance, compute_std, compute_std_from_values, pctile, count_below_zero, ilog2, sort_values, quantile, percentile, median
 
 fn is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
@@ -51,6 +51,9 @@ def main() raises:
     var _v_compute_std = compute_std(_lf5, 5, 0.5)
     if is_finite(_v_compute_std): passed += 1; print("  ✅ stats::compute_std =", _v_compute_std)
     else: failed += 1; print("  ❌ stats::compute_std → non-finite:", _v_compute_std)
+    var _v_compute_std_from_values = compute_std_from_values(_lf5, 5)
+    if is_finite(_v_compute_std_from_values): passed += 1; print("  ✅ stats::compute_std_from_values =", _v_compute_std_from_values)
+    else: failed += 1; print("  ❌ stats::compute_std_from_values → non-finite:", _v_compute_std_from_values)
     var _v_pctile = pctile(_lf5, 5, 5)
     if is_finite(_v_pctile): passed += 1; print("  ✅ stats::pctile =", _v_pctile)
     else: failed += 1; print("  ❌ stats::pctile → non-finite:", _v_pctile)

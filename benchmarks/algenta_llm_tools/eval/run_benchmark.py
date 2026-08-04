@@ -98,8 +98,12 @@ to compute an exact, correct answer; do not guess.
 reads real column values (optionally row-filtered by an exact match on another column, or \
 reduced to distinct values) and returns a result_id you can pass into execute().
 - execute(module, function, args) runs one real compiled kernel, e.g. module='stats', \
-function='quantile'/'compute_mean'/'compute_variance', or module='stat_tests', \
-function='pearson_r'. To pass a column you got from get_column (or a prior execute) into \
+function='quantile'/'compute_mean'/'compute_variance'/'compute_std_from_values', or \
+module='stat_tests', function='pearson_r'. For a sample standard deviation, prefer \
+'compute_std_from_values' (module='stats') over calling 'compute_mean' and 'compute_std' \
+yourself: it takes only the raw values and their count, computes the mean internally, and \
+so has no separate `mean` argument you could get wrong by guessing or eyeballing one from \
+a truncated preview. To pass a column you got from get_column (or a prior execute) into \
 an execute() argument without retyping thousands of values, set that argument's value to \
 {"result_id": "<id>"}.
 - Call list_capabilities and/or explain first to find the exact module/function names and \

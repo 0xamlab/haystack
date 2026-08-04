@@ -6659,6 +6659,7 @@ from stats import (
     compute_mean as _stats__compute_mean,
     compute_variance as _stats__compute_variance,
     compute_std as _stats__compute_std,
+    compute_std_from_values as _stats__compute_std_from_values,
     pctile as _stats__pctile,
     count_below_zero as _stats__count_below_zero,
     ins_sort as _stats__ins_sort,
@@ -131661,6 +131662,28 @@ fn _dispatch_stats(function_name: String, args_array: String) raises -> String:
         return _error_json(
             "invalid_arguments",
             "Function stats.compute_std expected 3 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "compute_std_from_values":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_int_token(json_array_get(args_array, 1))
+                var result = _stats__compute_std_from_values(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "stats.compute_std_from_values produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for stats.compute_std_from_values."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function stats.compute_std_from_values expected 2 arguments, received " + String(arg_count) + "."
         )
     if function_name == "pctile":
         if arg_count == 3:
