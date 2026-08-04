@@ -435,3 +435,36 @@ underlying kernel work (multi-aggregate wire + composite-join workaround proof +
 `8a343d66`) — both merged before this phase started. This phase's own commit (this file's rewrite
 plus `engine_harness.py`/`verified_queries.py`) ships in a fresh PR rebased onto current `main`,
 since #539 merged while this phase was in progress.
+
+## Update, 2026-08-04: the resident-handle path from the fix above, actually tried on Q19 — real
+## gap closure, still not a win
+
+The prior update (above) landed a real fix (`#542`, `perf(query): cache a resident dataset's
+parsed batch across query_execute calls`) but noted this page's own 22 queries never exercise it,
+since every one sends `rows=` inline. This update actually migrates one query — Q19, this page's
+heaviest — onto the `dataset`/`open_dataset` residency path, to measure the fix's real effect
+where it applies. Fresh worktree at the same commit (`632a6395`), same isolated Postgres DB
+(`tpch_derived_bench_20260804`), same DuckDB oracle file, same `N_REPS=3` harness; a new,
+uncommitted script (`q19_resident_bench.py`, not checked into this repo) runs Q19's existing
+inline `rows=` version byte-for-byte next to a migrated version that opens each of the 7 lineitem
+chunks once via `open_dataset` and reuses the handle across all 3 brand branches and every rep.
+Correctness: `engine(inline) = engine(resident) = duckdb = 3361275.76`, exact match, tol 0.5 — the
+migration changes nothing about what is computed.
+
+| Variant | median (N_REPS=3) | vs. DuckDB (16.8ms median) |
+|---|---|---|
+| Engine, inline `rows=` (this page's existing number) | 130,598.4 ms | 7,773x slower |
+| Engine, resident handle (reused across reps — timed calls only) | 1,159.7 ms | 69x slower |
+| Resident handle-open cost (one-time, untimed, 7 chunks) | 27,450.9 ms | — |
+
+Reused across reps — the resident path's intended use — the gap closes by **~113x** (7,773x down
+to 69x slower than DuckDB), consistent with `#542`'s own ~42x-per-repeat-call microbenchmark
+compounding across Q19's 3-branches-×-7-chunks dispatch shape. Even folding the one-time handle-
+open cost back in for a single cold run with no reuse (27,450.9ms + 1,159.7ms ≈ 28.6s), Q19 is
+still a genuine ~4.6x win over its own inline form. **This does not flip the verdict**: 69x slower
+than DuckDB is still two full orders of magnitude behind, not the "outright win" this repo's
+publication policy requires — it is a real, measured, ~113x reduction of a gap that was previously
+four orders of magnitude, landing it at two. No GitBook page follows from this, per policy.
+Migrating the remaining 21 queries is believed to close a comparable fraction of each query's own
+gap (most of this page's queries share Q19's inline-`rows`-per-chunk-per-call shape), but that
+migration has not been done or measured, and is not claimed here.
