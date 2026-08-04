@@ -1,88 +1,341 @@
-# Benchmark derived from TPC-H — status: BLOCKED on Neon API credentials
+# Benchmark derived from TPC-H — 22 of 22 query templates real, verified
 
-Scoped from `~/.claude/plans/benchmark-discovery-stac-tpc-synthesis.md` §2. This is an internal,
-work-in-progress status note, not a results page — no query has been run against this repo's
-query engine yet, so no correctness or timing claim is made here. Per this repo's standing
-publication policy, this stays in `benchmarks/` (never `gitbook/`) until it contains verified
-results, and even then only promotes externally on an outright, disclosed win.
+Scoped from `~/.claude/plans/benchmark-discovery-stac-tpc-synthesis.md` §2 ("TPC-H ... **Pursue
+now**"). This is the completed follow-on to this file's own prior revision (a status note titled
+"BLOCKED on Neon API credentials," preserved in this repo's git history), replaced here now that
+the isolated-database question is resolved: every one of the 22 real TPC-H query templates has
+now been hand-translated onto this repo's query-plane engine, run against real `dbgen`-generated
+SF=1 data through the real compiled worker, and verified row-for-row (or, for the 4 single-scalar
+queries, value-for-value) against an independent DuckDB oracle over the identical data. **All 22
+pass.** No query on this page is faked, approximated, or graded on partial credit.
 
-## Why this is blocked
+Per this repo's standing publication policy, this stays in `benchmarks/` (never `gitbook/`): the
+engine is dramatically slower than DuckDB at every query below (disclosed in full in "Timing"),
+so this is not an outright win and does not clear the external-publication bar, exactly as the
+sibling TPC-DS-derived phase (`benchmarks/tpcds_derived/RESULTS.md`) found for its own 9 queries.
 
-The task that scoped this run required loading TPC-H-derived tables into an **isolated Neon
-branch** (Neon's copy-on-write branching), explicitly *not* the shared main database this repo's
-other suites depend on (`NEON_TEST_DB_URL` in `.env`, shared with sqai/mission), and explicitly
-*not* a silent local-SQLite substitute. Creating that isolated branch requires **Neon API/CLI
-access** (a `NEON_API_KEY`/`NEON_PROJECT_ID`-style credential usable with `neonctl` or the Neon
-REST API) — a Postgres connection string alone cannot create a branch.
+## Isolated-database disclosure
 
-Searched exhaustively for such a credential and found none:
+**No Neon branch was created.** An exhaustive credential search (`.env`, shell profiles,
+`~/.claude/settings.json`, `gh secret list`, `neonctl`) found no `NEON_API_KEY`/`NEON_PROJECT_ID`-
+style credential in this environment — see this same file's prior revision (preserved in git
+history) for the full search trail; nothing changed on that front between phases. Per this task's
+explicit instruction, and following the exact precedent the sibling TPC-DS-derived phase already
+used, the fallback is a **fresh, isolated LOCAL Postgres database**, not the shared Neon instance:
+`tpch_derived_bench_20260804`, on this machine's existing Homebrew `postgresql@18` server. Nothing
+wrote to `NEON_TEST_DB_URL`'s shared database, `decision_engine`, or any other local test database
+on this machine. There is no Neon branch for the product owner to clean up here either — only the
+one local Postgres database (~1.3 GB on disk), noted at the bottom of this page for cleanup.
 
-- `.env` / `.env.example` (repo root and the three `codex-*` sibling clones) — only
-  `NEON_TEST_DB_URL` (a plain Postgres connection string to the shared main DB), no
-  `NEON_API_KEY` / `NEON_PROJECT_ID`.
-- Shell profiles (`~/.zshrc`, `~/.zprofile`, `~/.bash_profile`, `~/.profile`) and the current
-  process environment — nothing Neon-related.
-- `~/.claude/settings.json` and other Claude config — only historical Bash-permission log
-  entries that happen to reference the same `NEON_TEST_DB_URL` connection string (via curl/API
-  test commands against the local connector service), not an API key.
-- `gh secret list -R thyn-ai/algenta` — no Neon-named secret (and secret values aren't readable
-  even if one existed).
-- `neonctl` — not installed, and running it via `npx neonctl` has no stored credentials to use
-  (`neonctl auth` requires an interactive browser device-flow login, which isn't available in
-  this non-interactive environment).
+## What's real here
 
-Per the task's explicit instruction, this is a named, real constraint from the product owner, not
-something to route around by writing into the shared main DB or substituting local SQLite — so
-the Postgres-backed load, the real end-to-end engine run against it, correctness verification,
-and the SF=10 timing step are all **on hold pending a Neon API credential** being supplied.
+- **Real generator, real data.** `electrum/tpch-dbgen` (explicitly pre-authorized, the same
+  long-standing permissible-redistribution mirror of TPC-H 2.17.0 used in the prior phase), built
+  with `MACHINE=MAC DATABASE=ORACLE WORKLOAD=TPCH`. Generated real SF=1 data:
+  `dbgen -vf -s 1` → 8 tables, 1.1 GB, `lineitem` = 6,001,215 rows — the documented, correct SF=1
+  LINEITEM cardinality (confirming the generator ran at the intended scale). All 8 tables loaded
+  into the isolated Postgres database via `\copy` (the same mechanical fix TPC-DS needed:
+  `dbgen`'s pipe-delimited output has a trailing `|` per row that Postgres's CSV `COPY` reads as an
+  extra empty column — stripped with `sed 's/|$//'` before load).
+- **Real query templates, real parameter substitution.** All 22 queries generated by the same
+  clone's `qgen -s 1 -r 42` (a fixed RNG seed, so the substituted literals — e.g. Q1's ship-date
+  threshold, Q6's discount band, Q19's three brand/container/quantity triples — are reproducible,
+  not hand-picked) from the unmodified `queries/1.sql` … `queries/22.sql` templates.
+- **Real independent oracle, same data.** DuckDB's `postgres` extension materialized all 8 tables
+  directly from the isolated Postgres database into a native DuckDB file
+  (`/tmp/tpch-work/tpch_sf1.duckdb`) — the SAME rows the engine translations below read, not a
+  second independent generation run. All 22 real, `qgen`-substituted query texts run successfully
+  in DuckDB against this file, with **two purely mechanical, disclosed dialect fixes**:
+  1. Q1's Oracle-dialect date-arithmetic precision spec — `interval '91' day (3)` — DuckDB doesn't
+     parse the `(3)` precision qualifier; rewritten to `interval '91' day` (the computed value is
+     unchanged, `(3)` only bounds display precision in Oracle).
+  2. Q15's `create view revenue:s (...) as ... ; select ... ; drop view revenue:s;` shape (`qgen`'s
+     literal, unmodified Q15 output) can't run against a DuckDB connection opened read-only (the
+     correctness oracle is opened read-only everywhere else on this page, deliberately, so it can
+     never be the one that mutates shared state) — rewritten to an equivalent `WITH revenue0 (...)
+     AS (...) SELECT ...` CTE. Same computation, no `CREATE`/`DROP` needed.
 
-**No Neon branch was created.** There is nothing to delete or keep — the product owner's own
-cleanup note (requested at the end of the task) is moot until a branch actually exists.
+  Both fixes are query-TEXT changes only; neither changes what is computed. `qgen`'s own trailing
+  `where rownum <= N;` pragma line (an Oracle-dialect row-count directive appended after every
+  query, not valid standalone SQL) is stripped uniformly for all 22 — the actual row cap for the
+  5 templates that have one (Q2/Q3/Q10/Q18/Q21, `:n` 100/10/20/100/100 in the original templates)
+  is applied identically on both the engine and the DuckDB side in Python, post-sort, so neither
+  side gets credit for a truncation the other didn't also get.
+- **Real engine.** The compiled `mojo_build/simulate_queryplane` worker, over a real AF_UNIX
+  frame, via `algenta.query.Query` — the exact same builder and worker binary already used and
+  e2e-tested in this repo (`tests/integration/test_query_plane_e2e.py`), reached via
+  `DYLD_LIBRARY_PATH` pointed at the main checkout's already-populated `mojo_env` pixi install
+  (a library-search-path pointer only, never a copy or a vendor — this worktree's own `mojo_env/`
+  was never `pixi install`-ed).
 
-## What was done anyway (ungated, pre-authorized, zero risk)
+## The one capability gap that mattered most, same as TPC-DS: the wire is purely numeric
 
-The product owner explicitly pre-authorized cloning/building/running
-`github.com/electrum/tpch-dbgen` by name, independent of the Neon question, so that prep is done
-and ready for whoever resumes this with credentials:
+Confirmed identical to the TPC-DS-derived phase's own finding: every cell
+`algenta.query.Query` sends is a `float64` or absent — there is no string cell type anywhere in
+the protocol. TPC-H's string columns split into two genuinely different cases, handled two
+different ways (both disclosed per-query below, and both implemented once in
+`engine_harness.py` rather than ad hoc per query):
 
-- Cloned `electrum/tpch-dbgen` to `/tmp/tpch-work/tpch-dbgen`, built `dbgen`/`qgen` on this
-  machine (`gcc`, `MACHINE=MAC DATABASE=ORACLE WORKLOAD=TPCH` per the repo's own `makefile`;
-  builds clean modulo pre-existing deprecation warnings in the 2010-vintage C source, no errors).
-- Generated SF=1 data: `dbgen -vf -s 1` into `/tmp/tpch-work/tpch-dbgen/sf1/`, 8 `.tbl` files,
-  1.1 GB total. `lineitem.tbl` has exactly 6,001,215 rows, matching TPC-H SF=1's documented
-  LINEITEM cardinality — confirms the generator ran correctly at the intended scale.
-- The 22 reference query templates (`queries/1.sql` … `queries/22.sql`, unsubstituted `qgen`
-  form) are present in the same clone for the translation pass.
+1. **A string used as a JOIN/GROUP-BY key or an output-only attribute** — dictionary-encoded via
+   one of two mechanisms depending on where the string lives:
+   - `encode_strings` (new in this phase): for a string that is a FACT table's own column
+     (`l_returnflag`, `l_linestatus`, `l_shipmode`, `l_shipinstruct`, `o_orderpriority`), assign a
+     dense code in Python from the values already fetched for the engine rows — no extra SQL
+     round-trip, since there's no separate dimension table with its own surrogate key to resolve
+     against. TPC-DS never needed this because none of its 9 translated templates group or filter
+     on a FACT table's own string column; TPC-H's Q1, Q4, Q10, Q12, Q19, Q21 all do.
+   - `dim_with_code` (unchanged from TPC-DS): for a DIMENSION table's string column(s)
+     (`p_brand`/`p_type`/`p_size` in Q16), one `DENSE_RANK() OVER (ORDER BY ...)` per distinct
+     value tuple, decoded back to strings only for the final, already-aggregated output.
+2. **A LIKE/substring/text-literal predicate that is a pure function of one row of one table** —
+   genuinely new to this phase (TPC-DS's own 9 never needed it): `p_name LIKE '%dim%'` (Q9),
+   `p_type LIKE 'PROMO%'` (Q14), `p_name LIKE 'medium%'` (Q20), `o_comment NOT LIKE
+   '%pending%packages%'` (Q13), `p_type NOT LIKE 'STANDARD POLISHED%'` + `s_comment LIKE
+   '%Customer%Complaints%'` (Q16), `p_type LIKE '%COPPER'` (Q2). There is no workaround that lets
+   this reach the engine — a LIKE pattern needs to inspect string BYTES the wire cannot carry no
+   matter how it's encoded — so it is evaluated at the Postgres connector boundary, before those
+   rows are ever sent to the engine. This is disclosed as a **connector-side, pre-filter
+   evaluation**, never a cross-table join done on the engine's behalf: every LIKE predicate above
+   is checked against exactly one table's own column, with no reference to any other table.
+   Q22's `SUBSTRING(c_phone FROM 1 FOR 2)` is the one instance that turns into a genuinely numeric
+   column instead of a code (`CAST(... AS INT)`, since a 2-digit country-code substring is a
+   digit string) — the only string-workaround site on this page that needs no dictionary at all.
 
-This data was intentionally left uncommitted (1.1 GB of generated fixture data does not belong in
-git) at `/tmp/tpch-work/tpch-dbgen/sf1/` on this machine, ready to load into an isolated Neon
-branch the moment one exists.
+Both mechanisms were already proven safe by the TPC-DS phase's own SCD-collision check;
+`dim_with_code`'s tie-breaking rule (`DENSE_RANK` collapsing duplicate order-by values to the same
+code, exactly SQL `GROUP BY`'s own rule) generalizes unchanged.
 
-## What is genuinely not done, and why
+## The second gap, also inherited: `MAX_ROWS = 1,000,000` per frame
 
-Everything downstream of "load into Postgres" was intentionally not attempted, rather than
-substituting an unapproved path to produce a partial answer that could be mistaken for a real
-Neon-backed run:
+`lineitem` (6,001,215 rows) and `orders` (1,500,000) both exceed
+`mojo/engine/query/plan.mojo`'s per-frame cap. The chunking workaround is unchanged from TPC-DS:
+split into `CHUNK_SIZE = 900,000`-row batches, re-run the SAME op chain per batch, combine partial
+`sum`/`count` aggregates in Python — the engine still does 100% of the per-row filter/join/
+aggregate work; only the map-reduce combine across batches happens outside it. Every `avg` in this
+page is computed as `sum / count` combined across batches, never as an average-of-per-batch-
+averages (which would silently weight small batches equal to large ones).
 
-- Loading the SF=1 tables into any live Postgres instance.
-- Verifying which of the two connector paths in `apps/api_server/connectors/` this task meant by
-  "the real connector path... different from the file-connector path used for the earlier CSV
-  benchmark" — deferred until there's an actual target database to point it at.
-- Translating the 22 TPC-H queries into this repo's query-plan JSON op-chain, and the
-  correctness-vs-DuckDB/SQLite verification pass.
-- Any SF=10 timing comparison.
+**A new variant of the same cap, specific to TPC-H's schema shape:** a few queries need a small
+per-order or per-part ATTRIBUTE (not a filter/join condition) looked up against a table that is
+itself too big to be a `with_table` side table (`orders`, 1,500,000 rows, exceeds the cap even
+though the *attribute lookup itself* is a trivial 1:1 join). Q9 (order → year), Q12 (order →
+priority) decorate the attribute onto each fact row via a plain Python dict lookup at the SAME
+point the row is built for the engine call, rather than sending `orders` itself as a side table.
+This is disclosed as a **join surrogate, not a join avoidance**: the lookup is a real 1:1
+attribute resolve with no fan-out risk (one order has exactly one year, one priority), the
+identical shape as `dim_with_code`'s decode-only-for-OUTPUT pattern just applied on the input side
+instead — the engine still does every FILTER, JOIN-with-fan-out, and AGGREGATE in this page.
 
-## Resuming this
+## Composite-key joins: the workaround the synthesis plan predicted, confirmed on TPC-H itself
 
-Once a Neon API credential (or an explicit decision to use a different isolated Postgres
-instance instead of Neon) is available:
+`join` takes exactly one equality key (`mojo/engine/query/join.mojo`'s own comment: "A composite
+multi-column equality key is not implemented" — still true; not touched this phase). Q9, Q16
+(via `partsupp`/`part`'s natural `(partkey, suppkey)` join surface) and Q20 (via a correlated
+subquery keyed on the SAME pair) all need it. Fix used, identical to
+`tests/integration/test_query_plane_e2e.py`'s own proven pattern (`_PS_MULTIPLIER = 10,000,000.0`,
+reused verbatim here): `project` a synthetic combined key `ps_partkey * 10_000_000.0 +
+ps_suppkey` on both sides before joining — safe at SF=1 (10,000 suppliers, nowhere near the
+multiplier) and at any TPC-H scale factor up to roughly SF=100,000 before `ps_suppkey` could reach
+10 million and collide.
 
-1. `neonctl branches create --project-id <id> --name tpch-derived-bench` (or the REST-API
-   equivalent), get that branch's own connection string.
-2. Load `/tmp/tpch-work/tpch-dbgen/sf1/*.tbl` into it, tables prefixed `tpch_`, via the real
-   connector path (verify in `apps/api_server/connectors/` which one is Postgres-backed and
-   local/no-sidecar).
-3. Continue at plan §2.5 step 3 (hand-translate + DuckDB-verify all 22 queries at SF=1).
+## Manual decorrelation: every correlated-subquery shape the plan named, plus one it didn't
 
-Worktree: `/private/tmp/tpc-query-plane-gaps` (branch `feat/query-plane-union-composite-multiagg`,
-PR #537, open) — the same worktree the multi-aggregate/composite-join/UNION kernel work landed in.
+- **Q2's correlated MIN** (`ps_supplycost = (SELECT MIN(ps_supplycost) ... WHERE <same filters>)`)
+  — decorrelates for free rather than needing a real per-row correlated join: the subquery's own
+  WHERE clause is IDENTICAL to the outer query's (same region filter, same join shape), so
+  `MIN(ps_supplycost)` grouped by `ps_partkey` over the SAME already-filtered rows the outer query
+  reads answers the correlated subquery for every outer row at once. Two engine calls: `group_by`
+  to compute the per-part minimum, then an `inner` join of the candidate rows back to that minimum
+  table, filtering `ps_supplycost == min`.
+- **Q11's "correlated" HAVING threshold** turned out, on inspection of the real query text, to be
+  a **non-correlated scalar** (`SUM(...) > (SELECT SUM(...) * 0.0001 FROM <fixed filter, no outer
+  reference> )`) — simpler than the synthesis plan's own worst case: one `group_by` computes every
+  group's sum, the SAME already-filtered rows' grand total (summed in Python, not the engine,
+  since it is a pure scalar reduction of already-materialized group sums) gives the threshold, and
+  the `HAVING` becomes a plain Python filter over the group results.
+- **Q15's correlated MAX** (`total_revenue = (SELECT MAX(total_revenue) FROM revenue)`) — same
+  shape as Q11: one `group_by` computes every supplier's revenue, `max()` in Python finds the
+  threshold, and a `WHERE s_suppkey IN (qualifying)` fetch (mirroring this exact pattern already
+  used in TPC-DS's own Q96) resolves the display columns.
+- **Q17's correlated AVG** (`l_quantity < (SELECT 0.2 * AVG(l_quantity) WHERE l_partkey =
+  <outer>)`) — the one true PER-ROW correlated subquery on this page (the threshold differs by
+  `l_partkey`, unlike Q2/Q11/Q15's single shared threshold): a first full pass computes
+  `sum(quantity)`/`count(quantity)` grouped by `l_partkey` over ALL of `lineitem` (chunked), then
+  a second pass re-fetches the SAME rows with the per-partkey average decorated on as an extra
+  column (the join-surrogate pattern above) and filters `quantity < 0.2 * avg_qty` with a plain
+  column-vs-column `filter`.
+- **Q18's correlated IN via HAVING** (`o_orderkey IN (SELECT l_orderkey ... HAVING SUM(quantity) >
+  312)`) — one `group_by` over all of `lineitem` computes every order's total quantity (which is
+  ALSO the exact `sum(l_quantity)` column the outer query displays, so it is computed once and
+  reused, not recomputed); a Python filter on that same result answers the correlated IN.
+- **Q9's/Q20's composite-key correlated joins** — see the composite-key section above; the
+  decorrelation and the composite-key workaround compose (Q20's per-`(partkey,suppkey)` half-sum
+  threshold is itself a `group_by_many` over two columns, projected through the same synthetic
+  key). Q20 additionally needed a **NULL-safety check the others didn't**: SQL's `x > (SELECT ...
+  WHERE <no match>)` is `x > NULL`, which is UNKNOWN (excluded), not `x > 0` — the decorrelation
+  therefore uses an `inner` join against the half-sum side table (a `(partkey,suppkey)` pair with
+  no qualifying 1997 shipment is simply ABSENT from that table, so it drops out of the join,
+  rather than being defaulted to a 0 threshold that would make the availability comparison
+  trivially true).
+- **Q4/Q21/Q22's EXISTS / NOT EXISTS** — `semi`/`anti` join, exactly as the plan named, with one
+  refinement on Q21: the doubly-nested `EXISTS ... AND NOT EXISTS ...` (an order has ≥2 distinct
+  suppliers, AND no supplier OTHER than the late one is also late) reduces to a pure cardinality
+  check per order — "count of distinct suppliers on this order" > 1 AND "count of distinct LATE
+  suppliers on this order" == 1 — computed via two `distinct` + `group_by count` passes rather than
+  a literal 3-way lineitem self-join (`l1`/`l2`/`l3` in the real query text), because the two
+  existence checks only ever depend on those two counts, never on which specific other row
+  satisfied them.
+
+## Two OR-decomposition queries, one genuinely disjoint, one needing CASE-as-arithmetic
+
+- **Q19** (3 brand/container/quantity/size bands, connected by `OR`) decomposes into 3 independent
+  engine passes and a plain sum, exactly like TPC-DS's Q48 (`p_brand` differs across all 3
+  branches, so they are mutually exclusive — no double-counting risk). One nuance specific to real
+  TPC-H data: the template's own literal text says `l_shipmode IN ('AIR', 'AIR REG')`, but the
+  real generated `lineitem.l_shipmode` domain only contains `'REG AIR'`, never `'AIR REG'` — a
+  documented, long-standing TPC-H spec quirk, not a bug introduced here. Reproduced faithfully by
+  encoding only the strings that actually occur and skipping the absent one, rather than inventing
+  a match; DuckDB (run against the identical real query text) hits the exact same quirk, which is
+  why both sides still agree.
+- **Q8/Q12/Q14** all have a `CASE WHEN <cond> THEN <numeric> ELSE 0 END`-shaped expression with no
+  `Expr` ternary node in the query plane (confirmed absent, same as TPC-DS's own finding). Unlike
+  TPC-DS's caution about this ("only safe for numeric branches... NOT safe once any branch... can
+  be absent"), every condition and every branch value in these three queries is over a `NOT NULL`
+  DDL column (`o_orderpriority`, `p_type`, `nation` name — all `NOT NULL` in the TPC-H schema), so
+  the comparison producing the condition is never *unknown*, only true/false — safe to encode as
+  plain arithmetic: `cond * value` (`cond` is a `filter`-style boolean `Expr`, which the engine
+  already represents as 1.0/0.0, confirmed by testing `Expr.eq(...)` directly inside `*`/`project`
+  in this phase).
+
+## The 22 verified
+
+Run `python3 benchmarks/tpch_derived/verified_queries.py` (needs the isolated Postgres DB +
+DuckDB oracle rebuilt per "Resuming this" below). Every row count below is confirmed **exact**
+against the DuckDB oracle — value-for-value for the 4 single-scalar queries (Q6/Q14/Q17/Q19),
+row-for-row for the other 18:
+
+| Q | Shape | Technique(s) | Rows out | Result |
+|---|-------|--------------|----------|--------|
+| 1 | Single table, multi-aggregate GROUP BY | `encode_strings`, `group_by_many`, `project` | 4 | **PASS** |
+| 2 | Correlated MIN, 5-way join | decorrelated `group_by` + `inner` join, output-decode | 100 | **PASS** |
+| 3 | 3-way join, top-10 | plain joins, `group_by_many`, top-N slice both sides | 10 | **PASS** |
+| 4 | `EXISTS` | `distinct` + cross-batch semi join | 5 | **PASS** |
+| 5 | 6-way join incl. a same-nation self-match | chained joins, col-vs-col `filter` | 5 | **PASS** |
+| 6 | Single table filter + aggregate | plain `filter`/`project`/`group_by` | 1 | **PASS** |
+| 7 | 2-nation cross-shipping, disjoint OR | chained joins, `!=` col-vs-col filter | 4 | **PASS** |
+| 8 | National market share, `CASE` | CASE-as-arithmetic, chained joins | 2 | **PASS** |
+| 9 | Composite key + `LIKE`, 6-way join | synthetic key, `encode_strings`-free (postgres LIKE pre-filter) | 175 | **PASS** |
+| 10 | Star join, output-only decode, top-20 | `encode_strings`, decode-by-surrogate-key | 20 | **PASS** |
+| 11 | Non-correlated scalar `HAVING` | `group_by`, Python scalar threshold | 839 | **PASS** |
+| 12 | `CASE` + `shipmode IN` | CASE-as-arithmetic, join-surrogate dict | 2 | **PASS** |
+| 13 | `LEFT JOIN` + 2-stage `GROUP BY` | default-zero infill, 2 engine passes | 42 | **PASS** |
+| 14 | `CASE` (promo revenue ratio) | CASE-as-arithmetic | 1 | **PASS** |
+| 15 | Correlated MAX | decorrelated `group_by` + Python max | 1 | **PASS** |
+| 16 | Composite anti-join + `COUNT(DISTINCT)` | synthetic key, `distinct`+`group_by` chain | 18,150 | **PASS** |
+| 17 | Correlated AVG (true per-row correlation) | 2-pass sum/count + join-surrogate decorate | 1 | **PASS** |
+| 18 | Correlated `HAVING` via `IN` | decorrelated `group_by`, reused for output | 10 | **PASS** |
+| 19 | Disjoint 3-way OR-branch decomposition | 3 independent passes, `AIR`/`AIR REG` quirk | 1 | **PASS** |
+| 20 | Composite key + NULL-safe decorrelation | synthetic key, `inner` join (not left+default-0) | 195 | **PASS** |
+| 21 | Nested `EXISTS`/`NOT EXISTS` | cardinality via `distinct`+`group_by`, no literal self-join | 100 | **PASS** |
+| 22 | `NOT EXISTS` anti-join + scalar AVG | anti join, `SUBSTRING` cast to int (no dictionary needed) | 5 | **PASS** |
+
+**22 of 22 real TPC-H query templates attempted and verified. Zero blocked, zero skipped, zero
+partial-credit.** This is a strictly larger result than the synthesis plan's own estimate ("roughly
+12-16 of 22 queries map onto the existing op-chain as-is... another 5-7 with bounded translation
+work") — every one of the "genuinely needs new work" gaps the plan named (§2.3: multi-aggregate
+wire, composite-key join, correlated-subquery decorrelation) turned out sufficient, and no
+additional capability gap was found that blocked a 22nd query outright.
+
+## Timing: the engine is slower than DuckDB at every one of the 22, and by a lot
+
+Reproduced end to end via `verified_queries.py`, `N_REPS = 3` repetitions per query — the DuckDB
+number re-runs the query 3 times against its own already-resident native table; the engine number
+re-dispatches the SAME already-fetched, already-chunked Python row lists through the compiled
+worker 3 times, so what varies between repetitions is dispatch/compute cost only, never a repeated
+Postgres fetch or a repeated DuckDB query-text parse. Postgres fetch time is reported separately
+(once; not repeated, since it is a one-time harness-setup cost each query pays before either side
+is measured) and is NOT included in the "engine" column below:
+
+| Q | Engine min / median / max (n=3) | DuckDB min / median / max (n=3) | Ratio (median) |
+|---|---|---|---|
+| 1  | 46,639.7 / 46,821.1 / 47,130.3 ms | 16.0 / 16.1 / 34.0 ms | 2,908x |
+| 2  | 5,528.6 / 5,529.4 / 5,611.7 ms | 7.0 / 7.1 / 19.1 ms | 779x |
+| 3  | 41,698.2 / 41,698.6 / 42,103.2 ms | 15.3 / 15.7 / 25.6 ms | 2,656x |
+| 4  | 35,992.5 / 36,212.4 / 36,546.1 ms | 9.6 / 9.8 / 22.4 ms | 3,695x |
+| 5  | 37,610.8 / 37,642.3 / 37,807.3 ms | 9.3 / 9.4 / 18.8 ms | 4,005x |
+| 6  | 32,494.9 / 32,518.1 / 32,629.2 ms | 3.0 / 3.3 / 10.5 ms | 9,854x |
+| 7  | 59,746.9 / 59,855.9 / 60,053.2 ms | 9.8 / 10.2 / 21.9 ms | 5,868x |
+| 8  | 49,159.6 / 49,555.8 / 49,661.7 ms | 10.5 / 11.9 / 22.8 ms | 4,165x |
+| 9  | 53,568.2 / 54,159.4 / 54,171.9 ms | 23.2 / 23.6 / 38.6 ms | 2,295x |
+| 10 | 35,551.3 / 35,575.3 / 35,900.1 ms | 76.6 / 77.4 / 89.0 ms | 460x |
+| 11 | 4,247.7 / 4,264.7 / 4,274.0 ms | 3.8 / 4.1 / 7.6 ms | 1,040x |
+| 12 | 48,881.9 / 48,890.7 / 49,004.1 ms | 9.6 / 9.7 / 17.3 ms | 5,040x |
+| 13 | 4,763.1 / 4,766.8 / 4,803.5 ms | 20.1 / 21.1 / 24.7 ms | 226x |
+| 14 | 67,850.6 / 67,995.8 / 68,023.2 ms | 9.2 / 10.5 / 20.2 ms | 6,476x |
+| 15 | 33,966.8 / 34,059.0 / 34,247.8 ms | 8.3 / 9.1 / 15.6 ms | 3,743x |
+| 16 | 2,475.5 / 2,486.5 / 2,548.6 ms | 13.8 / 14.4 / 17.5 ms | 173x |
+| 17 | 74,978.8 / 75,113.1 / 75,766.2 ms | 9.1 / 9.1 / 16.5 ms | 8,254x |
+| 18 | 22,550.9 / 22,575.9 / 22,623.2 ms | 15.4 / 16.8 / 24.8 ms | 1,344x |
+| 19 | 126,382.0 / 128,123.4 / 155,667.0 ms | 18.8 / 19.0 / 30.9 ms | 6,743x |
+| 20 | 41,462.1 / 41,596.5 / 42,108.9 ms | 10.3 / 10.5 / 20.2 ms | 3,962x |
+| 21 | 118,052.3 / 118,683.7 / 119,133.7 ms | 26.6 / 26.6 / 32.4 ms | 4,461x |
+| 22 | 418.6 / 424.9 / 425.1 ms | 10.2 / 11.6 / 12.0 ms | 37x |
+
+(Full run: `python3 benchmarks/tpch_derived/verified_queries.py`, this machine, single-threaded
+per-query, 22/22 PASS, 4,168s total wall time including all Postgres fetches, correctness checks,
+and repetitions. Per-query "ratio" above is DuckDB median ÷ engine median, i.e. how many times
+slower the engine is — not a speedup claim in either direction, since DuckDB is the winner in
+every row.)
+
+DuckDB wins by roughly 3 orders of magnitude at this scale, every time, for the same root cause
+the TPC-DS-derived phase already identified and disclosed: the query-plane's wire protocol
+JSON-encodes an inline `rows` array (up to 900,000 rows per chunk) into every request and the
+worker parses that same JSON back out on the other side; DuckDB answers directly against an
+already-resident, already-columnar native table with zero serialization. The gap is not primarily
+Mojo compute time. The query plane has a `dataset`/`open_dataset` residency path built specifically
+to avoid re-sending rows on every call (already used in this repo's own `bench_query_plane.py`),
+but none of the 22 translations above use it — each is a correctness-first, one-shot dispatch
+per repetition, not a resident-dataset throughput benchmark. A fair apples-to-apples throughput
+comparison would need the resident path; this phase measured correctness and honest one-shot
+dispatch cost, not that, and the numbers above are reported as exactly what they are rather than
+omitted or reframed to look more favorable. **No GitBook page follows from this**, per the
+synthesis plan's own call and this repo's publication policy: this is a plain loss at this scale,
+in this mode, disclosed in full — not a "hardware ceiling" exception.
+
+## Resuming this / reproducing this
+
+1. Rebuild the isolated Postgres DB (owner cleanup note: drop `tpch_derived_bench_20260804`,
+   ~1.3 GB, on this machine's local Homebrew `postgresql@18` server, whenever convenient — nothing
+   else depends on it):
+   ```
+   git clone --depth 1 https://github.com/electrum/tpch-dbgen.git /tmp/tpch-work/tpch-dbgen
+   cd /tmp/tpch-work/tpch-dbgen
+   make MACHINE=MAC DATABASE=ORACLE WORKLOAD=TPCH
+   mkdir sf1 && ./dbgen -vf -s 1 && mv *.tbl sf1/
+   createdb tpch_derived_bench_20260804
+   psql -d tpch_derived_bench_20260804 -f dss.ddl   # the clone's own DDL; psql folds the
+                                                     # UPPERCASE table/column names to lowercase
+   for t in nation region part supplier partsupp customer orders lineitem; do
+     sed 's/|$//' sf1/${t}.tbl > /tmp/tpch-work/sf1_stripped/${t}.tbl
+     psql -d tpch_derived_bench_20260804 -c "\copy ${t} from '/tmp/tpch-work/sf1_stripped/${t}.tbl' with (format csv, delimiter '|')"
+   done
+   DSS_QUERY=./queries ./qgen -s 1 -r 42 <N> > /tmp/tpch-work/queries_substituted/<N>.sql   # for N in 1..22
+   ```
+2. Clean the qgen output into DuckDB-runnable SQL (strip the leading `-- using N as a seed...`
+   comment line and the trailing `where rownum <= N;` pragma with a regex; apply the two
+   mechanical dialect fixes from "What's real here" above — Q1's `day (3)` → `day`, Q15's
+   view/select/drop-view → one `WITH` CTE) into `/tmp/tpch-work/queries_duckdb/<N>.sql`. This is a
+   one-off text transform, not checked into this repo (same as the sibling TPC-DS phase's own
+   dialect-fix step).
+3. Materialize the same tables into a DuckDB file via `ATTACH ... (TYPE POSTGRES)` +
+   `CREATE TABLE AS SELECT * FROM pg.public.<table>` for each of the 8 tables, into
+   `/tmp/tpch-work/tpch_sf1.duckdb`.
+4. `ALGENTA_RUNTIME_WORKER=$PWD/mojo_build/simulate_queryplane ALGENTA_RUNTIME_FALLBACK_MODE=allow
+   python3 benchmarks/tpch_derived/verified_queries.py`
+
+Worktree: `/private/tmp/tpc-query-plane-gaps`. The sibling TPC-DS-derived phase and this file's own
+prior "blocked" revision landed via PR #539 (squash-merged to `main`, `0e6f8a57`), on top of the
+underlying kernel work (multi-aggregate wire + composite-join workaround proof + UNION, PR #537,
+`8a343d66`) — both merged before this phase started. This phase's own commit (this file's rewrite
+plus `engine_harness.py`/`verified_queries.py`) ships in a fresh PR rebased onto current `main`,
+since #539 merged while this phase was in progress.
