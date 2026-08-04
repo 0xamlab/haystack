@@ -28,9 +28,17 @@ cd "${REPO_ROOT}"
 
 FILTER="${1:-counter_rng,linear_models,calibration,conformal,model_compare}"
 OUT="${BINARY_PATH:-${REPO_ROOT}/mojo_build/simulate_timing}"
+# main.mojo `#include`s its sibling dispatch table from ITS OWN directory, not via -I -- so
+# MOJO_RUNTIME_MODULE_FILTER alone, with MOJO_SRC left at the tracked mojo/engine/main.mojo, is a
+# SILENT NO-OP: main.mojo would still pick up the full, untouched, ~114k-line
+# mojo/engine/runtime_library_dispatch_generated.mojo regardless of the filter
+# (build_mojo_binary.sh refuses this combination outright now). Stage a copy so the filter
+# actually takes effect, the way CI's own build and scripts/build_runtime_shards.py already do.
+STAGE_DIR="$(mktemp -d "${REPO_ROOT}/mojo_build/.timing-build-stage.XXXXXX")"
 
-restore_dispatch() {
+cleanup_and_restore_dispatch() {
     local status=$?
+    rm -rf "${STAGE_DIR}"
     echo "→ restoring the full runtime dispatch artifact"
     python3 "${REPO_ROOT}/scripts/generate_runtime_library_dispatch.py" >/dev/null
     local lines
@@ -38,7 +46,8 @@ restore_dispatch() {
     echo "  dispatch restored: ${lines} lines"
     exit "${status}"
 }
-trap restore_dispatch EXIT
+trap cleanup_and_restore_dispatch EXIT
+cp "${REPO_ROOT}/mojo/engine/main.mojo" "${STAGE_DIR}/main.mojo"
 
 echo "→ filtered build"
 echo "  modules: ${FILTER}"
@@ -51,8 +60,9 @@ export RUNTIME_FALLBACK_MODE="deny"
 export MOJO_ALLOW_SUBPROCESS_FALLBACK="false"
 
 MOJO_RUNTIME_MODULE_FILTER="${FILTER}" \
+MOJO_SRC="${STAGE_DIR}/main.mojo" \
+DISPATCH_OUTPUT_PATH="${STAGE_DIR}/runtime_library_dispatch_generated.mojo" \
 BINARY_PATH="${OUT}" \
-MOJO_BUILD_TIMEOUT_SECONDS="${MOJO_BUILD_TIMEOUT_SECONDS:-1500}" \
     bash "${REPO_ROOT}/scripts/build_mojo_binary.sh"
 
 echo "→ probing dispatch through the socket transport"

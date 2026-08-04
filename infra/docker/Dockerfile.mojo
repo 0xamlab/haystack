@@ -53,6 +53,19 @@ ENV MOJO_BUILD_MCPU=${MOJO_BUILD_MCPU}
 
 # Compile + link the native binary. build_mojo_binary.sh handles the Linux clang link with the
 # $ORIGIN/../mojo_env/.pixi/envs/default/lib rpath.
+#
+# MOJO_SRC/DISPATCH_OUTPUT_PATH must be staged to a copy of main.mojo, not left at the tracked
+# mojo/engine/main.mojo: main.mojo `#include`s its sibling dispatch table from ITS OWN directory,
+# not via -I, so MOJO_RUNTIME_MODULE_FILTER above -- without this staging -- was a SILENT NO-OP.
+# main.mojo would still pick up mojo/engine/runtime_library_dispatch_generated.mojo, the full,
+# untouched, ~114k-line catalog, defeating the "MINIMAL dispatch" this build has always intended
+# (build_mojo_binary.sh now refuses this combination outright rather than silently compiling the
+# monolith it explicitly does NOT fit a 16 GB builder). CI's own build
+# (.github/workflows/ci.yml) and scripts/build_runtime_shards.py already stage this way.
+RUN mkdir -p /build/mojo_build/.stage \
+    && cp /build/mojo/engine/main.mojo /build/mojo_build/.stage/main.mojo
+ENV MOJO_SRC=/build/mojo_build/.stage/main.mojo
+ENV DISPATCH_OUTPUT_PATH=/build/mojo_build/.stage/runtime_library_dispatch_generated.mojo
 RUN cd /build && bash scripts/build_mojo_binary.sh && test -x /build/mojo_build/simulate \
     && file /build/mojo_build/simulate
 

@@ -639,7 +639,12 @@ build:
 setup-mojo:
 	bash scripts/install_mojo.sh
 
-## Build Mojo engine binary using pixi environment in mojo_env/
+## Build Mojo engine binary using pixi environment in mojo_env/. UNFILTERED (no
+## MOJO_RUNTIME_MODULE_FILTER) this now refuses fast instead of burning ~4.5 minutes on a genuine,
+## still-open upstream Mojo compiler crash once the runtime-library catalog passes ~550 modules
+## (currently 640) -- see the guard + citations in scripts/build_mojo_binary.sh. Pass
+## MOJO_RUNTIME_MODULE_FILTER=<modules> for a small bounded build, or use `make build-mojo-shards`
+## for the full catalog via the already-production-authoritative sharded builder.
 build-mojo:
 	mkdir -p mojo_build
 	@PIXI_BIN="$$(command -v pixi 2>/dev/null || true)"; \
@@ -656,6 +661,13 @@ build-mojo:
 	else \
 		echo "❌ pixi/mojo_env not found. Run: make setup-mojo"; exit 1; \
 	fi
+
+## Build the FULL runtime-library catalog as module-routed shards (what CI's build-runtime.yml
+## actually ships as algenta-runtime-native) instead of one monolithic `mojo build` invocation --
+## the working alternative to the crash `make build-mojo` (unfiltered) now refuses to run into.
+## Writes build/runtime-shards/ (worker binaries + runtime-shards.json routing map).
+build-mojo-shards:
+	$(REPO_PYTHON) scripts/build_runtime_shards.py --shard-size 24 --out build/runtime-shards
 
 ## Regenerate every kernel-inventory artifact from mojo/engine in one step:
 ## the discovery cache, the SDK-facing contract, the Mojo dispatch table, and the

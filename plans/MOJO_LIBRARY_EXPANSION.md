@@ -2,7 +2,10 @@
 
 > **Last updated:** 2026-04-07
 > **Status:** ✅ Built — 189 libraries across 54 waves
-> **Engine build:** `make build-mojo` → `mojo_build/simulate` (engine_version: 0.2.0-mojo-native)
+> **Engine build:** `make build-mojo` (small/filtered dev builds only — an unfiltered build now
+> refuses fast rather than hitting a confirmed upstream Mojo compiler stack-overflow past ~550
+> modules; use `make build-mojo-shards` for the full catalog) → `mojo_build/simulate`
+> (engine_version: 0.2.0-mojo-native)
 
 ---
 

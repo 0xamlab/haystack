@@ -88,15 +88,41 @@ pixi install
 pixi run mojo --version 2>/dev/null && info "Mojo version: $(pixi run mojo --version 2>/dev/null)"
 
 # ── Step 3: Build the Mojo binary when the source entrypoint exists ───────────
+# Defaults to a small filtered build (a single, arbitrary runtime-library module --
+# the smoke test below never calls it, it only needs *some* value so
+# build_mojo_binary.sh takes the filtered/bounded path). An unfiltered first-time
+# setup build would compile the FULL runtime-library catalog (640+ modules as of
+# this writing) into one translation unit alongside main.mojo, which reliably hits
+# a confirmed upstream Mojo compiler stack-overflow on the pinned toolchain past
+# ~550 modules (see the guard + citations in build_mojo_binary.sh) -- i.e. it would
+# never have succeeded here at all. Override MOJO_RUNTIME_MODULE_FILTER yourself
+# for a different bounded subset, or run `make build-mojo-shards` afterwards for
+# the full catalog via the already-production-authoritative sharded builder.
+MOJO_RUNTIME_MODULE_FILTER="${MOJO_RUNTIME_MODULE_FILTER:-vector_kernels.dot}"
 if [[ ! -f "${MOJO_SRC}" ]]; then
     warn "Mojo entrypoint not found at ${MOJO_SRC}; skipping native binary build."
 else
     step "Building Mojo engine binary"
     mkdir -p "${BUILD_DIR}"
 
+    # Setting MOJO_RUNTIME_MODULE_FILTER alone is NOT enough to bound this build: main.mojo
+    # `#include`s its sibling dispatch table by its OWN directory, not via -I, so unless MOJO_SRC
+    # is ALSO staged as a copy next to a freshly-filtered dispatch file, main.mojo still pulls in
+    # mojo/engine/runtime_library_dispatch_generated.mojo -- the full, tracked, ~114k-line catalog
+    # -- regardless of the filter, defeating it silently (confirmed the hard way: this is exactly
+    # what happened before this staging was added here). CI (.github/workflows/ci.yml) and
+    # scripts/build_runtime_shards.py both already stage this way; mirror it.
+    SETUP_STAGE_DIR="${BUILD_DIR}/.setup-stage"
+    mkdir -p "${SETUP_STAGE_DIR}"
+    cp "${MOJO_SRC}" "${SETUP_STAGE_DIR}/main.mojo"
+
     if PIXI_BIN="$(command -v pixi 2>/dev/null || true)" \
-        && PIXI_BIN="${PIXI_BIN}" bash "${REPO_ROOT}/scripts/build_mojo_binary.sh" >/dev/null; then
-        info "Build succeeded!"
+        && PIXI_BIN="${PIXI_BIN}" MOJO_RUNTIME_MODULE_FILTER="${MOJO_RUNTIME_MODULE_FILTER}" \
+            MOJO_SRC="${SETUP_STAGE_DIR}/main.mojo" \
+            DISPATCH_OUTPUT_PATH="${SETUP_STAGE_DIR}/runtime_library_dispatch_generated.mojo" \
+            bash "${REPO_ROOT}/scripts/build_mojo_binary.sh" >/dev/null; then
+        info "Build succeeded! (filtered: MOJO_RUNTIME_MODULE_FILTER=${MOJO_RUNTIME_MODULE_FILTER})"
+        rm -rf "${SETUP_STAGE_DIR}"
     else
         error "Build failed. Check ${MOJO_SRC} for syntax errors."
     fi

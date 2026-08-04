@@ -3,7 +3,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_BUILD_DIR="${REPO_ROOT}/mojo_build"
-MOJO_SRC="${MOJO_SRC:-${REPO_ROOT}/mojo/engine/main.mojo}"
+DEFAULT_MOJO_SRC="${REPO_ROOT}/mojo/engine/main.mojo"
+MOJO_SRC="${MOJO_SRC:-${DEFAULT_MOJO_SRC}}"
 DISPATCH_GENERATOR="${REPO_ROOT}/scripts/generate_runtime_library_dispatch.py"
 DISPATCH_OUTPUT_PATH="${DISPATCH_OUTPUT_PATH:-${REPO_ROOT}/mojo/engine/runtime_library_dispatch_generated.mojo}"
 PIXI_ENV_DIR="${REPO_ROOT}/mojo_env"
@@ -43,6 +44,23 @@ METAL_SHIM_SOURCE_PATH="${METAL_SHIM_SOURCE_PATH:-${REPO_ROOT}/benchmarks/llm_sm
 # choice MOJO_BUILD_MCPU already makes for CPU builds. Override with MOJO_BUILD_METAL_TARGET if a
 # narrower target is ever needed.
 MOJO_BUILD_METAL_TARGET="${MOJO_BUILD_METAL_TARGET:-apple-m1}"
+# The pinned Mojo compiler (0.26.3.0.dev2026042305) has a genuine, upstream, still-open bug: an
+# internal compiler pass recurses once per top-level declaration in a single translation unit
+# instead of iterating, and blows a worker thread's stack (EXC_BAD_ACCESS/KERN_PROTECTION_FAILURE
+# on macOS) once the combined module count crosses a threshold -- confirmed by minidump analysis to
+# sit between 500 (compiles) and 600 (crashes) modules on this codebase, deterministic across
+# reruns and independent of host RAM (see modular/modular#2766, open since 2024-05-20, and
+# Modular's own compiler team on the "very slow compile times with FFI functions" forum thread
+# acknowledging the same many-functions-in-one-file scaling with no known fix). An UNFILTERED build
+# compiles all discover_runtime_library_modules() modules into one dispatch table in the same
+# translation unit as main.mojo -- currently 640 -- so it reliably hits this, wasting ~4.5 minutes
+# to reach a native crash whose human-readable summary Crashpad then usually fails to write (see
+# the attachments-directory mkdir below). Refuse before spending that time; a FILTERED build
+# (MOJO_RUNTIME_MODULE_FILTER, what CI/Docker/build_runtime_shards.py all actually use) stays
+# small and is unaffected. Escape hatch for deliberately re-testing this on a newer compiler nightly:
+# MOJO_BUILD_ALLOW_UNSAFE_MONOLITH=1.
+MOJO_BUILD_MAX_SAFE_MODULES="${MOJO_BUILD_MAX_SAFE_MODULES:-550}"
+MOJO_BUILD_ALLOW_UNSAFE_MONOLITH="${MOJO_BUILD_ALLOW_UNSAFE_MONOLITH:-0}"
 
 PIXI_HOME_EXPLICIT=0
 if [[ -n "${PIXI_HOME:-}" ]]; then
@@ -223,6 +241,80 @@ if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" ]]; then
 fi
 
 python3 "${DISPATCH_GENERATOR}" "${DISPATCH_GENERATOR_ARGS[@]}" >/dev/null
+
+# Whether MOJO_RUNTIME_MODULE_FILTER actually bounds anything: main.mojo `#include`s its sibling
+# dispatch table from ITS OWN directory, not via -I. So when MOJO_SRC is still the tracked default
+# (mojo/engine/main.mojo), main.mojo always picks up mojo/engine/runtime_library_dispatch_generated.mojo
+# -- the full, tracked, ~114k-line catalog -- NO MATTER what DISPATCH_OUTPUT_PATH was redirected to
+# above; the filtered file just gets written somewhere main.mojo never looks. Confirmed the hard
+# way: MOJO_RUNTIME_MODULE_FILTER=vector_kernels.dot with an unstaged MOJO_SRC reproduced the
+# identical full-monolith crash. A filter only takes effect when the caller has ALSO staged MOJO_SRC
+# next to a freshly-generated dispatch file (what CI's own build, scripts/build_runtime_shards.py,
+# and this script's callers that pass MOJO_SRC all already do).
+FILTER_IS_EFFECTIVE=0
+if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" && "${MOJO_SRC}" != "${DEFAULT_MOJO_SRC}" ]]; then
+    FILTER_IS_EFFECTIVE=1
+fi
+
+if [[ -n "${MOJO_RUNTIME_MODULE_FILTER_RAW}" && "${FILTER_IS_EFFECTIVE}" == "0" ]]; then
+    echo "❌ MOJO_RUNTIME_MODULE_FILTER=${MOJO_RUNTIME_MODULE_FILTER_RAW} was set, but MOJO_SRC is" \
+        "still the tracked default (${DEFAULT_MOJO_SRC}), so the filter is a silent no-op: this" \
+        "build would still compile the FULL runtime-library catalog, identically to an unfiltered" \
+        "build (and hit the same crash below)." >&2
+    echo "   Stage a copy of main.mojo elsewhere and point MOJO_SRC (and DISPATCH_OUTPUT_PATH) at" \
+        "it, the way scripts/build_runtime_shards.py and .github/workflows/ci.yml do, e.g.:" >&2
+    echo "     mkdir -p mojo_build/.stage && cp mojo/engine/main.mojo mojo_build/.stage/main.mojo" >&2
+    echo "     MOJO_SRC=mojo_build/.stage/main.mojo \\" >&2
+    echo "     DISPATCH_OUTPUT_PATH=mojo_build/.stage/runtime_library_dispatch_generated.mojo \\" >&2
+    echo "     MOJO_RUNTIME_MODULE_FILTER=${MOJO_RUNTIME_MODULE_FILTER_RAW} bash $0" >&2
+    exit 1
+fi
+
+# Refuse an unbounded build (no filter, or a filter that can't take effect per above) whose module
+# count is past the empirically-confirmed compiler-crash threshold -- see the
+# MOJO_BUILD_MAX_SAFE_MODULES comment above. Counts the SAME way the dispatch generator just did
+# (apps.runtime.mojo_inventory), so this can never drift from what actually got compiled in.
+if [[ "${FILTER_IS_EFFECTIVE}" == "0" && "${MOJO_BUILD_ALLOW_UNSAFE_MONOLITH}" == "1" ]]; then
+    echo "[build_mojo_binary] MOJO_BUILD_ALLOW_UNSAFE_MONOLITH=1: skipping the unfiltered-build" \
+        "module-count safety check. Expect a native compiler crash on the pinned toolchain" \
+        "past ~550-600 modules." >&2
+fi
+if [[ "${FILTER_IS_EFFECTIVE}" == "0" && "${MOJO_BUILD_ALLOW_UNSAFE_MONOLITH}" != "1" ]]; then
+    MONOLITH_MODULE_COUNT="$(cd "${REPO_ROOT}" && python3 -c '
+import sys
+sys.path.insert(0, ".")
+from apps.runtime.mojo_inventory import discover_runtime_library_modules
+print(len(discover_runtime_library_modules(executable_only=True)))
+')"
+    if [[ "${MONOLITH_MODULE_COUNT}" -gt "${MOJO_BUILD_MAX_SAFE_MODULES}" ]]; then
+        echo "❌ Refusing an unfiltered Mojo build: ${MONOLITH_MODULE_COUNT} runtime-library" \
+            "modules would be compiled into main.mojo's single translation unit, past the" \
+            "${MOJO_BUILD_MAX_SAFE_MODULES}-module safety ceiling." >&2
+        echo "   This is a confirmed upstream Mojo compiler bug (stack-overflow in an internal" \
+            "recursive pass, not an RSS/memory limit -- see modular/modular#2766), reproduced" \
+            "deterministically on the pinned toolchain (mojo 0.26.3.0.dev2026042305) between" \
+            "500 (compiles) and 600 (crashes) modules. It will not simply go away with more RAM." >&2
+        echo "   Use one of:" >&2
+        echo "     - scripts/build_runtime_shards.py -- the production-authoritative, already-" \
+            "working sharded builder (what CI/build-runtime.yml ships) that keeps every" \
+            "compiler invocation well under this ceiling." >&2
+        echo "     - MOJO_RUNTIME_MODULE_FILTER=<comma,separated,modules> PLUS a staged MOJO_SRC" \
+            "for a small, bounded local dev build (what CI's own build does; see the staging" \
+            "error above for the exact recipe)." >&2
+        echo "     - MOJO_BUILD_ALLOW_UNSAFE_MONOLITH=1 to force this anyway (e.g. to re-test" \
+            "against a newer Mojo nightly) -- expect a native crash on the pinned toolchain." >&2
+        exit 1
+    fi
+fi
+
+# Crashpad's minidump-attachment writer has a known ENOENT race on macOS against its own
+# per-report attachments subdirectory (observed directly via lldb on a real crash from the guard
+# above being bypassed): the attachments/<uuid> directory it just created is not always visible to
+# the very next opendir(), so the human-readable crash summary is silently lost even though the
+# .dmp itself still lands under crashdb/completed/. Pre-creating the parent tree doesn't close the
+# race (the UUID is chosen at crash time), but does rule out the dumber failure mode of the
+# top-level attachments/ directory itself being absent -- cheap, harmless, best-effort insurance.
+mkdir -p "${PIXI_ENV_DIR}/.pixi/envs/default/share/max/crashdb/attachments" 2>/dev/null || true
 
 # Mojo compile must run inside the pixi-managed environment so std/package
 # roots resolve exactly as they do for runtime-owned test and server invocations.
