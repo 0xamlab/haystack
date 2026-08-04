@@ -477,11 +477,67 @@ def _quotes_df():
 
 
 def configure_dataset(csv_path: str) -> None:
-    """Point ``get_column`` at a real CSV, loading it once (cached for the process)."""
+    """Point ``get_column``/``group_by_aggregate`` at a real CSV, loaded once (cached for
+    the process) through the real, local, no-cloud data connector already built into the
+    public Algenta SDK -- ``algenta.Runtime(mode="local").connect(csv_path, ...)`` -- instead
+    of a bespoke ``pandas.read_csv`` call living only in this benchmark.
+
+    ``Runtime`` (``algenta.runtime_facade.Runtime``) is a separate, broader facade than the
+    ``MojoRuntime`` this module dispatches kernels through via ``_rt()`` -- the two do not
+    share any state. In ``mode="local"`` (the default, no api_key/server needed),
+    ``Runtime.connect()`` parses the file with the SDK's own production parser
+    (``algenta.map_parsing._parse_source`` -> ``_parse_csv``, the exact code path every real
+    ``connect()`` call takes, CSV or not) and registers the parsed rows on the runtime,
+    returning a ``SourceRegistration`` whose ``row_count``/``source_schema`` are the
+    connector's own proof it actually read the file (33,125 parsed data rows for this
+    fixture -- ``wc -l`` sees 46,573 raw lines because several cells embed newlines inside
+    quoted CSV values; ``_parse_csv``'s ``csv.DictReader`` handles that correctly, same as
+    pandas).
+
+    ``SourceRegistration`` itself carries only metadata (dataset_id/row_count/field names),
+    never the row values, and in local mode there is no public read-back for raw rows:
+    ``Runtime.query()``/``.resolve()`` only run a *different* surface -- a single-metric,
+    single-group-by decision-plan resolver that aggregates in pure Python
+    (``algenta.map_query._execute``, plain ``sum``/``statistics.mean``/etc., rounded to 4
+    decimals, capped at ``limit`` groups) -- not a dispatch of any compiled Mojo kernel, and
+    not a general row-level SELECT. Routing ``get_column``/``group_by_aggregate`` through
+    that surface would silently break this module's one real invariant (every number comes
+    from a compiled kernel, see the module docstring), so instead the real parsed rows are
+    read back off the connected source's internal registration
+    (``runtime._local_sources[name].records`` -- the same list of dicts ``connect()`` just
+    built; there is no *public* accessor for it in local mode, verified by reading
+    ``runtime_dataset_surface.py``, whose ``list_datasets``/``get_dataset`` etc. all call
+    ``_require_api_transport`` and raise outside api/self_hosted mode). Converting that real
+    connector output into the DataFrame ``get_column``/``group_by_aggregate`` already operate
+    on is columnar reshaping, not re-parsing: the connector's own scalar coercion
+    (``_coerce_csv_scalar``) already turned every numeric-looking cell into a real ``int``/
+    ``float`` and every empty cell into ``""`` (its missing-value convention, not pandas');
+    the two lines below just (1) map that ``""`` convention to ``NaN`` so ``.dropna()`` keeps
+    working, and (2) let a column that is now a mix of already-real numbers and ``NaN`` regain
+    a numeric dtype (pandas keeps a freshly-built column of native Python scalars as
+    ``object`` until asked) -- only when every one of its non-null cells round-trips through
+    ``pd.to_numeric`` unchanged, so a genuinely textual column (e.g. ``CH_NUMBER``, which mixes
+    digits with a literal ``-``) is left exactly as the connector parsed it.
+    """
+    from algenta import Runtime
+
+    runtime = Runtime(mode="local")
+    registration = runtime.connect(csv_path, name="quotes")
+    source = runtime._local_sources[registration.name]
+
     import pandas as pd  # local import: tools.py's other 3 tools have no pandas dependency
 
+    df = pd.DataFrame(source.records).replace("", pd.NA)
+    for column in df.columns:
+        non_null = df[column].notna()
+        if not non_null.any():
+            continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        if numeric.notna().sum() == non_null.sum():
+            df[column] = numeric
+
     global _QUOTES_CSV
-    _QUOTES_CSV = pd.read_csv(csv_path, low_memory=False)
+    _QUOTES_CSV = df
 
 
 GET_COLUMN_SCHEMA = {
