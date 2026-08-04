@@ -149,7 +149,7 @@ from numeric.contract import (
     parse_aggregation,
     unknown_aggregation_error,
 )
-from query.aggregate import ManyGroupedResult, planned_workers
+from query.aggregate import MAX_FUSED_AGGS, ManyGroupedResult, planned_workers
 from query.composed import group_by_composed_parallel
 from query.executor import (
     describe_batch_shape,
@@ -1395,43 +1395,132 @@ fn _resolve_column_list(
     return out^
 
 
+fn _resolve_one_agg(
+    schema: Schema,
+    op_json: String,
+    what: String,
+    mut value_columns: List[Int],
+    mut opcodes: List[Int],
+    mut value_names: List[String],
+) raises:
+    """Resolve one `{"value":..., "agg":...}` pair and append it to the flat
+    per-aggregate lists `group_by_composed_parallel`/`group_by_many_parallel`
+    take. `what` names the entry in an error ("aggregate value" for the single
+    top-level pair, "aggregate value at aggs[N]" for one drawn from the list).
+    """
+    var token = json_string_field(op_json, "agg")
+    var opcode = parse_aggregation(token)
+    if opcode == AGG_UNKNOWN:
+        # numeric.contract owns the message, so the accepted set is listed in one
+        # place and cannot drift from what parse_aggregation actually accepts.
+        raise Error(unknown_aggregation_error(token))
+    var value_name = json_string_field(op_json, "value")
+    var value = _resolve_column(schema, value_name, what)
+    value_columns.append(value)
+    opcodes.append(opcode)
+    value_names.append(aggregation_token(opcode) + "_" + value_name)
+
+
+fn _resolve_aggs(
+    schema: Schema,
+    op_json: String,
+    mut value_columns: List[Int],
+    mut opcodes: List[Int],
+    mut value_names: List[String],
+) raises:
+    """Read the `aggregate` op's (value, agg) pairs — one or many — off `op_json`.
+
+    Two accepted shapes, mutually exclusive:
+      * the ORIGINAL shape — top-level `"value"` and `"agg"` strings, exactly one
+        pair. Kept byte-identical: an existing plan sending this shape resolves
+        through the exact same branch it always has.
+      * `"aggs":[{"value":...,"agg":...}, ...]` — one scan, several aggregate
+        columns. `group_by_many`/`group_by_composed_parallel` already fuse any
+        number of (value, opcode) pairs into one grouped pass (see
+        `aggregate.mojo`'s `MAX_FUSED_AGGS`); only the JSON-level wiring for more
+        than one pair was missing, which is what this adds.
+
+    Sending both is rejected as ambiguous rather than silently preferring one —
+    the same rule `_apply_join` uses for `on` vs `left_on`/`right_on` together.
+    """
+    var aggs_array = json_raw_array(op_json, "aggs")
+    var has_aggs = len(aggs_array) > 0
+    var has_single = find_key(op_json, "value") >= 0 or find_key(op_json, "agg") >= 0
+    if has_aggs and has_single:
+        raise Error(
+            "aggregate accepts 'value'/'agg' (one pair) OR 'aggs' (a list of"
+            " pairs), not both"
+        )
+    if not has_aggs:
+        _resolve_one_agg(
+            schema, op_json, "aggregate value", value_columns, opcodes, value_names
+        )
+        return
+    var entries = json_raw_tokens(aggs_array)
+    if len(entries) == 0:
+        raise Error("aggregate 'aggs' must be a non-empty array")
+    if len(entries) > MAX_FUSED_AGGS:
+        raise Error(
+            "aggregate 'aggs' has "
+            + String(len(entries))
+            + " pairs; at most "
+            + String(MAX_FUSED_AGGS)
+            + " are fused into one pass"
+        )
+    for i in range(len(entries)):
+        _resolve_one_agg(
+            schema,
+            entries[i],
+            "aggregate value at aggs[" + String(i) + "]",
+            value_columns,
+            opcodes,
+            value_names,
+        )
+
+
 # ── execution ─────────────────────────────────────────────────────────────────
 
 
 fn _many_single_to_batch(
-    result: ManyGroupedResult, key_name: String, value_name: String
+    result: ManyGroupedResult, key_name: String, var value_names: List[String]
 ) -> RecordBatch:
-    """A width-1, one-aggregate `ManyGroupedResult` as a two-column batch, so
-    it composes with other operators — the single-key `aggregate` op's output
+    """A width-1 `ManyGroupedResult` as a batch: one key column, then one
+    column per requested aggregate — the single-key `aggregate` op's output
     shape, whichever route (`query.composed`, falling back to the shipped
     `group_by_many_parallel`) answered the call.
 
-    Not `GroupedResult`'s own accessors (`.keys`/`.values`/`.present` at a flat
-    per-group index): `ManyGroupedResult` lays `values`/`present` out
-    `group * n_aggs + agg`, and `value_at`/`present_at` are that indexing's
-    only correct readers. It collapses to the same number at `agg=0, n_aggs=1`
-    only because this call site always asks for exactly one aggregate.
+    `len(value_names)` is `result.n_aggs`: the single-aggregate call this
+    replaced is exactly this loop run once, so that shape is unchanged byte
+    for byte. Not `GroupedResult`'s own accessors (`.keys`/`.values`/
+    `.present` at a flat per-group index): `ManyGroupedResult` lays
+    `values`/`present` out `group * n_aggs + agg`, and `value_at`/`present_at`
+    are that indexing's only correct readers.
     """
     var n = result.n_groups()
+    var n_aggs = len(value_names)
+    var columns = List[Float64Array]()
+    var names = List[String]()
+    var dtypes = List[Int]()
+
     var keys = List[Float64]()
     var key_mask = List[Bool]()
-    var values = List[Float64]()
-    var present = List[Bool]()
     for i in range(n):
         keys.append(result.key_tuples[i])
         key_mask.append(True)
-        values.append(result.value_at(i, 0))
-        present.append(result.present_at(i, 0))
-
-    var columns = List[Float64Array]()
     columns.append(float64_with_nulls(keys^, key_mask))
-    columns.append(float64_with_nulls(values^, present))
-    var names = List[String]()
     names.append(key_name)
-    names.append(value_name)
-    var dtypes = List[Int]()
     dtypes.append(0)
-    dtypes.append(0)
+
+    for j in range(n_aggs):
+        var values = List[Float64]()
+        var present = List[Bool]()
+        for i in range(n):
+            values.append(result.value_at(i, j))
+            present.append(result.present_at(i, j))
+        columns.append(float64_with_nulls(values^, present))
+        names.append(value_names[j])
+        dtypes.append(0)
+
     return RecordBatch(Schema(names^, dtypes^), columns^, n)
 
 
@@ -1569,18 +1658,17 @@ fn apply_op_detailed(
         )
 
     if op == "aggregate":
-        var token = json_string_field(op_json, "agg")
-        var opcode = parse_aggregation(token)
-        if opcode == AGG_UNKNOWN:
-            # numeric.contract owns the message, so the accepted set is listed in one
-            # place and cannot drift from what parse_aggregation actually accepts.
-            raise Error(unknown_aggregation_error(token))
-        var value = _resolve_column(
-            batch.schema, json_string_field(op_json, "value"), "aggregate value"
-        )
-        var value_name = aggregation_token(opcode) + "_" + json_string_field(
-            op_json, "value"
-        )
+        # One or many (value, agg) pairs — `_resolve_aggs` accepts the ORIGINAL
+        # top-level `"value"`/`"agg"` shape (exactly one pair) or the additive
+        # `"aggs":[{"value":...,"agg":...}, ...]` shape (one or more). Either way
+        # the fused kernels below run the whole request in ONE grouped pass —
+        # `group_by_many`'s entire point (aggregate.mojo) — rather than one
+        # `aggregate` op per column, which is what made multiple aggregates cost
+        # one full rescan each before this.
+        var value_columns = List[Int]()
+        var opcodes = List[Int]()
+        var value_names = List[String]()
+        _resolve_aggs(batch.schema, op_json, value_columns, opcodes, value_names)
 
         var by_array = json_raw_array(op_json, "by")
         if len(by_array) > 0:
@@ -1593,17 +1681,14 @@ fn apply_op_detailed(
             # (test_query_aggregate_fused's EQUIVALENCE suite, composite-key
             # case). A shape composed does not recognise falls through to
             # `group_by_many_parallel` itself — still that same equivalence, not
-            # a third implementation. `value`/`opcode` ride as one-element lists
-            # because this call site always aggregates exactly one column.
-            var one_value = List[Int]()
-            one_value.append(value)
-            var one_opcode = List[Int]()
-            one_opcode.append(opcode)
+            # a third implementation. `value_columns`/`opcodes` are flat parallel
+            # lists — one element for the original single-pair shape (unchanged
+            # call), N for `"aggs"` (the new shape, same kernel).
             var workers = planned_workers(batch.n_rows, info.num_physical_cores())
             var multi = group_by_composed_parallel(
-                batch, key_columns, one_value, one_opcode, workers
+                batch, key_columns, value_columns, opcodes, workers
             )
-            # Rebuild as a batch: one column per key plus the aggregate.
+            # Rebuild as a batch: one column per key, then one column per aggregate.
             var columns = List[Float64Array]()
             var names = List[String]()
             var dtypes = List[Int]()
@@ -1616,16 +1701,22 @@ fn apply_op_detailed(
                 columns.append(float64_with_nulls(key_values^, key_mask))
                 names.append(batch.schema.name_at(key_columns[c]))
                 dtypes.append(0)
-            var agg_values = List[Float64]()
-            var agg_mask = List[Bool]()
-            for g in range(len(multi.values)):
-                agg_values.append(multi.values[g])
-                agg_mask.append(multi.present[g])
-            columns.append(float64_with_nulls(agg_values^, agg_mask))
-            names.append(value_name)
-            dtypes.append(0)
-            var out_rows = multi.n_groups() if multi.key_width > 0 else len(
-                multi.values
+            for j in range(len(value_names)):
+                var agg_values = List[Float64]()
+                var agg_mask = List[Bool]()
+                for g in range(multi.n_groups()):
+                    agg_values.append(multi.value_at(g, j))
+                    agg_mask.append(multi.present_at(g, j))
+                columns.append(float64_with_nulls(agg_values^, agg_mask))
+                names.append(value_names[j])
+                dtypes.append(0)
+            # `n_groups()` reads 0 straight off `key_width <= 0` (a genuinely empty
+            # `"by":[]`), but the whole-table aggregate that path answers with is
+            # exactly 1 row — `multi.values` holds `n_aggs` slots for it, same as it
+            # always has, so dividing back out the aggregate count recovers it
+            # without special-casing width 0 a second time.
+            var out_rows = multi.n_groups() if multi.key_width > 0 else (
+                len(multi.values) // len(value_names) if len(value_names) > 0 else 0
             )
             return RecordBatch(Schema(names^, dtypes^), columns^, out_rows)
 
@@ -1639,18 +1730,17 @@ fn apply_op_detailed(
         # workers)` (the fused suite's single-column EQUIVALENCE case).
         var single_key = List[Int]()
         single_key.append(key)
-        var single_value = List[Int]()
-        single_value.append(value)
-        var single_opcode = List[Int]()
-        single_opcode.append(opcode)
         var workers = planned_workers(batch.n_rows, info.num_physical_cores())
         var single_result = group_by_composed_parallel(
-            batch, single_key, single_value, single_opcode, workers
+            batch, single_key, value_columns, opcodes, workers
         )
-        return _many_single_to_batch(single_result, single_by, value_name)
+        return _many_single_to_batch(single_result, single_by, value_names^)
 
     if op == "join":
         return _apply_join(batch, op_json, tables, detail)
+
+    if op == "union":
+        return _apply_union(batch, op_json, tables, detail)
 
     if op == "window":
         return _apply_window(batch, op_json, detail)
@@ -1667,7 +1757,7 @@ fn apply_op_detailed(
         "unknown op '"
         + op
         + "'; accepted: filter, project, select, sort, top_k, distinct, limit,"
-        " aggregate, join, window"
+        " aggregate, join, union, window"
     )
 
 
@@ -1971,6 +2061,173 @@ fn _apply_join(
         result = hash_join_indices(batch, left_key, right, right_key, join_type)
     detail = result.describe()
     return materialize(batch, right, result, prefix)
+
+
+# ── union ─────────────────────────────────────────────────────────────────────
+
+
+fn _concat_float64(a: Float64Array, b: Float64Array) -> Float64Array:
+    """`a`'s rows then `b`'s, preserving each row's presence — UNION ALL's one
+    primitive. `values_list`/`mask_list` copy (there is no in-place append on the
+    shared `ArcPointer` buffer a slice reads from — see `columnar.array`), so this
+    is O(len(a) + len(b)), the same order every other row-materializing op here
+    already pays (`take_column`, `materialize`).
+    """
+    var values = a.values_list()
+    var mask = a.mask_list()
+    var b_values = b.values_list()
+    var b_mask = b.mask_list()
+    for i in range(len(b_values)):
+        values.append(b_values[i])
+        mask.append(b_mask[i])
+    return float64_with_nulls(values^, mask)
+
+
+fn _apply_union(
+    batch: RecordBatch, op_json: String, tables: NamedBatches, mut detail: String
+) raises -> RecordBatch:
+    """`{"op":"union","tables":["sales_web","sales_catalog"]}` — UNION ALL: every
+    row of the running batch, then every row of each named table in the given
+    order, no deduplication. This is the minimum TPC-DS needs (it unions sales
+    channels, never deduplicating) and the query plane's first UNION of any kind
+    — see the discovery-sweep synthesis plan, section 2.3 / TPC-DS note in section 3.
+
+    `tables` is plural and an ARRAY, unlike join's singular `table`: a union has no
+    upper bound on operand count the way a join's two-sided key does, and chaining
+    N `union` ops for N tables would repeat the schema-matching walk below N times
+    over an already-growing batch instead of once over the ORIGINAL operands.
+
+    Side tables, not prior pipeline stages, are how "another query's output"
+    reaches this op — exactly the mechanism `join` already uses for the same
+    reason (`plan_hash` covers `ops`, not table bodies; a table is parsed once,
+    not once per reference). A caller wanting to union two DIFFERENT op-chains'
+    results runs each chain as its own `query_execute` call, then hands the
+    materialized result back as a named table here.
+
+    Columns are matched BY NAME against the running batch's schema, not by
+    position: an operand supplying the same columns in a different order still
+    unions correctly, and a genuinely missing column is refused by name rather
+    than silently zipping column `i` of one schema against column `i` of another
+    (the mistake a positional union would make silently). Column COUNT must still
+    match — an operand with an extra or a missing column cannot be reordered into
+    correctness and is refused before any row is read.
+
+    No `how` (this is UNION ALL, not the relational union operator most SQL
+    engines default to) and no de-duplication: DISTINCT is already its own op,
+    stackable after this one, and running it unconditionally here would charge
+    every unique-by-construction union (the common case — TPC-DS's channel
+    unions never need it) for a scan it does not want.
+    """
+    var names_array = json_raw_array(op_json, "tables")
+    var operand_names = List[String]()
+    for token in json_raw_tokens(names_array):
+        operand_names.append(_unquote(token))
+    if len(operand_names) == 0:
+        raise Error("union requires 'tables' (a non-empty array of table names)")
+
+    # Preflight the ROW count — union cannot blow up the way a join's key product
+    # can (every operand row appears exactly once), but a long chain of large
+    # tables can still exceed MAX_ROWS/MAX_MATERIALIZED_CELLS/the frame cap, and
+    # that must be refused before any column is copied, not after.
+    var out_rows = batch.n_rows
+    for i in range(len(operand_names)):
+        var name = operand_names[i]
+        var table_index = tables.index_of(name)
+        if table_index < 0:
+            raise Error(
+                "union references table '"
+                + name
+                + "', which the plan does not supply (available: "
+                + tables.describe()
+                + ")"
+            )
+        ref operand = tables.batches[table_index]
+        if operand.width() != batch.width():
+            raise Error(
+                "union operand '"
+                + name
+                + "' has "
+                + String(operand.width())
+                + " columns; the batch being unioned onto has "
+                + String(batch.width())
+                + " -- every union operand must have the SAME columns (select"
+                " first to drop or reorder any that differ)"
+            )
+        for c in range(batch.width()):
+            var col_name = batch.schema.name_at(c)
+            if operand.schema.index_of(col_name) < 0:
+                raise Error(
+                    "union operand '"
+                    + name
+                    + "' has no column '"
+                    + col_name
+                    + "' (available: "
+                    + operand.schema.describe()
+                    + ") -- union matches columns BY NAME, not position"
+                )
+        out_rows = _saturating_sum(out_rows, operand.n_rows)
+
+    if out_rows > MAX_ROWS:
+        raise Error(
+            "union would produce " + String(out_rows) + " rows; at most " + String(
+                MAX_ROWS
+            )
+        )
+    var out_cells = _saturating_product(out_rows, batch.width())
+    if out_cells > MAX_MATERIALIZED_CELLS:
+        raise Error(
+            "union would produce "
+            + String(out_cells)
+            + " cells; at most "
+            + String(MAX_MATERIALIZED_CELLS)
+        )
+    var floor_bytes = _serialized_bytes_floor(out_rows, batch.width())
+    if floor_bytes > MAX_RESPONSE_BYTES:
+        raise Error(
+            "union would produce "
+            + String(out_rows)
+            + " rows x "
+            + String(batch.width())
+            + " columns, which serialise to at least "
+            + String(floor_bytes)
+            + " bytes; a response may hold at most "
+            + String(MAX_RESPONSE_BYTES)
+            + " (the transport frame cap is 64 MB) -- reduce the result with select,"
+            " aggregate, limit or top_k"
+        )
+
+    var out_columns = List[Float64Array]()
+    for c in range(batch.width()):
+        out_columns.append(batch.column(c))
+    var operands_used = 0
+    var total_rows = batch.n_rows
+    for i in range(len(operand_names)):
+        var table_index = tables.index_of(operand_names[i])
+        ref operand = tables.batches[table_index]
+        for c in range(batch.width()):
+            var col_name = batch.schema.name_at(c)
+            var operand_col = operand.schema.index_of(col_name)
+            out_columns[c] = _concat_float64(out_columns[c], operand.column(operand_col))
+        operands_used += 1
+        total_rows += operand.n_rows
+
+    var names = List[String]()
+    var dtypes = List[Int]()
+    for c in range(batch.schema.width()):
+        names.append(batch.schema.names[c])
+        dtypes.append(batch.schema.dtypes[c])
+
+    detail = (
+        String(total_rows)
+        + " rows after UNION ALL over "
+        + String(operands_used)
+        + " table(s) ("
+        + String(batch.n_rows)
+        + " running + "
+        + String(total_rows - batch.n_rows)
+        + " unioned)"
+    )
+    return RecordBatch(Schema(names^, dtypes^), out_columns^, total_rows)
 
 
 # ── window ────────────────────────────────────────────────────────────────────

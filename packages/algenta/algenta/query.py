@@ -451,6 +451,43 @@ class Query:
         self.ops.append({"op": "aggregate", "by": by, "value": value, "agg": agg})
         return self
 
+    def group_by_many(
+        self, by: str | list[str], aggs: list[tuple[str, str]]
+    ) -> Query:
+        """Aggregate SEVERAL `(value, agg)` pairs grouped by `by`, in ONE pass.
+
+        A separate method rather than widening `group_by`'s own signature: every
+        existing `group_by(by, value, agg=...)` caller passes `value` positionally
+        as a single column name, so accepting a list there too would make the
+        SAME argument mean two different shapes depending on its type — the same
+        overload trap `sort`'s `desc` already avoids by keying off `by`'s type
+        instead. This method exists for the new shape only.
+
+        The engine runs every pair in the SAME grouped scan
+        (`group_by_many`/`group_by_composed_parallel` in `aggregate.mojo`) rather
+        than one full rescan per pair — the fix is one op emitting
+        `"aggs":[{"value":...,"agg":...}, ...]` instead of N `group_by` calls, and
+        it is why this exists as its own op payload rather than as sugar that
+        expands into N `.group_by(...)` calls on this builder.
+
+        Output columns are named `<agg>_<value>` per pair, same as `group_by`,
+        in the order given — a duplicate `(value, agg)` pair is legal (two
+        identical output columns) exactly as two chained `group_by` calls would
+        be, and is not deduplicated here.
+        """
+        if not aggs:
+            raise ValueError("group_by_many needs a non-empty list of (value, agg) pairs")
+        resolved: list[dict[str, str]] = []
+        for value, agg in aggs:
+            if agg not in _ACCEPTED_AGGREGATIONS:
+                raise ValueError(
+                    f"unknown aggregation {agg!r}; accepted:"
+                    f" {', '.join(_ACCEPTED_AGGREGATIONS)}"
+                )
+            resolved.append({"value": value, "agg": agg})
+        self.ops.append({"op": "aggregate", "by": by, "aggs": resolved})
+        return self
+
     def sort(
         self,
         by: str | list[str],
@@ -700,6 +737,43 @@ class Query:
                 )
             op["prefix"] = prefix
         self.ops.append(op)
+        return self
+
+    def union(self, *tables: str) -> Query:
+        """UNION ALL onto one or more named side tables (see `with_table`).
+
+        Concatenates rows: the running plan's rows first, then each named table's,
+        in the given order — no deduplication. `DISTINCT` is already its own
+        operator (`Query` has none yet at the top level, but the engine's
+        `distinct` op is reachable the same way `select`/`sort` are); chain one
+        after `union` for UNION DISTINCT rather than asking this method to
+        de-duplicate unconditionally, which would charge every already-unique
+        union (the common case: TPC-DS's channel unions never need it) for a
+        scan it does not want.
+
+        Columns are matched BY NAME against this plan's own columns/output at the
+        point `union` runs, not by position, so an operand may declare its columns
+        in a different order and still union correctly. Column COUNT must match on
+        every operand; the engine reports a mismatch by table name.
+
+        A table is declared once with `with_table` and can be named here (and by
+        `join`) any number of times — the same "table lives beside the plan"
+        reason `join` already has: `plan_hash` is over `ops`, not table bodies, so
+        the table is parsed once regardless of how many ops reference it.
+        """
+        op_index = len(self.ops)
+        if not tables:
+            raise QueryError(
+                "invalid_arguments", "union needs at least one table name", op_index
+            )
+        for table in tables:
+            if not isinstance(table, str) or not table:
+                raise QueryError(
+                    "invalid_arguments",
+                    "union table names must be non-empty strings",
+                    op_index,
+                )
+        self.ops.append({"op": "union", "tables": list(tables)})
         return self
 
     # ── window ────────────────────────────────────────────────────────────────
@@ -1086,15 +1160,23 @@ class Query:
         """The wire frame this plan will send. Useful for hashing or inspection."""
         declared = [table["name"] for table in self.tables]
         for index, op in enumerate(self.ops):
-            if op.get("op") != "join":
-                continue
-            if op.get("table") not in declared:
-                raise QueryError(
-                    "invalid_arguments",
-                    f"join references table {op.get('table')!r}, which the plan does "
-                    f"not supply (available: {', '.join(declared) or 'none'})",
-                    index,
-                )
+            if op.get("op") == "join":
+                if op.get("table") not in declared:
+                    raise QueryError(
+                        "invalid_arguments",
+                        f"join references table {op.get('table')!r}, which the plan"
+                        f" does not supply (available: {', '.join(declared) or 'none'})",
+                        index,
+                    )
+            elif op.get("op") == "union":
+                for name in op.get("tables", []):
+                    if name not in declared:
+                        raise QueryError(
+                            "invalid_arguments",
+                            f"union references table {name!r}, which the plan does"
+                            f" not supply (available: {', '.join(declared) or 'none'})",
+                            index,
+                        )
         request: dict[str, Any] = {
             "type": "query_execute",
             "columns": list(self.columns),

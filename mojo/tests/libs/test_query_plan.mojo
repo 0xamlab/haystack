@@ -12,6 +12,7 @@ cover the boundary failures rather than the arithmetic (which `test_query_execut
   * plan_hash being over the plan's VALUES, so whitespace and key order do not change
     it but a threshold does.
 """
+from query.aggregate import MAX_FUSED_AGGS, group_by_many_parallel, planned_workers
 from query.join import join_output_rows
 from query.plan import (
     MAX_MATERIALIZED_CELLS,
@@ -38,6 +39,8 @@ from query.plan import (
     _serialized_bytes_exact,
     _serialized_bytes_floor,
 )
+from numeric.contract import AGG_COUNT, AGG_SUM
+from std.sys import info
 
 
 comptime OP_GT: Int = 102
@@ -344,6 +347,187 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ multi-column group-by wrong:", multi_grouped.width())
+
+    # ── MULTI-AGGREGATE wiring: several (value, agg) pairs, one "aggregate" op ──
+    # `aggs` is the additive shape (section 2.3.1 of the TPC-H synthesis plan): one
+    # scan producing several aggregate columns via the SAME `group_by_many` fused
+    # kernel `aggregate.mojo` already ships, instead of one `aggregate` op (one full
+    # rescan) per requested column. Hand-computed against ROWS by region:
+    #   region 1: amounts 10.5, 30    -> sum 40.5, count 2
+    #   region 2: amount  50          -> sum 50.0, count 1
+    #   region 3: amount  null        -> sum 0.0 (real, present), count 0 (present)
+    var many = apply_op(
+        batch,
+        (
+            '{"op":"aggregate","by":"region","aggs":['
+            '{"value":"amount","agg":"sum"},{"value":"amount","agg":"count"}]}'
+        ),
+        False,
+    )
+    if (
+        many.n_rows == 3
+        and many.width() == 3
+        and many.schema.name_at(0) == "region"
+        and many.schema.name_at(1) == "sum_amount"
+        and many.schema.name_at(2) == "count_amount"
+        and many.column(1).get(0) == 40.5 and many.column(2).get(0) == 2.0
+        and many.column(1).get(1) == 50.0 and many.column(2).get(1) == 1.0
+        and many.column(1).is_valid_at(2) and many.column(1).get(2) == 0.0
+        and many.column(2).is_valid_at(2) and many.column(2).get(2) == 0.0
+    ):
+        passed += 1
+        print("  ✅ 'aggs' fuses sum+count by region into one op, both columns right")
+    else:
+        failed += 1
+        print(
+            "  ❌ multi-aggregate wrong:", many.width(), many.column(1).get(0),
+            many.column(2).get(0),
+        )
+
+    # ── the wired route is the SAME kernel call, not a reimplementation ──────
+    # Calls `group_by_many_parallel` directly at the exact worker count the
+    # `aggregate` op itself plans, on the SAME key/value/opcode lists the JSON
+    # above resolves to, and checks the op's answer is bit-for-bit what the fused
+    # kernel returns — proving `plan.mojo` actually reaches
+    # `group_by_many`/`group_by_composed_parallel`, the claim in section 2.3.1 of
+    # the synthesis plan, rather than answering the same numbers a different way.
+    var region_col = batch.column_index("region")
+    var amount_col = batch.column_index("amount")
+    var direct_keys = List[Int]()
+    direct_keys.append(region_col)
+    var direct_values = List[Int]()
+    direct_values.append(amount_col)
+    direct_values.append(amount_col)
+    var direct_opcodes = List[Int]()
+    direct_opcodes.append(AGG_SUM)
+    direct_opcodes.append(AGG_COUNT)
+    var direct = group_by_many_parallel(
+        batch,
+        direct_keys,
+        direct_values,
+        direct_opcodes,
+        planned_workers(batch.n_rows, info.num_physical_cores()),
+    )
+    var wiring_equivalent = direct.n_groups() == many.n_rows
+    if wiring_equivalent:
+        for g in range(direct.n_groups()):
+            if (
+                direct.value_at(g, 0) != many.column(1).get(g)
+                or direct.present_at(g, 0) != many.column(1).is_valid_at(g)
+                or direct.value_at(g, 1) != many.column(2).get(g)
+                or direct.present_at(g, 1) != many.column(2).is_valid_at(g)
+            ):
+                wiring_equivalent = False
+    if wiring_equivalent:
+        passed += 1
+        print("  ✅ the op's answer is bit-identical to calling group_by_many_parallel directly")
+    else:
+        failed += 1
+        print("  ❌ multi-aggregate wiring diverged from the kernel it claims to call")
+
+    # ── multi-aggregate composes with a COMPOSITE (multi-column) group key too ──
+    var many_composite = apply_op(
+        batch,
+        (
+            '{"op":"aggregate","by":["region","amount"],"aggs":['
+            '{"value":"amount","agg":"sum"},{"value":"amount","agg":"min"}]}'
+        ),
+        False,
+    )
+    # Row 3's `amount` is NULL and `amount` is itself a KEY column here, so that
+    # row joins no group (a null key is excluded, not its own group — the same
+    # policy the single-key aggregate tests above already rely on): 3 groups, not
+    # the 4 rows, from (region=1,amount=10.5), (2,50), (1,30).
+    if (
+        many_composite.width() == 4
+        and many_composite.schema.name_at(2) == "sum_amount"
+        and many_composite.schema.name_at(3) == "min_amount"
+        and many_composite.n_rows == 3
+    ):
+        passed += 1
+        print("  ✅ 'aggs' composes with a 2-column composite group key")
+    else:
+        failed += 1
+        print("  ❌ composite-key multi-aggregate wrong:", many_composite.width())
+
+    # ── the ORIGINAL single-pair shape still resolves through the SAME branch ──
+    # `value`/`agg` together with `aggs` is ambiguous, not silently preferring one.
+    var both_shapes_rejected = False
+    try:
+        var _bad_both = apply_op(
+            batch,
+            (
+                '{"op":"aggregate","by":"region","value":"amount","agg":"sum",'
+                '"aggs":[{"value":"amount","agg":"count"}]}'
+            ),
+            False,
+        )
+    except e:
+        both_shapes_rejected = String(e).find("not both") >= 0
+    if both_shapes_rejected:
+        passed += 1
+        print("  ✅ 'value'/'agg' together with 'aggs' is rejected as ambiguous")
+    else:
+        failed += 1
+        print("  ❌ ambiguous value/agg + aggs was not rejected")
+
+    # ── an empty 'aggs' array is rejected, not silently a zero-column answer ──
+    var empty_aggs_rejected = False
+    try:
+        var _bad_empty = apply_op(
+            batch, '{"op":"aggregate","by":"region","aggs":[]}', False
+        )
+    except e:
+        empty_aggs_rejected = String(e).find("aggs") >= 0
+    if empty_aggs_rejected:
+        passed += 1
+        print("  ✅ an empty 'aggs' array is rejected by name")
+    else:
+        failed += 1
+        print("  ❌ empty 'aggs' array was not rejected")
+
+    # ── a bad column INSIDE aggs[i] names which entry, not just 'aggregate value' ──
+    var bad_aggs_entry_named = False
+    try:
+        var _bad_entry = apply_op(
+            batch,
+            (
+                '{"op":"aggregate","by":"region","aggs":['
+                '{"value":"amount","agg":"sum"},{"value":"nope","agg":"sum"}]}'
+            ),
+            False,
+        )
+    except e:
+        bad_aggs_entry_named = String(e).find("aggs[1]") >= 0 and String(e).find(
+            "nope"
+        ) >= 0
+    if bad_aggs_entry_named:
+        passed += 1
+        print("  ✅ a bad column at aggs[1] is named by index and by name")
+    else:
+        failed += 1
+        print("  ❌ bad aggs[] entry was not named by index")
+
+    # ── more than MAX_FUSED_AGGS pairs is refused, naming the count and the cap ──
+    var too_many_aggs = String('{"op":"aggregate","by":"region","aggs":[')
+    for i in range(MAX_FUSED_AGGS + 1):
+        if i > 0:
+            too_many_aggs += ","
+        too_many_aggs += '{"value":"amount","agg":"sum"}'
+    too_many_aggs += "]}"
+    var too_many_rejected = False
+    try:
+        var _bad_many = apply_op(batch, too_many_aggs, False)
+    except e:
+        too_many_rejected = String(e).find(String(MAX_FUSED_AGGS + 1)) >= 0 and String(
+            e
+        ).find(String(MAX_FUSED_AGGS)) >= 0
+    if too_many_rejected:
+        passed += 1
+        print("  ✅ ", MAX_FUSED_AGGS + 1, "aggs is refused, naming the count and the cap")
+    else:
+        failed += 1
+        print("  ❌ over-cap 'aggs' request was not rejected")
 
     # ── sort, top_k, distinct, limit, select through apply_op ────────────────
     var sorted_desc = apply_op(
@@ -1352,6 +1536,238 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ table cell budget did not fire")
+
+    # ══ union ═════════════════════════════════════════════════════════════════
+    # The query plane's first UNION of any kind (synthesis plan section 2.3 / 3):
+    # `sales_web` unioned onto `sales_store`, then `sales_catalog` too — the TPC-DS
+    # "union three sales channels" shape, hand-verified against an independent
+    # count rather than the engine's own arithmetic.
+    comptime UNION_HEADER: String = '{"columns":["channel_id","amount"]}'
+    comptime UNION_STORE_ROWS: String = "[[1,10.0],[2,20.0]]"
+    comptime UNION_CHANNELS: String = (
+        '{"tables":['
+        '{"name":"sales_web","columns":["channel_id","amount"],"rows":[[3,30.0]]},'
+        '{"name":"sales_catalog","columns":["channel_id","amount"],'
+        '"rows":[[4,40.0],[5,50.0]]},'
+        '{"name":"reordered","columns":["amount","channel_id"],'
+        '"rows":[[99.0,9]]},'
+        '{"name":"wrong_width","columns":["channel_id","amount","extra"],'
+        '"rows":[[1,1.0,1.0]]},'
+        '{"name":"wrong_name","columns":["channel_id","total"],"rows":[[1,1.0]]}'
+        "]}"
+    )
+    var union_store = build_batch(UNION_HEADER, UNION_STORE_ROWS)
+    var union_tables = parse_named_tables(
+        UNION_CHANNELS, _empty_strings(), _empty_strings()
+    )
+
+    # ── UNION ALL over one table: rows concatenate, columns keep their names ──
+    var union_one = apply_op_detailed(
+        union_store,
+        '{"op":"union","tables":["sales_web"]}',
+        False,
+        union_tables,
+        detail,
+    )
+    if (
+        union_one.n_rows == 3
+        and union_one.width() == 2
+        and union_one.schema.name_at(0) == "channel_id"
+        and union_one.column(0).get(0) == 1.0
+        and union_one.column(0).get(2) == 3.0
+        and union_one.column(1).get(2) == 30.0
+    ):
+        passed += 1
+        print("  ✅ union onto one table concatenates rows, keeping column names")
+    else:
+        failed += 1
+        print("  ❌ single-table union wrong:", union_one.n_rows, union_one.width())
+
+    if detail.find("3 rows after UNION ALL over 1 table") >= 0:
+        passed += 1
+        print("  ✅ the union reports its row math as lineage detail")
+    else:
+        failed += 1
+        print("  ❌ union lineage detail wrong:", detail)
+
+    # ── UNION ALL over TWO tables, in the given order, no dedup ──────────────
+    var union_two = apply_op_detailed(
+        union_store,
+        '{"op":"union","tables":["sales_web","sales_catalog"]}',
+        False,
+        union_tables,
+        detail,
+    )
+    if (
+        union_two.n_rows == 5   # 2 store + 1 web + 2 catalog; nothing deduplicated
+        and union_two.column(0).get(0) == 1.0
+        and union_two.column(0).get(1) == 2.0
+        and union_two.column(0).get(2) == 3.0
+        and union_two.column(0).get(3) == 4.0
+        and union_two.column(0).get(4) == 5.0
+        and union_two.column(1).get(4) == 50.0
+    ):
+        passed += 1
+        print("  ✅ union over two tables concatenates in order, UNION ALL (no dedup)")
+    else:
+        failed += 1
+        print("  ❌ two-table union wrong:", union_two.n_rows)
+
+    # ── a REPEATED value is kept twice: this is ALL, not DISTINCT ─────────────
+    var union_repeat = apply_op_detailed(
+        union_store,
+        '{"op":"union","tables":["sales_web"]}',
+        False,
+        union_tables,
+        detail,
+    )
+    var repeat_two = apply_op_detailed(
+        union_repeat,
+        '{"op":"union","tables":["sales_web"]}',
+        False,
+        union_tables,
+        detail,
+    )
+    var channel_3_count = 0
+    for r in range(repeat_two.n_rows):
+        if repeat_two.column(0).get(r) == 3.0:
+            channel_3_count += 1
+    if repeat_two.n_rows == 4 and channel_3_count == 2:
+        passed += 1
+        print("  ✅ unioning the same table twice keeps both copies -- ALL, not DISTINCT")
+    else:
+        failed += 1
+        print("  ❌ union-twice did not preserve duplicates:", channel_3_count)
+
+    # ── columns match BY NAME, not position: a reordered schema still unions ──
+    var union_reordered = apply_op_detailed(
+        union_store,
+        '{"op":"union","tables":["reordered"]}',
+        False,
+        union_tables,
+        detail,
+    )
+    if (
+        union_reordered.n_rows == 3
+        and union_reordered.schema.name_at(0) == "channel_id"
+        and union_reordered.column(0).get(2) == 9.0    # "reordered"'s channel_id
+        and union_reordered.column(1).get(2) == 99.0    # "reordered"'s amount
+    ):
+        passed += 1
+        print("  ✅ a differently-ordered but same-named schema unions correctly")
+    else:
+        failed += 1
+        print("  ❌ by-name column matching wrong:", union_reordered.column(0).get(2))
+
+    # ── an empty 'tables' array is rejected, not a silent no-op ──────────────
+    var empty_union_rejected = False
+    try:
+        var _bad_union1 = apply_op_detailed(
+            union_store, '{"op":"union"}', False, union_tables, detail
+        )
+    except e:
+        empty_union_rejected = String(e).find("tables") >= 0
+    if empty_union_rejected:
+        passed += 1
+        print("  ✅ union with no 'tables' is rejected by name")
+    else:
+        failed += 1
+        print("  ❌ union without 'tables' was not rejected")
+
+    # ── an unknown table name is rejected, listing what IS available ────────
+    var union_unknown_rejected = False
+    try:
+        var _bad_union2 = apply_op_detailed(
+            union_store,
+            '{"op":"union","tables":["nope"]}',
+            False,
+            union_tables,
+            detail,
+        )
+    except e:
+        union_unknown_rejected = String(e).find("nope") >= 0 and String(e).find(
+            "sales_web"
+        ) >= 0
+    if union_unknown_rejected:
+        passed += 1
+        print("  ✅ an unknown union table is rejected, listing the available tables")
+    else:
+        failed += 1
+        print("  ❌ unknown union table not rejected properly")
+
+    # ── a column-COUNT mismatch is rejected before any row is read ──────────
+    var union_width_rejected = False
+    try:
+        var _bad_union3 = apply_op_detailed(
+            union_store,
+            '{"op":"union","tables":["wrong_width"]}',
+            False,
+            union_tables,
+            detail,
+        )
+    except e:
+        union_width_rejected = String(e).find("wrong_width") >= 0 and String(
+            e
+        ).find("3 columns") >= 0
+    if union_width_rejected:
+        passed += 1
+        print("  ✅ a column-count mismatch is rejected, naming the table and the count")
+    else:
+        failed += 1
+        print("  ❌ union width mismatch not rejected")
+
+    # ── a genuinely missing column NAME is rejected, not silently zipped ────
+    var union_name_rejected = False
+    try:
+        var _bad_union4 = apply_op_detailed(
+            union_store,
+            '{"op":"union","tables":["wrong_name"]}',
+            False,
+            union_tables,
+            detail,
+        )
+    except e:
+        union_name_rejected = String(e).find("wrong_name") >= 0 and String(
+            e
+        ).find("amount") >= 0
+    if union_name_rejected:
+        passed += 1
+        print("  ✅ a same-width but wrongly-named union operand is rejected by name")
+    else:
+        failed += 1
+        print("  ❌ union column-name mismatch not rejected")
+
+    # ── union composes with the rest of the plan: aggregate right after it ──
+    var union_then_aggregate = apply_op(
+        apply_op_detailed(
+            union_store,
+            '{"op":"union","tables":["sales_web","sales_catalog"]}',
+            False,
+            union_tables,
+            detail,
+        ),
+        '{"op":"aggregate","by":"channel_id","value":"amount","agg":"sum"}',
+        False,
+    )
+    if union_then_aggregate.n_rows == 5:
+        passed += 1
+        print("  ✅ a unioned batch composes with aggregate right after it")
+    else:
+        failed += 1
+        print("  ❌ union did not compose with a following op")
+
+    # ── the accepted-op list names union too ─────────────────────────────────
+    var lists_union = False
+    try:
+        var _bad_union5 = apply_op(union_store, '{"op":"pivot"}', False)
+    except e:
+        lists_union = String(e).find("union") >= 0
+    if lists_union:
+        passed += 1
+        print("  ✅ the accepted-op list names union")
+    else:
+        failed += 1
+        print("  ❌ accepted-op list missing union")
 
     # ══ window ════════════════════════════════════════════════════════════════
     var wbatch = build_batch(WINDOW_HEADER, WINDOW_ROWS)

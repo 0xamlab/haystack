@@ -226,6 +226,58 @@ def test_group_by_accepts_a_column_list():
     assert plan.ops[0]["by"] == ["region", "amount"]
 
 
+# ── group_by_many: several aggregates, one op ──────────────────────────────────
+
+
+def test_group_by_many_emits_one_aggregate_op_with_an_aggs_list():
+    plan = _plan().group_by_many(
+        "region", [("amount", "sum"), ("amount", "count")]
+    )
+    assert plan.ops == [
+        {
+            "op": "aggregate",
+            "by": "region",
+            "aggs": [
+                {"value": "amount", "agg": "sum"},
+                {"value": "amount", "agg": "count"},
+            ],
+        }
+    ]
+
+
+def test_group_by_many_accepts_a_composite_by():
+    plan = _plan().group_by_many(["region", "amount"], [("amount", "sum")])
+    assert plan.ops[0]["by"] == ["region", "amount"]
+
+
+def test_group_by_many_rejects_an_empty_aggs_list():
+    with pytest.raises(ValueError, match="non-empty list"):
+        _plan().group_by_many("region", [])
+
+
+def test_group_by_many_catches_an_unknown_aggregation_before_the_wire():
+    with pytest.raises(ValueError, match="unknown aggregation 'totl'"):
+        _plan().group_by_many("region", [("amount", "totl")])
+
+
+def test_group_by_many_accepts_mean_as_an_alias_for_avg():
+    plan = _plan().group_by_many("region", [("amount", "mean")])
+    assert plan.ops[0]["aggs"][0]["agg"] == "mean"
+
+
+def test_group_by_and_group_by_many_are_independent_of_each_other():
+    """`group_by`'s existing single-pair call sites keep working byte for byte —
+    `group_by_many` is an additive method, not a widened `group_by` signature."""
+    single = _plan().group_by("region", "amount", agg="sum")
+    assert single.ops[0] == {
+        "op": "aggregate",
+        "by": "region",
+        "value": "amount",
+        "agg": "sum",
+    }
+    assert "aggs" not in single.ops[0]
+
+
 def test_project_requires_at_least_one_expression():
     with pytest.raises(ValueError, match="at least one expression"):
         _plan().project()
@@ -344,6 +396,57 @@ def test_a_join_error_carries_the_index_the_op_would_have_had():
     with pytest.raises(QueryError) as caught:
         plan.join("c", on="region", how="cross")
     assert caught.value.op_index == 1
+
+
+# ── union wire shape ────────────────────────────────────────────────────────────
+
+
+def test_union_emits_a_tables_array_in_the_given_order():
+    plan = (
+        _plan()
+        .with_table("a", ["region", "amount"], rows=[[1, 1.0]])
+        .with_table("b", ["region", "amount"], rows=[[2, 2.0]])
+        .union("a", "b")
+    )
+    assert plan.ops[-1] == {"op": "union", "tables": ["a", "b"]}
+
+
+def test_union_needs_at_least_one_table_name():
+    with pytest.raises(QueryError, match="at least one table name"):
+        _plan().union()
+
+
+def test_union_rejects_a_non_string_table_name():
+    with pytest.raises(QueryError, match="non-empty strings"):
+        _plan().union("")
+
+
+def test_an_undeclared_union_table_is_caught_before_the_wire():
+    """Same pre-flight `to_request` check `join` already has: only the engine
+    knows the real table set, but a plan naming a table it never declared is a
+    caller mistake catchable before a round trip."""
+    plan = _plan().with_table("a", ["region"], rows=[[1]])
+    plan.union("a", "b")
+    with pytest.raises(QueryError, match="available: a"):
+        plan.to_request()
+
+
+def test_a_union_error_carries_the_index_the_op_would_have_had():
+    plan = _plan().sort("amount")
+    plan.union("nope")
+    with pytest.raises(QueryError) as caught:
+        plan.to_request()
+    assert caught.value.op_index == 1
+
+
+def test_union_composes_with_a_following_group_by_many():
+    plan = (
+        _plan()
+        .with_table("b", ["region", "amount"], rows=[[2, 2.0]])
+        .union("b")
+        .group_by_many("region", [("amount", "sum"), ("amount", "count")])
+    )
+    assert [op["op"] for op in plan.ops] == ["union", "aggregate"]
 
 
 def test_the_window_output_name_is_emitted_as_as():

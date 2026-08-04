@@ -25,6 +25,7 @@ import os
 import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -198,6 +199,68 @@ def test_a_null_group_key_forms_no_group(runtime):
         .run(runtime, routing_module="stats")
     )
     assert result.rows == [[1.0, 30.0]]
+
+
+def test_group_by_many_fuses_several_aggregates_matching_pandas(runtime):
+    """`group_by_many` wires `"aggs":[...]` onto ONE `aggregate` op instead of one
+    `group_by` call per aggregate — verified against an independently computed
+    pandas groupby on the SAME rows, not against the engine's own single-aggregate
+    path (which region 1's data already exercises null-skipping for in the tests
+    above, so this checks the MULTI-aggregate wiring specifically, not the
+    aggregation arithmetic those already pin)."""
+    result = (
+        _sales()
+        .group_by_many("region", [("amount", "sum"), ("amount", "mean"), ("amount", "count")])
+        .sort("region")
+        .run(runtime, routing_module="stats")
+    )
+    assert result.columns == ["region", "sum_amount", "avg_amount", "count_amount"]
+
+    frame = pd.DataFrame(SALES_ROWS, columns=SALES_COLUMNS)
+    expected = (
+        frame.groupby("region")["amount"]
+        .agg(sum_amount="sum", avg_amount="mean", count_amount="count")
+        .reset_index()
+        .sort_values("region")
+    )
+    got = {
+        (row[0], row[1], row[2], row[3])
+        for row in result.rows
+    }
+    exp = {
+        (r.region, r.sum_amount, r.avg_amount, float(r.count_amount))
+        for r in expected.itertuples()
+    }
+    assert got == exp
+    # And explicitly: region 1 has a real sum/count over its null row but no mean.
+    region_1 = next(row for row in result.rows if row[0] == 1.0)
+    assert region_1[1] == 500.0
+    assert region_1[3] == 3.0
+    assert abs(region_1[2] - 500.0 / 3.0) < 1e-9
+
+
+def test_group_by_many_composite_key_matches_pandas(runtime):
+    """The additive `aggs` shape composes with a MULTI-column `by` too (the H2O
+    q3/q4-shaped case TPC-H's Q1 needs: `GROUP BY a, b` with several aggregates)."""
+    result = (
+        _sales()
+        .group_by_many(["region", "month"], [("amount", "sum"), ("amount", "count")])
+        .run(runtime, routing_module="stats")
+    )
+    frame = pd.DataFrame(SALES_ROWS, columns=SALES_COLUMNS)
+    expected = (
+        frame.groupby(["region", "month"])["amount"]
+        .agg(sum_amount="sum", count_amount="count")
+        .reset_index()
+    )
+    got = {
+        (row[0], row[1], row[2], row[3]) for row in result.rows
+    }
+    exp = {
+        (r.region, r.month, r.sum_amount, float(r.count_amount))
+        for r in expected.itertuples()
+    }
+    assert got == exp
 
 
 def test_sort_is_stable_and_puts_nulls_last_in_both_directions(runtime):
@@ -785,6 +848,209 @@ def test_a_join_composes_with_the_rest_of_the_plan(runtime):
         "aggregate",
         "sort",
     ]
+
+
+# ── composite (multi-column) equality-key join: the synthetic-key workaround ──
+# `query.join`'s own comment says a composite multi-column equality key is not
+# implemented (`hash_join_indices` takes one key column per side). The bounded,
+# cheapest fix per the TPC-H synthesis plan (section 2.3.2): concatenate the two
+# join columns into ONE computed column via `project` — which already evaluates
+# arbitrary arithmetic expressions — on BOTH sides before the join, then join on
+# that single synthetic column.
+#
+# `key = partkey * MULTIPLIER + suppkey` is exact, not merely "probably fine": a
+# Float64 carries a 53-bit mantissa, so any integer up to 2**53 (~9.007e15) round-
+# trips exactly. TPC-H's own spec bounds PARTKEY at `SF * 200,000` and SUPPKEY at
+# `SF * 10,000` (`dbgen`'s scaling rule) — at SF=100 that is a 20,000,000 max
+# partkey and a 1,000,000 max suppkey. Choosing MULTIPLIER = 10,000,000 (strictly
+# above the max suppkey, so two different suppkeys at the same partkey can never
+# land on the same combined value) gives a worst-case combined key of
+# `20_000_000 * 10_000_000 + 1_000_000 ~= 2.00e14`, three orders of magnitude
+# under the 2**53 exactness ceiling — so there is no collision risk and no
+# rounding loss at TPC-H scale, which is why this test takes the (a) "cheapest
+# fix" branch from the plan rather than building a real multi-column hash_join.
+_PS_MULTIPLIER = 10_000_000.0
+
+PARTSUPP_COLUMNS = ["partkey", "suppkey", "availqty"]
+PARTSUPP_ROWS = [
+    [1, 1, 100.0],
+    [1, 2, 200.0],
+    [2, 1, 300.0],
+    # TPC-H-scale values: partkey/suppkey near their SF=100 maxima, to prove the
+    # multiplier holds up at realistic magnitude, not just on small test ids.
+    [20_000_000, 999_999, 42.0],
+]
+
+LINEITEM_COLUMNS = ["partkey", "suppkey", "extendedprice"]
+LINEITEM_ROWS = [
+    [1, 1, 111.0],   # matches partsupp (1, 1)
+    [1, 2, 222.0],   # matches partsupp (1, 2)
+    # partkey 1 exists in partsupp, but never with suppkey 3 — a join that only
+    # compared partkey (ignoring suppkey) would WRONGLY match this row; the
+    # composite key must not.
+    [1, 3, 333.0],
+    [2, 1, 444.0],
+    [2, 1, 555.0],   # a SECOND row on the same composite key: duplicates multiply
+    [9, 9, 999.0],   # partkey 9 is not in partsupp at all: no match
+    [20_000_000, 999_999, 888.5],  # the large-value pair, must still match exactly
+]
+
+
+def test_a_composite_join_key_via_the_synthetic_project_workaround(runtime):
+    """Two tables, a real 2-column composite key (`partkey`, `suppkey`), joined
+    through the documented cheap workaround end to end, verified against an
+    independently computed pandas ground-truth merge on the ACTUAL two columns
+    (never on the synthetic key) so the comparison cannot share the workaround's
+    own mistake."""
+    # The RIGHT side's combined key is computed by the same `project` op, through
+    # the same compiled engine — not precomputed in Python — so the side table
+    # handed to `join` carries a key the engine itself derived.
+    partsupp_keyed = (
+        Query(columns=PARTSUPP_COLUMNS, rows=[row[:] for row in PARTSUPP_ROWS])
+        .project(
+            partkey=col("partkey"),
+            suppkey=col("suppkey"),
+            availqty=col("availqty"),
+            key=col("partkey") * lit(_PS_MULTIPLIER) + col("suppkey"),
+        )
+        .run(runtime, routing_module="stats")
+    )
+    ps_columns = partsupp_keyed.columns
+    ps_rows = [list(row) for row in partsupp_keyed.rows]
+
+    result = (
+        Query(columns=LINEITEM_COLUMNS, rows=[row[:] for row in LINEITEM_ROWS])
+        .project(
+            partkey=col("partkey"),
+            suppkey=col("suppkey"),
+            extendedprice=col("extendedprice"),
+            key=col("partkey") * lit(_PS_MULTIPLIER) + col("suppkey"),
+        )
+        .with_table("partsupp", ps_columns, rows=ps_rows)
+        .join("partsupp", on="key", prefix="ps.")
+        .run(runtime, routing_module="stats")
+    )
+
+    expected = pd.DataFrame(LINEITEM_ROWS, columns=LINEITEM_COLUMNS).merge(
+        pd.DataFrame(PARTSUPP_ROWS, columns=PARTSUPP_COLUMNS),
+        on=["partkey", "suppkey"],
+        how="inner",
+    )
+
+    # 5 matches, not 4: partkey/suppkey (2, 1) has TWO lineitem rows (444.0 and
+    # 555.0), and duplicate keys multiply rather than collapse.
+    assert len(result.rows) == len(expected) == 5
+    got = sorted(
+        (row[0], row[1], row[2], row[result.columns.index("ps.availqty")])
+        for row in result.rows
+    )
+    exp = sorted(
+        (r.partkey, r.suppkey, r.extendedprice, r.availqty)
+        for r in expected.itertuples()
+    )
+    assert got == exp
+    # And specifically: the partkey-1/suppkey-3 row (which shares a partkey with a
+    # real partsupp row, but not the suppkey) is the row dropped, not any other.
+    kept_prices = {row[2] for row in result.rows}
+    assert 333.0 not in kept_prices
+    assert {111.0, 222.0, 444.0, 555.0, 888.5} <= kept_prices
+
+
+# ── UNION ALL, through the compiled binary ─────────────────────────────────────
+# The query plane's first UNION of any kind (synthesis plan section 2.3 / TPC-DS
+# note in section 3): TPC-DS unions sales channels repeatedly, never deduplicating
+# — this is the shape, three channels, verified against pandas `pd.concat` (never
+# `pd.concat(...).drop_duplicates()`, since ALL means no dedup).
+
+CHANNEL_COLUMNS = ["channel", "item", "amount"]
+STORE_SALES_ROWS = [[1, 10, 100.0], [1, 11, 200.0]]
+WEB_SALES_ROWS = [[2, 10, 50.0]]
+CATALOG_SALES_ROWS = [[3, 12, 75.0], [3, 10, 25.0]]
+
+
+def test_union_all_over_three_sales_channels_matches_pandas_concat(runtime):
+    result = (
+        Query(columns=CHANNEL_COLUMNS, rows=[row[:] for row in STORE_SALES_ROWS])
+        .with_table("web_sales", CHANNEL_COLUMNS, rows=[row[:] for row in WEB_SALES_ROWS])
+        .with_table(
+            "catalog_sales", CHANNEL_COLUMNS, rows=[row[:] for row in CATALOG_SALES_ROWS]
+        )
+        .union("web_sales", "catalog_sales")
+        .run(runtime, routing_module="stats")
+    )
+
+    expected = pd.concat(
+        [
+            pd.DataFrame(STORE_SALES_ROWS, columns=CHANNEL_COLUMNS),
+            pd.DataFrame(WEB_SALES_ROWS, columns=CHANNEL_COLUMNS),
+            pd.DataFrame(CATALOG_SALES_ROWS, columns=CHANNEL_COLUMNS),
+        ],
+        ignore_index=True,
+    )
+
+    assert result.columns == CHANNEL_COLUMNS
+    assert len(result.rows) == len(expected) == 5
+    # Row ORDER is preserved -- store rows, then web, then catalog, exactly as
+    # `pd.concat`'s own operand order gives, not merely the same multiset.
+    assert result.rows == [list(row) for row in expected.itertuples(index=False)]
+
+
+def test_union_all_does_not_deduplicate(runtime):
+    """The SAME table unioned onto itself keeps every row twice — UNION ALL, not
+    UNION DISTINCT. Chaining `distinct` afterwards is how a caller gets the
+    other one; this op never does it silently."""
+    result = (
+        Query(columns=CHANNEL_COLUMNS, rows=[row[:] for row in STORE_SALES_ROWS])
+        .with_table("again", CHANNEL_COLUMNS, rows=[row[:] for row in STORE_SALES_ROWS])
+        .union("again")
+        .run(runtime, routing_module="stats")
+    )
+    assert len(result.rows) == 4
+    expected = pd.concat(
+        [pd.DataFrame(STORE_SALES_ROWS, columns=CHANNEL_COLUMNS)] * 2,
+        ignore_index=True,
+    )
+    assert result.rows == [list(row) for row in expected.itertuples(index=False)]
+
+
+def test_union_composes_with_group_by_many_right_after_it(runtime):
+    """A unioned batch is an ordinary batch: the multi-aggregate fix from item 1
+    and the union fix from item 3 compose in one plan, which is exactly the TPC-DS
+    shape (union three channels, then aggregate several measures per item)."""
+    result = (
+        Query(columns=CHANNEL_COLUMNS, rows=[row[:] for row in STORE_SALES_ROWS])
+        .with_table("web_sales", CHANNEL_COLUMNS, rows=[row[:] for row in WEB_SALES_ROWS])
+        .with_table(
+            "catalog_sales", CHANNEL_COLUMNS, rows=[row[:] for row in CATALOG_SALES_ROWS]
+        )
+        .union("web_sales", "catalog_sales")
+        .group_by_many("item", [("amount", "sum"), ("amount", "count")])
+        .sort("item")
+        .run(runtime, routing_module="stats")
+    )
+    all_rows = STORE_SALES_ROWS + WEB_SALES_ROWS + CATALOG_SALES_ROWS
+    frame = pd.DataFrame(all_rows, columns=CHANNEL_COLUMNS)
+    expected = (
+        frame.groupby("item")["amount"]
+        .agg(sum_amount="sum", count_amount="count")
+        .reset_index()
+        .sort_values("item")
+    )
+    got = {(row[0], row[1], row[2]) for row in result.rows}
+    exp = {(r.item, r.sum_amount, float(r.count_amount)) for r in expected.itertuples()}
+    assert got == exp
+
+
+def test_a_union_operand_missing_a_column_is_rejected_by_the_engine(runtime):
+    with pytest.raises(QueryError) as caught:
+        (
+            Query(columns=CHANNEL_COLUMNS, rows=[row[:] for row in STORE_SALES_ROWS])
+            .with_table("bad", ["channel", "item"], rows=[[9, 9]])
+            .union("bad")
+            .run(runtime, routing_module="stats")
+        )
+    assert "bad" in str(caught.value)
+    assert caught.value.op_index == 0
 
 
 # ── window, through the compiled binary ───────────────────────────────────────
