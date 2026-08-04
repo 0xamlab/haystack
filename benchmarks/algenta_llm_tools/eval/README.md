@@ -4,6 +4,26 @@
 `test_files/Processed_Quotes.csv` corpus (33,125 parsed rows), for benchmarking
 an LLM+tool-calling system's numeric answers against fixed ground truth.
 
+## Dataset provenance and anonymization (2026-08-04)
+
+`test_files/Processed_Quotes.csv` originates from a real business's real quote
+line-item export. The original export carried customer names, sales-rep names,
+free-text notes embedding rep names and timestamps (`PRICING_METHOD`), part
+numbers/descriptions, and other identifying/quasi-identifying columns -- none
+of which this benchmark's schema, tools, or question set ever reads (see
+`DATASET_DESCRIPTION`/`TOOLS_SUFFIX` in `run_benchmark.py`, and `KEEP` below).
+The file was reduced to exactly the 7 columns actually used --
+`UNIT_PRICE, EXT_PRICE, QUANTITY, STATUS, CUST_TYPE, CUSTOMER_NO, AUTO_QUOTED`
+-- with every other column dropped, and `CUSTOMER_NO` remapped through a
+deterministic bijection to a synthetic sequential id (preserving `nunique()`
+and grouping structure exactly, breaking traceability to any real customer).
+Row order and every numeric/categorical value in the 7 kept columns are
+untouched, so every ground-truth value below, and every kernel result in
+`benchmark_results.json`, is unchanged by this. If this dataset is ever
+swapped or extended, apply the same reduction before it can be read by
+anything that surfaces results externally (a GitBook page, a shared report,
+etc.) -- never re-add or re-derive from the dropped columns for that purpose.
+
 ## How ground truth was derived
 
 Every `ground_truth` value in `quotes_question_set.json` was computed directly
