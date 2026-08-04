@@ -149,3 +149,80 @@ Combined live re-verification cost for both questions: $0.017395 (13 API
 calls, well under the $3 budget cap). Full transcript in
 `benchmarks/algenta_llm_tools/eval/final_two_gaps_rerun_results.json` and
 `rerun_final_two_gaps.py`.
+
+## Token/cost investigation (2026-08-04): the previews were the real bloat, and caching was already working
+
+A prior full-16-question run's TOOLS condition measured 822,383 prompt tokens
+across 126 API calls -- disproportionate for 16 questions, and it looked like
+OpenAI's automatic prompt caching (a >=1024-token matching prefix reused at a
+discount, server-side, no code required beyond a stable/growing message
+history -- which `run_with_tools` already has) might not be firing. It was:
+`_cost_usd` priced 100% of every prompt token at the full $0.25/1M input rate
+and never read `usage.prompt_tokens_details.cached_tokens`, so the real cost
+and the real cache-hit rate were both invisible, not necessarily zero.
+
+Three real, additive fixes, one live 16-question rerun to verify:
+
+1. **`truncate.py`'s array-preview budget was the dominant real bloat.**
+   `get_column`/`get_columns` previewed up to 500 elements / 32KB per call --
+   but every tool schema already steers the model to pipe a column's
+   `result_id` straight into `execute()` for any real computation (see
+   `GET_COLUMN_SCHEMA`/`EXECUTE_SCHEMA`), so the model never needs to read
+   hundreds of raw values back. That oversized, mostly-unread preview stayed
+   in the growing `messages` history for the rest of that question's turn
+   loop, compounding on every subsequent call. Cut to 20 elements / 3KB
+   (`MAX_ELEMENTS_TO_MODEL`, `MAX_ELEMENT_BYTES_TO_MODEL`); row-shaped
+   (tabular) results keep their original, already-tight 25-row/250-cell
+   budget since a model plausibly does read a few real rows to sanity-check
+   shape before aggregating.
+2. **Added `usage.prompt_tokens_details.cached_tokens` tracking** to
+   `CostTracker`, pricing the cached and uncached portions of every call's
+   prompt tokens separately at their real, live-checked rates (gpt-5-mini:
+   $0.25/1M input, $0.025/1M cached input -- a 90% discount, confirmed at
+   developers.openai.com/api/docs/pricing 2026-08-04). This is the only way
+   to answer "is caching firing" honestly instead of assuming either "it's
+   fine" or "it's broken."
+3. **Added an in-process dedup cache** at the `TOOL_FUNCTIONS` dispatch layer
+   (`tools.py`), mirroring mission's own real, tested
+   `registerSqlSourceWithCache` fingerprint-cache pattern
+   (`agent-algenta-tool-helpers.ts`): a repeated tool call with byte-identical
+   arguments returns the same already-real result instead of re-dispatching
+   the kernel/data-access. Every dataset+kernel is immutable for the life of
+   one process, so this is memoization of dispatch, not Python-side
+   recomputation. It mainly saves real compute/latency for a model that
+   re-explores the same capability query or category more than once -- it
+   does not by itself shrink any individual tool-response message, since the
+   API still requires one tool-role message per tool_call_id the model
+   issued.
+
+**Live 16-question rerun, same model, same questions, TOOLS condition
+before vs. after (bare condition unaffected -- it never touches tools.py):**
+
+| | before | after |
+|---|---|---|
+| tools_pass | 15/16 | **16/16** |
+| prompt tokens | 822,383 | 471,584 (-43%) |
+| cached prompt tokens (now visible) | not tracked | 384,896 (**81.6%** of prompt tokens) |
+| completion tokens | 30,300 | 16,364 (-46%) |
+| API calls | 126 | 103 |
+| real tools-condition cost | $0.2662 | $0.0640 (**-76%**) |
+| tool_dedup_hits | n/a (didn't exist) | 15 |
+
+**The honest conclusion: OpenAI's prompt caching was already firing --
+81.6% of this run's prompt tokens were served from cache -- the previous
+version of this script simply had no instrumentation to see that, so an
+already-large true cost looked even larger than it was. The bigger, more
+addressable problem was the raw preview size itself**, which both inflates
+the *uncached* token count directly and (by growing the conversation faster)
+increases how much total content needs caching in the first place. Fixing
+the preview budget was the higher-leverage change; the cache-visibility fix
+mainly exists so this conclusion could be reached honestly instead of
+guessed at.
+
+The 16/16 in this same rerun (vs. the 15/16 the last full clean run measured,
+with q05 failing) is a second independent post-#538-fix data point in q05's
+favor, but is not by itself a resolution of the "does q05 fail sometimes"
+question above -- see whatever live-repetition investigation is recorded
+after this section (if any) for the authoritative read on that, since one
+run either way is not enough reps to characterize a possibly-nondeterministic
+miss.

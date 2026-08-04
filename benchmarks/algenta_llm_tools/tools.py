@@ -47,6 +47,7 @@ Design notes worth reading before wiring this into an agent loop:
 
 from __future__ import annotations
 
+import json
 import time
 from functools import lru_cache
 from typing import Any
@@ -73,6 +74,8 @@ __all__ = [
     "group_by_aggregate",
     "configure_dataset",
     "get_stored_result",
+    "dedup_cache_hits",
+    "reset_dedup_cache",
     "LIST_CAPABILITIES_SCHEMA",
     "EXECUTE_SCHEMA",
     "EXPLAIN_SCHEMA",
@@ -540,6 +543,7 @@ def configure_dataset(csv_path: str) -> None:
 
     global _QUOTES_CSV
     _QUOTES_CSV = df
+    reset_dedup_cache()
 
 
 GET_COLUMN_SCHEMA = {
@@ -939,6 +943,61 @@ def group_by_aggregate(
     }
 
 
+# ── agent-dispatch memoization ──────────────────────────────────────────────────────
+#
+# Mirrors mission's real, tested tool-call caching (`registerSqlSourceWithCache`'s
+# fingerprint -> result Map in agent-algenta-tool-helpers.ts): a repeated tool call with
+# byte-identical arguments returns the SAME already-real result instead of dispatching
+# the kernel/data-access again. This is memoization of dispatch, not Python-side
+# recomputation -- every value in the cache came from a real `execute`/`get_column`/etc.
+# call the first time it was seen, and the CSV + kernel library are immutable for the
+# life of one process, so replaying that exact result later is not a guess. It mainly
+# saves real compute/latency for a model that re-discovers the same category or
+# re-explores the same capability query multiple times within (or across) a session; it
+# does NOT shrink the tokens of any individual tool-response message (the API still
+# requires one tool-role message per tool_call_id the model issued), so it is a
+# complement to, not a substitute for, the small preview budgets in truncate.py.
+#
+# Applied only at the TOOL_FUNCTIONS dispatch layer used by an agent loop (mirroring
+# where mission's cache actually sits -- the tool-helpers layer, not algenta-client
+# itself) so a caller invoking `execute(...)` etc. directly still gets an uncached,
+# always-fresh-dispatch call.
+
+_dedup_cache: dict[str, Any] = {}
+_dedup_hits = 0
+
+
+def _fingerprint(tool_name: str, kwargs: dict[str, Any]) -> str:
+    return tool_name + ":" + json.dumps(kwargs, sort_keys=True, default=str)
+
+
+def _memoized(tool_name: str, fn):
+    def wrapped(**kwargs: Any) -> Any:
+        global _dedup_hits
+        key = _fingerprint(tool_name, kwargs)
+        if key in _dedup_cache:
+            _dedup_hits += 1
+            return _dedup_cache[key]
+        result = fn(**kwargs)
+        _dedup_cache[key] = result
+        return result
+
+    return wrapped
+
+
+def dedup_cache_hits() -> int:
+    """How many agent-loop tool calls this process has served from the dedup cache."""
+    return _dedup_hits
+
+
+def reset_dedup_cache() -> None:
+    """Clear the dedup cache and its hit counter -- call between independent benchmark
+    runs so one run's cache hits never leak into the next run's measurement."""
+    global _dedup_hits
+    _dedup_cache.clear()
+    _dedup_hits = 0
+
+
 # ── bundling for a tool-calling loop ────────────────────────────────────────────────
 
 TOOL_SCHEMAS = [
@@ -949,7 +1008,7 @@ TOOL_SCHEMAS = [
     GET_COLUMNS_SCHEMA,
     GROUP_BY_AGGREGATE_SCHEMA,
 ]
-TOOL_FUNCTIONS = {
+_RAW_TOOL_FUNCTIONS = {
     "list_capabilities": list_capabilities,
     "execute": execute,
     "explain": explain,
@@ -957,3 +1016,4 @@ TOOL_FUNCTIONS = {
     "get_columns": get_columns,
     "group_by_aggregate": group_by_aggregate,
 }
+TOOL_FUNCTIONS = {name: _memoized(name, fn) for name, fn in _RAW_TOOL_FUNCTIONS.items()}

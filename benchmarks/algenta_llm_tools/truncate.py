@@ -3,11 +3,24 @@
 Mirrors the truncation discipline sqai's AI-SDK tools already ship
 (``/Users/angel/Developer/sqai/packages/ai-sdk/src/truncate.ts``), reimplemented here
 in plain Python with no dependency on that package: what the model sees is a small,
-labeled projection of a real result (roughly 25 rows / 250 cells for tabular results,
-500 elements / 32KB for array results); the full, untruncated result is kept
-in-process and is retrievable by ``result_id`` via ``get_stored_result`` -- nothing is
-discarded, it is just not dumped wholesale into the model's context. Truncation is
-always declared on the returned dict (``truncated: bool``), never silent.
+labeled projection of a real result; the full, untruncated result is kept in-process
+and is retrievable by ``result_id`` via ``get_stored_result`` -- nothing is discarded,
+it is just not dumped wholesale into the model's context. Truncation is always
+declared on the returned dict (``truncated: bool``), never silent.
+
+Element-preview budget (``MAX_ELEMENTS_TO_MODEL``/``MAX_ELEMENT_BYTES_TO_MODEL``) is
+deliberately tiny -- a handful of values, not hundreds. Every tool that returns a raw
+array (``get_column``, ``get_columns``, a vector-shaped ``execute`` result) already
+hands back a ``result_id``/``result_ids`` the model is instructed to pipe straight
+into ``execute()`` for any real computation (see ``tools.py``'s ``_resolve_result_refs``
+and the ``GET_COLUMN_SCHEMA``/``EXECUTE_SCHEMA`` descriptions) -- the model never
+computes a statistic by eyeballing the preview, so a large preview is pure token cost
+with no compute benefit. A prior version previewed up to 500 elements / 32KB per call;
+across a growing multi-turn tool-calling conversation (the full message history is
+resent on every turn) that repeated, mostly-unread blob was the dominant contributor
+to the uplift benchmark's measured ~6.5K prompt tokens/call. Row-shaped (tabular)
+results keep a larger budget (25 rows / 250 cells) since a model plausibly does read a
+handful of real rows to sanity-check shape/values before aggregating.
 
 The in-process store below is intentionally a plain dict with no eviction: this is a
 minimal wrapper for local tool-calling in one process, not a multi-tenant service. A
@@ -23,7 +36,8 @@ from typing import Any
 
 MAX_ROWS_TO_MODEL = 25
 MAX_CELLS_TO_MODEL = 250
-MAX_ELEMENTS_TO_MODEL = 500
+MAX_ELEMENTS_TO_MODEL = 20
+MAX_ELEMENT_BYTES_TO_MODEL = 3_000
 MAX_BYTES_TO_MODEL = 32_000
 
 _RESULTS: dict[str, Any] = {}
@@ -94,7 +108,7 @@ def _shape_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def _shape_elements(values: list[Any]) -> dict[str, Any]:
     total = len(values)
     preview = values[: min(total, MAX_ELEMENTS_TO_MODEL)]
-    while preview and _byte_len(preview) > MAX_BYTES_TO_MODEL:
+    while preview and _byte_len(preview) > MAX_ELEMENT_BYTES_TO_MODEL:
         preview = preview[: len(preview) // 2]
     return {
         "value": preview,

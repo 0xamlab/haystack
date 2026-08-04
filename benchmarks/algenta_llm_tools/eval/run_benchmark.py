@@ -50,9 +50,18 @@ CSV_PATH = REPO / "test_files" / "Processed_Quotes.csv"
 RESULTS_PATH = HERE / "benchmark_results.json"
 
 MODEL = "gpt-5-mini"
-# Checked live 2026-08-03 at developers.openai.com/api/docs/pricing (per 1M tokens).
-# Matches this repo's own benchmarks/optmodel_plane/llm_e2e.py PRICING for the same model.
-PRICING = {"gpt-5-mini": {"input": 0.25, "output": 2.00}}
+# Checked live 2026-08-04 at developers.openai.com/api/docs/pricing (per 1M tokens).
+# Matches this repo's own benchmarks/optmodel_plane/llm_e2e.py PRICING for the same model,
+# now with the cached-input rate added: OpenAI's automatic prompt caching (server-side,
+# no code required beyond a stable, growing message prefix -- which run_with_tools already
+# has, since it appends to the same `messages` list every turn and passes the identical
+# `tools=` array every call) reuses a >=1024-token matching prefix at a 90% discount. The
+# previous version of this script priced every prompt token at the full input rate and
+# never read `usage.prompt_tokens_details.cached_tokens`, so it had no way to tell whether
+# caching was firing at all -- CostTracker.add() below now reads that field and prices the
+# cached and uncached portions separately, which is the only way to answer that question
+# honestly instead of assuming either "it's fine" or "it's broken".
+PRICING = {"gpt-5-mini": {"input": 0.25, "cached_input": 0.025, "output": 2.00}}
 BUDGET_CAP_USD = 10.0
 # 45, not the originally-planned 20: a pre-flight timing probe on q14 (a ~30-category
 # groupby-by-filtering loop, the harness's worst case -- see eval run notes) used 20
@@ -125,11 +134,20 @@ def _expected_keys_and_desc(question: dict[str, Any]) -> tuple[list[str], str]:
     return ["value"], '"value" (number)'
 
 
+def _cached_tokens(usage) -> int:
+    details = getattr(usage, "prompt_tokens_details", None)
+    return getattr(details, "cached_tokens", 0) or 0 if details is not None else 0
+
+
 def _cost_usd(usage) -> float:
     price = PRICING[MODEL]
-    return (usage.prompt_tokens / 1_000_000) * price["input"] + (
-        usage.completion_tokens / 1_000_000
-    ) * price["output"]
+    cached = _cached_tokens(usage)
+    uncached = max(0, usage.prompt_tokens - cached)
+    return (
+        (uncached / 1_000_000) * price["input"]
+        + (cached / 1_000_000) * price["cached_input"]
+        + (usage.completion_tokens / 1_000_000) * price["output"]
+    )
 
 
 def _parse_final_json(content: str, expected_keys: list[str]) -> dict[str, Any] | None:
@@ -173,19 +191,26 @@ class CostTracker:
         self.calls = 0
         self.prompt_tokens = 0
         self.completion_tokens = 0
+        self.cached_prompt_tokens = 0
 
     def add(self, usage) -> float:
         cost = _cost_usd(usage)
+        cached = _cached_tokens(usage)
         self.total += cost
         self.calls += 1
         self.prompt_tokens += usage.prompt_tokens
         self.completion_tokens += usage.completion_tokens
+        self.cached_prompt_tokens += cached
         self.shared_total[0] += cost
         if self.shared_total[0] > self.cap:
             raise BudgetExceededError(
                 f"cumulative real spend ${self.shared_total[0]:.4f} exceeded the ${self.cap} cap"
             )
         return cost
+
+    @property
+    def cache_hit_rate(self) -> float:
+        return self.cached_prompt_tokens / self.prompt_tokens if self.prompt_tokens else 0.0
 
 
 def run_bare(client: OpenAI, question: dict[str, Any], tracker: CostTracker) -> dict[str, Any]:
@@ -377,13 +402,18 @@ def main() -> None:
         "bare_tokens": {
             "prompt": bare_tracker.prompt_tokens,
             "completion": bare_tracker.completion_tokens,
+            "cached_prompt": bare_tracker.cached_prompt_tokens,
+            "cache_hit_rate": round(bare_tracker.cache_hit_rate, 4),
         },
         "tools_tokens": {
             "prompt": tools_tracker.prompt_tokens,
             "completion": tools_tracker.completion_tokens,
+            "cached_prompt": tools_tracker.cached_prompt_tokens,
+            "cache_hit_rate": round(tools_tracker.cache_hit_rate, 4),
         },
         "bare_api_calls": bare_tracker.calls,
         "tools_api_calls": tools_tracker.calls,
+        "tool_dedup_hits": tools.dedup_cache_hits(),
     }
     print("\n=== SUMMARY ===")
     print(json.dumps(summary, indent=2))
