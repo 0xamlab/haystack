@@ -14,6 +14,7 @@ import {
   getRuntimeLibraryHealth,
   listRuntimeLibraryModules,
 } from "./runtime_daemon_client.js";
+import { callNativeWorker, nativeWorkerAvailable } from "./native_worker_client.js";
 import { Query, QueryError, QueryResult } from "./query.js";
 
 export interface MojoRuntimeConfig {
@@ -287,16 +288,32 @@ export class MojoRuntime {
    * joins, filters, aggregates, sorts, window functions -- in one dispatch. Mirrors
    * Python's `Query.run(runtime)`, which calls this same method on its own
    * `MojoRuntime`; a caller normally reaches this via `query.run(runtime)` rather
-   * than calling it directly. */
+   * than calling it directly.
+   *
+   * Two transports, picked per call by `nativeWorkerAvailable()`, both producing the
+   * IDENTICAL `QueryResult`/`QueryError` decoding below -- a caller cannot tell which
+   * one ran except by latency:
+   *   - the bundled native worker directly (`callNativeWorker`), when
+   *     `ALGENTA_NATIVE_WORKER`/`ALGENTA_RUNTIME_WORKER`/`ALGENTA_MOJO_BINARY` names a
+   *     binary on this machine -- no daemon, no gRPC hop, the same story Python's own
+   *     bundled worker already has.
+   *   - the gRPC runtime daemon (`executeQuery`) otherwise -- unchanged, and still the
+   *     ONLY transport for every other `MojoRuntime` method (`execute`, `health`,
+   *     `listModules`): those still need a daemon to reach a function-spec-aware
+   *     request/response shape this client does not (yet) build on its own. `query`
+   *     is the one method whose wire shape is self-describing enough (the same JSON
+   *     `Query.toRequest()` already produces) to bypass that entirely.
+   */
   async query(query: Query): Promise<QueryResult> {
     const started = Date.now();
-    const { response, latency_ms: _latencyMs } = await executeQuery(this.config, {
-      request: query.toRequest(),
-    });
+    const requestBody = { ...query.toRequest(), type: "query_execute" };
+    const response = nativeWorkerAvailable()
+      ? await callNativeWorker(requestBody)
+      : (await executeQuery(this.config, { request: requestBody })).response;
     // Latency is measured HERE, client round-trip inclusive, matching Python's
     // `run_query` (`perf_counter() - started`) rather than reusing the daemon's own
     // `latency_ms` (server-side-only, excludes the gRPC hop) -- so both SDKs report
-    // the same kind of number for the same kind of call.
+    // the same kind of number for the same kind of call, on either transport.
     const latencyMs = Date.now() - started;
     const errorCode = response.error_code;
     if (typeof errorCode === "string" && errorCode.length > 0) {

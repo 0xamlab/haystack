@@ -7,11 +7,17 @@ vi.mock("./runtime_daemon_client.js", () => ({
   listRuntimeLibraryModules: vi.fn(),
 }));
 
+vi.mock("./native_worker_client.js", () => ({
+  callNativeWorker: vi.fn(),
+  nativeWorkerAvailable: vi.fn(() => false),
+}));
+
 import { libraries, MojoRuntime } from "./libraries.js";
 import {
   MojoFunctionNotRegisteredError,
   MojoRuntimeConfigurationError,
 } from "./mojo_errors.js";
+import { callNativeWorker, nativeWorkerAvailable } from "./native_worker_client.js";
 import { Query, QueryError } from "./query.js";
 import {
   executeQuery,
@@ -24,10 +30,15 @@ const listRuntimeLibraryModulesMock = vi.mocked(listRuntimeLibraryModules);
 const executeRuntimeLibraryMock = vi.mocked(executeRuntimeLibrary);
 const getRuntimeLibraryHealthMock = vi.mocked(getRuntimeLibraryHealth);
 const executeQueryMock = vi.mocked(executeQuery);
+const callNativeWorkerMock = vi.mocked(callNativeWorker);
+const nativeWorkerAvailableMock = vi.mocked(nativeWorkerAvailable);
 
 describe("MojoRuntime libraries surface", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks preserves a factory-set implementation, so a test that flips
+    // this to true would otherwise leak into every later test in file order.
+    nativeWorkerAvailableMock.mockReturnValue(false);
   });
 
   it("keeps the 22-library rollout inventory on canonical module names and alias dispatch", async () => {
@@ -589,5 +600,44 @@ describe("MojoRuntime libraries surface", () => {
       opIndex: 0,
     });
     await expect(runtime.query(query)).rejects.toBeInstanceOf(QueryError);
+  });
+
+  it("query() uses the native worker directly when it's available, never the daemon", async () => {
+    nativeWorkerAvailableMock.mockReturnValue(true);
+    callNativeWorkerMock.mockResolvedValue({
+      result: { columns: ["a"], rows: [[1]] },
+      lineage: [],
+      plan_hash: "cafef00d",
+      ops: 1,
+    });
+
+    const runtime = new MojoRuntime({ mode: "local" });
+    const query = new Query({ columns: ["a"], rows: [[1]] }).select("a");
+    const result = await runtime.query(query);
+
+    expect(result.columns).toEqual(["a"]);
+    expect(result.planHash).toBe("cafef00d");
+    expect(callNativeWorkerMock).toHaveBeenCalledWith({
+      ...query.toRequest(),
+      type: "query_execute",
+    });
+    expect(executeQueryMock).not.toHaveBeenCalled();
+  });
+
+  it("query() still throws QueryError on a native-worker engine-side refusal", async () => {
+    nativeWorkerAvailableMock.mockReturnValue(true);
+    callNativeWorkerMock.mockResolvedValue({
+      error_code: "invalid_arguments",
+      error_message: "join requires 'table'",
+      op_index: 2,
+    });
+
+    const runtime = new MojoRuntime({ mode: "local" });
+    const query = new Query({ columns: ["a"], rows: [[1]] }).select("a");
+
+    await expect(runtime.query(query)).rejects.toMatchObject({
+      code: "invalid_arguments",
+      opIndex: 2,
+    });
   });
 });
