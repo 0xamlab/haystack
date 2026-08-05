@@ -549,6 +549,60 @@ either direction across reps), q5 a reproducible ~5% faster after the fix (0.611
 single-shot artifact: the two fixes are real and worth keeping, and the remaining gap
 is exactly as this update already concluded — not something a rerun makes go away.
 
+## Update #4 (2026-08): software prefetching, tried on both the gather and the probe — a real, reproducible REGRESSION, reverted
+
+Update #3 closed with a concrete diagnosis: q5's gap needs a genuinely different per-row
+loop shape, not another constant-factor trim, and named software prefetching as the next
+thing to try for a latency-bound (not compute-bound) gather. This pass implemented and
+measured that directly — distance-8 `std.sys.prefetch` hints, `PrefetchOptions().for_read()
+.low_locality()`, ahead of `_take_column_join`'s gather (`materialize`'s per-cell read) and
+separately ahead of the partitioned probe's `HashIndex.find_bits` lookup (`_hash_join_probe_
+serial_partitioned`, `_hash_join_probe_parallel_partitioned`'s `count_worker`/`scatter_
+worker`) — a peek-ahead read of row `l + 8`'s key, hashed and partitioned early solely to
+issue the prefetch, matching the standard hash-join prefetch-distance technique from the
+database-systems literature (DuckDB, MonetDB).
+
+**The honest result: it made every gathered/probed row slower, on every rep, in both
+configurations tried.**
+
+| Configuration | q5, before | q5, after | Δ | Reps, same direction |
+| --- | --- | --- | --- | --- |
+| Gather-only prefetch | 0.559s-0.594s | 0.565s-0.613s | **+1% to +4% slower** | 5/5 |
+| Gather + probe prefetch | 0.558s-0.639s | 0.679s-0.726s | **+15% to +25% slower** | 5/5 |
+
+Both correctness suites (`test_query_join.mojo` 33/33, `test_query_join_parallel.mojo`
+54/54) stayed green throughout — the prefetch hint changes nothing about which row is
+read or how it is checked, only whether the CPU is told to start fetching it early, so a
+regression here is a pure performance effect, not a correctness one. Both configurations
+were reverted; the repository is unchanged by this pass.
+
+**Why, best guess.** Apple Silicon's memory subsystem already runs an aggressive hardware
+prefetcher (stride and pattern detection in the memory controller, well documented for the
+M-series line), so a software prefetch hint here is very plausibly redundant with what the
+hardware already does automatically — at which point it is pure overhead: an extra branch,
+an extra bounds check, and (for the probe) a second full hash-and-partition computation
+per row that is thrown away, for a cache line the hardware prefetcher was already going to
+bring in on its own. The probe version's much larger regression (+15-25% vs +1-4%) is
+consistent with this: it pays the extra cost TWICE as often — once as the real per-row work,
+once again as the peek-ahead — while the gather version only pays the extra branch and
+bounds check, so it regresses far less.
+
+**What this rules out, for whoever attempts this file next.** Both the constant-factor
+lever (Update #3) and the memory-latency-hiding lever (this update) are now measured and
+exhausted for this specific gather/probe shape on this hardware. The gap that remains
+(q5 losing to DuckDB by 1.16-1.47x, to Polars by 5.31x-5.60x; see the independent
+reproduction above) is not a redundant-check or an unhidden-latency problem. Update #3's
+own closing line still stands and is now better-evidenced: closing it needs either a
+genuinely different per-row shape (real SIMD-width vectorized compare-and-copy, which
+Apple Silicon's NEON can do for a CONTIGUOUS access pattern even though it cannot do a
+true hardware gather — the open question is whether the probe or gather step can be
+restructured into a contiguous-access shape at all, e.g. by sorting/bucketing rows by
+target cache line before gathering) or a different algorithm entirely for the "big,
+near-1:1-cardinality" case specifically (q1-q4 already win; only q5's shape loses).
+Re-attempting prefetch-distance tuning (a different constant than 8, e.g.) is very
+unlikely to flip a directionally-consistent regression measured across 10 total reps
+into a win, and should not be the next thing tried.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
