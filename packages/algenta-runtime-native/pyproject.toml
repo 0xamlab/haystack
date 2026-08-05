@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "algenta-runtime-native"
-version = "1.0.3"
+version = "1.0.4"
 description = "Bundled Algenta runtime artifacts for the algenta package. Installed automatically; not a standalone API."
 readme = "README.md"
 requires-python = ">=3.14,<3.15"

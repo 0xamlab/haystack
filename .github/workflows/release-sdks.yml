@@ -10,8 +10,9 @@
 #     algenta-mcp. The `algenta` + native pair is published only by build-runtime.yml. The
 #     real-publish job reads this token via `secrets.PYPI_TOKEN`. For the optional TestPyPI
 #     rehearsal, add a separate `TEST_PYPI_TOKEN` (a test.pypi.org token).
-#   - The GitHub `release` environment (the manual-approval gate) must exist with REQUIRED REVIEWERS —
-#     publish jobs (including the TestPyPI rehearsal) block until a reviewer approves.
+#   - The GitHub `release` environment exists but carries NO protection rules since
+#     2026-08-05 (the required-reviewers gate was removed): publishes proceed
+#     automatically — no human approval, per the fully-automated release policy.
 #   - For npm: either configure npm OIDC trusted publishing, or set the `NPM_TOKEN` secret (an
 #     automation token with publish rights on `algenta-sdk`). npm has no test registry — its rehearsal
 #     is the build job's `npm pack --dry-run` plus the ts-sdk-artifact-install CI gate.
@@ -20,7 +21,17 @@ name: release-sdks
 
 on:
   push:
+    # Fully automated: SDK changes landing on main publish on their own (same policy as
+    # build-runtime.yml — no manual triggers, no approval gates). Versions already on the
+    # indexes are skipped, so an unbumped merge is a harmless no-op publish.
+    branches: [main]
     tags: ["sdk-v*"]
+    paths:
+      - "packages/python-sdk/**"
+      - "packages/ts-sdk/**"
+      - "packages/mcp/**"
+      - "tests/test_sdk_package_metadata.py"
+      - ".github/workflows/release-sdks.yml"
   workflow_dispatch:
     inputs:
       target:
@@ -87,10 +98,10 @@ jobs:
           npm pack --dry-run
 
   publish-testpypi:
-    name: rehearse publish to TestPyPI (token, manual approval)
+    name: rehearse publish to TestPyPI (token)
     needs: build
     if: ${{ inputs.target == 'testpypi' }}
-    environment: release # same manual-approval gate as the real publish — a faithful rehearsal
+    environment: release # no protection rules since 2026-08-05 — proceeds without approval
     permissions:
       contents: read # token auth via TEST_PYPI_TOKEN — no id-token / Trusted Publishing
     runs-on: ubuntu-latest
@@ -118,10 +129,10 @@ jobs:
           skip-existing: true
 
   publish-pypi:
-    name: publish to PyPI (token, manual approval)
+    name: publish to PyPI (token)
     needs: build
     if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
-    environment: release # required reviewers on this env = the manual-approval gate
+    environment: release # no protection rules since 2026-08-05 — proceeds without approval
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -147,7 +158,7 @@ jobs:
           skip-existing: true
 
   publish-npm:
-    name: publish to npm (provenance, manual approval)
+    name: publish to npm (provenance)
     needs: build
     if: ${{ github.event_name == 'push' || inputs.target == 'pypi' }}
     environment: release

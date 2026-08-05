@@ -30,7 +30,7 @@ classifiers = [
 # a broken CLI. Pinned == keeps the package/runtime ABI in lockstep.
 # cryptography backs offline manifest/license verification.
 dependencies = [
-    "algenta-runtime-native==1.0.3",
+    "algenta-runtime-native==1.0.4",
     "cryptography>=42",
     "keyring>=25,<26",
 ]

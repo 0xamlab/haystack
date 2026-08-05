@@ -15,7 +15,24 @@ on:
         type: choice
         options: ["false", "true"]
   push:
-    tags: ["runtime-v*"]
+    # Fully automated releases: any update to main that touches the runtime surface
+    # rebuilds and publishes on its own — no manual triggers and no approval gates (the
+    # `release` environment's required-reviewers rule was removed 2026-08-05 after a run
+    # sat "waiting" for a human for days). Versions already on PyPI are skipped
+    # (skip-existing), so an unbumped merge is a harmless no-op publish; bump
+    # packages/*/pyproject.toml to ship a new release.
+    branches: [main]
+    tags: ["runtime-v*", "runtime-bundle-v*"]
+    paths:
+      - "mojo/engine/**"
+      - "apps/runtime/**"
+      - "packages/algenta/**"
+      - "packages/algenta-runtime-native/**"
+      - "scripts/build_runtime_shards.py"
+      - "scripts/generate_runtime_library_dispatch.py"
+      - "scripts/stage_runtime_worker_package.py"
+      - "mojo_env/pixi.toml"
+      - ".github/workflows/build-runtime.yml"
 
 permissions:
   contents: read
