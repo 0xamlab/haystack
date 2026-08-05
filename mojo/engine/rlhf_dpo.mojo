@@ -74,10 +74,17 @@ fn orpo_ratio(
     Returns:
         ORPO loss contribution.
     """
+    # A log-prob > 0 (or nan) makes log(1-p) below nan/inf, which cannot
+    # cross the JSON result wire; refuse with the degenerate loss.
+    if not (chosen_log_prob <= 0.0) or not (rejected_log_prob <= 0.0):
+        return 0.0
     var log_odds_chosen = chosen_log_prob - log(1.0 - exp(chosen_log_prob) + 1e-10)
     var log_odds_rejected = rejected_log_prob - log(1.0 - exp(rejected_log_prob) + 1e-10)
     var log_ratio = log_odds_chosen - log_odds_rejected
-    return -lambda_orpo * log(1.0 / (1.0 + exp(-log_ratio)))
+    var p = 1.0 / (1.0 + exp(-log_ratio))
+    if not (p > 0.0):  # log(0)/log(nan) below would yield inf/nan
+        return 0.0
+    return -lambda_orpo * log(p)
 
 
 fn ppo_clip_objective(

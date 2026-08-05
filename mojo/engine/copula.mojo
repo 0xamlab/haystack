@@ -267,7 +267,9 @@ fn rank_correlation(x: List[Float64], y: List[Float64]) -> Float64:
     Computes Pearson correlation on rank-transformed data.
     """
     var n = len(x)
-    if n < 2:
+    # A correlation needs two equal-length series; a short/empty y would be read past its
+    # end below (uncatchable abort), so refuse with the same sentinel used for n < 2.
+    if n < 2 or len(y) != n:
         return 0.0
 
     var rx = _rank(x)
@@ -308,7 +310,9 @@ fn kendall_tau(x: List[Float64], y: List[Float64]) -> Float64:
     where n0 = n*(n-1)/2, n1 = ties in x, n2 = ties in y.
     """
     var n = len(x)
-    if n < 2:
+    # A correlation needs two equal-length series; a short/empty y would be read past its
+    # end in the pair loop below (uncatchable abort), so refuse with the n < 2 sentinel.
+    if n < 2 or len(y) != n:
         return 0.0
 
     var concordant: Int = 0

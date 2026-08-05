@@ -20,6 +20,13 @@ Public API:
 from std.math import sqrt, abs as fabs, log
 
 
+# Untrusted iteration counts are clamped to documented ceilings: both drive
+# per-count work (permutations) or per-count-squared allocation (bin pairs),
+# so an unbounded value from the wire is a CPU/memory weapon.
+comptime MAX_PERMUTATIONS: Int = 100000
+comptime MAX_BINS: Int = 1000
+
+
 # ── column_mean ──────────────────────────────────────────────────────────────
 
 
@@ -123,6 +130,9 @@ fn f_test_scores(X: List[List[Float64]], y: List[Float64]) -> List[Float64]:
     var n = len(X)
     if n < 3:
         return List[Float64]()
+    # y is indexed by row below; a shorter y is an uncatchable abort.
+    if len(y) < n:
+        return List[Float64]()
     var ncols = len(X[0])
     var y_mean: Float64 = 0.0
     for i in range(n):
@@ -160,6 +170,9 @@ fn f_test_scores(X: List[List[Float64]], y: List[Float64]) -> List[Float64]:
 
 fn select_k_best(scores: List[Float64], k: Int) -> List[Int]:
     """Return indices of top-k scoring features."""
+    # Negative k would become a negative List capacity, an uncatchable abort.
+    if k <= 0:
+        return List[Int]()
     var n = len(scores)
     var actual_k = k
     if actual_k > n:
@@ -228,6 +241,9 @@ fn forward_selection_greedy(X: List[List[Float64]], y: List[Float64], k: Int) ->
     var n = len(X)
     if n == 0:
         return List[Int]()
+    # y is indexed by row below; a shorter y is an uncatchable abort.
+    if len(y) < n:
+        return List[Int]()
     var ncols = len(X[0])
     var actual_k = k
     if actual_k > ncols:
@@ -267,6 +283,16 @@ fn information_gain(feature: List[Float64], target: List[Float64], n_bins: Int =
     var n = len(feature)
     if n == 0:
         return 0.0
+    # target is indexed up to n-1 below; a shorter target aborts.
+    if len(target) < n:
+        return 0.0
+    # n_bins <= 0 would abort on negative capacity / negative indexing; huge
+    # values allocate n_bins^2 joint cells and get clamped to the ceiling.
+    if n_bins <= 0:
+        return 0.0
+    var nb = n_bins
+    if nb > MAX_BINS:
+        nb = MAX_BINS
 
     var f_min = feature[0]
     var f_max = feature[0]
@@ -289,7 +315,6 @@ fn information_gain(feature: List[Float64], target: List[Float64], n_bins: Int =
     if t_range < 1e-15:
         t_range = 1.0
 
-    var nb = n_bins
     var f_counts = List[Int](capacity=nb)
     var t_counts = List[Int](capacity=nb)
     var joint_counts = List[Int](capacity=nb * nb)
@@ -345,6 +370,16 @@ fn feature_importance_permutation(X: List[List[Float64]], y: List[Float64], n_pe
     var n = len(X)
     if n == 0:
         return List[Float64]()
+    # y is indexed by row below; a shorter y is an uncatchable abort.
+    if len(y) < n:
+        return List[Float64]()
+    # Zero permutations would divide by zero below; huge values are a CPU
+    # weapon and get clamped to the documented ceiling.
+    if n_permutations <= 0:
+        return List[Float64]()
+    var perms = n_permutations
+    if perms > MAX_PERMUTATIONS:
+        perms = MAX_PERMUTATIONS
     var ncols = len(X[0])
 
     var y_mean: Float64 = 0.0
@@ -360,7 +395,7 @@ fn feature_importance_permutation(X: List[List[Float64]], y: List[Float64], n_pe
     var importances = List[Float64](capacity=ncols)
     for j in range(ncols):
         var total_mse_increase: Float64 = 0.0
-        for p in range(n_permutations):
+        for p in range(perms):
             var shift = (p + 1) % n
             if shift == 0:
                 shift = 1
@@ -371,5 +406,5 @@ fn feature_importance_permutation(X: List[List[Float64]], y: List[Float64], n_pe
                 perm_mse += e * e + (X[i][j] - X[si][j]) * (X[i][j] - X[si][j]) * 0.01
             perm_mse /= Float64(n)
             total_mse_increase += perm_mse - base_mse
-        importances.append(total_mse_increase / Float64(n_permutations))
+        importances.append(total_mse_increase / Float64(perms))
     return importances^

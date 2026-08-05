@@ -8,6 +8,11 @@ Public API:
 """
 
 
+fn _finite(v: Float64) -> Bool:
+    """True when v is neither NaN nor infinite (v - v == 0.0 only for finite v)."""
+    return v - v == 0.0
+
+
 # ── Forward Difference ────────────────────────────────────────────────────────
 
 
@@ -92,10 +97,18 @@ fn gradient(y: List[Float64], x: List[Float64]) -> List[Float64]:
         if n == 1:
             result.append(0.0)
         return result^
+    # x is indexed up to n-1 below; a shorter x is an uncatchable abort.
+    if len(x) < n:
+        return result^
     # Forward difference for first point
     var dx0 = x[1] - x[0]
     if dx0 != 0.0:
-        result.append((y[1] - y[0]) / dx0)
+        var dy0 = (y[1] - y[0]) / dx0
+        # NaN/inf payloads in x or y cannot cross the result wire; degrade
+        # to the same 0.0 sentinel used for a zero denominator.
+        if not _finite(dy0):
+            dy0 = 0.0
+        result.append(dy0)
     else:
         result.append(0.0)
     # Central difference for interior points
@@ -110,13 +123,18 @@ fn gradient(y: List[Float64], x: List[Float64]) -> List[Float64]:
                 + (dx_forward * dx_forward - dx_backward * dx_backward) * y[i]
                 - dx_forward * dx_forward * y[i - 1]
             ) / (dx_forward * dx_backward * dx_total)
+            if not _finite(dy):
+                dy = 0.0
             result.append(dy)
         else:
             result.append(0.0)
     # Backward difference for last point
     var dx_last = x[n - 1] - x[n - 2]
     if dx_last != 0.0:
-        result.append((y[n - 1] - y[n - 2]) / dx_last)
+        var dy_last = (y[n - 1] - y[n - 2]) / dx_last
+        if not _finite(dy_last):
+            dy_last = 0.0
+        result.append(dy_last)
     else:
         result.append(0.0)
     return result^

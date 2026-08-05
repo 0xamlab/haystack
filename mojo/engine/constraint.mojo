@@ -227,6 +227,15 @@ fn graph_coloring(adj: List[List[Int]], n_colors: Int) -> List[Int]:
     adj[i] is the list of neighbors of node i.
     Returns color assignment or empty list if no solution."""
     var n = len(adj)
+    # A neighbor index outside [0, n) would be read in _gc_solve as colors[neighbor]
+    # (uncatchable abort), and a non-positive palette has no assignment; refuse both with
+    # the same empty-list answer used for "no solution".
+    if n_colors <= 0:
+        return List[Int]()
+    for i in range(n):
+        for j in range(len(adj[i])):
+            if adj[i][j] < 0 or adj[i][j] >= n:
+                return List[Int]()
     var colors = List[Int]()
     for i in range(n):
         colors.append(-1)

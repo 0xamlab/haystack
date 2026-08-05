@@ -296,29 +296,48 @@ fn root_newton(x0: Float64, f_coeffs: List[Float64],
 # ── 1D Gradient descent ──────────────────────────────────────────────────────
 
 
+# Divergent iterates overflow eval_poly to ±inf (or NaN); non-finite values cannot cross
+# the JSON result wire, so a result value is replaced with 0.0 when it is not finite.
+fn _wire_finite(v: Float64) -> Float64:
+    if v - v != 0.0:
+        return 0.0
+    if v > 1e300 or v < -1e300:
+        return 0.0
+    return v
+
+
 fn gradient_descent_1d(f_coeffs: List[Float64], x0: Float64,
                        lr: Float64 = 0.01, tol: Float64 = 1e-8,
                        max_iter: Int = 1000) -> OptResult:
     """1D gradient descent using polynomial derivative.
     Minimizes f(x) starting from x0 with given learning rate."""
+    if len(f_coeffs) == 0:
+        return OptResult(x0, 0.0, 0, True)
+    # Untrusted count: max_iter drives the loop; clamp to a documented ceiling.
+    var iters_limit = max_iter
+    if iters_limit > 100000:
+        iters_limit = 100000
     var x = x0
 
     var iters = 0
-    while iters < max_iter:
+    while iters < iters_limit:
         var grad = eval_poly_deriv(f_coeffs, x)
 
         if fabs(grad) < tol:
-            return OptResult(x, eval_poly(f_coeffs, x), iters, True)
+            return OptResult(x, _wire_finite(eval_poly(f_coeffs, x)), iters, True)
 
         var x_new = x - lr * grad
+        # Divergence drives x_new inf/NaN, which cannot cross the result wire.
+        if x_new - x_new != 0.0:
+            return OptResult(x, _wire_finite(eval_poly(f_coeffs, x)), iters + 1, False)
 
         if fabs(x_new - x) < tol:
-            return OptResult(x_new, eval_poly(f_coeffs, x_new), iters + 1, True)
+            return OptResult(x_new, _wire_finite(eval_poly(f_coeffs, x_new)), iters + 1, True)
 
         x = x_new
         iters += 1
 
-    return OptResult(x, eval_poly(f_coeffs, x), iters, False)
+    return OptResult(x, _wire_finite(eval_poly(f_coeffs, x)), iters, False)
 
 
 # ── Linear regression ─────────────────────────────────────────────────────────

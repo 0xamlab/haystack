@@ -875,9 +875,20 @@ def render_dispatch_source(
             f'{INDENT * 3}result += "\\\\r"',
             f"{INDENT * 2}elif b == UInt8(9):",
             f'{INDENT * 3}result += "\\\\t"',
+            # RFC 8259: every other control byte MUST be \u-escaped. Emitting them raw
+            # produces a frame the SDK's JSON parser rejects (measured: kernels returning
+            # chr(1)-class strings surfaced as dead calls instead of results).
+            f"{INDENT * 2}elif b < UInt8(32):",
+            f"{INDENT * 3}var v = Int(b)",
+            f'{INDENT * 3}result += "\\\\u00" + _json_hex_digit(v // 16) + _json_hex_digit(v % 16)',
             f"{INDENT * 2}else:",
             f"{INDENT * 3}result += chr(Int(b))",
             f"{INDENT}return result",
+            "",
+            "fn _json_hex_digit(v: Int) -> String:",
+            f"{INDENT}if v < 10:",
+            f"{INDENT * 2}return chr(48 + v)",
+            f"{INDENT}return chr(55 + v)",
             "",
             "fn _success_json(result_json: String) -> String:",
             f'{INDENT}return "{{\\"result\\":" + result_json + "}}"',

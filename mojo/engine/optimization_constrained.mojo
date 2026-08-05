@@ -260,6 +260,10 @@ fn augmented_lagrangian_step(
     """One step of augmented Lagrangian. Returns [new_x, new_lambdas]."""
     var n = len(x)
     var nc = len(constraints)
+    # Parallel lists: lambdas[ci] is read for each constraint; a short
+    # lambdas aborts (uncatchable).
+    if len(lambdas) < nc:
+        return List[List[Float64]]()
     # Compute gradient of augmented Lagrangian numerically
     var grad = gradient_estimate(x, func_id, constraints, mu)
     # Add Lagrangian terms to gradient numerically

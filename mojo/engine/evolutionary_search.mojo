@@ -43,6 +43,10 @@ fn ga_init(
     present in generation 0 and elitism carries it forward until something beats it.
     """
     var n_dim = len(lo)
+    # hi must cover every dimension and pop_size must be positive, or the bound reads and
+    # the individual loop below abort the worker (uncatchable).
+    if n_dim == 0 or len(hi) < n_dim or pop_size < 1:
+        return List[Float64]()
     var pop = List[Float64]()
     for i in range(pop_size):
         for j in range(n_dim):
@@ -71,6 +75,10 @@ fn ga_step(
     var n_dim = len(lo)
     var pop_size = len(fitness)
     var out = List[Float64]()
+    # Shape contract: pop carries pop_size*n_dim genes and hi covers every dimension, or the
+    # indexed reads below abort the worker (uncatchable).
+    if n_dim == 0 or pop_size == 0 or len(hi) < n_dim or len(pop) < pop_size * n_dim:
+        return out^
 
     # elitism: copy the top `elite` individuals by fitness, best first
     var taken = List[Bool]()
@@ -152,11 +160,15 @@ fn _tournament(
 fn ga_best(pop: List[Float64], fitness: List[Float64], n_dim: Int) -> List[Float64]:
     """The fittest individual's genes, with its fitness appended as the final element."""
     var pop_size = len(fitness)
+    var out = List[Float64]()
+    # pop must carry pop_size*n_dim genes (and n_dim be positive), or the gene reads below
+    # abort the worker (uncatchable).
+    if n_dim <= 0 or pop_size == 0 or len(pop) < pop_size * n_dim:
+        return out^
     var best = 0
     for i in range(pop_size):
         if fitness[i] > fitness[best]:
             best = i
-    var out = List[Float64]()
     for j in range(n_dim):
         out.append(pop[best * n_dim + j])
     out.append(fitness[best])
@@ -198,6 +210,10 @@ fn ga_saturation(pop: List[Float64], lo: List[Float64], hi: List[Float64]) -> Li
     and "0.6 is as far as we let it go".
     """
     var n_dim = len(lo)
+    # n_dim divides pop and hi covers every dimension, or the division/reads below abort
+    # the worker (uncatchable).
+    if n_dim == 0 or len(hi) < n_dim:
+        return List[Float64]()
     var pop_size = len(pop) // n_dim
     var out = List[Float64]()
     for j in range(n_dim):

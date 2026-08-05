@@ -1,0 +1,10 @@
+{
+  "_comment": "Waived gate failures for the SDK usability audit ratchet (tests/test_sdk_audit_ratchet.py). Same semantics as capability_manifest_baseline.json: the list only ever SHRINKS. A fix must delete its waiver here; a waiver naming a check that now passes fails the suite. Never add a check_id to silence a new failure \u2014 fix the failure.",
+  "schema_version": 1,
+  "waived_gate_failures": [],
+  "waiver_notes": {
+    "_note": "No waivers: all gap-check gates pass on this tree. Never add a check_id here to silence a new failure \u2014 fix the cause."
+  },
+  "sweep_p0_baseline": [],
+  "sweep_p0_baseline_note": "EMPTY by design: the 2026-08-04 audit hardened every P0 (315 functions). The CI sweep fails on ANY new worker-killing function. Never add keys to silence a crash \u2014 fix the kernel."
+}

@@ -43,6 +43,8 @@ fn qubit_one() -> List[Float64]:
 fn hadamard(q: List[Float64]) -> List[Float64]:
     """Hadamard gate: H = (1/√2)[[1,1],[1,-1]].
     H|0⟩ = (|0⟩+|1⟩)/√2, H|1⟩ = (|0⟩-|1⟩)/√2."""
+    if len(q) < 4:
+        return List[Float64]()
     var a_re = q[0]
     var a_im = q[1]
     var b_re = q[2]
@@ -57,6 +59,8 @@ fn hadamard(q: List[Float64]) -> List[Float64]:
 
 fn pauli_x(q: List[Float64]) -> List[Float64]:
     """Pauli-X (NOT) gate: X = [[0,1],[1,0]]. Swaps |0⟩ and |1⟩."""
+    if len(q) < 4:
+        return List[Float64]()
     var out = List[Float64]()
     out.append(q[2])
     out.append(q[3])
@@ -67,6 +71,8 @@ fn pauli_x(q: List[Float64]) -> List[Float64]:
 
 fn pauli_z(q: List[Float64]) -> List[Float64]:
     """Pauli-Z gate: Z = [[1,0],[0,-1]]. Phase flip on |1⟩."""
+    if len(q) < 4:
+        return List[Float64]()
     var out = List[Float64]()
     out.append(q[0])
     out.append(q[1])
@@ -78,6 +84,8 @@ fn pauli_z(q: List[Float64]) -> List[Float64]:
 fn phase_gate(q: List[Float64], theta: Float64) -> List[Float64]:
     """Phase gate: P(θ) = [[1,0],[0,e^(iθ)]].
     Multiplies |1⟩ amplitude by e^(iθ) = cos(θ)+i·sin(θ)."""
+    if len(q) < 4:
+        return List[Float64]()
     var b_re = q[2]
     var b_im = q[3]
     var c = cos(theta)
@@ -96,6 +104,8 @@ fn phase_gate(q: List[Float64], theta: Float64) -> List[Float64]:
 
 fn measure_probability(q: List[Float64]) -> List[Float64]:
     """Returns [P(|0⟩), P(|1⟩)] = [|a|², |b|²]."""
+    if len(q) < 4:
+        return List[Float64]()
     var p0 = q[0] * q[0] + q[1] * q[1]
     var p1 = q[2] * q[2] + q[3] * q[3]
     var out = List[Float64]()
@@ -106,6 +116,8 @@ fn measure_probability(q: List[Float64]) -> List[Float64]:
 
 fn qubit_norm(q: List[Float64]) -> Float64:
     """|a|² + |b|² — should be 1.0 for a valid quantum state."""
+    if len(q) < 4:
+        return 0.0
     return q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]
 
 
@@ -132,6 +144,8 @@ fn bell_state() -> List[Float64]:
 
 fn expectation_z(q: List[Float64]) -> Float64:
     """⟨Z⟩ = P(|0⟩) - P(|1⟩)."""
+    if len(q) < 4:
+        return 0.0
     var p0 = q[0] * q[0] + q[1] * q[1]
     var p1 = q[2] * q[2] + q[3] * q[3]
     return p0 - p1
@@ -145,6 +159,8 @@ fn bloch_coords(q: List[Float64]) -> List[Float64]:
     For |ψ⟩ = a|0⟩ + b|1⟩:
       x = 2·Re(a*·b), y = 2·Im(a*·b), z = |a|² - |b|².
     a* = (a_re - i·a_im), so a*·b = (a_re·b_re + a_im·b_im) + i(a_re·b_im - a_im·b_re)."""
+    if len(q) < 4:
+        return List[Float64]()
     var a_re = q[0]
     var a_im = q[1]
     var b_re = q[2]

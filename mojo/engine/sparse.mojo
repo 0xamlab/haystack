@@ -14,7 +14,13 @@ Public API:
   sparse_density      — Fraction of non-zero entries
   sparse_trace        — Sum of diagonal entries
 """
-from std.math import abs as fabs
+from std.math import abs as fabs, isnan, isinf
+
+
+# A wire-supplied nrows drives the result allocation directly, so it gets the
+# same declared ceiling sparse_numerics.csr uses (2^26 keeps one object near
+# the 512 MB resident-dataset budget).
+comptime MAX_COO_DIM: Int = 1 << 26
 
 
 # ── COOEntry struct ──────────────────────────────────────────────────────────
@@ -94,6 +100,22 @@ fn sparse_from_dense(dense: List[List[Float64]], tol: Float64 = 1e-15) -> Sparse
 fn sparse_matvec(mat: SparseMatrixCOO, vec: List[Float64]) -> List[Float64]:
     """Sparse matrix-vector multiply: result = mat @ vec."""
     var result = List[Float64]()
+    # Entries arrive over the wire and index result by row / vec by column;
+    # validate up front — an out-of-bounds List read is an uncatchable abort,
+    # and a NaN/inf input would flow into the JSON result.
+    if mat.nrows < 0 or mat.ncols < 0 or mat.nrows > MAX_COO_DIM:
+        return result^
+    if len(vec) < mat.ncols:
+        return result^
+    for i in range(len(mat.entries)):
+        var e = mat.entries[i].copy()
+        if e.row < 0 or e.row >= mat.nrows or e.col < 0 or e.col >= len(vec):
+            return result^
+        if isnan(e.val) or isinf(e.val):
+            return result^
+    for i in range(len(vec)):
+        if isnan(vec[i]) or isinf(vec[i]):
+            return result^
     for _ in range(mat.nrows):
         result.append(0.0)
     for i in range(len(mat.entries)):

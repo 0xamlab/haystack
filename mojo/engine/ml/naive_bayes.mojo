@@ -68,6 +68,9 @@ fn gaussian_nb_fit(
     [mean_f0, std_f0, mean_f1, std_f1, ...] for class c.
     """
     var n_samples = len(X)
+    # A short or empty y would be indexed past its end below (uncatchable abort).
+    if len(y) != n_samples:
+        return List[List[Float64]]()
     var n_features = 0
     if n_samples > 0:
         n_features = len(X[0])
@@ -140,6 +143,15 @@ fn gaussian_nb_predict(
     var n_classes = len(params)
     var best_class = 0
     var best_score = -1e308
+
+    # priors[c] and the per-feature (mean, std) pairs below are indexed by class; a short
+    # priors list or a params row narrower than 2*len(x) aborts the worker (uncatchable).
+    if n_classes == 0 or len(priors) < n_classes:
+        return 0
+    var need = 2 * len(x)
+    for c in range(n_classes):
+        if len(params[c]) < need:
+            return 0
 
     for c in range(n_classes):
         var score: Float64 = 0.0

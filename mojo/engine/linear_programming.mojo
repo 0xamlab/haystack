@@ -7,7 +7,7 @@ Public API:
   sensitivity_rhs, line_intersection_2d, enumerate_vertices_2d,
   transportation_cost
 """
-from std.math import abs as fabs
+from std.math import abs as fabs, isnan, isinf
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,6 +51,10 @@ fn is_feasible(
         if x[j] < -1e-9:
             return False
     var m = len(A)
+    # b[i] is read below for every constraint; a short b would be read past
+    # its end (uncatchable abort). Treat a malformed system as infeasible.
+    if len(b) < m:
+        return False
     for i in range(m):
         var s: Float64 = 0.0
         var cols = len(A[i])
@@ -87,6 +91,14 @@ fn enumerate_vertices_2d(
     x-axis (y=0), and y-axis (x=0)."""
     var m = len(A)
     var vertices = List[List[Float64]]()
+    # A[i][0], A[i][1] and b[i] are read below for every constraint; a short
+    # b or a row with fewer than 2 columns would be read past its end
+    # (uncatchable abort).
+    if len(b) < m:
+        return vertices^
+    for i in range(m):
+        if len(A[i]) < 2:
+            return vertices^
 
     # Build extended system: original constraints + axes x=0, y=0
     var all_a1 = List[Float64]()
@@ -218,6 +230,20 @@ fn transportation_cost(
     var n = len(demand)
     if m == 0 or n == 0:
         return 0.0
+    # costs[i][j] is read for every cell (i<m, j<n); a short costs or narrow
+    # row would be read past its end (uncatchable abort). A non-finite
+    # supply/demand stalls the northwest-corner walk — NaN never satisfies an
+    # advance condition — so refuse it.
+    if len(costs) < m:
+        return 0.0
+    for i in range(m):
+        if len(costs[i]) < n:
+            return 0.0
+        if isnan(supply[i]) or isinf(supply[i]):
+            return 0.0
+    for j in range(n):
+        if isnan(demand[j]) or isinf(demand[j]):
+            return 0.0
 
     # Copy supply/demand
     var s = List[Float64]()

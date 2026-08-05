@@ -60,10 +60,13 @@ fn kernel_polynomial(
     coef0: Float64 = 0.0,
 ) -> Float64:
     """Polynomial kernel: (a·b + coef0)^degree."""
+    var deg = degree
+    if deg > 100:
+        deg = 100  # ceiling: |base|^d overflows Float64 to inf well before d=100
     var dot = kernel_linear(a, b)
     var base = dot + coef0
     var result: Float64 = 1.0
-    for _ in range(degree):
+    for _ in range(deg):
         result *= base
     return result
 
@@ -176,8 +179,12 @@ fn kernel_alignment(
 ) -> Float64:
     """Kernel alignment: ⟨K1,K2⟩_F / (‖K1‖_F · ‖K2‖_F)."""
     var n = len(K1)
+    if len(K2) < n:
+        return 0.0
     var inner: Float64 = 0.0
     for i in range(n):
+        if len(K2[i]) < len(K1[i]):
+            return 0.0
         for j in range(len(K1[i])):
             inner += K1[i][j] * K2[i][j]
     var n1 = frobenius_norm(K1)

@@ -892,6 +892,18 @@ fn outcome_distribution(
         for _ in range(n_cars):
             z.append(0.0)
         return OracleBoard(z.copy(), z.copy(), z.copy(), z.copy(), 0, 0, 0.0)
+    # Same fail-safe for the SHAPE contract: every per-car array must cover all n_cars, and
+    # params must carry the full calibrated vector (indices run to P_RIVAL_PIT_RATE = 29).
+    # A short read below aborts the worker (uncatchable), e.g. params[26] on a 5-element list.
+    if (
+        len(car_deg) < n_cars or len(car_form_sigma) < n_cars or len(car_elapsed) < n_cars
+        or len(car_age) < n_cars or len(car_active) < n_cars or len(car_stops) < n_cars
+        or len(params) <= P_RIVAL_PIT_RATE
+    ):
+        var z = List[Float64]()
+        for _ in range(n_cars):
+            z.append(0.0)
+        return OracleBoard(z.copy(), z.copy(), z.copy(), z.copy(), 0, 0, 0.0)
 
     var deg_c = List[Float64]()
     var base_pen = List[Float64]()

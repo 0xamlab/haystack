@@ -155,6 +155,9 @@ fn m2_add(a: Matrix2D, b: Matrix2D) -> Matrix2D:
     """Element-wise A + B; empty 0x0 matrix when shapes differ. O(m*n)."""
     if a.rows != b.rows or a.cols != b.cols:
         return Matrix2D(0, 0)
+    # Caller-built structs may violate the len(data)==rows*cols invariant.
+    if a.rows < 0 or a.cols < 0 or len(a.data) != a.rows * a.cols or len(b.data) != b.rows * b.cols:
+        return Matrix2D(0, 0)
     var out = Matrix2D(a.rows, a.cols)
     for i in range(len(a.data)):
         out.data[i] = a.data[i] + b.data[i]
@@ -163,6 +166,9 @@ fn m2_add(a: Matrix2D, b: Matrix2D) -> Matrix2D:
 
 fn m2_scale(a: Matrix2D, c: Float64) -> Matrix2D:
     """Scalar multiple c * A. O(m*n)."""
+    # Caller-built structs may violate the len(data)==rows*cols invariant.
+    if a.rows < 0 or a.cols < 0 or len(a.data) != a.rows * a.cols:
+        return Matrix2D(0, 0)
     var out = Matrix2D(a.rows, a.cols)
     for i in range(len(a.data)):
         out.data[i] = c * a.data[i]

@@ -88,7 +88,9 @@ fn median_filter(data: List[Float64], window: Int) -> List[Float64]:
     """Median filter with given window size (must be odd)."""
     var n = len(data)
     var result = List[Float64]()
-    if n == 0:
+    # window <= 0 inverts the window bounds and reads an empty window past the
+    # end; matches moving_average_filter's refusal.
+    if n == 0 or window <= 0:
         return result^
     var w = window
     if w % 2 == 0:

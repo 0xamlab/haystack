@@ -181,6 +181,10 @@ fn _fft_recursive(x: List[Complex], invert: Bool) -> List[Complex]:
 fn fft(x: List[Float64]) -> List[Complex]:
     """Cooley-Tukey radix-2 DIT FFT. Input length must be power of 2."""
     var n = len(x)
+    # Empty input would recurse forever in _fft_recursive (n=0 splits into
+    # two empty halves), a stack-overflow abort.
+    if n == 0:
+        return List[Complex]()
     var cx = List[Complex]()
     for i in range(n):
         cx.append(Complex(x[i], 0.0))
@@ -190,6 +194,10 @@ fn fft(x: List[Float64]) -> List[Complex]:
 fn ifft(X: List[Complex]) -> List[Complex]:
     """Inverse FFT. Returns complex time-domain signal."""
     var n = len(X)
+    # Empty input would recurse forever in _fft_recursive (and divide by
+    # n == 0 below).
+    if n == 0:
+        return List[Complex]()
     var result = _fft_recursive(X, True)
     var nf = Float64(n)
     for i in range(n):
@@ -224,6 +232,9 @@ fn fft_phase(X: List[Complex]) -> List[Float64]:
 
 fn power_spectrum(x: List[Float64]) -> List[Float64]:
     """|FFT(x)|² / N."""
+    # Empty input would divide by N == 0 below.
+    if len(x) == 0:
+        return List[Float64]()
     var X = fft(x)
     var n = Float64(len(x))
     var result = List[Float64]()

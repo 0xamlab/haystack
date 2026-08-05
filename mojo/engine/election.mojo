@@ -19,6 +19,22 @@ Public API:
 """
 
 
+fn _ballots_valid(ballots: List[List[Int]], n_candidates: Int) -> Bool:
+    """True when n_candidates > 0 and every ballot entry lies in [0, n_candidates).
+
+    Ballot entries are used directly as indices into count/score/matrix lists;
+    an out-of-range one is an uncatchable out-of-bounds abort.
+    """
+    if n_candidates <= 0:
+        return False
+    for b in range(len(ballots)):
+        for i in range(len(ballots[b])):
+            var c = ballots[b][i]
+            if c < 0 or c >= n_candidates:
+                return False
+    return True
+
+
 # ── pairwise_matrix ──────────────────────────────────────────────────────────
 
 
@@ -26,6 +42,8 @@ fn pairwise_matrix(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[List[Int]]:
     """NxN matrix where [i][j] = number of ballots preferring i over j."""
+    if not _ballots_valid(ballots, n_candidates):
+        return List[List[Int]]()
     var matrix = List[List[Int]]()
     for i in range(n_candidates):
         var row = List[Int]()
@@ -52,6 +70,8 @@ fn pairwise_matrix(
 
 fn plurality(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Plurality voting: winner is candidate with most first-place votes."""
+    if not _ballots_valid(ballots, n_candidates):
+        return -1
     var counts = List[Int]()
     for _ in range(n_candidates):
         counts.append(0)
@@ -76,6 +96,8 @@ fn borda_count(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[Float64]:
     """Borda count scores. Last place = 0, first = n-1 points."""
+    if not _ballots_valid(ballots, n_candidates):
+        return List[Float64]()
     var scores = List[Float64]()
     for _ in range(n_candidates):
         scores.append(0.0)
@@ -95,6 +117,8 @@ fn borda_count(
 
 fn borda_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Winner by Borda count."""
+    if not _ballots_valid(ballots, n_candidates):
+        return -1
     var scores = borda_count(ballots, n_candidates)
     var best = -1
     var best_score: Float64 = -1.0
@@ -110,6 +134,8 @@ fn borda_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
 
 fn condorcet_winner(ballots: List[List[Int]], n_candidates: Int) -> Int:
     """Condorcet winner (beats all others pairwise). Returns -1 if none."""
+    if not _ballots_valid(ballots, n_candidates):
+        return -1
     var matrix = pairwise_matrix(ballots, n_candidates)
     for i in range(n_candidates):
         var wins_all = True
@@ -133,6 +159,8 @@ fn instant_runoff(ballots: List[List[Int]], n_candidates: Int) -> Int:
 
     Eliminate candidate with fewest first-place votes, redistribute, repeat.
     """
+    if not _ballots_valid(ballots, n_candidates):
+        return -1
     # Track which candidates are eliminated
     var eliminated = List[Bool]()
     for _ in range(n_candidates):
@@ -192,6 +220,8 @@ fn approval_voting(approvals: List[List[Int]], n_candidates: Int) -> Int:
 
     Winner = most approvals.
     """
+    if not _ballots_valid(approvals, n_candidates):
+        return -1
     var counts = List[Int]()
     for _ in range(n_candidates):
         counts.append(0)
@@ -217,6 +247,8 @@ fn copeland_scores(
     ballots: List[List[Int]], n_candidates: Int
 ) -> List[Float64]:
     """Copeland method: +1 for pairwise win, +0.5 for tie, 0 for loss."""
+    if not _ballots_valid(ballots, n_candidates):
+        return List[Float64]()
     var matrix = pairwise_matrix(ballots, n_candidates)
     var scores = List[Float64]()
     for _ in range(n_candidates):

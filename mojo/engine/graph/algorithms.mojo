@@ -65,11 +65,38 @@ fn graph_new(n: Int) -> Graph:
     return Graph(n)
 
 
+fn _graph_valid(g: Graph) -> Bool:
+    """True when the adjacency structure matches n_nodes and every neighbor
+    index lies in [0, n_nodes).
+
+    Neighbor values are used directly as indices into dist/visited/label
+    lists; a ragged row or out-of-range neighbor is an uncatchable
+    out-of-bounds abort.
+    """
+    var n = g.n_nodes
+    if n < 0 or len(g._adj_targets) != n or len(g._adj_weights) != n:
+        return False
+    for u in range(n):
+        if len(g._adj_weights[u]) < len(g._adj_targets[u]):
+            return False
+        for i in range(len(g._adj_targets[u])):
+            var v = g._adj_targets[u][i]
+            if v < 0 or v >= n:
+                return False
+    return True
+
+
 # ── graph_add_edge ────────────────────────────────────────────────────────────
 
 
 fn graph_add_edge(mut g: Graph, from_node: Int, to_node: Int, weight: Float64):
     """Add a directed edge from from_node to to_node with given weight."""
+    # from_node addresses the adjacency rows directly and to_node becomes a
+    # neighbor index in later algorithms; refuse out-of-range endpoints.
+    if from_node < 0 or from_node >= len(g._adj_targets) or from_node >= len(g._adj_weights):
+        return
+    if to_node < 0 or to_node >= g.n_nodes:
+        return
     g._adj_targets[from_node].append(to_node)
     g._adj_weights[from_node].append(weight)
 
@@ -185,6 +212,8 @@ fn dijkstra(g: Graph, source: Int) -> List[Float64]:
     """
     var INF: Float64 = 1e18
     var n = g.n_nodes
+    if not _graph_valid(g) or source < 0 or source >= n:
+        return List[Float64]()
     var dist = List[Float64]()
     var visited = List[Bool]()
     for _ in range(n):
@@ -222,6 +251,8 @@ fn dijkstra(g: Graph, source: Int) -> List[Float64]:
 fn bfs(g: Graph, source: Int) -> List[Int]:
     """Breadth-first traversal order starting from source."""
     var n = g.n_nodes
+    if not _graph_valid(g) or source < 0 or source >= n:
+        return List[Int]()
     var visited = List[Bool]()
     for _ in range(n):
         visited.append(False)
@@ -255,6 +286,8 @@ fn bfs(g: Graph, source: Int) -> List[Int]:
 fn dfs(g: Graph, source: Int) -> List[Int]:
     """Depth-first traversal order starting from source (iterative)."""
     var n = g.n_nodes
+    if not _graph_valid(g) or source < 0 or source >= n:
+        return List[Int]()
     var visited = List[Bool]()
     for _ in range(n):
         visited.append(False)
@@ -296,6 +329,8 @@ fn topological_sort(g: Graph) -> List[Int]:
     returns a partial ordering (nodes involved in cycles are omitted).
     """
     var n = g.n_nodes
+    if not _graph_valid(g):
+        return List[Int]()
 
     # Compute in-degrees
     var in_degree = List[Int]()
@@ -341,6 +376,8 @@ fn connected_components(g: Graph) -> List[Int]:
     for node i.
     """
     var n = g.n_nodes
+    if not _graph_valid(g):
+        return List[Int]()
     var labels = List[Int]()
     for _ in range(n):
         labels.append(-1)
@@ -392,6 +429,8 @@ fn shortest_path(g: Graph, source: Int, target: Int) -> List[Int]:
     """
     var INF: Float64 = 1e18
     var n = g.n_nodes
+    if not _graph_valid(g) or source < 0 or source >= n or target < 0 or target >= n:
+        return List[Int]()
     var dist = List[Float64]()
     var prev = List[Int]()
     var visited = List[Bool]()

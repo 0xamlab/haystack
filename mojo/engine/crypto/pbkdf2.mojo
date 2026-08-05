@@ -188,6 +188,8 @@ fn xor_byte_lists(a: List[Int], b: List[Int]) -> List[Int]:
         XOR result.
     """
     var n = len(a)
+    if len(b) != n:
+        return List[Int]()
     var result = List[Int](capacity=n)
     for i in range(n):
         result.append(a[i] ^ b[i])
@@ -279,6 +281,8 @@ fn pbkdf2_hmac_sha256(password: List[Int], salt: List[Int],
     Returns:
         Derived key as byte list of length dk_len.
     """
+    if dk_len <= 0 or dk_len > 1000000:
+        return List[Int]()  # negative dk_len breaks List capacity; huge blows it up
     var hash_len = 32  # SHA-256 output
     # Number of blocks needed
     var blocks = (dk_len + hash_len - 1) // hash_len

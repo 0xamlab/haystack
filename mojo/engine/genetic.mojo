@@ -127,6 +127,8 @@ fn initialize_population(config: GAConfig) -> List[Individual]:
 fn tournament_select(population: List[Individual], tournament_size: Int) -> Individual:
     """Tournament selection: pick best from random subset."""
     var n = len(population)
+    if n == 0:
+        return Individual(List[Float64](), 0.0)
     var best_idx = Int(random_float64() * Float64(n))
     if best_idx >= n:
         best_idx = n - 1
@@ -198,6 +200,8 @@ fn mutate_gaussian(mut ind: Individual, rate: Float64, sigma: Float64,
 
 fn best_individual(population: List[Individual]) -> Individual:
     """Return individual with highest fitness."""
+    if len(population) == 0:
+        return Individual(List[Float64](), 0.0)
     var best_idx = 0
     var best_fit = population[0].fitness
     for i in range(1, len(population)):
@@ -238,6 +242,9 @@ fn _sort_by_fitness(mut pop: List[Individual]):
 fn evolve_one_generation(population: List[Individual], config: GAConfig,
                          eval_fn_id: Int) -> List[Individual]:
     """One generation: evaluate, sort, elitism, fill via selection+crossover+mutation."""
+    # An empty population would crash tournament selection below.
+    if len(population) == 0:
+        return List[Individual]()
     # Evaluate all
     var pop = List[Individual]()
     for i in range(len(population)):

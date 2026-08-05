@@ -214,11 +214,20 @@ fn counting_sort_int(data: List[Int]) -> List[Int]:
     """Counting sort for non-negative integers. Returns sorted copy."""
     if len(data) == 0:
         return List[Int]()
-    # Find max
+    # Find min and max
+    var min_val = data[0]
     var max_val = data[0]
     for i in range(1, len(data)):
+        if data[i] < min_val:
+            min_val = data[i]
         if data[i] > max_val:
             max_val = data[i]
+    # Bucket-range cap: counts covers 0..max_val, so a poisoned span (the audit
+    # sweep sent ±2^62) tried to allocate past 6 GB. Negatives would index
+    # counts out of bounds, and counting sort cannot honestly bucket a range
+    # past 10_000_000 anyway.
+    if min_val < 0 or max_val > 10_000_000:
+        return List[Int]()
     # Count occurrences
     var counts = List[Int]()
     for i in range(max_val + 1):

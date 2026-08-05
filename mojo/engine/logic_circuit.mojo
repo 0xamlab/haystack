@@ -20,6 +20,10 @@ Public API:
 """
 
 
+# Ceiling on the wire-supplied bit width: bounds the allocation.
+comptime MAX_BIT_WIDTH: Int = 1024
+
+
 # ── Basic Gates ───────────────────────────────────────────────────────────────
 
 
@@ -87,6 +91,9 @@ fn ripple_carry_adder(a: List[Int], b: List[Int]) -> List[Int]:
     """N-bit ripple carry adder. Inputs and outputs are LSB first.
     Returns [sum_bits..., carry_out]."""
     var n = len(a)
+    # A short b would be read past its end below (uncatchable abort).
+    if len(b) < n:
+        return List[Int]()
     var result = List[Int]()
     var carry = 0
     for i in range(n):
@@ -137,9 +144,13 @@ fn bits_to_int(bits: List[Int]) -> Int:
 
 fn int_to_bits(value: Int, n_bits: Int) -> List[Int]:
     """Convert integer to bit list (LSB first) with n_bits width."""
+    # n_bits drives the allocation; clamp the wire-supplied count.
+    var nb = n_bits
+    if nb > MAX_BIT_WIDTH:
+        nb = MAX_BIT_WIDTH
     var result = List[Int]()
     var v = value
-    for i in range(n_bits):
+    for i in range(nb):
         result.append(v & 1)
         v >>= 1
     return result^

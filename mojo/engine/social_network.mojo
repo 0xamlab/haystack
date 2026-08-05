@@ -18,6 +18,25 @@ Public API:
 from std.random import random_float64
 
 
+# Untrusted simulation/iteration counts are clamped to this ceiling: each round
+# walks the graph, so an unbounded value from the wire is a CPU weapon.
+comptime MAX_SIM_COUNT: Int = 100000
+
+
+fn _adj_valid(adj: List[List[Int]]) -> Bool:
+    """True when every neighbor index lies in [0, n).
+
+    Neighbor values are used directly as indices into adj and per-node arrays;
+    a ragged or out-of-range one is an uncatchable out-of-bounds abort.
+    """
+    var n = len(adj)
+    for i in range(n):
+        for j in range(len(adj[i])):
+            if adj[i][j] < 0 or adj[i][j] >= n:
+                return False
+    return True
+
+
 # ── in_degree ────────────────────────────────────────────────────────────────
 
 
@@ -68,6 +87,9 @@ fn reciprocity(adj: List[List[Int]]) -> Float64:
         Reciprocity (0 to 1).
     """
     var n = len(adj)
+    # adj[target] is read with the neighbor value as index.
+    if not _adj_valid(adj):
+        return 0.0
     var total_edges = 0
     var recip_edges = 0
     for i in range(n):
@@ -116,9 +138,18 @@ fn influence_spread_ic(
         Average number of activated nodes.
     """
     var n = len(adj)
+    if not _adj_valid(adj):
+        return 0.0
+    # n_simulations <= 0 would divide by zero below; huge values are a CPU
+    # weapon and get clamped to the documented ceiling.
+    var sims = n_simulations
+    if sims <= 0:
+        return 0.0
+    if sims > MAX_SIM_COUNT:
+        sims = MAX_SIM_COUNT
     var total_activated: Float64 = 0.0
 
-    for _sim in range(n_simulations):
+    for _sim in range(sims):
         # Track activated nodes
         var active = List[Bool]()
         for _i in range(n):
@@ -149,7 +180,7 @@ fn influence_spread_ic(
                 count += 1
         total_activated += Float64(count)
 
-    return total_activated / Float64(n_simulations)
+    return total_activated / Float64(sims)
 
 
 # ── local_clustering_directed ────────────────────────────────────────────────
@@ -169,6 +200,9 @@ fn local_clustering_directed(adj: List[List[Int]], node: Int) -> Float64:
         Local clustering coefficient.
     """
     var n = len(adj)
+    # node indexes adj directly, and neighbor values index is_neighbor.
+    if node < 0 or node >= n or not _adj_valid(adj):
+        return 0.0
     # Get all unique neighbors (both in and out)
     var is_neighbor = List[Bool]()
     for _i in range(n):
@@ -221,6 +255,9 @@ fn strongly_connected_check(adj: List[List[Int]]) -> Bool:
     var n = len(adj)
     if n == 0:
         return True
+    # visited[nb] and rev[adj[i][j]] are read with neighbor values as indices.
+    if not _adj_valid(adj):
+        return False
 
     # Forward BFS from node 0
     var visited = List[Bool]()
@@ -292,11 +329,21 @@ fn community_label_propagation(adj: List[List[Int]], max_iter: Int) -> List[Int]
         Community label per node.
     """
     var n = len(adj)
+    # labels[adj[i][j]] is read with neighbor values as indices.
+    if not _adj_valid(adj):
+        return List[Int]()
     var labels = List[Int]()
     for i in range(n):
         labels.append(i)
 
-    for _it in range(max_iter):
+    # Huge max_iter is a CPU weapon; clamp to the documented ceiling.
+    var iters = max_iter
+    if iters > MAX_SIM_COUNT:
+        iters = MAX_SIM_COUNT
+    if iters < 0:
+        iters = 0
+
+    for _it in range(iters):
         var changed = False
         for i in range(n):
             # Collect neighbor labels (both in and out)
@@ -372,6 +419,10 @@ fn average_path_length_estimate(adj: List[List[Int]], n_samples: Int) -> Float64
     """
     var n = len(adj)
     if n <= 1:
+        return 0.0
+    # dist[nb] is read with neighbor values as indices. (n_samples is already
+    # clamped to n below, and negative values run zero samples.)
+    if not _adj_valid(adj):
         return 0.0
 
     var total_dist: Float64 = 0.0

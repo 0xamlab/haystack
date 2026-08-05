@@ -166,8 +166,9 @@ fn _exp(x: Float64) -> Float64:
 
 
 fn _log_safe(x: Float64) -> Float64:
-    """log(x) with log(<=0) mapped to the finite _LOG_ZERO sentinel."""
-    if x <= 0.0:
+    """log(x) with log(<=0) and non-finite x mapped to the finite _LOG_ZERO
+    sentinel (NaN/inf probabilities must not reach the result wire)."""
+    if x <= 0.0 or x - x != 0.0:
         return _LOG_ZERO
     return _ln(x)
 
@@ -201,7 +202,9 @@ fn _log_matrix(m: List[List[Float64]]) -> List[List[Float64]]:
 
 
 fn _log_emit(log_b: List[List[Float64]], state: Int, symbol: Int) -> Float64:
-    """log_b[state][symbol]; out-of-range symbols emit with probability 0."""
+    """log_b[state][symbol]; out-of-range states/symbols emit with probability 0."""
+    if state < 0 or state >= len(log_b):
+        return _LOG_ZERO
     if symbol < 0 or symbol >= len(log_b[state]):
         return _LOG_ZERO
     return log_b[state][symbol]
@@ -251,6 +254,13 @@ fn hmm_forward(
     var n = len(pi)
     if t_len == 0 or n == 0:
         return out^
+    # a must have n rows of at least n entries and b at least n rows: both
+    # are indexed by state below, and a short row is an uncatchable abort.
+    if len(a) < n or len(b) < n:
+        return out^
+    for i in range(n):
+        if len(a[i]) < n:
+            return out^
 
     var log_a = _log_matrix(a)
     var log_b = _log_matrix(b)
@@ -301,6 +311,13 @@ fn hmm_backward(
     var n = len(a)
     if t_len == 0 or n == 0:
         return out^
+    # Each a row is indexed up to n-1 below and b is indexed by state; short
+    # rows are an uncatchable abort.
+    if len(b) < n:
+        return out^
+    for i in range(n):
+        if len(a[i]) < n:
+            return out^
 
     var log_a = _log_matrix(a)
     var log_b = _log_matrix(b)
@@ -344,6 +361,13 @@ fn hmm_viterbi(
     var n = len(pi)
     if t_len == 0 or n == 0:
         return path^
+    # a must have n rows of at least n entries and b at least n rows: both
+    # are indexed by state below, and a short row is an uncatchable abort.
+    if len(a) < n or len(b) < n:
+        return path^
+    for i in range(n):
+        if len(a[i]) < n:
+            return path^
 
     var log_a = _log_matrix(a)
     var log_b = _log_matrix(b)

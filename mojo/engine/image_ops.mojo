@@ -6,6 +6,9 @@ convolution, edge detection, thresholding, histograms, and adjustments.
 
 Images represented as List[List[Float64]] (grayscale, values 0-255).
 
+Histogram bins are clamped to HISTOGRAM_MAX_BINS so a wire-supplied count
+cannot drive an unbounded allocation.
+
 Public API:
   convolve_2d        — 2D convolution (valid mode)
   sobel_x_kernel     — Sobel X edge detection kernel
@@ -19,6 +22,13 @@ Public API:
   contrast           — Adjust contrast, clamped
   mean_pixel         — Average pixel value
 """
+
+
+from std.math import isnan, isinf
+
+
+# Ceiling on wire-supplied bin counts: bounds the histogram allocation.
+comptime HISTOGRAM_MAX_BINS: Int = 65536
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -39,10 +49,20 @@ fn convolve_2d(
     image: List[List[Float64]], kernel: List[List[Float64]]
 ) -> List[List[Float64]]:
     """2D convolution (valid mode). Output is (H-kh+1) x (W-kw+1)."""
+    # An empty or row-ragged image/kernel would be read past its end below
+    # (uncatchable abort); a degenerate shape has no valid-mode pixels.
     var ih = len(image)
-    var iw = len(image[0])
     var kh = len(kernel)
+    if ih == 0 or kh == 0:
+        return List[List[Float64]]()
+    var iw = len(image[0])
     var kw = len(kernel[0])
+    for r in range(ih):
+        if len(image[r]) < iw:
+            return List[List[Float64]]()
+    for r in range(kh):
+        if len(kernel[r]) < kw:
+            return List[List[Float64]]()
     var oh = ih - kh + 1
     var ow = iw - kw + 1
     var result = List[List[Float64]]()
@@ -118,17 +138,28 @@ fn sharpen_kernel() -> List[List[Float64]]:
 
 fn histogram(image: List[List[Float64]], n_bins: Int) -> List[Int]:
     """Intensity histogram with n_bins bins spanning [0, 255]."""
+    # n_bins <= 0 leaves no bins to index into; the clamp bounds the
+    # wire-supplied allocation.
+    if n_bins <= 0:
+        return List[Int]()
+    var nb = n_bins
+    if nb > HISTOGRAM_MAX_BINS:
+        nb = HISTOGRAM_MAX_BINS
     var bins = List[Int]()
-    for _ in range(n_bins):
+    for _ in range(nb):
         bins.append(0)
-    var bin_width = 256.0 / Float64(n_bins)
+    var bin_width = 256.0 / Float64(nb)
     var rows = len(image)
     for r in range(rows):
         var cols = len(image[r])
         for c in range(cols):
-            var idx = Int(image[r][c] / bin_width)
-            if idx >= n_bins:
-                idx = n_bins - 1
+            var v = image[r][c]
+            # Int() of a non-finite pixel is an uncatchable abort.
+            if isnan(v) or isinf(v):
+                continue
+            var idx = Int(v / bin_width)
+            if idx >= nb:
+                idx = nb - 1
             if idx < 0:
                 idx = 0
             bins[idx] += 1

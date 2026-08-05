@@ -26,6 +26,13 @@ from std.math import sqrt, abs as fabs
 fn sma_forecast(data: List[Float64], window: Int, horizon: Int) -> List[Float64]:
     """Forecast next horizon values using SMA of last window values."""
     var n = len(data)
+    var result = List[Float64]()
+    # Empty data or window <= 0 would divide the average by zero (NaN cannot
+    # cross the result wire); horizon zeros match drift/exponential forecast.
+    if n == 0 or window <= 0:
+        for _ in range(horizon):
+            result.append(0.0)
+        return result^
     var w = window
     if w > n:
         w = n
@@ -33,7 +40,6 @@ fn sma_forecast(data: List[Float64], window: Int, horizon: Int) -> List[Float64]
     for i in range(n - w, n):
         total += data[i]
     var sma = total / Float64(w)
-    var result = List[Float64]()
     for _ in range(horizon):
         result.append(sma)
     return result^
@@ -76,10 +82,16 @@ fn _ols_fit(data: List[Float64]) -> List[Float64]:
 fn linear_extrapolation(data: List[Float64], horizon: Int) -> List[Float64]:
     """Fit a line to all data (OLS), extrapolate horizon steps."""
     var n = len(data)
+    var result = List[Float64]()
+    # An empty series fits no line — _ols_fit would divide by zero and NaN
+    # cannot cross the result wire. Horizon zeros match the sibling forecasters.
+    if n == 0:
+        for _ in range(horizon):
+            result.append(0.0)
+        return result^
     var fit = _ols_fit(data)
     var a = fit[0]
     var b = fit[1]
-    var result = List[Float64]()
     for h in range(horizon):
         result.append(a + b * Float64(n + h))
     return result^
@@ -132,6 +144,12 @@ fn exponential_forecast(
 fn naive_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
     """Repeat last value for horizon steps."""
     var result = List[Float64]()
+    # data[len-1] on an empty list is an uncatchable out-of-bounds read;
+    # horizon zeros match drift/exponential forecast.
+    if len(data) == 0:
+        for _ in range(horizon):
+            result.append(0.0)
+        return result^
     var last = data[len(data) - 1]
     for _ in range(horizon):
         result.append(last)
@@ -147,8 +165,17 @@ fn seasonal_naive(
     """Repeat the last season (last period values) cyclically for horizon."""
     var n = len(data)
     var result = List[Float64]()
+    # period <= 0 makes h % period undefined and period > n reads before the
+    # list start — both uncatchable. Horizon zeros match the sibling forecasters.
+    if n == 0 or period <= 0:
+        for _ in range(horizon):
+            result.append(0.0)
+        return result^
+    var p = period
+    if p > n:
+        p = n  # clamp like sma_forecast clamps window
     for h in range(horizon):
-        var idx = n - period + (h % period)
+        var idx = n - p + (h % p)
         result.append(data[idx])
     return result^
 
@@ -180,6 +207,10 @@ fn forecast_accuracy(
 ) -> List[Float64]:
     """Returns [MAE, MAPE, RMSE]."""
     var n = len(actual)
+    # predicted[i] is read for every actual, and n == 0 would divide the
+    # metrics by zero: no data, no accuracy.
+    if n == 0 or len(predicted) < n:
+        return List[Float64]()
     var mae: Float64 = 0.0
     var mape: Float64 = 0.0
     var mse: Float64 = 0.0

@@ -12,7 +12,7 @@ Public API:
   eval_func, eval_deriv, bisection, newton_raphson, secant_method,
   fixed_point, regula_falsi, bracket_root, convergence_order
 """
-from std.math import sqrt, abs as fabs, cos, sin, exp, log
+from std.math import sqrt, abs as fabs, cos, sin, exp, log, isinf, isnan
 
 
 # ── Function evaluation ──────────────────────────────────────────────────────
@@ -170,7 +170,12 @@ fn regula_falsi(
     var hi = b
     var flo = eval_func(lo, func_id)
     var fhi = eval_func(hi, func_id)
-    if flo * fhi > 0.0:
+    # A degenerate bracket (no sign change, f(lo) == f(hi), e.g. equal
+    # endpoints, or a non-finite f value) zeroes the secant denominator below
+    # or yields nan/inf that cannot cross the JSON result wire.
+    if isnan(flo) or isinf(flo) or isnan(fhi) or isinf(fhi):
+        return (lo + hi) / 2.0
+    if flo * fhi > 0.0 or flo == fhi:
         return (lo + hi) / 2.0
 
     for _ in range(max_iter):

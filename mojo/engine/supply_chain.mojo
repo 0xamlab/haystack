@@ -47,6 +47,8 @@ fn bullwhip_effect(demand_variance: Float64, order_variance: Float64) -> Float64
 
 fn forecast_error_mae(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean Absolute Error between actual and forecast."""
+    if len(forecast) != len(actual):
+        return 0.0
     var n = len(actual)
     if n == 0:
         return 0.0
@@ -61,6 +63,8 @@ fn forecast_error_mae(actual: List[Float64], forecast: List[Float64]) -> Float64
 
 fn forecast_error_mape(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean Absolute Percentage Error. Skips zero actuals."""
+    if len(forecast) != len(actual):
+        return 0.0
     var n = len(actual)
     if n == 0:
         return 0.0
@@ -80,6 +84,8 @@ fn forecast_error_mape(actual: List[Float64], forecast: List[Float64]) -> Float6
 
 fn forecast_bias(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean(forecast - actual). Positive = over-forecasting."""
+    if len(forecast) != len(actual):
+        return 0.0
     var n = len(actual)
     if n == 0:
         return 0.0
@@ -95,6 +101,8 @@ fn forecast_bias(actual: List[Float64], forecast: List[Float64]) -> Float64:
 fn tracking_signal(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Tracking signal = cumulative error / MAD.
     MAD = Mean Absolute Deviation of errors."""
+    if len(forecast) != len(actual):
+        return 0.0
     var n = len(actual)
     if n == 0:
         return 0.0

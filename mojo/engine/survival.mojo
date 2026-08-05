@@ -64,6 +64,8 @@ fn _sort_indices(times: List[Float64]) -> List[Int]:
 fn kaplan_meier(times: List[Float64], events: List[Bool]) -> List[SurvivalPoint]:
     """Kaplan-Meier estimator. S(t) = Π(1 - d_i/n_i).
     Returns survival curve starting at (0, 1.0)."""
+    if len(events) != len(times):
+        return List[SurvivalPoint]()
     var n = len(times)
     var result = List[SurvivalPoint]()
     result.append(SurvivalPoint(0.0, 1.0, n, 0))
@@ -99,6 +101,8 @@ fn kaplan_meier(times: List[Float64], events: List[Bool]) -> List[SurvivalPoint]
 fn nelson_aalen(times: List[Float64], events: List[Bool]) -> List[List[Float64]]:
     """Nelson-Aalen cumulative hazard: H(t) = Σ(d_i/n_i).
     Returns [[time, H(t)], ...]."""
+    if len(events) != len(times):
+        return List[List[Float64]]()
     var n = len(times)
     var result = List[List[Float64]]()
     var row0 = List[Float64]()
@@ -151,6 +155,8 @@ fn log_rank_statistic(
 ) -> Float64:
     """Log-rank test statistic comparing two survival curves.
     Returns chi-squared statistic with 1 df."""
+    if len(events1) != len(times1) or len(events2) != len(times2):
+        return 0.0
     # Collect all unique event times
     var all_times = List[Float64]()
     for i in range(len(times1)):
@@ -229,6 +235,8 @@ fn hazard_rate(
 ) -> List[List[Float64]]:
     """Kernel-smoothed hazard rate estimate using Epanechnikov kernel.
     Returns [[time, h(t)], ...]."""
+    if len(events) != len(times):
+        return List[List[Float64]]()
     var n = len(times)
     var idx = _sort_indices(times)
     # Get unique event times
@@ -299,6 +307,8 @@ fn life_table(
 ) -> List[List[Float64]]:
     """Life table: for each interval, [start, n_risk, n_event, survival].
     intervals defines the start of each interval. Last interval goes to +inf."""
+    if len(events) != len(times):
+        return List[List[Float64]]()
     var n_int = len(intervals)
     var result = List[List[Float64]]()
     var surv: Float64 = 1.0

@@ -227,6 +227,10 @@ fn stl_like(data: List[Float64], period: Int,
     Returns [trend, seasonal, residual].
     """
     var n = len(data)
+    # period > n would allocate a period-sized seasonal table and crash the
+    # second iteration (empty seasonal list subscripted below).
+    if period <= 0 or period > n:
+        return List[List[Float64]]()
     var trend_comp = List[Float64]()
     for i in range(n):
         trend_comp.append(0.0)

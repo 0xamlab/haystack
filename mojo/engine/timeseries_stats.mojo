@@ -94,34 +94,42 @@ fn partial_autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
         List of PACF values of length max_lag + 1.
         pacf[0] = 1.0 by convention.
     """
-    var acf = autocorrelation_function(data, max_lag)
+    var n = len(data)
+    if max_lag < 0:
+        return List[Float64]()
+    var lag = max_lag
+    if n == 0:
+        lag = 0
+    elif lag > n - 1:
+        lag = n - 1  # acf is identically 0 past lag n-1; larger lags only drive O(lag^2) work
+    var acf = autocorrelation_function(data, lag)
     var result = List[Float64]()
     result.append(1.0)  # PACF at lag 0 is always 1.0
 
-    if max_lag == 0:
+    if lag == 0:
         return result^
 
     # Durbin-Levinson recursion
     # phi[k][j] represents the j-th coefficient at order k
     # We only need current and previous order
     var phi_prev = List[Float64]()
-    for _ in range(max_lag + 1):
+    for _ in range(lag + 1):
         phi_prev.append(0.0)
 
     var phi_curr = List[Float64]()
-    for _ in range(max_lag + 1):
+    for _ in range(lag + 1):
         phi_curr.append(0.0)
 
     # Order 1
     phi_curr[1] = acf[1]
     result.append(phi_curr[1])
 
-    if max_lag == 1:
+    if lag == 1:
         return result^
 
-    for k in range(2, max_lag + 1):
+    for k in range(2, lag + 1):
         # Copy current to previous
-        for j in range(max_lag + 1):
+        for j in range(lag + 1):
             phi_prev[j] = phi_curr[j]
 
         # Numerator: r(k) - sum_{j=1}^{k-1} phi_{k-1,j} * r(k-j)

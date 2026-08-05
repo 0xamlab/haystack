@@ -82,7 +82,12 @@ fn shields_parameter(
     Returns:
         Dimensionless Shields parameter θ.
     """
-    return shear_stress / ((density_s - density_f) * g * grain_size)
+    # Equal densities (or zero g / grain size) zero the denominator, and
+    # inf/nan cannot cross the result wire.
+    var denom = (density_s - density_f) * g * grain_size
+    if denom == 0.0:
+        return 0.0
+    return shear_stress / denom
 
 
 # ── settling_velocity_stokes ─────────────────────────────────────────────────
@@ -244,4 +249,7 @@ fn hypsometric_integral(
     Returns:
         Hypsometric integral HI (0–1).
     """
+    # A flat basin zeros the denominator, and inf/nan cannot cross the wire.
+    if max_elev == min_elev:
+        return 0.0
     return (mean_elev - min_elev) / (max_elev - min_elev)

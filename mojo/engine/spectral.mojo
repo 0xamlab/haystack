@@ -152,6 +152,8 @@ fn coherence(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
 
 fn spectral_centroid(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
     """Weighted mean frequency: sum(f*m) / sum(m)."""
+    if len(magnitudes) != len(frequencies):
+        return 0.0
     var num: Float64 = 0.0
     var den: Float64 = 0.0
     for i in range(len(magnitudes)):
@@ -167,6 +169,8 @@ fn spectral_centroid(magnitudes: List[Float64], frequencies: List[Float64]) -> F
 
 fn spectral_bandwidth(magnitudes: List[Float64], frequencies: List[Float64], centroid: Float64) -> Float64:
     """Spectral spread: sqrt(sum(m*(f-c)^2) / sum(m))."""
+    if len(magnitudes) != len(frequencies):
+        return 0.0
     var num: Float64 = 0.0
     var den: Float64 = 0.0
     for i in range(len(magnitudes)):
@@ -183,6 +187,8 @@ fn spectral_bandwidth(magnitudes: List[Float64], frequencies: List[Float64], cen
 
 fn spectral_rolloff(magnitudes: List[Float64], frequencies: List[Float64], threshold: Float64) -> Float64:
     """Frequency below which threshold fraction of total energy lies."""
+    if len(magnitudes) != len(frequencies):
+        return 0.0
     var total: Float64 = 0.0
     for i in range(len(magnitudes)):
         total += magnitudes[i]
@@ -248,6 +254,8 @@ fn spectral_entropy(magnitudes: List[Float64]) -> Float64:
 
 fn band_energy(magnitudes: List[Float64], frequencies: List[Float64], low: Float64, high: Float64) -> Float64:
     """Energy in frequency band [low, high]."""
+    if len(magnitudes) != len(frequencies):
+        return 0.0
     var energy: Float64 = 0.0
     for i in range(len(magnitudes)):
         if frequencies[i] >= low and frequencies[i] <= high:
@@ -260,7 +268,7 @@ fn band_energy(magnitudes: List[Float64], frequencies: List[Float64], low: Float
 
 fn peak_frequency(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
     """Frequency with highest magnitude."""
-    if len(magnitudes) == 0:
+    if len(magnitudes) == 0 or len(magnitudes) != len(frequencies):
         return 0.0
     var max_val = magnitudes[0]
     var max_idx: Int = 0

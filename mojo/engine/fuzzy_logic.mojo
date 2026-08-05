@@ -20,7 +20,7 @@ Public API:
   alpha_cut            — Return x values where membership >= alpha
 """
 
-from std.math import exp, abs as fabs
+from std.math import exp, abs as fabs, isnan, isinf
 
 
 # ── triangular_mf ────────────────────────────────────────────────────────────
@@ -174,6 +174,15 @@ fn defuzzify_centroid(x_values: List[Float64], memberships: List[Float64]) -> Fl
         Centroid x value. Returns 0.0 if all memberships are zero.
     """
     var n = len(x_values)
+    # memberships[i] is read for every x, and a NaN/inf input would flow into
+    # the JSON result: refuse mismatched or non-finite series.
+    if len(memberships) != n:
+        return 0.0
+    for i in range(n):
+        if isnan(x_values[i]) or isinf(x_values[i]):
+            return 0.0
+        if isnan(memberships[i]) or isinf(memberships[i]):
+            return 0.0
     if n == 0:
         return 0.0
     var num = 0.0
@@ -200,6 +209,15 @@ fn defuzzify_bisector(x_values: List[Float64], memberships: List[Float64]) -> Fl
         Bisector x value. Returns 0.0 if empty.
     """
     var n = len(x_values)
+    # memberships[i] is read for every x, and a NaN/inf input would flow into
+    # the JSON result: refuse mismatched or non-finite series.
+    if len(memberships) != n:
+        return 0.0
+    for i in range(n):
+        if isnan(x_values[i]) or isinf(x_values[i]):
+            return 0.0
+        if isnan(memberships[i]) or isinf(memberships[i]):
+            return 0.0
     if n == 0:
         return 0.0
     var total = 0.0
@@ -230,6 +248,15 @@ fn defuzzify_mom(x_values: List[Float64], memberships: List[Float64]) -> Float64
         Mean of x values with maximum membership. 0.0 if empty.
     """
     var n = len(x_values)
+    # memberships[i] is read for every x, and a NaN/inf input would flow into
+    # the JSON result: refuse mismatched or non-finite series.
+    if len(memberships) != n:
+        return 0.0
+    for i in range(n):
+        if isnan(x_values[i]) or isinf(x_values[i]):
+            return 0.0
+        if isnan(memberships[i]) or isinf(memberships[i]):
+            return 0.0
     if n == 0:
         return 0.0
     var max_mu = memberships[0]
@@ -290,6 +317,13 @@ fn alpha_cut(x_values: List[Float64], memberships: List[Float64], alpha: Float64
     """
     var result = List[Float64]()
     var n = len(x_values)
+    # memberships[i] is read for every x, and a NaN x would flow into the JSON
+    # result: refuse mismatched or non-finite series.
+    if len(memberships) != n:
+        return result^
+    for i in range(n):
+        if isnan(x_values[i]) or isinf(x_values[i]):
+            return result^
     for i in range(n):
         if memberships[i] >= alpha:
             result.append(x_values[i])

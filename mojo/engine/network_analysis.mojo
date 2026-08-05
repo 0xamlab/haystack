@@ -21,11 +21,18 @@ Public API:
 from std.math import abs as fabs
 
 
+# Ceiling on the wire-supplied PageRank iteration count.
+comptime MAX_PAGERANK_ITER: Int = 10000
+
+
 # ── degree ────────────────────────────────────────────────────────────────────
 
 
 fn degree(adj: List[List[Int]], node: Int) -> Int:
     """Degree of a node (number of neighbors)."""
+    # No such node: absent (-1), not a degree (uncatchable abort below).
+    if node < 0 or node >= len(adj):
+        return -1
     return len(adj[node])
 
 
@@ -65,6 +72,10 @@ fn bfs_distances(adj: List[List[Int]], start: Int) -> List[Int]:
     var dist = List[Int]()
     for i in range(n):
         dist.append(-1)
+    # A start outside [0, n) would index past dist's end (uncatchable
+    # abort); every node stays unreachable.
+    if start < 0 or start >= n:
+        return dist^
     dist[start] = 0
     var queue = List[Int]()
     queue.append(start)
@@ -75,6 +86,10 @@ fn bfs_distances(adj: List[List[Int]], start: Int) -> List[Int]:
         var ncount = len(adj[cur])
         for j in range(ncount):
             var nb = adj[cur][j]
+            # A malformed adjacency entry can point outside the graph;
+            # dist[nb] would read past its end (uncatchable abort).
+            if nb < 0 or nb >= n:
+                continue
             if dist[nb] == -1:
                 dist[nb] = dist[cur] + 1
                 queue.append(nb)
@@ -94,6 +109,10 @@ fn pagerank(
     var n = len(adj)
     if n == 0:
         return List[Float64]()
+    # max_iter drives the iteration count; clamp the wire-supplied count.
+    var iters = max_iter
+    if iters > MAX_PAGERANK_ITER:
+        iters = MAX_PAGERANK_ITER
     var rank = List[Float64]()
     var new_rank = List[Float64]()
     var init_val = 1.0 / Float64(n)
@@ -101,7 +120,7 @@ fn pagerank(
         rank.append(init_val)
         new_rank.append(0.0)
 
-    for _ in range(max_iter):
+    for _ in range(iters):
         var base = (1.0 - damping) / Float64(n)
         for i in range(n):
             new_rank[i] = base
@@ -111,6 +130,10 @@ fn pagerank(
                 var share = rank[i] / Float64(deg)
                 for j in range(deg):
                     var nb = adj[i][j]
+                    # A malformed adjacency entry can point outside the graph;
+                    # new_rank[nb] would read past its end (uncatchable abort).
+                    if nb < 0 or nb >= n:
+                        continue
                     new_rank[nb] += damping * share
         # Check convergence
         var diff = 0.0
@@ -171,6 +194,10 @@ fn closeness_centrality(adj: List[List[Int]]) -> List[Float64]:
 
 fn _has_edge(adj: List[List[Int]], u: Int, v: Int) -> Bool:
     """Check if edge (u, v) exists."""
+    # Neighbor entries can name a node outside the graph (adj[u] would read
+    # past its end — uncatchable abort); no such node, no such edge.
+    if u < 0 or u >= len(adj):
+        return False
     var ncount = len(adj[u])
     for i in range(ncount):
         if adj[u][i] == v:
@@ -183,6 +210,10 @@ fn _has_edge(adj: List[List[Int]], u: Int, v: Int) -> Bool:
 
 fn clustering_coefficient(adj: List[List[Int]], node: Int) -> Float64:
     """Local clustering coefficient: triangles / possible triangles."""
+    # No such node: no neighbourhood to cluster (adj[node] would read past
+    # its end — uncatchable abort).
+    if node < 0 or node >= len(adj):
+        return 0.0
     var k = len(adj[node])
     if k < 2:
         return 0.0

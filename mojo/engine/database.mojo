@@ -65,6 +65,8 @@ fn table_insert_row(mut table: Table, row: List[Float64]):
     var n_cols = len(table.columns)
     if len(row) != n_cols:
         return
+    if len(table.data) < n_cols:
+        return  # column storage shorter than columns: data[c] would abort
     for c in range(n_cols):
         table.data[c].append(row[c])
     table.n_rows += 1

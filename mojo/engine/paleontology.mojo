@@ -83,7 +83,14 @@ fn fossil_diversity_index(
 
     n_species = number of species (S), n_specimens = total specimens (N).
     """
-    return (n_species - 1.0) / log(n_specimens)
+    # ln(N) is 0 at N = 1 and undefined for N <= 0; the quotient degenerates
+    # to inf/NaN, which cannot cross the result wire.
+    if n_specimens <= 0.0 or n_specimens == 1.0:
+        return 0.0
+    var d = (n_species - 1.0) / log(n_specimens)
+    if d - d != 0.0:
+        return 0.0
+    return d
 
 
 fn extinction_rate(

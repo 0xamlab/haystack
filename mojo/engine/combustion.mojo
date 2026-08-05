@@ -153,4 +153,6 @@ fn heat_release_rate(
     """Simplified single-step heat release rate:
     dQ = (γ/(γ-1))*p*dV + (1/(γ-1))*V*dp."""
     var gm1 = gamma - 1.0
+    if gm1 == 0.0:
+        return 0.0  # γ=1 divides by zero; inf cannot cross the result wire
     return (gamma / gm1) * pressure * dv + (1.0 / gm1) * volume * dp

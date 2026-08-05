@@ -90,6 +90,10 @@ fn l2_norm(x: List[Float64]) -> Float64:
 
 fn vector_sub(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Element-wise subtraction: a - b."""
+    # Mismatched lengths have no element-wise answer; reading past the shorter list
+    # aborts the worker, so refuse with an empty result.
+    if len(a) != len(b):
+        return List[Float64]()
     var n = len(a)
     var result = List[Float64]()
     for i in range(n):
@@ -132,6 +136,10 @@ fn line_search_backtrack(
 ) -> Float64:
     """Backtracking line search satisfying Armijo condition.
     Returns step size t such that f(x - t*grad) <= f(x) - sigma*t*||grad||²."""
+    # A direction shorter/longer than the point (or an empty point) has no valid step;
+    # the x[i]-t*grad[i] loop below would read past the shorter list and abort the worker.
+    if len(x) == 0 or len(grad) != len(x):
+        return 0.0
     var fx = eval_function(x, func_id)
     var grad_sq: Float64 = 0.0
     for i in range(len(grad)):

@@ -198,12 +198,17 @@ fn ar_forecast(
     var n = len(series)
     if n == 0 or steps <= 0:
         return out^
+    # Untrusted count: steps drives the z-buffer allocation; clamp to a
+    # documented ceiling.
+    var h = steps
+    if h > 100000:
+        h = 100000
     var mu = _mean(series)
     var p = len(phi)
-    var z = List[Float64](capacity=n + steps)
+    var z = List[Float64](capacity=n + h)
     for i in range(n):
         z.append(series[i] - mu)
-    for _ in range(steps):
+    for _ in range(h):
         var acc: Float64 = 0.0
         for i in range(p):
             var idx = len(z) - 1 - i
@@ -236,15 +241,22 @@ fn innovations_algorithm(
         if len(autocov) > 0:
             out.sigma2 = autocov[0]
         return out^
+    # Untrusted q / max_iter: the recursion is O(M^3) and theta holds q
+    # elements; clamp both to a documented ceiling.
+    var q_c = q
+    if q_c > 1000:
+        q_c = 1000
     var g0 = autocov[0]
     if g0 <= 1e-300:
-        for _ in range(q):
+        for _ in range(q_c):
             out.theta.append(0.0)
         out.sigma2 = 0.0
         return out^
     var big_m = max_iter
-    if big_m < q:
-        big_m = q
+    if big_m > 1000:
+        big_m = 1000
+    if big_m < q_c:
+        big_m = q_c
 
     # rows[m-1][j-1] = theta_{m,j}; v[m] = innovation variance at step m.
     var rows = List[List[Float64]]()
@@ -270,7 +282,7 @@ fn innovations_algorithm(
         v.append(vm)
         rows.append(row^)
 
-    for j in range(q):
+    for j in range(q_c):
         out.theta.append(rows[big_m - 1][j])
     out.sigma2 = v[big_m]
     return out^
@@ -291,13 +303,21 @@ fn ma_fit_innovations(series: List[Float64], q: Int, max_iter: Int) -> MAFit:
     var n = len(series)
     if n == 0 or q <= 0:
         return MAFit()
-    var big_m = max_iter
+    # Untrusted q / max_iter: both drive the recursion and the autocovariance
+    # allocation; clamp to the same documented ceiling as innovations_algorithm.
+    var q_c = q
+    if q_c > 1000:
+        q_c = 1000
+    var max_it = max_iter
+    if max_it > 1000:
+        max_it = 1000
+    var big_m = max_it
     if big_m > n - 1:
         big_m = n - 1
-    if big_m < q:
-        big_m = q
+    if big_m < q_c:
+        big_m = q_c
     var gam = _autocovariances(series, big_m)
-    return innovations_algorithm(gam, q, big_m)
+    return innovations_algorithm(gam, q_c, big_m)
 
 
 # ── arma_loglik_css ──────────────────────────────────────────────────────────

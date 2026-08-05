@@ -26,7 +26,13 @@ fn cosine_sim_users(
     ratings: List[List[Float64]], u1: Int, u2: Int
 ) -> Float64:
     """Cosine similarity between two users on co-rated items."""
+    # Untrusted user indices: an out-of-range row read aborts (uncatchable).
+    var n_users = len(ratings)
+    if u1 < 0 or u1 >= n_users or u2 < 0 or u2 >= n_users:
+        return 0.0
     var n_items = len(ratings[u1])
+    if len(ratings[u2]) < n_items:
+        return 0.0
     var dot: Float64 = 0.0
     var norm1: Float64 = 0.0
     var norm2: Float64 = 0.0
@@ -50,11 +56,19 @@ fn predict_rating(
 ) -> Float64:
     """KNN collaborative filter: weighted average of k most similar users."""
     var n_users = len(ratings)
+    # Untrusted indices: out-of-range user/item reads abort (uncatchable).
+    if user < 0 or user >= n_users:
+        return 0.0
+    var n_items = len(ratings[user])
+    if item < 0 or item >= n_items:
+        return 0.0
     # Collect (similarity, rating) for users who rated this item
     var sims = List[Float64]()
     var rats = List[Float64]()
     for u in range(n_users):
         if u == user:
+            continue
+        if len(ratings[u]) < n_items:
             continue
         if ratings[u][item] == 0.0:
             continue
@@ -230,6 +244,9 @@ fn rmse_ratings(
 ) -> Float64:
     """RMSE on non-zero actuals."""
     var n = len(actual)
+    # Parallel lists: predicted[i] is read for each non-zero actual.
+    if len(predicted) < n:
+        return 0.0
     var sse: Float64 = 0.0
     var count = 0
     for i in range(n):

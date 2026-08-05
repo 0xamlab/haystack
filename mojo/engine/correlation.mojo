@@ -37,6 +37,13 @@ def sample_correlated_normal(L: List[List[Float64]], n_vars: Int) -> List[Float6
     Generate correlated standard normals using precomputed Cholesky L.
     z = L * iid_normals → correlated standard normals.
     """
+    # A negative count or a ragged/short Cholesky factor has no valid sample; an unguarded
+    # L[i][j] read aborts the worker (uncatchable), so refuse with an empty result.
+    if n_vars < 1 or len(L) < n_vars:
+        return List[Float64]()
+    for i in range(n_vars):
+        if len(L[i]) < i + 1:
+            return List[Float64]()
     var iid = List[Float64](capacity=n_vars)
     for _ in range(n_vars): iid.append(randn_float64())
 

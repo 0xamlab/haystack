@@ -34,6 +34,9 @@ fn cycle_length_webster(total_lost_time: Float64, critical_vc_ratio: Float64) ->
     Returns:
         Optimal cycle length (seconds).
     """
+    # Y = 1.0 saturates the intersection and zeros the denominator.
+    if critical_vc_ratio == 1.0:
+        return 0.0
     return (1.5 * total_lost_time + 5.0) / (1.0 - critical_vc_ratio)
 
 
@@ -122,6 +125,9 @@ fn delay_uniform(cycle: Float64, green_ratio_val: Float64, vc_ratio: Float64) ->
         x_capped = 1.0
     var numerator = (1.0 - green_ratio_val) * (1.0 - green_ratio_val)
     var denominator = 1.0 - x_capped * green_ratio_val
+    # X = 1 with g/C = 1 zeros the denominator (saturated approach, full green).
+    if denominator == 0.0:
+        return 0.0
     return 0.5 * cycle * numerator / denominator
 
 

@@ -256,6 +256,8 @@ fn overshoot(response: List[Float64], setpoint: Float64) -> Float64:
     """
     if fabs(setpoint) < 1e-15:
         return 0.0
+    if len(response) == 0:
+        return 0.0
 
     var peak = response[0]
     for i in range(1, len(response)):

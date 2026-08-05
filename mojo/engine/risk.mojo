@@ -224,7 +224,7 @@ fn alpha(
 fn information_ratio(returns: List[Float64], benchmark: List[Float64]) -> Float64:
     """Information ratio: mean(excess) / std(excess)."""
     var n = len(returns)
-    if n == 0:
+    if n == 0 or len(benchmark) != n:
         return 0.0
     var excess = List[Float64]()
     for i in range(n):

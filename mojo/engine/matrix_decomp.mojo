@@ -18,7 +18,7 @@ Public API:
   back_substitution     — Solve Ux = b (upper triangular)
   solve_lu              — Solve Ax = b via LU decomposition
 """
-from std.math import sqrt, abs as fabs
+from std.math import sqrt, abs as fabs, isinf, isnan
 
 
 # ── det_2x2 ──────────────────────────────────────────────────────────────────
@@ -26,6 +26,10 @@ from std.math import sqrt, abs as fabs
 
 fn det_2x2(A: List[List[Float64]]) -> Float64:
     """Determinant of 2×2 matrix: ad - bc."""
+    # A short or ragged matrix would be read past its end below (uncatchable
+    # abort), so refuse with the degenerate determinant.
+    if len(A) < 2 or len(A[0]) < 2 or len(A[1]) < 2:
+        return 0.0
     return A[0][0] * A[1][1] - A[0][1] * A[1][0]
 
 
@@ -34,6 +38,10 @@ fn det_2x2(A: List[List[Float64]]) -> Float64:
 
 fn det_3x3(A: List[List[Float64]]) -> Float64:
     """Determinant of 3×3 matrix via cofactor expansion along row 0."""
+    # A short or ragged matrix would be read past its end below (uncatchable
+    # abort), so refuse with the degenerate determinant.
+    if len(A) < 3 or len(A[0]) < 3 or len(A[1]) < 3 or len(A[2]) < 3:
+        return 0.0
     var a = A[0][0]
     var b = A[0][1]
     var c = A[0][2]
@@ -175,6 +183,10 @@ fn lu_decompose(A: List[List[Float64]]) -> List[List[List[Float64]]]:
 fn eigen_2x2(A: List[List[Float64]]) -> List[List[Float64]]:
     """Eigenvalues and eigenvectors for 2×2 matrix.
     Returns [[λ1, λ2], [v1x, v1y], [v2x, v2y]]."""
+    # A short or ragged matrix would be read past its end below (uncatchable
+    # abort), so refuse with an empty result.
+    if len(A) < 2 or len(A[0]) < 2 or len(A[1]) < 2:
+        return List[List[Float64]]()
     var a = A[0][0]
     var b = A[0][1]
     var c = A[1][0]
@@ -237,6 +249,14 @@ fn eigen_2x2(A: List[List[Float64]]) -> List[List[Float64]]:
 fn forward_substitution(L: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Lx = b where L is lower triangular."""
     var n = len(b)
+    # A short or ragged L would be read past its end below (uncatchable
+    # abort), and a non-finite b would poison the result (nan/inf cannot
+    # cross the JSON result wire), so refuse with an empty solution.
+    if len(L) < n:
+        return List[Float64]()
+    for i in range(n):
+        if len(L[i]) < i + 1 or isnan(b[i]) or isinf(b[i]):
+            return List[Float64]()
     var x = List[Float64]()
     for i in range(n):
         x.append(0.0)
@@ -257,6 +277,14 @@ fn forward_substitution(L: List[List[Float64]], b: List[Float64]) -> List[Float6
 fn back_substitution(U: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Ux = b where U is upper triangular."""
     var n = len(b)
+    # A short or ragged U would be read past its end below (uncatchable
+    # abort), and a non-finite b would poison the result (nan/inf cannot
+    # cross the JSON result wire), so refuse with an empty solution.
+    if len(U) < n:
+        return List[Float64]()
+    for i in range(n):
+        if len(U[i]) < n or isnan(b[i]) or isinf(b[i]):
+            return List[Float64]()
     var x = List[Float64]()
     for i in range(n):
         x.append(0.0)
@@ -277,6 +305,14 @@ fn back_substitution(U: List[List[Float64]], b: List[Float64]) -> List[Float64]:
 fn solve_lu(A: List[List[Float64]], b: List[Float64]) -> List[Float64]:
     """Solve Ax = b via Gaussian elimination with partial pivoting."""
     var n = len(b)
+    # A short or ragged A would be read past its end below (uncatchable
+    # abort), and a non-finite b would poison the result (nan/inf cannot
+    # cross the JSON result wire), so refuse with an empty solution.
+    if len(A) < n:
+        return List[Float64]()
+    for i in range(n):
+        if len(A[i]) < n or isnan(b[i]) or isinf(b[i]):
+            return List[Float64]()
     # Build augmented matrix [A|b]
     var M = List[List[Float64]]()
     for i in range(n):

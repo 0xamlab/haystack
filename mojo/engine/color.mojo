@@ -272,6 +272,12 @@ fn _hex_char_val(b: UInt8) -> Int:
     return 0
 
 
+fn _is_hex_byte(b: UInt8) -> Bool:
+    """True when b is an ASCII hex digit."""
+    var o = Int(b)
+    return (o >= 48 and o <= 57) or (o >= 65 and o <= 70) or (o >= 97 and o <= 102)
+
+
 # ── hex_to_rgb ────────────────────────────────────────────────────────────────
 
 
@@ -281,6 +287,12 @@ fn hex_to_rgb(hex: String) -> RGB:
     var offset = 0
     if len(hex) > 0 and Int(bspan[0]) == 35:  # '#' == 35
         offset = 1
+    # Need a full RRGGBB body of hex digits, else the fixed offsets abort.
+    if len(hex) < offset + 6:
+        return RGB(0.0, 0.0, 0.0)
+    for i in range(offset, offset + 6):
+        if not _is_hex_byte(bspan[i]):
+            return RGB(0.0, 0.0, 0.0)
     var r_hi = _hex_char_val(bspan[offset])
     var r_lo = _hex_char_val(bspan[offset + 1])
     var g_hi = _hex_char_val(bspan[offset + 2])

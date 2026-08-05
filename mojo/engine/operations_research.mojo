@@ -18,7 +18,7 @@ Public API:
   mm1_expected_queue_length    — Lq = ρ² / (1 - ρ)
   mm1_expected_wait_time       — Wq = ρ / (μ*(1-ρ))
 """
-from std.math import sqrt, abs as fabs
+from std.math import sqrt, abs as fabs, isnan, isinf
 
 
 # ── simplex_objective_value ───────────────────────────────────────────────────
@@ -130,6 +130,10 @@ fn utilization_factor(
 
 fn mm1_expected_queue_length(rho: Float64) -> Float64:
     """Lq = ρ² / (1 - ρ) — expected queue length in M/M/1."""
+    # ρ outside [0, 1) zeroes or flips the divisor, and the resulting
+    # inf/nan cannot cross the result wire; report the degenerate value.
+    if isnan(rho) or isinf(rho) or rho < 0.0 or rho >= 1.0:
+        return 0.0
     return rho * rho / (1.0 - rho)
 
 
@@ -138,4 +142,10 @@ fn mm1_expected_queue_length(rho: Float64) -> Float64:
 
 fn mm1_expected_wait_time(rho: Float64, mu: Float64) -> Float64:
     """Wq = ρ / (μ*(1-ρ)) — expected waiting time in queue (M/M/1)."""
+    # ρ outside [0, 1) or a non-positive μ zeroes or flips the divisor, and
+    # the resulting inf/nan cannot cross the result wire; report degenerate.
+    if isnan(rho) or isinf(rho) or isnan(mu) or isinf(mu) or mu <= 0.0:
+        return 0.0
+    if rho < 0.0 or rho >= 1.0:
+        return 0.0
     return rho / (mu * (1.0 - rho))

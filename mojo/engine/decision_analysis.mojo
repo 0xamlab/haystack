@@ -26,6 +26,8 @@ from std.math import log, abs as fabs
 fn expected_value(outcomes: List[Float64], probabilities: List[Float64]) -> Float64:
     """Weighted expected value: Σ(outcome_i * prob_i)."""
     var n = len(outcomes)
+    if len(probabilities) != n:
+        return 0.0
     var result: Float64 = 0.0
     for i in range(n):
         result += outcomes[i] * probabilities[i]
@@ -46,6 +48,8 @@ fn expected_utility(
     Returns Σ(prob_i * u(outcome_i)).
     """
     var n = len(outcomes)
+    if len(probabilities) != n:
+        return 0.0
     var result: Float64 = 0.0
     var gamma = risk_aversion
     if fabs(gamma - 1.0) < 1e-12:
@@ -110,6 +114,12 @@ fn decision_matrix_best(
 ) -> Int:
     """Best alternative by maximum expected payoff."""
     var n_alts = len(payoffs)
+    if n_alts == 0:
+        return -1  # no alternative qualifies
+    var n_states = len(probabilities)
+    for i in range(n_alts):
+        if len(payoffs[i]) < n_states:
+            return -1
     var best_idx = 0
     var best_ev = _row_ev(payoffs, 0, probabilities)
     for i in range(1, n_alts):
@@ -126,7 +136,12 @@ fn decision_matrix_best(
 fn minimax_regret(payoffs: List[List[Float64]]) -> Int:
     """Minimax regret: minimize the maximum regret across states."""
     var n_alts = len(payoffs)
+    if n_alts == 0:
+        return -1  # no alternative qualifies
     var n_states = len(payoffs[0])
+    for i in range(n_alts):
+        if len(payoffs[i]) < n_states:
+            return -1
     # Find best payoff per state
     var best_per_state = List[Float64]()
     for j in range(n_states):
@@ -182,7 +197,12 @@ fn value_of_perfect_info(
 ) -> Float64:
     """EVPI = EV with perfect info - EV of best alternative."""
     var n_alts = len(payoffs)
+    if n_alts == 0:
+        return 0.0
     var n_states = len(probabilities)
+    for i in range(n_alts):
+        if len(payoffs[i]) < n_states:
+            return 0.0
     # EV of best alternative
     var best_ev = _row_ev(payoffs, 0, probabilities)
     for i in range(1, n_alts):
@@ -210,7 +230,15 @@ fn sensitivity_range(
 
     Returns [[p, best_alternative_idx], ...].
     """
+    if len(payoffs) == 0:
+        return List[List[Float64]]()
     var n_states = len(payoffs[0])
+    # Out-of-range state_idx would also divide by n_states-1 == 0 below.
+    if state_idx < 0 or state_idx >= n_states:
+        return List[List[Float64]]()
+    for i in range(len(payoffs)):
+        if len(payoffs[i]) < n_states:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for s in range(n_steps):
         var p = Float64(s) / Float64(n_steps - 1) if n_steps > 1 else 0.5

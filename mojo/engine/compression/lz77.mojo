@@ -50,6 +50,11 @@ fn bytes_to_ints(s: String) -> List[Int]:
 
 fn ints_to_string(data: List[Int]) -> String:
     """Convert list of byte values back to string."""
+    # A value outside the Unicode range has no character; chr() aborts the worker on it
+    # (uncatchable), so refuse the whole input with an empty string.
+    for i in range(len(data)):
+        if data[i] < 0 or data[i] > 0x10FFFF:
+            return String("")
     var result = String("")
     for i in range(len(data)):
         result += chr(data[i])
@@ -155,7 +160,10 @@ fn lz77_decode(tokens: List[LZ77Token]) -> List[Int]:
             for j in range(token.length):
                 # Handle repeating patterns (offset < length)
                 var idx = start + j
-                if idx < len(result):
+                # A back-reference past the start of the stream has no byte to copy; the
+                # old `< len(result)` test alone admitted negative idx and the negative
+                # subscript aborted the worker.
+                if idx >= 0 and idx < len(result):
                     result.append(result[idx])
                 else:
                     # Should not happen in valid tokens, but safe fallback

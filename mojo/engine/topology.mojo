@@ -117,15 +117,36 @@ fn connected_components_from_edges(n: Int, edges: List[List[Int]]) -> Int:
     Returns:
         Number of connected components.
     """
+    if n < 0:
+        return 0
+    # Allocate slots only for vertices appearing in the edge payload; vertices
+    # beyond the largest endpoint are isolated and counted without storage.
+    var nv = 0
+    for idx in range(len(edges)):
+        if len(edges[idx]) >= 2:
+            if edges[idx][0] + 1 > nv:
+                nv = edges[idx][0] + 1
+            if edges[idx][1] + 1 > nv:
+                nv = edges[idx][1] + 1
+    if nv > n:
+        nv = n
+    if nv > 1000000:
+        nv = 1000000  # ceiling: union-find allocates two per-vertex lists
     var parent = List[Int]()
     var rank = List[Int]()
-    for i in range(n):
+    for i in range(nv):
         parent.append(i)
         rank.append(0)
     for idx in range(len(edges)):
-        _ = _uf_union(parent, rank, edges[idx][0], edges[idx][1])
-    var count = 0
-    for i in range(n):
+        if len(edges[idx]) < 2:
+            continue
+        var a = edges[idx][0]
+        var b = edges[idx][1]
+        if a < 0 or a >= nv or b < 0 or b >= nv:
+            continue
+        _ = _uf_union(parent, rank, a, b)
+    var count = n - nv
+    for i in range(nv):
         if _uf_find(parent, i) == i:
             count += 1
     return count
@@ -342,23 +363,42 @@ fn rips_triangle_count(n: Int, edges: List[List[Int]]) -> Int:
     Returns:
         Number of triangles.
     """
+    if n <= 0 or len(edges) == 0:
+        return 0
+    # Only vertices in the edge payload can form triangles, so nv (not n)
+    # bounds the n^2 adjacency allocation.
+    var nv = 0
+    for idx in range(len(edges)):
+        if len(edges[idx]) >= 2:
+            if edges[idx][0] + 1 > nv:
+                nv = edges[idx][0] + 1
+            if edges[idx][1] + 1 > nv:
+                nv = edges[idx][1] + 1
+    if nv > n:
+        nv = n
+    if nv > 1024:
+        nv = 1024  # ceiling: n^2 adjacency allocation, n^3 worst-case scan
     # Build adjacency matrix
     var adj = List[List[Bool]]()
-    for _ in range(n):
+    for _ in range(nv):
         var row = List[Bool]()
-        for _ in range(n):
+        for _ in range(nv):
             row.append(False)
         adj.append(row^)
     for idx in range(len(edges)):
+        if len(edges[idx]) < 2:
+            continue
         var a = edges[idx][0]
         var b = edges[idx][1]
+        if a < 0 or a >= nv or b < 0 or b >= nv:
+            continue
         adj[a][b] = True
         adj[b][a] = True
     var count = 0
-    for i in range(n):
-        for j in range(i + 1, n):
+    for i in range(nv):
+        for j in range(i + 1, nv):
             if adj[i][j]:
-                for k in range(j + 1, n):
+                for k in range(j + 1, nv):
                     if adj[i][k] and adj[j][k]:
                         count += 1
     return count

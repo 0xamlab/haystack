@@ -84,20 +84,49 @@ fn q_learning(
     transitions[s][a] = next state for taking action a in state s.
     Terminal state: transitions to self with 0 reward.
     """
-    var Q = _init_q(n_states, n_actions)
-    var terminal = n_states - 1
+    # Untrusted n_states*n_actions is a memory weapon, so clamp the table to
+    # what the payload actually contains; out-of-range reads below are
+    # uncatchable aborts, so refuse degenerate shapes with an empty table.
+    if n_states <= 0 or n_actions <= 0:
+        return List[List[Float64]]()
+    var ns = n_states
+    if ns > len(rewards):
+        ns = len(rewards)
+    if ns > len(transitions):
+        ns = len(transitions)
+    var na = n_actions
+    for s in range(ns):
+        if len(rewards[s]) < na:
+            na = len(rewards[s])
+        if len(transitions[s]) < na:
+            na = len(transitions[s])
+    if ns <= 0 or na <= 0:
+        return List[List[Float64]]()
+    # Transition targets index the Q-table directly.
+    for s in range(ns):
+        for a in range(na):
+            if transitions[s][a] < 0 or transitions[s][a] >= ns:
+                return List[List[Float64]]()
+    # Untrusted n_episodes drives iteration; clamp it.
+    var episodes = n_episodes
+    if episodes < 0:
+        episodes = 0
+    if episodes > 10000:
+        episodes = 10000
+    var Q = _init_q(ns, na)
+    var terminal = ns - 1
 
-    for _ in range(n_episodes):
+    for _ in range(episodes):
         # Start from state 0
         var s = 0
         var steps = 0
-        while s != terminal and steps < n_states * 10:
+        while s != terminal and steps < ns * 10:
             var a = epsilon_greedy_action(Q[s], epsilon)
             var r = rewards[s][a]
             var s_next = transitions[s][a]
             # Q-learning update: max over next actions
             var max_q_next = Q[s_next][0]
-            for a2 in range(1, n_actions):
+            for a2 in range(1, na):
                 if Q[s_next][a2] > max_q_next:
                     max_q_next = Q[s_next][a2]
             Q[s][a] = Q[s][a] + alpha * (r + gamma * max_q_next - Q[s][a])
@@ -121,14 +150,43 @@ fn sarsa(
     n_episodes: Int,
 ) -> List[List[Float64]]:
     """SARSA on-policy. Returns Q-table [n_states × n_actions]."""
-    var Q = _init_q(n_states, n_actions)
-    var terminal = n_states - 1
+    # Untrusted n_states*n_actions is a memory weapon, so clamp the table to
+    # what the payload actually contains; out-of-range reads below are
+    # uncatchable aborts, so refuse degenerate shapes with an empty table.
+    if n_states <= 0 or n_actions <= 0:
+        return List[List[Float64]]()
+    var ns = n_states
+    if ns > len(rewards):
+        ns = len(rewards)
+    if ns > len(transitions):
+        ns = len(transitions)
+    var na = n_actions
+    for s in range(ns):
+        if len(rewards[s]) < na:
+            na = len(rewards[s])
+        if len(transitions[s]) < na:
+            na = len(transitions[s])
+    if ns <= 0 or na <= 0:
+        return List[List[Float64]]()
+    # Transition targets index the Q-table directly.
+    for s in range(ns):
+        for a in range(na):
+            if transitions[s][a] < 0 or transitions[s][a] >= ns:
+                return List[List[Float64]]()
+    # Untrusted n_episodes drives iteration; clamp it.
+    var episodes = n_episodes
+    if episodes < 0:
+        episodes = 0
+    if episodes > 10000:
+        episodes = 10000
+    var Q = _init_q(ns, na)
+    var terminal = ns - 1
 
-    for _ in range(n_episodes):
+    for _ in range(episodes):
         var s = 0
         var a = epsilon_greedy_action(Q[s], epsilon)
         var steps = 0
-        while s != terminal and steps < n_states * 10:
+        while s != terminal and steps < ns * 10:
             var r = rewards[s][a]
             var s_next = transitions[s][a]
             var a_next = epsilon_greedy_action(Q[s_next], epsilon)
@@ -152,16 +210,39 @@ fn value_iteration(
     tol: Float64,
 ) -> List[Float64]:
     """Value iteration. Returns V[state]."""
+    # Untrusted n_states is a memory weapon, so clamp it to what the payload
+    # actually contains; out-of-range reads below are uncatchable aborts, so
+    # refuse degenerate shapes with an empty result.
+    if n_states <= 0 or n_actions <= 0:
+        return List[Float64]()
+    var ns = n_states
+    if ns > len(rewards):
+        ns = len(rewards)
+    if ns > len(transitions):
+        ns = len(transitions)
+    var na = n_actions
+    for s in range(ns):
+        if len(rewards[s]) < na:
+            na = len(rewards[s])
+        if len(transitions[s]) < na:
+            na = len(transitions[s])
+    if ns <= 0 or na <= 0:
+        return List[Float64]()
+    # Transition targets index V directly.
+    for s in range(ns):
+        for a in range(na):
+            if transitions[s][a] < 0 or transitions[s][a] >= ns:
+                return List[Float64]()
     var V = List[Float64]()
-    for _ in range(n_states):
+    for _ in range(ns):
         V.append(0.0)
 
     var max_iter = 10000
     for _ in range(max_iter):
         var delta: Float64 = 0.0
-        for s in range(n_states):
+        for s in range(ns):
             var best_val = rewards[s][0] + gamma * V[transitions[s][0]]
-            for a in range(1, n_actions):
+            for a in range(1, na):
                 var val = rewards[s][a] + gamma * V[transitions[s][a]]
                 if val > best_val:
                     best_val = val

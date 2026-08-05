@@ -27,6 +27,9 @@ fn eval_objective(x: List[Float64], func_id: Int) -> Float64:
     """Evaluate objective function.
     0 = sphere (Σx²), 1 = Rastrigin, 2 = Ackley."""
     var n = len(x)
+    # Empty x degenerates the Ackley n-division to NaN.
+    if n == 0:
+        return 0.0
     if func_id == 0:
         # Sphere
         var s: Float64 = 0.0

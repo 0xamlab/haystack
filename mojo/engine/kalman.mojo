@@ -18,7 +18,11 @@ Public API:
   mat_inv_2x2          — 2×2 matrix inverse
   matvec               — Matrix-vector product
 """
-from std.math import abs as fabs
+from std.math import abs as fabs, isnan, isinf
+
+
+# Ceiling on wire-supplied matrix dimensions: bounds the n² allocation.
+comptime MAX_KALMAN_DIM: Int = 1024
 
 
 # ── KalmanState struct ───────────────────────────────────────────────────────
@@ -40,10 +44,14 @@ struct KalmanState(Copyable, Movable):
 
 fn mat_identity(n: Int) -> List[List[Float64]]:
     """Create n×n identity matrix."""
+    # n drives an n² allocation; clamp the wire-supplied count.
+    var dim = n
+    if dim > MAX_KALMAN_DIM:
+        dim = MAX_KALMAN_DIM
     var result = List[List[Float64]]()
-    for i in range(n):
+    for i in range(dim):
         var row = List[Float64]()
-        for j in range(n):
+        for j in range(dim):
             if i == j:
                 row.append(1.0)
             else:
@@ -55,8 +63,20 @@ fn mat_identity(n: Int) -> List[List[Float64]]:
 fn mat_mul(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
     """Matrix multiplication: C = A * B."""
     var rows_a = len(a)
-    var cols_a = len(a[0]) if rows_a > 0 else 0
-    var cols_b = len(b[0]) if len(b) > 0 else 0
+    if rows_a == 0 or len(b) == 0:
+        return List[List[Float64]]()
+    var cols_a = len(a[0])
+    # Mismatched inner dimensions or a ragged row would be read past its end
+    # below (uncatchable abort).
+    if len(b) < cols_a:
+        return List[List[Float64]]()
+    var cols_b = len(b[0])
+    for i in range(rows_a):
+        if len(a[i]) < cols_a:
+            return List[List[Float64]]()
+    for k in range(cols_a):
+        if len(b[k]) < cols_b:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for i in range(rows_a):
         var row = List[Float64]()
@@ -73,6 +93,10 @@ fn mat_transpose(a: List[List[Float64]]) -> List[List[Float64]]:
     """Transpose matrix."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
+    # A ragged row would be read past its end below (uncatchable abort).
+    for i in range(rows):
+        if len(a[i]) < cols:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for j in range(cols):
         var row = List[Float64]()
@@ -86,6 +110,13 @@ fn mat_add(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]
     """Element-wise matrix addition."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
+    # A short or ragged operand would be read past its end below
+    # (uncatchable abort).
+    if len(b) < rows:
+        return List[List[Float64]]()
+    for i in range(rows):
+        if len(a[i]) < cols or len(b[i]) < cols:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for i in range(rows):
         var row = List[Float64]()
@@ -99,6 +130,13 @@ fn mat_sub(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]
     """Element-wise matrix subtraction."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
+    # A short or ragged operand would be read past its end below
+    # (uncatchable abort).
+    if len(b) < rows:
+        return List[List[Float64]]()
+    for i in range(rows):
+        if len(a[i]) < cols or len(b[i]) < cols:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for i in range(rows):
         var row = List[Float64]()
@@ -112,6 +150,10 @@ fn mat_scale(a: List[List[Float64]], s: Float64) -> List[List[Float64]]:
     """Scalar multiplication of a matrix."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
+    # A ragged row would be read past its end below (uncatchable abort).
+    for i in range(rows):
+        if len(a[i]) < cols:
+            return List[List[Float64]]()
     var result = List[List[Float64]]()
     for i in range(rows):
         var row = List[Float64]()
@@ -123,6 +165,10 @@ fn mat_scale(a: List[List[Float64]], s: Float64) -> List[List[Float64]]:
 
 fn mat_inv_2x2(a: List[List[Float64]]) -> List[List[Float64]]:
     """Inverse of a 2×2 matrix. Returns zero matrix if singular."""
+    # Not even 2×2: no inverse exists to return (and the reads below
+    # would go past the end — uncatchable abort).
+    if len(a) < 2 or len(a[0]) < 2 or len(a[1]) < 2:
+        return List[List[Float64]]()
     var det = a[0][0] * a[1][1] - a[0][1] * a[1][0]
     if fabs(det) < 1e-15:
         # Singular — return zeros
@@ -150,6 +196,13 @@ fn matvec(a: List[List[Float64]], v: List[Float64]) -> List[Float64]:
     """Matrix-vector product: result = A * v."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
+    # A short v or ragged row would be read past its end below
+    # (uncatchable abort).
+    if len(v) < cols:
+        return List[Float64]()
+    for i in range(rows):
+        if len(a[i]) < cols:
+            return List[Float64]()
     var result = List[Float64]()
     for i in range(rows):
         var s: Float64 = 0.0
@@ -166,6 +219,11 @@ fn _scalar_inv(a: List[List[Float64]]) -> List[List[Float64]]:
     """Inverse of a 1×1 matrix."""
     var result = List[List[Float64]]()
     var row = List[Float64]()
+    # A missing entry is singular by absence.
+    if len(a) == 0 or len(a[0]) == 0:
+        row.append(0.0)
+        result.append(row^)
+        return result^
     if fabs(a[0][0]) < 1e-15:
         row.append(0.0)
     else:
@@ -208,6 +266,25 @@ fn kalman_update(
     R: List[List[Float64]],
 ) -> KalmanState:
     """Update step: K = P*H^T*(H*P*H^T+R)^-1, x += K*(z-H*x), P = (I-K*H)*P."""
+    # Degenerate shapes cannot be updated: P must be n×n, H must be m×n,
+    # R must be m×m, z must be m (and _mat_inv inverts only 1×1/2×2), and a
+    # non-finite measurement would poison the result. Skip the update rather
+    # than read past a list end (uncatchable abort).
+    var n = len(state.x)
+    var m = len(z)
+    if n == 0 or m == 0 or m > 2 or len(state.P) < n or len(H) < m or len(R) < m:
+        return KalmanState(state.x.copy(), state.P.copy())
+    var hcols = len(H[0])
+    if hcols != n:
+        return KalmanState(state.x.copy(), state.P.copy())
+    for i in range(n):
+        if len(state.P[i]) < n:
+            return KalmanState(state.x.copy(), state.P.copy())
+    for i in range(m):
+        if len(H[i]) < hcols or len(R[i]) < m:
+            return KalmanState(state.x.copy(), state.P.copy())
+        if isnan(z[i]) or isinf(z[i]):
+            return KalmanState(state.x.copy(), state.P.copy())
     var Ht = mat_transpose(H)
     var PHt = mat_mul(state.P, Ht)
     var S = mat_add(mat_mul(H, PHt), R)
@@ -227,7 +304,6 @@ fn kalman_update(
         x_new.append(state.x[i] + Ky[i])
 
     # Updated covariance: (I - K*H)*P
-    var n = len(state.x)
     var I = mat_identity(n)
     var KH = mat_mul(K, H)
     var IKH = mat_sub(I, KH)
@@ -253,6 +329,12 @@ fn kalman_smooth_1d(
     var n = len(measurements)
     if n == 0:
         return List[Float64]()
+    # Negative variances are not covariances, and two zeros would zero the
+    # gain denominator below.
+    if process_var < 0.0 or measurement_var < 0.0:
+        return List[Float64]()
+    if process_var == 0.0 and measurement_var == 0.0:
+        return measurements.copy()
 
     var result = List[Float64]()
 

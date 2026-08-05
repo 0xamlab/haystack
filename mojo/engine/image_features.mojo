@@ -21,9 +21,19 @@ Public API:
   edge_density_flat      — edge_density on flat grayscale pixels
   most_salient_cell_flat — most_salient_cell on flat grayscale pixels
 """
-from std.math import sqrt
+from std.math import sqrt, isnan, isinf
 from image_ops import convolve_2d, sobel_x_kernel, sobel_y_kernel
 from image_resize import reshape_to_grid
+
+
+# Ceiling on wire-supplied bins per channel: the histogram allocates
+# bins^3 entries, so the count must be bounded.
+comptime MAX_COLOR_HISTOGRAM_BINS: Int = 64
+
+
+# Ceiling on wire-supplied saliency grid dimensions: bounds the
+# grid_rows*grid_cols allocation.
+comptime MAX_SALIENCY_DIM: Int = 1024
 
 
 # ── Sobel magnitude / edge density ──────────────────────────────────────────────
@@ -67,6 +77,8 @@ fn color_histogram(
     var bins = bins_per_channel
     if bins <= 0:
         bins = 1
+    if bins > MAX_COLOR_HISTOGRAM_BINS:
+        bins = MAX_COLOR_HISTOGRAM_BINS
     var total_bins = bins * bins * bins
     var hist = List[Float64]()
     for _ in range(total_bins):
@@ -78,6 +90,13 @@ fn color_histogram(
         var base = i * 3
         if base + 2 >= len(flat_rgb):
             break
+        # Int() of a non-finite channel is an uncatchable abort; skip the pixel.
+        if (
+            isnan(flat_rgb[base]) or isinf(flat_rgb[base])
+            or isnan(flat_rgb[base + 1]) or isinf(flat_rgb[base + 1])
+            or isnan(flat_rgb[base + 2]) or isinf(flat_rgb[base + 2])
+        ):
+            continue
         var rb = Int(flat_rgb[base] / bin_w)
         var gb = Int(flat_rgb[base + 1] / bin_w)
         var bb = Int(flat_rgb[base + 2] / bin_w)
@@ -165,6 +184,10 @@ fn dominant_colors(
     var bins = levels
     if bins <= 0:
         bins = 1
+    # Must match color_histogram's clamp, or the index decode below would
+    # disagree with the histogram layout.
+    if bins > MAX_COLOR_HISTOGRAM_BINS:
+        bins = MAX_COLOR_HISTOGRAM_BINS
     var hist = color_histogram(flat_rgb, width, height, bins)
     var bin_w = 256.0 / Float64(bins)
     var out = List[Float64]()
@@ -255,11 +278,29 @@ fn most_salient_cell(saliency: List[List[Float64]]) -> Int:
 fn edge_density_flat(
     flat: List[Float64], width: Int, height: Int, mag_threshold: Float64
 ) -> Float64:
+    # The declared width*height must fit the pixels actually supplied; a
+    # larger grid (or non-positive dims) would fabricate an unbounded grid.
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return edge_density(reshape_to_grid(flat, width, height), mag_threshold)
 
 
 fn most_salient_cell_flat(
     flat: List[Float64], width: Int, height: Int, grid_rows: Int, grid_cols: Int
 ) -> Int:
+    # The declared width*height must fit the pixels actually supplied, and
+    # the saliency grid dims are clamped so neither grid is unbounded.
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return -1
+    if grid_rows <= 0 or grid_cols <= 0:
+        return -1
+    var gr = grid_rows
+    var gc = grid_cols
+    if gr > MAX_SALIENCY_DIM:
+        gr = MAX_SALIENCY_DIM
+    if gc > MAX_SALIENCY_DIM:
+        gc = MAX_SALIENCY_DIM
     var grid = reshape_to_grid(flat, width, height)
-    return most_salient_cell(saliency_grid(grid, grid_rows, grid_cols))
+    return most_salient_cell(saliency_grid(grid, gr, gc))

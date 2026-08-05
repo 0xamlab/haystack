@@ -168,6 +168,9 @@ fn batch(data: List[Float64], batch_size: Int) -> List[List[Float64]]:
         List of batches.
     """
     var result = List[List[Float64]]()
+    # batch_size <= 0 never advances the loop (infinite); return no batches.
+    if batch_size <= 0:
+        return result^
     var n = len(data)
     var i = 0
     while i < n:

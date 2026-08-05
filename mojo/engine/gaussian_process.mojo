@@ -18,7 +18,7 @@ Public API:
   gp_loglik         — log marginal likelihood of training targets
 """
 
-from std.math import sqrt, log, exp, abs as fabs
+from std.math import sqrt, log, exp, abs as fabs, isnan, isinf
 
 alias KERNEL_RBF = 0
 alias KERNEL_MATERN32 = 1
@@ -323,15 +323,28 @@ fn gp_loglik(fit: GPFit, y: List[Float64]) -> Float64:
 
     log p(y) = -1/2 y^T alpha - sum_i log L_ii - n/2 log(2 pi), evaluated
     with the fit's Cholesky factor (any recorded jitter is part of K).
-    y must be the same targets passed to gp_fit. Returns NaN when the fit
-    is invalid or len(y) != fit.n. O(n).
+    y must be the same targets passed to gp_fit. Returns 0.0 when the fit
+    is invalid or degenerate (NaN cannot cross the JSON result wire). O(n).
     """
-    if not fit.ok or len(y) != fit.n:
-        return Float64(0.0) / Float64(0.0)  # NaN
+    if not fit.ok or fit.n <= 0 or len(y) != fit.n:
+        return 0.0
+    # Fit fields arrive over the wire: alpha must hold n entries and chol the
+    # full n*n factor, or the reads below are uncatchable out-of-bounds aborts.
+    if len(fit.alpha) < fit.n or len(fit.chol) // fit.n < fit.n:
+        return 0.0
     var quad: Float64 = 0.0
     for i in range(fit.n):
+        if isnan(y[i]) or isinf(y[i]):
+            return 0.0
         quad += y[i] * fit.alpha[i]
     var logdet_half: Float64 = 0.0
     for i in range(fit.n):
-        logdet_half += log(fit.chol[i * fit.n + i])
-    return -0.5 * quad - logdet_half - 0.5 * Float64(fit.n) * _LOG_2PI
+        var diag = fit.chol[i * fit.n + i]
+        # log of a non-positive diagonal is -inf/NaN and cannot cross the wire.
+        if diag <= 0.0:
+            return 0.0
+        logdet_half += log(diag)
+    var out_val = -0.5 * quad - logdet_half - 0.5 * Float64(fit.n) * _LOG_2PI
+    if isnan(out_val) or isinf(out_val):
+        return 0.0
+    return out_val

@@ -144,6 +144,9 @@ fn iv(woe_values: List[Float64], dist_events: List[Float64],
     """
     var total = 0.0
     var n = len(woe_values)
+    # Short or empty distributions would be read past their end below (uncatchable abort).
+    if len(dist_events) != n or len(dist_non_events) != n:
+        return 0.0
     for i in range(n):
         total += (dist_non_events[i] - dist_events[i]) * woe_values[i]
     return total
@@ -166,7 +169,8 @@ fn gini_coefficient(actual: List[Float64], predicted: List[Float64]) -> Float64:
         Gini coefficient in [-1, 1].
     """
     var n = len(actual)
-    if n == 0:
+    # predicted is indexed below via sorted positions; a short list aborts (uncatchable).
+    if n == 0 or len(predicted) != n:
         return 0.0
 
     # Create index array sorted by predicted descending
@@ -231,7 +235,8 @@ fn ks_statistic(actual: List[Float64], predicted: List[Float64]) -> Float64:
         KS statistic in [0, 1].
     """
     var n = len(actual)
-    if n == 0:
+    # predicted is indexed below via sorted positions; a short list aborts (uncatchable).
+    if n == 0 or len(predicted) != n:
         return 0.0
 
     # Sort by predicted ascending
@@ -292,6 +297,9 @@ fn score_band(score: Float64, boundaries: List[Float64],
     Returns:
         Band label.
     """
+    # With fewer labels than boundaries+1 a read past labels' end (or labels[-1]) aborts (uncatchable).
+    if len(labels) <= len(boundaries):
+        return ""
     for i in range(len(boundaries)):
         if score <= boundaries[i]:
             return labels[i]
@@ -313,8 +321,11 @@ fn linear_score(features: List[Float64], weights: List[Float64],
     Returns:
         Scalar score.
     """
-    var total = intercept
     var n = len(features)
+    # A short or empty weights list would be read past its end below (uncatchable abort).
+    if len(weights) != n:
+        return 0.0
+    var total = intercept
     for i in range(n):
         total += features[i] * weights[i]
     return total

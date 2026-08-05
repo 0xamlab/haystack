@@ -10,7 +10,7 @@ Public API:
   interp_array         — interpolate an array of points with selectable method
   extrapolate_linear   — linear extrapolation beyond data bounds
 """
-from std.math import abs as fabs
+from std.math import abs as fabs, isnan, isinf
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -45,6 +45,9 @@ fn linear_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> Fl
     var n = len(x_data)
     if n == 0:
         return 0.0
+    # A short y_data would be read past its end below (uncatchable abort).
+    if len(y_data) < n:
+        return 0.0
     if n == 1:
         return y_data[0]
     # Clamp
@@ -67,6 +70,9 @@ fn nearest_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> F
     """Nearest neighbor interpolation. Returns value of closest data point."""
     var n = len(x_data)
     if n == 0:
+        return 0.0
+    # A short y_data would be read past its end below (uncatchable abort).
+    if len(y_data) < n:
         return 0.0
     if n == 1:
         return y_data[0]
@@ -91,6 +97,18 @@ fn cubic_spline_natural(x_data: List[Float64], y_data: List[Float64], x: Float64
     var n = len(x_data)
     if n == 0:
         return 0.0
+    # A short y_data would be indexed past its end below (uncatchable abort),
+    # and a non-finite node makes the divided differences inf/nan, which
+    # cannot cross the result wire.
+    if len(y_data) < n:
+        return 0.0
+    for i in range(n):
+        if isnan(x_data[i]) or isinf(x_data[i]) or isnan(y_data[i]) or isinf(y_data[i]):
+            return 0.0
+        # A repeated abscissa zeroes an h[i] divisor; linear_interp already
+        # defines that degenerate case.
+        if i > 0 and fabs(x_data[i] - x_data[i - 1]) < 1e-15:
+            return linear_interp(x_data, y_data, x)
     if n == 1:
         return y_data[0]
     if n == 2:
@@ -175,6 +193,9 @@ fn lagrange_interp(x_data: List[Float64], y_data: List[Float64], x: Float64) -> 
     var n = len(x_data)
     if n == 0:
         return 0.0
+    # A short y_data would be read past its end below (uncatchable abort).
+    if len(y_data) < n:
+        return 0.0
     if n == 1:
         return y_data[0]
     var result: Float64 = 0.0
@@ -226,6 +247,9 @@ fn extrapolate_linear(x_data: List[Float64], y_data: List[Float64], x: Float64) 
     Within data range, uses linear interpolation."""
     var n = len(x_data)
     if n == 0:
+        return 0.0
+    # A short y_data would be read past its end below (uncatchable abort).
+    if len(y_data) < n:
         return 0.0
     if n == 1:
         return y_data[0]

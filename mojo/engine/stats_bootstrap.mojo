@@ -94,18 +94,23 @@ fn bootstrap_mean_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap confidence interval for mean. Returns [lower, upper]."""
+    if len(data) == 0 or n_bootstrap <= 0:
+        return List[Float64]()
+    var nb = n_bootstrap
+    if nb > 10000:
+        nb = 10000  # ceiling: the percentile sort below is O(nb^2)
     var means = List[Float64]()
-    for _ in range(n_bootstrap):
+    for _ in range(nb):
         var rep = bootstrap_replicate(data)
         means.append(_mean(rep))
     _sort_floats(means)
     var alpha = (1.0 - confidence) / 2.0
-    var lo_idx = Int(alpha * Float64(n_bootstrap))
-    var hi_idx = Int((1.0 - alpha) * Float64(n_bootstrap))
+    var lo_idx = Int(alpha * Float64(nb))
+    var hi_idx = Int((1.0 - alpha) * Float64(nb))
     if lo_idx < 0:
         lo_idx = 0
-    if hi_idx >= n_bootstrap:
-        hi_idx = n_bootstrap - 1
+    if hi_idx >= nb:
+        hi_idx = nb - 1
     var result = List[Float64]()
     result.append(means[lo_idx])
     result.append(means[hi_idx])
@@ -119,18 +124,23 @@ fn bootstrap_std_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap CI for standard deviation."""
+    if len(data) == 0 or n_bootstrap <= 0:
+        return List[Float64]()
+    var nb = n_bootstrap
+    if nb > 10000:
+        nb = 10000  # ceiling: the percentile sort below is O(nb^2)
     var stds = List[Float64]()
-    for _ in range(n_bootstrap):
+    for _ in range(nb):
         var rep = bootstrap_replicate(data)
         stds.append(_std(rep))
     _sort_floats(stds)
     var alpha = (1.0 - confidence) / 2.0
-    var lo_idx = Int(alpha * Float64(n_bootstrap))
-    var hi_idx = Int((1.0 - alpha) * Float64(n_bootstrap))
+    var lo_idx = Int(alpha * Float64(nb))
+    var hi_idx = Int((1.0 - alpha) * Float64(nb))
     if lo_idx < 0:
         lo_idx = 0
-    if hi_idx >= n_bootstrap:
-        hi_idx = n_bootstrap - 1
+    if hi_idx >= nb:
+        hi_idx = nb - 1
     var result = List[Float64]()
     result.append(stds[lo_idx])
     result.append(stds[hi_idx])
@@ -144,18 +154,23 @@ fn bootstrap_median_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap CI for median."""
+    if len(data) == 0 or n_bootstrap <= 0:
+        return List[Float64]()
+    var nb = n_bootstrap
+    if nb > 10000:
+        nb = 10000  # ceiling: the percentile sort below is O(nb^2)
     var medians = List[Float64]()
-    for _ in range(n_bootstrap):
+    for _ in range(nb):
         var rep = bootstrap_replicate(data)
         medians.append(_median(rep))
     _sort_floats(medians)
     var alpha = (1.0 - confidence) / 2.0
-    var lo_idx = Int(alpha * Float64(n_bootstrap))
-    var hi_idx = Int((1.0 - alpha) * Float64(n_bootstrap))
+    var lo_idx = Int(alpha * Float64(nb))
+    var hi_idx = Int((1.0 - alpha) * Float64(nb))
     if lo_idx < 0:
         lo_idx = 0
-    if hi_idx >= n_bootstrap:
-        hi_idx = n_bootstrap - 1
+    if hi_idx >= nb:
+        hi_idx = nb - 1
     var result = List[Float64]()
     result.append(medians[lo_idx])
     result.append(medians[hi_idx])
@@ -286,26 +301,31 @@ fn bca_correction(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """BCa (bias-corrected and accelerated) CI for mean."""
+    if len(data) == 0 or n_bootstrap <= 0:
+        return List[Float64]()
+    var nb = n_bootstrap
+    if nb > 10000:
+        nb = 10000  # ceiling: the percentile sort below is O(nb^2)
     var n = len(data)
     var orig_mean = _mean(data)
 
     # Generate bootstrap distribution
     var boot_means = List[Float64]()
-    for _ in range(n_bootstrap):
+    for _ in range(nb):
         var rep = bootstrap_replicate(data)
         boot_means.append(_mean(rep))
     _sort_floats(boot_means)
 
     # Bias correction factor z0
     var count_below = 0
-    for i in range(n_bootstrap):
+    for i in range(nb):
         if boot_means[i] < orig_mean:
             count_below += 1
-    var p0 = Float64(count_below) / Float64(n_bootstrap)
+    var p0 = Float64(count_below) / Float64(nb)
     if p0 <= 0.0:
-        p0 = 0.5 / Float64(n_bootstrap)
+        p0 = 0.5 / Float64(nb)
     if p0 >= 1.0:
-        p0 = 1.0 - 0.5 / Float64(n_bootstrap)
+        p0 = 1.0 - 0.5 / Float64(nb)
     # Approximate z0 using simple inverse normal approx
     # Using rational approximation for probit
     var z0 = _probit(p0)
@@ -334,15 +354,15 @@ fn bca_correction(
     var p1 = _normcdf(a1)
     var p2 = _normcdf(a2)
 
-    var lo_idx = Int(p1 * Float64(n_bootstrap))
-    var hi_idx = Int(p2 * Float64(n_bootstrap))
+    var lo_idx = Int(p1 * Float64(nb))
+    var hi_idx = Int(p2 * Float64(nb))
     if lo_idx < 0:
         lo_idx = 0
-    if hi_idx >= n_bootstrap:
-        hi_idx = n_bootstrap - 1
+    if hi_idx >= nb:
+        hi_idx = nb - 1
     if lo_idx > hi_idx:
         lo_idx = 0
-        hi_idx = n_bootstrap - 1
+        hi_idx = nb - 1
 
     var result = List[Float64]()
     result.append(boot_means[lo_idx])

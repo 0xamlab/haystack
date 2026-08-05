@@ -43,6 +43,8 @@ fn cluster_centroids(
     var n = len(data)
     if n == 0:
         return List[List[Float64]]()
+    if len(labels) != n or k > 10000:
+        return List[List[Float64]]()  # k caps the per-cluster allocation
     var dim = len(data[0])
     # Initialise sums and counts
     var sums = List[List[Float64]]()
@@ -57,6 +59,8 @@ fn cluster_centroids(
     for i in range(n):
         var c = labels[i]
         if c >= 0 and c < k:
+            if len(data[i]) < dim:
+                return List[List[Float64]]()
             counts[c] += 1
             for d in range(dim):
                 sums[c][d] += data[i][d]
@@ -93,9 +97,18 @@ fn inertia(
     """Within-cluster sum of squared distances to centroids."""
     var total: Float64 = 0.0
     var n = len(data)
+    if len(labels) != n:
+        return 0.0
+    if len(centroids) == 0:
+        return 0.0
     for i in range(n):
         var c = labels[i]
+        # Label values index the centroid list; skip any outside it.
+        if c < 0 or c >= len(centroids):
+            continue
         var dim = len(data[i])
+        if len(centroids[c]) < dim:
+            continue
         for d in range(dim):
             var diff = data[i][d] - centroids[c][d]
             total += diff * diff
@@ -113,7 +126,11 @@ fn davies_bouldin(
     DB = (1/k) Σ_i max_{j≠i} (s_i + s_j) / d(c_i, c_j)
     where s_i is avg distance from points in cluster i to centroid i.
     """
+    if k <= 0 or k > 10000 or len(data) == 0 or len(labels) != len(data):
+        return 0.0
     var cents = cluster_centroids(data, labels, k)
+    if len(cents) < k:
+        return 0.0
     var n = len(data)
     # Compute scatter for each cluster
     var scatter = List[Float64]()
@@ -122,6 +139,8 @@ fn davies_bouldin(
         scatter.append(0.0)
     for i in range(n):
         var c = labels[i]
+        if c < 0 or c >= k or len(data[i]) > len(cents[c]):
+            continue
         scatter[c] += _euclidean_dist(data[i], cents[c])
     for c in range(k):
         if sizes[c] > 0:
@@ -157,8 +176,15 @@ fn calinski_harabasz(
     var n = len(data)
     if n <= k or k <= 1:
         return 0.0
+    if len(labels) != n:
+        return 0.0
     var dim = len(data[0])
+    for i in range(n):
+        if len(data[i]) < dim:
+            return 0.0
     var cents = cluster_centroids(data, labels, k)
+    if len(cents) < k:
+        return 0.0
     var sizes = cluster_sizes(labels, k)
     # Global mean
     var global_mean = List[Float64]()
@@ -181,6 +207,8 @@ fn calinski_harabasz(
     var wg: Float64 = 0.0
     for i in range(n):
         var c = labels[i]
+        if c < 0 or c >= k:
+            continue
         for d in range(dim):
             var diff = data[i][d] - cents[c][d]
             wg += diff * diff
@@ -200,6 +228,11 @@ fn contingency_matrix(
 ) -> List[List[Int]]:
     """Build a contingency table (n_true x n_pred)."""
     var mat = List[List[Int]]()
+    if len(labels_pred) != len(labels_true):
+        return mat^
+    # Bound the table: caller-controlled dims must not drive unbounded alloc.
+    if n_true > 10000 or n_pred > 10000 or n_true * n_pred > 1000000:
+        return mat^
     for i in range(n_true):
         var row = List[Int]()
         for j in range(n_pred):
@@ -226,6 +259,11 @@ fn purity(
     """Cluster purity: fraction of correctly assigned items."""
     var n = len(labels_true)
     if n == 0:
+        return 0.0
+    if len(labels_pred) != n:
+        return 0.0
+    # Must match contingency_matrix's cap, else it refuses and mat[i][j] aborts.
+    if n_true > 10000 or n_pred > 10000 or n_true * n_pred > 1000000:
         return 0.0
     var mat = contingency_matrix(labels_true, labels_pred, n_true, n_pred)
     var correct: Int = 0
@@ -258,6 +296,8 @@ fn adjusted_rand_index(
     var n = len(labels_true)
     if n == 0:
         return 0.0
+    if len(labels_pred) != n:
+        return 0.0
     # Find max label values
     var max_true: Int = 0
     var max_pred: Int = 0
@@ -268,6 +308,9 @@ fn adjusted_rand_index(
             max_pred = labels_pred[i]
     var n_true = max_true + 1
     var n_pred = max_pred + 1
+    # Huge (e.g. NaN-derived) labels would blow up the matrix allocation.
+    if n_true > 10000 or n_pred > 10000 or n_true * n_pred > 1000000:
+        return 0.0
     var mat = contingency_matrix(labels_true, labels_pred, n_true, n_pred)
     # Row sums and column sums
     var row_sums = List[Int]()

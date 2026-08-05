@@ -211,6 +211,9 @@ fn isolation_score(
     var n = len(data)
     if n == 0:
         return 0.5
+    # sample_size <= 0 builds an empty subsample and aborts on sample[0].
+    if sample_size <= 0:
+        return 0.5
     var actual_sample = sample_size
     if actual_sample > n:
         actual_sample = n

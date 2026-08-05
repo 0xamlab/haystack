@@ -90,6 +90,13 @@ fn count_neighbors(
 
     Uses bounded checks (no wrapping).
     """
+    # Caller dims must be consistent with the actual grid; reading past a
+    # List's end aborts the worker and cannot be caught.
+    if rows < 0 or cols < 0 or rows > len(grid):
+        return 0
+    for r in range(rows):
+        if len(grid[r]) < cols:
+            return 0
     var count: Int = 0
     for dr in range(-1, 2):
         for dc in range(-1, 2):
@@ -116,6 +123,11 @@ fn game_of_life_step(
     - Dead cell with exactly 3 neighbors becomes alive.
     - All other cells die or stay dead.
     """
+    if rows < 0 or cols < 0 or rows > len(grid):
+        return List[List[Int]]()
+    for r in range(rows):
+        if len(grid[r]) < cols:
+            return List[List[Int]]()
     var new_grid = grid_create(rows, cols)
     for r in range(rows):
         for c in range(cols):
@@ -140,6 +152,11 @@ fn is_still_life(
     grid: List[List[Int]], rows: Int, cols: Int
 ) -> Bool:
     """Check if grid is a still life (doesn't change after one step)."""
+    if rows < 0 or cols < 0 or rows > len(grid):
+        return False
+    for r in range(rows):
+        if len(grid[r]) < cols:
+            return False
     var next_grid = game_of_life_step(grid, rows, cols)
     for r in range(rows):
         for c in range(cols):
@@ -159,6 +176,16 @@ fn population_history(
     Returns list of length steps+1 with population at each generation.
     """
     var history = List[Int]()
+    if rows < 0 or cols < 0 or rows > len(initial):
+        return history^
+    for r in range(rows):
+        if len(initial[r]) < cols:
+            return history^
+    var n_steps = steps
+    if n_steps < 0:
+        n_steps = 0
+    if n_steps > 10000:
+        n_steps = 10000  # cap: steps drives one full grid step per iteration
     var current = List[List[Int]]()
     # Deep copy initial
     for r in range(len(initial)):
@@ -167,7 +194,7 @@ fn population_history(
             row.append(initial[r][c])
         current.append(row^)
     history.append(count_alive(current))
-    for _ in range(steps):
+    for _ in range(n_steps):
         current = game_of_life_step(current, rows, cols)
         history.append(count_alive(current))
     return history^

@@ -214,21 +214,41 @@ fn quality_score(image: List[List[Float64]]) -> Float64:
 # ── flat-pixel entry points ─────────────────────────────────────────────────────
 
 
+# Each entry point requires the declared width*height to fit the pixels
+# actually supplied; a larger grid (or non-positive dims) would fabricate an
+# unbounded grid, so refuse it with the module's degenerate score.
+
+
 fn blur_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return blur_score(reshape_to_grid(flat, width, height))
 
 
 fn brightness_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return brightness_mean(reshape_to_grid(flat, width, height))
 
 
 fn entropy_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return shannon_entropy(reshape_to_grid(flat, width, height))
 
 
 fn contrast_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return contrast_std(reshape_to_grid(flat, width, height))
 
 
 fn quality_score_flat(flat: List[Float64], width: Int, height: Int) -> Float64:
+    var npix = len(flat)
+    if width <= 0 or height <= 0 or width > npix // height:
+        return 0.0
     return quality_score(reshape_to_grid(flat, width, height))

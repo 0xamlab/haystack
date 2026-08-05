@@ -111,6 +111,8 @@ fn lotka_volterra_simulate(
 
 fn carrying_capacity_estimate(populations: List[Float64]) -> Float64:
     """Estimate K from population data as max(observed) * 1.1."""
+    if len(populations) == 0:
+        return 0.0
     var max_val = populations[0]
     for i in range(1, len(populations)):
         if populations[i] > max_val:

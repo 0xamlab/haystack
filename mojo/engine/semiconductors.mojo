@@ -51,9 +51,18 @@ fn mosfet_saturation_current(kn: Float64, vgs: Float64, vth: Float64) -> Float64
 
 fn junction_capacitance(cj0: Float64, v: Float64, vbi: Float64, m: Float64) -> Float64:
     """Cj = Cj0/(1-V/Vbi)^m."""
+    # Zero vbi divides, base <= 0 makes log(base) -inf/NaN, and exp underflow
+    # would zero the denominator; inf/nan cannot cross the result wire.
+    if vbi == 0.0:
+        return 0.0
     var base = 1.0 - v / vbi
+    if base <= 0.0:
+        return 0.0
     # Compute base^m = exp(m*ln(base))
-    return cj0 / exp(m * log(base))
+    var denom = exp(m * log(base))
+    if denom == 0.0:
+        return 0.0
+    return cj0 / denom
 
 
 fn diffusion_length(diffusivity: Float64, lifetime: Float64) -> Float64:

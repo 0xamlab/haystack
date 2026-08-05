@@ -184,6 +184,10 @@ fn template_substitute(
     """Replace {{key}} placeholders with corresponding values."""
     var result = template
     var nk = len(keys)
+    # Parallel lists: values[i] past a short values list aborts; leave the
+    # template unchanged.
+    if len(values) < nk:
+        return template
     for i in range(nk):
         var placeholder = "{{" + keys[i] + "}}"
         result = replace_all(result, placeholder, values[i])

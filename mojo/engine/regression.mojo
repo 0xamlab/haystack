@@ -49,7 +49,7 @@ struct RegressionResult(Copyable, Movable):
 fn r_squared(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     """R² = 1 - SS_res / SS_tot."""
     var n = len(y_actual)
-    if n == 0:
+    if n == 0 or len(y_predicted) != n:
         return 0.0
     var mean_y: Float64 = 0.0
     for i in range(n):
@@ -71,7 +71,7 @@ fn r_squared(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
 fn mse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     """Mean Squared Error."""
     var n = len(y_actual)
-    if n == 0:
+    if n == 0 or len(y_predicted) != n:
         return 0.0
     var total: Float64 = 0.0
     for i in range(n):
@@ -93,6 +93,10 @@ fn predict(
 ) -> List[Float64]:
     """Predict y = X * β + intercept."""
     var n = len(X)
+    # A row wider than coefficients would read coefficients past its end (uncatchable abort).
+    for i in range(n):
+        if len(X[i]) > len(coefficients):
+            return List[Float64]()
     var result = List[Float64]()
     for i in range(n):
         var val = intercept
@@ -165,7 +169,7 @@ fn _solve_normal_equations(
 fn ols_simple(x: List[Float64], y: List[Float64]) -> RegressionResult:
     """Simple OLS regression (1 predictor). slope, intercept, R², residuals."""
     var n = len(x)
-    if n == 0:
+    if n == 0 or len(y) != n:
         return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
 
     var mean_x: Float64 = 0.0
@@ -215,6 +219,13 @@ fn ols_multiple(X: List[List[Float64]], y: List[Float64]) -> RegressionResult:
     if n == 0:
         return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
     var p_orig = len(X[0])
+    # A short y or a ragged row would be read past its end in the accumulation loops
+    # below (uncatchable abort), so refuse with the empty-fit result.
+    if len(y) < n:
+        return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
+    for i in range(n):
+        if len(X[i]) < p_orig:
+            return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
     var p = p_orig + 1  # +1 for intercept column
 
     # Build augmented X with intercept column (column 0 = 1)
@@ -268,6 +279,13 @@ fn ridge_regression(
     if n == 0:
         return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
     var p_orig = len(X[0])
+    # Same shape contract as ols_multiple: short y or ragged rows abort the accumulation
+    # loops, so refuse with the empty-fit result.
+    if len(y) < n:
+        return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
+    for i in range(n):
+        if len(X[i]) < p_orig:
+            return RegressionResult(List[Float64](), 0.0, 0.0, List[Float64]())
     var p = p_orig + 1
 
     var XtX = List[List[Float64]]()

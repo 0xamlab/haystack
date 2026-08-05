@@ -43,6 +43,10 @@ fn joule_thomson_cooling(mu_jt: Float64, delta_p: Float64) -> Float64:
 
 fn carnot_cop_cooling(t_cold: Float64, t_hot: Float64) -> Float64:
     """COP = Tc / (Th - Tc)."""
+    # A zero temperature lift has no finite COP; the division yields inf, which cannot cross
+    # the JSON result wire (the worker aborts serializing it), so answer with the sentinel.
+    if fabs(t_hot - t_cold) < 1e-15:
+        return 0.0
     return t_cold / (t_hot - t_cold)
 
 

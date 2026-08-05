@@ -35,6 +35,10 @@ comptime LOG_TWO_PI: Float64 = 1.8378770664093453
 fn fit_normal(data: List[Float64]) -> List[Float64]:
     """Fit normal distribution via MLE. Returns [mean, std]."""
     var n = len(data)
+    # Empty data would divide by n == 0 and return NaN, which cannot cross
+    # the result wire.
+    if n == 0:
+        return List[Float64]()
     var mean: Float64 = 0.0
     for i in range(n):
         mean += data[i]
@@ -56,6 +60,8 @@ fn fit_normal(data: List[Float64]) -> List[Float64]:
 fn fit_exponential(data: List[Float64]) -> Float64:
     """Fit exponential distribution via MLE. Returns λ (rate = 1/mean)."""
     var n = len(data)
+    if n == 0:
+        return 0.0
     var s: Float64 = 0.0
     for i in range(n):
         s += data[i]
@@ -70,6 +76,8 @@ fn fit_exponential(data: List[Float64]) -> Float64:
 
 fn fit_uniform(data: List[Float64]) -> List[Float64]:
     """Fit uniform distribution via MLE. Returns [min, max]."""
+    if len(data) == 0:
+        return List[Float64]()
     var lo = data[0]
     var hi = data[0]
     for i in range(1, len(data)):
@@ -92,6 +100,8 @@ fn fit_weibull(data: List[Float64]) -> List[Float64]:
     Uses iterative estimation: CV -> shape, then scale from mean.
     """
     var n = len(data)
+    if n == 0:
+        return List[Float64]()
     var mean: Float64 = 0.0
     for i in range(n):
         mean += data[i]
@@ -206,6 +216,10 @@ fn best_fit(data: List[Float64]) -> Int:
     """Compare normal(0) vs exponential(1) vs uniform(2) by AIC.
     Returns index of best fit (lowest AIC).
     """
+    # Empty data makes every fit return an empty parameter list, which the
+    # [0]/[1] reads below would abort on.
+    if len(data) == 0:
+        return -1
     # Normal fit
     var norm_params = fit_normal(data)
     var ll_norm = log_likelihood_normal(data, norm_params[0], norm_params[1])

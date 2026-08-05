@@ -52,7 +52,14 @@ fn propensity_scores(features: List[List[Float64]], treatment: List[Int]) -> Lis
     var n = len(features)
     if n == 0:
         return List[Float64]()
+    # Parallel lists: treatment[i] is read per row, and every row must cover
+    # the first row's width; short inputs abort (uncatchable).
+    if len(treatment) < n:
+        return List[Float64]()
     var d = len(features[0])
+    for i in range(n):
+        if len(features[i]) < d:
+            return List[Float64]()
 
     # Compute feature means and stds
     var means = List[Float64]()
@@ -116,6 +123,9 @@ fn nearest_neighbor_match(scores_treated: List[Float64], scores_control: List[Fl
         List of control indices (one per treated unit).
     """
     var matches = List[Int]()
+    # An empty control pool has no nearest neighbor to offer.
+    if len(scores_control) == 0:
+        return matches^
     for i in range(len(scores_treated)):
         var best_idx = 0
         var best_dist = fabs(scores_treated[i] - scores_control[0])
@@ -172,6 +182,10 @@ fn matched_ate(outcomes: List[Float64], treatment: List[Int], matches: List[Int]
     Returns:
         Estimated ATE.
     """
+    # Parallel lists: outcomes[i] is read for each treatment entry.
+    if len(outcomes) < len(treatment):
+        return 0.0
+
     # Separate treated and control outcomes
     var treated_outcomes = List[Float64]()
     var control_outcomes_list = List[Float64]()
@@ -263,6 +277,10 @@ fn propensity_overlap(scores: List[Float64], treatment: List[Int]) -> Float64:
     Returns:
         Overlap measure (can be negative if no overlap).
     """
+    # Parallel lists: treatment[i] is read for each score.
+    if len(treatment) < len(scores):
+        return 0.0
+
     var min_t: Float64 = 1e18
     var max_t: Float64 = -1e18
     var min_c: Float64 = 1e18
@@ -338,6 +356,9 @@ fn stratified_estimate(outcomes: List[Float64], treatment: List[Int], scores: Li
     """
     var n = len(scores)
     if n == 0 or n_strata <= 0:
+        return 0.0
+    # Parallel lists: outcomes[i] and treatment[i] are read per score.
+    if len(outcomes) < n or len(treatment) < n:
         return 0.0
 
     # Find score range

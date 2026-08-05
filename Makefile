@@ -19,7 +19,7 @@
         gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check \
         verify-dispatch-compiles bench-runtime-batch bench-runtime-pipeline \
         bench-runtime-session bench-optimization bench-optimization-tier2
-.PHONY: capability-check capability-baseline
+.PHONY: capability-check capability-baseline sdk-audit-check sdk-audit-sweep build-audit-worker
 
 # ─── Shell / PATH ──────────────────────────────────────────────────────────────
 SHELL := /bin/bash
@@ -1035,3 +1035,22 @@ capability-check:
 ## that is not already grandfathered -- so this cannot be used to wave a new kernel through.
 capability-baseline:
 	$(REPO_PYTHON) scripts/capability_manifest_gate.py --update-baseline
+
+## SDK real-world usability audit — static gap checks: contract drift, silent visibility
+## loss, surface leaks, test coverage, capability checklist, SDK parity. Read-only; results
+## land in build/audit/. CI gate: .github/workflows/sdk-audit.yml (every PR + main push).
+sdk-audit-check:
+	$(REPO_PYTHON) scripts/audit_gap_checks.py
+
+## Execution sweep of EVERY published runtime-library function through the compiled worker:
+## signature-derived smoke args, hostile count/numeric battery, state round-trip checks.
+## Needs shard workers first: `make build-audit-worker`. Ratchet mode: fails only on NEW
+## P0 (worker-killing) functions vs scripts/sdk_audit_baseline.json; the known backlog only
+## shrinks. Results in build/audit/.
+sdk-audit-sweep:
+	$(REPO_PYTHON) scripts/audit_library_execution_sweep.py --battery all --p0-baseline scripts/sdk_audit_baseline.json
+
+## Build the module-routed shard workers the audit sweep executes against. One compile per
+## 24 modules — the monolith exceeds the bounded compiler's RSS ceiling (exit 125).
+build-audit-worker:
+	$(REPO_PYTHON) scripts/build_runtime_shards.py --out mojo_build/audit-worker --shard-size 24 --timeout-seconds 900

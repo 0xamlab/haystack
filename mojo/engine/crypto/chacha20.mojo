@@ -57,6 +57,9 @@ fn quarter_round(mut state: List[Int], a: Int, b: Int, c: Int, d: Int):
 fn chacha20_init_state(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
     """Initialize 16-word state with constants, key, counter, nonce.
     key = 8 words, nonce = 3 words."""
+    # Fixed-size readers below: key must supply 8 words, nonce 3.
+    if len(key) < 8 or len(nonce) < 3:
+        return List[Int]()
     var state = List[Int](capacity=16)
     state.append(CONST0)
     state.append(CONST1)
@@ -76,6 +79,8 @@ fn chacha20_init_state(key: List[Int], counter: Int, nonce: List[Int]) -> List[I
 fn add_states(a: List[Int], b: List[Int]) -> List[Int]:
     """Element-wise addition mod 2^32."""
     var n = len(a)
+    if len(b) != n:
+        return List[Int]()
     var result = List[Int](capacity=n)
     for i in range(n):
         result.append((a[i] + b[i]) & MASK32)
@@ -88,6 +93,8 @@ fn add_states(a: List[Int], b: List[Int]) -> List[Int]:
 fn xor_states(a: List[Int], b: List[Int]) -> List[Int]:
     """Element-wise XOR."""
     var n = len(a)
+    if len(b) != n:
+        return List[Int]()
     var result = List[Int](capacity=n)
     for i in range(n):
         result.append((a[i] ^ b[i]) & MASK32)
@@ -100,6 +107,8 @@ fn xor_states(a: List[Int], b: List[Int]) -> List[Int]:
 fn chacha20_block(key: List[Int], counter: Int, nonce: List[Int]) -> List[Int]:
     """Generate one 64-byte keystream block. key=8 words, nonce=3 words.
     Returns 16 words of keystream."""
+    if len(key) < 8 or len(nonce) < 3:
+        return List[Int]()
     var initial = chacha20_init_state(key, counter, nonce)
     var state = List[Int](capacity=16)
     for i in range(16):
@@ -138,6 +147,9 @@ fn _words_to_bytes(words: List[Int]) -> List[Int]:
 
 fn chacha20_encrypt(plaintext: List[Int], key: List[Int], nonce: List[Int]) -> List[Int]:
     """Encrypt plaintext bytes by XOR with keystream."""
+    # Bad key/nonce would yield empty blocks and spin the loop below forever.
+    if len(key) < 8 or len(nonce) < 3:
+        return List[Int]()
     var n = len(plaintext)
     var result = List[Int](capacity=n)
     var counter = 0

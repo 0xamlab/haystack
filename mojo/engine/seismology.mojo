@@ -110,7 +110,12 @@ fn epicenter_distance_from_ts_tp(
     delta_t: Float64, vp: Float64, vs: Float64
 ) -> Float64:
     """d = Δt / (1/vs - 1/vp)."""
-    return delta_t / (1.0 / vs - 1.0 / vp)
+    var denom = 1.0 / vs - 1.0 / vp
+    # Equal wave speeds (or a nan payload) zero or poison the denominator and
+    # would yield inf/nan, which cannot cross the JSON result wire.
+    if denom == 0.0 or denom != denom or delta_t != delta_t:
+        return 0.0
+    return delta_t / denom
 
 
 # ── intensity_mmi_from_pga ────────────────────────────────────────────────────

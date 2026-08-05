@@ -47,6 +47,11 @@ fn decode_varint(data: List[Int], offset: Int) -> List[Int]:
     Returns [decoded_value, bytes_consumed].
     """
     var result = List[Int]()
+    # Out-of-range offset: data[pos] would abort; return [value=0, consumed=0].
+    if offset < 0 or offset >= len(data):
+        result.append(0)
+        result.append(0)
+        return result^
     var value: Int = 0
     var shift: Int = 0
     var pos = offset
@@ -107,6 +112,13 @@ fn decode_field(data: List[Int], offset: Int) -> List[Int]:
     Returns [field_number, wire_type, value, bytes_consumed].
     """
     var result = List[Int]()
+    # Out-of-range offset: return the all-zero field sentinel.
+    if offset < 0 or offset >= len(data):
+        result.append(0)
+        result.append(0)
+        result.append(0)
+        result.append(0)
+        return result^
     # Decode tag
     var tag_result = decode_varint(data, offset)
     var tag = tag_result[0]
@@ -149,6 +161,13 @@ fn decode_string_field(data: List[Int], offset: Int) -> List[Int]:
     Returns [field_number, string_start_offset, string_length, total_consumed].
     """
     var result = List[Int]()
+    # Out-of-range offset: return the all-zero field sentinel.
+    if offset < 0 or offset >= len(data):
+        result.append(0)
+        result.append(0)
+        result.append(0)
+        result.append(0)
+        return result^
     # Decode tag
     var tag_result = decode_varint(data, offset)
     var tag = tag_result[0]

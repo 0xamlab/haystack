@@ -124,7 +124,9 @@ fn knn_predict(
     For regression, this returns the mean of the k nearest labels.
     """
     var n = len(train_x)
-    if n == 0:
+    # k <= 0 leaves labels empty and labels[0] below aborts (uncatchable);
+    # a short or mismatched train_y would be indexed past its end.
+    if n == 0 or k <= 0 or len(train_y) != n:
         return 0.0
 
     # Compute all distances

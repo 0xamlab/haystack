@@ -124,6 +124,8 @@ fn ipw_estimate(
     var n = len(outcomes)
     if n == 0:
         return 0.0
+    if len(treatment) != n or len(propensity) != n:
+        return 0.0
     var s = 0.0
     for i in range(n):
         var p = propensity[i]
@@ -169,6 +171,8 @@ fn regression_discontinuity(
     var sum_below = 0.0
     var n_below = 0
     var n = len(x)
+    if len(y) != n:
+        return 0.0
     for i in range(n):
         if x[i] >= cutoff:
             sum_above += y[i]
@@ -210,6 +214,8 @@ fn stratified_ate(
     """
     var n = len(outcomes)
     if n == 0:
+        return 0.0
+    if len(treatment) != n or len(strata) != n:
         return 0.0
 
     var total_ate = 0.0

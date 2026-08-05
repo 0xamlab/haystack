@@ -56,6 +56,10 @@ comptime _AT = UInt8(64)          # @  (binary-buffer arg marker, e.g. "@u8:<bas
 comptime _CHAR_U = UInt8(117)     # u
 comptime _CHAR_8 = UInt8(56)      # 8
 comptime _SLASH = UInt8(47)       # /
+comptime _CHAR_A_UP = UInt8(65)   # A
+comptime _CHAR_Z_UP = UInt8(90)   # Z
+comptime _CHAR_A_LC = UInt8(97)   # a
+comptime _CHAR_Z_LC = UInt8(122)  # z
 comptime _EQUALS = UInt8(61)      # =
 
 
@@ -157,21 +161,35 @@ fn skip_json_value(data: String, pos: Int) -> Int:
             p += 1
         return p
 
-    # ── true ──
-    if ch == _CHAR_T:
-        return p + 4  # "true"
+    # ── Bare-word token: true / false / null, and non-JSON bare words such as NaN or
+    # Infinity that lenient serializers (Python json.dumps, JS JSON.stringify) emit for
+    # non-finite floats. Scan the WHOLE alphabetic run as ONE token: the old fixed-length
+    # skips plus the one-char unknown fallback shredded "Infinity" into eight elements,
+    # corrupting list lengths and aborting kernels on out-of-bounds reads (measured:
+    # risk.beta died inside _cov on a request carrying [1.0, NaN, Infinity, -Infinity, 0.0]).
+    # Downstream parsers decide whether the token is a value or an error. ──
+    if (ch >= _CHAR_A_UP and ch <= _CHAR_Z_UP) or (ch >= _CHAR_A_LC and ch <= _CHAR_Z_LC):
+        p += 1
+        while p < n:
+            var c = bytes[p]
+            if (c >= _CHAR_A_UP and c <= _CHAR_Z_UP) or (c >= _CHAR_A_LC and c <= _CHAR_Z_LC):
+                p += 1
+            else:
+                break
+        return p
 
-    # ── false ──
-    if ch == _CHAR_F:
-        return p + 5  # "false"
-
-    # ── null ──
-    if ch == _CHAR_N:
-        return p + 4  # "null"
-
-    # ── Number (digits, minus, dot, e/E, +) ──
+    # ── Number (digits, minus, dot, e/E, +); a sign followed by a bare word
+    # ("-Infinity") is one token, not two. ──
     if ch == _MINUS or (ch >= _DIGIT_0 and ch <= _DIGIT_9):
         p += 1
+        if p < n and ((bytes[p] >= _CHAR_A_UP and bytes[p] <= _CHAR_Z_UP) or (bytes[p] >= _CHAR_A_LC and bytes[p] <= _CHAR_Z_LC)):
+            while p < n:
+                var c = bytes[p]
+                if (c >= _CHAR_A_UP and c <= _CHAR_Z_UP) or (c >= _CHAR_A_LC and c <= _CHAR_Z_LC):
+                    p += 1
+                else:
+                    break
+            return p
         while p < n:
             var c = bytes[p]
             if (
@@ -616,6 +634,20 @@ fn json_decode_base64_bytes(s: String) -> List[UInt8]:
     return out^
 
 
+fn _token_has_digit(token: String) -> Bool:
+    """True if the token contains at least one ASCII digit.
+
+    Every legal JSON number carries a digit; the bare words NaN / Infinity / -Infinity do
+    not. This is the cheap discriminator that keeps non-finite tokens from being parsed as
+    silent zeros (data corruption) — the caller raises on a digitless token instead.
+    """
+    var bytes = token.as_bytes()
+    for i in range(len(token)):
+        if bytes[i] >= _DIGIT_0 and bytes[i] <= _DIGIT_9:
+            return True
+    return False
+
+
 fn json_parse_float64_list(token: String) raises -> List[Float64]:
     """Parse a `List[Float64]` arg with a binary fast path.
 
@@ -656,5 +688,9 @@ fn json_parse_float64_list(token: String) raises -> List[Float64]:
     var tokens = json_array_tokens(array_json)
     var result = List[Float64]()
     for i in range(len(tokens)):
+        if not _token_has_digit(tokens[i]):
+            # A bare word ("NaN", "Infinity", "-Infinity") is not a JSON number; parse_float64
+            # would silently zero it, corrupting the data. Refuse with a typed error instead.
+            raise Error("non_finite_argument")
         result.append(parse_float64(tokens[i]))
     return result^

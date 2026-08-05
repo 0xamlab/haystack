@@ -36,6 +36,15 @@ fn nash_2x2(payoff_a: List[List[Float64]], payoff_b: List[List[Float64]]) -> Lis
     Returns:
         [p1_play_row0, p2_play_col0]. Clamped to [0, 1].
     """
+    # The 2x2 solve reads rows 0..1 and columns 0..1 of both matrices directly;
+    # anything smaller is an uncatchable out-of-bounds read.
+    if len(payoff_a) < 2 or len(payoff_b) < 2:
+        return List[Float64]()
+    if len(payoff_a[0]) < 2 or len(payoff_a[1]) < 2:
+        return List[Float64]()
+    if len(payoff_b[0]) < 2 or len(payoff_b[1]) < 2:
+        return List[Float64]()
+
     # Player 1 chooses p so that player 2 is indifferent between columns:
     # p*b[0][0] + (1-p)*b[1][0] = p*b[0][1] + (1-p)*b[1][1]
     var b00 = payoff_b[0][0]
@@ -154,6 +163,13 @@ fn expected_payoff(payoff: List[List[Float64]], p_row: List[Float64], p_col: Lis
         Expected payoff = sum_i sum_j p_row[i] * p_col[j] * payoff[i][j].
     """
     var rows = len(payoff)
+    # p_row[i] and p_col[j] are read for every cell; a short probability
+    # vector is an uncatchable out-of-bounds read.
+    if len(p_row) < rows:
+        return 0.0
+    for i in range(rows):
+        if len(payoff[i]) > len(p_col):
+            return 0.0
     var total = 0.0
     for i in range(rows):
         var row = payoff[i].copy()
@@ -270,6 +286,10 @@ fn shapley_value_3player(v: List[Float64]) -> List[Float64]:
     Returns:
         [phi_1, phi_2, phi_3] Shapley values.
     """
+    # v is indexed by all eight coalition bitmasks (0..7).
+    if len(v) < 8:
+        return List[Float64]()
+
     # All 6 permutations of 3 players: (0-indexed internally)
     # Permutation orderings and marginal contributions
     var phi = List[Float64]()
@@ -324,6 +344,9 @@ fn pareto_optimal_outcomes(payoffs_a: List[Float64], payoffs_b: List[Float64]) -
     """
     var n = len(payoffs_a)
     var result = List[Bool]()
+    # payoffs_b[i]/payoffs_b[j] are read for every index into payoffs_a.
+    if len(payoffs_b) < n:
+        return result^
     for i in range(n):
         var is_optimal = True
         for j in range(n):

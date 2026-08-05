@@ -144,6 +144,8 @@ fn merkle_root(leaves: List[Int]) -> Int:
 fn merkle_proof(leaves: List[Int], index: Int) -> List[Int]:
     """Generate Merkle proof (sibling hashes) for leaf at index."""
     var proof = List[Int]()
+    if index < 0 or index >= len(leaves):
+        return proof^
     if len(leaves) <= 1:
         return proof^
     var current = List[Int]()

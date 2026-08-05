@@ -274,7 +274,8 @@ fn msgpack_encode_map_header(n: Int) -> List[UInt8]:
 
 fn msgpack_decode_int(data: List[UInt8], pos: Int) -> MsgPackIntResult:
     """Decode an integer from data at pos. Returns MsgPackIntResult(value, consumed)."""
-    if pos >= len(data):
+    # A negative pos would read data out of bounds — an uncatchable abort.
+    if pos < 0 or pos >= len(data):
         return MsgPackIntResult(0, 0)
 
     var tag = Int(data[pos])
@@ -362,7 +363,8 @@ fn msgpack_decode_int(data: List[UInt8], pos: Int) -> MsgPackIntResult:
 
 fn msgpack_decode_float(data: List[UInt8], pos: Int) -> MsgPackFloatResult:
     """Decode a float64 from data at pos. Returns MsgPackFloatResult(value, consumed)."""
-    if pos >= len(data):
+    # A negative pos would read data out of bounds — an uncatchable abort.
+    if pos < 0 or pos >= len(data):
         return MsgPackFloatResult(0.0, 0)
 
     var tag = Int(data[pos])
@@ -395,7 +397,8 @@ fn msgpack_decode_float(data: List[UInt8], pos: Int) -> MsgPackFloatResult:
 
 fn msgpack_decode_string(data: List[UInt8], pos: Int) -> MsgPackStringResult:
     """Decode a string from data at pos. Returns MsgPackStringResult(value, consumed)."""
-    if pos >= len(data):
+    # A negative pos would read data out of bounds — an uncatchable abort.
+    if pos < 0 or pos >= len(data):
         return MsgPackStringResult(String(""), 0)
 
     var tag = Int(data[pos])

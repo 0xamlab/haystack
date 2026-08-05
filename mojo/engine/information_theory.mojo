@@ -85,6 +85,11 @@ fn mutual_information(joint_probs: List[List[Float64]]) -> Float64:
     var n_cols = 0
     if len(joint_probs) > 0:
         n_cols = len(joint_probs[0])
+    # A row shorter than the first would be read past its end in the
+    # column sums below (uncatchable abort).
+    for i in range(len(joint_probs)):
+        if len(joint_probs[i]) < n_cols:
+            return 0.0
     var marginal_y = List[Float64]()
     for j in range(n_cols):
         var s: Float64 = 0.0
@@ -101,6 +106,9 @@ fn mutual_information(joint_probs: List[List[Float64]]) -> Float64:
 
 fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
     """KL divergence: Σ p*log2(p/q). Requires q[i]>0 where p[i]>0."""
+    # A short q would be read past its end below (uncatchable abort).
+    if len(q) < len(p):
+        return 0.0
     var kl: Float64 = 0.0
     for i in range(len(p)):
         if p[i] > 0.0 and q[i] > 0.0:
@@ -113,6 +121,9 @@ fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
 
 fn cross_entropy(p: List[Float64], q: List[Float64]) -> Float64:
     """Cross entropy: -Σ p*log2(q)."""
+    # A short q would be read past its end below (uncatchable abort).
+    if len(q) < len(p):
+        return 0.0
     var ce: Float64 = 0.0
     for i in range(len(p)):
         if p[i] > 0.0 and q[i] > 0.0:

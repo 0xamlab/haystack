@@ -28,6 +28,8 @@ fn plurality_winner(votes: List[Int], n_candidates: Int) -> Int:
     `votes` contains first-choice candidate index per voter.
     Returns the candidate index with maximum tally.
     """
+    if n_candidates <= 0:
+        return -1
     var tallies = List[Int]()
     for _i in range(n_candidates):
         tallies.append(0)
@@ -54,6 +56,9 @@ fn borda_score(ranks: List[Int], n_candidates: Int, candidate_idx: Int) -> Int:
     giving the rank (0-based position) of each candidate.
     Points = (n_candidates - 1) - rank.
     """
+    # n_candidates also divides below (zero would abort) and bounds the rank read.
+    if n_candidates <= 0 or candidate_idx < 0 or candidate_idx >= n_candidates:
+        return 0
     var n_voters = len(ranks) // n_candidates
     var score = 0
     for v in range(n_voters):

@@ -14,8 +14,14 @@ Public API:
   feature_importance_rf      — Permutation-based feature importance
   bagging_variance           — Variance across tree predictions
 """
-from std.math import sqrt, abs as fabs
+from std.math import sqrt, abs as fabs, isnan, isinf
 from std.random import random_float64
+
+
+# Ceilings on wire-supplied counts: bound per-call iteration/allocation.
+comptime MAX_RF_TREES: Int = 10000
+comptime MAX_RF_SAMPLE: Int = 1000000
+comptime MAX_RF_FEATURES: Int = 1000000
 
 
 # ── Bootstrap / Subsample ────────────────────────────────────────────────────
@@ -23,8 +29,12 @@ from std.random import random_float64
 
 fn bootstrap_indices(n: Int, sample_size: Int) -> List[Int]:
     """Random sample of sample_size indices in [0, n) with replacement."""
+    # sample_size drives the allocation; clamp the wire-supplied count.
+    var count = sample_size
+    if count > MAX_RF_SAMPLE:
+        count = MAX_RF_SAMPLE
     var result = List[Int]()
-    for _ in range(sample_size):
+    for _ in range(count):
         var idx = Int(random_float64() * Float64(n))
         if idx >= n:
             idx = n - 1
@@ -37,19 +47,23 @@ fn bootstrap_indices(n: Int, sample_size: Int) -> List[Int]:
 fn feature_subsample(n_features: Int, max_features: Int) -> List[Int]:
     """Random subset of feature indices (no duplicates).
     Uses Fisher-Yates partial shuffle."""
+    # n_features drives the allocation; clamp the wire-supplied count.
+    var nf = n_features
+    if nf > MAX_RF_FEATURES:
+        nf = MAX_RF_FEATURES
     var m = max_features
-    if m > n_features:
-        m = n_features
-    # Build array [0, 1, ..., n_features-1]
+    if m > nf:
+        m = nf
+    # Build array [0, 1, ..., nf-1]
     var arr = List[Int]()
-    for i in range(n_features):
+    for i in range(nf):
         arr.append(i)
     # Partial Fisher-Yates
     for i in range(m):
-        var remaining = n_features - i
+        var remaining = nf - i
         var j = i + Int(random_float64() * Float64(remaining))
-        if j >= n_features:
-            j = n_features - 1
+        if j >= nf:
+            j = nf - 1
         # Swap arr[i] and arr[j]
         var tmp = arr[i]
         arr[i] = arr[j]
@@ -108,6 +122,21 @@ fn tree_predict_simple(
     var n = len(X_train)
     if n == 0:
         return 0.0
+    # A short y_train/x_test or ragged X_train row would be read past its end
+    # below (uncatchable abort); a non-finite label would poison every split
+    # score; an out-of-range feature index is refused outright.
+    var n_feat = len(X_train[0])
+    if len(y_train) < n or len(x_test) < n_feat:
+        return 0.0
+    for i in range(n):
+        if len(X_train[i]) < n_feat:
+            return 0.0
+        if isnan(y_train[i]) or isinf(y_train[i]):
+            return 0.0
+    for fi in range(len(feature_subset)):
+        var f = feature_subset[fi]
+        if f < 0 or f >= n_feat:
+            return 0.0
     var best_feat = 0
     var best_thresh: Float64 = 0.0
     var best_reduction: Float64 = -1.0
@@ -172,9 +201,16 @@ fn random_forest_predict(
     var n = len(X_train)
     if n == 0:
         return 0.0
+    # A short y_train would be read past its end below (uncatchable abort);
+    # n_trees drives both the iteration count and the final divisor.
+    if len(y_train) < n or n_trees <= 0:
+        return 0.0
+    var trees = n_trees
+    if trees > MAX_RF_TREES:
+        trees = MAX_RF_TREES
     var n_feat = len(X_train[0])
     var total: Float64 = 0.0
-    for _t in range(n_trees):
+    for _t in range(trees):
         var idxs = bootstrap_indices(n, n)
         var X_b = List[List[Float64]]()
         var y_b = List[Float64]()
@@ -183,7 +219,7 @@ fn random_forest_predict(
             y_b.append(y_train[idxs[i]])
         var feats = feature_subsample(n_feat, max_features)
         total += tree_predict_simple(X_b, y_b, x_test, feats)
-    return total / Float64(n_trees)
+    return total / Float64(trees)
 
 
 fn random_forest_predict_batch(
@@ -215,6 +251,13 @@ fn oob_score(
     var n = len(X)
     if n == 0:
         return 0.0
+    # A short y would be read past its end below (uncatchable abort).
+    if len(y) < n:
+        return 0.0
+    # n_trees drives the iteration count; clamp the wire-supplied count.
+    var trees = n_trees
+    if trees > MAX_RF_TREES:
+        trees = MAX_RF_TREES
     var n_feat = len(X[0])
     var oob_sum = List[Float64]()
     var oob_count = List[Int]()
@@ -222,7 +265,7 @@ fn oob_score(
         oob_sum.append(0.0)
         oob_count.append(0)
 
-    for _t in range(n_trees):
+    for _t in range(trees):
         var idxs = bootstrap_indices(n, n)
         # Mark in-bag
         var in_bag = List[Bool]()
@@ -275,6 +318,13 @@ fn feature_importance_rf(
     if n == 0:
         return List[Float64]()
     var n_feat = len(X[0])
+    # A short y or ragged X row would be read past its end below
+    # (uncatchable abort).
+    if len(y) < n:
+        return List[Float64]()
+    for i in range(n):
+        if len(X[i]) < n_feat:
+            return List[Float64]()
     # Baseline MSE
     var preds = random_forest_predict_batch(X, y, X, n_trees, max_features)
     var base_mse: Float64 = 0.0

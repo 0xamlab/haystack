@@ -43,6 +43,9 @@ fn accuracy(predicted: List[Float64], actual: List[Float64]) -> Float64:
         return 0.0
     if len(actual) < n:
         n = len(actual)
+    # An empty actual truncates n to 0; keep the sentinel instead of dividing by n.
+    if n == 0:
+        return 0.0
 
     var correct = 0
     for i in range(n):
@@ -61,6 +64,9 @@ fn mse(predicted: List[Float64], actual: List[Float64]) -> Float64:
         return 0.0
     if len(actual) < n:
         n = len(actual)
+    # An empty actual truncates n to 0; keep the sentinel instead of dividing by n.
+    if n == 0:
+        return 0.0
 
     var s: Float64 = 0.0
     for i in range(n):
@@ -87,6 +93,9 @@ fn mae(predicted: List[Float64], actual: List[Float64]) -> Float64:
         return 0.0
     if len(actual) < n:
         n = len(actual)
+    # An empty actual truncates n to 0; keep the sentinel instead of dividing by n.
+    if n == 0:
+        return 0.0
 
     var s: Float64 = 0.0
     for i in range(n):

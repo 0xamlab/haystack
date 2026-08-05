@@ -303,7 +303,8 @@ fn epsilon_greedy_select(
         Index of the selected arm.
     """
     var n_arms = len(rewards)
-    if n_arms == 0:
+    # Parallel lists: a short counts list aborts on counts[i] (uncatchable).
+    if n_arms == 0 or len(counts) < n_arms:
         return 0
 
     # Explore with probability epsilon
@@ -350,7 +351,8 @@ fn ucb1_select(
         Index of the selected arm.
     """
     var n_arms = len(rewards)
-    if n_arms == 0:
+    # Parallel lists: a short counts list aborts on counts[i] (uncatchable).
+    if n_arms == 0 or len(counts) < n_arms:
         return 0
 
     # First, explore any arm with zero pulls

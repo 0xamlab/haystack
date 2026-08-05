@@ -115,6 +115,9 @@ fn _majority_vote(labels: List[Int]) -> Int:
 fn knn_predict(X_train: List[List[Float64]], y_train: List[Int],
                x_test: List[Float64], k: Int) -> Int:
     """Predict class for single test point using k-NN (majority vote)."""
+    # A short or empty y_train would be indexed past its end below (uncatchable abort).
+    if len(y_train) == 0 or len(y_train) != len(X_train):
+        return 0
     var dists = knn_distances(X_train, x_test)
     var indices = k_nearest_indices(dists, k)
     var neighbor_labels = List[Int]()
@@ -130,6 +133,9 @@ fn knn_predict_batch(X_train: List[List[Float64]], y_train: List[Int],
                      X_test: List[List[Float64]], k: Int) -> List[Int]:
     """Batch prediction for multiple test points."""
     var result = List[Int]()
+    # A short or empty y_train would be indexed past its end in knn_predict (uncatchable abort).
+    if len(y_train) == 0 or len(y_train) != len(X_train):
+        return result^
     for i in range(len(X_test)):
         result.append(knn_predict(X_train, y_train, X_test[i], k))
     return result^
@@ -141,6 +147,9 @@ fn knn_predict_batch(X_train: List[List[Float64]], y_train: List[Int],
 fn weighted_knn_predict(X_train: List[List[Float64]], y_train: List[Int],
                         x_test: List[Float64], k: Int) -> Int:
     """Distance-weighted k-NN: weight = 1/distance."""
+    # A short or empty y_train would be indexed past its end below (uncatchable abort).
+    if len(y_train) == 0 or len(y_train) != len(X_train):
+        return 0
     var dists = knn_distances(X_train, x_test)
     var indices = k_nearest_indices(dists, k)
 
@@ -179,6 +188,9 @@ fn weighted_knn_predict(X_train: List[List[Float64]], y_train: List[Int],
 fn knn_regression(X_train: List[List[Float64]], y_train: List[Float64],
                   x_test: List[Float64], k: Int) -> Float64:
     """KNN for regression: average of k nearest y values."""
+    # A short or empty y_train would be indexed past its end below (uncatchable abort).
+    if len(y_train) == 0 or len(y_train) != len(X_train):
+        return 0.0
     var dists = knn_distances(X_train, x_test)
     var indices = k_nearest_indices(dists, k)
     if len(indices) == 0:
@@ -196,6 +208,9 @@ fn leave_one_out_cv(X: List[List[Float64]], y: List[Int],
                     k: Int) -> Float64:
     """Leave-one-out cross-validation accuracy for k-NN classification."""
     var n = len(X)
+    # A short y would be read past its end below (uncatchable abort), so refuse with the sentinel.
+    if len(y) != n:
+        return 0.0
     if n <= 1:
         return 0.0
     var correct: Int = 0
@@ -218,6 +233,9 @@ fn leave_one_out_cv(X: List[List[Float64]], y: List[Int],
 fn optimal_k(X: List[List[Float64]], y: List[Int], max_k: Int) -> Int:
     """Find best k in [1, max_k] via LOO cross-validation accuracy."""
     var n = len(X)
+    # A short y would be read past its end in leave_one_out_cv (uncatchable abort).
+    if len(y) != n:
+        return 0
     var limit = max_k
     if limit >= n:
         limit = n - 1

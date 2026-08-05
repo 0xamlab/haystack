@@ -96,6 +96,9 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
     "types",
     "validate",
     "vector_kernels.prefilter",
+    # test_table is a compile-verification/benchmark scratch file, not a runtime library;
+    # without this entry its harness functions ship in the commercial contract.
+    "vector_kernels.test_table",
 }
 _SKIP_RUNTIME_RELATIVE_PREFIXES = {
     ("vector_kernels", "semantic_micro"),

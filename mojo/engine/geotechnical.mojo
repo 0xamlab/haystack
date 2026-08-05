@@ -116,6 +116,10 @@ fn factor_of_safety_slope(
 
 fn void_ratio(porosity: Float64) -> Float64:
     """Void ratio from porosity: e = n / (1 - n)."""
+    # The denominator zeroes at n = 1 (inf cannot cross the result wire); the
+    # self-comparison rejects NaN payloads.
+    if porosity >= 1.0 or porosity != porosity:
+        return 0.0
     return porosity / (1.0 - porosity)
 
 

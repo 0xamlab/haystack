@@ -178,6 +178,9 @@ fn round_robin(processes: List[List[Int]], quantum: Int) -> List[List[Int]]:
     Returns [pid, finish_time, wait_time] for each process (indexed by pid).
     """
     var n = len(processes)
+    # A non-positive quantum never reduces remaining[] below, so the loop would never terminate.
+    if quantum <= 0:
+        return List[List[Int]]()
     var remaining = List[Int]()
     var finish_time = List[Int]()
     var wait_time = List[Int]()

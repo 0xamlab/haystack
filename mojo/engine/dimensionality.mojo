@@ -161,6 +161,12 @@ fn eigenvalue_from_vector(
     var d = len(eigvec)
     if d == 0:
         return 0.0
+    # matrix is indexed as d×d below; short rows are an uncatchable abort.
+    if len(matrix) < d:
+        return 0.0
+    for i in range(d):
+        if len(matrix[i]) < d:
+            return 0.0
 
     # Compute Av
     var av = List[Float64]()
@@ -179,7 +185,11 @@ fn eigenvalue_from_vector(
 
     if v_dot_v < 1e-30:
         return 0.0
-    return av_dot_v / v_dot_v
+    var lam = av_dot_v / v_dot_v
+    # NaN/inf payloads in eigvec/matrix cannot cross the result wire.
+    if lam - lam != 0.0:
+        return 0.0
+    return lam
 
 
 # ── deflate_matrix ────────────────────────────────────────────────────────────
@@ -195,6 +205,12 @@ fn deflate_matrix(
     """
     var d = len(matrix)
     var result = List[List[Float64]]()
+    # eigvec and each matrix row are indexed up to d-1; short ones abort.
+    if len(eigvec) < d:
+        return result^
+    for i in range(d):
+        if len(matrix[i]) < d:
+            return result^
     for i in range(d):
         var row = List[Float64]()
         for j in range(d):

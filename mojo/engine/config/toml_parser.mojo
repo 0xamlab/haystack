@@ -421,15 +421,28 @@ fn toml_parse(content: String) -> TomlDoc:
 fn _toml_resolve(doc: TomlDoc, path: String) -> Int:
     """Resolve a dot-notation path to a node index. Returns -1 if not found."""
     var parts = _toml_split_dot(path)
+    var n_nodes = len(doc.pool.nodes)
     var current = doc.root
+    # A hand-built or corrupt document can point root/edges outside the node pool; the
+    # unguarded subscript aborted the worker, so treat every such document as not-found.
+    if current < 0 or current >= n_nodes:
+        return -1
     for pi in range(len(parts)):
         var seg = _toml_strip(parts[pi])
         if doc.pool.nodes[current].kind != _TOML_MAP:
             return -1
         var found = False
-        for ki in range(len(doc.pool.nodes[current].map_keys)):
+        # map_keys and map_vals are parallel arrays; a ragged document must not let ki run
+        # past the shorter one.
+        var n_entries = len(doc.pool.nodes[current].map_keys)
+        if len(doc.pool.nodes[current].map_vals) < n_entries:
+            n_entries = len(doc.pool.nodes[current].map_vals)
+        for ki in range(n_entries):
             if doc.pool.nodes[current].map_keys[ki] == seg:
-                current = doc.pool.nodes[current].map_vals[ki]
+                var next = doc.pool.nodes[current].map_vals[ki]
+                if next < 0 or next >= n_nodes:
+                    return -1
+                current = next
                 found = True
                 break
         if not found:

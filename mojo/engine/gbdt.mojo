@@ -578,6 +578,17 @@ fn gbdt_predict_batch(
     var out = List[Float64]()
     if n_cols <= 0:
         return out^
+    # Model fields arrive over the wire: the five node arrays must stay
+    # parallel, and every non-leaf split feature must index the row, or the
+    # tree walk reads out of bounds (an uncatchable abort).
+    var n_nodes = len(model.split_feature)
+    if len(model.split_value) < n_nodes or len(model.left_child) < n_nodes:
+        return out^
+    if len(model.right_child) < n_nodes or len(model.leaf_value) < n_nodes:
+        return out^
+    for i in range(n_nodes):
+        if model.split_feature[i] >= n_cols:  # negative marks a leaf
+            return out^
     var rows = len(X) // n_cols
     for r in range(rows):
         var v = model.base_score

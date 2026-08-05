@@ -117,6 +117,9 @@ fn survival_probability(qx: Float64) -> Float64:
 
 fn force_of_mortality(qx: Float64) -> Float64:
     """μx ≈ -ln(1 - qx)."""
+    # qx >= 1 degenerates the log to inf/NaN, which cannot cross the wire.
+    if qx >= 1.0:
+        return 0.0
     return -log(1.0 - qx)
 
 

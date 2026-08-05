@@ -21,6 +21,10 @@ from std.math import exp, log, sqrt, tanh, abs as fabs
 from std.random import random_float64
 
 
+# Ceiling on wire-supplied layer dimensions: bounds the n_in*n_out allocation.
+comptime MAX_NN_DIM: Int = 1024
+
+
 # ── dense_forward ────────────────────────────────────────────────────────────
 
 
@@ -32,6 +36,13 @@ fn dense_forward(
     """Dense layer: output = W*input + bias.
     weights is [n_out × n_in]."""
     var n_out = len(weights)
+    # A short bias or a weight row wider than input would be read past its
+    # end below (uncatchable abort).
+    if len(bias) < n_out:
+        return List[Float64]()
+    for i in range(n_out):
+        if len(weights[i]) > len(input):
+            return List[Float64]()
     var result = List[Float64]()
     for i in range(n_out):
         var s: Float64 = bias[i]
@@ -83,6 +94,10 @@ fn tanh_activation(x: List[Float64]) -> List[Float64]:
 fn softmax_layer(x: List[Float64]) -> List[Float64]:
     """Numerically stable softmax: exp(x-max) / sum(exp(x-max))."""
     var n = len(x)
+    # x[0] below would read past the end (uncatchable abort); the softmax
+    # of nothing is nothing.
+    if n == 0:
+        return List[Float64]()
     var max_val = x[0]
     for i in range(1, n):
         if x[i] > max_val:
@@ -105,6 +120,10 @@ fn softmax_layer(x: List[Float64]) -> List[Float64]:
 fn mse_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Mean squared error loss: sum((p-a)^2) / n."""
     var n = len(predicted)
+    # A short actual would be read past its end below, and n == 0 would zero
+    # the mean's divisor (uncatchable abort / non-finite result).
+    if n == 0 or len(actual) < n:
+        return 0.0
     var total: Float64 = 0.0
     for i in range(n):
         var d = predicted[i] - actual[i]
@@ -118,6 +137,10 @@ fn mse_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
 fn cross_entropy_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Binary cross entropy: -sum(y*log(p) + (1-y)*log(1-p)) / n."""
     var n = len(predicted)
+    # A short actual would be read past its end below, and n == 0 would zero
+    # the mean's divisor (uncatchable abort / non-finite result).
+    if n == 0 or len(actual) < n:
+        return 0.0
     var total: Float64 = 0.0
     var eps: Float64 = 1e-15
     for i in range(n):
@@ -188,11 +211,21 @@ fn leaky_relu(x: List[Float64], alpha: Float64 = 0.01) -> List[Float64]:
 
 fn init_weights_xavier(n_in: Int, n_out: Int) -> List[List[Float64]]:
     """Xavier/Glorot uniform init: U(-limit, limit) where limit=sqrt(6/(n_in+n_out))."""
-    var limit = sqrt(6.0 / Float64(n_in + n_out))
+    # Non-positive dims zero the limit's divisor; huge dims are an allocation
+    # bomb, so clamp the wire-supplied counts.
+    if n_in <= 0 or n_out <= 0:
+        return List[List[Float64]]()
+    var nin = n_in
+    var nout = n_out
+    if nin > MAX_NN_DIM:
+        nin = MAX_NN_DIM
+    if nout > MAX_NN_DIM:
+        nout = MAX_NN_DIM
+    var limit = sqrt(6.0 / Float64(nin + nout))
     var weights = List[List[Float64]]()
-    for _ in range(n_out):
+    for _ in range(nout):
         var row = List[Float64]()
-        for _ in range(n_in):
+        for _ in range(nin):
             var r = random_float64()  # [0, 1)
             row.append(r * 2.0 * limit - limit)
         weights.append(row^)

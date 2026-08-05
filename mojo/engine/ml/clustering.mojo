@@ -209,7 +209,8 @@ fn silhouette_score(data: List[List[Float64]], labels: List[Int]) -> Float64:
     Returns mean of s(i) over all points. Range [-1, 1].
     """
     var n = len(data)
-    if n < 2:
+    # labels is indexed below for i in range(n); a short or empty list aborts (uncatchable).
+    if n < 2 or len(labels) != n:
         return 0.0
 
     # Find number of clusters

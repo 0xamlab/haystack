@@ -65,6 +65,9 @@ fn wave_equation_1d(
     var n = len(u0)
     if n < 3:
         return u0.copy()
+    # Parallel lists: v0[i] is read for interior points; a short v0 aborts.
+    if len(v0) < n:
+        return u0.copy()
     var r2 = (c * dt / dx) * (c * dt / dx)
 
     # First time step uses initial velocity

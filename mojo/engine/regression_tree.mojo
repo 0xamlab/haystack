@@ -15,7 +15,7 @@ Public API:
   tree_n_leaves       — Count leaf nodes
   tree_mse            — MSE on a dataset
 """
-from std.math import sqrt, abs as fabs
+from std.math import sqrt, abs as fabs, isinf, isnan
 
 
 # ── RegressionTree ────────────────────────────────────────────────────────────
@@ -87,6 +87,19 @@ fn mse_reduction(
     var n = n_l + n_r
     if n == 0:
         return 0.0
+    # An out-of-range index would read past the end of y below (uncatchable
+    # abort), and a non-finite y value would poison the result.
+    var ny = len(y)
+    for i in range(n_l):
+        if left_idx[i] < 0 or left_idx[i] >= ny:
+            return 0.0
+        if isnan(y[left_idx[i]]) or isinf(y[left_idx[i]]):
+            return 0.0
+    for i in range(n_r):
+        if right_idx[i] < 0 or right_idx[i] >= ny:
+            return 0.0
+        if isnan(y[right_idx[i]]) or isinf(y[right_idx[i]]):
+            return 0.0
     # Build combined indices
     var all_idx = List[Int]()
     for i in range(n_l):
@@ -118,7 +131,18 @@ fn best_split(
     result.append(0.0)   # reduction
     if n < 2:
         return result^
+    # An empty/ragged X, mismatched y, or out-of-range index would be read
+    # past its end below (uncatchable abort); a non-finite y would poison
+    # the result. Refuse with the no-split sentinel.
+    if len(X) == 0 or len(X) != len(y):
+        return result^
     var n_features = len(X[0])
+    for i in range(n):
+        var r = indices[i]
+        if r < 0 or r >= len(X) or len(X[r]) < n_features:
+            return result^
+        if isnan(y[r]) or isinf(y[r]):
+            return result^
     var best_red: Float64 = 0.0
     var best_feat: Int = -1
     var best_val: Float64 = 0.0
@@ -256,10 +280,24 @@ fn build_tree(
     if n == 0:
         _ = _add_node(tree, -1, 0.0, -1, -1, 0.0)
         return tree^
+    # Mismatched/ragged/non-finite payloads would be read past their end
+    # below (uncatchable abort); refuse with the empty-data sentinel, and
+    # cap the untrusted depth so it cannot drive unbounded recursion.
+    if len(X) != n or min_samples < 0:
+        _ = _add_node(tree, -1, 0.0, -1, -1, 0.0)
+        return tree^
+    var n_features = len(X[0])
+    for i in range(n):
+        if len(X[i]) < n_features or isnan(y[i]) or isinf(y[i]):
+            _ = _add_node(tree, -1, 0.0, -1, -1, 0.0)
+            return tree^
+    var depth_cap = max_depth
+    if depth_cap > 64:
+        depth_cap = 64
     var indices = List[Int]()
     for i in range(n):
         indices.append(i)
-    _ = _build_recursive(tree, X, y, indices, 0, max_depth, min_samples)
+    _ = _build_recursive(tree, X, y, indices, 0, depth_cap, min_samples)
     return tree^
 
 
@@ -273,6 +311,9 @@ fn predict_single(tree: RegressionTree, x: List[Float64]) -> Float64:
         if tree.split_feature[node] == -1:
             return tree.leaf_value[node]
         var feat = tree.split_feature[node]
+        # feat comes from a caller-built tree; an index outside x aborts the worker.
+        if feat < 0 or feat >= len(x):
+            return 0.0
         if x[feat] <= tree.split_value[node]:
             node = tree.left_child[node]
         else:
@@ -338,6 +379,13 @@ fn tree_mse(
     var n = len(y)
     if n == 0:
         return 0.0
+    # Fewer rows than labels would be read past their end below (uncatchable
+    # abort), and a non-finite y would poison the result.
+    if len(X) < n:
+        return 0.0
+    for i in range(n):
+        if isnan(y[i]) or isinf(y[i]):
+            return 0.0
     var preds = predict_batch(tree, X)
     var total: Float64 = 0.0
     for i in range(n):

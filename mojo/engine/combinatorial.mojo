@@ -26,6 +26,14 @@ fn knapsack_01(weights: List[Int], values: List[Int], capacity: Int) -> List[Int
     var n = len(weights)
     if n == 0 or capacity <= 0:
         return List[Int]()
+    if len(values) != n:
+        return List[Int]()
+    for i in range(n):
+        if weights[i] < 0:
+            return List[Int]()  # negative weight corrupts DP/backtrack indices
+    # Bound the DP allocation: capacity is untrusted caller input.
+    if capacity > 1000000 or (n + 1) * (capacity + 1) > 10000000:
+        return List[Int]()
 
     # DP table: (n+1) x (capacity+1)
     var dp = List[Int]()
@@ -69,6 +77,13 @@ fn knapsack_01_value(weights: List[Int], values: List[Int], capacity: Int) -> In
     var n = len(weights)
     if n == 0 or capacity <= 0:
         return 0
+    if len(values) != n:
+        return 0
+    for i in range(n):
+        if weights[i] < 0:
+            return 0  # negative weight indexes past dp's end
+    if capacity > 1000000:
+        return 0  # bound the DP allocation: capacity is untrusted input
 
     var dp = List[Int]()
     for _ in range(capacity + 1):
@@ -133,8 +148,14 @@ fn tsp_tour_length(distances: List[List[Float64]], tour: List[Int]) -> Float64:
     """Total length of a TSP tour."""
     var total = 0.0
     var n = len(tour)
+    var m = len(distances)
     for i in range(n - 1):
-        total += distances[tour[i]][tour[i + 1]]
+        var a = tour[i]
+        var b = tour[i + 1]
+        # Tour indices must stay inside the (possibly ragged) distance matrix.
+        if a < 0 or a >= m or b < 0 or b >= len(distances[a]):
+            return 0.0
+        total += distances[a][b]
     return total
 
 
@@ -278,6 +299,11 @@ fn coin_change(coins: List[Int], amount: Int) -> Int:
         return 0
     if amount < 0 or len(coins) == 0:
         return -1
+    if amount > 1000000:
+        return -1  # bound the DP allocation: amount is untrusted input
+    for j in range(len(coins)):
+        if coins[j] < 0:
+            return -1  # negative coin would index past dp's end
 
     var inf = amount + 1
     var dp = List[Int]()

@@ -29,6 +29,9 @@ fn dot64_f32(a: List[Float32], b: List[Float32]) -> Float32:
     Unrolled 8 × 8-wide SIMD multiply-accumulate — no loop overhead.
     VEC_DIM=64 / SIMD_W=8 = 8 independent accumulators (instruction-level parallelism).
     """
+    # SIMD loads below read fixed offsets 0..63; short lists would read out of bounds.
+    if len(a) < VEC_DIM or len(b) < VEC_DIM:
+        return Float32(0.0)
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var acc0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -49,6 +52,8 @@ fn l2_norm_inv_f32(v: List[Float32]) -> Float32:
     Compute 1/||v||₂ for a 64-element Float32 vector.
     Returns 0.0 if the vector is the zero vector.
     """
+    if len(v) < VEC_DIM:
+        return Float32(0.0)
     var p = v.unsafe_ptr()
     var sq0 = (p +  0).load[width=SIMD_W]()
     var sq1 = (p +  8).load[width=SIMD_W]()
@@ -85,6 +90,8 @@ fn cosine64_f32(
     Both norm_inv values must be pre-computed with l2_norm_inv_f32().
     Returns 0.0 for zero vectors, clamps result to [0.0, 1.0].
     """
+    if len(a) < VEC_DIM or len(b) < VEC_DIM:
+        return Float32(0.0)
     if a_norm_inv == 0.0 or b_norm_inv == 0.0:
         return Float32(0.0)
     var raw = dot64_f32(a, b) * a_norm_inv * b_norm_inv
@@ -117,6 +124,9 @@ fn build_vec64_f32(s: String, mut out_vec: List[Float32]) -> Float32:
     out_vec must be a List[Float32] of length ≥ VEC_DIM (will be zeroed).
     Avoids intermediate string allocation — normalises bytes in-place.
     """
+    # Bucket writes below address indices 0..63; a short out_vec would abort.
+    if len(out_vec) < VEC_DIM:
+        return Float32(0.0)
     for i in range(VEC_DIM):
         out_vec[i] = Float32(0.0)
     var sb = s.as_bytes()

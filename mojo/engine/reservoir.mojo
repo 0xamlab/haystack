@@ -71,6 +71,9 @@ fn weighted_reservoir_sample(
         List of k sampled Float64 values.
     """
     var n = len(stream)
+    # k <= 0 leaves keys empty and keys[0] below aborts (uncatchable); weights must match stream.
+    if k <= 0 or len(weights) != n:
+        return List[Float64]()
     if k >= n:
         var copy = List[Float64]()
         for i in range(n):
@@ -234,6 +237,9 @@ fn sample_with_replacement(data: List[Float64], k: Int) -> List[Float64]:
         List of k sampled values.
     """
     var n = len(data)
+    # Empty data would still be indexed at 0 below (uncatchable abort).
+    if n == 0:
+        return List[Float64]()
     var result = List[Float64]()
     for _ in range(k):
         var idx = Int(random_float64() * Float64(n))

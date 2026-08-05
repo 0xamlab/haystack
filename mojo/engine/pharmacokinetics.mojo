@@ -33,7 +33,14 @@ fn one_compartment_oral(
     dose: Float64, ka: Float64, ke: Float64, vd: Float64, t: Float64,
 ) -> Float64:
     """C(t) = (dose*ka) / (vd*(ka-ke)) * (exp(-ke*t) - exp(-ka*t))."""
-    return (dose * ka) / (vd * (ka - ke)) * (exp(-ke * t) - exp(-ka * t))
+    # ka == ke (or zero vd) zeroes the denominator -> NaN/inf.
+    if vd * (ka - ke) == 0.0:
+        return 0.0
+    var c = (dose * ka) / (vd * (ka - ke)) * (exp(-ke * t) - exp(-ka * t))
+    # exp overflow yields inf, which cannot cross the result wire.
+    if c - c != 0.0:
+        return 0.0
+    return c
 
 
 # ── one_compartment_iv ────────────────────────────────────────────────────────
@@ -109,6 +116,10 @@ fn steady_state_concentration(
 
 fn time_to_peak(ka: Float64, ke: Float64) -> Float64:
     """tmax = ln(ka/ke) / (ka - ke)."""
+    # Equal rates zero the denominator (0/0 -> NaN); zero or opposite-sign
+    # rates degenerate the log to inf/NaN.
+    if ka == ke or ke == 0.0 or ka == 0.0 or ka / ke < 0.0:
+        return 0.0
     return log(ka / ke) / (ka - ke)
 
 

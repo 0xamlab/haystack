@@ -165,6 +165,9 @@ fn train_test_split(
     Split is deterministic (first N for train, rest for test).
     """
     var n = len(data)
+    # A short or empty labels list would be read past its end below (uncatchable abort).
+    if len(labels) != n:
+        return SplitResult()
     var n_test = Int(Float64(n) * test_ratio)
     if n_test < 0:
         n_test = 0

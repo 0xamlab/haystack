@@ -110,7 +110,8 @@ fn ddpm_reverse_mean(
     Returns:
         Posterior mean.
     """
-    if alpha_t <= 0.0:
+    # sqrt(1 - ᾱ_t) is a denominator: zero at ᾱ_t = 1, NaN beyond it.
+    if alpha_t <= 0.0 or alpha_bar_t >= 1.0:
         return x_t
     var coeff = beta_t / sqrt(1.0 - alpha_bar_t)
     return (1.0 / sqrt(alpha_t)) * (x_t - coeff * predicted_noise)
@@ -129,7 +130,8 @@ fn ddpm_posterior_variance(
     Returns:
         Posterior variance.
     """
-    if alpha_bar_t <= 0.0:
+    # (1 - ᾱ_t) is a denominator: zero at ᾱ_t = 1 (0/0 -> NaN).
+    if alpha_bar_t <= 0.0 or alpha_bar_t >= 1.0:
         return beta_t
     return (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t) * beta_t
 
@@ -152,6 +154,10 @@ fn ddim_step(
     Returns:
         Denoised sample x_{t-1}.
     """
+    # Both cumulative alphas appear in denominators/sqrts: outside (0, 1) the
+    # step produces inf/NaN that cannot cross the result wire.
+    if alpha_bar_t <= 0.0 or alpha_bar_t >= 1.0 or alpha_bar_prev <= 0.0 or alpha_bar_prev >= 1.0:
+        return x_t
     var x0_pred = (x_t - sqrt(1.0 - alpha_bar_t) * predicted_noise) / sqrt(alpha_bar_t)
     var sigma = eta * sqrt((1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t) * (1.0 - alpha_bar_t / alpha_bar_prev))
     var dir_xt = sqrt(1.0 - alpha_bar_prev - sigma * sigma) * predicted_noise

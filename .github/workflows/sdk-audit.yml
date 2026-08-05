@@ -1,0 +1,159 @@
+name: sdk-audit
+
+# SDK real-world usability audit — fully automated on every update, no manual triggers.
+#
+# PR tier (fast): static gap checks — contract drift, silent visibility loss, surface
+# leaks, test coverage, capability checklist, SDK parity, release-gate style.
+#
+# Main tier (heavy): compiles the module-routed shard workers, then executes EVERY
+# published runtime-library function through the SDK path (smoke + hostile battery +
+# state round-trips), re-runs the ratchet suite against the compiled workers, and proofs
+# the published PyPI/npm artifacts install and execute.
+#
+# JIT evidence does not count (docs/mojo/new-kernel-package-rules.md rule 1b): the sweep
+# only runs against compiled workers.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gap-checks:
+    name: SDK gap checks (static)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run gap checks
+        run: python3 scripts/audit_gap_checks.py
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-audit-gap-checks
+          path: |
+            build/audit/gap_checks.json
+            build/audit/gap_checks.md
+          if-no-files-found: error
+
+  execution-sweep:
+    name: Full execution sweep (compiled workers)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$GITHUB_WORKSPACE/.pixi" PIXI_BIN_DIR="$GITHUB_WORKSPACE/.pixi/bin" PIXI_NO_PATH_UPDATE=1 bash
+          echo "$GITHUB_WORKSPACE/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Install Mojo/Pixi environment
+        run: PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
+
+      - name: Build audit shard workers
+        env:
+          PIXI_HOME: ${{ github.workspace }}/.pixi
+          RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
+          MOJO_BUILD_MCPU: x86-64-v3
+        run: make build-audit-worker
+
+      - name: Ratchet suite against compiled workers
+        env:
+          PIXI_HOME: ${{ github.workspace }}/.pixi
+          RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
+        run: ./scripts/run_repo_python.sh -m pytest -q tests/test_sdk_audit_ratchet.py
+
+      - name: Full execution sweep (every published function)
+        env:
+          PIXI_HOME: ${{ github.workspace }}/.pixi
+          RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
+        # Ratchet mode: fails only on NEW worker-killing functions vs the baseline; the
+        # known backlog (scripts/sdk_audit_baseline.json, sweep_p0_baseline) only shrinks.
+        run: ./scripts/run_repo_python.sh scripts/audit_library_execution_sweep.py --battery all --p0-baseline scripts/sdk_audit_baseline.json
+
+      - name: Upload sweep artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-audit-execution-sweep
+          path: |
+            build/audit/library_sweep_results.json
+            build/audit/library_sweep_results.md
+          if-no-files-found: error
+
+  published-artifact-proof:
+    name: Published artifact install + execute proof
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python (published wheels require 3.14)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install published SDK from PyPI
+        run: |
+          python -m venv /tmp/algenta-audit-venv
+          /tmp/algenta-audit-venv/bin/pip install --upgrade pip
+          /tmp/algenta-audit-venv/bin/pip install algenta
+
+      - name: Doctor invariants (launch gates 8/9/13)
+        run: |
+          out=$(/tmp/algenta-audit-venv/bin/algenta runtime doctor || true)
+          echo "$out"
+          echo "$out" | grep -q "fallback:        denied"
+          echo "$out" | grep -q "tcp listeners:   none"
+          echo "$out" | grep -qi "status:          READY"
+          forbidden=("install Mo""jo" "install Mod""ular" "start daemon" "docker run")
+          for bad in "${forbidden[@]}"; do
+            if echo "$out" | grep -qi "$bad"; then echo "::error::doctor leaked forbidden runtime setup text"; exit 1; fi
+          done
+
+      - name: Execute one function per shard through the installed runtime
+        run: |
+          /tmp/algenta-audit-venv/bin/python - <<'PY'
+          import algenta
+          from algenta.native import worker
+
+          runtime = algenta.MojoRuntime(mode="local")
+          health = runtime.health()
+          assert health.get("status") == "ok", health
+          modules = runtime.list_modules()
+          print(f"published runtime serves {len(modules)} modules")
+          routes = {}
+          for module_name in worker.runtime_module_filter() or ():
+              resolution = worker.require_worker(module_name=module_name, require_verified=True)
+              routes.setdefault(resolution.path.name, module_name)
+          assert len(routes) >= 2, f"expected multiple shard workers, saw {sorted(routes)}"
+          for worker_name, module_name in sorted(routes.items()):
+              result = runtime.execute(module_name, runtime.list_functions(module_name)[0], None)
+              print(worker_name, module_name, "ok" if result.get("success") else result.get("error_code"))
+              assert result.get("success") or result.get("error_code") in {
+                  "invalid_arguments", "count_exceeds_list_length"
+              }, result
+          print("published artifact proof: all shards executed")
+          PY
+
+      - name: npm artifact install + import proof
+        run: |
+          mkdir -p /tmp/algenta-audit-npm
+          cd /tmp/algenta-audit-npm
+          npm init -y >/dev/null
+          npm install algenta-sdk
+          node -e "const sdk = require('algenta-sdk'); for (const name of ['AlgentaClient','DecisionEngineClient','Runtime','MojoRuntime','libraries','CONTRACT_VERSION']) { if (!(name in sdk)) { throw new Error('missing export: ' + name); } } console.log('npm artifact proof: CJS exports present');"
+          node --input-type=module -e "import { MojoRuntime, libraries, CONTRACT_VERSION } from 'algenta-sdk'; if (!MojoRuntime || !libraries || !CONTRACT_VERSION) throw new Error('missing ESM named exports'); console.log('npm artifact proof: ESM named imports present');"

@@ -235,3 +235,62 @@ def test_consume_local_credit_fails_closed_when_runtime_missing(
         consume_local_credit(enabled=True, run_sync=lambda coro: True)
 
     assert excinfo.value.code == "hosted_local_runtime_unavailable"
+
+
+def _block_apps_privacy_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Simulate a packaged (pip) install: `apps` does not ship in the wheel."""
+    original_import = builtins.__import__
+
+    def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "apps.privacy_policy":
+            raise ImportError("No module named 'apps' (packaged install)")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", _guarded_import)
+    monkeypatch.delitem(sys.modules, "apps.privacy_policy", raising=False)
+
+
+def test_packaged_install_policy_fallback_keeps_typed_semantics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A pip-installed runtime has no `apps` package; the privacy-policy seam must fall back
+    # to env-derived policy instead of raising ModuleNotFoundError mid-configuration.
+    _block_apps_privacy_policy(monkeypatch)
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.delenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", raising=False)
+
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "saas")
+    assert uses_hosted_local_limits(mode="local", enforce_limits=True) is True
+
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "self_hosted")
+    assert uses_hosted_local_limits(mode="local", enforce_limits=True) is False
+
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
+    assert uses_hosted_local_limits(mode="local", enforce_limits=True) is False
+
+
+def test_packaged_install_air_gapped_entitlement_fails_closed_typed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # air_gapped implies require_local_license; with no `apps` runtime components present the
+    # entitlement check must fail closed with the typed code, never ModuleNotFoundError.
+    _block_apps_privacy_policy(monkeypatch)
+    monkeypatch.setenv("ALGENTA_DEPLOYMENT_MODE", "air_gapped")
+    monkeypatch.delenv("ALGENTA_REQUIRE_LOCAL_LICENSE", raising=False)
+    monkeypatch.delenv("ALGENTA_ENFORCE_LICENSE_VALIDATION", raising=False)
+
+    original_import = builtins.__import__
+
+    def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name in {"apps.privacy_policy", "apps.runtime.license"}:
+            raise ImportError(f"No module named {name!r} (packaged install)")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", _guarded_import)
+
+    with pytest.raises(RuntimeConfigurationError) as excinfo:
+        ensure_local_execution_entitlement(
+            enabled=False, api_key="", current_license=None
+        )
+
+    assert excinfo.value.code == "hosted_local_runtime_unavailable"

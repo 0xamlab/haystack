@@ -143,6 +143,10 @@ fn shift_rows(state: List[Int]) -> List[Int]:
     Row 2: shift left by 2
     Row 3: shift left by 3
     """
+    # Anything but a full 16-byte state has no ShiftRows answer; the fixed-index reads
+    # below abort the worker on a short state, so refuse with an empty result.
+    if len(state) != 16:
+        return List[Int]()
     var out = List[Int](capacity=16)
     for _ in range(16):
         out.append(0)
@@ -165,6 +169,10 @@ fn inv_shift_rows(state: List[Int]) -> List[Int]:
     Row 2: shift right by 2
     Row 3: shift right by 3
     """
+    # Anything but a full 16-byte state has no inverse ShiftRows answer; the fixed-index
+    # reads below abort the worker on a short state, so refuse with an empty result.
+    if len(state) != 16:
+        return List[Int]()
     var out = List[Int](capacity=16)
     for _ in range(16):
         out.append(0)

@@ -144,6 +144,13 @@ fn hadamard_product(
     """
     var m = _mat_rows(A)
     var n = _mat_cols(A)
+    # A missing or ragged B (or ragged A) would be read past its end below
+    # (uncatchable abort), so refuse with an empty result.
+    if len(B) != m:
+        return List[List[Float64]]()
+    for i in range(m):
+        if len(A[i]) != n or len(B[i]) != n:
+            return List[List[Float64]]()
     var C = List[List[Float64]]()
     for i in range(m):
         var row = List[Float64]()
@@ -164,14 +171,24 @@ fn matrix_power(
     A must be square. n >= 0.
     """
     var size = _mat_rows(A)
-    if n == 0:
+    # A must be square and non-ragged, else _mat_mul below reads past row
+    # ends (uncatchable abort). Negative n has no meaning here, and an
+    # untrusted n is clamped so it cannot drive unbounded work.
+    if n < 0 or _mat_cols(A) != size:
+        return List[List[Float64]]()
+    for i in range(size):
+        if len(A[i]) != size:
+            return List[List[Float64]]()
+    var exp = n
+    if exp > 1000:
+        exp = 1000
+    if exp == 0:
         return _mat_identity(size)
-    if n == 1:
+    if exp == 1:
         return A.copy()
 
     var result = _mat_identity(size)
     var base = A.copy()
-    var exp = n
     while exp > 0:
         if exp % 2 == 1:
             result = _mat_mul(result, base)
@@ -222,9 +239,20 @@ fn matrix_exp_approx(
         Approximation of e^A.
     """
     var size = _mat_rows(A)
+    # A must be square and non-ragged, else _mat_mul below reads past row
+    # ends (uncatchable abort). An untrusted terms count is clamped so it
+    # cannot drive unbounded iteration.
+    if _mat_cols(A) != size:
+        return List[List[Float64]]()
+    for i in range(size):
+        if len(A[i]) != size:
+            return List[List[Float64]]()
+    var n_terms = terms
+    if n_terms > 1000:
+        n_terms = 1000
     var result = _mat_identity(size)
     var term = _mat_identity(size)  # A^k / k!
-    for k in range(1, terms):
+    for k in range(1, n_terms):
         term = _mat_mul(term, A)
         term = _mat_scale(term, 1.0 / Float64(k))
         result = _mat_add(result, term)
@@ -340,6 +368,14 @@ fn commutator(
     Returns:
         AB - BA.
     """
+    # Both matrices must be square and same size, else _mat_mul below reads
+    # past row ends (uncatchable abort), so refuse with an empty result.
+    var na = _mat_rows(A)
+    if _mat_cols(A) != na or _mat_rows(B) != na or _mat_cols(B) != na:
+        return List[List[Float64]]()
+    for i in range(na):
+        if len(A[i]) != na or len(B[i]) != na:
+            return List[List[Float64]]()
     var AB = _mat_mul(A, B)
     var BA = _mat_mul(B, A)
     return _mat_sub(AB, BA)

@@ -52,6 +52,8 @@ fn sv_dot(
     idx_b: List[Int], val_b: List[Float64],
 ) -> Float64:
     """Sparse dot product. Two-pointer merge on sorted indices."""
+    if len(idx_a) != len(val_a) or len(idx_b) != len(val_b):
+        return 0.0
     var result: Float64 = 0.0
     var i = 0
     var j = 0
@@ -77,6 +79,8 @@ fn sv_add(
     idx_b: List[Int], val_b: List[Float64],
 ) -> List[List[Float64]]:
     """Sparse addition. Returns [[merged_indices_as_float], [merged_values]]."""
+    if len(idx_a) != len(val_a) or len(idx_b) != len(val_b):
+        return List[List[Float64]]()
     var na = len(idx_a)
     var nb = len(idx_b)
     if _same_indices(idx_a, idx_b):
@@ -157,6 +161,8 @@ fn sv_cosine(
     idx_b: List[Int], val_b: List[Float64],
 ) -> Float64:
     """Cosine similarity between two sparse vectors."""
+    if len(idx_a) != len(val_a) or len(idx_b) != len(val_b):
+        return 0.0
     var dot = sv_dot(idx_a, val_a, idx_b, val_b)
     var na = sv_norm(val_a)
     var nb = sv_norm(val_b)
@@ -171,6 +177,8 @@ fn sv_cosine(
 fn sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Float64]:
     """Convert sparse representation to dense vector."""
     if size <= 0:
+        return List[Float64]()
+    if len(indices) != len(values):
         return List[Float64]()
     if len(values) == size and _is_identity_indices(indices, size):
         return values.copy()
