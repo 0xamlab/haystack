@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./runtime_daemon_client.js", () => ({
+  executeQuery: vi.fn(),
   executeRuntimeLibrary: vi.fn(),
   getRuntimeLibraryHealth: vi.fn(),
   listRuntimeLibraryModules: vi.fn(),
@@ -11,7 +12,9 @@ import {
   MojoFunctionNotRegisteredError,
   MojoRuntimeConfigurationError,
 } from "./mojo_errors.js";
+import { Query, QueryError } from "./query.js";
 import {
+  executeQuery,
   executeRuntimeLibrary,
   getRuntimeLibraryHealth,
   listRuntimeLibraryModules,
@@ -20,6 +23,7 @@ import {
 const listRuntimeLibraryModulesMock = vi.mocked(listRuntimeLibraryModules);
 const executeRuntimeLibraryMock = vi.mocked(executeRuntimeLibrary);
 const getRuntimeLibraryHealthMock = vi.mocked(getRuntimeLibraryHealth);
+const executeQueryMock = vi.mocked(executeQuery);
 
 describe("MojoRuntime libraries surface", () => {
   afterEach(() => {
@@ -534,5 +538,56 @@ describe("MojoRuntime libraries surface", () => {
     expect(catalog.listFunctions("ab_testing")).toEqual(["power"]);
     expect((catalog as Record<string, unknown>).ab_testing).toBeDefined();
     expect((catalog as Record<string, unknown>)["ab.testing"]).toBeDefined();
+  });
+
+  it("runs a Query plan and decodes a successful engine response", async () => {
+    executeQueryMock.mockResolvedValue({
+      response: {
+        result: { columns: ["a"], rows: [[1, null]] },
+        lineage: [{ op: "select", detail: "1 columns" }],
+        plan_hash: "deadbeef",
+        ops: 1,
+      },
+      latency_ms: 12,
+      engine_used: "mojo",
+      request_id: null,
+    });
+
+    const runtime = new MojoRuntime({ mode: "local" });
+    const query = new Query({ columns: ["a", "b"], rows: [[1, 2]] }).select("a");
+    const result = await runtime.query(query);
+
+    expect(result.columns).toEqual(["a"]);
+    expect(result.rows).toEqual([[1, null]]);
+    expect(result.planHash).toBe("deadbeef");
+    expect(result.ops).toBe(1);
+    expect(result.nonFiniteCells).toBe(0);
+    expect(executeQueryMock).toHaveBeenCalledWith(
+      { mode: "local" },
+      { request: query.toRequest() },
+    );
+  });
+
+  it("throws QueryError, naming the op index, when the engine refuses a plan", async () => {
+    executeQueryMock.mockResolvedValue({
+      response: {
+        error_code: "invalid_arguments",
+        error_message: "join requires 'table'",
+        op_index: 0,
+      },
+      latency_ms: 3,
+      engine_used: "mojo",
+      request_id: null,
+    });
+
+    const runtime = new MojoRuntime({ mode: "local" });
+    const query = new Query({ columns: ["a"], rows: [[1]] }).select("a");
+
+    await expect(runtime.query(query)).rejects.toMatchObject({
+      code: "invalid_arguments",
+      message: "join requires 'table'",
+      opIndex: 0,
+    });
+    await expect(runtime.query(query)).rejects.toBeInstanceOf(QueryError);
   });
 });

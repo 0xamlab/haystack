@@ -316,6 +316,174 @@ class Executor:
             "error": error_message if has_error else "",
         }
 
+    async def execute_query(
+        self,
+        request_json: str,
+        request_id: str = "",
+    ) -> dict[str, Any]:
+        """
+        Execute a query plan against the bundled worker's "query_execute" message
+        type (`mojo/engine/query/plan.mojo`). Returns
+        {"response_json", "latency_ms", "engine_used", "success", "error"}.
+
+        `response_json` carries the engine's own answer, OR its own refusal
+        (`{"error_code":..., "error_message":...}` -- an unknown table, a bad join
+        key, an over-budget plan, etc.), verbatim -- both are a SUCCESSFUL round
+        trip, so `success`/`error` here describe only whether the request reached
+        and was answered by the engine, never whether the PLAN itself was accepted.
+        A caller distinguishes a refused plan by `error_code` inside the decoded
+        `response_json`, exactly as `packages/algenta/algenta/query.py`'s
+        `run_query` already does talking to the bundled worker directly.
+        """
+        from apps.runtime.ledger import append_event
+
+        task_id = request_id or f"task_{uuid.uuid4().hex}"
+
+        try:
+            payload = json.loads(request_json)
+        except json.JSONDecodeError as exc:
+            return {
+                "response_json": "null",
+                "latency_ms": 0.0,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": f"invalid_arguments: request_json is not valid JSON ({exc}).",
+            }
+        if not isinstance(payload, dict):
+            return {
+                "response_json": "null",
+                "latency_ms": 0.0,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": "invalid_arguments: request_json must decode to a JSON object.",
+            }
+        # Forced, never trusted from the caller. This path bypasses
+        # `mojo_library_runner`'s function-spec validation entirely, so nothing
+        # else stands between an arbitrary "type" value and `main.mojo`'s own
+        # dispatch -- including "shutdown", which would take down the shared
+        # worker for every OTHER caller on this socket, not just this request.
+        payload["type"] = "query_execute"
+
+        # ── Credit check (local quota enforcement), same gate execute_module uses ──
+        from apps.runtime.credits import consume_credit
+
+        if not await consume_credit():
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_query",
+                status="blocked",
+                target="query_execute",
+                request_id=request_id,
+                engine_used="blocked",
+                latency_ms=0.0,
+                success=False,
+                error="execution_quota_exhausted",
+            )
+            return {
+                "response_json": "null",
+                "latency_ms": 0.0,
+                "engine_used": "blocked",
+                "success": False,
+                "error": (
+                    "execution_quota_exhausted: no execution credits remaining. "
+                    "The daemon will refresh automatically when the server is reachable, "
+                    "or run `algenta login` to re-register."
+                ),
+            }
+
+        append_event(
+            task_id=task_id,
+            surface="runtime",
+            action="execute_query",
+            status="started",
+            target="query_execute",
+            request_id=request_id,
+        )
+        t0 = time.monotonic()
+
+        try:
+            if not self._mojo_available():
+                return {
+                    "response_json": "null",
+                    "latency_ms": round((time.monotonic() - t0) * 1000, 2),
+                    "engine_used": "unavailable",
+                    "success": False,
+                    "error": (
+                        "compute_runtime_unavailable: local Mojo runtime is "
+                        "not available. Start the daemon with a compiled Mojo binary."
+                    ),
+                }
+            raw = await _mojo_call(payload, self._mojo_sock)
+        except (ConnectionRefusedError, FileNotFoundError, OSError) as exc:
+            logger.warning("mojo_socket_unavailable", sock=self._mojo_sock, error=str(exc))
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_query",
+                status="failed",
+                target="query_execute",
+                request_id=request_id,
+                engine_used="unavailable",
+                latency_ms=latency_ms,
+                success=False,
+                error="compute_runtime_unavailable",
+            )
+            return {
+                "response_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unavailable",
+                "success": False,
+                "error": (
+                    "compute_runtime_unavailable: local Mojo runtime connection failed. "
+                    "Start the daemon before executing a query."
+                ),
+            }
+        except Exception as exc:
+            latency_ms = round((time.monotonic() - t0) * 1000, 2)
+            append_event(
+                task_id=task_id,
+                surface="runtime",
+                action="execute_query",
+                status="failed",
+                target="query_execute",
+                request_id=request_id,
+                engine_used="unknown",
+                latency_ms=latency_ms,
+                success=False,
+                error=str(exc),
+            )
+            return {
+                "response_json": "null",
+                "latency_ms": latency_ms,
+                "engine_used": "unknown",
+                "success": False,
+                "error": str(exc),
+            }
+
+        latency_ms = round((time.monotonic() - t0) * 1000, 2)
+        engine_error = raw.get("error_code") if isinstance(raw, dict) else None
+        append_event(
+            task_id=task_id,
+            surface="runtime",
+            action="execute_query",
+            status="completed" if not engine_error else "refused",
+            target="query_execute",
+            request_id=request_id,
+            engine_used="mojo",
+            latency_ms=latency_ms,
+            success=True,
+            error=str(engine_error or ""),
+        )
+        return {
+            "response_json": json.dumps(raw),
+            "latency_ms": latency_ms,
+            "engine_used": "mojo",
+            "success": True,
+            "error": "",
+        }
+
     def list_modules(self) -> list[dict[str, object]]:
         """Return runtime-executable modules with their functions and engine availability."""
         result: list[dict[str, Any]] = []

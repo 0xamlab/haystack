@@ -168,6 +168,58 @@ class _CodnaRuntimeServicer(runtime_pb2_grpc_module.CodnaRuntimeServicer):  # ty
             request_id=request.request_id,
         )
 
+    # ── ExecuteQuery ──────────────────────────────────────────────────────────
+
+    async def ExecuteQuery(  # noqa: N802
+        self,
+        request: Any,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
+        """Execute a query plan (`query/plan.mojo`'s `query_execute` op).
+
+        Gated the same way `ExecuteModule` is — `is_module_permitted` was already a
+        flat capability-name check, not specifically a Mojo-module-name one, so
+        `"query_execute"` (the same name `apps/runtime/mojo_capability_manifest.py`'s
+        `SURFACES` already lists) slots in as the capability being permitted, with no
+        change to the entitlement system itself.
+        """
+        entitlement = check_entitlement()
+        if not is_module_permitted("query_execute", entitlement):
+            await context.abort(
+                grpc.StatusCode.PERMISSION_DENIED,
+                (
+                    "Query execution not permitted under current entitlement tier "
+                    f"'{entitlement.tier}'."
+                ),
+            )
+
+        if not request.request_json:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "request_json is required.")
+
+        async with worker_slot():
+            result = await self._executor.execute_query(
+                request_json=request.request_json,
+                request_id=request.request_id,
+            )
+        metering.record(
+            UsageEvent(
+                event_type="execute_query",
+                module="query",
+                engine_used=result["engine_used"],
+                latency_ms=result["latency_ms"],
+                success=result["success"],
+                request_id=request.request_id,
+            )
+        )
+        return runtime_pb2_module.QueryExecuteResponse(
+            response_json=result["response_json"],
+            latency_ms=result["latency_ms"],
+            engine_used=result["engine_used"],
+            success=result["success"],
+            error=result["error"],
+            request_id=request.request_id,
+        )
+
     # ── VerifyAndExecute ──────────────────────────────────────────────────────
 
     async def VerifyAndExecute(  # noqa: N802

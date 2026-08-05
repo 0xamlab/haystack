@@ -25,6 +25,8 @@ export {
   MojoRuntimeConfigurationError,
   MojoRuntimeError,
 } from './mojo_errors.js';
+export { Query, QueryError, QueryResult, Expr, col, lit, caseWhen } from './query.js';
+export type { QueryConfig, QueryTableSpec } from './query.js';
 export type { AlgentaClientConfig, CodnaClientConfig, DecisionEngineClientConfig } from './client.js';
 export type {
   ImportBundlePreviewOptions,

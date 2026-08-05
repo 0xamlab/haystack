@@ -8,6 +8,7 @@ type RuntimeClientHandlers = {
   Health?: (request: unknown, options: unknown, callback: (error: unknown, response: unknown) => void) => void;
   ListModules?: (request: unknown, options: unknown, callback: (error: unknown, response: unknown) => void) => void;
   ExecuteModule?: (request: unknown, options: unknown, callback: (error: unknown, response: unknown) => void) => void;
+  ExecuteQuery?: (request: unknown, options: unknown, callback: (error: unknown, response: unknown) => void) => void;
   close?: () => void;
 };
 
@@ -209,6 +210,84 @@ describe("runtime daemon client", () => {
     ).rejects.toMatchObject({
       code: "compute_runtime_unavailable",
       message: "The local runtime returned a malformed function for 'ab_testing'.",
+    });
+  });
+
+  it("sends a query plan as request_json and decodes the raw engine response", async () => {
+    let capturedRequest: unknown;
+    currentHandlers = {
+      ExecuteQuery: (request, _options, callback) => {
+        capturedRequest = request;
+        callback(null, {
+          response_json: JSON.stringify({
+            result: { columns: ["a"], rows: [[1.0]] },
+            lineage: [],
+            plan_hash: "abc123",
+            ops: 1,
+          }),
+          latency_ms: 5.5,
+          engine_used: "mojo",
+          success: true,
+          request_id: "req_query_1",
+        });
+      },
+      close: vi.fn(),
+    };
+
+    const runtimeDaemonClient = await import("./runtime_daemon_client.js");
+    const result = await runtimeDaemonClient.executeQuery(
+      { timeout: 500 },
+      {
+        request: { type: "query_execute", columns: ["a"], rows: [[1]], ops: [], strict: false },
+        request_id: "req_query_1",
+      },
+    );
+
+    expect(capturedRequest).toEqual({
+      request_json: JSON.stringify({
+        type: "query_execute",
+        columns: ["a"],
+        rows: [[1]],
+        ops: [],
+        strict: false,
+      }),
+      request_id: "req_query_1",
+    });
+    expect(result.response).toEqual({
+      result: { columns: ["a"], rows: [[1.0]] },
+      lineage: [],
+      plan_hash: "abc123",
+      ops: 1,
+    });
+    expect(result.latency_ms).toBe(5.5);
+    expect(result.engine_used).toBe("mojo");
+    expect(result.request_id).toBe("req_query_1");
+  });
+
+  it("throws on a query transport failure, distinct from an engine-side plan refusal", async () => {
+    currentHandlers = {
+      ExecuteQuery: (_request, _options, callback) =>
+        callback(null, {
+          response_json: "null",
+          latency_ms: 0,
+          engine_used: "unavailable",
+          success: false,
+          error: "compute_runtime_unavailable: local Mojo runtime is not available.",
+          request_id: "",
+        }),
+      close: vi.fn(),
+    };
+
+    const runtimeDaemonClient = await import("./runtime_daemon_client.js");
+
+    await expect(
+      runtimeDaemonClient.executeQuery(
+        { timeout: 500 },
+        { request: { type: "query_execute", columns: ["a"], rows: [], ops: [], strict: false } },
+      ),
+    ).rejects.toMatchObject({
+      code: "compute_runtime_unavailable",
+      message: "local Mojo runtime is not available.",
     });
   });
 

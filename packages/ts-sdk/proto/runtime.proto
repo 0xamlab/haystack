@@ -7,6 +7,7 @@ service CodnaRuntime {
   rpc GetRuntimeInfo(RuntimeInfoRequest) returns (RuntimeInfoResponse);
   rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
   rpc ExecuteModule(ExecuteRequest) returns (ExecuteResponse);
+  rpc ExecuteQuery(QueryExecuteRequest) returns (QueryExecuteResponse);
   rpc VerifyAndExecute(VerifyAndExecuteRequest) returns (VerifyAndExecuteResponse);
   rpc GetEntitlementStatus(EntitlementRequest) returns (EntitlementResponse);
 }
@@ -53,6 +54,23 @@ message ExecuteRequest {
 
 message ExecuteResponse {
   string result_json = 1;
+  double latency_ms = 2;
+  string engine_used = 3;
+  bool success = 4;
+  string error = 5;
+  string request_id = 6;
+}
+
+// request_json / response_json carry the exact wire body query/plan.mojo's
+// "query_execute" message defines -- opaque to this schema on purpose, so the
+// query plane's op vocabulary can grow without a proto change here.
+message QueryExecuteRequest {
+  string request_json = 1;
+  string request_id = 2;
+}
+
+message QueryExecuteResponse {
+  string response_json = 1;
   double latency_ms = 2;
   string engine_used = 3;
   bool success = 4;

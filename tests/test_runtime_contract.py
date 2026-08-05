@@ -94,6 +94,92 @@ def test_executor_appends_runtime_ledger(monkeypatch, tmp_path) -> None:
     assert all(event["request_id"] == "req-ledger" for event in events)
 
 
+def test_executor_execute_query_appends_ledger_and_returns_response_json(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    _reload("apps.runtime.ledger")
+    credits = _reload("apps.runtime.credits")
+    executor_mod = _reload("apps.runtime.executor")
+
+    store = credits.CreditStore(tmp_path / "credits.json")
+    store.initialize_sync(credits_granted=5, billing_period="2026-04")
+    old_store = credits._store
+    credits._store = store
+    engine_response = {
+        "result": {"columns": ["a"], "rows": [[1.0]]},
+        "lineage": [{"op": "join", "detail": "1 joined rows"}],
+        "plan_hash": "deadbeef",
+        "ops": 1,
+    }
+    try:
+        executor = executor_mod.Executor()
+        with patch.object(executor, "_mojo_available", return_value=True):
+            with patch(
+                "apps.runtime.executor._mojo_call", return_value=engine_response
+            ) as mock_call:
+                result = _run_async(
+                    executor.execute_query(
+                        json.dumps({"type": "query_execute", "ops": []}),
+                        request_id="req-query",
+                    )
+                )
+    finally:
+        credits._store = old_store
+
+    assert result["success"] is True
+    assert result["engine_used"] == "mojo"
+    assert json.loads(result["response_json"]) == engine_response
+    mock_call.assert_called_once()
+    assert mock_call.call_args.args[0]["type"] == "query_execute"
+
+    ledger_path = tmp_path / "history.jsonl"
+    events = [json.loads(line) for line in ledger_path.read_text().splitlines()]
+    statuses = [event["status"] for event in events]
+    assert statuses == ["started", "completed"]
+    assert all(event["request_id"] == "req-query" for event in events)
+
+
+def test_executor_execute_query_forces_type_regardless_of_caller_input(
+    monkeypatch, tmp_path
+) -> None:
+    """A caller's JSON is never trusted for `type` -- this RPC bypasses the
+    function-spec validation `execute_module` goes through, so nothing else
+    stands between an arbitrary `type` (e.g. "shutdown") and the shared worker."""
+    monkeypatch.setenv("ALGENTA_RUNTIME_DIR", str(tmp_path))
+    _reload("apps.runtime.ledger")
+    credits = _reload("apps.runtime.credits")
+    executor_mod = _reload("apps.runtime.executor")
+
+    store = credits.CreditStore(tmp_path / "credits.json")
+    store.initialize_sync(credits_granted=5, billing_period="2026-04")
+    old_store = credits._store
+    credits._store = store
+    try:
+        executor = executor_mod.Executor()
+        with patch.object(executor, "_mojo_available", return_value=True):
+            with patch(
+                "apps.runtime.executor._mojo_call", return_value={"status": "ready"}
+            ) as mock_call:
+                _run_async(
+                    executor.execute_query(json.dumps({"type": "shutdown"}))
+                )
+    finally:
+        credits._store = old_store
+
+    assert mock_call.call_args.args[0]["type"] == "query_execute"
+
+
+def test_executor_execute_query_rejects_invalid_json_before_any_call(tmp_path) -> None:
+    executor_mod = _reload("apps.runtime.executor")
+    executor = executor_mod.Executor()
+    with patch("apps.runtime.executor._mojo_call") as mock_call:
+        result = _run_async(executor.execute_query("not json"))
+    mock_call.assert_not_called()
+    assert result["success"] is False
+    assert "not valid JSON" in result["error"]
+
+
 def test_executor_routes_runtime_library_calls_through_compiled_worker(
     monkeypatch,
     tmp_path,

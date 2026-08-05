@@ -54,6 +54,11 @@ interface RuntimeGrpcClient {
     options: { deadline: number },
     callback: (error: unknown, response: GrpcExecuteResponse) => void,
   ): void;
+  ExecuteQuery(
+    request: GrpcQueryExecuteRequest,
+    options: { deadline: number },
+    callback: (error: unknown, response: GrpcQueryExecuteResponse) => void,
+  ): void;
   close(): void;
 }
 
@@ -106,6 +111,20 @@ interface GrpcExecuteResponse {
   request_id?: string;
 }
 
+interface GrpcQueryExecuteRequest {
+  request_json: string;
+  request_id: string;
+}
+
+interface GrpcQueryExecuteResponse {
+  response_json?: string;
+  latency_ms: number;
+  engine_used: string;
+  success: boolean;
+  error?: string;
+  request_id?: string;
+}
+
 let loadedRuntimeGrpcPromise: Promise<LoadedRuntimeGrpc> | undefined;
 
 function resolveDaemonTarget(config: RuntimeDaemonConfig): string {
@@ -133,7 +152,7 @@ function parseJsonResult(resultJson: string | undefined): unknown {
   } catch (error) {
     throw new MojoExecutionError(
       "compute_runtime_unavailable",
-      "The local runtime returned malformed JSON for a Mojo library call.",
+      "The local runtime returned malformed JSON for a runtime call.",
       {
         result_json: resultJson,
         error: error instanceof Error ? error.message : String(error),
@@ -375,7 +394,10 @@ async function withRuntimeClient<T>(
 
 function callUnary<RequestShape, ResponseShape>(
   client: RuntimeGrpcClient,
-  methodName: keyof Pick<RuntimeGrpcClient, "Health" | "ListModules" | "ExecuteModule">,
+  methodName: keyof Pick<
+    RuntimeGrpcClient,
+    "Health" | "ListModules" | "ExecuteModule" | "ExecuteQuery"
+  >,
   request: RequestShape,
   deadline: number,
 ): Promise<ResponseShape> {
@@ -393,6 +415,10 @@ function callUnary<RequestShape, ResponseShape>(
     }
     if (methodName === "ListModules") {
       client.ListModules(request as Record<string, never>, { deadline }, callback as never);
+      return;
+    }
+    if (methodName === "ExecuteQuery") {
+      client.ExecuteQuery(request as GrpcQueryExecuteRequest, { deadline }, callback as never);
       return;
     }
     client.ExecuteModule(request as GrpcExecuteRequest, { deadline }, callback as never);
@@ -462,6 +488,60 @@ export async function executeRuntimeLibrary(
       module: request.module,
       function: request.function,
       result: parseJsonResult(response.result_json),
+      latency_ms: response.latency_ms,
+      engine_used: response.engine_used,
+      request_id: response.request_id || request.request_id || null,
+    };
+  });
+}
+
+export interface QueryExecutionRequest {
+  /** The `{"ops":[...], "columns":[...], ...}` body a `Query` builder produces.
+   * `"type"` is stamped server-side and is never read from this object. */
+  request: Record<string, unknown>;
+  request_id?: string;
+}
+
+export interface QueryExecutionResponse {
+  /** The engine's raw response: either `{"result":{...},"lineage":[...],
+   * "plan_hash":...,"ops":N}` or `{"error_code":...,"error_message":...}` on a
+   * refused plan -- that is an ENGINE-side answer. A transport/availability
+   * failure (the worker unreachable, request_json malformed) throws instead,
+   * exactly as `executeRuntimeLibrary` does for a library call. */
+  response: Record<string, unknown>;
+  latency_ms: number;
+  engine_used: string;
+  request_id: string | null;
+}
+
+export async function executeQuery(
+  config: RuntimeDaemonConfig = {},
+  request: QueryExecutionRequest,
+): Promise<QueryExecutionResponse> {
+  return withRuntimeClient(config, async (client, deadline) => {
+    const response = await callUnary<GrpcQueryExecuteRequest, GrpcQueryExecuteResponse>(
+      client,
+      "ExecuteQuery",
+      {
+        request_json: JSON.stringify(request.request ?? {}),
+        request_id: request.request_id ?? "",
+      },
+      deadline,
+    );
+    if (!response.success) {
+      const rawMessage = response.error?.trim() || "Local runtime query execution failed.";
+      const prefixed = /^([a-z0-9_]+):\s*(.+)$/i.exec(rawMessage);
+      throw new MojoRuntimeConfigurationError(
+        prefixed?.[1] ?? "compute_runtime_unavailable",
+        prefixed?.[2] ?? rawMessage,
+        {
+          engine_used: response.engine_used,
+          request_id: response.request_id ?? request.request_id ?? null,
+        },
+      );
+    }
+    return {
+      response: (parseJsonResult(response.response_json) ?? {}) as Record<string, unknown>,
       latency_ms: response.latency_ms,
       engine_used: response.engine_used,
       request_id: response.request_id || request.request_id || null,

@@ -23,6 +23,12 @@ service CodnaRuntime {
   // Execute a single function from a named module.
   rpc ExecuteModule(ExecuteRequest) returns (ExecuteResponse);
 
+  // Execute a query plan (query/plan.mojo's "query_execute" op) — joins, filters,
+  // aggregates, sorts, window functions and more, over inline rows or a resident
+  // dataset. Added so non-Python SDKs (which cannot spawn the bundled worker
+  // in-process the way Python does) can still reach the query plane.
+  rpc ExecuteQuery(QueryExecuteRequest) returns (QueryExecuteResponse);
+
   // Verify + execute in one call (primary hot-path RPC).
   rpc VerifyAndExecute(VerifyAndExecuteRequest) returns (VerifyAndExecuteResponse);
 
@@ -80,6 +86,34 @@ message ExecuteRequest {
 
 message ExecuteResponse {
   string result_json = 1;
+  double latency_ms = 2;
+  string engine_used = 3;   // "mojo" | "unavailable" | "blocked"
+  bool success = 4;
+  string error = 5;
+  string request_id = 6;
+}
+
+// ── Query ────────────────────────────────────────────────────────────────────
+//
+// request_json / response_json carry the exact wire body query/plan.mojo's
+// "query_execute" message already defines (the same body Python's local `Query`
+// builder sends/receives directly against the bundled worker) — opaque to this
+// schema on purpose, so the query plane's own op vocabulary (join, filter,
+// aggregate, window, ...) can grow without a proto change here. "type" is
+// stamped server-side if the caller's JSON omits it.
+
+message QueryExecuteRequest {
+  string request_json = 1;
+  string request_id = 2;    // caller-supplied idempotency key (optional)
+}
+
+message QueryExecuteResponse {
+  // The engine's raw response: either {"result":{...},"lineage":[...],
+  // "plan_hash":...,"ops":N} or {"error_code":...,"error_message":...} on a
+  // refused plan (unknown table, bad key, an over-budget join, etc.) — that is
+  // an ENGINE-side answer, distinct from `error` below, which is a TRANSPORT/
+  // availability failure (the worker was unreachable, args_json did not parse).
+  string response_json = 1;
   double latency_ms = 2;
   string engine_used = 3;   // "mojo" | "unavailable" | "blocked"
   bool success = 4;

@@ -876,10 +876,45 @@ one. `query/join.mojo`'s new public `direct_address_join_indices` wraps
 `_build_direct_address_table` and raises — naming the precondition and pointing at
 `method="hash"` — exactly when the shape does not hold, the same discipline `merge`
 already uses for its own precondition. Reachable today from the Python SDK's
-`Query.join(..., method="direct_address")`; the TypeScript SDK has no path to
-`query/join.mojo` at all yet (a pre-existing gap, unrelated to this method), so this is
-Python-only until that is addressed. Documented in `gitbook/engine/columnar-queries.md`'s
-"### direct_address" section, alongside `merge`.
+`Query.join(..., method="direct_address")`. Documented in
+`gitbook/engine/columnar-queries.md`'s "### direct_address" section, alongside `merge`.
+
+### Follow-up: the TypeScript SDK gap this file flagged is now closed at the wire/SDK level
+
+The note above ("the TypeScript SDK has no path to `query/join.mojo` at all") was true when
+written and is no longer true. `apps/runtime/proto/runtime.proto` gained a sixth RPC,
+`ExecuteQuery(QueryExecuteRequest) -> QueryExecuteResponse`, carrying the exact
+`query_execute` wire body opaquely in a JSON string field (the same idiom `ExecuteModule`'s
+`args_json`/`result_json` already use) rather than a typed schema for the query plane's own
+op vocabulary — so a new op type never needs a proto change here.
+`apps/runtime/server.py`'s `ExecuteQuery` servicer method and `apps/runtime/executor.py`'s
+`Executor.execute_query` mirror `ExecuteModule`/`execute_module`'s entitlement gate, credit
+check and ledger events exactly, with one addition specific to this path: the caller's
+`"type"` field is never trusted and is forcibly overwritten to `"query_execute"` before the
+frame reaches the shared worker socket, because this path bypasses
+`mojo_library_runner`'s function-spec validation entirely — nothing else would stop a
+malformed or malicious `request_json` from smuggling `{"type":"shutdown"}` through and
+killing the worker for every OTHER caller sharing that socket.
+
+`packages/ts-sdk/src/query.ts` is a full, tested mirror of `packages/algenta/algenta/
+query.py`'s `Query`/`Expr` builder — filter, project, select, groupBy, sort, topK,
+distinct, limit, withTable, join (including `method="direct_address"`), union, window
+and its six sugar methods — so a plan built in either language sends the same wire JSON.
+`MojoRuntime.query(query)` in `packages/ts-sdk/src/libraries.ts` decodes the response and
+throws a `QueryError` naming the op index on an engine-side refusal, exactly as Python's
+`run_query` does against the bundled worker directly.
+
+**Deliberately NOT added to `gitbook/engine/columnar-queries.md`.** The TS SDK's local
+transport still depends on the runtime daemon process being started separately — a
+different, pre-existing gap this pass did not touch (Python's bundled worker has no such
+dependency) — and `scripts/docs/audit_gitbook_claims.py`'s `RUNTIME_ENCAPSULATION_PATTERNS`
+exists specifically to keep that fact out of public docs, since the product's stated
+promise is no server to start and no sidecar to install. Advertising the new TS query
+capability publicly right now would either overstate what actually works today or force
+disclosing that dependency in the one place this repo's own policy says it must not go.
+This is code-level and test-level documented (this SDK's own JSDoc, `query.test.ts`,
+`libraries.test.ts`, `runtime_daemon_client.test.ts`); the public GitBook page stays
+Python-only until the daemon dependency itself is resolved.
 
 ## Method
 
