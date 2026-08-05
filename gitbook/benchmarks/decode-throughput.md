@@ -18,6 +18,26 @@ tok/s against mlx-lm's 281.58 (19 of 20 rounds, ratio range 0.9924x-1.3098x). Bo
 configurations were beaten in all 14 rounds of their own measurement, too.
 {% endhint %}
 
+## Try it yourself, in 5 lines
+
+Once you have the checkpoint on disk and a tokenizer for it (see [Get the checkpoint](../guides/run-qwen3-decode.md#get-the-checkpoint) for the one-time download), decoding is one call:
+
+```python title="decode_quickstart.py"
+from algenta import MojoRuntime, qwen3_i8_allsimd7_decode
+
+runtime = MojoRuntime(mode="local")
+result = qwen3_i8_allsimd7_decode(
+    runtime, checkpoint_dir="./qwen3-0.6b-base",
+    prompt_token_ids=prompt_token_ids, max_new_tokens=16,
+)
+print(result.decode_tokens_per_sec)
+```
+
+No server to start, no sidecar to manage — the compiled Metal kernel path ships inside the
+`algenta` package itself. [Run Qwen3-0.6B-Base decode on Apple Silicon](../guides/run-qwen3-decode.md)
+is the complete version of this: install, tokenize your own prompt, and the full table of
+typed errors this call raises by name (never a silent wrong answer) instead of returning one.
+
 ## Results
 
 Decode-only tokens per second on `Qwen/Qwen3-0.6B-Base`, 16 greedy-decoded tokens from a single

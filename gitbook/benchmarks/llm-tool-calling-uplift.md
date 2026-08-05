@@ -16,6 +16,75 @@ questions, the same model, and the same data.
 it, working from the schema alone, it answers 1 of 16.**
 {% endhint %}
 
+## Try it yourself, in under 20 lines
+
+The two tools that carry almost all of the uplift above — search the capability catalog, then
+execute one real kernel — are two calls on the public SDK, no separate server and no API key
+beyond your own model provider's:
+
+```python title="llm_tool_calling_quickstart.py"
+import json
+from algenta import MojoRuntime
+from openai import OpenAI
+
+runtime = MojoRuntime(mode="local")
+catalog = runtime.capabilities()
+client = OpenAI()
+
+tools = [
+    {"type": "function", "function": {
+        "name": "search_capabilities",
+        "description": "Find a compiled Algenta kernel by function name (substring match).",
+        "parameters": {"type": "object", "properties": {
+            "function": {"type": "string"}}, "required": ["function"]},
+    }},
+    {"type": "function", "function": {
+        "name": "median",
+        "description": "The median of a list of real numbers, via a compiled Algenta kernel.",
+        "parameters": {"type": "object", "properties": {
+            "values": {"type": "array", "items": {"type": "number"}}},
+            "required": ["values"]},
+    }},
+]
+
+def dispatch(name: str, args: dict):
+    if name == "search_capabilities":
+        return [f"{m.module}.{m.function}" for m in catalog.search(function=args["function"])]
+    if name == "median":
+        # The kernel's own signature is `median(v: List[Float64], n: Int)` -- n is
+        # computed HERE, never left for the model to supply. A wrong element count
+        # is the single most dangerous kind of bad tool-call argument this SDK can
+        # receive: the kernel trusts the count it is given, and a count that does
+        # not match the real list length fires an uncatchable bounds assertion that
+        # kills the whole worker process, not a catchable exception.
+        values = args["values"]
+        return runtime.execute("stats", "median", [values, len(values)])
+    return {"error": f"unknown tool {name}"}
+
+messages = [{"role": "user", "content": "What's the median of [10, 12, 23, 23, 16, 23, 21, 16]?"}]
+resp = client.chat.completions.create(model="gpt-5-mini", messages=messages, tools=tools)
+msg = resp.choices[0].message
+messages.append(msg.model_dump(exclude_none=True))
+for call in msg.tool_calls or []:
+    result = dispatch(call.function.name, json.loads(call.function.arguments))
+    messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result)})
+
+final = client.chat.completions.create(model="gpt-5-mini", messages=messages, tools=tools)
+print(final.choices[0].message.content)
+```
+
+This is the same shape the benchmark below uses, trimmed to one kernel: search finds it, one
+tool call runs it, the model reports back a real number instead of guessing. The element count
+`n` is computed in `dispatch`, not asked of the model, on purpose — most kernels in this catalog
+take a value list plus a separate count, and letting the model supply that count is the one
+sharp edge in this whole surface (see the comment in the code above). The benchmark's full
+six-tool version — `execute` generalized to any kernel the catalog can find, plus `explain`,
+`get_column`/`get_columns`, `group_by_aggregate` for dataset-scale questions, result truncation,
+and the general-purpose version of the same count guard applied automatically across every
+declared count relation in the catalog (`_apply_count_relations`) — is the reusable,
+production-safe module at `benchmarks/algenta_llm_tools/tools.py`; see [Reproduce](#reproduce)
+below to run it directly rather than reimplementing that safety net yourself.
+
 ## Results
 
 16 objective, numerically-scored questions against a real 33,125-row CSV of purchase-quote line
