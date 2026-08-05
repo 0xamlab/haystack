@@ -838,6 +838,388 @@ fn _hash_join_probe_parallel_partitioned(
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
+fn _partition_left_rows_for_probe(
+    left_key: Float64Array,
+    n_rows: Int,
+    workers: Int,
+    mut prow: List[Int],
+    mut phash: List[UInt64],
+    mut part_start: List[Int],
+    mut ok: Bool,
+) -> Int:
+    """Buckets every MATCHABLE left row index by the same top-`JOIN_BUILD_RADIX_BITS`
+    hash bits the build side partitions on, so a later pass can probe one partition's
+    table across many consecutive rows instead of jumping between all
+    `JOIN_BUILD_RADIX_PARTITIONS` of them once per row. Exactly
+    `_build_right_index_parallel`'s own pass A + prefix-sum + pass B, with no pass 2
+    (this has no table of its own to build) and adapted to `left_key`. Null-key rows
+    (an unknown key equals nothing) are counted but never bucketed -- the caller
+    handles their LEFT-join emission separately, over the full row range, since they
+    never reach any partition's table at all.
+
+    `part_start[p]`/`part_start[p+1]` bound partition `p`'s slice of `prow`/`phash`,
+    matching `_build_right_index_parallel`'s `part_start` contract exactly. Sets
+    `ok = False` on its own write-cursor invariant failure, same discipline as that
+    function -- the caller must check it before trusting `prow`/`phash`/`part_start`.
+    """
+    ok = True
+    if n_rows <= 0:
+        prow = List[Int]()
+        phash = List[UInt64]()
+        part_start = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS + 1, fill=0)
+        return 0
+
+    var band = (n_rows + workers - 1) // workers
+
+    var hrow = alloc[UInt64](n_rows)
+    var counts = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    var w_nulls = List[Int](length=workers, fill=0)
+    var cp = counts.unsafe_ptr()
+    var np = w_nulls.unsafe_ptr()
+
+    @parameter
+    fn count_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        var nulls = 0
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                nulls += 1
+                continue
+            var h = hash_bits(normalize_bits(left_key.get_unchecked(l)))
+            hrow[l] = h
+            lp[Int(h >> (64 - JOIN_BUILD_RADIX_BITS))] += 1
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            cp[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
+        np[w] = nulls
+
+    parallelize[count_worker](workers)
+
+    var offsets = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    part_start = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS + 1, fill=0)
+    var running = 0
+    for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+        part_start[p] = running
+        for w in range(workers):
+            offsets[w * JOIN_BUILD_RADIX_PARTITIONS + p] = running
+            running += counts[w * JOIN_BUILD_RADIX_PARTITIONS + p]
+    part_start[JOIN_BUILD_RADIX_PARTITIONS] = running
+    var survivors = running
+
+    prow = List[Int](length=survivors, fill=0)
+    phash = List[UInt64](length=survivors, fill=0)
+    var pr_p = prow.unsafe_ptr()
+    var ph_p = phash.unsafe_ptr()
+    var cursors = List[Int](length=workers * JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    for i in range(workers * JOIN_BUILD_RADIX_PARTITIONS):
+        cursors[i] = offsets[i]
+    var up = cursors.unsafe_ptr()
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+        var lp = local.unsafe_ptr()
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            lp[p] = up[w * JOIN_BUILD_RADIX_PARTITIONS + p]
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                continue
+            var h = hrow[l]
+            var part = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
+            var s = lp[part]
+            lp[part] = s + 1
+            pr_p[s] = l
+            ph_p[s] = h
+        for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+            up[w * JOIN_BUILD_RADIX_PARTITIONS + p] = lp[p]
+
+    parallelize[scatter_worker](workers)
+    hrow.free()
+
+    var scatter_ok = True
+    for i in range(workers * JOIN_BUILD_RADIX_PARTITIONS):
+        if cursors[i] != offsets[i] + counts[i]:
+            scatter_ok = False
+    if not scatter_ok:
+        ok = False
+
+    var null_keys = 0
+    for w in range(workers):
+        null_keys += w_nulls[w]
+    _ = len(counts) + len(offsets) + len(cursors)
+    return null_keys
+
+
+fn _clustered_count_matches(
+    left_key: Float64Array,
+    prow: List[Int],
+    phash: List[UInt64],
+    part_start: List[Int],
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+    mut match_count: List[Int],
+) -> Int:
+    """Counts each bucketed row's match count into `match_count[original_row_index]`,
+    parallelized over PARTITIONS (one worker per partition) rather than over row
+    bands: within one partition's slice of `prow`, every row probes the SAME
+    `tables[p]`, so consecutive iterations touch the same (small) table instead of
+    jumping between all `JOIN_BUILD_RADIX_PARTITIONS` of them once per row -- the
+    cache-locality property `_hash_join_probe_parallel_partitioned`'s own row-band
+    parallelization does not have, since a row-band visits partitions in whatever
+    order its rows happen to hash to.
+
+    `match_count` MUST already be sized to `left_key`'s row count and MUST have every
+    null-key row's LEFT-unmatched-emission entry already set by the caller -- this
+    only ever WRITES an entry for a row present in `prow`, which by construction
+    excludes every null-key row (see `_partition_left_rows_for_probe`).
+
+    Returns the number of MATCHABLE rows that found no match (additive with whatever
+    the caller separately tallied for null keys).
+    """
+    var emit_unmatched = join_type == JOIN_LEFT
+    var mc = match_count.unsafe_ptr()
+    var pr = prow.unsafe_ptr()
+    var ph = phash.unsafe_ptr()
+    var ps = part_start.unsafe_ptr()
+    var tp = tables.unsafe_ptr()
+    var fp = first_row.unsafe_ptr()
+
+    var unmatched = List[Int](length=JOIN_BUILD_RADIX_PARTITIONS, fill=0)
+    var ump = unmatched.unsafe_ptr()
+
+    @parameter
+    fn partition_worker(p: Int):
+        var s0 = ps[p]
+        var s1 = ps[p + 1]
+        var local_unmatched = 0
+        for s in range(s0, s1):
+            var l = pr[s]
+            var h = ph[s]
+            var bits = normalize_bits(left_key.get_unchecked(l))
+            var slot = tp[p].find_bits(bits, h)
+            if slot < 0:
+                mc[l] = 1 if emit_unmatched else 0
+                local_unmatched += 1
+                continue
+            var count = 0
+            var r = fp[p][slot]
+            while r != NO_ROW:
+                count += 1
+                r = next_row[r]
+            mc[l] = count
+        ump[p] = local_unmatched
+
+    parallelize[partition_worker](JOIN_BUILD_RADIX_PARTITIONS)
+    _ = len(prow) + len(phash) + len(part_start) + len(tables) + len(first_row)
+
+    var total_unmatched = 0
+    for p in range(JOIN_BUILD_RADIX_PARTITIONS):
+        total_unmatched += ump[p]
+    return total_unmatched
+
+
+fn _clustered_emit_matches(
+    left_key: Float64Array,
+    prow: List[Int],
+    phash: List[UInt64],
+    part_start: List[Int],
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+    row_offset: List[Int],
+    mut out_left: List[Int],
+    mut out_right: List[Int],
+):
+    """Walks every bucketed row's match chain a second time -- same partition-clustered
+    access pattern as `_clustered_count_matches` -- writing (row, match) pairs starting
+    at `row_offset[row]`, which the caller already computed from the first pass's
+    counts in ORIGINAL row order. Each row's own segment `[row_offset[row], row_offset
+    [row] + its own count)` is disjoint from every other row's, so concurrent
+    partition-workers never write the same output slot, and the OUTPUT ends up in
+    original row order despite the WORK being done partition-clustered -- the property
+    that lets this swap in for `_hash_join_probe_parallel_partitioned`'s own
+    count_worker/scatter_worker pair without changing anything downstream.
+
+    An unmatched row (LEFT only; INNER's count is already 0) writes exactly one
+    `NO_ROW` at its offset, mirroring every other probe path's own convention.
+    """
+    var emit_unmatched = join_type == JOIN_LEFT
+    var olp = out_left.unsafe_ptr()
+    var orp = out_right.unsafe_ptr()
+    var rop = row_offset.unsafe_ptr()
+    var pr = prow.unsafe_ptr()
+    var ph = phash.unsafe_ptr()
+    var ps = part_start.unsafe_ptr()
+    var tp = tables.unsafe_ptr()
+    var fp = first_row.unsafe_ptr()
+
+    @parameter
+    fn partition_worker(p: Int):
+        var s0 = ps[p]
+        var s1 = ps[p + 1]
+        for s in range(s0, s1):
+            var l = pr[s]
+            var h = ph[s]
+            var bits = normalize_bits(left_key.get_unchecked(l))
+            var slot = tp[p].find_bits(bits, h)
+            var cur = rop[l]
+            if slot < 0:
+                if emit_unmatched:
+                    olp[cur] = l
+                    orp[cur] = NO_ROW
+                continue
+            var r = fp[p][slot]
+            while r != NO_ROW:
+                olp[cur] = l
+                orp[cur] = r
+                cur += 1
+                r = next_row[r]
+
+    parallelize[partition_worker](JOIN_BUILD_RADIX_PARTITIONS)
+    _ = (
+        len(prow)
+        + len(phash)
+        + len(part_start)
+        + len(tables)
+        + len(first_row)
+        + len(row_offset)
+    )
+
+
+fn _hash_join_probe_parallel_clustered(
+    left_key: Float64Array,
+    n_rows: Int,
+    tables: List[HashIndex],
+    first_row: List[List[Int]],
+    next_row: List[Int],
+    join_type: Int,
+    workers: Int,
+) -> JoinResult:
+    """Same contract as `_hash_join_probe_parallel_partitioned` -- a partitioned-build
+    probe, parallel, one `JoinResult` -- reached through a partition-clustered access
+    pattern instead of a row-band one. See `_partition_left_rows_for_probe`,
+    `_clustered_count_matches` and `_clustered_emit_matches` for the three phases;
+    this only wires them together, computes the row-order prefix sum between them,
+    and handles null-key rows (which the bucketing pass excludes entirely).
+
+    Falls back to `_hash_join_probe_parallel_partitioned` if the bucketing pass's own
+    write-cursor invariant fails, the same discipline every parallel path in this file
+    already applies to itself.
+    """
+    var emit_unmatched = join_type == JOIN_LEFT
+    var match_count = List[Int](length=n_rows, fill=0)
+
+    var prow = List[Int]()
+    var phash = List[UInt64]()
+    var part_start = List[Int]()
+    var bucket_ok = True
+    var null_keys = _partition_left_rows_for_probe(
+        left_key, n_rows, workers, prow, phash, part_start, bucket_ok
+    )
+    if not bucket_ok:
+        print(
+            "query.join: clustered probe bucketing write-cursor invariant violated;"
+            " falling back to the row-band partitioned probe"
+        )
+        return _hash_join_probe_parallel_partitioned(
+            left_key, n_rows, tables, first_row, next_row, join_type, workers
+        )
+
+    # Null-key rows never reach `prow`, so mark their LEFT-emission count here, over
+    # the full row range -- cheap (no big-table access), and the only place these
+    # rows are visited at all in this path.
+    if emit_unmatched:
+        var band = (n_rows + workers - 1) // workers
+        var mc0 = match_count.unsafe_ptr()
+
+        @parameter
+        fn null_mark_worker(w: Int):
+            var lo = w * band
+            var hi = lo + band
+            if hi > n_rows:
+                hi = n_rows
+            for l in range(lo, hi):
+                if not is_matchable_key(left_key, l):
+                    mc0[l] = 1
+
+        parallelize[null_mark_worker](workers)
+
+    var matchable_unmatched = _clustered_count_matches(
+        left_key,
+        prow,
+        phash,
+        part_start,
+        tables,
+        first_row,
+        next_row,
+        join_type,
+        match_count,
+    )
+
+    var row_offset = List[Int](length=n_rows, fill=0)
+    var running = 0
+    for l in range(n_rows):
+        row_offset[l] = running
+        running += match_count[l]
+    var total = running
+
+    var out_left = List[Int](length=total, fill=0)
+    var out_right = List[Int](length=total, fill=0)
+    _clustered_emit_matches(
+        left_key,
+        prow,
+        phash,
+        part_start,
+        tables,
+        first_row,
+        next_row,
+        join_type,
+        row_offset,
+        out_left,
+        out_right,
+    )
+
+    # `_clustered_emit_matches` only ever visits rows present in `prow`, which by
+    # construction excludes every null-key row -- so a null-key row's own slot at
+    # `row_offset[l]` (correctly SIZED by `null_mark_worker`'s count above) is never
+    # actually WRITTEN by that pass, and would otherwise sit at its `fill=0` default
+    # (`(0, 0)`, a wrong answer) instead of `(l, NO_ROW)`. Same cheap full-row-range
+    # pass shape as `null_mark_worker`, run once `row_offset` is known.
+    if emit_unmatched:
+        var band2 = (n_rows + workers - 1) // workers
+        var olp0 = out_left.unsafe_ptr()
+        var orp0 = out_right.unsafe_ptr()
+        var rop0 = row_offset.unsafe_ptr()
+
+        @parameter
+        fn null_emit_worker(w: Int):
+            var lo = w * band2
+            var hi = lo + band2
+            if hi > n_rows:
+                hi = n_rows
+            for l in range(lo, hi):
+                if not is_matchable_key(left_key, l):
+                    olp0[rop0[l]] = l
+                    orp0[rop0[l]] = NO_ROW
+
+        parallelize[null_emit_worker](workers)
+        _ = len(row_offset)
+
+    var unmatched = null_keys + matchable_unmatched
+    return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
+
+
 fn _hash_join_probe_partitioned(
     left_key: Float64Array,
     n_rows: Int,

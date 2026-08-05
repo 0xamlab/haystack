@@ -603,6 +603,140 @@ Re-attempting prefetch-distance tuning (a different constant than 8, e.g.) is ve
 unlikely to flip a directionally-consistent regression measured across 10 total reps
 into a win, and should not be the next thing tried.
 
+## Update #5 (2026-08): partition-clustered probe — a real, small isolated gain that does not survive the full pipeline's noise, kept but not shipped as default
+
+Update #4 closed by ruling out constant-factor trimming and software prefetch,
+and pointed at two remaining levers: a genuinely different per-row loop shape,
+or a different algorithm for the near-1:1 case specifically. This is the
+loop-shape attempt.
+
+**The idea.** The build already radix-partitions the right side
+(`_build_right_index_parallel`, `JOIN_BUILD_RADIX_BITS = 4`, 16 partitions) — but
+the existing row-band probe (`_hash_join_probe_parallel_partitioned`) still visits
+LEFT rows in ORIGINAL row order, computing each row's partition on the fly. Since
+row order has no relationship to which partition a row's key hashes to, one worker's
+band jumps between all 16 partition tables essentially once per row, defeating any
+cache locality the partitioning could otherwise buy — the same reason Update #4's
+prefetch attempt found nothing worth hiding: there was no locality to exploit in
+the first place.
+
+**What was built.** `_hash_join_probe_parallel_clustered` and its three phases:
+
+1. `_partition_left_rows_for_probe` — buckets every matchable left row's index by the
+   same top hash bits the build partitions on, reusing `_build_right_index_parallel`'s
+   own pass-A / prefix-sum / pass-B shape (count into `(worker, partition)` buckets,
+   convert to offsets, scatter row index + precomputed hash into a flat array), just
+   with no pass-2 table build since this has no table of its own.
+2. `_clustered_count_matches` — parallel over PARTITIONS (not row bands): each worker
+   owns one partition, walks only the left rows bucketed into it, and probes ONLY that
+   partition's table, so consecutive iterations touch the same (small) table instead of
+   a different one almost every row.
+3. `_clustered_emit_matches` — the same partition-clustered walk a second time, writing
+   `(left, right)` pairs starting at each row's own precomputed offset (from a row-order
+   prefix sum run between the two passes) — which is what keeps the OUTPUT in original
+   row order despite the WORK being done partition-clustered, so nothing downstream
+   needs to know the difference.
+
+Null-key rows never reach the bucketed row list at all (same exclusion rule the build
+side already applies to its own null keys), so a LEFT join's unmatched-null emission is
+handled by two small, cheap, full-row-range passes (mark the count before the prefix
+sum, write the `(row, NO_ROW)` pair after) — the only place these rows are visited on
+this path, and neither one touches the big hash tables.
+
+### Correctness
+
+Every existing build-parallel test shape in `test_query_join_parallel.mojo` — near-1:1
+(the H2O q5 shape), heavy duplicate keys spread across worker bands, NaN + null right
+rows at scale, both INNER and LEFT, at 2/3/7/16 build workers — was extended to also
+check the clustered probe against the same plain-serial reference every other check in
+the file uses, row for row (not row count, not multiset). **78/78 (was 74/74).**
+
+One real bug surfaced and was fixed before any of this could pass: the first version
+correctly COUNTED null-key rows' LEFT-emission slot (so total output size and every
+OTHER row's offset were already right) but never actually WROTE those rows in the emit
+pass, since that pass only ever walks the bucketed (matchable) row list — their output
+slots sat at the array's `fill=0` default (`(0, 0)`) instead of `(row, NO_ROW)`. Fixed
+by adding the second small full-row-range pass described above.
+
+### Results — measured before touching the default dispatch
+
+`benchmarks/mojo_benchmarks/bench_h2o_join_clustered_probe.mojo`: builds the shared
+radix-partitioned index ONCE, then times the row-band probe and the clustered probe
+directly (bypassing `hash_join_indices`), isolating the probe shape from the build,
+gather and `materialize`. 5 reps per call, minimum reported, on q5's real id3 columns
+(10,000,000 x 10,000,000, near 1:1).
+
+| Rep set | Row-band (baseline) | Clustered | Ratio |
+| --- | --- | --- | --- |
+| 1 | 0.247s | 0.237s | 1.04x faster |
+| 2 | 0.253s | 0.242s | 1.05x faster |
+| 3 | 0.262s | 0.234s | 1.12x faster |
+| 4 | 0.249s | 0.244s | 1.02x faster |
+| 5 | 0.255s | 0.247s | 1.03x faster |
+| 6 | 0.266s | 0.247s | 1.08x faster |
+| 7 | 0.283s | 0.259s | 1.09x faster |
+| 8 | 0.260s | 0.243s | 1.07x faster |
+| 9 | 0.253s | 0.261s | **0.97x slower** |
+| 10 | 0.276s | 0.260s | 1.06x faster |
+
+**10 of 11 reps favor the clustered probe, in the range 1.02x-1.12x; one rep is a
+small regression at 0.97x.** Real, and in the right direction, but modest — nowhere
+near the 5-11x this benchmark's own baseline needed against Polars, and only a
+fraction of q5's remaining 1.16x-1.47x DuckDB gap even if the whole probe phase
+vanished.
+
+Per-phase breakdown (same harness, min over 5 reps) attributes the time honestly:
+
+| Phase | Time | Share |
+| --- | --- | --- |
+| 1. partition-bucket left rows | ~0.011s | ~9% |
+| 2. clustered count pass | ~0.11-0.12s | ~46% |
+| 3. prefix sum (sequential) | ~0.015s | ~6% |
+| 4. clustered emit pass | ~0.11-0.12s | ~46% |
+
+Count and emit dominate roughly equally — expected, since both walk the exact same
+partition-clustered access pattern once each. The bucketing and prefix-sum overhead
+this design PAYS that the row-band probe does not is small (~15% combined), which is
+why the net effect is a modest win rather than a wash despite doing genuinely more
+work per call.
+
+**End to end, through the full 5-question benchmark (`bench_h2o_join.mojo`, temporarily
+wired into the default dispatch to measure, then reverted), the isolated gain does not
+survive:**
+
+| Rep | Row-band q5 | Clustered q5 | Ratio |
+| --- | --- | --- | --- |
+| 1 | 0.617s | 0.548s | 1.13x faster |
+| 2 | 0.563s | 0.563s | ~1.00x (wash) |
+| 3 | 0.568s | 0.564s | 1.01x faster |
+| 4 | 0.584s | 0.623s | **0.94x slower** |
+
+Two of four reps favor clustered, one is a wash, one is slower. The ~10-15ms isolated
+probe improvement is small enough relative to q5's own ~550-620ms total (build + probe
++ gather + materialize, all sharing one contended host) that it sits inside the full
+pipeline's own session-to-session noise band — the same phenomenon Update #3 measured
+for its own two constant-factor fixes at the q1-q4 scale, just showing up here at q5's.
+
+### Recommendation
+
+**Kept as new, tested, additive code — NOT wired into the default dispatch.**
+`_hash_join_probe_partitioned`'s own dispatch is byte-for-byte unchanged; every existing
+call site still reaches `_hash_join_probe_parallel_partitioned` exactly as before. This
+is a different bar than Update #3's fixes cleared: those were unconditionally cheaper on
+every path that already existed (a redundant check removed is never a cost), so shipping
+them risked nothing even though they did not close the gap. This clustered probe is
+NOT unconditionally cheaper — it is a different, more complex access pattern that wins
+most of the time in isolation and is a wash-to-slight-loss end to end on this host at
+this scale — so flipping the default on a modest, partially-noise-level improvement
+would be trading real, understood, well-tested code for gain that ten more reps could
+easily turn negative on a differently-loaded host.
+
+The next attempt on this file should not re-try prefetch (Update #4) or another
+redundant-check hunt (Update #3) — both are now measured and exhausted. Update #4's own
+remaining suggestion — a different ALGORITHM for the near-1:1 case specifically, rather
+than a different loop shape for the same hash-join algorithm — is the one lever this
+file has not yet tried at all.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
@@ -689,6 +823,17 @@ mojo build -I mojo/engine mojo/tests/libs/test_query_join.mojo -o /tmp/test_quer
 mojo build -I mojo/engine mojo/tests/libs/test_query_join_parallel.mojo -o /tmp/test_query_join_parallel && /tmp/test_query_join_parallel
 ```
 
-The second suite covers probe, gather AND (its "build-parallel" section, added for
-Update #2) the radix-partitioned build — 82 checks total, all row-for-row against the
-plain serial references.
+The second suite covers probe, gather, the radix-partitioned build (its
+"build-parallel" section, added for Update #2) AND (per Update #5) the
+partition-clustered probe — 78 checks total, all row-for-row against the plain serial
+references.
+
+```text title="isolated probe comparison + per-phase breakdown (Update #5)"
+mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join_clustered_probe.mojo -o /tmp/bench_h2o_join_clustered_probe
+/tmp/bench_h2o_join_clustered_probe
+```
+
+The clustered probe (`_hash_join_probe_parallel_clustered`) is NOT wired into
+`hash_join_indices`'s dispatch — it is additive, tested, and reachable only by calling
+it directly (as the harness above does), same as this file's own docstring for the
+Recommendation section explains.

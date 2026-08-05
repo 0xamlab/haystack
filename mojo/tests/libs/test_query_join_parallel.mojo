@@ -53,6 +53,7 @@ from query.join import (
     _build_right_index,
     _build_right_index_parallel,
     _hash_join_probe_parallel,
+    _hash_join_probe_parallel_clustered,
     _hash_join_probe_parallel_partitioned,
     _hash_join_probe_serial,
     _hash_join_probe_serial_partitioned,
@@ -314,6 +315,79 @@ fn _check_build_matches_serial(
         )
 
 
+fn _check_clustered_probe_matches_serial(
+    left: RecordBatch,
+    right: RecordBatch,
+    join_type: Int,
+    build_workers: Int,
+    mut passed: Int,
+    mut failed: Int,
+    label: String,
+):
+    """`_hash_join_probe_parallel_clustered` -- the partition-clustered probe, added
+    to try to close H2O join q5's remaining DuckDB gap by keeping each partition's
+    table repeatedly accessed instead of jumped between once per row -- pinned row
+    for row against the same plain-serial reference every other check in this file
+    uses. Reuses `_build_right_index_parallel`'s radix-partitioned build (the
+    clustered probe's contract requires a partitioned build, same as the row-band
+    partitioned probe it is an alternative to).
+    """
+    var left_key = left.column(0)
+    var right_key = right.column(0)
+
+    var slot_of = HashIndex(64)
+    var ref_first_row = List[Int]()
+    var ref_next_row = List[Int]()
+    var ref_null_keys = _build_right_index(
+        right_key, right.n_rows, slot_of, ref_first_row, ref_next_row
+    )
+    var reference = _hash_join_probe_serial(
+        left_key, left.n_rows, slot_of, ref_first_row, ref_next_row, join_type
+    )
+
+    var tables = List[HashIndex]()
+    var p_first_row = List[List[Int]]()
+    var p_next_row = List[Int]()
+    var build_ok = True
+    var par_null_keys = _build_right_index_parallel(
+        right_key, right.n_rows, build_workers, tables, p_first_row, p_next_row, build_ok
+    )
+    if not build_ok:
+        failed += 1
+        print("  ❌", label, "build_workers=" + String(build_workers), "build reported ok=False")
+        return
+
+    var got_clustered = _hash_join_probe_parallel_clustered(
+        left_key, left.n_rows, tables, p_first_row, p_next_row, join_type, build_workers
+    )
+
+    var clustered_ok = reference.n_rows() == got_clustered.n_rows() and _results_equal(
+        reference.left_rows, reference.right_rows, got_clustered.left_rows, got_clustered.right_rows
+    ) and reference.left_unmatched == got_clustered.left_unmatched and reference.null_key_rows == got_clustered.null_key_rows
+
+    var null_keys_ok = ref_null_keys == par_null_keys
+
+    if clustered_ok and null_keys_ok:
+        passed += 1
+        print(
+            "  ✅", label,
+            "build_workers=" + String(build_workers),
+            "right_rows=" + String(right.n_rows),
+            "rows=" + String(reference.n_rows()),
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌", label,
+            "build_workers=" + String(build_workers),
+            "ref_rows=" + String(reference.n_rows()),
+            "clustered_rows=" + String(got_clustered.n_rows()),
+            "ref_null_keys=" + String(ref_null_keys),
+            "par_null_keys=" + String(par_null_keys),
+            "clustered_ok=" + String(clustered_ok),
+        )
+
+
 fn _check_end_to_end_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
@@ -492,7 +566,15 @@ fn main() raises:
             left3, right3, JOIN_INNER, w, passed, failed,
             "build-parallel, near-1:1 (H2O q5 shape)",
         )
+        _check_clustered_probe_matches_serial(
+            left3, right3, JOIN_INNER, w, passed, failed,
+            "build-parallel, near-1:1 (H2O q5 shape)",
+        )
         _check_build_matches_serial(
+            left3, right3, JOIN_LEFT, w, passed, failed,
+            "build-parallel, near-1:1 (H2O q5 shape), LEFT",
+        )
+        _check_clustered_probe_matches_serial(
             left3, right3, JOIN_LEFT, w, passed, failed,
             "build-parallel, near-1:1 (H2O q5 shape), LEFT",
         )
@@ -510,7 +592,15 @@ fn main() raises:
             left6, right6, JOIN_INNER, w, passed, failed,
             "build-parallel, heavy duplicate keys across bands",
         )
+        _check_clustered_probe_matches_serial(
+            left6, right6, JOIN_INNER, w, passed, failed,
+            "build-parallel, heavy duplicate keys across bands",
+        )
         _check_build_matches_serial(
+            left6, right6, JOIN_LEFT, w, passed, failed,
+            "build-parallel, heavy duplicate keys across bands, LEFT",
+        )
+        _check_clustered_probe_matches_serial(
             left6, right6, JOIN_LEFT, w, passed, failed,
             "build-parallel, heavy duplicate keys across bands, LEFT",
         )
@@ -526,7 +616,15 @@ fn main() raises:
             left7, right7, JOIN_INNER, w, passed, failed,
             "build-parallel, NaN + null right rows at scale",
         )
+        _check_clustered_probe_matches_serial(
+            left7, right7, JOIN_INNER, w, passed, failed,
+            "build-parallel, NaN + null right rows at scale",
+        )
         _check_build_matches_serial(
+            left7, right7, JOIN_LEFT, w, passed, failed,
+            "build-parallel, NaN + null right rows at scale, LEFT",
+        )
+        _check_clustered_probe_matches_serial(
             left7, right7, JOIN_LEFT, w, passed, failed,
             "build-parallel, NaN + null right rows at scale, LEFT",
         )
