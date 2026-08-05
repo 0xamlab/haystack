@@ -175,6 +175,51 @@ def test_mojo_server_dispatches_vector_dot_runtime_library_request() -> None:
         _stop_test_server(proc, socket_path)
 
 
+def test_mojo_server_wire_grammar_keeps_float_lists_element_aligned() -> None:
+    """Pin the frozen wire grammar for the worker-side JSON tokenizer.
+
+    Two forms Python's own ``json`` module emits must survive the worker's tokenizer
+    with their element COUNT and position intact: scientific notation
+    (``json.dumps(1e-05) == "1e-05"``) and bare non-finite words
+    (``json.dumps(float("nan")) == "NaN"``). A tokenizer that splits ``1e-05`` into
+    ``1e`` + ``-05`` shifts every later element; one that refuses ``NaN`` rejects what
+    the frozen grammar decodes to 0.0. ``dot64_f32`` makes both observable: the result
+    is right only if both 64-element lists arrive element-aligned.
+    """
+    proc, socket_path = _start_test_server()
+    try:
+        payload: dict[str, object] = {
+            "type": "library_execute",
+            "engine_type": "library_execute",
+            "module": "vector_kernels.dot",
+            "function": "dot64_f32",
+            # json serializes 1e-05 as "1e-05": scientific notation must stay ONE element.
+            "args": [[1e-05, 2.0, 3.0] + [0.0] * 61, [1.0, 1.0, 1.0] + [0.0] * 61],
+        }
+
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(str(socket_path))
+            assert _recv_frame(sock) == {"status": "ready"}
+
+            response = _send_frame(sock, payload)
+            assert "error" not in response
+            assert response.get("result") == pytest.approx(5.00001)
+
+            # A bare "NaN" decodes to 0.0 under the frozen grammar: never refused, and it
+            # must not shift its neighbours.
+            payload["args"] = [[1.0, float("nan"), 3.0] + [0.0] * 61, [1.0, 1.0, 1.0] + [0.0] * 61]
+            response = _send_frame(sock, payload)
+            assert "error" not in response
+            assert response.get("result") == pytest.approx(4.0)
+
+            assert _send_frame(sock, {"type": "shutdown"}) == {"status": "bye"}
+
+        proc.wait(timeout=5.0)
+        assert proc.returncode == 0
+    finally:
+        _stop_test_server(proc, socket_path)
+
+
 LLM_ROLLOUT_FIXTURE = (
     '{"query":{"name":"unit_price","role_hint":"unit_measure","source":"POS"},'
     '"candidates":[{"source":"POS","name":"unit_price"}],"top_k":1}'

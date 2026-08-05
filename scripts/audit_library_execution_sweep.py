@@ -82,6 +82,15 @@ _EXPECTED_REJECTION_CODES = {
     "mojo_library_execution_failed",
 }
 
+# Functions whose documented CONTRACT is a non-finite sentinel: JSON has no NaN, so the typed
+# refusal is the only honest over-the-wire outcome — a design property, not a defect.
+# inference.core.inference_absent is "the value that means 'this number does not exist': a
+# quiet NaN" (its docstring), consumed by the scalar inference tails via inference_finite.
+# Keeping this list explicit forces any future addition to be a named, reviewed decision.
+# Whether the sentinel belongs on the wire surface at all stays an open design question in
+# plans/SDK_REAL_WORLD_AUDIT_2026-08.md.
+_NON_FINITE_BY_DESIGN = {"inference.core.inference_absent"}
+
 # RSS watchdog: no probe value can guarantee memory safety against arbitrary kernels —
 # measured live, count probes of 2**31, 10k, 1000 and 200 drove workers to 70 GB, 17 GB,
 # 75 GB and 71 GB respectively (linear, quadratic, cubic and quartic allocators). So the
@@ -289,6 +298,30 @@ def _inner_type(type_name: str) -> str:
     return type_name
 
 
+# Some kernels cannot be exercised by type-driven synthesis alone: their arguments carry
+# cross-parameter SHAPE meaning that a per-type generic builder cannot infer, so every
+# synthesized call trips a documented refusal or a geometric singularity instead of the real
+# logic. Each entry supplies the minimal coherent argument list for the smoke case ONLY; the
+# hostile battery still derives its variants from the signature as before.
+_SMOKE_ARGS_OVERRIDE: dict[tuple[str, str], list[Any]] = {
+    # Four identical synthetic points collapse both lines onto one degenerate point, so the
+    # parallel/coincident refusal fires on every generic call. Two genuinely crossing lines
+    # exercise the intersection math instead.
+    ("geometry", "line_intersection"): [
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+        {"x": 0.0, "y": 1.0},
+        {"x": 1.0, "y": 0.0},
+    ],
+    # The generic scalar 1.0 sits exactly ON this kernel's documented refusal boundary
+    # (p >= 1.0 is reported absent: the 1-quantile of an unbounded distribution is +inf,
+    # not an answer). A strictly interior probability exercises the bisection instead.
+    # NOT generalised to "any Float64 named p": in other modules p is pressure, population,
+    # a norm order or active power.
+    ("inference.core", "inference_t_quantile"): [0.975, 1.0],
+}
+
+
 class ArgBuilder:
     """Signature-derived arguments, count-relation-coherent by construction.
 
@@ -301,14 +334,31 @@ class ArgBuilder:
         self.record = record
 
     def build(self, *, variant: str = "smoke") -> list[Any] | None:
+        override = _SMOKE_ARGS_OVERRIDE.get((self.record.module, self.record.name))
+        if override is not None and variant == "smoke":
+            return [list(item) if isinstance(item, list) else item for item in override]
         args: list[Any] = []
         for param in self.record.params:
-            value = self._value_for(param["type"], variant, depth=0)
+            named = self._named_string_override(param["name"], param["type"])
+            value = named if named is not None else self._value_for(param["type"], variant, depth=0)
             if value is _UNBUILDABLE:
                 return None
             args.append(value)
         self._apply_count_coherence(args)
         return args
+
+    def _named_string_override(self, param_name: str, type_name: str) -> Any:
+        # color_check's String arguments are all RGB hex colors: every one of them is fed to
+        # _validated_hex_to_rgb, which raises on any non-6-hex-digit input. The generic word
+        # "audit" can never pass that validation, so it refuses every color_check entry point
+        # before its real logic runs. Give them a real color instead. Scoped to color_check so
+        # other ``*_hex`` strings (e.g. crypto.hmac's expected_sha256 digest) are untouched.
+        if type_name != "String" or self.record.module != "color_check":
+            return None
+        lowered = param_name.lower()
+        if lowered == "hex" or lowered.endswith("_hex"):
+            return "#808080"
+        return None
 
     def hostile_variants(self, smoke_args: list[Any]) -> list[tuple[str, list[Any]]]:
         """Deliberately broken argument sets. Each is expected to be refused with a typed
@@ -402,27 +452,70 @@ class ArgBuilder:
 
     def _apply_count_coherence(self, args: list[Any]) -> None:
         param_names = [param["name"] for param in self.record.params]
+        # Collect every relation as (factors, budget). The guard asserts
+        # product(factors) + plus <= len(L) for EVERY bounded list, so the budget is the
+        # MINIMUM measured length, not the maximum: a factor coherent for the longest
+        # list can still over-read the shortest one (policy_evaluation's flat `policy` is
+        # 5 long while nested `rewards` has 2 rows).
+        relations: list[tuple[list[str], int]] = []
         for relation in self.record.count_relations:
             bounds_names = [name for name in relation["bounds"] if name in param_names]
             factor_names = [name for name in relation["factors"] if name in param_names]
             if not bounds_names or not factor_names:
                 continue
-            measured = 0
+            lengths: list[int] = []
             for bounds_name in bounds_names:
                 value = args[param_names.index(bounds_name)]
                 if isinstance(value, (list, str)):
-                    measured = max(measured, len(value))
-            factors = factor_names
+                    lengths.append(len(value))
+            if not lengths:
+                continue
             plus = int(relation.get("plus", 0))
-            budget = max(measured - plus, 0)
-            if len(factors) == 1:
-                args[param_names.index(factors[0])] = budget
-            elif len(factors) == 2:
+            relations.append((factor_names, max(min(lengths) - plus, 0)))
+
+        def cap_for(name: str, assigned: list[tuple[list[str], int]]) -> int | None:
+            # The largest value `name` may take without violating an already-assigned
+            # relation it also belongs to. Without this cap a later single-factor
+            # relation rewrites a factor a product relation already bounded (layernorm:
+            # n_rows appears in both n_rows*n_cols <= len(x) and n_rows <= len(mean)).
+            cap: int | None = None
+            for factor_names, budget in assigned:
+                if name not in factor_names:
+                    continue
+                others = 1
+                for other in factor_names:
+                    if other != name:
+                        value = args[param_names.index(other)]
+                        others *= value if isinstance(value, int) and value > 0 else 1
+                allowed = budget // others
+                cap = allowed if cap is None else min(cap, allowed)
+            return cap
+
+        assigned: list[tuple[list[str], int]] = []
+        for factor_names, budget in relations:
+            if len(factor_names) == 1:
+                value = budget
+                cap = cap_for(factor_names[0], assigned)
+                if cap is not None:
+                    value = min(value, cap)
+                args[param_names.index(factor_names[0])] = max(value, 0)
+            else:
+                # N-factor product relation: the first N-1 factors take the largest equal
+                # value whose N-th power fits the budget and the last one absorbs the
+                # remainder, so product(factors) <= budget by construction. Each factor is
+                # additionally capped by relations assigned earlier.
                 side = 1
-                while (side + 1) * (side + 1) <= budget:
+                while (side + 1) ** len(factor_names) <= budget:
                     side += 1
-                args[param_names.index(factors[0])] = side
-                args[param_names.index(factors[1])] = budget // side if side else 0
+                lead = side ** (len(factor_names) - 1)
+                targets = [side] * (len(factor_names) - 1)
+                targets.append(budget // lead if lead else 0)
+                for name, target in zip(factor_names, targets):
+                    cap = cap_for(name, assigned)
+                    if cap is not None:
+                        target = min(target, cap)
+                    args[param_names.index(name)] = max(target, 0)
+            assigned.append((factor_names, budget))
 
     def _value_for(self, type_name: str, variant: str, depth: int) -> Any:
         if depth > 4:
@@ -590,6 +683,13 @@ def _classify_execution(envelope: dict[str, Any], record: FunctionRecord) -> Cas
         return CaseOutcome("worker_crash", message, error_code, latency)
     if error_code in _EXPECTED_REJECTION_CODES:
         return CaseOutcome("expected_rejection", message, error_code, latency)
+    if error_code == "non_finite_result" and f"{record.module}.{record.name}" in _NON_FINITE_BY_DESIGN:
+        return CaseOutcome(
+            "expected_rejection",
+            "documented non-finite sentinel: the typed refusal is the only honest wire outcome",
+            error_code,
+            latency,
+        )
     if "timeout" in error_code or "timed out" in message.lower():
         return CaseOutcome("timeout", message, error_code, latency)
     return CaseOutcome("execution_error", message, error_code, latency)
@@ -873,7 +973,17 @@ def main(argv: list[str] | None = None) -> int:
         from algenta.native import worker as _native_worker
 
         _native_worker.shutdown()
-        health = runtime.health()
+        # The worker spawn can lose a race under memory pressure (a preceding shard's
+        # residue still resident when the next shard's ~8 GB-footprint binary starts),
+        # surfacing as "exited during startup". That is transient, not a finding: retry
+        # the spawn a few times before aborting a full-surface sweep.
+        health: dict[str, Any] = {}
+        for _health_attempt in range(3):
+            health = runtime.health()
+            if health.get("status") == "ok":
+                break
+            _native_worker.shutdown()
+            time.sleep(2.0)
         if health.get("status") != "ok":
             print(
                 f"runtime health failed for worker {worker_path}: {health}", file=sys.stderr

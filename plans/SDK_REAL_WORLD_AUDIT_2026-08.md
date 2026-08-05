@@ -246,8 +246,8 @@ disjoint file sets, each under the repo's kernel rules (minimal top-of-function 
 file-convention sentinels, no rewrites, no frozen-kernel reimplementations).
 
 **Scope:** 106 kernel files, +1,850/−169 lines of guards (the tree's pre-existing
-uncommitted engine work, ~72k lines across ~19 files, was left untouched). Plus two
-wire-layer fixes in the dispatch generator:
+uncommitted engine work, ~72k lines across ~19 files, was left untouched). Plus three
+wire-layer fixes:
 - `_escape_json_string` now `\u00`-escapes every RFC-8259 control byte instead of emitting
   them raw (raw control bytes produced frames the SDK's JSON parser rejects).
 - The Float64/Float32 result serializer now emits `null` for non-finite values instead of
@@ -256,6 +256,20 @@ wire-layer fixes in the dispatch generator:
   whole class at once, including the `inference` package's NaN absent-sentinels
   (`inference_absent`, `inference_t_quantile`'s degenerate paths), and propagates to every
   list/struct serializer since they all delegate to `_to_json_float64`.
+- **JSON tokenizer corruption (P0, found by the sweep's NaN battery):** `skip_json_value`
+  in `mojo/engine/json/parser.mojo` skipped literals by fixed length (`N` → 4 chars,
+  assuming `null`) and advanced ONE char on unknown tokens, so a request carrying
+  `[1.0, NaN, Infinity, -Infinity, 0.0]` — which Python `json.dumps` and JS
+  `JSON.stringify` emit by default for non-finite floats — shredded into extra element
+  tokens. The parsed list came back LONGER than the sent values, and kernels indexing one
+  list by another's length aborted out of bounds (reproduced: `risk.beta` died inside
+  `_cov` with `index 5 is out of bounds, valid range is 0 to 4`). Fixed: bare alphabetic
+  runs now tokenize as ONE token (true/false/null unchanged; NaN/Infinity stay whole), and
+  a SIGN followed by a bare word ("-Infinity") tokenizes as one token — gated on the sign
+  so scientific notation ("3e2") stays one number. Element values keep the frozen-grammar
+  semantics the wire suite pins: bare words decode to 0.0 exactly as `conv.parse_float64`
+  does, and element COUNTS now match the frozen parser bit-for-bit
+  (`test_hostio_wire_json` passes 14/14).
 
 **Guard classes applied:**
 - Empty/mismatched parallel lists and ragged nested structures → module sentinel
@@ -297,6 +311,82 @@ instead of a dead worker. If the product later wants absent to decode as a first
 value (e.g. JSON null preserved through the SDK as `None`), that is a decode-side design
 decision left open.
 
+## 6c. The follow-up pass (2026-08-05) — wire-grammar regression + the last 29 smoke failures
+
+Two things remained after #560 merged. One: the tokenizer fix had shipped one revision
+early (the frozen wire-grammar suite caught it). Two: 29 functions still never completed a
+smoke call — the §6b rollup's "26 expected typed refusals + 3 P2 non-finite results". This
+pass closes both.
+
+**6c.1 Wire-grammar regression (tokenizer).** As merged, the tokenizer fix kept
+NaN/Infinity/-Infinity whole but had two divergences from the frozen grammar: it REFUSED
+bare words in float lists (`non_finite_argument`) where the frozen grammar decodes them to
+0.0 exactly as `conv.parse_float64` does, and its sign+bare-word scan was not gated on the
+sign, so `3e2` / `1e-05` — the exact forms Python's `json.dumps` and JS `JSON.stringify`
+emit for large/small floats — split into two tokens and shifted every element count. Both
+were caught by `test_hostio_wire_json` (the frozen wire suite, 14 assertions), which then
+existed only on the audit branch — that is why PR CI could not see it. The fix restores the
+frozen-grammar zeroing, gates the scan on the minus sign, and adds a permanent PR-tier CI
+pin that compiles the dispatch binary from PR sources and drives real frames through it:
+`tests/test_mojo_library_dispatch_server.py::test_mojo_server_wire_grammar_keeps_float_lists_element_aligned`
+asserts `1e-05` stays ONE element and a bare `NaN` decodes to 0.0 without shifting its
+neighbours.
+
+**6c.2 The 29 never-executing functions** decompose into harness defects, kernel defects,
+and one design decision:
+
+- **Count-coherence builder (19 functions).** The coherence pass handled only 1–2-factor
+  relations and took the MAX across bounded lists. Kernels whose shape is a 3+ factor
+  product (attnk ×6, lossk ×4, normk ×7, mlpk.embedding_bwd) got 5-element lists against a
+  5×5×5=125 requirement, so the guard correctly refused every call including smoke;
+  reinforcement.policy_evaluation bounds one factor with three lists of DIFFERENT lengths
+  (flat `policy` 5, nested `rewards`/`transitions` 2 rows) and max() picked 5. Generalised
+  to N factors, switched to min() across bounded lists, and added a cross-relation cap so a
+  later single-factor relation cannot rewrite a factor a product relation already bounded
+  (the layernorm/rmsnorm family). All 19 now execute.
+- **reinforcement.policy_evaluation — a real P0 surfaced by the fix above.** With coherent
+  shapes, smoke crashed: `V[transitions[s][a]]` indexes V by caller-supplied transition
+  TARGETS, which outranged the state space (targets up to 5 against a 2-state V) — an
+  uncatchable abort the guard refusal had been masking. Applied the file's own
+  `value_iteration` pattern: clamp n_states to the payload, validate the selected action
+  and transition target ranges, refuse degenerate shapes with an empty result.
+- **color_check (6 functions).** Every String argument is an RGB hex color validated by
+  `_validated_hex_to_rgb`; the generic word "audit" always raises. The builder now supplies
+  a real hex value ("#808080") for `hex`/`*_hex` params inside color_check — scoped to that
+  module so crypto.hmac's `expected_hex` digest is untouched. All 6 now execute. (Latent
+  gap recorded in §9: `_dominant_background_stats` silently truncates when width·height·3
+  exceeds the buffer.)
+- **geometry.line_intersection.** Generic struct synthesis makes all four points identical,
+  both "lines" degenerate to one point, and the documented parallel/coincident refusal
+  fired on every generic call. The builder now supplies two genuinely crossing lines via an
+  explicit per-function smoke override; the refusal itself is legitimate and stays.
+- **inference.core.inference_t_quantile.** The generic p=1.0 lands exactly ON its
+  documented refusal boundary (p ≥ 1.0 is absent by contract). The builder now passes
+  p=0.975 via an explicit override — deliberately NOT generalised to "any Float64 named p":
+  in other modules p is pressure, population, a norm order or active power.
+- **forecast_metrics.log_loss (kernel).** Its clip interval [eps, 1−eps] inverts for
+  eps ≥ 0.5 and collapses for eps ≥ 1.0, forcing log(0) = −inf or log(negative) = NaN — a
+  non-finite result for an entire half of the eps domain. Degenerate eps is now coerced to
+  1e-15 (the sklearn convention); the function is total for all inputs.
+- **inference.core.inference_absent (design decision).** Its contract IS the quiet-NaN
+  absence sentinel; JSON has no NaN, so the typed refusal is the only honest wire outcome.
+  Reclassified explicitly via `_NON_FINITE_BY_DESIGN` in the sweep (any future entry must
+  be a named, reviewed decision); whether it belongs on the wire surface at all stays open
+  (§9).
+
+**6c.3 Sweep robustness.** A transient shard-worker spawn failure ("exited during
+startup", memory pressure between shards) aborted the whole sweep; the health probe now
+retries the spawn three times before aborting a full-surface run.
+
+**6c.4 Final result.** Definitive re-sweep of the whole current main surface — **6,028
+functions** (6,020 audited in §6b plus the eight `_strict` variants #558 added to
+`embeddings` afterwards), all 27 rebuilt shard workers, full hostile battery:
+**6,027 ok (99.98%), 1 expected typed refusal — the documented `inference_absent`
+sentinel — zero crashes, zero P0/P1/P2 findings of any class.** Every function the SDKs
+publish now either executes through the encapsulated local runtime on signature-derived
+input or refuses a deliberately-broken call with a typed error; nothing kills a worker,
+nothing corrupts element counts on the wire, and the wire grammar is pinned in PR-tier CI.
+
 ## 7. Re-running the audit
 
 ```bash
@@ -327,7 +417,10 @@ the published-artifact install/execute proofs all pass. The audit then FIXED wha
 scratch module no longer ships, packaged installs no longer raise a bare
 `ModuleNotFoundError`, the release gate compares live surface vs contract, and the
 315-function worker-kill backlog was repaired (106 kernel files + 2 wire-layer serializer
-fixes), verified by a full re-sweep of all 5,766 functions.
+fixes), verified by a full re-sweep of all 5,766 functions. The follow-up pass (§6c)
+restored the frozen wire grammar in the tokenizer, repaired the last 29 functions that
+never executed, and brought the entire current main surface — 6,028 functions — to zero
+crashes, zero findings, 99.98% executing, with the wire grammar pinned in PR-tier CI.
 
 **What remains:**
 
@@ -375,7 +468,10 @@ ragged rows; `total_persistence`, `bottleneck_distance` inner-list lengths);
 network_analysis (`out_degree` node bounds); clustering_metrics (`silhouette_score`
 negative label values); sorting (`nth_smallest` untrusted n); image_resize (`reshape_to_grid`
 padding for document_vision/perceptual_hash/video_quality callers); regression_tree
-(`predict_batch`/`tree_mse` x-width vs tree features).
+(`predict_batch`/`tree_mse` x-width vs tree features); color_check
+(`_dominant_background_stats` silently truncates when width·height·3 > len(flat_rgb) —
+caller claims more pixels than the buffer holds and gets stats over a partial image; the
+break guards keep it alive, but it should raise or return a status).
 
 **Unbounded allocation / iteration (rule 1c class):** gaussian_process (`gp_fit` n² — the
 docstring says n≤2000 but nothing enforces it); gbdt (`gbdt_fit` n_trees); fft

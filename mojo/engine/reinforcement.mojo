@@ -282,14 +282,35 @@ fn policy_evaluation(
     tol: Float64,
 ) -> List[Float64]:
     """Evaluate a fixed policy. Returns V."""
+    # Same shape contract as value_iteration: untrusted n_states, untrusted policy
+    # actions and untrusted transition targets all become array indexes below, and
+    # out-of-range reads are uncatchable aborts, so clamp to what the payload contains
+    # and refuse degenerate shapes with an empty result.
+    var ns = n_states
+    if ns > len(policy):
+        ns = len(policy)
+    if ns > len(rewards):
+        ns = len(rewards)
+    if ns > len(transitions):
+        ns = len(transitions)
+    if ns <= 0:
+        return List[Float64]()
+    for s in range(ns):
+        var a = policy[s]
+        if a < 0 or a >= len(rewards[s]) or a >= len(transitions[s]):
+            return List[Float64]()
+        # Transition targets index V directly.
+        if transitions[s][a] < 0 or transitions[s][a] >= ns:
+            return List[Float64]()
+
     var V = List[Float64]()
-    for _ in range(n_states):
+    for _ in range(ns):
         V.append(0.0)
 
     var max_iter = 10000
     for _ in range(max_iter):
         var delta: Float64 = 0.0
-        for s in range(n_states):
+        for s in range(ns):
             var a = policy[s]
             var new_v = rewards[s][a] + gamma * V[transitions[s][a]]
             var diff = new_v - V[s]

@@ -112,6 +112,13 @@ fn brier_skill_score(probs: List[Float64], outcomes: List[Float64], baseline: Fl
 
 fn log_loss(probs: List[Float64], outcomes: List[Float64], eps: Float64) -> Float64:
     """Mean negative log likelihood, clipped by eps so a confident miss is finite but heavy."""
+    # The clip interval [eps, 1-eps] only exists for 0 < eps < 0.5. An untrusted eps at or
+    # beyond those bounds inverts the interval and forces p onto 0.0 or a negative value,
+    # so log() below returns -inf/NaN and the worker emits a non-finite result. Coerce a
+    # degenerate eps to the conventional tiny clip instead of refusing the call.
+    var clip = eps
+    if clip <= 0.0 or clip >= 0.5:
+        clip = 1e-15
     var n = len(probs)
     if len(outcomes) < n:
         n = len(outcomes)
@@ -120,10 +127,10 @@ fn log_loss(probs: List[Float64], outcomes: List[Float64], eps: Float64) -> Floa
     var s = 0.0
     for i in range(n):
         var p = probs[i]
-        if p < eps:
-            p = eps
-        if p > 1.0 - eps:
-            p = 1.0 - eps
+        if p < clip:
+            p = clip
+        if p > 1.0 - clip:
+            p = 1.0 - clip
         if outcomes[i] > 0.5:
             s -= log(p)
         else:

@@ -178,11 +178,12 @@ fn skip_json_value(data: String, pos: Int) -> Int:
                 break
         return p
 
-    # ── Number (digits, minus, dot, e/E, +); a sign followed by a bare word
-    # ("-Infinity") is one token, not two. ──
+    # ── Number (digits, minus, dot, e/E, +); a SIGN followed by a bare word
+    # ("-Infinity") is one token, not two. The check is gated on ch == _MINUS so a digit
+    # followed by e/E stays scientific notation ("3e2"), not digit + bare word. ──
     if ch == _MINUS or (ch >= _DIGIT_0 and ch <= _DIGIT_9):
         p += 1
-        if p < n and ((bytes[p] >= _CHAR_A_UP and bytes[p] <= _CHAR_Z_UP) or (bytes[p] >= _CHAR_A_LC and bytes[p] <= _CHAR_Z_LC)):
+        if ch == _MINUS and p < n and ((bytes[p] >= _CHAR_A_UP and bytes[p] <= _CHAR_Z_UP) or (bytes[p] >= _CHAR_A_LC and bytes[p] <= _CHAR_Z_LC)):
             while p < n:
                 var c = bytes[p]
                 if (c >= _CHAR_A_UP and c <= _CHAR_Z_UP) or (c >= _CHAR_A_LC and c <= _CHAR_Z_LC):
@@ -634,19 +635,6 @@ fn json_decode_base64_bytes(s: String) -> List[UInt8]:
     return out^
 
 
-fn _token_has_digit(token: String) -> Bool:
-    """True if the token contains at least one ASCII digit.
-
-    Every legal JSON number carries a digit; the bare words NaN / Infinity / -Infinity do
-    not. This is the cheap discriminator that keeps non-finite tokens from being parsed as
-    silent zeros (data corruption) — the caller raises on a digitless token instead.
-    """
-    var bytes = token.as_bytes()
-    for i in range(len(token)):
-        if bytes[i] >= _DIGIT_0 and bytes[i] <= _DIGIT_9:
-            return True
-    return False
-
 
 fn json_parse_float64_list(token: String) raises -> List[Float64]:
     """Parse a `List[Float64]` arg with a binary fast path.
@@ -688,9 +676,9 @@ fn json_parse_float64_list(token: String) raises -> List[Float64]:
     var tokens = json_array_tokens(array_json)
     var result = List[Float64]()
     for i in range(len(tokens)):
-        if not _token_has_digit(tokens[i]):
-            # A bare word ("NaN", "Infinity", "-Infinity") is not a JSON number; parse_float64
-            # would silently zero it, corrupting the data. Refuse with a typed error instead.
-            raise Error("non_finite_argument")
+        # Frozen-grammar semantics: bare words ("NaN", "Infinity") decode to 0.0, exactly as
+        # conv.parse_float64 does (test_hostio_wire_json asserts the decoder must not become
+        # more permissive AND must not refuse what the frozen grammar zeroes). The tokenizer
+        # above keeps each bare word ONE token, which is the fix for the length corruption.
         result.append(parse_float64(tokens[i]))
     return result^
