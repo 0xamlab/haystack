@@ -916,6 +916,80 @@ This is code-level and test-level documented (this SDK's own JSDoc, `query.test.
 `libraries.test.ts`, `runtime_daemon_client.test.ts`); the public GitBook page stays
 Python-only until the daemon dependency itself is resolved.
 
+## Update #7 (2026-08): branchless gather -- a real win in isolation, a real regression at the scale that runs in production, closing this avenue
+
+Owner directive: relax the publish bar (majority of comparisons winning clearly, close
+losses acceptable — no longer literally 100%), then push harder to actually CLOSE the
+Polars gap rather than lower the bar until a loss counts as a win. Under the relaxed
+bar, q1-q4's 5.6x-11.3x Polars losses and q5's 2.8x-3.2x (via Update #6's `direct_
+address`) are still not close enough to publish — so this pass went back to Update #3's
+own diagnosis, the one lever it named and never tried: "a genuinely different per-row
+shape for the gather... real SIMD/vectorized compare and copy."
+
+**What was tried.** `benchmarks/mojo_benchmarks/bench_h2o_join_gather.mojo`: an isolated
+harness (no build, no probe, no hash — gather alone, at real H2O join-track sizes,
+10,000,000-row source, 9,000,000-row output, realistic scattered indices with periodic
+unmatched/null rows) comparing the current scalar `if`/`else` gather
+(`take_column`/`_take_column_join`) against a branchless candidate: always compute the
+bounds/validity predicate as a boolean via arithmetic (never an `if`), always perform a
+CLAMPED read (never out-of-range, discarded by the mask if invalid rather than skipped),
+mask the value to 0.0 when invalid after the read completes. Correctness proven row for
+row against both the serial and parallel current implementations before any timing was
+trusted (both passed, 9,000,000/9,000,000 rows exact).
+
+True SIMD (one wide vector load per instruction) was not on the table to begin with: this
+host has no hardware gather instruction (Apple Silicon; x86 AVX2/512's `vpgatherqd`-class
+instructions have no ARM equivalent — the same finding Update #4's prefetch investigation
+already made). Branchless was the ARM-appropriate version of "genuinely different
+per-row shape" — removing a data-dependent branch a scattered-index pattern mispredicts
+often, not vectorizing the memory access itself.
+
+**Results — both loop shapes, both measured, neither cherry-picked:**
+
+| Shape | Scalar (current) | Branchless (candidate) | Ratio |
+| --- | --- | --- | --- |
+| Serial, rep 1 | 0.1573s | 0.1358s | **1.16x faster** |
+| Serial, rep 2 | 0.1653s | 0.1377s | **1.20x faster** |
+| Serial, rep 3 | — | — | **1.18x faster** |
+| Parallel (16 workers), rep 1 | 0.0303s | 0.0312s | **0.97x SLOWER** |
+| Parallel (16 workers), rep 2 | 0.0315s | 0.0331s | **0.95x SLOWER** |
+
+**The serial win does not survive parallelism, and parallel is what actually runs.**
+H2O join-track output sizes (9-10M rows) are always above `JOIN_GATHER_PARALLEL_MIN_ROWS`
+(262,144), so `_take_column_join`'s existing 16-way row-band parallel path is what every
+real measurement in this file has ever gone through — the serial `take_column` branch
+this harness also measured is dead code at this scale, kept only as the correctness
+reference and the small-input fallback. The number that matters is the parallel one, and
+it is a small, reproducible loss (0.95x-0.97x), not a win.
+
+**Why, most likely:** back-of-envelope, 9,000,000 rows / 16 workers / 0.030s ≈ 53ns of
+amortized per-row latency per worker for an 8-byte random read into an 80 MB array — in
+the range of a single DRAM cache-miss latency on this hardware, not a range where branch
+misprediction is the bottleneck. With 16 cores already issuing many concurrent outstanding
+loads (out-of-order execution hiding most of the latency a single branch could otherwise
+mispredict around), removing the branch trades "sometimes mispredicted, but free when
+predicted right" for "always the same few extra arithmetic ops, every row" — a real cost
+with no corresponding benefit once the hardware is already latency-hiding well. This is
+the SAME conclusion Update #4's prefetch experiment reached on this identical function,
+by a different route: **two independent techniques, aimed at the same loop, both regress
+at the scale that matters.** That is no longer one inconclusive attempt; it is convergent
+evidence this specific function is near a hardware ceiling on this platform, not sitting
+on an easy win.
+
+**Recommendation: closed, not attempted a third time without a genuinely new angle.**
+Not wired into `_take_column_join` (a measured regression at production scale, kept only
+as a disclosed negative result, exactly as Update #4's prefetch code was kept disclosed
+and reverted). The remaining Polars gap on H2O join (5.6x-11.3x on q1-q4, 2.8x-3.2x on q5)
+is consequently **not closeable today** by any loop-shape or per-row trick this file has
+found — prior updates already closed constant-factor (#3), prefetch (#4), loop-shape
+clustering (#5), and now branchless (#7); direct-addressing (#6) is the one structural win
+found, and it is already shipped as an opt-in method. What is left is almost certainly
+Polars' actual structural advantage: true columnar batch execution (SIMD compare-and-copy
+over CONTIGUOUS memory at every stage, not just the final gather) versus this engine's
+row-at-a-time model even after every per-row cost has been trimmed — the Phase 3 "columnar
+batch execution" rework already scoped in this project's own planning documents, not a
+same-session fix.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
@@ -1026,3 +1100,13 @@ Neither `_build_direct_address_table` nor `_hash_join_probe_parallel_direct_addr
 wired into `hash_join_indices`'s dispatch, for the reason Update #6's own Recommendation
 section gives (an asymmetric fallback cost, not an unproven payoff) — additive, tested,
 and reachable only by calling them directly.
+
+```text title="branchless gather, serial and parallel (Update #7 -- a disclosed regression, not shipped)"
+mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join_gather.mojo -o /tmp/bench_h2o_join_gather
+/tmp/bench_h2o_join_gather
+```
+
+`_take_column_branchless`/`_take_column_branchless_parallel` live only in this benchmark
+file, not in `query/join.mojo` — Update #7's own measurement is why: a real win in the
+serial loop, a real regression in the parallel one that actually runs at H2O join-track
+sizes. Kept here, disclosed, so the next pass does not re-spend time re-discovering it.
