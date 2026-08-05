@@ -12,6 +12,7 @@ from query.ir import (
     FROZEN_OP_MAX,
     OP_ADD,
     OP_AND,
+    OP_CASE_WHEN,
     OP_COALESCE,
     OP_COL_REF,
     OP_DIV,
@@ -35,6 +36,7 @@ from query.ir import (
     op_arity,
     op_name,
     referenced_columns,
+    ternary,
     unary,
     first_unsupported_op,
     is_evaluable_op,
@@ -109,6 +111,7 @@ fn main() raises:
         op_arity(OP_COL_REF) == 0
         and op_arity(OP_NOT) == 1
         and op_arity(OP_AND) == 2
+        and op_arity(OP_CASE_WHEN) == 3
         and op_arity(9999) == -1
     ):
         passed += 1
@@ -296,6 +299,150 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ coalesce wrong")
+
+    # ── CASE WHEN: cond known-true takes THEN, even when THEN is null ───────
+    # cond = amount > 5 (true every row); then = qty (null at row 2); else = -99.
+    # A null THEN must stay null — the branch is passed through verbatim, not
+    # forced valid.
+    var case_then_null = List[ExprNode]()
+    case_then_null.append(col_ref(0))                    # 0 amount
+    case_then_null.append(literal(5.0))                  # 1
+    case_then_null.append(binary(OP_GT, 0, 1))            # 2 cond: amount>5 (always true)
+    case_then_null.append(col_ref(1))                     # 3 then: qty (null at row 2)
+    case_then_null.append(literal(-99.0))                 # 4 else
+    case_then_null.append(ternary(OP_CASE_WHEN, 2, 3, 4)) # 5
+    var ctn = evaluate(case_then_null, 5, batch, True)
+    if (
+        ctn.get(0) == 1.0
+        and ctn.get(1) == 2.0
+        and not ctn.is_valid_at(2)  # then was null -> result stays null
+        and ctn.get(3) == 4.0
+    ):
+        passed += 1
+        print("  ✅ CASE WHEN: known-true cond takes THEN; a null THEN stays null")
+    else:
+        failed += 1
+        print("  ❌ CASE WHEN true/null-then wrong:", ctn.is_valid_at(2))
+
+    # ── CASE WHEN: cond known-false takes ELSE, even when ELSE is null ──────
+    # cond = amount > 1000 (always false); then = 77; else = qty (null at row 2).
+    var case_else_null = List[ExprNode]()
+    case_else_null.append(col_ref(0))                     # 0 amount
+    case_else_null.append(literal(1000.0))                # 1
+    case_else_null.append(binary(OP_GT, 0, 1))             # 2 cond: amount>1000 (always false)
+    case_else_null.append(literal(77.0))                   # 3 then
+    case_else_null.append(col_ref(1))                      # 4 else: qty (null at row 2)
+    case_else_null.append(ternary(OP_CASE_WHEN, 2, 3, 4))  # 5
+    var cen = evaluate(case_else_null, 5, batch, True)
+    if (
+        cen.get(0) == 1.0
+        and cen.get(1) == 2.0
+        and not cen.is_valid_at(2)  # else was null -> result stays null
+        and cen.get(3) == 4.0
+    ):
+        passed += 1
+        print("  ✅ CASE WHEN: known-false cond takes ELSE; a null ELSE stays null")
+    else:
+        failed += 1
+        print("  ❌ CASE WHEN false/null-else wrong:", cen.is_valid_at(2))
+
+    # ── CASE WHEN: cond known-false with a valid ELSE, and known-true with a
+    # valid THEN, both over literals (no nulls involved at all) ─────────────
+    var case_literal = List[ExprNode]()
+    case_literal.append(col_ref(0))                        # 0 amount
+    case_literal.append(literal(25.0))                     # 1
+    case_literal.append(binary(OP_LT, 0, 1))                # 2 cond: amount<25 -> T,T,F,F
+    case_literal.append(literal(1.0))                       # 3 then
+    case_literal.append(literal(0.0))                       # 4 else
+    case_literal.append(ternary(OP_CASE_WHEN, 2, 3, 4))      # 5
+    var clit = evaluate(case_literal, 5, batch, True)
+    if (
+        clit.get(0) == 1.0
+        and clit.get(1) == 1.0
+        and clit.get(2) == 0.0
+        and clit.get(3) == 0.0
+        and clit.null_count() == 0
+    ):
+        passed += 1
+        print("  ✅ CASE WHEN: known-true takes THEN and known-false takes ELSE, over literals")
+    else:
+        failed += 1
+        print("  ❌ CASE WHEN literal true/false wrong")
+
+    # ── CASE WHEN: an UNKNOWN cond falls to ELSE, matching SQL — it does NOT
+    # propagate null the way arithmetic/comparison would. This is the case most
+    # likely to be wrong from a naive port of AND/OR's three-valued pattern. ──
+    # cond = qty > 0: true at rows 0,1,3 (qty=1,2,4), UNKNOWN at row 2 (qty null).
+    var case_unknown = List[ExprNode]()
+    case_unknown.append(col_ref(1))                         # 0 qty
+    case_unknown.append(literal(0.0))                       # 1
+    case_unknown.append(binary(OP_GT, 0, 1))                 # 2 cond: qty>0 -> T,T,unknown,T
+    case_unknown.append(literal(111.0))                      # 3 then
+    case_unknown.append(literal(222.0))                       # 4 else
+    case_unknown.append(ternary(OP_CASE_WHEN, 2, 3, 4))       # 5
+    var cu = evaluate(case_unknown, 5, batch, True)
+    if (
+        cu.get(0) == 111.0
+        and cu.get(1) == 111.0
+        and cu.is_valid_at(2)   # NOT null: falls through to ELSE, decided
+        and cu.get(2) == 222.0  # unknown cond -> ELSE, never NULL
+        and cu.get(3) == 111.0
+        and cu.null_count() == 0
+    ):
+        passed += 1
+        print("  ✅ CASE WHEN: an unknown cond falls to ELSE (never propagates null)")
+    else:
+        failed += 1
+        print("  ❌ CASE WHEN unknown-cond wrong:", cu.is_valid_at(2), cu.get(2))
+
+    # ── chained 3-branch CASE WHEN c1 THEN v1 WHEN c2 THEN v2 ELSE v3 END ────
+    # Built as CASE(c1, v1, CASE(c2, v2, v3)) — the same "chain of nodes" shape
+    # this IR already uses for a & b & c, not a new N-ary node.
+    # c1: amount<15 (only row 0); c2: amount<35 (rows 0,1,2, but row 0 is already
+    # decided by c1) -> row0=v1, row1=v2, row2=v2, row3=v3.
+    var chained = List[ExprNode]()
+    chained.append(col_ref(0))                              # 0 amount
+    chained.append(literal(15.0))                            # 1
+    chained.append(binary(OP_LT, 0, 1))                       # 2 c1: amount<15
+    chained.append(literal(100.0))                             # 3 v1
+    chained.append(literal(35.0))                               # 4
+    chained.append(binary(OP_LT, 0, 4))                          # 5 c2: amount<35
+    chained.append(literal(200.0))                                # 6 v2
+    chained.append(literal(300.0))                                 # 7 v3 (final else)
+    chained.append(ternary(OP_CASE_WHEN, 5, 6, 7))                  # 8 CASE(c2,v2,v3)
+    chained.append(ternary(OP_CASE_WHEN, 2, 3, 8))                   # 9 CASE(c1,v1,inner)
+    if len(validation_error(chained, 9, 2)) > 0:
+        failed += 1
+        print("  ❌ chained CASE WHEN failed validation:", validation_error(chained, 9, 2))
+    else:
+        var chain_col = evaluate(chained, 9, batch, True)
+        if (
+            chain_col.get(0) == 100.0
+            and chain_col.get(1) == 200.0
+            and chain_col.get(2) == 200.0
+            and chain_col.get(3) == 300.0
+            and chain_col.null_count() == 0
+        ):
+            passed += 1
+            print("  ✅ chained 3-branch CASE WHEN resolves each row to the right branch")
+        else:
+            failed += 1
+            print(
+                "  ❌ chained CASE WHEN wrong:",
+                chain_col.get(0), chain_col.get(1), chain_col.get(2), chain_col.get(3),
+            )
+
+    # ── a CASE WHEN missing its third child (else branch) is rejected ───────
+    var case_no_else = List[ExprNode]()
+    case_no_else.append(literal(1.0))
+    case_no_else.append(literal(2.0))
+    case_no_else.append(binary(OP_CASE_WHEN, 0, 1))  # extra defaults to -1
+    if len(validation_error(case_no_else, 2, 0)) > 0:
+        passed += 1
+        print("  ✅ CASE WHEN without a third child is rejected by validation")
+    else:
+        failed += 1
+        print("  ❌ CASE WHEN missing else branch was accepted")
 
     # ── strict mode RAISES where expr.mojo would return 0.0 ─────────────────
     var div = List[ExprNode]()

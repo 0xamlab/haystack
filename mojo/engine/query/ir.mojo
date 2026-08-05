@@ -64,6 +64,12 @@ comptime OP_COL_REF: Int = 130
 comptime OP_CAST_FLOAT: Int = 140
 comptime OP_CAST_BOOL: Int = 141
 
+# ── conditional: the third child (`extra`) is the else branch ────────────────
+# `left`=condition, `right`=then, `extra`=else. N-ary SQL CASE WHEN is a chain of
+# these, exactly like `a & b & c` is a chain of binary OP_AND nodes — this IR has
+# no N-ary node shape, only binary/ternary ones threaded through tree structure.
+comptime OP_CASE_WHEN: Int = 150
+
 
 fn is_frozen_op(op: Int) -> Bool:
     """True for an opcode owned by `expr.mojo`."""
@@ -111,6 +117,8 @@ fn op_arity(op: Int) -> Int:
         return 2
     if op == OP_AND or op == OP_OR or op == OP_COALESCE:
         return 2
+    if op == OP_CASE_WHEN:
+        return 3
     if is_frozen_op(op):
         # The frozen range is a mix of 1-, 2- and 3-child ops. Validation defers to
         # expr.mojo's own tolerance rather than duplicating a table that could drift
@@ -164,6 +172,8 @@ fn op_name(op: Int) -> String:
         return "cast_float"
     if op == OP_CAST_BOOL:
         return "cast_bool"
+    if op == OP_CASE_WHEN:
+        return "case_when"
     if is_frozen_op(op):
         return "frozen_op_" + String(op)
     return "unknown_op_" + String(op)
@@ -187,6 +197,16 @@ fn unary(op: Int, child: Int) -> ExprNode:
 
 fn binary(op: Int, left: Int, right: Int) -> ExprNode:
     return ExprNode(op, 0.0, -1, left, right)
+
+
+fn ternary(op: Int, left: Int, right: Int, extra: Int) -> ExprNode:
+    """A three-child node: `left`=condition, `right`=then, `extra`=else.
+
+    Uses the 6-arg `ExprNode` constructor, the same one `expr.mojo`'s own arity-3
+    ops (clip/ifgt0) already use in the frozen range — this is a new opcode in the
+    v2 range, not a reuse of theirs.
+    """
+    return ExprNode(op, 0.0, -1, left, right, extra)
 
 
 # ── validation ────────────────────────────────────────────────────────────────
@@ -261,6 +281,14 @@ fn validation_error(nodes: List[ExprNode], root: Int, n_columns: Int) -> String:
             return "node " + String(i) + " (" + op_name(node.op) + ") needs a left child"
         if arity >= 2 and node.right < 0:
             return "node " + String(i) + " (" + op_name(node.op) + ") needs a right child"
+        if arity >= 3 and node.extra < 0:
+            return (
+                "node "
+                + String(i)
+                + " ("
+                + op_name(node.op)
+                + ") needs a third child (else branch)"
+            )
         if arity == 1 and node.right >= 0:
             return (
                 "node "
@@ -322,6 +350,8 @@ fn is_evaluable_op(op: Int) -> Bool:
         return True
     if op == OP_CAST_FLOAT or op == OP_CAST_BOOL:
         return True
+    if op == OP_CASE_WHEN:
+        return True
     return False
 
 
@@ -350,6 +380,17 @@ fn describe(nodes: List[ExprNode], root: Int) -> String:
     var arity = op_arity(node.op)
     if arity == 1 or (arity == -2 and node.right < 0):
         return op_name(node.op) + "(" + describe(nodes, node.left) + ")"
+    if arity == 3:
+        return (
+            op_name(node.op)
+            + "("
+            + describe(nodes, node.left)
+            + ", "
+            + describe(nodes, node.right)
+            + ", "
+            + describe(nodes, node.extra)
+            + ")"
+        )
     return (
         op_name(node.op)
         + "("

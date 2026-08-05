@@ -163,7 +163,7 @@ from query.executor import (
     sort_rows_multi,
     top_k_rows,
 )
-from query.ir import binary, col_ref, literal, unary
+from query.ir import binary, col_ref, literal, ternary, unary
 from query.join import (
     JOIN_INNER,
     JOIN_LEFT,
@@ -1284,7 +1284,8 @@ fn parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
     `{"op":130,"column":"amount"}`. Column references carry a NAME, resolved here
     against the schema, so a plan cannot drift onto the wrong column when the caller
     reorders its header. A numeric `"column"` index is also accepted for a caller that
-    already knows the layout.
+    already knows the layout. A ternary node (`OP_CASE_WHEN`) additionally carries
+    `"extra"`: the else-branch child index.
 
     Literals are read through `_number_token` rather than `json_get_int`, which
     truncates: a threshold of 20.5 would silently become 20, and a filter that quietly
@@ -1322,13 +1323,16 @@ fn parse_nodes(expr_json: String, schema: Schema) raises -> List[ExprNode]:
 
         var left = json_get_int(token, "left", -1)
         var right = json_get_int(token, "right", -1)
+        var extra = json_get_int(token, "extra", -1)
         if left < 0 and right < 0:
             var parsed = json_parse_float64_list(
                 "[" + _number_token(token, "value") + "]"
             )
             nodes.append(literal(parsed[0] if len(parsed) > 0 else 0.0))
             continue
-        if right < 0:
+        if extra >= 0:
+            nodes.append(ternary(op, left, right, extra))
+        elif right < 0:
             nodes.append(unary(op, left))
         else:
             nodes.append(binary(op, left, right))

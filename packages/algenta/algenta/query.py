@@ -69,6 +69,7 @@ __all__ = [
     "Query",
     "QueryError",
     "QueryResult",
+    "case_when",
     "col",
     "lit",
     "run_query",
@@ -95,6 +96,7 @@ _OP_IS_NULL = 120
 _OP_IS_NOT_NULL = 121
 _OP_COALESCE = 122
 _OP_COL_REF = 130
+_OP_CASE_WHEN = 150
 
 _ACCEPTED_AGGREGATIONS = ("sum", "avg", "mean", "min", "max", "count", "var", "std")
 
@@ -250,6 +252,18 @@ class Expr:
     def coalesce(self, other: Any) -> Expr:
         return Expr(_OP_COALESCE, children=(self, _coerce(other)))
 
+    # ── conditional ────────────────────────────────────────────────────────────
+    def if_else(self, then: Any, else_: Any) -> Expr:
+        """`CASE WHEN self THEN then ELSE else_ END`, as one ternary node.
+
+        `self` is the condition; an unknown (null) condition takes the `else_`
+        branch, matching SQL — a `CASE` never turns null just because its
+        condition was unknown. For more than one `WHEN`, chain via `case_when`.
+        """
+        return Expr(
+            _OP_CASE_WHEN, children=(self, _coerce(then), _coerce(else_))
+        )
+
     def to_plan(self) -> dict[str, Any]:
         """Flatten to `{"nodes": [...], "root": i}` with children before parents.
 
@@ -271,6 +285,8 @@ class Expr:
             node["left"] = child_indices[0]
         if len(child_indices) >= 2:
             node["right"] = child_indices[1]
+        if len(child_indices) >= 3:
+            node["extra"] = child_indices[2]
         nodes.append(node)
         return len(nodes) - 1
 
@@ -287,6 +303,33 @@ def col(name: str) -> Expr:
 def lit(value: float) -> Expr:
     """A literal. Floats keep their fraction: 20.5 is 20.5, not 20."""
     return Expr(_OP_LITERAL, value=float(value))
+
+
+def case_when(*branches: tuple[Any, Any], else_: Any) -> Expr:
+    """`CASE WHEN c1 THEN v1 WHEN c2 THEN v2 ... ELSE else_ END`.
+
+    `branches` is a sequence of `(condition, value)` pairs, evaluated in order —
+    the first condition that is known-true wins. `else_` is required: this IR has
+    no literal that means "null", so there is no way to build the SQL shorthand
+    of an implicit `ELSE NULL` without one; a caller that wants that passes a
+    column reference or expression that is actually null on the rows it should
+    cover.
+
+    Builds a chain of ternary nodes, innermost first — `case_when((c1, v1),
+    (c2, v2), else_=v3)` becomes `if_else(c1, v1, if_else(c2, v2, v3))` — the
+    same "chain of binary/ternary nodes" shape `__and__`/`__or__` already use for
+    `a & b & c`; this IR has no N-ary node.
+
+    An unknown (null) condition takes the NEXT branch (or `else_`), exactly like
+    a single `if_else` — never mistaken for "no branch matched, so the whole
+    CASE is null".
+    """
+    if not branches:
+        raise ValueError("case_when needs at least one (condition, value) pair")
+    result = _coerce(else_)
+    for cond, then in reversed(branches):
+        result = _coerce(cond).if_else(then, result)
+    return result
 
 
 def _coerce(value: Any) -> Expr:

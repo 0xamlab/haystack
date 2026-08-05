@@ -25,6 +25,18 @@ Logical operators are three-valued, and deliberately *not* strict:
 Collapsing unknown to false here is the common shortcut and it silently drops rows
 that should have been reported as indeterminate.
 
+`CASE WHEN cond THEN then ELSE else END` (`OP_CASE_WHEN`, ternary: `left`=cond,
+`right`=then, `extra`=else) is NOT arithmetic and does not propagate null the way
+the general rule above does. It reads `cond`'s mask/value the way a predicate does:
+
+    cond known and true   -> THEN branch, passed through verbatim (a null THEN
+                              stays null; the mask is THEN's own, not forced valid)
+    cond known and false  -> ELSE branch, passed through verbatim
+    cond unknown (null)   -> ELSE branch — unknown is not true, exactly the rule
+                              `evaluate_predicate` already states for a filter root,
+                              so an unknown condition falls through rather than
+                              making the whole CASE null.
+
 Strict vs permissive
 --------------------
 Strict (the default) turns each of `expr.mojo`'s five masked cases into a typed
@@ -41,6 +53,7 @@ from columnar.validity import is_valid
 from query.ir import (
     OP_ADD,
     OP_AND,
+    OP_CASE_WHEN,
     OP_CAST_BOOL,
     OP_CAST_FLOAT,
     OP_COALESCE,
@@ -137,6 +150,27 @@ fn evaluate(
                 else:
                     out_values.append(0.0)
                     out_mask.append(False)
+
+        elif node.op == OP_CASE_WHEN:
+            # cond known-and-true -> THEN, passed through verbatim (mask included).
+            # cond known-and-false OR cond unknown -> ELSE, passed through verbatim.
+            # Unlike OP_AND/OP_OR, the output is never "unknown because cond was
+            # unknown" — an unknown cond is simply not true, so it falls to ELSE
+            # exactly like evaluate_predicate's own "unknown is not true" rule.
+            ref cv = values[node.left]
+            ref cm = masks[node.left]
+            ref tv = values[node.right]
+            ref tm = masks[node.right]
+            ref ev = values[node.extra]
+            ref em = masks[node.extra]
+            for r in range(n):
+                var cond_true = cm[r] and _truthy(cv[r])
+                if cond_true:
+                    out_values.append(tv[r])
+                    out_mask.append(tm[r])
+                else:
+                    out_values.append(ev[r])
+                    out_mask.append(em[r])
 
         elif node.op == OP_AND or node.op == OP_OR:
             ref lv2 = values[node.left]

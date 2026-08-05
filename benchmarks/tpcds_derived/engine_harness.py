@@ -176,7 +176,25 @@ def dim_with_code(
     integer code, bijective per distinct string tuple (DENSE_RANK ties break
     identically for duplicate strings, which is exactly SQL GROUP BY's own
     tie rule — see RESULTS.md's i_item_id/SCD note). Returns
-    (engine_rows[[sk, code, *extra]], code -> string tuple)."""
+    (engine_rows[[sk, code, *extra]], code -> string tuple).
+
+    Every `string_cols` value that Postgres reports as a real `character(n)`
+    type (OID 1042, `bpchar`) is stripped of trailing whitespace before being
+    stored in the returned code->string map: such a column (e.g. `d_day_name`)
+    comes back from the driver space-padded to its declared width ('Sunday   ',
+    not 'Sunday') -- Postgres's own comparison/DENSE_RANK semantics already
+    treat trailing spaces on `character(n)` as insignificant, so stripping
+    changes no code assignment, only the map's string content, which matters
+    the moment a caller compares a mapped string against a literal. A
+    `varchar`/`text` column's trailing whitespace, by contrast, is real DATA
+    (see Q82's `i_item_desc`, which has a genuinely significant trailing
+    space DuckDB's own output keeps) and must NEVER be stripped -- there is no
+    single correct blanket policy here, only what Postgres's own catalog says
+    each column actually is. The type is read from the query's own live
+    `cursor.description` (`type_code`, a real Postgres OID), not guessed or
+    hardcoded per call site, so this generalizes to any future `string_cols`
+    column on any table without the caller needing to know or declare its type.
+    """
     extra_cols = extra_cols or []
     order_by = ", ".join(string_cols)
     select_extra = (", " + ", ".join(extra_cols)) if extra_cols else ""
@@ -184,12 +202,24 @@ def dim_with_code(
         f"SELECT {sk_col}, DENSE_RANK() OVER (ORDER BY {order_by}) AS grp_code, "
         f"{', '.join(string_cols)}{select_extra} FROM {from_where}"
     )
-    recs = pg_fetch(sql)
+    _PG_BPCHAR_OID = 1042  # character(n) -- Postgres's own stable, built-in system OID
+    with psycopg2.connect(PG_DSN) as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql)
+            bpchar_cols = {
+                col_desc.name
+                for col_desc in cur.description
+                if col_desc.type_code == _PG_BPCHAR_OID and col_desc.name in string_cols
+            }
+            recs = [{k: _coerce_cell(v) for k, v in dict(r).items()} for r in cur.fetchall()]
     code_to_strings: dict[float, tuple] = {}
     engine_rows = []
     for r in recs:
         code = float(r["grp_code"])
-        code_to_strings[code] = tuple(r[c] for c in string_cols)
+        code_to_strings[code] = tuple(
+            r[c].strip() if c in bpchar_cols and r[c] is not None else r[c]
+            for c in string_cols
+        )
         row = [r[sk_col], code] + [r[c] for c in extra_cols]
         engine_rows.append(row)
     return engine_rows, code_to_strings

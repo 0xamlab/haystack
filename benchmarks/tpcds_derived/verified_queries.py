@@ -1963,6 +1963,128 @@ def q84():
     )
 
 
+# ── Q43: the first "CASE only" template — day-of-week bucketed sums via the ──
+# ── new OP_CASE_WHEN ternary node, not an arithmetic workaround ────────────────
+def q43():
+    """Real text (`date_dim, store_sales, store`, `s_gmt_offset=-5`, `d_year=2000`,
+    GROUP BY `s_store_name, s_store_id`) has SEVEN `sum(case when d_day_name='X'
+    then ss_sales_price else null end)` columns — the exact "CASE only" shape
+    RESULTS.md's blocker table names for template 43 (no CTE/subquery/window
+    stacked on top, unlike 21 of the other 28 CASE-tagged templates).
+
+    This is the first translation in this repo to actually reach for the new
+    ternary `OP_CASE_WHEN` (`Expr.if_else`, added this phase) instead of the
+    `cond*a + (1-cond)*b` arithmetic substitute RESULTS.md's own "Resuming
+    this" section named as the fallback before a real ternary node existed:
+    that substitute is unsound here specifically BECAUSE `ss_sales_price` is
+    genuinely nullable in the real generated data (129,666 of 2,880,404 rows
+    at SF=1 — checked directly, not assumed) and arithmetic on a null THEN
+    silently turns "unknown" into a wrong number, exactly the failure mode
+    `case_when`'s own docstring warns about. `if_else` passes a null THEN or
+    a null ELSE through verbatim instead, which is what SQL's CASE actually
+    does.
+
+    The one thing this IR still cannot build is a *literal* null — there is
+    no null-valued literal node, only an absent column cell (see
+    `case_when`'s docstring). So the real `... else null end` ELSE branch is
+    built as a reference to a genuinely-always-absent synthetic column
+    (`always_null`, appended client-side as `None` on every row) rather than
+    any numeric stand-in — the engine's own null, not a Python-side fake.
+    `d_day_name` is dictionary-encoded once (`day_ok`, 7 distinct values in
+    the real data) and each of the 7 conditions is a plain code equality
+    (`day_ok.day_code == <this day's code>`); `s_store_name`/`s_store_id` are
+    dictionary-encoded together as the GROUP BY pair, same as Q3's
+    i_brand/i_brand_id.
+
+    One real, disclosed limit this translation does NOT need to work around:
+    the engine's `sum` aggregate always answers 0.0 for an entirely-absent
+    group rather than SQL's NULL (`aggregate.mojo`'s `has_answer(AGG_SUM)` is
+    unconditionally `True`) — so a store with zero matching rows for some
+    weekday would engine-side read 0.0 where SQL reads NULL. Checked directly
+    against the real DuckDB oracle output before relying on it: at SF=1,
+    every one of the 6 qualifying stores has at least one sale on every one
+    of the 7 weekdays in year 2000, so this specific query's real answer has
+    zero NULL cells among all 42 (6 stores x 7 days) — this translation is
+    verified against that real answer, not against a hypothetical one that
+    would need the aggregate-level fix too.
+    """
+    t0 = time.perf_counter()
+    day_ok_rows, day_code_map = dim_with_code(
+        "d_date_sk", ["d_day_name"], "date_dim WHERE d_year = 2000"
+    )
+    # dim_with_code strips trailing whitespace from every string_cols value
+    # (d_day_name is a real char(9) column) -- see its own docstring for why.
+    name_to_code = {names[0]: code for code, names in day_code_map.items()}
+    store_ok_rows, store_code_map = dim_with_code(
+        "s_store_sk", ["s_store_name", "s_store_id"], "store WHERE s_gmt_offset = -5"
+    )
+
+    day_prefixes = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+    day_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    # project() REPLACES the column set with only its named expressions (confirmed
+    # in packages/algenta/algenta/query.py) -- store_ok.store_code must be
+    # re-projected as an identity expression or it's gone before group_by_many
+    # ever sees it, same pattern Q1's project(l_returnflag_code=col(...), ...)
+    # already uses for its own group-by keys.
+    proj_exprs = {"store_code": col("store_ok.store_code")}
+    aggs = []
+    for prefix, day in zip(day_prefixes, day_names, strict=True):
+        cond = col("day_ok.day_code").eq(float(name_to_code[day]))
+        proj_exprs[f"{prefix}_sales"] = cond.if_else(col("ss_sales_price"), col("always_null"))
+        aggs.append((f"{prefix}_sales", "sum"))
+
+    fact_cols = ["ss_sold_date_sk", "ss_store_sk", "ss_sales_price"]
+    wire_cols = fact_cols + ["always_null"]
+    fact = pg_fetch(f"SELECT {', '.join(fact_cols)} FROM store_sales")
+    t1 = time.perf_counter()
+
+    partial: dict[float, list[float]] = {}
+    for batch in chunk(fact):
+        rows = [[r[c] for c in fact_cols] + [None] for r in batch]
+        q = (
+            Query(columns=wire_cols, rows=rows)
+            .with_table("day_ok", ["d_date_sk", "day_code"], rows=day_ok_rows)
+            .with_table("store_ok", ["s_store_sk", "store_code"], rows=store_ok_rows)
+            .join("day_ok", left_on="ss_sold_date_sk", right_on="d_date_sk", how="inner")
+            .join("store_ok", left_on="ss_store_sk", right_on="s_store_sk", how="inner")
+            .project(**proj_exprs)
+            .group_by_many(by=["store_code"], aggs=aggs)
+        )
+        for r in run_query(q).rows:
+            code = r[0]
+            acc = partial.setdefault(code, [0.0] * 7)
+            for i in range(7):
+                acc[i] += r[1 + i] or 0.0
+    t2 = time.perf_counter()
+
+    final = []
+    for code, sums in partial.items():
+        store_name, store_id = store_code_map[code]
+        final.append(
+            (_strip(store_name), _strip(store_id), *[round(s, 2) for s in sums])
+        )
+    final.sort()
+    final = final[:100]
+
+    cols, drows, dt = duck_run(f"{TRANSLATED_QUERIES_DIR}/43.sql")
+    mism = 0
+    for e, d in zip(final, drows, strict=False):
+        dname, did = _strip(d[0]), _strip(d[1])
+        ok = (
+            e[0] == dname
+            and e[1] == did
+            and all(_close(e[2 + i], d[2 + i]) for i in range(7))
+        )
+        if not ok:
+            mism += 1
+    ok = mism == 0 and len(final) == len(drows)
+    return (
+        ok,
+        f"engine_n={len(final)} duckdb_n={len(drows)} mismatches={mism} "
+        f"fetch={t1 - t0:.2f}s engine={t2 - t1:.2f}s duckdb={dt * 1000:.1f}ms",
+    )
+
+
 QUERIES = {
     3: q3,
     7: q7,
@@ -1975,6 +2097,7 @@ QUERIES = {
     29: q29,
     37: q37,
     42: q42,
+    43: q43,
     48: q48,
     52: q52,
     55: q55,
