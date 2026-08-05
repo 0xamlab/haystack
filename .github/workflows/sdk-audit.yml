@@ -48,10 +48,61 @@ jobs:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Same memory discipline as the release build (build-runtime.yml): the standard
+      # runner has ~7.8 GiB of RAM while a heavy shard's compile peaks near 10 GiB, so
+      # without swap the host tears the VM down and the step dies with a bare exit 143
+      # (run 30971365988). Reclaim the preinstalled toolchains this job never touches and
+      # spend the space on swap BEFORE the pixi environment and build artifacts fill the
+      # disk. /opt/hostedtoolcache is deliberately NOT removed.
+      - name: Provision Linux compiler memory headroom
+        run: |
+          set -euo pipefail
+          echo "== before =="; free -h; swapon --show || true; df -h /
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/local/.ghcup \
+            /opt/ghc \
+            /usr/share/dotnet \
+            /usr/share/swift \
+            /usr/local/share/boost \
+            /usr/share/miniconda || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "== reclaimed =="; df -h /
+          # Keep 12 GiB of the freed space for the build's own artifacts and temp
+          # objects; spend the rest, up to 24 GiB, on swap.
+          avail_gib=$(( $(df --output=avail -k / | tail -1) / 1024 / 1024 ))
+          swap_gib=24
+          if (( avail_gib - 12 < swap_gib )); then swap_gib=$(( avail_gib - 12 )); fi
+          if (( swap_gib < 8 )); then
+            echo "::error::only ${avail_gib} GiB free on / after reclaiming toolchains;" \
+                 "the Mojo compiler peaks at ~11.3 GiB against ~7.8 GiB of runner RAM and" \
+                 "needs at least 8 GiB of swap, or a larger runner"
+            exit 1
+          fi
+          sudo fallocate -l "${swap_gib}G" /algenta-audit-swap
+          sudo chmod 600 /algenta-audit-swap
+          sudo mkswap /algenta-audit-swap >/dev/null
+          sudo swapon /algenta-audit-swap
+          sudo sysctl -w vm.swappiness=10
+          echo "== after =="; free -h; swapon --show; df -h /
+          # Derive the per-shard ceiling from the headroom we actually got rather than
+          # from a constant that can silently exceed it. 80% of RAM+swap leaves room for
+          # the runner agent and page cache. An unreadable total would
+          # arithmetic-evaluate to 0 and silently DISABLE the ceiling — refuse instead.
+          total_mib=$(free -m | awk '/^Mem:/{m=$2} /^Swap:/{s=$2} END{print m+s}')
+          if [ -z "${total_mib}" ] || (( total_mib < 8000 )); then
+            echo "::error::could not read usable memory from free(1) (got '${total_mib}' MiB);" \
+                 "refusing to run without a per-shard footprint ceiling"
+            exit 1
+          fi
+          echo "AUDIT_SHARD_MAX_RSS_MB=$(( total_mib * 80 / 100 ))" >> "$GITHUB_ENV"
 
       - name: Install Pixi
         run: |
@@ -66,7 +117,15 @@ jobs:
           PIXI_HOME: ${{ github.workspace }}/.pixi
           RATTLER_CACHE_DIR: ${{ github.workspace }}/.cache/rattler/cache
           MOJO_BUILD_MCPU: x86-64-v3
-        run: make build-audit-worker
+        run: |
+          set -euo pipefail
+          max_rss="${AUDIT_SHARD_MAX_RSS_MB:-8000}"
+          echo "per-shard footprint ceiling: ${max_rss} MiB"
+          ./scripts/run_repo_python.sh scripts/build_runtime_shards.py \
+            --out mojo_build/audit-worker \
+            --shard-size 24 \
+            --timeout-seconds 900 \
+            --max-rss-mb "${max_rss}"
 
       - name: Ratchet suite against compiled workers
         env:
