@@ -164,6 +164,12 @@ fn take_column(source: Float64Array, indices: List[Int]) -> Float64Array:
     would enter an aggregate as real data. Callers that consider an out-of-range
     index a bug should validate before calling; those doing an outer join want
     exactly this behaviour.
+
+    The `else` branch reads via `get_unchecked` rather than `get`: the `if` just
+    above it already ran `is_valid_at(index)` to decide which branch to take, and
+    `get` would re-run that identical bounds-check-plus-bitmap-test a second time on
+    every present cell — i.e. on almost the whole output of a gather, which this is.
+    `get_unchecked` skips straight to the read the `if` already proved safe.
     """
     var values = List[Float64]()
     var mask = List[Bool]()
@@ -173,7 +179,7 @@ fn take_column(source: Float64Array, indices: List[Int]) -> Float64Array:
             values.append(0.0)
             mask.append(False)
         else:
-            values.append(source.get(index))
+            values.append(source.get_unchecked(index))
             mask.append(True)
     return float64_with_nulls(values^, mask)
 

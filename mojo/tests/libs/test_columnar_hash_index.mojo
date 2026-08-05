@@ -29,6 +29,14 @@ fn _nan() -> Float64:
     return sqrt(-1.0)
 
 
+fn _lcg_next_local(state: UInt64) -> UInt64:
+    """A tiny deterministic PRNG — same shape as `test_query_aggregate_round3`'s
+    own `_lcg_next`, re-derived here rather than imported so this file's key
+    stream needs no cross-test-file dependency for a handful of pseudo-random
+    Float64 keys."""
+    return state * 6364136223846793005 + 1442695040888963407
+
+
 fn main() raises:
     var passed = 0
     var failed = 0
@@ -137,6 +145,73 @@ fn main() raises:
     else:
         failed += 1
         print("  ❌ table did not grow:", growing.capacity())
+
+    # ── find_bits == find, slot for slot, over a stream with -0.0/NaN/absent ──
+    # `find_bits` (query.join's partitioned probe uses it to avoid re-deriving the
+    # hash it already computed for partition routing) MUST agree with `find` on
+    # every present key, MUST agree on every absent one, and must not merge -0.0
+    # into a fresh group or split NaN into two — the exact hazards `find` itself
+    # already handles, now duplicated by a second entry point that skips the
+    # normalize+hash it assumes the caller already did.
+    var fb_table = HashIndex(8)
+    var fb_keys = List[Float64]()
+    var state_fb: UInt64 = 0xA5A5A5A5A5A5A5A5
+    for i in range(2_000):
+        var k: Float64
+        if i % 37 == 0:
+            k = -0.0
+        elif i % 41 == 0:
+            k = _nan()
+        else:
+            state_fb = _lcg_next_local(state_fb)
+            k = Float64(Int((state_fb >> 33) % 400)) - 100.0
+        fb_keys.append(k)
+        var _s = fb_table.get_or_assign(k, fb_table.size())
+    var find_bits_ok = True
+    for i in range(len(fb_keys)):
+        var k = fb_keys[i]
+        var bits = normalize_bits(k)
+        var h = hash_bits(bits)
+        if fb_table.find(k) != fb_table.find_bits(bits, h):
+            find_bits_ok = False
+    # Absent keys: a value never inserted must report -1 on both entry points.
+    for i in range(200, 260):
+        var absent = Float64(i) * 7.0 + 1000.0
+        var bits = normalize_bits(absent)
+        var h = hash_bits(bits)
+        if fb_table.find(absent) != -1 or fb_table.find_bits(bits, h) != -1:
+            find_bits_ok = False
+    # NaN and -0.0 explicitly, since the modular loop above may or may not have
+    # hit them depending on `i % 37`/`i % 41` — make both unconditional here.
+    var nan_bits = normalize_bits(_nan())
+    var nan_h = hash_bits(nan_bits)
+    if fb_table.find(_nan()) != fb_table.find_bits(nan_bits, nan_h):
+        find_bits_ok = False
+    var negzero_bits = normalize_bits(-0.0)
+    var negzero_h = hash_bits(negzero_bits)
+    if fb_table.find(-0.0) != fb_table.find_bits(negzero_bits, negzero_h):
+        find_bits_ok = False
+    if find_bits_ok:
+        passed += 1
+        print("  ✅ find_bits agrees with find slot-for-slot, incl. -0.0/NaN/absent")
+    else:
+        failed += 1
+        print("  ❌ find_bits diverged from find")
+
+    # ── find_bits never inserts, even on a table left empty ──────────────────
+    var empty_table = HashIndex(8)
+    var probe_bits = normalize_bits(42.0)
+    var probe_h = hash_bits(probe_bits)
+    if (
+        empty_table.find_bits(probe_bits, probe_h) == -1
+        and empty_table.size() == 0
+        and empty_table.find(42.0) == -1
+    ):
+        passed += 1
+        print("  ✅ find_bits reports -1 on an empty table and does not insert")
+    else:
+        failed += 1
+        print("  ❌ find_bits mutated an empty table or answered wrong")
 
     # ── hash_bits is a pure function of the bits ──────────────────────────────
     if hash_bits(normalize_bits(3.25)) == hash_float(3.25) and hash_float(

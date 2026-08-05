@@ -76,6 +76,48 @@ fn main() raises:
         failed += 1
         print("  ❌ bounds handling wrong")
 
+    # ── get_unchecked agrees with get on every VALID index (query.join's lever) ──
+    # `get_unchecked` exists so a caller that already ran `is_valid_at` (every hot
+    # per-row path in `query.join`: `is_matchable_key`, `_take_column_join`,
+    # `take_column`) does not pay for that check a second time inside `get`. It has
+    # no check of its own, so this only asserts it where `get`'s own check would
+    # have passed — every present slot of `mixed` — not on the absent one, which is
+    # exactly the "MUST already be known valid" contract `get_unchecked`'s own
+    # docstring states.
+    var unchecked_ok = True
+    for i in range(mixed.length):
+        if mixed.is_valid_at(i) and mixed.get_unchecked(i) != mixed.get(i):
+            unchecked_ok = False
+    if (
+        unchecked_ok
+        and mixed.get_unchecked(0) == 0.0
+        and mixed.get_unchecked(2) == 5.0
+        and mixed.get_unchecked(3) == 7.0
+    ):
+        passed += 1
+        print("  ✅ get_unchecked matches get on every valid slot, incl. a real 0.0")
+    else:
+        failed += 1
+        print("  ❌ get_unchecked diverged from get on a valid slot")
+
+    # ── get_unchecked respects `offset` exactly like `get` does, across a slice ──
+    # A slice shares the underlying values list and only shifts `offset`/`length`
+    # (see the module docstring); `get_unchecked` reads `self.values[][self.offset
+    # + index]` directly, so a bug here would specifically be an offset bug that
+    # `get`'s own bounds-checked read on the UNSLICED column could never surface.
+    var sliced_for_unchecked = col.slice(1, 2)  # values [2.0, 3.0] at offset 1
+    if (
+        sliced_for_unchecked.get_unchecked(0) == sliced_for_unchecked.get(0)
+        and sliced_for_unchecked.get_unchecked(1) == sliced_for_unchecked.get(1)
+        and sliced_for_unchecked.get_unchecked(0) == 2.0
+        and sliced_for_unchecked.get_unchecked(1) == 3.0
+    ):
+        passed += 1
+        print("  ✅ get_unchecked reads through a slice's offset exactly like get")
+    else:
+        failed += 1
+        print("  ❌ get_unchecked disagreed with get across a slice's offset")
+
     # ── slicing is a window, and it does not copy the values ─────────────────
     var window = col.slice(1, 2)
     if (

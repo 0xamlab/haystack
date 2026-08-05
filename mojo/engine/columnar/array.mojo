@@ -69,6 +69,25 @@ struct Float64Array(Copyable, Movable):
             return 0.0
         return self.values[][self.offset + index]
 
+    fn get_unchecked(self, index: Int) -> Float64:
+        """`get`'s value, without re-deriving `is_valid_at`.
+
+        For a caller that has ALREADY confirmed `is_valid_at(index)` is True — e.g.
+        one row past `query.join.is_matchable_key`, or one cell past
+        `query.join._take_column_join`'s own bounds-and-validity `if` — and is about
+        to read the same cell `get` would recompute the same check for. `get` calls
+        `is_valid_at` internally, so a caller that already paid for the bounds check
+        plus the bitmap bit-test once and then calls `get` pays for BOTH again, on
+        every row of a hot per-row path; this skips straight to the read.
+
+        No check of its own, in either direction: `index` MUST already be known to
+        satisfy `is_valid_at(index)` (equivalently, `0 <= index < self.length` and the
+        bit set). An out-of-range call is the same uncatchable abort an out-of-range
+        `List` read always is (rule 1) — exactly as unchecked as `get` already is
+        for anything past the validity check it performs, just without performing it.
+        """
+        return self.values[][self.offset + index]
+
     fn null_count(self) -> Int:
         return count_null(self.validity, self.length)
 

@@ -1,6 +1,6 @@
-# H2O db-benchmark join track, 0.5 GB tier — serial baseline, then a real parallel probe+gather, then a real parallel build
+# H2O db-benchmark join track, 0.5 GB tier — serial baseline, then a real parallel probe+gather, then a real parallel build, then a per-row constant-factor pass
 
-**Still not a win, after two real fixes. This stays in `benchmarks/`, never
+**Still not a win, after three real fixes. This stays in `benchmarks/`, never
 `gitbook/`, per this project's own standing rule: a GitBook page publishes only on a
 minimum ratio > 1.00 against BOTH DuckDB and Polars, on every question.** The original
 serial baseline below cleared that bar on exactly one of five questions against one of
@@ -13,12 +13,19 @@ DuckDB/Polars gap on the fifth question (q5, the near-1:1 10,000,000-row build s
 was mostly the one phase that pass left serial — the hash-table build — so it got the
 identical radix-partitioned parallel treatment ("Update #2" below): q5's DuckDB ratio
 fell from 3.15x to ~1.35x-1.57x across sessions and its Polars ratio roughly halved
-again. **Every question is still a loss against Polars, and q5 is still a loss against
-DuckDB too**, so the page still does not ship. The three sections below are kept in
-chronological order — "Results" is the original serial-path measurement (superseded
-twice over), "Update (2026-08)" is the parallel-probe-and-gather measurement
-(superseded once, on q5 only), "Update #2 (2026-08)" is the current, fully-parallel
-picture — so each stage's gap-closure is visible, not just the final number.
+again. A third pass ("Update #3" below) went after the per-row constant factor Update
+#2 diagnosed as the whole remaining Polars story on every question: it found and fixed
+two real redundant-computation bugs (a doubled validity check on every gathered cell,
+a doubled hash on the partitioned probe's every left row), verified them rigorously,
+and measured a real but small effect — 0.3-2.3% on q1-q4 (inside this benchmark's own
+noise band), a reproducible 5-9% on q5. **Every question is still a loss against
+Polars, and q5 is still a loss against DuckDB too**, so the page still does not ship.
+The four sections below are kept in chronological order — "Results" is the original
+serial-path measurement (superseded three times over), "Update (2026-08)" is the
+parallel-probe-and-gather measurement (superseded twice, on q5 only), "Update #2
+(2026-08)" is the parallel-build measurement (superseded once, by a small constant-
+factor delta), "Update #3 (2026-08)" is the current picture — so each stage's
+gap-closure is visible, not just the final number.
 
 This was the honest "before" picture for the join-track work the feasibility research
 proposed (a shape-aware router + a partitioned/radix hash-join variant, mirroring the
@@ -383,6 +390,164 @@ comparison in the probe, fewer allocations in the gather) that would move q1-q4 
 now move q5 by a comparable amount too, rather than needing a separate build-specific
 intervention on top. That fix — not another parallelism pass, and not scoped to q5
 specifically anymore — is the concrete next lever this diagnosis leaves on the table.
+
+## Update #3 (2026-08): the per-row constant factor — real, small, and NOT the fix
+
+Update #2 closed with a concrete next lever: the Polars gap on every question is a flat,
+per-row constant-factor cost, not a parallelism gap (probe and gather were already
+parallel). This pass investigated that lever directly — source-reading `_take_column_
+join`, `take_column`, and `is_matchable_key` for per-row work Polars' vectorized path
+does not pay — found two real, additive-only fixes, implemented and verified them, then
+measured the actual wall-clock effect before claiming anything. **The honest result: both
+fixes are real, both are now shipped, and neither closes a meaningful fraction of the
+gap** — worth recording precisely so the next attempt does not re-diagnose the same two
+things and expect a bigger win than they have.
+
+### What was found and fixed
+
+1. **A doubled validity check on almost every gathered cell.** `Float64Array.get`
+   calls `is_valid_at` internally; `_take_column_join`'s gather loop (and `take_column`'s
+   serial one) already call `is_valid_at` in their own `if`, then call `get` in the
+   `else` — so every PRESENT cell (nearly the whole output of a gather) paid the
+   bounds-check-plus-bitmap-test twice. `is_matchable_key` — probed on every row of
+   both build and probe, on both sides of every join — had the identical shape. Fix:
+   `columnar.array.Float64Array.get_unchecked(index)`, `get`'s read with no check of
+   its own, for a caller that already ran `is_valid_at`. Every call site in
+   `query.join` that had already proven validity (`is_matchable_key` itself,
+   `_build_right_index`, `_build_right_index_parallel`, both partitioned and
+   unpartitioned probes, `is_sorted_ascending`, `merge_join_indices`,
+   `_take_column_join`, `join_output_rows`, `semi_join_indices`) switched to it, plus
+   `columnar.batch.take_column`'s own serial gather (shared with `query.executor`'s
+   filter and sort, and strictly cheaper there too, for the identical reason).
+
+2. **A doubled hash on the partitioned probe's every left row.** `_hash_join_probe_
+   serial_partitioned` and `_hash_join_probe_parallel_partitioned` (from Update #2's
+   radix-partitioned build) already compute `h = hash_bits(normalize_bits(key))` once
+   to route a left row to its partition, then called `tables[p].find(key)` — which
+   recomputes `normalize_bits` AND `hash_bits` a second time inside `find`, because
+   `HashIndex` had no hashed-entry read overload. Fix: `HashIndex.find_bits(bits, h)`,
+   the exact read-side mirror of the existing `get_or_assign_bits` (same contract:
+   `bits` MUST be `normalize_bits(key)`, `h` MUST be `hash_bits(bits)`). Both
+   partitioned-probe functions now pass the hash they already have instead of
+   discarding it.
+
+Both are internal-mechanics-only: every switched call site had already proven the
+exact fact (`is_valid_at`, or the `(bits, h)` pair) the unchecked/precomputed entry
+point assumes, so the value read and the row visited are unchanged. `hash_join_
+indices`'s signature, its build/probe dispatch thresholds, and every NaN/null/
+duplicate-key rule in the module docstring are untouched.
+
+### Correctness
+
+`test_query_join.mojo` (33/33) and `test_query_join_parallel.mojo` (54/54) — every
+existing check, unmodified — pass exactly as before; this pass changed no assertion
+in either file, only the engine code and (below) two other suites' new checks. Two
+new checks were added:
+
+* `test_columnar_array.mojo`: `get_unchecked` pinned against `get` on every valid slot
+  of a mixed-validity column, including a real `0.0` (the case `get`/`get_unchecked`
+  must NOT distinguish from a null read), plus a slice-offset check (`get_unchecked`
+  reads `self.offset + index` directly, so an offset bug could only show up there).
+* `test_columnar_hash_index.mojo`: `find_bits` pinned against `find` slot-for-slot over
+  a 2,000-key stream with heavy duplication, `-0.0`, and NaN mixed in, plus an explicit
+  absent-key check and an empty-table check (`find_bits` must never insert).
+
+Both new suites and both existing join suites are 100% green; row counts and checksums
+on the H2O data are bit-identical to Update #2's own values (e.g. q5 checksum
+`900111565.7615576` on every rep, this pass and the last).
+
+### Results — measured before claiming a win
+
+Three reps per binary per question, `bench_h2o_join.mojo` built from this pass's
+`join.mojo`/`array.mojo`/`hash_index.mojo`/`batch.mojo` ("after") against an identical
+build from the pre-pass source ("before" — origin/main at the time this pass started,
+`21e5f0ff`, i.e. Update #2's own code), back to back, same machine, same session, load
+average 6.8-8.1. DuckDB/Polars were re-measured in the same session for the ratio
+columns; both are within noise of Update #2's own published numbers.
+
+| Question | Algenta before | Algenta after | Δ | DuckDB (min) | Polars (min) | after/DuckDB | after/Polars |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| q1 | 0.1623s | 0.1610s | -0.8% | 0.3428s | 0.0162s | **0.47x (faster)** | **9.93x** |
+| q2 | 0.2189s | 0.2153s | -1.6% | 0.3751s | 0.0190s | **0.57x (faster)** | **11.33x** |
+| q3 | 0.2244s | 0.2237s | -0.3% | 0.4527s | 0.0382s | **0.49x (faster)** | **5.86x** |
+| q4 | 0.2183s | 0.2132s | -2.3% | 0.3618s | 0.0190s | **0.59x (faster)** | **11.22x** |
+| q5 | 0.5929s | 0.5586s | **-5.8%** | 0.3803s | 0.0997s | **1.47x** | **5.60x** |
+
+Repeated across several alternating-rep sessions (not just the one tabulated): q5's
+improvement is the reproducible one, consistently 5-9% faster across five separate
+alternating-rep runs, never the reverse. q1-q4's improvement is real but small enough
+(0.3-2.3% in this session) to sit inside this benchmark's own session-to-session noise
+band on a shared, moderately loaded (load 6.8-8.8) host — a few reps came back with q1-
+q4 flat or fractionally slower for "after", which a genuinely near-zero effect on a
+noisy host predicts and a large one would not.
+
+**Why the size mismatch with the diagnosis's own estimate.** Update #2 (without a
+profiler, reasoning from code shape alone) expected the validity-check dedup to matter
+a lot — it is on 70-90% of the estimated gather-dominated gap's row volume. The measured
+effect is much smaller. The likely reason, visible in the code shape itself: `get_
+unchecked`'s fix removes a SECOND call to a PURE function (`is_valid_at`, no side
+effects) from a straight-line `if`/`else` in the SAME function, over the SAME `self`
+that nothing mutates in between — textbook load-forwarding/CSE territory for any
+LLVM-backed compiler, and Mojo compiles through LLVM. It is plausible the optimizer was
+already collapsing most of this redundancy before this pass ever touched the source;
+the source-level fix is real and correct (and now also removes any doubt, cheaply,
+with no downside), but the machine-level saving it was chasing may have already existed.
+`find_bits`'s fix is a different shape — it removes a redundant computation that
+crosses a STRUCT METHOD call (`tables[p].find(key)`, through a `List[HashIndex]`
+indirection) rather than sitting in one straight-line block, which is a much harder
+case for a compiler to collapse on its own without the source-level rewrite — and it is
+exactly the one of the two fixes that produced a real, repeatable, non-noise
+improvement.
+
+### Recommendation, updated again
+
+**Still does not clear the publish bar.** No question beats Polars (5.60x-11.33x
+loss, essentially unchanged from Update #2's 5.11x-10.05x — within the noise this pass
+itself just characterized), and q5 still loses to DuckDB (1.47x, barely moved from
+1.47x-1.57x). This pass's own honest conclusion: the two per-row costs it found and
+fixed were real, are now gone, and were not the size of lever the remaining gap needs.
+Fixing "a doubled cheap check" was not enough; closing a 5-11x gap needs either a
+genuinely different per-row shape for the gather/probe (real SIMD/vectorized compare
+and copy, batching several rows' worth of work into one instruction the way Polars'
+Arrow-native kernels do, rather than one scalar branch per row however cheap each
+branch is) or accepting that this join path's current per-row-scalar architecture has
+a ceiling here that no more constant-factor trimming will clear. Both of this pass's
+fixes ship anyway — they are strictly cheaper on every path that already existed, one
+of them (`find_bits`) with a measured, reproducible win on q5 — but the next attempt on
+this file should budget for a genuinely different loop shape, not another redundant-
+check hunt.
+
+### Independent reproduction (2026-08)
+
+A separate pass re-ran this exact comparison from scratch — fresh worktrees pinned to
+`origin/main@21e5f0ff` ("before", i.e. this update's own starting point) and to this
+update's code ("after"), fresh `pixi run mojo build`, fresh `/tmp/h2o_join` data check,
+fresh DuckDB 1.5.5 / Polars 1.43.1 baselines via the pinned venv `run_baselines.py`
+asserts on — specifically to confirm the numbers above are reproducible, not a
+one-off. Row counts and checksums came back bit-identical between "before" and
+"after" binaries on every question (e.g. q1 `900289106.2571583`, matching the
+`~2.4e-12`-level cross-engine agreement this file already documents), confirming the
+fixes changed no answer.
+
+Ratios (min of several reps each), this rerun vs. this update's own table above:
+
+| Q | after/DuckDB (this update) | after/DuckDB (rerun) | after/Polars (this update) | after/Polars (rerun) |
+| --- | --- | --- | --- | --- |
+| q1 | 0.47x | 0.39x | 9.93x | 6.95x |
+| q2 | 0.57x | 0.48x | 11.33x | 9.77x |
+| q3 | 0.49x | 0.38x | 5.86x | 5.57x |
+| q4 | 0.59x | 0.50x | 11.22x | 10.35x |
+| q5 | 1.47x | 1.16x | 5.60x | 5.31x |
+
+The absolute ratios move session-to-session (a shared, variably-loaded host, same as
+every other measurement in this file) but the **shape and the verdict are identical**:
+q1-q4 win outright against DuckDB and lose to Polars by roughly 5-10x in both sessions;
+q5 loses to both DuckDB (1.16x-1.47x) and Polars (5.31x-5.60x) in both sessions. The
+rerun's before/after deltas landed in the same place too — q1-q4 within ±0.5-1% (noise,
+either direction across reps), q5 a reproducible ~5% faster after the fix (0.611s →
+0.581s at this rerun's own minimums). This confirms the update above is not a
+single-shot artifact: the two fixes are real and worth keeping, and the remaining gap
+is exactly as this update already concluded — not something a rerun makes go away.
 
 ## Method
 

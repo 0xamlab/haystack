@@ -197,6 +197,29 @@ struct HashIndex(Copyable, Movable):
             return -1
         return self.slots[pos]
 
+    fn find_bits(self, bits: UInt64, h: UInt64) -> Int:
+        """`find` for a caller that already normalized and hashed. Never inserts.
+
+        `bits` MUST be `normalize_bits(key)` and `h` MUST be `hash_bits(bits)` —
+        `get_or_assign_bits`'s own contract, mirrored here for the read side, which
+        had no equivalent until `query.join`'s radix-partitioned probe needed one:
+        that probe already computes `h` to route a left row to its partition
+        before this call, and calling plain `find(key)` afterward would recompute
+        both `normalize_bits` and `hash_bits` a second time for every left row on
+        the partitioned path, for a value already sitting in a local. A mismatched
+        `(bits, h)` pair would probe one chain and compare another, exactly the
+        hazard `get_or_assign_bits`'s own docstring calls out; the suite pins this
+        entry slot-for-slot against `find` over the same key stream, including
+        -0.0 and NaN, the same way `get_or_assign_bits` is pinned against
+        `get_or_assign`.
+        """
+        var pos = Int(h) & self.mask
+        while self.slots[pos] != EMPTY_SLOT:
+            if self.slot_keys[pos] == bits:
+                return self.slots[pos]
+            pos = (pos + 1) & self.mask
+        return -1
+
     fn contains(self, key: Float64) -> Bool:
         return self.find(key) >= 0
 

@@ -109,6 +109,41 @@ below for the full numbers and the radix-partitioned design that fixes it withou
 mutating one `HashIndex` from two threads. `_build_right_index` itself stays exactly
 as it was above; `hash_join_indices` now has a second, additive way to reach the table
 its probe needs, gated by `JOIN_BUILD_PARALLEL_MIN_ROWS`.
+
+Per-row constant factor: one validity check instead of two, one hash instead of two
+(2026-08, second follow-on)
+------------------------------------------------------------------------------------
+With build and probe both parallelized, `benchmarks/h2o_join/RESULTS.md`'s per-phase
+telemetry found the REMAINING Polars gap on q1-q4 flat across worker counts — the
+signature of a per-row constant-factor cost, not a parallelism gap — and attributed
+70-90% of it to `materialize`'s gather. The cause: every present cell in a gather (i.e.
+almost the whole output) called `Float64Array.get`, which itself calls `is_valid_at` —
+so a caller like `_take_column_join`, which had ALREADY called `is_valid_at` to decide
+which branch to take, paid for the exact same bounds-check-plus-bitmap-test twice per
+cell. `is_matchable_key` — probed on every row of both build and probe, on both
+sides — had the identical shape: `is_valid_at` then `get`, which re-ran it.
+
+The fix is `columnar.array.Float64Array.get_unchecked`: `get`'s read with no check of
+its own, for a caller that has ALREADY confirmed `is_valid_at` — exactly the shape
+every one of these call sites already has. This is a pure internal-mechanics change:
+every call site that adopts it was already inside a branch that had just proven the
+index valid, so the value read is identical, the row is identical, and nothing about
+NaN, null, or duplicate-key handling moves — only the redundant second check is gone.
+
+The partitioned probe (`_hash_join_probe_serial_partitioned` and
+`_hash_join_probe_parallel_partitioned`, from the parallel build above) had a second,
+narrower version of the same shape: both already compute `h = hash_bits(normalize_
+bits(key))` once to route a left row to its partition, then called `tables[p].find
+(key)` — which recomputes `normalize_bits` and `hash_bits` a SECOND time internally,
+because `HashIndex.find` had no hashed-entry overload to hand the already-computed
+pair to. `HashIndex.find_bits(bits, h)` is that overload — `get_or_assign_bits`'s exact
+read-side mirror, same contract (`bits` MUST be `normalize_bits(key)`, `h` MUST be
+`hash_bits(bits)`), same "the suite pins it slot-for-slot against `find`" discipline.
+
+None of this touches `hash_join_indices`'s signature, its build/probe dispatch
+thresholds, or any NaN/null/duplicate-key rule above — it is strictly cheaper per row
+on paths that already existed, additive in the same sense `get_or_assign_bits` was:
+a new way to reach an unchanged answer, never a new answer.
 """
 from std.algorithm.functional import parallelize
 from std.memory import alloc
@@ -273,7 +308,7 @@ fn is_matchable_key(column: Float64Array, row: Int) -> Bool:
     """
     if not column.is_valid_at(row):
         return False
-    var value = column.get(row)
+    var value = column.get_unchecked(row)
     # NaN is the ONLY Float64 that is not equal to itself. No `isnan` import needed and
     # no dependence on a sign bit or a payload, so a signalling NaN is caught too.
     return value == value
@@ -310,7 +345,7 @@ fn _build_right_index(
             null_keys += 1
             continue
         var next_slot = len(first_row)
-        var slot = slot_of.get_or_assign(right_key.get(r), next_slot)
+        var slot = slot_of.get_or_assign(right_key.get_unchecked(r), next_slot)
         if slot == next_slot:
             first_row.append(r)
             last_row.append(r)
@@ -465,7 +500,7 @@ fn _build_right_index_parallel(
             if not is_matchable_key(right_key, r):
                 nulls += 1
                 continue
-            var h = hash_bits(normalize_bits(right_key.get(r)))
+            var h = hash_bits(normalize_bits(right_key.get_unchecked(r)))
             hrow[r] = h
             lp[Int(h >> (64 - JOIN_BUILD_RADIX_BITS))] += 1
         for p in range(JOIN_BUILD_RADIX_PARTITIONS):
@@ -557,7 +592,10 @@ fn _build_right_index_parallel(
         for s in range(s0, s1):
             var r = prow[s]
             var h = phash[s]
-            var bits = normalize_bits(right_key.get(r))
+            # `r` came from pass B's own scatter, which only ever wrote rows that
+            # passed `is_matchable_key` — so `is_valid_at(r)` is already known True
+            # here and `get_unchecked` skips re-deriving it.
+            var bits = normalize_bits(right_key.get_unchecked(r))
             var slot = tp[p].get_or_assign_bits(bits, h, group_count)
             if slot == group_count:
                 group_count += 1
@@ -609,10 +647,11 @@ fn _hash_join_probe_serial_partitioned(
                 out_right.append(NO_ROW)
             continue
 
-        var key = left_key.get(l)
-        var h = hash_bits(normalize_bits(key))
+        var key = left_key.get_unchecked(l)
+        var bits = normalize_bits(key)
+        var h = hash_bits(bits)
         var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
-        var slot = tables[p].find(key)
+        var slot = tables[p].find_bits(bits, h)
         if slot < 0:
             unmatched += 1
             if join_type == JOIN_LEFT:
@@ -705,10 +744,11 @@ fn _hash_join_probe_parallel_partitioned(
                 if emit_unmatched:
                     local_count += 1
                 continue
-            var key = left_key.get(l)
-            var h = hash_bits(normalize_bits(key))
+            var key = left_key.get_unchecked(l)
+            var bits = normalize_bits(key)
+            var h = hash_bits(bits)
             var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
-            var slot = tables[p].find(key)
+            var slot = tables[p].find_bits(bits, h)
             if slot < 0:
                 local_unmatched += 1
                 if emit_unmatched:
@@ -752,10 +792,11 @@ fn _hash_join_probe_parallel_partitioned(
                     orp[cur] = NO_ROW
                     cur += 1
                 continue
-            var key = left_key.get(l)
-            var h = hash_bits(normalize_bits(key))
+            var key = left_key.get_unchecked(l)
+            var bits = normalize_bits(key)
+            var h = hash_bits(bits)
             var p = Int(h >> (64 - JOIN_BUILD_RADIX_BITS))
-            var slot = tables[p].find(key)
+            var slot = tables[p].find_bits(bits, h)
             if slot < 0:
                 if emit_unmatched:
                     olp[cur] = l
@@ -861,7 +902,7 @@ fn _hash_join_probe_serial(
                 out_right.append(NO_ROW)
             continue
 
-        var slot = slot_of.find(left_key.get(l))
+        var slot = slot_of.find(left_key.get_unchecked(l))
         if slot < 0:
             unmatched += 1
             if join_type == JOIN_LEFT:
@@ -972,7 +1013,7 @@ fn _hash_join_probe_parallel(
                 if emit_unmatched:
                     local_count += 1
                 continue
-            var slot = slot_of.find(left_key.get(l))
+            var slot = slot_of.find(left_key.get_unchecked(l))
             if slot < 0:
                 local_unmatched += 1
                 if emit_unmatched:
@@ -1018,7 +1059,7 @@ fn _hash_join_probe_parallel(
                     orp[cur] = NO_ROW
                     cur += 1
                 continue
-            var slot = slot_of.find(left_key.get(l))
+            var slot = slot_of.find(left_key.get_unchecked(l))
             if slot < 0:
                 if emit_unmatched:
                     olp[cur] = l
@@ -1198,7 +1239,7 @@ fn is_sorted_ascending(batch: RecordBatch, key_column: Int) -> Bool:
             continue
         if seen_unusable:
             return False
-        var value = key.get(r)
+        var value = key.get_unchecked(r)
         if have_previous and value < previous:
             return False
         previous = value
@@ -1275,17 +1316,22 @@ fn merge_join_indices(
             l += 1
             continue
 
-        var lv = left_key.get(l)
+        var lv = left_key.get_unchecked(l)
 
         # The left run FIRST, and starting at l + 1: row `l` belongs to its own run by
         # definition rather than by comparison, so `left_run_end > l` unconditionally and
         # every `l = left_run_end` below is real progress. Measuring the left run before
         # touching the right side is what decouples termination from the comparisons.
+        #
+        # Every `.get_unchecked` below sits after an `is_matchable_key` on the SAME row
+        # in the SAME `and`/`or` chain, evaluated first — short-circuiting guarantees
+        # `is_valid_at` already answered True before the unchecked read runs, the same
+        # guarantee `is_matchable_key`'s own two-step check makes internally.
         var left_run_end = l + 1
         while (
             left_run_end < left.n_rows
             and is_matchable_key(left_key, left_run_end)
-            and left_key.get(left_run_end) == lv
+            and left_key.get_unchecked(left_run_end) == lv
         ):
             left_run_end += 1
 
@@ -1296,7 +1342,7 @@ fn merge_join_indices(
         while (
             r < right.n_rows
             and is_matchable_key(right_key, r)
-            and right_key.get(r) < lv
+            and right_key.get_unchecked(r) < lv
         ):
             r += 1
 
@@ -1309,7 +1355,7 @@ fn merge_join_indices(
         if (
             r >= right.n_rows
             or not is_matchable_key(right_key, r)
-            or not (right_key.get(r) == lv)
+            or not (right_key.get_unchecked(r) == lv)
         ):
             for li in range(l, left_run_end):
                 unmatched += 1
@@ -1325,7 +1371,7 @@ fn merge_join_indices(
         while (
             run_end < right.n_rows
             and is_matchable_key(right_key, run_end)
-            and right_key.get(run_end) == lv
+            and right_key.get_unchecked(run_end) == lv
         ):
             run_end += 1
 
@@ -1402,7 +1448,11 @@ fn _take_column_join(source: Float64Array, indices: List[Int]) -> Float64Array:
                 vp[i] = 0.0
                 mp[i] = False
             else:
-                vp[i] = source.get(index)
+                # `is_valid_at(index)` already answered True on this branch (the `or`
+                # chain's short-circuit means it is the reason we are here at all), so
+                # `get_unchecked` skips `get`'s own re-derivation of the exact same
+                # check — this `else` is almost the entire row volume of a gather.
+                vp[i] = source.get_unchecked(index)
                 mp[i] = True
 
     parallelize[gather_worker](workers)
@@ -1538,7 +1588,7 @@ fn join_output_rows(
             if join_type == JOIN_LEFT:
                 total += 1
             continue
-        var slot = slot_of.find(left_key.get(l))
+        var slot = slot_of.find(left_key.get_unchecked(l))
         if slot < 0:
             if join_type == JOIN_LEFT:
                 total += 1
@@ -1578,7 +1628,7 @@ fn semi_join_indices(
     for l in range(left.n_rows):
         if not is_matchable_key(left_key, l):
             continue
-        var found = slot_of.find(left_key.get(l)) >= 0
+        var found = slot_of.find(left_key.get_unchecked(l)) >= 0
         if found == keep_matching:
             out.append(l)
     return out^
