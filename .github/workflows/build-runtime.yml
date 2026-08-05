@@ -336,10 +336,20 @@ jobs:
           python -m venv /tmp/algenta-macos-wheel
           . /tmp/algenta-macos-wheel/bin/activate
           pip install --quiet dist-runtime/*.whl dist-algenta/*.whl
-          algenta runtime doctor | grep -q "status:          READY"
+          algenta runtime doctor | tee /tmp/algenta-macos-doctor.txt | grep -q "status:          READY"
+          # dot64_f32's contract is EXACTLY 64 elements (short lists return the 0.0
+          # sentinel since the audit hardened the fixed-offset SIMD loads), so the fixture
+          # must send full-length vectors. The payload is always printed: a dead smoke
+          # test must say why it died, not leave a bare AssertionError.
           algenta runtime execute vector_kernels.dot dot64_f32 \
-            --args-json '{"a":[1,2,6],"b":[3,2,1]}' > /tmp/algenta-macos-execute.json
-          python -c 'import json; p=json.load(open("/tmp/algenta-macos-execute.json")); assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0'
+            --args-json '{"a":[1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"b":[3,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}' \
+            > /tmp/algenta-macos-execute.json || true
+          echo "--- execute payload:"; cat /tmp/algenta-macos-execute.json; echo
+          python - <<'PY'
+          import json
+          p = json.load(open("/tmp/algenta-macos-execute.json"))
+          assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0, p
+          PY
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -494,9 +504,11 @@ jobs:
               missing = sorted(set(shard_routes) - executed_workers)
               raise SystemExit(f'workers without real function execution: {missing}')
 
+          # dot64_f32 requires exactly 64 elements (short lists return the 0.0 sentinel),
+          # so the latency probe uses full-length vectors.
           request = {
-              'a': [1.0, 2.0, 6.0],
-              'b': [3.0, 2.0, 1.0],
+              'a': [1.0, 2.0, 3.0] + [0.0] * 61,
+              'b': [3.0, 2.0, 2.0] + [0.0] * 61,
           }
           latencies = []
           for index in range(11):
@@ -512,8 +524,14 @@ jobs:
           print('clean-machine contract OK')
           PY
           algenta runtime execute vector_kernels.dot dot64_f32 \
-            --args-json '{"a":[1,2,6],"b":[3,2,1]}' > /tmp/algenta-runtime-execute.json
-          python -c 'import json; p=json.load(open("/tmp/algenta-runtime-execute.json")); assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0'
+            --args-json '{"a":[1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"b":[3,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}' \
+            > /tmp/algenta-runtime-execute.json
+          echo "--- execute payload:"; cat /tmp/algenta-runtime-execute.json; echo
+          python - <<'PY'
+          import json
+          p = json.load(open("/tmp/algenta-runtime-execute.json"))
+          assert p["success"] and p["engine_used"] == "mojo" and p["result"] == 13.0, p
+          PY
           algenta simulate > /tmp/algenta-simulate.txt
           grep -q "Engine:             bundled native runtime" /tmp/algenta-simulate.txt
           grep -q "Python fallback:    disabled" /tmp/algenta-simulate.txt
