@@ -49,6 +49,30 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 180
+
+    # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
+    # migrations for EVERY pytest session under tests/ — including the ratchet suite —
+    # so this job needs the same postgres service the Test job gets (ci.yml). Without it
+    # the ratchet step errors 4/4 with "connection refused" before the sweep can start.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+      DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:5432/test_db
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
