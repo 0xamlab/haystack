@@ -45,17 +45,21 @@ from columnar.array import Float64Array, float64_with_nulls
 from columnar.batch import RecordBatch, schema_of, take_column
 from query.join import (
     JOIN_BUILD_PARALLEL_MIN_ROWS,
+    JOIN_DIRECT_ADDRESS_MAX_DENSITY,
     JOIN_GATHER_PARALLEL_MIN_ROWS,
     JOIN_INNER,
     JOIN_LEFT,
     JOIN_PROBE_PARALLEL_MIN_ROWS,
     NO_ROW,
+    _build_direct_address_table,
     _build_right_index,
     _build_right_index_parallel,
     _hash_join_probe_parallel,
     _hash_join_probe_parallel_clustered,
+    _hash_join_probe_parallel_direct_address,
     _hash_join_probe_parallel_partitioned,
     _hash_join_probe_serial,
+    _hash_join_probe_serial_direct_address,
     _hash_join_probe_serial_partitioned,
     _take_column_join,
     hash_join_indices,
@@ -103,6 +107,119 @@ fn _xorshift_next(state: UInt64) -> UInt64:
     s = s ^ (s >> 7)
     s = s ^ (s << 17)
     return s
+
+
+fn _shuffle(mut arr: List[Int], seed: Int):
+    """Fisher-Yates, `_xorshift_next`-driven — the same shuffle shape
+    `benchmarks/h2o_join/generate.py`'s `rng.shuffle` plays for `id3`, just without a
+    numpy dependency here."""
+    var state = UInt64(seed) + 1
+    var n = len(arr)
+    for i in range(n - 1, 0, -1):
+        state = _xorshift_next(state)
+        var j = Int(state % UInt64(i + 1))
+        var tmp = arr[i]
+        arr[i] = arr[j]
+        arr[j] = tmp
+
+
+fn _shared_permutation(total: Int, seed: Int) -> List[Int]:
+    """A permutation of `1..total` — the exact shape `benchmarks/h2o_join/generate.py`'s
+    `split_xlr` draws `id3` from, which is what makes direct-addressing valid for it:
+    every value in this range is distinct and present exactly once."""
+    var perm = List[Int]()
+    for i in range(1, total + 1):
+        perm.append(i)
+    _shuffle(perm, seed)
+    return perm^
+
+
+fn _dense_left_batch(perm: List[Int], n: Int, seed: Int) -> RecordBatch:
+    """`lhs_pool` in `split_xlr`'s own naming: `perm[0:n]` (the "common" + "left-only"
+    slices, concatenated), reshuffled — matching `sample_all`'s behavior when
+    `len(pool) == size`: a pure shuffle, no padding."""
+    var lhs_pool = List[Int]()
+    for i in range(n):
+        lhs_pool.append(perm[i])
+    _shuffle(lhs_pool, seed)
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    for i in range(len(lhs_pool)):
+        values.append(Float64(lhs_pool[i]))
+        mask.append(True)
+    return _batch1("k", values^, mask^)
+
+
+fn _dense_left_batch_with_hazards(
+    perm: List[Int], n: Int, seed: Int, nan_every: Int, null_every: Int
+) -> RecordBatch:
+    """`_dense_left_batch` with periodic NaN/null rows spliced in — proves the
+    direct-address probe's unmatchable-key handling on a left column that is otherwise
+    entirely within the dense-permutation shape."""
+    var lhs_pool = List[Int]()
+    for i in range(n):
+        lhs_pool.append(perm[i])
+    _shuffle(lhs_pool, seed)
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    var nan_value = Float64(0.0) / Float64(0.0)
+    for i in range(len(lhs_pool)):
+        if nan_every > 0 and i % nan_every == 0:
+            values.append(nan_value)
+            mask.append(True)
+            continue
+        if null_every > 0 and i % null_every == 0:
+            values.append(0.0)
+            mask.append(False)
+            continue
+        values.append(Float64(lhs_pool[i]))
+        mask.append(True)
+    return _batch1("k", values^, mask^)
+
+
+fn _dense_right_batch(perm: List[Int], n: Int, n_common: Int, total: Int, seed: Int) -> RecordBatch:
+    """`rhs_pool` in `split_xlr`'s own naming: `perm[0:n_common]` ("common") concatenated
+    with `perm[n:total]` ("right-only"), reshuffled — the build side that
+    `_build_direct_address_table` must accept as a dense, unique-key span."""
+    var rhs_pool = List[Int]()
+    for i in range(n_common):
+        rhs_pool.append(perm[i])
+    for i in range(n, total):
+        rhs_pool.append(perm[i])
+    _shuffle(rhs_pool, seed)
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    for i in range(len(rhs_pool)):
+        values.append(Float64(rhs_pool[i]))
+        mask.append(True)
+    return _batch1("k", values^, mask^)
+
+
+fn _sparse_range_right_batch(n_rows: Int) -> RecordBatch:
+    """`n_rows - 1` contiguous keys plus one far outlier — a deliberately WIDE, SPARSE
+    span (`JOIN_DIRECT_ADDRESS_MAX_DENSITY` must reject this) rather than a fixture
+    that happens to be sparse by chance."""
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    for i in range(n_rows - 1):
+        values.append(Float64(i))
+        mask.append(True)
+    values.append(Float64((n_rows - 1) * (JOIN_DIRECT_ADDRESS_MAX_DENSITY + 1)))
+    mask.append(True)
+    return _batch1("k", values^, mask^)
+
+
+fn _fractional_key_right_batch(n_rows: Int) -> RecordBatch:
+    """`n_rows - 1` contiguous integer keys plus one fractional key —
+    `_build_direct_address_table` must reject this, not round it to a slot."""
+    var values = List[Float64]()
+    var mask = List[Bool]()
+    for i in range(n_rows - 1):
+        values.append(Float64(i))
+        mask.append(True)
+    values.append(Float64(n_rows // 2) + 0.5)
+    mask.append(True)
+    return _batch1("k", values^, mask^)
 
 
 fn _left_batch(n_rows: Int, modulus: Int, nan_every: Int, null_every: Int, seed: Int) -> RecordBatch:
@@ -388,6 +505,111 @@ fn _check_clustered_probe_matches_serial(
         )
 
 
+fn _check_direct_address_matches_serial(
+    left: RecordBatch,
+    right: RecordBatch,
+    join_type: Int,
+    workers: Int,
+    mut passed: Int,
+    mut failed: Int,
+    label: String,
+):
+    """`_build_direct_address_table` + both its probes -- the direct-addressing
+    alternative to a hash table entirely, valid only for a dense-unique-integer key
+    span -- pinned row for row against the same plain-serial reference every other
+    check in this file uses. Asserts `build_ok` is True: the caller's fixture is
+    constructed to BE the shape this path requires, so a False here is itself a
+    failure, not a fallback to shrug off.
+    """
+    var left_key = left.column(0)
+    var right_key = right.column(0)
+
+    var slot_of = HashIndex(64)
+    var ref_first_row = List[Int]()
+    var ref_next_row = List[Int]()
+    _ = _build_right_index(right_key, right.n_rows, slot_of, ref_first_row, ref_next_row)
+    var reference = _hash_join_probe_serial(
+        left_key, left.n_rows, slot_of, ref_first_row, ref_next_row, join_type
+    )
+
+    var table = List[Int]()
+    var key_lo = 0
+    var key_hi = 0
+    var build_ok = True
+    _ = _build_direct_address_table(
+        right_key, right.n_rows, workers, table, key_lo, key_hi, build_ok
+    )
+    if not build_ok:
+        failed += 1
+        print(
+            "  ❌", label, "workers=" + String(workers),
+            "build reported ok=False (expected True on this shape)",
+        )
+        return
+
+    var got_serial = _hash_join_probe_serial_direct_address(
+        left_key, left.n_rows, table, key_lo, key_hi, join_type
+    )
+    var got_parallel = _hash_join_probe_parallel_direct_address(
+        left_key, left.n_rows, table, key_lo, key_hi, join_type, workers
+    )
+
+    var serial_ok = reference.n_rows() == got_serial.n_rows() and _results_equal(
+        reference.left_rows, reference.right_rows, got_serial.left_rows, got_serial.right_rows
+    ) and reference.left_unmatched == got_serial.left_unmatched and reference.null_key_rows == got_serial.null_key_rows
+
+    var parallel_ok = reference.n_rows() == got_parallel.n_rows() and _results_equal(
+        reference.left_rows, reference.right_rows, got_parallel.left_rows, got_parallel.right_rows
+    ) and reference.left_unmatched == got_parallel.left_unmatched and reference.null_key_rows == got_parallel.null_key_rows
+
+    if serial_ok and parallel_ok:
+        passed += 1
+        print(
+            "  ✅", label,
+            "workers=" + String(workers),
+            "right_rows=" + String(right.n_rows),
+            "rows=" + String(reference.n_rows()),
+        )
+    else:
+        failed += 1
+        print(
+            "  ❌", label,
+            "workers=" + String(workers),
+            "ref_rows=" + String(reference.n_rows()),
+            "serial_da_rows=" + String(got_serial.n_rows()),
+            "parallel_da_rows=" + String(got_parallel.n_rows()),
+            "serial_ok=" + String(serial_ok),
+            "parallel_ok=" + String(parallel_ok),
+        )
+
+
+fn _check_direct_address_rejects_invalid_shape(
+    right: RecordBatch,
+    workers: Int,
+    mut passed: Int,
+    mut failed: Int,
+    label: String,
+):
+    """Proves the guard rails actually reject what `_build_direct_address_table`'s own
+    docstring says they must -- a fractional key, a duplicate key, or a span far wider
+    than the row count -- rather than silently building a table this data does not
+    support. The failure mode this exists to catch is `ok=True` on a shape that should
+    have been refused, not the reverse.
+    """
+    var right_key = right.column(0)
+    var table = List[Int]()
+    var key_lo = 0
+    var key_hi = 0
+    var ok = True
+    _ = _build_direct_address_table(right_key, right.n_rows, workers, table, key_lo, key_hi, ok)
+    if not ok:
+        passed += 1
+        print("  ✅", label, "workers=" + String(workers), "correctly rejected (ok=False)")
+    else:
+        failed += 1
+        print("  ❌", label, "workers=" + String(workers), "should have rejected but ok=True")
+
+
 fn _check_end_to_end_matches_serial(
     left: RecordBatch,
     right: RecordBatch,
@@ -637,6 +859,52 @@ fn main() raises:
     _check_build_matches_serial(
         left8, right8, JOIN_INNER, 4, passed, failed,
         "build-parallel, below JOIN_BUILD_PARALLEL_MIN_ROWS (called directly)",
+    )
+
+    # ── direct-address checks: `_build_direct_address_table` and both its probes,
+    #    the direct-addressing alternative to a hash table entirely for a dense-
+    #    unique-integer key span (H2O join-track q5's actual `id3` shape) — see
+    #    `benchmarks/h2o_join/RESULTS.md`'s Update #6. ──────────────────────────────
+    print("  JOIN_DIRECT_ADDRESS_MAX_DENSITY =", JOIN_DIRECT_ADDRESS_MAX_DENSITY)
+
+    var da_n = 2_000
+    var da_total = (da_n * 11) // 10
+    var da_common = (da_n * 9) // 10
+    var da_perm = _shared_permutation(da_total, 91)
+    var da_left = _dense_left_batch(da_perm, da_n, 92)
+    var da_right = _dense_right_batch(da_perm, da_n, da_common, da_total, 93)
+    var da_workers = _w3(2, 7, 16)
+    for wi in range(len(da_workers)):
+        var w = da_workers[wi]
+        _check_direct_address_matches_serial(
+            da_left, da_right, JOIN_INNER, w, passed, failed,
+            "direct-address, dense unique id3-shaped keys, INNER",
+        )
+        _check_direct_address_matches_serial(
+            da_left, da_right, JOIN_LEFT, w, passed, failed,
+            "direct-address, dense unique id3-shaped keys, LEFT",
+        )
+
+    # same dense shape, but with periodic NaN/null spliced into the LEFT column —
+    # proves the unmatchable-key branch on an otherwise-conforming build.
+    var da_left_hazards = _dense_left_batch_with_hazards(da_perm, da_n, 94, 97, 131)
+    _check_direct_address_matches_serial(
+        da_left_hazards, da_right, JOIN_LEFT, 7, passed, failed,
+        "direct-address, dense unique id3-shaped keys, NaN + null left rows, LEFT",
+    )
+
+    # guard rails: each of these must be REJECTED (ok=False), not silently accepted.
+    _check_direct_address_rejects_invalid_shape(
+        right2, 4, passed, failed,
+        "direct-address correctly rejects a duplicate-key right side",
+    )
+    _check_direct_address_rejects_invalid_shape(
+        _fractional_key_right_batch(1_000), 4, passed, failed,
+        "direct-address correctly rejects a fractional-key right side",
+    )
+    _check_direct_address_rejects_invalid_shape(
+        _sparse_range_right_batch(1_000), 4, passed, failed,
+        "direct-address correctly rejects a sparse-range right side",
     )
 
     # ── gather: _take_column_join vs take_column, at and above the threshold ───

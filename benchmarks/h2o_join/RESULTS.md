@@ -737,6 +737,133 @@ remaining suggestion — a different ALGORITHM for the near-1:1 case specificall
 than a different loop shape for the same hash-join algorithm — is the one lever this
 file has not yet tried at all.
 
+## Update #6 (2026-08): direct-addressing instead of a hash table for q5's actual key shape — a real, large, reproducible win, and q5 now BEATS DuckDB, but not shipped as default
+
+Update #5 closed by naming the one lever this file had not yet tried: a different
+ALGORITHM for the near-1:1 case, not a different loop shape for the same hash join. This
+is that attempt, and unlike Update #5 it is a decisive result, not a modest one.
+
+**The idea, verified against the actual generator, not assumed.** `benchmarks/h2o_join/
+generate.py`'s `split_xlr(n, rng)` draws `id3` from `rng.permutation(np.arange(1,
+round(n * 1.1) + 1))` — a permutation of a DENSE, bounded range of integers, split into
+common (90%) / left-only (10%) / right-only (10%) slices. `x.id3` and `big.id3` are each
+`sample_all` over a 10,000,000-value pool the same size as the sample, i.e. a pure
+shuffle with no padding — so every id3 value on both sides is an exact integer, sits in
+the same bounded `1..11,000,000` span, and appears AT MOST ONCE per side. A hash table
+is the general-purpose answer to "look up a key" when the key space is unknown; when the
+key space is a known, dense, bounded range with no duplicates, a flat array indexed
+directly by the key is strictly less work — no hash, no collision chain, one bounds
+check and one array read.
+
+**What was built** (`mojo/engine/query/join.mojo`, fully additive):
+
+* `_build_direct_address_table` — a sequential scan for the key range and integer-ness
+  (cheap: one read, one comparison per row, no table touch), then a parallel row-banded
+  scatter of `table[key - key_lo] = row` into a flat `List[Int]`. Sets `ok = False` and
+  refuses to be trusted, exactly `_build_right_index_parallel`'s own discipline for its
+  `ok`, on any of three conditions: a fractional key, a span so much wider than the row
+  count that the table would waste memory (`JOIN_DIRECT_ADDRESS_MAX_DENSITY = 4`), or a
+  duplicate key. The duplicate-key case is the interesting one: two right rows sharing a
+  key race harmlessly on the same array slot (a benign store race, not a safety issue),
+  and the collision is DETECTED, never trusted, by comparing the matchable-row count
+  against the table's own post-scatter occupancy — `matchable` rows scattering into
+  `matchable` distinct slots implies zero collisions; anything less proves at least one
+  address was written twice.
+* `_hash_join_probe_parallel_direct_address` / `_hash_join_probe_serial_direct_address`
+  — `_hash_join_probe_parallel_partitioned`'s exact two-pass counted-scatter blueprint
+  (count survivors per worker band, prefix sum over workers, re-walk and write at each
+  worker's own cursor), with the hash-and-chain-walk replaced by one bounds check and one
+  array read, because the build already proved at most one match per row. Falls back to
+  the serial walk on its own write-cursor invariant failure, same as every other parallel
+  path in this file.
+
+### Correctness
+
+A new fixture (`_shared_permutation` + `_dense_left_batch` / `_dense_right_batch` in
+`test_query_join_parallel.mojo`) draws an ACTUAL dense permutation the same way
+`split_xlr` does — not a fixture that merely resembles the shape — split 90%/10%/10% the
+same way, so the happy path is proven against real bijective data, not an approximation
+of it. Checked, row for row, against the same plain-serial reference every other check
+in this file uses, at 2/3/7/16 workers, INNER and LEFT, plus a variant with periodic
+NaN/null spliced into the left column. Three more fixtures prove the guard rails reject
+what they must: a duplicate-key right side (reusing this file's own existing "medium
+build side" fixture, which collides by construction), a fractional-key right side, and a
+deliberately sparse-range right side. **10 new checks, all passing — 88/88 total (was
+78/78).** `test_query_join.mojo` (33/33) and `test_query_plan.mojo` (122/122), which also
+exercise `query.join`, are unaffected.
+
+### Results — measured before touching the default dispatch
+
+`benchmarks/mojo_benchmarks/bench_h2o_join_direct_address.mojo`: builds both structures
+on q5's real `id3` columns (10,000,000 x 10,000,000, near 1:1) and measures three things,
+each with a correctness check before trusting the timing — matching row counts between
+the two algorithms' probes, and (for the full pipeline) matching checksums too.
+
+**Build and probe, isolated (bypassing `materialize`, same shape Update #5's own harness
+uses), minimum of 5 reps, three separate runs this session:**
+
+| Run | Hash build | Direct-addr build | Build ratio | Hash probe | Direct-addr probe | Probe ratio |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.1033s | 0.0584s | 1.77x faster | 0.2842s | 0.0498s | 5.71x faster |
+| 2 | 0.1050s | 0.0588s | 1.79x faster | 0.2940s | 0.0543s | 5.41x faster |
+| 3 | 0.1002s | 0.0599s | 1.67x faster | 0.2929s | 0.0495s | 5.92x faster |
+
+Every run agrees on row count (9,000,000, matching the 90% common slice) between the two
+probes. The build win is direct-addressing's smaller, more cache-friendly scatter
+(a flat array write vs a hash + `HashIndex` insert into one of 16 partitions); the probe
+win is larger still — one array read per row vs a hash-table lookup, and it is the
+larger of the two phases in absolute terms.
+
+**Full pipeline — build + probe + `materialize` + checksum, `bench_h2o_join.mojo`'s own
+q5 shape exactly (`x.*` + `big.id1`/`id2`/`v2`, checksum = sum(v1) + sum(v2) over the
+matched rows) — the number that actually belongs next to DuckDB/Polars, paired with a
+fresh baseline re-measurement immediately before/after each rep set, same session:**
+
+| Rep set | Algenta hash join (default) | Algenta direct-address | DuckDB (min) | Polars (min) | direct-addr/DuckDB | direct-addr/Polars | hash/DuckDB | hash/Polars |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.6300s | 0.3350s | 0.4143s | 0.1203s | **0.81x (faster)** | 2.78x | 1.52x | 5.24x |
+| 2 | 0.6247s | 0.3322s | 0.4033s | 0.1055s | **0.82x (faster)** | 3.15x | 1.55x | 5.92x |
+
+Both algorithms report the identical row count (9,000,000) and the identical checksum
+(`900111565.7615576`) on every rep, and that checksum matches DuckDB's
+(`900111565.7614492`-`900111565.7614503`, the usual float-summation-order-level
+agreement this file's other checksums already show) and Polars' (`900111565.76145`) —
+three independently-implemented join engines agreeing bit-for-bit on row count and to
+~10 significant figures on the checksum, which is the actual correctness claim, not
+merely "the row counts matched."
+
+**q5 beats DuckDB for the first time in this file's history — 0.81x-0.82x, a real
+reversal of the 1.16x-1.62x loss every prior update measured (the unrelated-hash-path
+`hash/DuckDB` column above, 1.52x-1.55x, is this same session's evidence that the
+default path's own loss is unchanged; direct-addressing is what moved it, not session
+noise).** The Polars gap is roughly halved (5.31x-5.92x down to 2.78x-3.15x) but not
+closed — direct-addressing removes the hash entirely, which was the majority of what
+distinguished this join from Polars' vectorized kernels, but `materialize`'s per-cell
+scalar gather (Update #3's own diagnosis, never revisited since) is still scalar, and
+still the largest single piece of both pipelines' remaining time.
+
+### Recommendation
+
+**Kept as new, tested, additive code — NOT wired into `hash_join_indices`'s default
+dispatch, and for a different reason than Update #5's.** Update #5's clustered probe
+was withheld because its gain was small and inconsistent — a real risk-free change with
+unproven payoff. This one is the opposite problem: the WIN, when the shape holds, is
+large and reproducible (1.88x full pipeline, confirmed twice), but the COST of a failed
+shape match is not free the way every other fix in this file has been. `_build_right_
+index_parallel`'s own `ok = False` path costs one wasted pre-scan; this path's `ok =
+False` path costs a wasted pre-scan AND a full parallel scatter AND a full occupancy
+count over the whole span BEFORE falling back to redo the entire build via the normal
+hash path — real, non-trivial duplicated work on every join whose right side happens to
+be all-integer and densely-ranged but NOT duplicate-free (a plausible shape for many
+real dictionary-coded foreign keys, not a contrived edge case). Update #3's fixes and
+Update #5's clustered probe were safe to leave gated behind a size threshold alone,
+because "try it, and it's fine either way" held. This one needs either a cheaper
+upfront filter than "attempt the whole build and see" or an explicit caller-declared
+contract ("this join's right-side key is a known bijection") before it can sit behind
+`hash_join_indices`'s own automatic dispatch without risking a real regression on the
+shapes it does not fit. That filter is the next attempt on this file, not this one —
+this pass's job was proving the algorithm is correct and the win is real, which it did.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with
@@ -824,9 +951,9 @@ mojo build -I mojo/engine mojo/tests/libs/test_query_join_parallel.mojo -o /tmp/
 ```
 
 The second suite covers probe, gather, the radix-partitioned build (its
-"build-parallel" section, added for Update #2) AND (per Update #5) the
-partition-clustered probe — 78 checks total, all row-for-row against the plain serial
-references.
+"build-parallel" section, added for Update #2), (per Update #5) the
+partition-clustered probe, AND (per Update #6) the direct-address build/probe and its
+guard rails — 88 checks total, all row-for-row against the plain serial references.
 
 ```text title="isolated probe comparison + per-phase breakdown (Update #5)"
 mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join_clustered_probe.mojo -o /tmp/bench_h2o_join_clustered_probe
@@ -837,3 +964,13 @@ The clustered probe (`_hash_join_probe_parallel_clustered`) is NOT wired into
 `hash_join_indices`'s dispatch — it is additive, tested, and reachable only by calling
 it directly (as the harness above does), same as this file's own docstring for the
 Recommendation section explains.
+
+```text title="direct-address build/probe: isolated, per-phase, and full pipeline (Update #6)"
+mojo build -I mojo/engine benchmarks/mojo_benchmarks/bench_h2o_join_direct_address.mojo -o /tmp/bench_h2o_join_direct_address
+/tmp/bench_h2o_join_direct_address
+```
+
+Neither `_build_direct_address_table` nor `_hash_join_probe_parallel_direct_address` is
+wired into `hash_join_indices`'s dispatch, for the reason Update #6's own Recommendation
+section gives (an asymmetric fallback cost, not an unproven payoff) — additive, tested,
+and reachable only by calling them directly.

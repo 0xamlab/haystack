@@ -215,6 +215,19 @@ nothing. Measured on the H2O join-track's own shapes (see
 unchanged; q5's 10,000,000-row near-1:1 build side is more than an order of magnitude
 past it, which is what this threshold exists for."""
 
+comptime JOIN_DIRECT_ADDRESS_MAX_DENSITY: Int = 4
+"""OOM guard for `_build_direct_address_table`, not a performance-tuned constant.
+
+That build only runs at all when every matchable right key is an integer inside one
+bounded span (see its own docstring) — this caps `(key_hi - key_lo + 1)` to at most this
+many times the matchable row count, so a caller cannot be talked into allocating a
+table thousands of times bigger than the data because the key range happens to be wide
+and sparse. `4` is generous headroom above H2O join-track q5's own shape, where the
+span and the row count are within 10% of each other (`benchmarks/h2o_join/generate.py`'s
+`split_xlr`: `round(n * 1.1)` distinct values for `n` matchable rows on each side) —
+comfortably inside the cap with room for other near-bijective inputs, while still
+refusing a key range that is mostly holes."""
+
 
 struct JoinResult(Copyable, Movable):
     """Aligned row indices for the two sides, plus what did not match.
@@ -1217,6 +1230,309 @@ fn _hash_join_probe_parallel_clustered(
         _ = len(row_offset)
 
     var unmatched = null_keys + matchable_unmatched
+    return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
+
+
+fn _build_direct_address_table(
+    right_key: Float64Array,
+    n_rows: Int,
+    workers: Int,
+    mut table: List[Int],
+    mut key_lo: Int,
+    mut key_hi: Int,
+    mut ok: Bool,
+) -> Int:
+    """Direct-addressing alternative to `_build_right_index_parallel` and `HashIndex`
+    entirely, valid ONLY when every matchable right key is an integer-valued `Float64`
+    inside one bounded span AND that span holds no duplicate key -- exactly H2O
+    join-track q5's `big.id3` shape: `benchmarks/h2o_join/generate.py`'s own
+    `split_xlr` draws a permutation of a dense `1..round(n * 1.1)` range and hands out
+    disjoint slices of it to each side, so every id3 value on both sides sits in the
+    same bounded span and appears at most once per side. When that holds, probing this
+    table is one bounds check plus one array read -- no hash, no `HashIndex`, no chain
+    walk, nothing this file's other build/probe pairs compute at all.
+
+    Sets `ok = False` and leaves `table`/`key_lo`/`key_hi` in an unspecified, UNUSABLE
+    state -- same discipline `_build_right_index_parallel` already applies to its own
+    `ok` -- for any reason this shape does not hold:
+
+      * a fractional or out-of-safe-integer-range key -- not an exact array index.
+      * a span so much wider than the matchable row count that the table would cost
+        more memory than a much bigger hash table for nothing --
+        `JOIN_DIRECT_ADDRESS_MAX_DENSITY` bounds `key_hi - key_lo + 1` to at most this
+        many times the matchable row count.
+      * a duplicate key -- caught by comparing the matchable-row count against the
+        table's own post-scatter occupancy below, never by locking or a compare-exchange.
+
+    Returns the unusable-key count, same meaning as `_build_right_index`'s.
+
+    Safety of the concurrent scatter: two right rows sharing a key IS the collision this
+    function exists to detect, and detecting it after a benign race (two plain `Int`
+    stores to the same address, racing) is cheaper than preventing it, because
+    preventing it buys nothing -- either row's index is already a wrong answer once
+    "at most one right row per key" has failed, so the result is discarded either way.
+    What must not happen is TRUSTING an undetected collision, which the occupancy count
+    rules out: `matchable` rows scattering into `matchable` distinct slots implies zero
+    collisions; anything fewer than `matchable` occupied slots proves at least one
+    address was written twice.
+    """
+    ok = True
+    key_lo = 0
+    key_hi = -1
+    table = List[Int]()
+    if n_rows <= 0:
+        return 0
+
+    # ── pass 0: sequential scan for range + integer-ness. One read and one comparison
+    #    per row, no table touch -- cheap enough next to the scatter below that it does
+    #    not need its own parallel min/max reduction. `1e15` keeps `Int(v)` comfortably
+    #    inside exact `Float64` integer representation (2**53), so the cast below never
+    #    silently rounds. ────────────────────────────────────────────────────────────
+    var lo = 9223372036854775807
+    var hi = -9223372036854775808
+    var null_keys = 0
+    var all_integer = True
+    for r in range(n_rows):
+        if not is_matchable_key(right_key, r):
+            null_keys += 1
+            continue
+        var v = right_key.get_unchecked(r)
+        if v < -1e15 or v > 1e15:
+            all_integer = False
+            break
+        var kv = Int(v)
+        if Float64(kv) != v:
+            all_integer = False
+            break
+        if kv < lo:
+            lo = kv
+        if kv > hi:
+            hi = kv
+
+    if not all_integer or hi < lo:
+        ok = False
+        return null_keys
+
+    var matchable = n_rows - null_keys
+    var span = hi - lo + 1
+    if matchable <= 0 or span > matchable * JOIN_DIRECT_ADDRESS_MAX_DENSITY:
+        ok = False
+        return null_keys
+
+    key_lo = lo
+    key_hi = hi
+    table = List[Int](length=span, fill=NO_ROW)
+    var tp = table.unsafe_ptr()
+    var band = (n_rows + workers - 1) // workers
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var wlo = w * band
+        var whi = wlo + band
+        if whi > n_rows:
+            whi = n_rows
+        for r in range(wlo, whi):
+            if not is_matchable_key(right_key, r):
+                continue
+            var kv = Int(right_key.get_unchecked(r))
+            tp[kv - key_lo] = r
+
+    parallelize[scatter_worker](workers)
+
+    var occupied = 0
+    for i in range(span):
+        if tp[i] != NO_ROW:
+            occupied += 1
+    if occupied != matchable:
+        ok = False
+        print(
+            "query.join: direct-address build found "
+            + String(matchable - occupied)
+            + " colliding key(s) (matchable rows exceed occupied slots);"
+            " this shape does not hold for this data"
+        )
+        return null_keys
+
+    return null_keys
+
+
+fn _hash_join_probe_serial_direct_address(
+    left_key: Float64Array,
+    n_rows: Int,
+    table: List[Int],
+    key_lo: Int,
+    key_hi: Int,
+    join_type: Int,
+) -> JoinResult:
+    """Serial counterpart to `_hash_join_probe_parallel_direct_address`, same role
+    `_hash_join_probe_serial_partitioned` plays for the row-band partitioned probe: the
+    always-correct walk the parallel version's own invariant check falls back to, and
+    the reference the test suite checks the parallel version against.
+    """
+    var out_left = List[Int]()
+    var out_right = List[Int]()
+    var unmatched = 0
+    var null_keys = 0
+    var emit_unmatched = join_type == JOIN_LEFT
+    var tp = table.unsafe_ptr()
+    for l in range(n_rows):
+        if not is_matchable_key(left_key, l):
+            null_keys += 1
+            unmatched += 1
+            if emit_unmatched:
+                out_left.append(l)
+                out_right.append(NO_ROW)
+            continue
+        var kv = Int(left_key.get_unchecked(l))
+        if kv < key_lo or kv > key_hi:
+            unmatched += 1
+            if emit_unmatched:
+                out_left.append(l)
+                out_right.append(NO_ROW)
+            continue
+        var r = tp[kv - key_lo]
+        if r != NO_ROW:
+            out_left.append(l)
+            out_right.append(r)
+        else:
+            unmatched += 1
+            if emit_unmatched:
+                out_left.append(l)
+                out_right.append(NO_ROW)
+    return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
+
+
+fn _hash_join_probe_parallel_direct_address(
+    left_key: Float64Array,
+    n_rows: Int,
+    table: List[Int],
+    key_lo: Int,
+    key_hi: Int,
+    join_type: Int,
+    workers: Int,
+) -> JoinResult:
+    """Probe counterpart to `_build_direct_address_table`:
+    `_hash_join_probe_parallel_partitioned`'s exact two-pass counted-scatter blueprint,
+    with the hash-and-chain-walk replaced by one bounds check and one array read,
+    because `_build_direct_address_table` already proved the right side has at most one
+    row per key in this range -- so a left row matches 0 or 1 right rows, never a chain.
+
+    Falls back to `_hash_join_probe_serial_direct_address` if the scatter's own
+    write-cursor invariant fails, the same discipline every parallel path in this file
+    already applies to itself.
+    """
+    var emit_unmatched = join_type == JOIN_LEFT
+    var band = (n_rows + workers - 1) // workers
+    var tp = table.unsafe_ptr()
+
+    var counts = List[Int](length=workers, fill=0)
+    var w_unmatched = List[Int](length=workers, fill=0)
+    var w_null = List[Int](length=workers, fill=0)
+    var cp = counts.unsafe_ptr()
+    var ump = w_unmatched.unsafe_ptr()
+    var nlp = w_null.unsafe_ptr()
+
+    @parameter
+    fn count_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var local_count = 0
+        var local_unmatched = 0
+        var local_null = 0
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                local_null += 1
+                local_unmatched += 1
+                if emit_unmatched:
+                    local_count += 1
+                continue
+            var kv = Int(left_key.get_unchecked(l))
+            if kv < key_lo or kv > key_hi or tp[kv - key_lo] == NO_ROW:
+                local_unmatched += 1
+                if emit_unmatched:
+                    local_count += 1
+                continue
+            local_count += 1
+        cp[w] = local_count
+        ump[w] = local_unmatched
+        nlp[w] = local_null
+
+    parallelize[count_worker](workers)
+
+    var offsets = List[Int](length=workers, fill=0)
+    var ofp = offsets.unsafe_ptr()
+    var running = 0
+    for w in range(workers):
+        ofp[w] = running
+        running += cp[w]
+    var total = running
+
+    var out_left = List[Int](length=total, fill=0)
+    var out_right = List[Int](length=total, fill=0)
+    var olp = out_left.unsafe_ptr()
+    var orp = out_right.unsafe_ptr()
+    var cursors = List[Int](length=workers, fill=0)
+    for w in range(workers):
+        cursors[w] = ofp[w]
+    var curp = cursors.unsafe_ptr()
+
+    @parameter
+    fn scatter_worker(w: Int):
+        var lo = w * band
+        var hi = lo + band
+        if hi > n_rows:
+            hi = n_rows
+        var cur = curp[w]
+        for l in range(lo, hi):
+            if not is_matchable_key(left_key, l):
+                if emit_unmatched:
+                    olp[cur] = l
+                    orp[cur] = NO_ROW
+                    cur += 1
+                continue
+            var kv = Int(left_key.get_unchecked(l))
+            if kv < key_lo or kv > key_hi:
+                if emit_unmatched:
+                    olp[cur] = l
+                    orp[cur] = NO_ROW
+                    cur += 1
+                continue
+            var r = tp[kv - key_lo]
+            if r != NO_ROW:
+                olp[cur] = l
+                orp[cur] = r
+                cur += 1
+            elif emit_unmatched:
+                olp[cur] = l
+                orp[cur] = NO_ROW
+                cur += 1
+        curp[w] = cur
+
+    parallelize[scatter_worker](workers)
+    _ = len(counts) + len(offsets)
+
+    var ok = True
+    for w in range(workers):
+        if curp[w] != ofp[w] + cp[w]:
+            ok = False
+
+    if not ok:
+        print(
+            "query.join: direct-address probe scatter write-cursor invariant violated;"
+            " falling back to the serial direct-address walk"
+        )
+        return _hash_join_probe_serial_direct_address(
+            left_key, n_rows, table, key_lo, key_hi, join_type
+        )
+
+    var unmatched = 0
+    var null_keys = 0
+    for w in range(workers):
+        unmatched += ump[w]
+        null_keys += nlp[w]
+
     return JoinResult(out_left^, out_right^, unmatched, null_keys, join_type)
 
 
