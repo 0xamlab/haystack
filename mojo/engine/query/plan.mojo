@@ -168,6 +168,7 @@ from query.join import (
     JOIN_INNER,
     JOIN_LEFT,
     JoinResult,
+    direct_address_join_indices,
     hash_join_indices,
     is_matchable_key,
     is_sorted_ascending,
@@ -1775,8 +1776,8 @@ fn _apply_join(
 
     Wire keys: `table` (required, names a top-level `tables` entry); `on` (shorthand for
     equal names) or both `left_on` and `right_on`; `how` = inner | left | semi | anti
-    (default inner); `method` = hash | merge (default hash); `prefix` for the right column
-    names (default `<table>.`).
+    (default inner); `method` = hash | merge | direct_address (default hash); `prefix`
+    for the right column names (default `<table>.`).
 
     ONE equality key per side. `hash_join_indices` takes one key column per side and a
     composite key would be a different algorithm, so the error says that rather than
@@ -1784,6 +1785,14 @@ fn _apply_join(
 
     `right`, `outer`, `full` and `cross` are rejected BY NAME. Mapping any of them onto
     `left` would answer a question the caller did not ask.
+
+    `method="direct_address"` is a CALLER-DECLARED contract, not a hint: it asserts the
+    right key is an integer inside one bounded, duplicate-free range (a bijection between
+    the key and a right row) and raises if that does not hold, rather than silently
+    falling back to a hash join — see `direct_address_join_indices`'s own docstring and
+    `benchmarks/h2o_join/RESULTS.md`'s Update #6 for when this is worth reaching for (it
+    is a real, measured win specifically for that shape, not a general-purpose faster
+    join). Like `merge`, it has no semi/anti variant.
 
     Every kernel below is called UNCHANGED, and in its INDICES form rather than through
     the `hash_join` / `merge_join` convenience wrappers: the wrappers throw away the
@@ -1860,13 +1869,15 @@ fn _apply_join(
     var method = json_string_field(op_json, "method")
     if len(method) == 0:
         method = "hash"
-    if method != "hash" and method != "merge":
-        raise Error("join 'method' must be hash or merge; got '" + method + "'")
-    if semi and method == "merge":
-        # There is no merge variant of semi_join_indices. Falling back to hash would hide
-        # the mistake behind a right answer.
+    if method != "hash" and method != "merge" and method != "direct_address":
         raise Error(
-            "join method 'merge' is not defined for how '" + how + "'"
+            "join 'method' must be hash, merge or direct_address; got '" + method + "'"
+        )
+    if semi and method != "hash":
+        # There is no merge or direct-address variant of semi_join_indices. Falling back
+        # to hash would hide the mistake behind a right answer.
+        raise Error(
+            "join method '" + method + "' is not defined for how '" + how + "'"
         )
 
     if semi:
@@ -2061,6 +2072,8 @@ fn _apply_join(
     var result: JoinResult
     if method == "merge":
         result = merge_join_indices(batch, left_key, right, right_key, join_type)
+    elif method == "direct_address":
+        result = direct_address_join_indices(batch, left_key, right, right_key, join_type)
     else:
         result = hash_join_indices(batch, left_key, right, right_key, join_type)
     detail = result.describe()

@@ -121,7 +121,7 @@ _ACCEPTED_AGGREGATIONS = ("sum", "avg", "mean", "min", "max", "count", "var", "s
 # check belongs there and not here.
 _ACCEPTED_JOIN_HOW = ("inner", "left", "semi", "anti")
 _UNIMPLEMENTED_JOIN_HOW = ("right", "outer", "full", "cross")
-_ACCEPTED_JOIN_METHODS = ("hash", "merge")
+_ACCEPTED_JOIN_METHODS = ("hash", "merge", "direct_address")
 _JOIN_HOW_WITHOUT_RIGHT_COLUMNS = ("semi", "anti")
 
 _ACCEPTED_WINDOW_FNS = (
@@ -693,6 +693,17 @@ class Query:
         cannot sort a side table, so it is only usable when the table arrives sorted
         ascending with nulls last.
 
+        `method="direct_address"` is a CALLER-DECLARED contract, not a hint: it asserts
+        the right key is an integer inside one bounded range, present at most once per
+        value (a bijection between the key and a right row) — e.g. a dense surrogate id.
+        When that holds, the engine skips the hash table entirely and probes a flat
+        array instead, which measured 1.88x faster end to end on the one real shape this
+        was built for (see `benchmarks/h2o_join/RESULTS.md`'s Update #6). When it does
+        NOT hold — a fractional key, or any duplicate — the engine RAISES rather than
+        silently falling back to `method="hash"`, because a wrong guess here already
+        did real, non-trivial wasted work (a full scatter and occupancy scan) finding
+        that out; use `method="hash"` unless the right key's shape is actually known.
+
         `prefix` (default `"<table>."`) is prepended to every right column name.
         `Schema.index_of` returns the first match, so two columns answering to one name
         would silently resolve every later reference to the left one — which is why the
@@ -717,13 +728,14 @@ class Query:
         if method not in _ACCEPTED_JOIN_METHODS:
             raise QueryError(
                 "invalid_arguments",
-                f"join 'method' must be hash or merge; got {method!r}",
+                f"join 'method' must be {_english(_ACCEPTED_JOIN_METHODS)}; got "
+                f"{method!r}",
                 op_index,
             )
-        if method == "merge" and how in _JOIN_HOW_WITHOUT_RIGHT_COLUMNS:
+        if method != "hash" and how in _JOIN_HOW_WITHOUT_RIGHT_COLUMNS:
             raise QueryError(
                 "invalid_arguments",
-                f"join method 'merge' is not defined for how {how!r}",
+                f"join method {method!r} is not defined for how {how!r}",
                 op_index,
             )
         if on is not None:

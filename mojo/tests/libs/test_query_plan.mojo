@@ -1102,6 +1102,78 @@ fn main() raises:
         failed += 1
         print("  ❌ unsorted merge accepted")
 
+    # ── method direct_address on a right side that IS a dense bijection (customers'
+    #    id column: 7 and 9, unique, span 3 over 2 rows) matches the default hash
+    #    method row for row — same shape `orders` x `customers` every other check in
+    #    this section already uses, method swapped. ──────────────────────────────────
+    detail = String("")
+    var direct_addr = apply_op_detailed(
+        orders,
+        '{"op":"join","table":"customers","left_on":"customer_id","right_on":"id",'
+        '"method":"direct_address"}',
+        False,
+        customers,
+        detail,
+    )
+    if (
+        direct_addr.n_rows == inner.n_rows
+        and direct_addr.column(0).get(0) == inner.column(0).get(0)
+        and direct_addr.column(0).get(1) == inner.column(0).get(1)
+    ):
+        passed += 1
+        print("  ✅ method direct_address on a real bijection matches the hash join")
+    else:
+        failed += 1
+        print("  ❌ direct_address join wrong:", direct_addr.n_rows)
+
+    # ── method direct_address on a right side that is NOT a bijection (customers_dup:
+    #    id 7 appears twice) is refused, not silently routed through the general
+    #    algorithm — this is a caller-declared contract, and a violated one must say
+    #    so rather than quietly answer via method hash. ─────────────────────────────
+    var dup_customers = parse_named_tables(CUSTOMERS_DUP, _empty_strings(), _empty_strings())
+    var direct_addr_rejected = False
+    try:
+        var _da = apply_op_detailed(
+            orders,
+            '{"op":"join","table":"customers","left_on":"customer_id",'
+            '"right_on":"id","method":"direct_address"}',
+            False,
+            dup_customers,
+            detail,
+        )
+    except e:
+        direct_addr_rejected = String(e).find("bijection") >= 0 and String(e).find(
+            "use method 'hash' instead"
+        ) >= 0
+    if direct_addr_rejected:
+        passed += 1
+        print("  ✅ method direct_address on a duplicate-key right side errors, not silently hash")
+    else:
+        failed += 1
+        print("  ❌ direct_address on a duplicate-key right side was NOT rejected")
+
+    # ── direct_address has no semi/anti variant, same as merge ──────────────────────
+    var direct_addr_semi_rejected = False
+    try:
+        var _das = apply_op_detailed(
+            orders,
+            '{"op":"join","table":"customers","left_on":"customer_id",'
+            '"right_on":"id","how":"semi","method":"direct_address"}',
+            False,
+            customers,
+            detail,
+        )
+    except e:
+        direct_addr_semi_rejected = String(e).find("direct_address") >= 0 and String(
+            e
+        ).find("not defined for how") >= 0
+    if direct_addr_semi_rejected:
+        passed += 1
+        print("  ✅ how 'semi', method 'direct_address' is refused, same as merge")
+    else:
+        failed += 1
+        print("  ❌ semi + direct_address was NOT rejected")
+
     # ── the shorthand `on` needs both sides to share the name ────────────────
     var accented_left = build_batch(
         '{"columns":["regi\\u00f3n","importe"]}', "[[7,10.0],[8,20.0]]"
@@ -1268,7 +1340,7 @@ fn main() raises:
         )
     except e:
         bad_method = String(e).find("sortmerge") >= 0 and String(e).find(
-            "hash or merge"
+            "hash, merge or direct_address"
         ) >= 0
     var semi_merge = False
     try:

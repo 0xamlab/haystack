@@ -378,6 +378,27 @@ def test_a_merge_semi_join_is_rejected_rather_than_falling_back_to_hash():
         _plan().join("c", on="region", how="semi", method="merge")
 
 
+def test_a_direct_address_semi_join_is_rejected_rather_than_falling_back_to_hash():
+    """Same rule as merge above: direct_address has no semi/anti variant either."""
+    with pytest.raises(QueryError, match="not defined for how 'semi'"):
+        _plan().join("c", on="region", how="semi", method="direct_address")
+
+
+def test_direct_address_is_an_accepted_join_method_on_the_wire():
+    """A caller-declared contract, not a hint -- see `Query.join`'s own docstring.
+    Accepted client-side; whether the actual data fits the shape is the engine's call,
+    raised as a QueryError at run time, not caught here."""
+    plan = _plan().with_table("c", ["region"], rows=[[1]]).join(
+        "c", on="region", method="direct_address"
+    )
+    assert plan.ops[0]["method"] == "direct_address"
+
+
+def test_an_unknown_join_method_is_rejected_and_lists_the_real_three():
+    with pytest.raises(QueryError, match="hash, merge or direct_address"):
+        _plan().join("c", on="region", method="sortmerge")
+
+
 def test_a_prefix_on_a_semi_join_is_rejected_rather_than_ignored():
     """semi/anti emit no right columns, so a prefix would silently do nothing."""
     with pytest.raises(QueryError, match="no right columns"):

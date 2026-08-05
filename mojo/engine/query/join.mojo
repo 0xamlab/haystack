@@ -1311,12 +1311,25 @@ fn _build_direct_address_table(
 
     if not all_integer or hi < lo:
         ok = False
+        print(
+            "query.join: direct-address build found a non-integer or out-of-safe-range"
+            " key; this shape does not hold for this data"
+        )
         return null_keys
 
     var matchable = n_rows - null_keys
     var span = hi - lo + 1
     if matchable <= 0 or span > matchable * JOIN_DIRECT_ADDRESS_MAX_DENSITY:
         ok = False
+        print(
+            "query.join: direct-address build found a key span of "
+            + String(span)
+            + " over "
+            + String(matchable)
+            + " matchable row(s), past the "
+            + String(JOIN_DIRECT_ADDRESS_MAX_DENSITY)
+            + "x density limit; this shape does not hold for this data"
+        )
         return null_keys
 
     key_lo = lo
@@ -1905,6 +1918,79 @@ fn hash_join_indices(
 
     return _hash_join_probe(
         left_key, left.n_rows, slot_of, first_row, next_row, join_type
+    )
+
+
+fn direct_address_join_indices(
+    left: RecordBatch,
+    left_key_column: Int,
+    right: RecordBatch,
+    right_key_column: Int,
+    join_type: Int,
+) raises -> JoinResult:
+    """`hash_join_indices`'s public counterpart for a right key the caller KNOWS is an
+    integer inside one bounded, duplicate-free range -- H2O join-track q5's `big.id3`
+    shape (`benchmarks/h2o_join/RESULTS.md`'s Update #6), and any other join whose right
+    side is a bijection between a dense integer id and a row. Replaces the hash table
+    with a flat array indexed directly by key: no hash, no collision chain, one bounds
+    check and one array read per probe. Measured 1.88x faster end to end than
+    `hash_join_indices` on q5's real data, and moved it from a loss against DuckDB to a
+    win -- see Update #6 for the full numbers.
+
+    Raises if the shape does not hold -- a fractional key, a right side with a duplicate
+    key, or a key range so much wider than the row count that the table would waste
+    memory for nothing (`JOIN_DIRECT_ADDRESS_MAX_DENSITY`). This is a CALLER-DECLARED
+    contract, not a heuristic: unlike `hash_join_indices`, which always works and picks
+    its own internal strategy, this function's whole reason to exist is doing LESS work
+    than a hash join by trusting a precondition the caller is asserting -- so a violated
+    precondition is refused, exactly `merge_join_indices` refusing an unsorted input
+    rather than silently falling back to the general algorithm and hiding the mistake
+    behind a right answer.
+
+    Deliberately NOT `hash_join_indices`'s own internal dispatch, and not reachable
+    through `method="hash"` -- a caller must ask for `method="direct_address"`
+    explicitly (see `query.plan._apply_join`), because a WRONG guess costs a real,
+    non-trivial amount of wasted work (a full scatter and occupancy scan) before any
+    fallback, unlike every one of `hash_join_indices`'s own internal strategy choices,
+    which cost nothing extra when they turn out not to apply.
+    """
+    var left_key = left.column(left_key_column)
+    var right_key = right.column(right_key_column)
+
+    var build_workers = info.num_physical_cores()
+    if build_workers < 1:
+        build_workers = 1
+    if right.n_rows > 0 and build_workers > right.n_rows:
+        build_workers = right.n_rows
+
+    var table = List[Int]()
+    var key_lo = 0
+    var key_hi = 0
+    var build_ok = True
+    _ = _build_direct_address_table(
+        right_key, right.n_rows, build_workers, table, key_lo, key_hi, build_ok
+    )
+    if not build_ok:
+        raise Error(
+            "join method 'direct_address' requires the right key to be an integer inside"
+            " one bounded range, present at most once per value (a bijection) -- that"
+            " shape does not hold for this table. Verify the key is a dense integer id"
+            " with no duplicates, or use method 'hash' instead"
+        )
+
+    if left.n_rows >= JOIN_PROBE_PARALLEL_MIN_ROWS:
+        var probe_workers = info.num_physical_cores()
+        if probe_workers < 1:
+            probe_workers = 1
+        if probe_workers > left.n_rows:
+            probe_workers = left.n_rows
+        if probe_workers > 1:
+            return _hash_join_probe_parallel_direct_address(
+                left_key, left.n_rows, table, key_lo, key_hi, join_type, probe_workers
+            )
+
+    return _hash_join_probe_serial_direct_address(
+        left_key, left.n_rows, table, key_lo, key_hi, join_type
     )
 
 

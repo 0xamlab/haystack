@@ -864,6 +864,23 @@ contract ("this join's right-side key is a known bijection") before it can sit b
 shapes it does not fit. That filter is the next attempt on this file, not this one —
 this pass's job was proving the algorithm is correct and the win is real, which it did.
 
+### Follow-up: the explicit caller-declared contract, built
+
+The recommendation above named two ways to make this safely reachable: a cheap upfront
+filter, or an explicit caller-declared contract. The contract was the one built, because
+`query/plan.mojo`'s `join` op already had exactly the right knob for it —
+`method="hash"` vs `method="merge"` is already a caller-asserted, correctness-affecting
+choice (merge asserts sortedness and raises if that is false), not a performance hint,
+so `method="direct_address"` slots into the same vocabulary rather than inventing a new
+one. `query/join.mojo`'s new public `direct_address_join_indices` wraps
+`_build_direct_address_table` and raises — naming the precondition and pointing at
+`method="hash"` — exactly when the shape does not hold, the same discipline `merge`
+already uses for its own precondition. Reachable today from the Python SDK's
+`Query.join(..., method="direct_address")`; the TypeScript SDK has no path to
+`query/join.mojo` at all yet (a pre-existing gap, unrelated to this method), so this is
+Python-only until that is addressed. Documented in `gitbook/engine/columnar-queries.md`'s
+"### direct_address" section, alongside `merge`.
+
 ## Method
 
 * **Dataset.** The H2O db-benchmark J1 join data at the 0.5 GB tier: fact table `x` with

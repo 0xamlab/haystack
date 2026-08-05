@@ -260,6 +260,43 @@ missing values last — and that is verified rather than assumed, because an uns
 would silently drop matches, and a join that quietly drops matches is worse than one that
 refuses. `method="merge"` is not defined for `semi` or `anti`.
 
+### direct_address
+
+`method="direct_address"` is a claim you make about the data, not a performance hint the
+engine can ignore if it turns out to be wrong. It asserts the right side's key is an
+integer inside one bounded range, present **at most once per value** — a bijection between
+the key and a right row, the shape of a dense surrogate id. When that holds, the engine
+skips the hash table entirely and probes a flat array instead — no hash, no collision
+chain, one bounds check and one array read per left row.
+
+```python
+# Unlike `customers` above, every id here is unique AND densely packed (100, 101, 102 —
+# not spread out): direct_address needs both, not just "no duplicates".
+dense_orders = [[1, 100, 100.0], [2, None, 50.0], [3, 102, 7.0]]
+dense_customers = [[100, 1.0], [101, 2.0], [102, 3.0]]
+
+result = (
+    Query(columns=["order_id", "customer_id", "amount"], rows=dense_orders)
+    .with_table("customers", ["id", "tier"], rows=dense_customers)
+    .join("customers", left_on="customer_id", right_on="id", method="direct_address")
+    .run(runtime, routing_module="stats")
+)
+```
+
+If the claim is wrong — a fractional key, or `id` repeated for two different rows — the
+engine **raises** rather than quietly falling back to `method="hash"` and giving you a
+right answer for the wrong reason. A wrong guess here already did real, non-trivial work
+finding that out (a full scan of the right side), so use `method="hash"` unless you
+actually know the key's shape; do not reach for this as a default. Like `merge`,
+`method="direct_address"` is not defined for `semi` or `anti`.
+
+This exists because of one specific, measured result, not a general claim that it is
+always faster: on a real 10,000,000-row near-1:1 join, it ran the full pipeline (build,
+probe, and materializing the answer) about 1.9x faster than `method="hash"` on the same
+data. See the engine repository's `benchmarks/h2o_join/RESULTS.md` for the methodology and
+the numbers against other engines — this page states the contract, that file states the
+evidence.
+
 ## Window functions
 
 A window function appends **one** column and leaves row order exactly as you gave it:
