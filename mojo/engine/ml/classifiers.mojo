@@ -10,7 +10,8 @@ Public API:
   logistic_sigmoid    — σ(x) = 1 / (1 + exp(-x))
   softmax             — softmax over a list of values
   knn_predict         — k-nearest neighbors prediction (majority vote)
-  kmeans_cluster      — k-means clustering (Lloyd's algorithm)
+  kmeans_cluster      — k-means clustering (Lloyd's algorithm); raises on a
+                        dimension mismatch in `data` (see its docstring)
 """
 from std.math import sqrt, exp, abs as fabs
 from std.random import random_float64
@@ -183,7 +184,7 @@ fn knn_predict(
 
 fn kmeans_cluster(
     data: List[List[Float64]], k: Int, max_iter: Int = 100
-) -> List[Int]:
+) raises -> List[Int]:
     """K-means clustering (Lloyd's algorithm).
 
     Args:
@@ -193,12 +194,35 @@ fn kmeans_cluster(
 
     Returns:
         List of cluster assignments (0..k-1) for each data point.
+
+    Raises if any point after the first has a different length than
+    `data[0]`. `dim` below is taken from `data[0]` alone, and both the random
+    centroid initialisation (`data[idx][d]` for an arbitrary `idx`) and the
+    update step (`data[i][d]` for every `i`) index every point in `data` up
+    to `dim - 1` -- a shorter point anywhere in the list is an out-of-bounds
+    `List` access, an uncatchable, worker-killing bounds assertion in this
+    runtime rather than a normal exception (the exact same bug shape as
+    `embeddings.centroid`, which raises for the same reason). Unlike this
+    module's lenient min-length distance functions above, a crash is never
+    correct behavior for any caller, so this is fixed in place rather than
+    given a `_strict` sibling.
     """
     var n = len(data)
     if n == 0 or k <= 0:
         return List[Int]()
 
     var dim = len(data[0])
+    for i in range(1, n):
+        if len(data[i]) != dim:
+            raise Error(
+                "kmeans_cluster: data[0] has "
+                + String(dim)
+                + " dimensions but data["
+                + String(i)
+                + "] has "
+                + String(len(data[i]))
+                + "; all points must share the same dimensionality"
+            )
 
     # Initialise assignments
     var assignments = List[Int]()

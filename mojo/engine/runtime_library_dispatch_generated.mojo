@@ -1982,16 +1982,24 @@ from elevator import (
 
 from embeddings import (
     dot_product as _embeddings__dot_product,
+    dot_product_strict as _embeddings__dot_product_strict,
     vector_magnitude as _embeddings__vector_magnitude,
     cosine_similarity as _embeddings__cosine_similarity,
+    cosine_similarity_strict as _embeddings__cosine_similarity_strict,
     euclidean_distance as _embeddings__euclidean_distance,
+    euclidean_distance_strict as _embeddings__euclidean_distance_strict,
     manhattan_distance as _embeddings__manhattan_distance,
+    manhattan_distance_strict as _embeddings__manhattan_distance_strict,
     normalize_vector as _embeddings__normalize_vector,
     centroid as _embeddings__centroid,
     nearest_neighbor as _embeddings__nearest_neighbor,
+    nearest_neighbor_strict as _embeddings__nearest_neighbor_strict,
     k_nearest_neighbors as _embeddings__k_nearest_neighbors,
+    k_nearest_neighbors_strict as _embeddings__k_nearest_neighbors_strict,
     cosine_similarity_matrix as _embeddings__cosine_similarity_matrix,
+    cosine_similarity_matrix_strict as _embeddings__cosine_similarity_matrix_strict,
     vector_add as _embeddings__vector_add,
+    vector_add_strict as _embeddings__vector_add_strict,
     vector_scale as _embeddings__vector_scale,
 )
 
@@ -7621,10 +7629,6 @@ from vector_kernels.table import (
     build_table_json as _vector_kernels_table__build_table_json,
 )
 
-from vector_kernels.test_table import (
-    build_query as _vector_kernels_test_table__build_query,
-)
-
 from vector_search import (
     hnsw_layer_probability as _vector_search__hnsw_layer_probability,
     hnsw_search_ef_scale as _vector_search__hnsw_search_ef_scale,
@@ -8980,14 +8984,9 @@ from vector_kernels.batch_ranker import (
 
 from vector_kernels.table import (
     CandidateEntry as CandidateEntry__vector_kernels_table,
-    CandidateTable as CandidateTable__vector_kernels_table,
-    RankRequest as RankRequest__vector_kernels_table,
+    CandidateTable,
+    RankRequest,
     _Vec64 as _Vec64__vector_kernels_table,
-)
-
-from vector_kernels.test_table import (
-    RankRequest as RankRequest__vector_kernels_test_table,
-    _Vec64 as _Vec64__vector_kernels_test_table,
 )
 
 fn _unquote_json_string(token: String) -> String:
@@ -9037,9 +9036,17 @@ fn _escape_json_string(value: String) -> String:
             result += "\\r"
         elif b == UInt8(9):
             result += "\\t"
+        elif b < UInt8(32):
+            var v = Int(b)
+            result += "\\u00" + _json_hex_digit(v // 16) + _json_hex_digit(v % 16)
         else:
             result += chr(Int(b))
     return result
+
+fn _json_hex_digit(v: Int) -> String:
+    if v < 10:
+        return chr(48 + v)
+    return chr(55 + v)
 
 fn _success_json(result_json: String) -> String:
     return "{\"result\":" + result_json + "}"
@@ -11182,7 +11189,7 @@ fn _to_json_candidateentry_vector_kernels_table(value: CandidateEntry__vector_ke
     result += "]}"
     return result
 
-fn _to_json_candidatetable_vector_kernels_table(value: CandidateTable__vector_kernels_table) raises -> String:
+fn _to_json_candidatetable(value: CandidateTable) raises -> String:
     var result = String("{\"__algenta_struct\":\"CandidateTable\",\"v\":[")
     result += _to_json_list_candidateentry_vector_kernels_table(value.entries)
     result += "]}"
@@ -17795,7 +17802,7 @@ fn _to_json_rnnparams(value: RNNParams) raises -> String:
     result += "]}"
     return result
 
-fn _to_json_rankrequest_vector_kernels_table(value: RankRequest__vector_kernels_table) raises -> String:
+fn _to_json_rankrequest(value: RankRequest) raises -> String:
     var result = String("{\"__algenta_struct\":\"RankRequest\",\"v\":[")
     result += _to_json_uint16(value.source_id)
     result += ","
@@ -17806,20 +17813,6 @@ fn _to_json_rankrequest_vector_kernels_table(value: RankRequest__vector_kernels_
     result += _to_json_float32(value.query_norm_inv)
     result += ","
     result += _to_json_vec64_vector_kernels_table(value.query_vec)
-    result += "]}"
-    return result
-
-fn _to_json_rankrequest_vector_kernels_test_table(value: RankRequest__vector_kernels_test_table) raises -> String:
-    var result = String("{\"__algenta_struct\":\"RankRequest\",\"v\":[")
-    result += _to_json_uint16(value.source_id)
-    result += ","
-    result += _to_json_uint8(value.role_id)
-    result += ","
-    result += _to_json_uint8(value.top_k)
-    result += ","
-    result += _to_json_float32(value.query_norm_inv)
-    result += ","
-    result += _to_json_vec64_vector_kernels_test_table(value.query_vec)
     result += "]}"
     return result
 
@@ -20657,12 +20650,6 @@ fn _to_json_vec64_vector_kernels_table(value: _Vec64__vector_kernels_table) rais
     result += _to_json_list_float32(value.data)
     result += ","
     result += _to_json_float32(value.norm_inv)
-    result += "]}"
-    return result
-
-fn _to_json_vec64_vector_kernels_test_table(value: _Vec64__vector_kernels_test_table) raises -> String:
-    var result = String("{\"__algenta_struct\":\"_Vec64\",\"v\":[")
-    result += _to_json_list_float32(value.data)
     result += "]}"
     return result
 
@@ -53662,6 +53649,28 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
             "invalid_arguments",
             "Function embeddings.dot_product expected 2 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "dot_product_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__dot_product_strict(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "embeddings.dot_product_strict produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.dot_product_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.dot_product_strict expected 2 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "vector_magnitude":
         if arg_count == 1:
             try:
@@ -53705,6 +53714,28 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
             "invalid_arguments",
             "Function embeddings.cosine_similarity expected 2 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "cosine_similarity_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__cosine_similarity_strict(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "embeddings.cosine_similarity_strict produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.cosine_similarity_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.cosine_similarity_strict expected 2 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "euclidean_distance":
         if arg_count == 2:
             try:
@@ -53727,6 +53758,28 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
             "invalid_arguments",
             "Function embeddings.euclidean_distance expected 2 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "euclidean_distance_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__euclidean_distance_strict(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "embeddings.euclidean_distance_strict produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.euclidean_distance_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.euclidean_distance_strict expected 2 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "manhattan_distance":
         if arg_count == 2:
             try:
@@ -53748,6 +53801,28 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
         return _error_json(
             "invalid_arguments",
             "Function embeddings.manhattan_distance expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "manhattan_distance_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__manhattan_distance_strict(arg_0, arg_1)
+                if not _is_finite_f64(result):
+                    return _error_json(
+                        "non_finite_result",
+                        "embeddings.manhattan_distance_strict produced a non-finite Float64 (nan or +/-inf). JSON has no such value, and emitting it would make the whole response unparseable."
+                    )
+                var result_json = _to_json_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.manhattan_distance_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.manhattan_distance_strict expected 2 arguments, received " + String(arg_count) + "."
         )
     if function_name == "normalize_vector":
         if arg_count == 1:
@@ -53798,6 +53873,23 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
             "invalid_arguments",
             "Function embeddings.nearest_neighbor expected 2 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "nearest_neighbor_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__nearest_neighbor_strict(arg_0, arg_1)
+                var result_json = _to_json_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.nearest_neighbor_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.nearest_neighbor_strict expected 2 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "k_nearest_neighbors":
         if arg_count == 3:
             try:
@@ -53816,6 +53908,24 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
             "invalid_arguments",
             "Function embeddings.k_nearest_neighbors expected 3 arguments, received " + String(arg_count) + "."
         )
+    if function_name == "k_nearest_neighbors_strict":
+        if arg_count == 3:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_list_float64_token(json_array_get(args_array, 1))
+                var arg_2 = _parse_int_token(json_array_get(args_array, 2))
+                var result = _embeddings__k_nearest_neighbors_strict(arg_0, arg_1, arg_2)
+                var result_json = _to_json_list_int(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.k_nearest_neighbors_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.k_nearest_neighbors_strict expected 3 arguments, received " + String(arg_count) + "."
+        )
     if function_name == "cosine_similarity_matrix":
         if arg_count == 1:
             try:
@@ -53831,6 +53941,22 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
         return _error_json(
             "invalid_arguments",
             "Function embeddings.cosine_similarity_matrix expected 1 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "cosine_similarity_matrix_strict":
+        if arg_count == 1:
+            try:
+                var arg_0 = _parse_list_list_float64_token(json_array_get(args_array, 0))
+                var result = _embeddings__cosine_similarity_matrix_strict(arg_0)
+                var result_json = _to_json_list_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.cosine_similarity_matrix_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.cosine_similarity_matrix_strict expected 1 arguments, received " + String(arg_count) + "."
         )
     if function_name == "vector_add":
         if arg_count == 2:
@@ -53848,6 +53974,23 @@ fn _dispatch_embeddings(function_name: String, args_array: String) raises -> Str
         return _error_json(
             "invalid_arguments",
             "Function embeddings.vector_add expected 2 arguments, received " + String(arg_count) + "."
+        )
+    if function_name == "vector_add_strict":
+        if arg_count == 2:
+            try:
+                var arg_0 = _parse_list_float64_token(json_array_get(args_array, 0))
+                var arg_1 = _parse_list_float64_token(json_array_get(args_array, 1))
+                var result = _embeddings__vector_add_strict(arg_0, arg_1)
+                var result_json = _to_json_list_float64(result)
+                return _success_json(result_json)
+            except:
+                return _error_json(
+                    "mojo_library_execution_failed",
+                    "Mojo library execution failed for embeddings.vector_add_strict."
+                )
+        return _error_json(
+            "invalid_arguments",
+            "Function embeddings.vector_add_strict expected 2 arguments, received " + String(arg_count) + "."
         )
     if function_name == "vector_scale":
         if arg_count == 2:
@@ -147132,7 +147275,7 @@ fn _dispatch_vector_kernels__table(function_name: String, args_array: String) ra
                 var arg_2 = _parse_uint8_token(json_array_get(args_array, 2))
                 var arg_3 = _parse_uint8_token(json_array_get(args_array, 3))
                 var result = _vector_kernels_table__build_query(arg_0, arg_1, arg_2, arg_3)
-                var result_json = _to_json_rankrequest_vector_kernels_table(result)
+                var result_json = _to_json_rankrequest(result)
                 return _success_json(result_json)
             except:
                 return _error_json(
@@ -147180,7 +147323,7 @@ fn _dispatch_vector_kernels__table(function_name: String, args_array: String) ra
             try:
                 var arg_0 = _parse_string_token(json_array_get(args_array, 0))
                 var result = _vector_kernels_table__build_table_json(arg_0)
-                var result_json = _to_json_candidatetable_vector_kernels_table(result)
+                var result_json = _to_json_candidatetable(result)
                 return _success_json(result_json)
             except:
                 return _error_json(
@@ -147194,32 +147337,6 @@ fn _dispatch_vector_kernels__table(function_name: String, args_array: String) ra
     return _error_json(
         "function_not_registered",
         "Function '" + function_name + "' is not registered for module vector_kernels.table."
-    )
-
-fn _dispatch_vector_kernels__test_table(function_name: String, args_array: String) raises -> String:
-    var arg_count = json_array_len(args_array)
-    if function_name == "build_query":
-        if arg_count == 4:
-            try:
-                var arg_0 = _parse_string_token(json_array_get(args_array, 0))
-                var arg_1 = _parse_uint16_token(json_array_get(args_array, 1))
-                var arg_2 = _parse_uint8_token(json_array_get(args_array, 2))
-                var arg_3 = _parse_uint8_token(json_array_get(args_array, 3))
-                var result = _vector_kernels_test_table__build_query(arg_0, arg_1, arg_2, arg_3)
-                var result_json = _to_json_rankrequest_vector_kernels_test_table(result)
-                return _success_json(result_json)
-            except:
-                return _error_json(
-                    "mojo_library_execution_failed",
-                    "Mojo library execution failed for vector_kernels.test_table.build_query."
-                )
-        return _error_json(
-            "invalid_arguments",
-            "Function vector_kernels.test_table.build_query expected 4 arguments, received " + String(arg_count) + "."
-        )
-    return _error_json(
-        "function_not_registered",
-        "Function '" + function_name + "' is not registered for module vector_kernels.test_table."
     )
 
 fn _dispatch_vector_search(function_name: String, args_array: String) raises -> String:
@@ -153915,8 +154032,6 @@ fn dispatch_runtime_library(raw: String) raises -> String:
         return _dispatch_vector_kernels__repo_ranker(function_name, args_array)
     if module_name == "vector_kernels.table":
         return _dispatch_vector_kernels__table(function_name, args_array)
-    if module_name == "vector_kernels.test_table":
-        return _dispatch_vector_kernels__test_table(function_name, args_array)
     if module_name == "vector_search":
         return _dispatch_vector_search(function_name, args_array)
     if module_name == "vector_similarity":

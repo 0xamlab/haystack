@@ -130,7 +130,7 @@ def test_runtime_manifest_declares_formal_runtime_foundation_sections() -> None:
     assert manifest["policy_snapshot"]["snapshot_id"].startswith("execution-policy-default-v1:")
     assert manifest["schema_snapshot"]["snapshot_id"].startswith("platform-contract-v1:")
     assert manifest["benchmark_discovery_lane"]["shipping_manifest_modules"] == 22
-    assert manifest["benchmark_discovery_lane"]["shipping_manifest_functions"] == 209
+    assert manifest["benchmark_discovery_lane"]["shipping_manifest_functions"] == 217
     discovered_source_inventory = manifest["benchmark_discovery_lane"]["discovered_source_inventory"]
     assert len(discovered_source_inventory) == manifest["benchmark_discovery_lane"][
         "discovered_source_modules"

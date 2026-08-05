@@ -421,7 +421,7 @@ async def test_async_decision_engine_client_get_runtime_manifest_returns_typed_r
     assert manifest.manifest_digest
     assert manifest.compiled_artifacts[0].kind is RuntimeArtifactKindResult.proof_bundle
     assert manifest.signature.algorithm is RuntimeSignatureAlgorithmResult.hmac_sha256
-    assert manifest.shipping_contract.function_count == 209
+    assert manifest.shipping_contract.function_count == 217
     assert (
         manifest.shipping_contract.benchmark_discovery_rule
         is RuntimeBenchmarkDiscoveryRuleResult.shipping_llm_rollout_only
@@ -503,7 +503,7 @@ async def test_async_decision_engine_client_get_runtime_modules_returns_typed_re
     modules = await client.get_runtime_modules()
 
     assert isinstance(modules, RuntimeAdminModulesResult)
-    assert modules.summary.function_count == 209
+    assert modules.summary.function_count == 217
     assert (
         modules.shipping_contract.benchmark_discovery_rule
         is RuntimeBenchmarkDiscoveryRuleResult.shipping_llm_rollout_only

@@ -1,6 +1,6 @@
 # Decision Engine Scorecard
 
-Updated: 2026-07-12
+Updated: 2026-08-05
 
 ## Current measured state
 
@@ -44,16 +44,16 @@ This is the top-level repo-owned operator proof from `tests/go_live_verify.py`. 
 | Gap env routing | 26 envs mapped; tiers credentialed_example 2, customer_credentials_required 23, public_no_auth 1; shared none | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/go_live_verify.py` | Amber |
 | Gap env resolution | resolver-supported 25; manual-only 1; groups azure_blob 5, bigquery 2, clickhouse 3, elasticsearch 2, gcs 2, neo4j 3, s3 2, snowflake 4; manual DE_ENABLE_SLOW_PUBLIC_REST_CASES | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `tests/go_live_verify.py`, `tests/go_live_secret_resolver.py` | Amber |
 | Gap env templates | root_env_example 26/26, go_live_validation_env_example 26/26; missing none | `build/go_live_verify_summary.json`, `build/go_live_verify_report.md`, `.env.example`, `tests/integration/go_live_validation.env.example`, `tests/go_live_verify.py` | Green |
-## LLM rollout proof (2026-07-12)
+## LLM rollout proof (2026-08-05)
 
 This is the dedicated evidence for the 22-library Mojo LLM rollout. Use these artifacts instead of the shared `benchmarks/summary.*` files when validating the rollout itself.
 
 | Area | Current | Evidence | Status |
 | --- | --- | --- | --- |
-| 22-library parity proof | 22 libraries, 209 public runtime functions, 100.83x median, 91.41x mean, 243.42x max | `build/llm_rollout_parity_benchmark.json`, `build/llm_rollout_parity_benchmark.txt`, `tests/test_llm_rollout_parity_benchmark.py` | Green |
-| Compiled runtime latency proof | 22 modules, 209 functions, 0 failures, all `engine_used="mojo"`, worst cold 93.88 ms, warm 0.734 ms, hot 0.769 ms | `build/llm_compiled_runtime_benchmark.json`, `tests/test_llm_compiled_runtime_benchmark.py` | Green |
-| Serving extension subset proof | 6 modules, 60 functions, 60/60 parity comparisons across 6/6 modules, speedup range 91.96x to 127.96x, compiled mojo-only, worst cold 0.52 ms, warm 0.454 ms, hot 0.422 ms | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_proof_bundle.py` | Green |
-| Serving extension channel coverage | python_sdk, typescript_sdk, bundled_worker, runtime_local, cli, mcp, http_api_feature_flag all passed for the 6-module / 60-function serving subset; source rollout basis 209 functions | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_matrix.py`, `tests/test_llm_rollout_proof_bundle.py` | Green |
+| 22-library parity proof | 22 libraries, 217 public runtime functions, 97.25x median, 97.36x mean, 226.09x max | `build/llm_rollout_parity_benchmark.json`, `build/llm_rollout_parity_benchmark.txt`, `tests/test_llm_rollout_parity_benchmark.py` | Green |
+| Compiled runtime latency proof | 22 modules, 217 functions, 0 failures, all `engine_used="mojo"`, worst cold 298.58 ms, warm 0.793 ms, hot 0.807 ms | `build/llm_compiled_runtime_benchmark.json`, `tests/test_llm_compiled_runtime_benchmark.py` | Green |
+| Serving extension subset proof | 6 modules, 60 functions, 60/60 parity comparisons across 6/6 modules, speedup range 44.27x to 198.54x, compiled mojo-only, worst cold 0.48 ms, warm 0.363 ms, hot 0.326 ms | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_proof_bundle.py` | Green |
+| Serving extension channel coverage | python_sdk, typescript_sdk, bundled_worker, runtime_local, cli, mcp, http_api_feature_flag all passed for the 6-module / 60-function serving subset; source rollout basis 217 functions | `build/llm_rollout_proof_bundle.json`, `tests/test_llm_rollout_matrix.py`, `tests/test_llm_rollout_proof_bundle.py` | Green |
 | Supported channel coverage | Python SDK 7/7 passed, CLI + bundled worker + `Runtime(mode="local")` + MCP 11/11 passed, TypeScript SDK 15 passed and 0 API-backed skips when `DE_API_KEY` is unset | `build/python_sdk_local_runtime_live_summary.json`, `build/local_runtime_cli_mcp_matrix_live_summary.json`, `build/typescript_sdk_local_runtime_live_summary.json`, `tests/integration/test_algenta_mojo_library_live.py`, `tests/integration/test_cli_mcp_runtime_libraries_live.py`, `tests/integration/test_typescript_runtime_live.py` | Green |
 | SDK package contract coverage | Python SDK package contract 1 passed; TypeScript SDK package contract 1 passed and 8 skipped; both 0 failed | `tests/test_algenta_mojo_sdk.py`, `packages/ts-sdk/src/libraries.test.ts` | Green |
 | HTTP API flag contract coverage | HTTP API flag contract 2 passed; 0 failed | `tests/test_runtime_libraries_api.py`, `apps/api_server/main.py`, `apps/api_server/config.py` | Green |

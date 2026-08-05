@@ -21,6 +21,7 @@ Run from repo root.
 
 from __future__ import annotations
 
+import ast
 import concurrent.futures
 import json
 import math
@@ -1141,6 +1142,21 @@ INT_VAL = "5"
 LIST_VALS = "[0.5, 0.6, 0.7, 0.4, 0.3]"
 INT_LIST = "[0, 1, 2, 3, 4]"
 
+
+def _mojo_nested_list_literal(base_values: list, n_rows: int = 3) -> str:
+    """n_rows of `base_values`, each a rotation of it, as a Mojo list-of-lists
+    literal. Every row is exactly len(base_values) wide by construction -- not
+    a second, independently-hardcoded literal that could silently drift out of
+    sync with the flat default it's paired with (e.g. a query vector and its
+    list of candidate vectors, which must share one dimension to be a
+    meaningful test case at all)."""
+    rows = [base_values[i:] + base_values[:i] for i in range(n_rows)]
+    return "[" + ",".join("[" + ",".join(str(v) for v in row) + "]" for row in rows) + "]"
+
+
+LIST_LIST_VALS = _mojo_nested_list_literal([0.5, 0.6, 0.7, 0.4, 0.3])
+INT_LIST_LIST = _mojo_nested_list_literal([0, 1, 2, 3, 4])
+
 SKIP_PARAM_TYPES = {
     "TTLCache",
     "Graph",
@@ -1423,6 +1439,11 @@ def _mojo_expr_to_python(expr: str) -> str:
     expr = re.sub(r"\bUInt16\(", "int(", expr)
     expr = re.sub(r"\bUInt8\(", "int(", expr)
     expr = re.sub(r"\bString\(", "str(", expr)
+    # Mojo's exception constructor -- raise Error("msg") is syntactically valid
+    # Python already (so this slips past a bare syntax check), but fails at
+    # runtime with NameError since nothing defines `Error`; map it to a real
+    # built-in exception type.
+    expr = re.sub(r"\bError\(", "Exception(", expr)
 
     # pow(a, b) → a ** b
     expr = re.sub(r"\bpow\(([^,]+),\s*([^)]+)\)", r"(\1) ** (\2)", expr)
@@ -1435,6 +1456,30 @@ def _mojo_expr_to_python(expr: str) -> str:
     expr = re.sub(r"\b_exp\b", "math.exp", expr)
     expr = re.sub(r"\b_sin\b", "math.sin", expr)
     expr = re.sub(r"\b_cos\b", "math.cos", expr)
+
+    # Mojo stdlib hardware/type-metadata queries with no scalar-Python equivalent:
+    # simd_width_of[SomeDType]() asks the compiler for this HOST's native SIMD
+    # register width for a given element type -- Python has no SIMD registers at
+    # all, so the honest scalar analogue is 1 (one element "per vector"), not a
+    # value this transpiler can otherwise derive. Left untranslated, the bracketed
+    # parametric-call syntax (func[Param]()) is not valid Python at all and a
+    # SyntaxError at module-import time silently zeroes out EVERY function's
+    # comparison in whichever library uses it, not just the one that needed it.
+    expr = re.sub(r"\bsimd_width_of\[[^\[\]]{0,64}\]\(\)", "1", expr)
+
+    # Mojo SIMD-loop idiom, translated consistently with W==1 above (a "vector" of
+    # width 1 IS a scalar, so every one of these becomes its exact scalar analogue,
+    # not an approximation): `.unsafe_ptr()` is a no-op in a Python list context
+    # (indexing a Python list already does what indexing a raw pointer does), a
+    # `(ptr + offset).load[width=W]()` read of exactly one element is plain
+    # subscripting, a `SIMD[DType, W](value)` constructor holding one lane is just
+    # that value, and reducing a single-lane accumulator is the identity.
+    expr = re.sub(r"\.unsafe_ptr\(\)", "", expr)
+    expr = re.sub(
+        r"\(([\w.]+)\s*\+\s*([\w.]+)\)\.load\[width=\w+\]\(\)", r"\1[\2]", expr
+    )
+    expr = re.sub(r"\bSIMD\[DType\.\w+,\s*\w+\]\(([^)]*)\)", r"(\1)", expr)
+    expr = re.sub(r"\.reduce_add\(\)", "", expr)
 
     # Standard math functions
     for fn in _MOJO_MATH_FNS:
@@ -1602,6 +1647,18 @@ def _strip_docstrings(lines: list[str]) -> list[str]:
     return result
 
 
+def _is_valid_python(source: str) -> bool:
+    """Whether `source` parses as a standalone Python module -- the only thing
+    that matters here is syntax validity, not import resolution or runtime
+    behavior, since a SyntaxError is what takes down the WHOLE generated file at
+    import time (see the caller's own comment)."""
+    try:
+        ast.parse(source)
+    except SyntaxError:
+        return False
+    return True
+
+
 def transpile_function(fn: FnInfo) -> str | None:
     """Return a Python def for the given Mojo function, or None if too complex."""
     if fn.ret.startswith("SIMD["):
@@ -1709,9 +1766,9 @@ def _arg_values(fn: FnInfo) -> list[str] | None:
         elif typ == "List[String]":
             args.append('["a", "b", "c", "d", "e"]')
         elif typ == "List[List[Float64]]":
-            args.append("[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]")
+            args.append(LIST_LIST_VALS)
         elif typ == "List[List[Int]]":
-            args.append("[[0,1,1],[1,0,1],[1,1,0]]")
+            args.append(INT_LIST_LIST)
         elif typ == "List[UInt8]":
             args.append("[1, 2, 3, 4, 5]")
         elif typ.startswith("List[List"):
@@ -2234,6 +2291,17 @@ def generate_python_lib(
     all_fns_map: dict[str, FnInfo] = {}
     for fn in fns:
         py_fn = transpile_function(fn)
+        if py_fn and not _is_valid_python(py_fn):
+            # A regex-based transpiler cannot cover every real Mojo construct (SIMD
+            # pointer-load/store idioms in particular have no simple 1:1 Python
+            # translation). transpile_function's own contract is "return None if
+            # not transpilable" for cases it KNOWS it can't handle; this catches
+            # the cases it doesn't know it can't handle -- a syntactically invalid
+            # result. The critical property this protects: EVERY function below is
+            # concatenated into ONE Python module, so one function's SyntaxError
+            # would otherwise fail the whole file's import and silently zero out
+            # every OTHER function's comparison in this library, not just this one.
+            py_fn = None
         if py_fn:
             all_transpiled[fn.name] = py_fn
             all_fns_map[fn.name] = fn
@@ -2298,9 +2366,9 @@ def _mojo_arg(p: Param, override_args: list[str] | None, idx: int) -> str:
     if typ == "List[String]":
         return '["a","b","c","d","e"]'
     if typ == "List[List[Float64]]":
-        return "[[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]"
+        return LIST_LIST_VALS
     if typ == "List[List[Int]]":
-        return "[[0,1,1],[1,0,1],[1,1,0]]"
+        return INT_LIST_LIST
     if typ == "List[UInt8]":
         return "_lub5"
     return "0.5"

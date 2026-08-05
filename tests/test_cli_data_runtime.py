@@ -316,7 +316,7 @@ def test_cmd_runtime_manifest_prints_runtime_foundation_summary(monkeypatch) -> 
     assert "Algenta runtime manifest:" in output
     assert "llm-core-v1" in output
     assert "22 shipping / 22 listed" in output
-    assert "Functions:       209" in output
+    assert "Functions:       217" in output
     assert "python_sdk, typescript_sdk, cli, mcp" in output
     assert "channel_covered=22" in output
     assert "manifest-listed" in output
@@ -446,7 +446,7 @@ def test_cmd_runtime_admin_modules_prints_signed_module_catalog(monkeypatch) -> 
     output = _capture_stdout(cli.cmd_runtime_admin_modules, "table")
 
     assert "Algenta runtime module catalog:" in output
-    assert "22 modules / 209 functions" in output
+    assert "22 modules / 217 functions" in output
     assert "mojo_llm_runtime_core [channel_covered]" in output
     assert "bpe_tokenizer" in output
 

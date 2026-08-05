@@ -6,6 +6,12 @@ try:
     from std.math import sqrt
 except Exception:
     pass
+try:
+    from std.sys.info import simd_width_of
+except Exception:
+    pass
+
+W = 1
 
 def random_float64(lo=0.0, hi=1.0): return _rng.uniform(lo, hi)
 def random_si64(): return _rng.randint(-2**31, 2**31)
@@ -171,11 +177,32 @@ def _insert_topk(best_scores, best_indices, candidate_score, candidate_index, ma
 
 
 def dot_product(a, b):
-    s = 0.0
     n = _min_len(a, b)
-    for i in range(n):
-        s += a[i] * b[i]
+    ap = a
+    bp = b
+    acc = (0.0)
+    i = 0
+    while i + W <= n:
+        acc += ap[i] * bp[i]
+        i += W
+    s = acc
+    while i < n:
+        s += ap[i] * bp[i]
+        i += 1
     return s
+
+
+
+def dot_product_strict(a, b):
+    if len(a) != len(b):
+        raise Exception(
+            "dot_product_strict: a has "
+            + str(len(a))
+            + " dimensions but b has "
+            + str(len(b))
+            + " dimensions; both vectors must share the same dimensionality"
+        )
+    return dot_product(a, b)
 
 
 
@@ -183,9 +210,18 @@ def dot_product(a, b):
 
 
 def vector_magnitude(v):
-    s = 0.0
-    for i in range(len(v)):
-        s += v[i] * v[i]
+    n = len(v)
+    vp = v
+    acc = (0.0)
+    i = 0
+    while i + W <= n:
+        chunk = vp[i]
+        acc += chunk * chunk
+        i += W
+    s = acc
+    while i < n:
+        s += vp[i] * vp[i]
+        i += 1
     return math.sqrt(s)
 
 
@@ -194,19 +230,46 @@ def vector_magnitude(v):
 
 
 def cosine_similarity(a, b):
-    dot = 0.0
-    sq_a = 0.0
-    sq_b = 0.0
     n = _min_len(a, b)
-    for i in range(n):
-        av = a[i]
-        bv = b[i]
+    ap = a
+    bp = b
+    dot_acc = (0.0)
+    sqa_acc = (0.0)
+    sqb_acc = (0.0)
+    i = 0
+    while i + W <= n:
+        av = ap[i]
+        bv = bp[i]
+        dot_acc += av * bv
+        sqa_acc += av * av
+        sqb_acc += bv * bv
+        i += W
+    dot = dot_acc
+    sq_a = sqa_acc
+    sq_b = sqb_acc
+    while i < n:
+        av = ap[i]
+        bv = bp[i]
         dot += av * bv
         sq_a += av * av
         sq_b += bv * bv
+        i += 1
     if sq_a <= 0.0 or sq_b <= 0.0:
         return 0.0
     return dot / (math.sqrt(sq_a) * math.sqrt(sq_b))
+
+
+
+def cosine_similarity_strict(a, b):
+    if len(a) != len(b):
+        raise Exception(
+            "cosine_similarity_strict: a has "
+            + str(len(a))
+            + " dimensions but b has "
+            + str(len(b))
+            + " dimensions; both vectors must share the same dimensionality"
+        )
+    return cosine_similarity(a, b)
 
 
 
@@ -214,12 +277,34 @@ def cosine_similarity(a, b):
 
 
 def euclidean_distance(a, b):
-    s = 0.0
     n = _min_len(a, b)
-    for i in range(n):
-        d = a[i] - b[i]
+    ap = a
+    bp = b
+    acc = (0.0)
+    i = 0
+    while i + W <= n:
+        d = ap[i] - bp[i]
+        acc += d * d
+        i += W
+    s = acc
+    while i < n:
+        d = ap[i] - bp[i]
         s += d * d
+        i += 1
     return math.sqrt(s)
+
+
+
+def euclidean_distance_strict(a, b):
+    if len(a) != len(b):
+        raise Exception(
+            "euclidean_distance_strict: a has "
+            + str(len(a))
+            + " dimensions but b has "
+            + str(len(b))
+            + " dimensions; both vectors must share the same dimensionality"
+        )
+    return euclidean_distance(a, b)
 
 
 
@@ -227,14 +312,35 @@ def euclidean_distance(a, b):
 
 
 def manhattan_distance(a, b):
-    s = 0.0
     n = _min_len(a, b)
-    for i in range(n):
-        d = a[i] - b[i]
+    ap = a
+    bp = b
+    acc = (0.0)
+    i = 0
+    while i + W <= n:
+        acc += abs(ap[i] - bp[i])
+        i += W
+    s = acc
+    while i < n:
+        d = ap[i] - bp[i]
         if d < 0.0:
             d = -d
         s += d
+        i += 1
     return s
+
+
+
+def manhattan_distance_strict(a, b):
+    if len(a) != len(b):
+        raise Exception(
+            "manhattan_distance_strict: a has "
+            + str(len(a))
+            + " dimensions but b has "
+            + str(len(b))
+            + " dimensions; both vectors must share the same dimensionality"
+        )
+    return manhattan_distance(a, b)
 
 
 
@@ -263,8 +369,19 @@ def centroid(vectors):
     n = len(vectors)
     if n == 0:
         return []
+    dim = len(vectors[0])
+    for i in range(1, n):
+        if len(vectors[i]) != dim:
+            raise Exception(
+                "centroid: vectors[0] has "
+                + str(dim)
+                + " dimensions but vectors["
+                + str(i)
+                + "] has "
+                + str(len(vectors[i]))
+                + "; all vectors must share the same dimensionality"
+            )
     result = vectors[0].copy()
-    dim = len(result)
     for i in range(1, n):
         for d in range(dim):
             result[d] += vectors[i][d]
@@ -291,6 +408,24 @@ def nearest_neighbor(query, candidates):
             best_sim = sim
             best_idx = i
     return best_idx
+
+
+
+def nearest_neighbor_strict(query, candidates):
+    qlen = len(query)
+    for i in range(len(candidates)):
+        if len(candidates[i]) != qlen:
+            raise Exception(
+                "nearest_neighbor_strict: query has "
+                + str(qlen)
+                + " dimensions but candidates["
+                + str(i)
+                + "] has "
+                + str(len(candidates[i]))
+                + " dimensions; every candidate must share the query's"
+                " dimensionality"
+            )
+    return nearest_neighbor(query, candidates)
 
 
 
@@ -335,6 +470,24 @@ def k_nearest_neighbors(query, candidates, k):
 
 
 
+def k_nearest_neighbors_strict(query, candidates, k):
+    qlen = len(query)
+    for i in range(len(candidates)):
+        if len(candidates[i]) != qlen:
+            raise Exception(
+                "k_nearest_neighbors_strict: query has "
+                + str(qlen)
+                + " dimensions but candidates["
+                + str(i)
+                + "] has "
+                + str(len(candidates[i]))
+                + " dimensions; every candidate must share the query's"
+                " dimensionality"
+            )
+    return k_nearest_neighbors(query, candidates, k)
+
+
+
 
 
 
@@ -372,6 +525,26 @@ def cosine_similarity_matrix(vectors):
 
 
 
+def cosine_similarity_matrix_strict(vectors):
+    n = len(vectors)
+    if n > 0:
+        dim = len(vectors[0])
+        for i in range(1, n):
+            if len(vectors[i]) != dim:
+                raise Exception(
+                    "cosine_similarity_matrix_strict: vectors[0] has "
+                    + str(dim)
+                    + " dimensions but vectors["
+                    + str(i)
+                    + "] has "
+                    + str(len(vectors[i]))
+                    + " dimensions; all vectors must share the same"
+                    " dimensionality"
+                )
+    return cosine_similarity_matrix(vectors)
+
+
+
 
 
 
@@ -381,6 +554,19 @@ def vector_add(a, b):
     for i in range(n):
         result.append(a[i] + b[i])
     return result
+
+
+
+def vector_add_strict(a, b):
+    if len(a) != len(b):
+        raise Exception(
+            "vector_add_strict: a has "
+            + str(len(a))
+            + " dimensions but b has "
+            + str(len(b))
+            + " dimensions; both vectors must share the same dimensionality"
+        )
+    return vector_add(a, b)
 
 
 

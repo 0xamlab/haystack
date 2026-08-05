@@ -1,6 +1,6 @@
 """bench_embeddings.mojo — auto-generated timing benchmark."""
 from std.math import isnan, isinf
-from embeddings import dot_product, vector_magnitude, cosine_similarity, euclidean_distance, manhattan_distance, normalize_vector, centroid, nearest_neighbor, k_nearest_neighbors, cosine_similarity_matrix, vector_add, vector_scale
+from embeddings import dot_product, dot_product_strict, vector_magnitude, cosine_similarity, cosine_similarity_strict, euclidean_distance, euclidean_distance_strict, manhattan_distance, manhattan_distance_strict, normalize_vector, centroid, nearest_neighbor, nearest_neighbor_strict, k_nearest_neighbors, k_nearest_neighbors_strict, cosine_similarity_matrix, cosine_similarity_matrix_strict, vector_add, vector_add_strict, vector_scale
 from std.time import perf_counter_ns
 fn _summary_hash_string(value: String) -> Int:
     var h = 7
@@ -290,6 +290,16 @@ def main() raises:
     var _result_dot_product = dot_product(_lf5, _lf5)
     var _summary_dot_product = _summary_float64(_result_dot_product)
     print("MOJO_RESULT embeddings::dot_product", _summary_dot_product)
+    var _acc_dot_product_strict: Float64 = 0.0
+    var _t0_dot_product_strict = perf_counter_ns()
+    for _ in range(N):
+        _acc_dot_product_strict += dot_product_strict(_lf5, _lf5)
+    var _t1_dot_product_strict = perf_counter_ns()
+    var _ns_dot_product_strict = Float64(_t1_dot_product_strict - _t0_dot_product_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::dot_product_strict", _ns_dot_product_strict, _acc_dot_product_strict)
+    var _result_dot_product_strict = dot_product_strict(_lf5, _lf5)
+    var _summary_dot_product_strict = _summary_float64(_result_dot_product_strict)
+    print("MOJO_RESULT embeddings::dot_product_strict", _summary_dot_product_strict)
     var _acc_vector_magnitude: Float64 = 0.0
     var _t0_vector_magnitude = perf_counter_ns()
     for _ in range(N):
@@ -310,6 +320,16 @@ def main() raises:
     var _result_cosine_similarity = cosine_similarity(_lf5, _lf5)
     var _summary_cosine_similarity = _summary_float64(_result_cosine_similarity)
     print("MOJO_RESULT embeddings::cosine_similarity", _summary_cosine_similarity)
+    var _acc_cosine_similarity_strict: Float64 = 0.0
+    var _t0_cosine_similarity_strict = perf_counter_ns()
+    for _ in range(N):
+        _acc_cosine_similarity_strict += cosine_similarity_strict(_lf5, _lf5)
+    var _t1_cosine_similarity_strict = perf_counter_ns()
+    var _ns_cosine_similarity_strict = Float64(_t1_cosine_similarity_strict - _t0_cosine_similarity_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::cosine_similarity_strict", _ns_cosine_similarity_strict, _acc_cosine_similarity_strict)
+    var _result_cosine_similarity_strict = cosine_similarity_strict(_lf5, _lf5)
+    var _summary_cosine_similarity_strict = _summary_float64(_result_cosine_similarity_strict)
+    print("MOJO_RESULT embeddings::cosine_similarity_strict", _summary_cosine_similarity_strict)
     var _acc_euclidean_distance: Float64 = 0.0
     var _t0_euclidean_distance = perf_counter_ns()
     for _ in range(N):
@@ -320,6 +340,16 @@ def main() raises:
     var _result_euclidean_distance = euclidean_distance(_lf5, _lf5)
     var _summary_euclidean_distance = _summary_float64(_result_euclidean_distance)
     print("MOJO_RESULT embeddings::euclidean_distance", _summary_euclidean_distance)
+    var _acc_euclidean_distance_strict: Float64 = 0.0
+    var _t0_euclidean_distance_strict = perf_counter_ns()
+    for _ in range(N):
+        _acc_euclidean_distance_strict += euclidean_distance_strict(_lf5, _lf5)
+    var _t1_euclidean_distance_strict = perf_counter_ns()
+    var _ns_euclidean_distance_strict = Float64(_t1_euclidean_distance_strict - _t0_euclidean_distance_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::euclidean_distance_strict", _ns_euclidean_distance_strict, _acc_euclidean_distance_strict)
+    var _result_euclidean_distance_strict = euclidean_distance_strict(_lf5, _lf5)
+    var _summary_euclidean_distance_strict = _summary_float64(_result_euclidean_distance_strict)
+    print("MOJO_RESULT embeddings::euclidean_distance_strict", _summary_euclidean_distance_strict)
     var _acc_manhattan_distance: Float64 = 0.0
     var _t0_manhattan_distance = perf_counter_ns()
     for _ in range(N):
@@ -330,6 +360,16 @@ def main() raises:
     var _result_manhattan_distance = manhattan_distance(_lf5, _lf5)
     var _summary_manhattan_distance = _summary_float64(_result_manhattan_distance)
     print("MOJO_RESULT embeddings::manhattan_distance", _summary_manhattan_distance)
+    var _acc_manhattan_distance_strict: Float64 = 0.0
+    var _t0_manhattan_distance_strict = perf_counter_ns()
+    for _ in range(N):
+        _acc_manhattan_distance_strict += manhattan_distance_strict(_lf5, _lf5)
+    var _t1_manhattan_distance_strict = perf_counter_ns()
+    var _ns_manhattan_distance_strict = Float64(_t1_manhattan_distance_strict - _t0_manhattan_distance_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::manhattan_distance_strict", _ns_manhattan_distance_strict, _acc_manhattan_distance_strict)
+    var _result_manhattan_distance_strict = manhattan_distance_strict(_lf5, _lf5)
+    var _summary_manhattan_distance_strict = _summary_float64(_result_manhattan_distance_strict)
+    print("MOJO_RESULT embeddings::manhattan_distance_strict", _summary_manhattan_distance_strict)
     var _acc_normalize_vector: Float64 = 0.0
     var _t0_normalize_vector = perf_counter_ns()
     for _ in range(N):
@@ -344,46 +384,78 @@ def main() raises:
     var _acc_centroid: Float64 = 0.0
     var _t0_centroid = perf_counter_ns()
     for _ in range(N):
-        var _r_centroid = centroid([[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]])
+        var _r_centroid = centroid([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
         _acc_centroid += Float64(len(_r_centroid))
     var _t1_centroid = perf_counter_ns()
     var _ns_centroid = Float64(_t1_centroid - _t0_centroid) / Float64(N)
     print("MOJO_TIMING embeddings::centroid", _ns_centroid, _acc_centroid)
-    var _result_centroid = centroid([[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]])
+    var _result_centroid = centroid([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
     var _summary_centroid = _summary_list_float64(_result_centroid)
     print("MOJO_RESULT embeddings::centroid", _summary_centroid)
     var _acc_nearest_neighbor: Float64 = 0.0
     var _t0_nearest_neighbor = perf_counter_ns()
     for _ in range(N):
-        _acc_nearest_neighbor += Float64(nearest_neighbor(_lf5, [[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]]))
+        _acc_nearest_neighbor += Float64(nearest_neighbor(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]]))
     var _t1_nearest_neighbor = perf_counter_ns()
     var _ns_nearest_neighbor = Float64(_t1_nearest_neighbor - _t0_nearest_neighbor) / Float64(N)
     print("MOJO_TIMING embeddings::nearest_neighbor", _ns_nearest_neighbor, _acc_nearest_neighbor)
-    var _result_nearest_neighbor = nearest_neighbor(_lf5, [[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]])
+    var _result_nearest_neighbor = nearest_neighbor(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
     var _summary_nearest_neighbor = _summary_int(_result_nearest_neighbor)
     print("MOJO_RESULT embeddings::nearest_neighbor", _summary_nearest_neighbor)
+    var _acc_nearest_neighbor_strict: Float64 = 0.0
+    var _t0_nearest_neighbor_strict = perf_counter_ns()
+    for _ in range(N):
+        _acc_nearest_neighbor_strict += Float64(nearest_neighbor_strict(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]]))
+    var _t1_nearest_neighbor_strict = perf_counter_ns()
+    var _ns_nearest_neighbor_strict = Float64(_t1_nearest_neighbor_strict - _t0_nearest_neighbor_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::nearest_neighbor_strict", _ns_nearest_neighbor_strict, _acc_nearest_neighbor_strict)
+    var _result_nearest_neighbor_strict = nearest_neighbor_strict(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
+    var _summary_nearest_neighbor_strict = _summary_int(_result_nearest_neighbor_strict)
+    print("MOJO_RESULT embeddings::nearest_neighbor_strict", _summary_nearest_neighbor_strict)
     var _acc_k_nearest_neighbors: Float64 = 0.0
     var _t0_k_nearest_neighbors = perf_counter_ns()
     for _ in range(N):
-        var _r_k_nearest_neighbors = k_nearest_neighbors(_lf5, [[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]], 5)
+        var _r_k_nearest_neighbors = k_nearest_neighbors(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]], 5)
         _acc_k_nearest_neighbors += Float64(len(_r_k_nearest_neighbors))
     var _t1_k_nearest_neighbors = perf_counter_ns()
     var _ns_k_nearest_neighbors = Float64(_t1_k_nearest_neighbors - _t0_k_nearest_neighbors) / Float64(N)
     print("MOJO_TIMING embeddings::k_nearest_neighbors", _ns_k_nearest_neighbors, _acc_k_nearest_neighbors)
-    var _result_k_nearest_neighbors = k_nearest_neighbors(_lf5, [[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]], 5)
+    var _result_k_nearest_neighbors = k_nearest_neighbors(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]], 5)
     var _summary_k_nearest_neighbors = _summary_list_int(_result_k_nearest_neighbors)
     print("MOJO_RESULT embeddings::k_nearest_neighbors", _summary_k_nearest_neighbors)
+    var _acc_k_nearest_neighbors_strict: Float64 = 0.0
+    var _t0_k_nearest_neighbors_strict = perf_counter_ns()
+    for _ in range(N):
+        var _r_k_nearest_neighbors_strict = k_nearest_neighbors_strict(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]], 5)
+        _acc_k_nearest_neighbors_strict += Float64(len(_r_k_nearest_neighbors_strict))
+    var _t1_k_nearest_neighbors_strict = perf_counter_ns()
+    var _ns_k_nearest_neighbors_strict = Float64(_t1_k_nearest_neighbors_strict - _t0_k_nearest_neighbors_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::k_nearest_neighbors_strict", _ns_k_nearest_neighbors_strict, _acc_k_nearest_neighbors_strict)
+    var _result_k_nearest_neighbors_strict = k_nearest_neighbors_strict(_lf5, [[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]], 5)
+    var _summary_k_nearest_neighbors_strict = _summary_list_int(_result_k_nearest_neighbors_strict)
+    print("MOJO_RESULT embeddings::k_nearest_neighbors_strict", _summary_k_nearest_neighbors_strict)
     var _acc_cosine_similarity_matrix: Float64 = 0.0
     var _t0_cosine_similarity_matrix = perf_counter_ns()
     for _ in range(N):
-        var _r_cosine_similarity_matrix = cosine_similarity_matrix([[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]])
+        var _r_cosine_similarity_matrix = cosine_similarity_matrix([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
         _acc_cosine_similarity_matrix += Float64(len(_r_cosine_similarity_matrix))
     var _t1_cosine_similarity_matrix = perf_counter_ns()
     var _ns_cosine_similarity_matrix = Float64(_t1_cosine_similarity_matrix - _t0_cosine_similarity_matrix) / Float64(N)
     print("MOJO_TIMING embeddings::cosine_similarity_matrix", _ns_cosine_similarity_matrix, _acc_cosine_similarity_matrix)
-    var _result_cosine_similarity_matrix = cosine_similarity_matrix([[0.5,0.6,0.7],[0.4,0.3,0.2],[0.1,0.2,0.3]])
+    var _result_cosine_similarity_matrix = cosine_similarity_matrix([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
     var _summary_cosine_similarity_matrix = _summary_list_list_float64_rounded6(_result_cosine_similarity_matrix)
     print("MOJO_RESULT embeddings::cosine_similarity_matrix", _summary_cosine_similarity_matrix)
+    var _acc_cosine_similarity_matrix_strict: Float64 = 0.0
+    var _t0_cosine_similarity_matrix_strict = perf_counter_ns()
+    for _ in range(N):
+        var _r_cosine_similarity_matrix_strict = cosine_similarity_matrix_strict([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
+        _acc_cosine_similarity_matrix_strict += Float64(len(_r_cosine_similarity_matrix_strict))
+    var _t1_cosine_similarity_matrix_strict = perf_counter_ns()
+    var _ns_cosine_similarity_matrix_strict = Float64(_t1_cosine_similarity_matrix_strict - _t0_cosine_similarity_matrix_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::cosine_similarity_matrix_strict", _ns_cosine_similarity_matrix_strict, _acc_cosine_similarity_matrix_strict)
+    var _result_cosine_similarity_matrix_strict = cosine_similarity_matrix_strict([[0.5,0.6,0.7,0.4,0.3],[0.6,0.7,0.4,0.3,0.5],[0.7,0.4,0.3,0.5,0.6]])
+    var _summary_cosine_similarity_matrix_strict = _summary_list_list_float64(_result_cosine_similarity_matrix_strict)
+    print("MOJO_RESULT embeddings::cosine_similarity_matrix_strict", _summary_cosine_similarity_matrix_strict)
     var _acc_vector_add: Float64 = 0.0
     var _t0_vector_add = perf_counter_ns()
     for _ in range(N):
@@ -395,6 +467,17 @@ def main() raises:
     var _result_vector_add = vector_add(_lf5, _lf5)
     var _summary_vector_add = _summary_list_float64(_result_vector_add)
     print("MOJO_RESULT embeddings::vector_add", _summary_vector_add)
+    var _acc_vector_add_strict: Float64 = 0.0
+    var _t0_vector_add_strict = perf_counter_ns()
+    for _ in range(N):
+        var _r_vector_add_strict = vector_add_strict(_lf5, _lf5)
+        _acc_vector_add_strict += Float64(len(_r_vector_add_strict))
+    var _t1_vector_add_strict = perf_counter_ns()
+    var _ns_vector_add_strict = Float64(_t1_vector_add_strict - _t0_vector_add_strict) / Float64(N)
+    print("MOJO_TIMING embeddings::vector_add_strict", _ns_vector_add_strict, _acc_vector_add_strict)
+    var _result_vector_add_strict = vector_add_strict(_lf5, _lf5)
+    var _summary_vector_add_strict = _summary_list_float64(_result_vector_add_strict)
+    print("MOJO_RESULT embeddings::vector_add_strict", _summary_vector_add_strict)
     var _acc_vector_scale: Float64 = 0.0
     var _t0_vector_scale = perf_counter_ns()
     for _ in range(N):

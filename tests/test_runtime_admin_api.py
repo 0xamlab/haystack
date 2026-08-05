@@ -58,7 +58,7 @@ def test_runtime_admin_modules_route_matches_signed_manifest() -> None:
     assert payload["llm_core_manifest"] == "llm-core-v1"
     assert payload["summary"] == {
         "module_count": 22,
-        "function_count": 209,
+        "function_count": 217,
         "maturity_counts": {"channel_covered": 22},
         "layer_counts": {"mojo_llm_runtime_core": 22},
     }

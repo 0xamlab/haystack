@@ -39,8 +39,8 @@ def test_llm_rollout_matrix_covers_all_target_modules() -> None:
 
 
 def test_llm_rollout_matrix_contains_every_benchmarked_function() -> None:
-    assert len(LLM_ROLLOUT_FUNCTION_CASES) == 209
-    assert len(LLM_ROLLOUT_CASES_JSON) == 209
+    assert len(LLM_ROLLOUT_FUNCTION_CASES) == 217
+    assert len(LLM_ROLLOUT_CASES_JSON) == 217
     assert len(LLM_ROLLOUT_FUNCTIONS_BY_MODULE["vector_kernels.ranker"]) == 1
     assert len(LLM_ROLLOUT_FUNCTIONS_BY_MODULE["vector_kernels.table"]) == 4
     assert "precision_at_k" in LLM_ROLLOUT_FUNCTIONS_BY_MODULE["rerank_eval"]
@@ -226,7 +226,7 @@ def test_llm_rollout_proof_bundle_artifact_matches_rollout_contract() -> None:
     serving_extension_channel_coverage = payload["serving_extension_channel_coverage"]
     assert serving_extension_channel_coverage["module_count"] == 6
     assert serving_extension_channel_coverage["function_count"] == 60
-    assert serving_extension_channel_coverage["source_rollout_function_count"] == 209
+    assert serving_extension_channel_coverage["source_rollout_function_count"] == 217
     assert serving_extension_channel_coverage["public_supported_channels_complete"] is True
     assert serving_extension_channel_coverage["validated_auxiliary_channels_complete"] is True
     assert serving_extension_channel_coverage["http_feature_flag_channel_complete"] is True

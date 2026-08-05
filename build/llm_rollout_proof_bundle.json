@@ -1,8 +1,8 @@
 {
   "bundle": "llm_rollout_proof_bundle",
-  "generated_at": "2026-07-12T02:59:00Z",
+  "generated_at": "2026-08-05T02:53:05Z",
   "expected_modules": 22,
-  "expected_functions": 209,
+  "expected_functions": 217,
   "public_supported_channels": [
     "python_sdk",
     "typescript_sdk",
@@ -19,41 +19,53 @@
   "parity_artifact": {
     "path": "build/llm_rollout_parity_benchmark.json",
     "library_count": 22,
-    "function_count": 209,
-    "median_speedup_x": 100.83,
-    "mean_speedup_x": 91.41,
-    "max_speedup_x": 243.42,
-    "timestamp": "2026-07-11T22:53:14"
+    "function_count": 217,
+    "median_speedup_x": 97.25,
+    "mean_speedup_x": 97.36,
+    "max_speedup_x": 226.09,
+    "timestamp": "2026-08-04T22:13:51"
   },
   "compiled_runtime_artifact": {
     "path": "build/llm_compiled_runtime_benchmark.json",
     "module_count": 22,
-    "function_count": 209,
+    "function_count": 217,
     "failed_function_count": 0,
     "transport": "compiled_worker",
     "max_cold_ms": {
-      "value": 93.87633297592402,
+      "value": 298.5804579948308,
       "module": "bpe_tokenizer",
       "function": "bpe_merge_score"
     },
     "max_warm_ms": {
-      "value": 0.7344589685089886,
+      "value": 0.7927920087240636,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     },
     "max_hot_ms": {
-      "value": 0.7692500075791031,
+      "value": 0.807167001767084,
       "module": "vector_kernels.table",
       "function": "build_table_json"
     }
   },
   "benchmark_discovery_lane": {
-    "discovered_source_modules": 522,
-    "discovered_public_functions": 5155,
+    "discovered_source_modules": 732,
+    "discovered_public_functions": 7113,
     "discovered_source_inventory": [
       {
         "import_path": "ab_testing",
         "public_function_count": 10
+      },
+      {
+        "import_path": "accel.contract",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "accel.device",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "accel.gemm_metal",
+        "public_function_count": 3
       },
       {
         "import_path": "accounting",
@@ -92,6 +104,30 @@
         "public_function_count": 10
       },
       {
+        "import_path": "algenta_runtime.batch",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "algenta_runtime.pipeline",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "algenta_runtime.query",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "algenta_runtime.resources",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "algenta_runtime.session",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "algenta_runtime.stream",
+        "public_function_count": 4
+      },
+      {
         "import_path": "allocation",
         "public_function_count": 10
       },
@@ -116,6 +152,10 @@
         "public_function_count": 12
       },
       {
+        "import_path": "arima",
+        "public_function_count": 8
+      },
+      {
         "import_path": "astrobiology",
         "public_function_count": 10
       },
@@ -126,6 +166,30 @@
       {
         "import_path": "atmospheric_chemistry",
         "public_function_count": 10
+      },
+      {
+        "import_path": "attnk.backward",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "attnk.contract",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "attnk.flash",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "attnk.mask",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "attnk.rope",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "attnk.sdpa",
+        "public_function_count": 3
       },
       {
         "import_path": "auction",
@@ -146,6 +210,10 @@
       {
         "import_path": "automata.state_machine",
         "public_function_count": 8
+      },
+      {
+        "import_path": "automl",
+        "public_function_count": 4
       },
       {
         "import_path": "autonomous_vehicles",
@@ -220,6 +288,26 @@
         "public_function_count": 8
       },
       {
+        "import_path": "calibration",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "canonical.encode",
+        "public_function_count": 16
+      },
+      {
+        "import_path": "canonical.float_repr",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "canonical.from_json",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "canonical.hash",
+        "public_function_count": 4
+      },
+      {
         "import_path": "cardiology",
         "public_function_count": 10
       },
@@ -234,6 +322,34 @@
       {
         "import_path": "causal",
         "public_function_count": 10
+      },
+      {
+        "import_path": "causal_inference.base",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "causal_inference.dag",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "causal_inference.estimators",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "causal_inference.panel",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "causal_inference.propensity",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "causal_inference.sensitivity",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "causal_inference.uplift",
+        "public_function_count": 2
       },
       {
         "import_path": "cellular",
@@ -284,6 +400,34 @@
         "public_function_count": 7
       },
       {
+        "import_path": "columnar.array",
+        "public_function_count": 30
+      },
+      {
+        "import_path": "columnar.arrow_wire",
+        "public_function_count": 22
+      },
+      {
+        "import_path": "columnar.batch",
+        "public_function_count": 19
+      },
+      {
+        "import_path": "columnar.dictionary",
+        "public_function_count": 17
+      },
+      {
+        "import_path": "columnar.dtype",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "columnar.hash_index",
+        "public_function_count": 27
+      },
+      {
+        "import_path": "columnar.validity",
+        "public_function_count": 13
+      },
+      {
         "import_path": "combinatorial",
         "public_function_count": 10
       },
@@ -332,8 +476,16 @@
         "public_function_count": 8
       },
       {
+        "import_path": "conformal",
+        "public_function_count": 6
+      },
+      {
         "import_path": "constraint",
         "public_function_count": 8
+      },
+      {
+        "import_path": "contest_strategy",
+        "public_function_count": 7
       },
       {
         "import_path": "continuous_batching",
@@ -374,6 +526,10 @@
       {
         "import_path": "cost_router",
         "public_function_count": 10
+      },
+      {
+        "import_path": "counter_rng",
+        "public_function_count": 12
       },
       {
         "import_path": "cryogenics",
@@ -452,6 +608,26 @@
         "public_function_count": 10
       },
       {
+        "import_path": "data_quality.contract",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "data_quality.duplicates",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "data_quality.expect",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "data_quality.leakage",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "data_quality.profile",
+        "public_function_count": 5
+      },
+      {
         "import_path": "database",
         "public_function_count": 9
       },
@@ -476,6 +652,10 @@
         "public_function_count": 3
       },
       {
+        "import_path": "degradation_state",
+        "public_function_count": 13
+      },
+      {
         "import_path": "demographics",
         "public_function_count": 12
       },
@@ -496,6 +676,26 @@
         "public_function_count": 8
       },
       {
+        "import_path": "determinism.counter_rng",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "determinism.manifest",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "determinism.reduce_det",
+        "public_function_count": 16
+      },
+      {
+        "import_path": "determinism.sampling_keyed",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "determinism.streams",
+        "public_function_count": 4
+      },
+      {
         "import_path": "differentiate",
         "public_function_count": 6
       },
@@ -510,6 +710,30 @@
       {
         "import_path": "dimensions",
         "public_function_count": 10
+      },
+      {
+        "import_path": "discrete_event.calendar",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "discrete_event.contract",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "discrete_event.queue_sim",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "discrete_event.replicate",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "discrete_event.resource",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "discrete_event.warmup",
+        "public_function_count": 2
       },
       {
         "import_path": "distillation",
@@ -564,6 +788,10 @@
         "public_function_count": 10
       },
       {
+        "import_path": "eigen_full",
+        "public_function_count": 2
+      },
+      {
         "import_path": "election",
         "public_function_count": 8
       },
@@ -585,7 +813,7 @@
       },
       {
         "import_path": "embeddings",
-        "public_function_count": 12
+        "public_function_count": 20
       },
       {
         "import_path": "encoding",
@@ -660,6 +888,10 @@
         "public_function_count": 1
       },
       {
+        "import_path": "ensembles",
+        "public_function_count": 4
+      },
+      {
         "import_path": "entomology",
         "public_function_count": 12
       },
@@ -680,16 +912,64 @@
         "public_function_count": 12
       },
       {
+        "import_path": "esrnn.bias_correction",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "esrnn.global_residual",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "esrnn.per_frequency",
+        "public_function_count": 2
+      },
+      {
         "import_path": "etiology",
         "public_function_count": 10
+      },
+      {
+        "import_path": "evaluation.binning",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "evaluation.contract",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "evaluation.gates",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "evaluation.resample",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "evaluation.scores",
+        "public_function_count": 6
       },
       {
         "import_path": "evaluation_feedback",
         "public_function_count": 10
       },
       {
+        "import_path": "evolutionary_search",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "exactnum.eft",
+        "public_function_count": 24
+      },
+      {
+        "import_path": "exactnum.lstsq",
+        "public_function_count": 9
+      },
+      {
         "import_path": "execution_planner",
         "public_function_count": 10
+      },
+      {
+        "import_path": "explainability",
+        "public_function_count": 4
       },
       {
         "import_path": "expr",
@@ -702,6 +982,10 @@
       {
         "import_path": "feature_engineering",
         "public_function_count": 10
+      },
+      {
+        "import_path": "feature_hashing",
+        "public_function_count": 4
       },
       {
         "import_path": "feature_selection",
@@ -748,6 +1032,54 @@
         "public_function_count": 12
       },
       {
+        "import_path": "forecast_metrics",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "forecasting.backtest",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "forecasting.bagging",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "forecasting.contract",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "forecasting.fitted",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "forecasting.hierarchy",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "forecasting.intermittent",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "forecasting.interval",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "forecasting.origin_select",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "forecasting.point",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "forecasting.pool",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "forecasting.select",
+        "public_function_count": 2
+      },
+      {
         "import_path": "forensics",
         "public_function_count": 12
       },
@@ -770,6 +1102,26 @@
       {
         "import_path": "game_theory",
         "public_function_count": 8
+      },
+      {
+        "import_path": "gaussian_process",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "gbdt",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "gemm.blocked",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "gemm.contract",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "gemm.quantized",
+        "public_function_count": 5
       },
       {
         "import_path": "generation_loop",
@@ -804,6 +1156,30 @@
         "public_function_count": 10
       },
       {
+        "import_path": "geospatial.contract",
+        "public_function_count": 19
+      },
+      {
+        "import_path": "geospatial.frame",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "geospatial.index",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "geospatial.join",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "geospatial.mapmatch",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "geospatial.polygon",
+        "public_function_count": 6
+      },
+      {
         "import_path": "geotechnical",
         "public_function_count": 12
       },
@@ -832,6 +1208,22 @@
         "public_function_count": 10
       },
       {
+        "import_path": "graph_analytics.adjacency",
+        "public_function_count": 38
+      },
+      {
+        "import_path": "graph_analytics.centrality",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "graph_analytics.community",
+        "public_function_count": 19
+      },
+      {
+        "import_path": "graph_analytics.temporal",
+        "public_function_count": 16
+      },
+      {
         "import_path": "graph_compiler",
         "public_function_count": 10
       },
@@ -852,8 +1244,16 @@
         "public_function_count": 10
       },
       {
+        "import_path": "hmm",
+        "public_function_count": 4
+      },
+      {
         "import_path": "horticulture",
         "public_function_count": 10
+      },
+      {
+        "import_path": "hostio.socket_native",
+        "public_function_count": 16
       },
       {
         "import_path": "hvac",
@@ -920,12 +1320,44 @@
         "public_function_count": 8
       },
       {
+        "import_path": "imbalance",
+        "public_function_count": 5
+      },
+      {
         "import_path": "immunology",
         "public_function_count": 10
       },
       {
         "import_path": "importance_sampling",
         "public_function_count": 1
+      },
+      {
+        "import_path": "inference.assume",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "inference.core",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "inference.glm",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "inference.multiplicity",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "inference.power",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "inference.resample",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "inference.robust",
+        "public_function_count": 3
       },
       {
         "import_path": "inference_cost_latency",
@@ -1020,6 +1452,10 @@
         "public_function_count": 8
       },
       {
+        "import_path": "linear_models",
+        "public_function_count": 4
+      },
+      {
         "import_path": "linear_programming",
         "public_function_count": 8
       },
@@ -1030,6 +1466,22 @@
       {
         "import_path": "llm_sampling",
         "public_function_count": 11
+      },
+      {
+        "import_path": "llmk.contract",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "llmk.gemv_fast",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "llmk.generate",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "llmk.residual",
+        "public_function_count": 1
       },
       {
         "import_path": "logging.logger",
@@ -1050,6 +1502,14 @@
       {
         "import_path": "loss_functions",
         "public_function_count": 11
+      },
+      {
+        "import_path": "lossk.contract",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "lossk.cross_entropy",
+        "public_function_count": 5
       },
       {
         "import_path": "lottery",
@@ -1096,6 +1556,18 @@
         "public_function_count": 10
       },
       {
+        "import_path": "metaldispatch.contract",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "metaldispatch.qwen3_decode",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "metaldispatch.session",
+        "public_function_count": 74
+      },
+      {
         "import_path": "metallurgy",
         "public_function_count": 12
       },
@@ -1118,6 +1590,10 @@
       {
         "import_path": "mining",
         "public_function_count": 12
+      },
+      {
+        "import_path": "mixture_models",
+        "public_function_count": 5
       },
       {
         "import_path": "mixture_of_experts",
@@ -1156,8 +1632,24 @@
         "public_function_count": 10
       },
       {
+        "import_path": "mlpk.activation",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "mlpk.contract",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "mlpk.embedding",
+        "public_function_count": 3
+      },
+      {
         "import_path": "model_abi",
         "public_function_count": 10
+      },
+      {
+        "import_path": "model_compare",
+        "public_function_count": 4
       },
       {
         "import_path": "model_interop",
@@ -1170,6 +1662,10 @@
       {
         "import_path": "model_router",
         "public_function_count": 10
+      },
+      {
+        "import_path": "model_selection",
+        "public_function_count": 5
       },
       {
         "import_path": "model_serialization",
@@ -1252,12 +1748,32 @@
         "public_function_count": 10
       },
       {
+        "import_path": "normk.contract",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "normk.layernorm",
+        "public_function_count": 4
+      },
+      {
+        "import_path": "normk.rmsnorm",
+        "public_function_count": 4
+      },
+      {
         "import_path": "nuclear",
         "public_function_count": 12
       },
       {
         "import_path": "number_theory",
         "public_function_count": 12
+      },
+      {
+        "import_path": "numeric.contract",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "numeric.reduce",
+        "public_function_count": 14
       },
       {
         "import_path": "numerical_stability",
@@ -1308,6 +1824,50 @@
         "public_function_count": 10
       },
       {
+        "import_path": "optimization.assignment",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "optimization.explain",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "optimization.flow",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "optimization.integer",
+        "public_function_count": 6
+      },
+      {
+        "import_path": "optimization.linear",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "optimization.model",
+        "public_function_count": 52
+      },
+      {
+        "import_path": "optimization.multiobjective",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "optimization.quadratic",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "optimization.robust",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "optimization.routing",
+        "public_function_count": 15
+      },
+      {
+        "import_path": "optimization.scheduling",
+        "public_function_count": 10
+      },
+      {
         "import_path": "optimization_constrained",
         "public_function_count": 8
       },
@@ -1324,8 +1884,24 @@
         "public_function_count": 10
       },
       {
+        "import_path": "option_greeks_batch",
+        "public_function_count": 1
+      },
+      {
         "import_path": "option_pricing",
         "public_function_count": 10
+      },
+      {
+        "import_path": "optmodel.formulation",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "optmodel.judge",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "optmodel.solve",
+        "public_function_count": 2
       },
       {
         "import_path": "orthodontics",
@@ -1428,8 +2004,16 @@
         "public_function_count": 12
       },
       {
+        "import_path": "pipelines",
+        "public_function_count": 5
+      },
+      {
         "import_path": "plasma_physics",
         "public_function_count": 10
+      },
+      {
+        "import_path": "pls",
+        "public_function_count": 4
       },
       {
         "import_path": "plumbing",
@@ -1480,6 +2064,18 @@
         "public_function_count": 12
       },
       {
+        "import_path": "progexec.contract",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "progexec.exec",
+        "public_function_count": 1
+      },
+      {
+        "import_path": "progexec.roundexact",
+        "public_function_count": 1
+      },
+      {
         "import_path": "project_management",
         "public_function_count": 12
       },
@@ -1512,6 +2108,10 @@
         "public_function_count": 3
       },
       {
+        "import_path": "quantfin.heston",
+        "public_function_count": 21
+      },
+      {
         "import_path": "quantization",
         "public_function_count": 10
       },
@@ -1526,6 +2126,62 @@
       {
         "import_path": "quantum_computing",
         "public_function_count": 12
+      },
+      {
+        "import_path": "query.aggregate",
+        "public_function_count": 51
+      },
+      {
+        "import_path": "query.aggregate_late",
+        "public_function_count": 13
+      },
+      {
+        "import_path": "query.coded_dense",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "query.comoments_packed",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "query.composed",
+        "public_function_count": 15
+      },
+      {
+        "import_path": "query.eval",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "query.executor",
+        "public_function_count": 16
+      },
+      {
+        "import_path": "query.ir",
+        "public_function_count": 17
+      },
+      {
+        "import_path": "query.join",
+        "public_function_count": 20
+      },
+      {
+        "import_path": "query.median_packed",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "query.packedkey",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "query.plan",
+        "public_function_count": 26
+      },
+      {
+        "import_path": "query.topk_dense",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "query.window",
+        "public_function_count": 13
       },
       {
         "import_path": "queue_ds",
@@ -1594,6 +2250,26 @@
       {
         "import_path": "reservoir",
         "public_function_count": 7
+      },
+      {
+        "import_path": "residentk.contract",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "residentk.probe",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "residentk.session",
+        "public_function_count": 48
+      },
+      {
+        "import_path": "retrieval.fuse",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "retrieval.score",
+        "public_function_count": 8
       },
       {
         "import_path": "rheology",
@@ -1676,8 +2352,24 @@
         "public_function_count": 10
       },
       {
+        "import_path": "seq2_trainer",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "seq_nn",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "seq_training",
+        "public_function_count": 4
+      },
+      {
         "import_path": "serialization.msgpack",
         "public_function_count": 10
+      },
+      {
+        "import_path": "serialization_io",
+        "public_function_count": 3
       },
       {
         "import_path": "series",
@@ -1690,6 +2382,30 @@
       {
         "import_path": "sha256",
         "public_function_count": 3
+      },
+      {
+        "import_path": "sheet.api",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "sheet.engine",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "sheet.formula",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "sheet.grid",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "sheet.refs",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "sheet.values",
+        "public_function_count": 19
       },
       {
         "import_path": "signal.dsp",
@@ -1748,6 +2464,26 @@
         "public_function_count": 10
       },
       {
+        "import_path": "sparse_numerics.csr",
+        "public_function_count": 39
+      },
+      {
+        "import_path": "sparse_numerics.diagnostics",
+        "public_function_count": 21
+      },
+      {
+        "import_path": "sparse_numerics.factor",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "sparse_numerics.iterative",
+        "public_function_count": 18
+      },
+      {
+        "import_path": "sparse_numerics.spmv",
+        "public_function_count": 16
+      },
+      {
         "import_path": "sparse_vector",
         "public_function_count": 10
       },
@@ -1777,7 +2513,7 @@
       },
       {
         "import_path": "stat_tests",
-        "public_function_count": 9
+        "public_function_count": 11
       },
       {
         "import_path": "state_space_models",
@@ -1789,7 +2525,7 @@
       },
       {
         "import_path": "stats",
-        "public_function_count": 8
+        "public_function_count": 14
       },
       {
         "import_path": "stats_bootstrap",
@@ -1800,7 +2536,51 @@
         "public_function_count": 10
       },
       {
+        "import_path": "strategy.contract",
+        "public_function_count": 42
+      },
+      {
+        "import_path": "strategy.crn",
+        "public_function_count": 17
+      },
+      {
+        "import_path": "strategy.equilibrium",
+        "public_function_count": 22
+      },
+      {
+        "import_path": "strategy.policy",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "strategy.tournament",
+        "public_function_count": 8
+      },
+      {
         "import_path": "stratigraphy",
+        "public_function_count": 10
+      },
+      {
+        "import_path": "streaming.contract",
+        "public_function_count": 21
+      },
+      {
+        "import_path": "streaming.distinct",
+        "public_function_count": 11
+      },
+      {
+        "import_path": "streaming.drift",
+        "public_function_count": 8
+      },
+      {
+        "import_path": "streaming.frequency",
+        "public_function_count": 16
+      },
+      {
+        "import_path": "streaming.quantiles",
+        "public_function_count": 15
+      },
+      {
+        "import_path": "streaming.windows",
         "public_function_count": 10
       },
       {
@@ -1840,12 +2620,40 @@
         "public_function_count": 8
       },
       {
+        "import_path": "survival_analysis.base",
+        "public_function_count": 9
+      },
+      {
+        "import_path": "survival_analysis.competing",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "survival_analysis.cox",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "survival_analysis.hazard",
+        "public_function_count": 2
+      },
+      {
+        "import_path": "survival_analysis.km",
+        "public_function_count": 3
+      },
+      {
+        "import_path": "survival_analysis.parametric",
+        "public_function_count": 2
+      },
+      {
         "import_path": "sustainability",
         "public_function_count": 12
       },
       {
         "import_path": "svm_kernel",
         "public_function_count": 9
+      },
+      {
+        "import_path": "svm_solver",
+        "public_function_count": 5
       },
       {
         "import_path": "taphonomy",
@@ -1860,8 +2668,40 @@
         "public_function_count": 32
       },
       {
+        "import_path": "tensor2d",
+        "public_function_count": 11
+      },
+      {
         "import_path": "tensor_ops",
         "public_function_count": 10
+      },
+      {
+        "import_path": "tensorx.buffer",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "tensorx.contract",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "tensorx.dtype",
+        "public_function_count": 14
+      },
+      {
+        "import_path": "tensorx.elementwise",
+        "public_function_count": 5
+      },
+      {
+        "import_path": "tensorx.pack",
+        "public_function_count": 12
+      },
+      {
+        "import_path": "tensorx.reduce",
+        "public_function_count": 7
+      },
+      {
+        "import_path": "tensorx.shape",
+        "public_function_count": 9
       },
       {
         "import_path": "text.column_scorer",
@@ -2141,7 +2981,7 @@
       }
     ],
     "shipping_manifest_modules": 22,
-    "shipping_manifest_functions": 209,
+    "shipping_manifest_functions": 217,
     "non_shipping_rule": "The broader Mojo inventory remains a benchmark and discovery lane only; modules are not advertised on the runtime surface unless listed in this manifest."
   },
   "sdk_contract_suites": [
@@ -2164,7 +3004,7 @@
         "tests/test_algenta_mojo_sdk.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 1.287,
+      "elapsed_seconds": 1.368,
       "passed": 1,
       "failed": 0,
       "skipped": 0
@@ -2190,7 +3030,7 @@
         "packages/ts-sdk/src/libraries.test.ts"
       ],
       "status": "passed",
-      "elapsed_seconds": 1.336,
+      "elapsed_seconds": 0.826,
       "passed": 1,
       "failed": 0,
       "skipped": 8
@@ -2213,7 +3053,7 @@
         "apps/api_server/config.py"
       ],
       "status": "passed",
-      "elapsed_seconds": 8.378,
+      "elapsed_seconds": 6.196,
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -2246,81 +3086,81 @@
     "functions_compared": 60,
     "all_modules_fully_compared": true,
     "all_compiled_engine_used_mojo": true,
-    "min_speedup_x": 91.96,
-    "max_speedup_x": 127.96,
+    "min_speedup_x": 44.27,
+    "max_speedup_x": 198.54,
     "max_cold_ms": {
-      "value": 0.5184590118005872,
-      "module": "generation_loop",
-      "function": "top_p_cumulative_accept"
+      "value": 0.4791670071426779,
+      "module": "paged_kv_cache",
+      "function": "page_table_lookup"
     },
     "max_warm_ms": {
-      "value": 0.4540829686447978,
-      "module": "generation_loop",
-      "function": "top_p_cumulative_accept"
+      "value": 0.36299999919719994,
+      "module": "inference_engine",
+      "function": "kv_cache_hit_ratio"
     },
     "max_hot_ms": {
-      "value": 0.42202099575661123,
-      "module": "generation_loop",
-      "function": "temperature_logit_scale"
+      "value": 0.32564600405748934,
+      "module": "inference_engine",
+      "function": "latency_percentile_estimate"
     },
     "modules": [
       {
         "name": "kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 98.74,
+        "parity_speedup_x": 94.34,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3500829916447401,
+          "value": 0.4338750004535541,
           "function": "kv_cache_memory_per_layer"
         },
         "max_warm_ms": {
-          "value": 0.3171669668518007,
+          "value": 0.2995420072693378,
           "function": "kv_cache_memory_per_layer"
         },
         "max_hot_ms": {
-          "value": 0.2895414945669472,
-          "function": "kv_cache_memory_per_layer"
+          "value": 0.2898125021602027,
+          "function": "kv_cache_total_memory"
         }
       },
       {
         "name": "paged_kv_cache",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 127.96,
+        "parity_speedup_x": 100.95,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.37050002720206976,
-          "function": "cache_hit_latency_saving"
+          "value": 0.4791670071426779,
+          "function": "page_table_lookup"
         },
         "max_warm_ms": {
-          "value": 0.3209169954061508,
-          "function": "cache_eviction_beladys_score"
+          "value": 0.32087499857880175,
+          "function": "cache_compaction_gain"
         },
         "max_hot_ms": {
-          "value": 0.3021034935954958,
-          "function": "cache_compaction_gain"
+          "value": 0.31158350611804053,
+          "function": "dynamic_ntk_rope_scale"
         }
       },
       {
         "name": "continuous_batching",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 100.83,
+        "parity_speedup_x": 95.94,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.33466698369011283,
-          "function": "sequence_completion_fraction"
+          "value": 0.3470000083325431,
+          "function": "iteration_level_batch_size"
         },
         "max_warm_ms": {
-          "value": 0.3812920185737312,
-          "function": "decode_throughput_tokens"
+          "value": 0.3039580042241141,
+          "function": "beam_memory_per_request"
         },
         "max_hot_ms": {
-          "value": 0.3445209877099842,
+          "value": 0.3011044973391108,
           "function": "streaming_first_token_latency"
         }
       },
@@ -2328,60 +3168,60 @@
         "name": "inference_engine",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 118.25,
+        "parity_speedup_x": 198.54,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3442909801378846,
+          "value": 0.4078330093761906,
           "function": "batch_padding_mask"
         },
         "max_warm_ms": {
-          "value": 0.3434589598327875,
-          "function": "batch_padding_mask"
+          "value": 0.36299999919719994,
+          "function": "kv_cache_hit_ratio"
         },
         "max_hot_ms": {
-          "value": 0.30060450080782175,
-          "function": "batch_padding_mask"
+          "value": 0.32564600405748934,
+          "function": "latency_percentile_estimate"
         }
       },
       {
         "name": "speculative_decoding",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 102.67,
+        "parity_speedup_x": 44.27,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.3878750139847398,
-          "function": "medusa_head_acceptance"
+          "value": 0.4549160075839609,
+          "function": "speculative_accept_prob"
         },
         "max_warm_ms": {
-          "value": 0.3470410010777414,
+          "value": 0.3181249921908602,
           "function": "medusa_head_acceptance"
         },
         "max_hot_ms": {
-          "value": 0.3803744912147522,
-          "function": "token_healing_overlap"
+          "value": 0.32114600617205724,
+          "function": "speculative_expected_tokens"
         }
       },
       {
         "name": "generation_loop",
         "parity_function_count": 10,
         "parity_compared_count": 10,
-        "parity_speedup_x": 91.96,
+        "parity_speedup_x": 87.82,
         "compiled_function_count": 10,
         "compiled_all_engine_used_mojo": true,
         "max_cold_ms": {
-          "value": 0.5184590118005872,
-          "function": "top_p_cumulative_accept"
+          "value": 0.32662499870639294,
+          "function": "temperature_logit_scale"
         },
         "max_warm_ms": {
-          "value": 0.4540829686447978,
-          "function": "top_p_cumulative_accept"
+          "value": 0.27404099819250405,
+          "function": "presence_penalty_logit"
         },
         "max_hot_ms": {
-          "value": 0.42202099575661123,
-          "function": "temperature_logit_scale"
+          "value": 0.26220799918519333,
+          "function": "frequency_penalty_logit"
         }
       }
     ]
@@ -2389,7 +3229,7 @@
   "serving_extension_channel_coverage": {
     "module_count": 6,
     "function_count": 60,
-    "source_rollout_function_count": 209,
+    "source_rollout_function_count": 217,
     "coverage_basis": "Each referenced live suite executes all LLM_ROLLOUT_FUNCTION_CASES, which includes the six serving extension modules.",
     "public_supported_channels_complete": true,
     "validated_auxiliary_channels_complete": true,

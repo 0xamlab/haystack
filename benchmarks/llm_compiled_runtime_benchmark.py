@@ -164,27 +164,49 @@ def _default_scalar_value(type_name: str) -> Any:
     raise ValueError(f"Unsupported scalar runtime type {type_name!r}")
 
 
+def _default_flat_list(inner: str) -> list[Any] | None:
+    """The default flat List[inner] value, or None if `inner` has no flat default.
+
+    This is the single source of truth `_default_value`'s nested-list branch
+    rotates from, so a function mixing List[T] and List[List[T]] parameters --
+    e.g. a query vector and a list of candidate vectors that must share one
+    dimension -- always gets a dimensionally consistent default for both,
+    without a second, independently-hardcoded literal that could silently
+    drift out of sync with this one.
+    """
+    if inner in ("Float64", "Float32"):
+        return [0.5, 0.6, 0.7, 0.4, 0.3]
+    if inner == "Int":
+        return [1, 0, 1, 1, 0]
+    if inner == "Bool":
+        return [True, False, True]
+    if inner == "String":
+        return ["alpha", "beta", "gamma"]
+    return None
+
+
+def _default_nested_list(inner: str, n_rows: int = 3) -> list[Any]:
+    """n_rows of List[inner]'s own flat default, each row a rotation of it (so
+    rows aren't literally identical -- a degenerate all-candidates-the-same
+    fixture would hide a real bug in code that's supposed to distinguish
+    between candidates) -- but every row is exactly the same length as
+    List[inner]'s own default, by construction, not by two hardcoded
+    literals that happen to agree today.
+    """
+    base = _default_flat_list(inner)
+    if base is None:
+        raise ValueError(f"Unsupported nested runtime type List[List[{inner}]]")
+    return [base[i:] + base[:i] for i in range(n_rows)]
+
+
 def _default_value(type_name: str) -> Any:
     if type_name.startswith("List[") and type_name.endswith("]"):
         inner = type_name[5:-1]
-        if inner == "Float64":
-            return [0.5, 0.6, 0.7, 0.4, 0.3]
-        if inner == "Float32":
-            return [0.5, 0.6, 0.7, 0.4, 0.3]
-        if inner == "Int":
-            return [1, 0, 1, 1, 0]
-        if inner == "Bool":
-            return [True, False, True]
-        if inner == "String":
-            return ["alpha", "beta", "gamma"]
-        if inner == "List[Float64]":
-            return [[0.5, 0.6, 0.7], [0.4, 0.3, 0.2], [0.1, 0.2, 0.3]]
-        if inner == "List[Float32]":
-            return [[0.5, 0.6, 0.7], [0.4, 0.3, 0.2], [0.1, 0.2, 0.3]]
-        if inner == "List[Int]":
-            return [[1, 0, 1], [0, 1, 0]]
-        if inner == "List[String]":
-            return [["alpha", "beta"], ["gamma", "delta"]]
+        if inner.startswith("List[") and inner.endswith("]"):
+            return _default_nested_list(inner[5:-1])
+        flat = _default_flat_list(inner)
+        if flat is not None:
+            return flat
         raise ValueError(f"Unsupported nested runtime type {type_name!r}")
     return _default_scalar_value(type_name)
 
