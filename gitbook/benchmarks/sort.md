@@ -1,6 +1,6 @@
 ---
 icon: arrow-down-1-9
-description: LSD radix sort over Float64 keys, sequential and parallel, against numpy.sort's introsort (1.26.4) — 12 of 14 gate-clean cells ahead across three input orders and six sizes from 100,000 to 102.4 million elements.
+description: LSD radix sort over Float64 keys against numpy.sort's introsort — 12 of 14 gate-clean cells ahead across three input orders, from 100,000 to 102.4 million elements.
 ---
 
 # Sort
