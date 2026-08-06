@@ -19,7 +19,7 @@ from std.math import exp
 # ── _fnv1a64 ─────────────────────────────────────────────────────────────────
 
 
-fn _fnv1a64(name: String, seed: Int) -> UInt64:
+def _fnv1a64(name: String, seed: Int) -> UInt64:
     """Seeded 64-bit FNV-1a hash of a feature name.
 
     The seed is folded in first as 8 little-endian bytes through the same
@@ -47,7 +47,7 @@ fn _fnv1a64(name: String, seed: Int) -> UInt64:
 # ── hash_feature ─────────────────────────────────────────────────────────────
 
 
-fn hash_feature(name: String, n_buckets: Int, seed: Int) -> Int:
+def hash_feature(name: String, n_buckets: Int, seed: Int) -> Int:
     """Bucket index in [0, n_buckets) for a feature name (hashing trick).
 
     Deterministic: the same (name, n_buckets, seed) always yields the same
@@ -63,7 +63,7 @@ fn hash_feature(name: String, n_buckets: Int, seed: Int) -> Int:
 # ── hash_sign ────────────────────────────────────────────────────────────────
 
 
-fn hash_sign(name: String, seed: Int) -> Int:
+def hash_sign(name: String, seed: Int) -> Int:
     """Hashing-trick sign (+1 or -1) for a feature name.
 
     Uses bit 63 of the same seeded FNV-1a hash that drives hash_feature, so
@@ -79,7 +79,7 @@ fn hash_sign(name: String, seed: Int) -> Int:
 # ── hash_features_row ────────────────────────────────────────────────────────
 
 
-fn hash_features_row(
+def hash_features_row(
     names: List[String], values: List[Float64], n_buckets: Int, seed: Int
 ) -> List[Float64]:
     """Dense hashed feature row: signed accumulation of values by bucket.
@@ -110,7 +110,7 @@ fn hash_features_row(
 # ── collision_rate_estimate ──────────────────────────────────────────────────
 
 
-fn collision_rate_estimate(n_features: Int, n_buckets: Int) -> Float64:
+def collision_rate_estimate(n_features: Int, n_buckets: Int) -> Float64:
     """Birthday-bound estimate of P(at least one bucket collision).
 
     Approximates the probability that any two of n_features distinct feature

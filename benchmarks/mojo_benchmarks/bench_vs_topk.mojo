@@ -180,7 +180,7 @@ comptime FNV_PRIME: UInt64 = 0x00000100000001B3
 # ── data ──────────────────────────────────────────────────────────────────────
 
 
-fn splitmix64(counter: UInt64) -> UInt64:
+def splitmix64(counter: UInt64) -> UInt64:
     """SplitMix64 finalizer over a COUNTER, not over carried state.
 
     Counter-based so `value[i]` depends on `i` alone: NumPy computes the identical bit
@@ -193,7 +193,7 @@ fn splitmix64(counter: UInt64) -> UInt64:
     return z ^ (z >> 31)
 
 
-fn uniform_values(n: Int) -> List[Float64]:
+def uniform_values(n: Int) -> List[Float64]:
     """`n` uniform Float64 in [0, 1). 53 bits of mantissa from the top 53 output bits."""
     var out = List[Float64](capacity=n)
     for i in range(n):
@@ -201,7 +201,7 @@ fn uniform_values(n: Int) -> List[Float64]:
     return out^
 
 
-fn ascending_values(n: Int) -> List[Float64]:
+def ascending_values(n: Int) -> List[Float64]:
     """The adversarial order: every element beats the running threshold."""
     var out = List[Float64](capacity=n)
     for i in range(n):
@@ -209,7 +209,7 @@ fn ascending_values(n: Int) -> List[Float64]:
     return out^
 
 
-fn reps_for(unit_ns: Float64) -> Int:
+def reps_for(unit_ns: Float64) -> Int:
     """Units that fit in `CELL_BUDGET_NS`, clamped to [`MIN_REPS`, `HOT_REPS`]."""
     if unit_ns <= 0.0:
         return HOT_REPS
@@ -221,7 +221,7 @@ fn reps_for(unit_ns: Float64) -> Int:
     return want
 
 
-fn batch_size(pilot_ns: Float64) -> Int:
+def batch_size(pilot_ns: Float64) -> Int:
     """Repeats needed for one timed unit to span `UNIT_FLOOR_NS`, from the cold reading.
 
     The cold reading OVERSTATES the steady-state cost, so this understates the repeat
@@ -242,14 +242,14 @@ fn batch_size(pilot_ns: Float64) -> Int:
 
 
 @always_inline
-fn _fnv_bytes(h: UInt64, v: UInt64) -> UInt64:
+def _fnv_bytes(h: UInt64, v: UInt64) -> UInt64:
     var acc = h
     for b in range(8):
         acc = (acc ^ ((v >> (UInt64(b) * 8)) & 0xFF)) * FNV_PRIME
     return acc
 
 
-fn pair_digest(indices: List[Int], values: List[Float64]) -> UInt64:
+def pair_digest(indices: List[Int], values: List[Float64]) -> UInt64:
     """FNV-1a-64 over `(index, value_bits)` in ASCENDING INDEX order.
 
     Ascending index order rather than the returned order, so the digest is a property of
@@ -272,7 +272,7 @@ fn pair_digest(indices: List[Int], values: List[Float64]) -> UInt64:
     return h
 
 
-fn value_digest(indices: List[Int], values: List[Float64]) -> UInt64:
+def value_digest(indices: List[Int], values: List[Float64]) -> UInt64:
     """FNV-1a-64 over the value BIT PATTERNS in the returned (best-first) order.
 
     Order-independent among ties, because tied values have identical bits. So this is a
@@ -285,7 +285,7 @@ fn value_digest(indices: List[Int], values: List[Float64]) -> UInt64:
     return h
 
 
-fn same_list(a: List[Int], b: List[Int]) -> Bool:
+def same_list(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -311,7 +311,7 @@ struct Cell(Copyable, Movable):
     var inner: Int
     var reps: Int
 
-    fn __init__(
+    def __init__(
         out self,
         cold: Float64,
         warm: Float64,
@@ -336,7 +336,7 @@ struct Cell(Copyable, Movable):
         self.reps = reps
 
 
-fn judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> Cell:
+def judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> Cell:
     """Apply the dispersion gate. EVERY failing condition is named, never one that held.
 
     That last clause is not decoration. `measure_stream_bandwidth.mojo`'s 1T arm prints
@@ -385,7 +385,7 @@ fn judge(cold: Float64, warm: Float64, var units: List[Float64], inner: Int) -> 
     )
 
 
-fn report(mut failures: Int, arm: String, n: Int, k: Int, cell: Cell, candidates: Int):
+def report(mut failures: Int, arm: String, n: Int, k: Int, cell: Cell, candidates: Int):
     """One machine-readable line per cell. INVALID lines carry no rate, by design."""
     var head = "TOPK " + arm + " n=" + String(n) + " k=" + String(k)
     var common = (
@@ -425,7 +425,7 @@ fn report(mut failures: Int, arm: String, n: Int, k: Int, cell: Cell, candidates
 # no arm can accidentally be given a different rep schedule from another.
 
 
-fn time_flat[buffered: Bool](
+def time_flat[buffered: Bool](
     values: List[Float64],
     n: Int,
     k: Int,
@@ -463,7 +463,7 @@ fn time_flat[buffered: Bool](
     return judge(cold, warm, units^, inner)
 
 
-fn time_parallel[buffered: Bool](
+def time_parallel[buffered: Bool](
     values: List[Float64],
     n: Int,
     k: Int,
@@ -501,7 +501,7 @@ fn time_parallel[buffered: Bool](
     return judge(cold, warm, units^, inner)
 
 
-fn time_executor(
+def time_executor(
     batch: RecordBatch, k: Int, mut out_indices: List[Int], mut sink: Int
 ) -> Cell:
     """The existing `query.executor` path, under the same equal-time rule as every other
@@ -535,7 +535,7 @@ fn time_executor(
     return judge(cold, warm, units^, inner)
 
 
-fn build_batch(values: List[Float64], n: Int) -> RecordBatch:
+def build_batch(values: List[Float64], n: Int) -> RecordBatch:
     """A one-column `RecordBatch` over the prefix, built OUTSIDE every timed region.
 
     The copy and the validity bitmap are a real cost of the executor path and they are
@@ -555,7 +555,7 @@ fn build_batch(values: List[Float64], n: Int) -> RecordBatch:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 
-fn main():
+def main():
     var workers = info.num_physical_cores()
     var failures = 0
     # Consumed at the end so no timed call can be eliminated as dead code.

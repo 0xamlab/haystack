@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, cos
 
 
-fn range_from_time_of_flight(time_ns: Float64) -> Float64:
+def range_from_time_of_flight(time_ns: Float64) -> Float64:
     """Range from time-of-flight: R = c·t/2.
 
     Args:
@@ -29,7 +29,7 @@ fn range_from_time_of_flight(time_ns: Float64) -> Float64:
     return c * time_ns * 1e-9 / 2.0
 
 
-fn point_density(n_points: Float64, area_m2: Float64) -> Float64:
+def point_density(n_points: Float64, area_m2: Float64) -> Float64:
     """Point density of a LiDAR dataset.
 
     Args:
@@ -44,7 +44,7 @@ fn point_density(n_points: Float64, area_m2: Float64) -> Float64:
     return n_points / area_m2
 
 
-fn canopy_height_model(dsm_elevation: Float64, dtm_elevation: Float64) -> Float64:
+def canopy_height_model(dsm_elevation: Float64, dtm_elevation: Float64) -> Float64:
     """Canopy height from surface model minus terrain model.
 
     CHM = DSM - DTM
@@ -62,7 +62,7 @@ fn canopy_height_model(dsm_elevation: Float64, dtm_elevation: Float64) -> Float6
     return chm
 
 
-fn leaf_area_index_from_lidar(
+def leaf_area_index_from_lidar(
     gap_fraction: Float64, zenith_angle_rad: Float64
 ) -> Float64:
     """LAI from LiDAR gap fraction (Beer-Lambert).
@@ -82,7 +82,7 @@ fn leaf_area_index_from_lidar(
     return -cos(zenith_angle_rad) * log(gap_fraction) / G
 
 
-fn ground_filter_threshold(
+def ground_filter_threshold(
     scan_angle_rad: Float64, point_spacing: Float64
 ) -> Float64:
     """Height threshold for progressive TIN ground filter.
@@ -100,7 +100,7 @@ fn ground_filter_threshold(
     return point_spacing * tan(scan_angle_rad)
 
 
-fn beam_divergence_footprint(
+def beam_divergence_footprint(
     range_m: Float64, beam_divergence_mrad: Float64
 ) -> Float64:
     """Laser beam footprint diameter at a given range.
@@ -117,7 +117,7 @@ fn beam_divergence_footprint(
     return range_m * beam_divergence_mrad * 1e-3
 
 
-fn pulse_return_intensity(
+def pulse_return_intensity(
     reflectance: Float64, range_m: Float64, system_constant: Float64
 ) -> Float64:
     """Received pulse intensity from range equation (simplified).
@@ -137,7 +137,7 @@ fn pulse_return_intensity(
     return system_constant * reflectance / (range_m * range_m)
 
 
-fn scan_line_spacing(
+def scan_line_spacing(
     altitude: Float64, scan_rate: Float64, flight_speed: Float64
 ) -> Float64:
     """Along-track scan line spacing.
@@ -157,7 +157,7 @@ fn scan_line_spacing(
     return flight_speed / scan_rate
 
 
-fn vertical_accuracy(
+def vertical_accuracy(
     z_lidar: Float64, z_check: Float64
 ) -> Float64:
     """Point-wise vertical error: residual = z_LiDAR - z_check.
@@ -172,7 +172,7 @@ fn vertical_accuracy(
     return z_lidar - z_check
 
 
-fn surface_roughness_lidar(mean_residual: Float64, n_points: Float64) -> Float64:
+def surface_roughness_lidar(mean_residual: Float64, n_points: Float64) -> Float64:
     """Surface roughness as RMS of plane fit residuals.
 
     σ = sqrt(sum(r²) / n)  approximated from mean_residual.

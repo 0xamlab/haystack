@@ -31,7 +31,7 @@ comptime LN10: Float64 = 2.302585092994046  # ln(10)
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     """log base 10 via natural log."""
     return log(x) / LN10
 
@@ -39,7 +39,7 @@ fn _log10(x: Float64) -> Float64:
 # ── snells_law_angle ──────────────────────────────────────────────────────────
 
 
-fn snells_law_angle(
+def snells_law_angle(
     n1: Float64, n2: Float64, theta1: Float64
 ) -> Float64:
     """Refracted angle: θ2 = asin((n1/n2)*sin(θ1)). Angles in radians."""
@@ -49,7 +49,7 @@ fn snells_law_angle(
 # ── critical_angle ────────────────────────────────────────────────────────────
 
 
-fn critical_angle(n1: Float64, n2: Float64) -> Float64:
+def critical_angle(n1: Float64, n2: Float64) -> Float64:
     """Critical angle for total internal reflection: θc = asin(n2/n1).
     Requires n1 > n2. Returns radians."""
     return asin(n2 / n1)
@@ -58,7 +58,7 @@ fn critical_angle(n1: Float64, n2: Float64) -> Float64:
 # ── brewster_angle ────────────────────────────────────────────────────────────
 
 
-fn brewster_angle(n1: Float64, n2: Float64) -> Float64:
+def brewster_angle(n1: Float64, n2: Float64) -> Float64:
     """Brewster angle: θB = atan(n2/n1). Returns radians."""
     return atan(n2 / n1)
 
@@ -66,7 +66,7 @@ fn brewster_angle(n1: Float64, n2: Float64) -> Float64:
 # ── fresnel_reflectance_normal ────────────────────────────────────────────────
 
 
-fn fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
+def fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
     """Fresnel reflectance at normal incidence: R = ((n1-n2)/(n1+n2))²."""
     var r = (n1 - n2) / (n1 + n2)
     return r * r
@@ -75,7 +75,7 @@ fn fresnel_reflectance_normal(n1: Float64, n2: Float64) -> Float64:
 # ── numerical_aperture ────────────────────────────────────────────────────────
 
 
-fn numerical_aperture(n_core: Float64, n_clad: Float64) -> Float64:
+def numerical_aperture(n_core: Float64, n_clad: Float64) -> Float64:
     """NA = sqrt(n_core² - n_clad²)."""
     return sqrt(n_core * n_core - n_clad * n_clad)
 
@@ -83,7 +83,7 @@ fn numerical_aperture(n_core: Float64, n_clad: Float64) -> Float64:
 # ── photon_energy ─────────────────────────────────────────────────────────────
 
 
-fn photon_energy(wavelength: Float64) -> Float64:
+def photon_energy(wavelength: Float64) -> Float64:
     """E = hc/λ in Joules. Wavelength in meters."""
     return PLANCK * SPEED_OF_LIGHT / wavelength
 
@@ -91,7 +91,7 @@ fn photon_energy(wavelength: Float64) -> Float64:
 # ── wavelength_to_frequency ───────────────────────────────────────────────────
 
 
-fn wavelength_to_frequency(wavelength: Float64) -> Float64:
+def wavelength_to_frequency(wavelength: Float64) -> Float64:
     """f = c/λ in Hz. Wavelength in meters."""
     return SPEED_OF_LIGHT / wavelength
 
@@ -99,7 +99,7 @@ fn wavelength_to_frequency(wavelength: Float64) -> Float64:
 # ── frequency_to_wavelength ───────────────────────────────────────────────────
 
 
-fn frequency_to_wavelength(frequency: Float64) -> Float64:
+def frequency_to_wavelength(frequency: Float64) -> Float64:
     """λ = c/f in meters. Frequency in Hz."""
     return SPEED_OF_LIGHT / frequency
 
@@ -107,7 +107,7 @@ fn frequency_to_wavelength(frequency: Float64) -> Float64:
 # ── beer_lambert_transmittance ────────────────────────────────────────────────
 
 
-fn beer_lambert_transmittance(
+def beer_lambert_transmittance(
     alpha: Float64, length: Float64
 ) -> Float64:
     """T = exp(-α*L) — transmittance through absorbing medium."""
@@ -117,7 +117,7 @@ fn beer_lambert_transmittance(
 # ── beer_lambert_absorbance ───────────────────────────────────────────────────
 
 
-fn beer_lambert_absorbance(transmittance: Float64) -> Float64:
+def beer_lambert_absorbance(transmittance: Float64) -> Float64:
     """A = -log10(T) — absorbance from transmittance."""
     return -_log10(transmittance)
 
@@ -125,7 +125,7 @@ fn beer_lambert_absorbance(transmittance: Float64) -> Float64:
 # ── diffraction_grating_angle ─────────────────────────────────────────────────
 
 
-fn diffraction_grating_angle(
+def diffraction_grating_angle(
     m: Float64, wavelength: Float64, d: Float64
 ) -> Float64:
     """sin(θ) = m*λ/d → θ = asin(m*λ/d). Returns radians."""
@@ -135,7 +135,7 @@ fn diffraction_grating_angle(
 # ── rayleigh_resolution ───────────────────────────────────────────────────────
 
 
-fn rayleigh_resolution(
+def rayleigh_resolution(
     wavelength: Float64, aperture: Float64
 ) -> Float64:
     """θ = 1.22 * λ / D — Rayleigh criterion angular resolution (radians)."""

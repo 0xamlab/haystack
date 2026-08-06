@@ -22,27 +22,27 @@ from document_vision import (
 )
 
 
-fn _pixel_count(width: Int, height: Int) -> Int:
+def _pixel_count(width: Int, height: Int) -> Int:
     if width <= 0 or height <= 0:
         return 0
     return width * height
 
 
-fn _pixel_value(flat: List[Float64], index: Int) -> Float64:
+def _pixel_value(flat: List[Float64], index: Int) -> Float64:
     if index < 0 or index >= len(flat):
         return 0.0
     return flat[index]
 
 
-fn _is_foreground(mask_flat: List[Float64], index: Int, fg_threshold: Float64) -> Bool:
+def _is_foreground(mask_flat: List[Float64], index: Int, fg_threshold: Float64) -> Bool:
     return _pixel_value(mask_flat, index) >= fg_threshold
 
 
-fn _normalized_min_count(min_count: Int) -> Int:
+def _normalized_min_count(min_count: Int) -> Int:
     return 1 if min_count < 1 else min_count
 
 
-fn _clamp01(value: Float64) -> Float64:
+def _clamp01(value: Float64) -> Float64:
     if value < 0.0:
         return 0.0
     if value > 1.0:
@@ -50,11 +50,11 @@ fn _clamp01(value: Float64) -> Float64:
     return value
 
 
-fn _abs(value: Float64) -> Float64:
+def _abs(value: Float64) -> Float64:
     return -value if value < 0.0 else value
 
 
-fn _count_projection_bands(projection: List[Float64], min_count: Int) -> Int:
+def _count_projection_bands(projection: List[Float64], min_count: Int) -> Int:
     if len(projection) == 0:
         return 0
     var threshold = Float64(_normalized_min_count(min_count))
@@ -70,7 +70,7 @@ fn _count_projection_bands(projection: List[Float64], min_count: Int) -> Int:
     return bands
 
 
-fn text_line_boxes_flat(
+def text_line_boxes_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64, min_row_ink: Int
 ) -> List[Int]:
     """Contiguous horizontal text bands as [x0, y0, x1, y1, area] × N."""
@@ -127,14 +127,14 @@ fn text_line_boxes_flat(
     return out^
 
 
-fn line_count_flat(
+def line_count_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64, min_row_ink: Int
 ) -> Int:
     """Count contiguous horizontal text bands."""
     return len(text_line_boxes_flat(mask_flat, width, height, fg_threshold, min_row_ink)) // 5
 
 
-fn column_boxes_flat(
+def column_boxes_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64, min_col_ink: Int
 ) -> List[Int]:
     """Contiguous vertical text columns as [x0, y0, x1, y1, area] × N."""
@@ -191,14 +191,14 @@ fn column_boxes_flat(
     return out^
 
 
-fn column_count_flat(
+def column_count_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64, min_col_ink: Int
 ) -> Int:
     """Count contiguous vertical text columns."""
     return len(column_boxes_flat(mask_flat, width, height, fg_threshold, min_col_ink)) // 5
 
 
-fn text_density_grid_flat(
+def text_density_grid_flat(
     mask_flat: List[Float64],
     width: Int,
     height: Int,
@@ -234,7 +234,7 @@ fn text_density_grid_flat(
     return out^
 
 
-fn multi_column_score_flat(
+def multi_column_score_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> Float64:
     """Score in [0, 1] for layouts that look like two balanced columns with a gutter."""
@@ -276,7 +276,7 @@ fn multi_column_score_flat(
     return _clamp01(best)
 
 
-fn table_like_score_flat(
+def table_like_score_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64
 ) -> Float64:
     """Score in [0, 1] for layouts with repeated row and column bands."""

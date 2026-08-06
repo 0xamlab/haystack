@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn p99_latency_estimate(
+def p99_latency_estimate(
     mean_latency: Float64, std_latency: Float64
 ) -> Float64:
     """P99 latency estimate assuming log-normal distribution.
@@ -34,7 +34,7 @@ fn p99_latency_estimate(
     return mean_latency + 2.326 * std_latency
 
 
-fn memory_pressure_score(
+def memory_pressure_score(
     used_bytes: Float64, total_bytes: Float64,
     fragmentation: Float64
 ) -> Float64:
@@ -61,7 +61,7 @@ fn memory_pressure_score(
     return score
 
 
-fn token_throughput_ema(
+def token_throughput_ema(
     current_ema: Float64, new_tokens: Float64,
     elapsed_ms: Float64, alpha: Float64
 ) -> Float64:
@@ -85,7 +85,7 @@ fn token_throughput_ema(
     return alpha * new_rate + (1.0 - alpha) * current_ema
 
 
-fn cache_miss_rate(
+def cache_miss_rate(
     total_accesses: Float64, cache_misses: Float64
 ) -> Float64:
     """Cache miss rate: misses / total accesses.
@@ -102,7 +102,7 @@ fn cache_miss_rate(
     return cache_misses / total_accesses
 
 
-fn batch_queue_wait_percentile(
+def batch_queue_wait_percentile(
     mean_wait: Float64, std_wait: Float64, percentile: Float64
 ) -> Float64:
     """Queue wait time percentile estimate.
@@ -123,7 +123,7 @@ fn batch_queue_wait_percentile(
     return mean_wait + z * std_wait
 
 
-fn gpu_utilization_rolling(
+def gpu_utilization_rolling(
     current_util: Float64, new_sample: Float64, alpha: Float64
 ) -> Float64:
     """Rolling EMA GPU SM utilization (0–1).
@@ -139,7 +139,7 @@ fn gpu_utilization_rolling(
     return alpha * new_sample + (1.0 - alpha) * current_util
 
 
-fn request_success_rate(
+def request_success_rate(
     successes: Float64, total_requests: Float64
 ) -> Float64:
     """Rolling request success rate.
@@ -156,7 +156,7 @@ fn request_success_rate(
     return successes / total_requests
 
 
-fn model_drift_alert_score(
+def model_drift_alert_score(
     psi_score: Float64, accuracy_drop: Float64,
     calibration_ece: Float64
 ) -> Float64:
@@ -176,7 +176,7 @@ fn model_drift_alert_score(
     return 0.4 * psi_score + 0.4 * accuracy_drop + 0.2 * calibration_ece
 
 
-fn cost_per_token_rolling(
+def cost_per_token_rolling(
     current_cpt: Float64, new_cost: Float64,
     new_tokens: Float64, alpha: Float64
 ) -> Float64:
@@ -197,7 +197,7 @@ fn cost_per_token_rolling(
     return alpha * new_rate + (1.0 - alpha) * current_cpt
 
 
-fn health_check_score(
+def health_check_score(
     memory_pressure: Float64, gpu_util: Float64,
     error_rate: Float64, queue_depth_ratio: Float64
 ) -> Float64:

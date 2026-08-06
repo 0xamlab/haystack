@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_quality import blur_score_flat, brightness_flat, entropy_flat, contrast_flat, quality_score_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

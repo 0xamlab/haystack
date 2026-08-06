@@ -20,7 +20,7 @@ from mlpk.contract import MLP_ERR_LENGTH_MISMATCH, MLP_ERR_TOKEN_OUT_OF_RANGE, M
 from mlpk.embedding import embedding_bwd_flat, embedding_fwd_flat, embedding_ids_in_range
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 

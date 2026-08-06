@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from apiculture import honey_yield_per_hive, colony_strength_estimate, varroa_infestation_rate, sugar_syrup_ratio, foraging_range_area, nectar_to_honey_ratio, brood_viability, winter_feed_requirement, queen_laying_rate, pollination_value, hive_density_per_hectare, overwintering_survival_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

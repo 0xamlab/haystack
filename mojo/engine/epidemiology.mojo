@@ -22,7 +22,7 @@ from std.math import log, exp
 # ── sir_step ──────────────────────────────────────────────────────────────────
 
 
-fn sir_step(
+def sir_step(
     S: Float64, I: Float64, R: Float64,
     beta: Float64, gamma: Float64, dt: Float64,
 ) -> List[Float64]:
@@ -41,7 +41,7 @@ fn sir_step(
 # ── sir_simulate ──────────────────────────────────────────────────────────────
 
 
-fn sir_simulate(
+def sir_simulate(
     S0: Float64, I0: Float64, R0: Float64,
     beta: Float64, gamma: Float64, dt: Float64, n_steps: Int,
 ) -> List[List[Float64]]:
@@ -67,7 +67,7 @@ fn sir_simulate(
 # ── seir_step ─────────────────────────────────────────────────────────────────
 
 
-fn seir_step(
+def seir_step(
     S: Float64, E: Float64, I: Float64, R: Float64,
     beta: Float64, sigma: Float64, gamma: Float64, dt: Float64,
 ) -> List[Float64]:
@@ -88,7 +88,7 @@ fn seir_step(
 # ── basic_reproduction_number ─────────────────────────────────────────────────
 
 
-fn basic_reproduction_number(beta: Float64, gamma: Float64) -> Float64:
+def basic_reproduction_number(beta: Float64, gamma: Float64) -> Float64:
     """R0 = beta / gamma."""
     if gamma == 0.0:
         return 0.0
@@ -98,7 +98,7 @@ fn basic_reproduction_number(beta: Float64, gamma: Float64) -> Float64:
 # ── herd_immunity_threshold ───────────────────────────────────────────────────
 
 
-fn herd_immunity_threshold(R0: Float64) -> Float64:
+def herd_immunity_threshold(R0: Float64) -> Float64:
     """HIT = 1 - 1/R0."""
     if R0 <= 0.0:
         return 0.0
@@ -108,7 +108,7 @@ fn herd_immunity_threshold(R0: Float64) -> Float64:
 # ── effective_reproduction ────────────────────────────────────────────────────
 
 
-fn effective_reproduction(
+def effective_reproduction(
     R0: Float64, vaccinated_fraction: Float64
 ) -> Float64:
     """Re = R0 * (1 - vaccinated_fraction)."""
@@ -118,7 +118,7 @@ fn effective_reproduction(
 # ── doubling_time ─────────────────────────────────────────────────────────────
 
 
-fn doubling_time(growth_rate: Float64) -> Float64:
+def doubling_time(growth_rate: Float64) -> Float64:
     """ln(2) / growth_rate."""
     if growth_rate == 0.0:
         return 0.0
@@ -128,7 +128,7 @@ fn doubling_time(growth_rate: Float64) -> Float64:
 # ── attack_rate ───────────────────────────────────────────────────────────────
 
 
-fn attack_rate(R0: Float64) -> Float64:
+def attack_rate(R0: Float64) -> Float64:
     """Final size of epidemic via iterative solution of z = 1 - exp(-R0*z)."""
     if R0 <= 1.0:
         return 0.0
@@ -141,7 +141,7 @@ fn attack_rate(R0: Float64) -> Float64:
 # ── case_fatality_rate ────────────────────────────────────────────────────────
 
 
-fn case_fatality_rate(deaths: Int, cases: Int) -> Float64:
+def case_fatality_rate(deaths: Int, cases: Int) -> Float64:
     """CFR = deaths / cases."""
     if cases == 0:
         return 0.0
@@ -151,7 +151,7 @@ fn case_fatality_rate(deaths: Int, cases: Int) -> Float64:
 # ── incidence_rate ────────────────────────────────────────────────────────────
 
 
-fn incidence_rate(
+def incidence_rate(
     new_cases: Int, population: Int, time_period: Float64
 ) -> Float64:
     """Incidence rate = new_cases / (population * time_period)."""

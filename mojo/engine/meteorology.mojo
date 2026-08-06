@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, pow
 
 
-fn dew_point(temperature: Float64, relative_humidity: Float64) -> Float64:
+def dew_point(temperature: Float64, relative_humidity: Float64) -> Float64:
     """Dew point temperature using Magnus formula.
 
     Args:
@@ -34,7 +34,7 @@ fn dew_point(temperature: Float64, relative_humidity: Float64) -> Float64:
     return b * alpha / (a - alpha)
 
 
-fn wet_bulb_temperature(temperature: Float64, relative_humidity: Float64) -> Float64:
+def wet_bulb_temperature(temperature: Float64, relative_humidity: Float64) -> Float64:
     """Wet-bulb temperature approximation (Stull 2011).
 
     Args:
@@ -54,7 +54,7 @@ fn wet_bulb_temperature(temperature: Float64, relative_humidity: Float64) -> Flo
             - 4.686035)
 
 
-fn pressure_altitude(pressure_pa: Float64) -> Float64:
+def pressure_altitude(pressure_pa: Float64) -> Float64:
     """Pressure altitude from ambient pressure using ISA model.
 
     Args:
@@ -69,7 +69,7 @@ fn pressure_altitude(pressure_pa: Float64) -> Float64:
     return 44330.0 * (1.0 - (pressure_pa / p0) ** (1.0 / 5.255))
 
 
-fn relative_humidity(temperature: Float64, dew_point_temp: Float64) -> Float64:
+def relative_humidity(temperature: Float64, dew_point_temp: Float64) -> Float64:
     """Relative humidity from temperature and dew point.
 
     Args:
@@ -88,7 +88,7 @@ fn relative_humidity(temperature: Float64, dew_point_temp: Float64) -> Float64:
     return 100.0 * es_td / es_t
 
 
-fn absolute_humidity(temperature: Float64, relative_humidity: Float64) -> Float64:
+def absolute_humidity(temperature: Float64, relative_humidity: Float64) -> Float64:
     """Absolute humidity (water vapour density).
 
     Args:
@@ -106,7 +106,7 @@ fn absolute_humidity(temperature: Float64, relative_humidity: Float64) -> Float6
     return 216.7 * e / tk
 
 
-fn wind_chill(temperature: Float64, wind_speed_kmh: Float64) -> Float64:
+def wind_chill(temperature: Float64, wind_speed_kmh: Float64) -> Float64:
     """Wind chill index (Environment Canada formula).
 
     Args:
@@ -122,7 +122,7 @@ fn wind_chill(temperature: Float64, wind_speed_kmh: Float64) -> Float64:
     return 13.12 + 0.6215 * temperature - 11.37 * v016 + 0.3965 * temperature * v016
 
 
-fn heat_index(temperature: Float64, relative_humidity: Float64) -> Float64:
+def heat_index(temperature: Float64, relative_humidity: Float64) -> Float64:
     """Heat index (apparent temperature) using Rothfusz equation.
 
     Args:
@@ -145,7 +145,7 @@ fn heat_index(temperature: Float64, relative_humidity: Float64) -> Float64:
             - 0.000003582 * t * t * r * r)
 
 
-fn potential_temperature(temperature_k: Float64, pressure_pa: Float64) -> Float64:
+def potential_temperature(temperature_k: Float64, pressure_pa: Float64) -> Float64:
     """Potential temperature (Poisson formula).
 
     θ = T * (P0/P)^(R/cp)
@@ -163,7 +163,7 @@ fn potential_temperature(temperature_k: Float64, pressure_pa: Float64) -> Float6
     return temperature_k * (p0 / pressure_pa) ** 0.2854
 
 
-fn precipitable_water(
+def precipitable_water(
     surface_humidity: Float64, scale_height: Float64
 ) -> Float64:
     """Column precipitable water (exponential humidity profile).
@@ -180,7 +180,7 @@ fn precipitable_water(
     return surface_humidity * scale_height / 1000.0
 
 
-fn visibility_extinction(
+def visibility_extinction(
     extinction_coeff: Float64, path_length: Float64
 ) -> Float64:
     """Meteorological visibility using Beer-Lambert law.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from solar_energy import solar_irradiance_on_surface, panel_power_output, temperature_derate, cell_temperature_noct, solar_declination, hour_angle, solar_altitude, capacity_factor_solar, lcoe, payback_period, inverter_efficiency, string_voltage
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

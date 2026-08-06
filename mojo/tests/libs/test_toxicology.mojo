@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from toxicology import ld50_dose, therapeutic_index, margin_of_safety, bioconcentration_factor, hazard_quotient, hazard_index, cancer_risk, average_daily_dose, no_observed_adverse_effect_level, reference_dose, dose_response_hill, acute_exposure_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

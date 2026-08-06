@@ -17,7 +17,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn organic_decay_rate(
+def organic_decay_rate(
     initial_mass: Float64, remaining_mass: Float64, time_days: Float64
 ) -> Float64:
     """First-order soft tissue decay rate constant.
@@ -37,7 +37,7 @@ fn organic_decay_rate(
     return -log(remaining_mass / initial_mass) / time_days
 
 
-fn bone_density_loss(
+def bone_density_loss(
     initial_density: Float64, time_years: Float64, leaching_rate: Float64
 ) -> Float64:
     """Exponential bone mineral density reduction from diagenesis.
@@ -55,7 +55,7 @@ fn bone_density_loss(
     return initial_density * exp(-leaching_rate * time_years)
 
 
-fn fossil_completeness(
+def fossil_completeness(
     preserved_elements: Float64, total_skeletal_elements: Float64
 ) -> Float64:
     """Skeletal completeness index.
@@ -74,7 +74,7 @@ fn fossil_completeness(
     return preserved_elements / total_skeletal_elements * 100.0
 
 
-fn permineralisation_rate(
+def permineralisation_rate(
     porosity: Float64, mineral_saturation: Float64, permeability: Float64
 ) -> Float64:
     """Mineral infill rate of bone/wood pores.
@@ -92,7 +92,7 @@ fn permineralisation_rate(
     return porosity * mineral_saturation * permeability
 
 
-fn trampling_abrasion_index(
+def trampling_abrasion_index(
     surface_area_modified: Float64, total_surface_area: Float64,
     depth_modification_mm: Float64
 ) -> Float64:
@@ -113,7 +113,7 @@ fn trampling_abrasion_index(
     return (surface_area_modified / total_surface_area) * depth_modification_mm
 
 
-fn hydraulic_sorting_index(
+def hydraulic_sorting_index(
     element_size_mm: Float64, element_density: Float64,
     transport_velocity: Float64
 ) -> Float64:
@@ -134,7 +134,7 @@ fn hydraulic_sorting_index(
     return element_size_mm * element_density / (transport_velocity * 1000.0)
 
 
-fn time_averaged_assemblage(
+def time_averaged_assemblage(
     sedimentation_rate_mm_per_yr: Float64, mixing_depth_mm: Float64
 ) -> Float64:
     """Time averaging estimate from sedimentation and bioturbation.
@@ -153,7 +153,7 @@ fn time_averaged_assemblage(
     return mixing_depth_mm / sedimentation_rate_mm_per_yr
 
 
-fn preservation_potential(
+def preservation_potential(
     mineralogy_score: Float64, burial_depth_m: Float64, oxygen_exposure_h: Float64
 ) -> Float64:
     """Preservation potential index.
@@ -171,7 +171,7 @@ fn preservation_potential(
     return mineralogy_score * burial_depth_m / (1.0 + oxygen_exposure_h / 24.0)
 
 
-fn diagenetic_alteration_index(
+def diagenetic_alteration_index(
     crystallinity_index_fossil: Float64, crystallinity_index_fresh: Float64
 ) -> Float64:
     """Bone crystallinity alteration from diagenesis.
@@ -188,7 +188,7 @@ fn diagenetic_alteration_index(
     return crystallinity_index_fossil - crystallinity_index_fresh
 
 
-fn carbon_nitrogen_ratio_bone(
+def carbon_nitrogen_ratio_bone(
     carbon_wt_pct: Float64, nitrogen_wt_pct: Float64
 ) -> Float64:
     """Atomic C:N ratio as collagen quality indicator.

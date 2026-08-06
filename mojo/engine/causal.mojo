@@ -13,7 +13,7 @@ from std.math import sqrt, abs as fabs, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     """Compute mean of a list."""
     var n = len(data)
     if n == 0:
@@ -24,7 +24,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _variance(data: List[Float64]) -> Float64:
+def _variance(data: List[Float64]) -> Float64:
     """Compute sample variance of a list."""
     var n = len(data)
     if n < 2:
@@ -37,12 +37,12 @@ fn _variance(data: List[Float64]) -> Float64:
     return s / Float64(n - 1)
 
 
-fn _std(data: List[Float64]) -> Float64:
+def _std(data: List[Float64]) -> Float64:
     """Compute sample standard deviation."""
     return sqrt(_variance(data))
 
 
-fn _covariance(x: List[Float64], y: List[Float64]) -> Float64:
+def _covariance(x: List[Float64], y: List[Float64]) -> Float64:
     """Compute sample covariance of two lists."""
     var n = len(x)
     if n < 2 or len(y) < 2:
@@ -61,7 +61,7 @@ fn _covariance(x: List[Float64], y: List[Float64]) -> Float64:
 # ── Average Treatment Effect ────────────────────────────────────────────────
 
 
-fn ate(
+def ate(
     outcomes_treated: List[Float64], outcomes_control: List[Float64]
 ) -> Float64:
     """Average Treatment Effect: mean(treated) - mean(control)."""
@@ -71,7 +71,7 @@ fn ate(
 # ── Average Treatment Effect on the Treated ─────────────────────────────────
 
 
-fn att(
+def att(
     outcomes_treated: List[Float64], counterfactual: List[Float64]
 ) -> Float64:
     """ATT: mean(treated) - mean(counterfactual)."""
@@ -81,7 +81,7 @@ fn att(
 # ── Propensity Score ─────────────────────────────────────────────────────────
 
 
-fn propensity_score(
+def propensity_score(
     features: List[Float64], treatment: List[Int]
 ) -> List[Float64]:
     """Simple logistic-like propensity score.
@@ -112,7 +112,7 @@ fn propensity_score(
 # ── Inverse Propensity Weighting ─────────────────────────────────────────────
 
 
-fn ipw_estimate(
+def ipw_estimate(
     outcomes: List[Float64],
     treatment: List[Int],
     propensity: List[Float64],
@@ -143,7 +143,7 @@ fn ipw_estimate(
 # ── Difference-in-Differences ───────────────────────────────────────────────
 
 
-fn diff_in_diff(
+def diff_in_diff(
     pre_treatment: List[Float64],
     post_treatment: List[Float64],
     pre_control: List[Float64],
@@ -162,7 +162,7 @@ fn diff_in_diff(
 # ── Regression Discontinuity ────────────────────────────────────────────────
 
 
-fn regression_discontinuity(
+def regression_discontinuity(
     x: List[Float64], y: List[Float64], cutoff: Float64
 ) -> Float64:
     """Simplified RD: difference in mean(y) just above vs below cutoff."""
@@ -188,7 +188,7 @@ fn regression_discontinuity(
 # ── Instrumental Variable (Wald estimator) ──────────────────────────────────
 
 
-fn iv_estimate(
+def iv_estimate(
     z: List[Float64], x: List[Float64], y: List[Float64]
 ) -> Float64:
     """Instrumental variable Wald estimator: cov(z,y) / cov(z,x)."""
@@ -202,7 +202,7 @@ fn iv_estimate(
 # ── Stratified ATE ──────────────────────────────────────────────────────────
 
 
-fn stratified_ate(
+def stratified_ate(
     outcomes: List[Float64],
     treatment: List[Int],
     strata: List[Int],
@@ -242,7 +242,7 @@ fn stratified_ate(
 # ── Cohen's d ────────────────────────────────────────────────────────────────
 
 
-fn cohens_d(group1: List[Float64], group2: List[Float64]) -> Float64:
+def cohens_d(group1: List[Float64], group2: List[Float64]) -> Float64:
     """Cohen's d effect size: (mean1-mean2) / pooled_std."""
     var n1 = len(group1)
     var n2 = len(group2)
@@ -264,7 +264,7 @@ fn cohens_d(group1: List[Float64], group2: List[Float64]) -> Float64:
 # ── Needed sample size ──────────────────────────────────────────────────────
 
 
-fn needed_sample_size_ate(
+def needed_sample_size_ate(
     effect_size: Float64,
     std: Float64,
     alpha: Float64 = 0.05,

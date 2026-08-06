@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn image_patch_embed(
+def image_patch_embed(
     pixel_value: Float64, weight: Float64, bias: Float64
 ) -> Float64:
     """Vision transformer patch embedding: one element of linear projection.
@@ -35,7 +35,7 @@ fn image_patch_embed(
     return pixel_value * weight + bias
 
 
-fn image_patch_count(
+def image_patch_count(
     image_size: Float64, patch_size: Float64
 ) -> Float64:
     """Number of ViT patches from a square image.
@@ -55,7 +55,7 @@ fn image_patch_count(
     return patches_per_side * patches_per_side
 
 
-fn spectrogram_mel_freq(
+def spectrogram_mel_freq(
     hz: Float64
 ) -> Float64:
     """Convert Hz to mel scale: mel = 2595 × log10(1 + hz/700).
@@ -69,7 +69,7 @@ fn spectrogram_mel_freq(
     return 2595.0 * log(1.0 + hz / 700.0) / 2.302585093  # log10 via log/ln(10)
 
 
-fn spectrogram_stft_magnitude(
+def spectrogram_stft_magnitude(
     real: Float64, imag: Float64
 ) -> Float64:
     """STFT magnitude from real and imaginary components.
@@ -86,7 +86,7 @@ fn spectrogram_stft_magnitude(
     return sqrt(real * real + imag * imag)
 
 
-fn audio_feature_norm(
+def audio_feature_norm(
     feature: Float64, mean: Float64, std: Float64
 ) -> Float64:
     """Normalise audio feature (mel spectrogram, MFCC, etc.).
@@ -106,7 +106,7 @@ fn audio_feature_norm(
     return (feature - mean) / std
 
 
-fn vision_attention_scale(head_dim: Float64) -> Float64:
+def vision_attention_scale(head_dim: Float64) -> Float64:
     """Vision transformer attention scaling: 1/√d_head.
 
     Args:
@@ -120,7 +120,7 @@ fn vision_attention_scale(head_dim: Float64) -> Float64:
     return 1.0 / sqrt(head_dim)
 
 
-fn cross_modal_similarity(
+def cross_modal_similarity(
     vision_embed: Float64, text_embed: Float64,
     vision_norm: Float64, text_norm: Float64,
     temperature: Float64
@@ -145,7 +145,7 @@ fn cross_modal_similarity(
     return (vision_embed * text_embed) / (denom * temperature)
 
 
-fn image_token_count(
+def image_token_count(
     image_size: Float64, patch_size: Float64, compression_factor: Float64
 ) -> Float64:
     """Number of tokens an image contributes to LLM context.
@@ -166,7 +166,7 @@ fn image_token_count(
     return Float64(Int64(n_patches / compression_factor + 0.5))
 
 
-fn ocr_confidence_score(
+def ocr_confidence_score(
     char_log_prob: Float64, seq_len: Float64
 ) -> Float64:
     """OCR character sequence confidence: exp(mean log prob).
@@ -184,7 +184,7 @@ fn ocr_confidence_score(
     return exp(mean_log_prob)
 
 
-fn multimodal_fusion_weight(
+def multimodal_fusion_weight(
     modality_confidence: Float64, modality_relevance: Float64,
     n_modalities: Float64
 ) -> Float64:

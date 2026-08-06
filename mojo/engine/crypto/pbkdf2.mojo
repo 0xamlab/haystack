@@ -18,11 +18,11 @@ Public API:
 # ── SHA-256 internals (FIPS 180-4) adapted for List[Int] ────────────────────
 
 
-fn _rotr(x: UInt32, n: Int) -> UInt32:
+def _rotr(x: UInt32, n: Int) -> UInt32:
     return (x >> UInt32(n)) | (x << UInt32(32 - n))
 
 
-fn _k_constants() -> List[UInt32]:
+def _k_constants() -> List[UInt32]:
     var k = List[UInt32](capacity=64)
     k.append(0x428a2f98); k.append(0x71374491); k.append(0xb5c0fbcf); k.append(0xe9b5dba5)
     k.append(0x3956c25b); k.append(0x59f111f1); k.append(0x923f82a4); k.append(0xab1c5ed5)
@@ -43,7 +43,7 @@ fn _k_constants() -> List[UInt32]:
     return k^
 
 
-fn _compress_block(data: List[Int], offset: Int, mut h: List[UInt32]):
+def _compress_block(data: List[Int], offset: Int, mut h: List[UInt32]):
     """Process one 512-bit block from data (as Int bytes) at offset."""
     var k = _k_constants()
     var w = List[UInt32](capacity=64)
@@ -76,7 +76,7 @@ fn _compress_block(data: List[Int], offset: Int, mut h: List[UInt32]):
 # ── sha256_bytes ─────────────────────────────────────────────────────────────
 
 
-fn sha256_bytes(data: List[Int]) -> List[Int]:
+def sha256_bytes(data: List[Int]) -> List[Int]:
     """SHA-256 hash of byte list, returns 32-byte list.
 
     FIPS 180-4 implementation operating on List[Int] (0-255 values).
@@ -135,7 +135,7 @@ fn sha256_bytes(data: List[Int]) -> List[Int]:
 # ── Utility functions ────────────────────────────────────────────────────────
 
 
-fn bytes_from_string(s: String) -> List[Int]:
+def bytes_from_string(s: String) -> List[Int]:
     """Convert string to byte list.
 
     Args:
@@ -152,7 +152,7 @@ fn bytes_from_string(s: String) -> List[Int]:
     return result^
 
 
-fn bytes_to_hex(data: List[Int]) -> String:
+def bytes_to_hex(data: List[Int]) -> String:
     """Convert byte list to lowercase hex string.
 
     Args:
@@ -177,7 +177,7 @@ fn bytes_to_hex(data: List[Int]) -> String:
     return result
 
 
-fn xor_byte_lists(a: List[Int], b: List[Int]) -> List[Int]:
+def xor_byte_lists(a: List[Int], b: List[Int]) -> List[Int]:
     """XOR two byte lists element-wise.
 
     Args:
@@ -196,7 +196,7 @@ fn xor_byte_lists(a: List[Int], b: List[Int]) -> List[Int]:
     return result^
 
 
-fn int_to_bytes_be(value: Int, length: Int) -> List[Int]:
+def int_to_bytes_be(value: Int, length: Int) -> List[Int]:
     """Convert integer to big-endian byte list.
 
     Args:
@@ -219,7 +219,7 @@ fn int_to_bytes_be(value: Int, length: Int) -> List[Int]:
 # ── hmac_sha256_bytes ────────────────────────────────────────────────────────
 
 
-fn hmac_sha256_bytes(key: List[Int], message: List[Int]) -> List[Int]:
+def hmac_sha256_bytes(key: List[Int], message: List[Int]) -> List[Int]:
     """HMAC-SHA256 operating on byte lists (0-255).
 
     Uses the standard HMAC construction (RFC 2104) with SHA-256.
@@ -268,7 +268,7 @@ fn hmac_sha256_bytes(key: List[Int], message: List[Int]) -> List[Int]:
 # ── pbkdf2_hmac_sha256 ──────────────────────────────────────────────────────
 
 
-fn pbkdf2_hmac_sha256(password: List[Int], salt: List[Int],
+def pbkdf2_hmac_sha256(password: List[Int], salt: List[Int],
                       iterations: Int, dk_len: Int) -> List[Int]:
     """PBKDF2 with HMAC-SHA256 per RFC 2898.
 

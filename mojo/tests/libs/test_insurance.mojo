@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from insurance import pure_premium, gross_premium, loss_ratio, expense_ratio, combined_ratio, expected_claim_frequency, expected_claim_severity, burning_cost, credibility_buhlmann, risk_load, aggregate_deductible_savings, retention_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

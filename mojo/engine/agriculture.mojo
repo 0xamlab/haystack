@@ -25,7 +25,7 @@ from std.math import abs as fabs
 # ── growing_degree_days ──────────────────────────────────────────────────────
 
 
-fn growing_degree_days(
+def growing_degree_days(
     t_max: Float64, t_min: Float64, t_base: Float64
 ) -> Float64:
     """GDD = max(0, (t_max + t_min) / 2 - t_base)."""
@@ -38,7 +38,7 @@ fn growing_degree_days(
 # ── crop_water_need ──────────────────────────────────────────────────────────
 
 
-fn crop_water_need(et0: Float64, kc: Float64) -> Float64:
+def crop_water_need(et0: Float64, kc: Float64) -> Float64:
     """ETc = ET0 * Kc (crop evapotranspiration)."""
     return et0 * kc
 
@@ -46,7 +46,7 @@ fn crop_water_need(et0: Float64, kc: Float64) -> Float64:
 # ── irrigation_efficiency ────────────────────────────────────────────────────
 
 
-fn irrigation_efficiency(
+def irrigation_efficiency(
     water_delivered: Float64, water_consumed: Float64
 ) -> Float64:
     """η = water_consumed / water_delivered."""
@@ -58,7 +58,7 @@ fn irrigation_efficiency(
 # ── fertilizer_rate ──────────────────────────────────────────────────────────
 
 
-fn fertilizer_rate(
+def fertilizer_rate(
     target_yield: Float64,
     nutrient_content: Float64,
     soil_nutrient: Float64,
@@ -73,7 +73,7 @@ fn fertilizer_rate(
 # ── seed_rate ────────────────────────────────────────────────────────────────
 
 
-fn seed_rate(
+def seed_rate(
     target_population: Float64,
     germination_rate: Float64,
     purity: Float64,
@@ -88,7 +88,7 @@ fn seed_rate(
 # ── harvest_index ────────────────────────────────────────────────────────────
 
 
-fn harvest_index(grain_weight: Float64, total_biomass: Float64) -> Float64:
+def harvest_index(grain_weight: Float64, total_biomass: Float64) -> Float64:
     """HI = grain_weight / total_biomass."""
     if total_biomass == 0.0:
         return 0.0
@@ -98,7 +98,7 @@ fn harvest_index(grain_weight: Float64, total_biomass: Float64) -> Float64:
 # ── yield_per_hectare ────────────────────────────────────────────────────────
 
 
-fn yield_per_hectare(total_yield_kg: Float64, area_ha: Float64) -> Float64:
+def yield_per_hectare(total_yield_kg: Float64, area_ha: Float64) -> Float64:
     """Y = total_yield_kg / area_ha."""
     if area_ha == 0.0:
         return 0.0
@@ -108,7 +108,7 @@ fn yield_per_hectare(total_yield_kg: Float64, area_ha: Float64) -> Float64:
 # ── soil_ph_lime_requirement ─────────────────────────────────────────────────
 
 
-fn soil_ph_lime_requirement(
+def soil_ph_lime_requirement(
     current_ph: Float64, target_ph: Float64, buffer_capacity: Float64
 ) -> Float64:
     """LR = (target_ph - current_ph) * buffer_capacity."""
@@ -118,7 +118,7 @@ fn soil_ph_lime_requirement(
 # ── water_use_efficiency ─────────────────────────────────────────────────────
 
 
-fn water_use_efficiency(yield_kg: Float64, water_mm: Float64) -> Float64:
+def water_use_efficiency(yield_kg: Float64, water_mm: Float64) -> Float64:
     """WUE = yield_kg / water_mm."""
     if water_mm == 0.0:
         return 0.0
@@ -128,7 +128,7 @@ fn water_use_efficiency(yield_kg: Float64, water_mm: Float64) -> Float64:
 # ── photosynthetically_active_radiation ──────────────────────────────────────
 
 
-fn photosynthetically_active_radiation(
+def photosynthetically_active_radiation(
     solar_radiation: Float64,
 ) -> Float64:
     """PAR ≈ 0.48 * solar_radiation."""
@@ -138,7 +138,7 @@ fn photosynthetically_active_radiation(
 # ── leaf_area_index ──────────────────────────────────────────────────────────
 
 
-fn leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
+def leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
     """LAI = leaf_area / ground_area."""
     if ground_area == 0.0:
         return 0.0
@@ -148,7 +148,7 @@ fn leaf_area_index(leaf_area: Float64, ground_area: Float64) -> Float64:
 # ── nitrogen_use_efficiency ──────────────────────────────────────────────────
 
 
-fn nitrogen_use_efficiency(
+def nitrogen_use_efficiency(
     yield_increase: Float64, n_applied: Float64
 ) -> Float64:
     """NUE = yield_increase / n_applied."""

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_regions import foreground_mask_otsu_flat, connected_component_boxes_flat, largest_foreground_box_flat, saliency_box_flat, extract_box_flat, box_iou
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

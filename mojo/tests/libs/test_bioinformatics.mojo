@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bioinformatics import gc_content, tm_basic, tm_salt_adjusted, molecular_weight_dna, sequence_identity, evalue_significance, coverage_depth, n50_from_values, phred_quality_to_error, error_to_phred_quality, codon_count, amino_acid_count
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

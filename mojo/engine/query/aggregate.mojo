@@ -240,7 +240,7 @@ threshold sits at the first power of two where the win is unambiguous. Same
 pattern and same reasoning as `PARALLEL_MIN_CELLS` in `gemm/blocked.mojo`."""
 
 
-fn planned_workers(n_rows: Int, requested: Int) -> Int:
+def planned_workers(n_rows: Int, requested: Int) -> Int:
     """How many workers the unsuffixed entry points will actually use.
 
     The crossover policy in one testable place: below `PARALLEL_MIN_ROWS` the
@@ -258,7 +258,7 @@ fn planned_workers(n_rows: Int, requested: Int) -> Int:
     return requested
 
 
-fn _canonical_nan() -> Float64:
+def _canonical_nan() -> Float64:
     """The one quiet NaN this module reports, min/max of an all-NaN group.
 
     The same bit pattern `hash_index` canonicalizes NaN KEYS to, so an all-NaN
@@ -285,7 +285,7 @@ struct GroupAccumulator(Copyable, Movable):
     var maximum: Float64
     var seen: Bool
 
-    fn __init__(out self, key: Float64):
+    def __init__(out self, key: Float64):
         self.key = key
         self.count = 0.0
         self.total = 0.0
@@ -295,7 +295,7 @@ struct GroupAccumulator(Copyable, Movable):
         self.maximum = 0.0
         self.seen = False
 
-    fn observe(mut self, value: Float64):
+    def observe(mut self, value: Float64):
         """Fold one live value in, using the frozen update primitives.
 
         A NaN value counts and poisons sum/mean/m2 (associatively — the same
@@ -331,16 +331,16 @@ struct GroupAccumulator(Copyable, Movable):
     # this field-for-field per opcode, on random and adversarial data.
 
     @always_inline
-    fn observe_count(mut self):
+    def observe_count(mut self):
         self.count = group_count_update(self.count)
 
     @always_inline
-    fn observe_sum(mut self, value: Float64):
+    def observe_sum(mut self, value: Float64):
         self.count = group_count_update(self.count)
         self.total = group_sum_update(self.total, value)
 
     @always_inline
-    fn observe_mean(mut self, value: Float64):
+    def observe_mean(mut self, value: Float64):
         # The Welford recurrence, NOT sum-then-divide: bit-equal to `observe`'s
         # mean, which is what lets the fused paths specialize without moving
         # any answer by even an ulp.
@@ -348,7 +348,7 @@ struct GroupAccumulator(Copyable, Movable):
         self.mean = group_mean_update(self.mean, value, self.count)
 
     @always_inline
-    fn observe_min(mut self, value: Float64):
+    def observe_min(mut self, value: Float64):
         self.count = group_count_update(self.count)
         # Same NaN policy as `observe`, or the #459 defect returns through this
         # path: a NaN contributes to NO extremum, because seeding or comparing
@@ -363,7 +363,7 @@ struct GroupAccumulator(Copyable, Movable):
             self.minimum = group_min_update(self.minimum, value)
 
     @always_inline
-    fn observe_max(mut self, value: Float64):
+    def observe_max(mut self, value: Float64):
         self.count = group_count_update(self.count)
         # Same NaN policy as `observe` — see `observe_min`.
         if value != value:
@@ -375,7 +375,7 @@ struct GroupAccumulator(Copyable, Movable):
             self.maximum = group_max_update(self.maximum, value)
 
     @always_inline
-    fn observe_op(mut self, opcode: Int, value: Float64):
+    def observe_op(mut self, opcode: Int, value: Float64):
         """`observe`, but paying only for what `opcode` will read.
 
         VAR/STD — and any opcode this dispatch does not recognise — fall
@@ -395,7 +395,7 @@ struct GroupAccumulator(Copyable, Movable):
         else:
             self.observe(value)
 
-    fn merge_from(mut self, other: GroupAccumulator):
+    def merge_from(mut self, other: GroupAccumulator):
         """Fold another accumulator's state in — the parallel-merge combine.
 
         The mean/m2 update is Chan et al.'s pairwise combine, the standard
@@ -441,7 +441,7 @@ struct GroupAccumulator(Copyable, Movable):
                 self.maximum = other.maximum
                 self.seen = True
 
-    fn value_for(self, opcode: Int) -> Float64:
+    def value_for(self, opcode: Int) -> Float64:
         if opcode == AGG_COUNT:
             return self.count
         if opcode == AGG_SUM:
@@ -471,7 +471,7 @@ struct GroupAccumulator(Copyable, Movable):
             return group_std_from_variance(self.m2, self.count, 1.0)
         return 0.0
 
-    fn has_answer(self, opcode: Int) -> Bool:
+    def has_answer(self, opcode: Int) -> Bool:
         """Whether this group can answer `opcode`, per numeric.contract.
 
         count and sum always can — 0 and 0.0 are real answers for an empty group.
@@ -495,7 +495,7 @@ struct GroupedResult(Copyable, Movable):
     var opcode: Int
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var keys: List[Float64],
         var values: List[Float64],
@@ -511,10 +511,10 @@ struct GroupedResult(Copyable, Movable):
         self.opcode = opcode
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         return len(self.keys)
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         return (
             aggregation_token(self.opcode)
             + " over "
@@ -528,7 +528,7 @@ struct GroupedResult(Copyable, Movable):
         )
 
 
-fn find_group(keys: List[Float64], key: Float64) -> Int:
+def find_group(keys: List[Float64], key: Float64) -> Int:
     """Linear scan for `key` — O(groups). The small-group fast path.
 
     `group_by` uses `columnar.hash_index` instead, because `bench_query_plane.mojo`
@@ -547,7 +547,7 @@ fn find_group(keys: List[Float64], key: Float64) -> Int:
     return -1
 
 
-fn _finish_groups(
+def _finish_groups(
     keys: List[Float64],
     accumulators: List[GroupAccumulator],
     opcode: Int,
@@ -568,7 +568,7 @@ fn _finish_groups(
     return GroupedResult(out_keys^, values^, present^, counts^, opcode, null_key_rows)
 
 
-fn group_by(
+def group_by(
     batch: RecordBatch,
     key_column: Int,
     value_column: Int,
@@ -600,7 +600,7 @@ fn group_by(
     )
 
 
-fn group_by_parallel(
+def group_by_parallel(
     batch: RecordBatch,
     key_column: Int,
     value_column: Int,
@@ -670,7 +670,7 @@ fn group_by_parallel(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn band_worker(w: Int):
+    def band_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -733,7 +733,7 @@ struct IntGroupedResult(Copyable, Movable):
     var opcode: Int
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var keys: List[Int],
         var values: List[Float64],
@@ -749,10 +749,10 @@ struct IntGroupedResult(Copyable, Movable):
         self.opcode = opcode
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         return len(self.keys)
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         return (
             aggregation_token(self.opcode)
             + " over "
@@ -766,7 +766,7 @@ struct IntGroupedResult(Copyable, Movable):
         )
 
 
-fn find_group_int64(keys: List[Int], key: Int) -> Int:
+def find_group_int64(keys: List[Int], key: Int) -> Int:
     """Linear scan for an exact Int key — `find_group`'s Int64 analog.
 
     Same role as `find_group`: a small-cardinality fast path, and what the tests use
@@ -780,7 +780,7 @@ fn find_group_int64(keys: List[Int], key: Int) -> Int:
     return -1
 
 
-fn _finish_groups_int64(
+def _finish_groups_int64(
     keys: List[Int],
     accumulators: List[GroupAccumulator],
     opcode: Int,
@@ -800,7 +800,7 @@ fn _finish_groups_int64(
     return IntGroupedResult(out_keys^, values^, present^, counts^, opcode, null_key_rows)
 
 
-fn group_by_int64(keys: Int64Array, values: Float64Array, opcode: Int) -> IntGroupedResult:
+def group_by_int64(keys: Int64Array, values: Float64Array, opcode: Int) -> IntGroupedResult:
     """Aggregate `values` grouped by `keys`, with the key held as an exact Int64 the
     whole way through — never widened to Float64. See the module header
     ("`group_by_int64` — grouping without the Float64 detour") for why `group_by`
@@ -864,7 +864,7 @@ struct MultiGroupedResult(Copyable, Movable):
     var opcode: Int
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var key_tuples: List[Float64],
         key_width: Int,
@@ -882,12 +882,12 @@ struct MultiGroupedResult(Copyable, Movable):
         self.opcode = opcode
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         if self.key_width <= 0:
             return 0
         return len(self.key_tuples) // self.key_width
 
-    fn key_at(self, group: Int) -> List[Float64]:
+    def key_at(self, group: Int) -> List[Float64]:
         var out = List[Float64]()
         if group < 0 or group >= self.n_groups():
             return out^
@@ -897,7 +897,7 @@ struct MultiGroupedResult(Copyable, Movable):
         return out^
 
 
-fn _finish_multi(
+def _finish_multi(
     key_tuples: List[Float64],
     width: Int,
     accumulators: List[GroupAccumulator],
@@ -920,7 +920,7 @@ fn _finish_multi(
     )
 
 
-fn group_by_multi(
+def group_by_multi(
     batch: RecordBatch,
     key_columns: List[Int],
     value_column: Int,
@@ -945,7 +945,7 @@ fn group_by_multi(
     )
 
 
-fn group_by_multi_parallel(
+def group_by_multi_parallel(
     batch: RecordBatch,
     key_columns: List[Int],
     value_column: Int,
@@ -1044,7 +1044,7 @@ fn group_by_multi_parallel(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn band_worker(w: Int):
+    def band_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -1102,7 +1102,7 @@ fn group_by_multi_parallel(
     return _finish_multi(key_tuples, width, accumulators, opcode, null_key_rows)
 
 
-fn aggregate_column(batch: RecordBatch, value_column: Int, opcode: Int) -> Float64:
+def aggregate_column(batch: RecordBatch, value_column: Int, opcode: Int) -> Float64:
     """Aggregate a whole column with no grouping. 0.0 when unanswerable.
 
     `aggregate_column_present` reports answerability; this is the convenience form for
@@ -1118,7 +1118,7 @@ fn aggregate_column(batch: RecordBatch, value_column: Int, opcode: Int) -> Float
     return acc.value_for(opcode)
 
 
-fn aggregate_column_present(batch: RecordBatch, value_column: Int, opcode: Int) -> Bool:
+def aggregate_column_present(batch: RecordBatch, value_column: Int, opcode: Int) -> Bool:
     """Whether an ungrouped aggregate has an answer at all."""
     var column = batch.column(value_column)
     var acc = GroupAccumulator(0.0)
@@ -1128,7 +1128,7 @@ fn aggregate_column_present(batch: RecordBatch, value_column: Int, opcode: Int) 
     return acc.has_answer(opcode)
 
 
-fn grouped_to_column(result: GroupedResult) -> Float64Array:
+def grouped_to_column(result: GroupedResult) -> Float64Array:
     """The aggregated values as a nullable column, absences preserved."""
     var values = List[Float64]()
     var mask = List[Bool]()
@@ -1235,7 +1235,7 @@ struct ManyRoutePlan(Copyable, Movable):
     var route: Int
     var coded_bound: Int
 
-    fn __init__(out self, route: Int, coded_bound: Int):
+    def __init__(out self, route: Int, coded_bound: Int):
         self.route = route
         self.coded_bound = coded_bound
 
@@ -1271,7 +1271,7 @@ struct ManyGroupedResult(Copyable, Movable):
     var counts: List[Float64]
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var key_tuples: List[Float64],
         key_width: Int,
@@ -1291,12 +1291,12 @@ struct ManyGroupedResult(Copyable, Movable):
         self.counts = counts^
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         if self.key_width <= 0:
             return 0
         return len(self.key_tuples) // self.key_width
 
-    fn key_at(self, group: Int) -> List[Float64]:
+    def key_at(self, group: Int) -> List[Float64]:
         var out = List[Float64]()
         if group < 0 or group >= self.n_groups():
             return out^
@@ -1305,7 +1305,7 @@ struct ManyGroupedResult(Copyable, Movable):
             out.append(self.key_tuples[base + i])
         return out^
 
-    fn _flat(self, group: Int, agg: Int) -> Int:
+    def _flat(self, group: Int, agg: Int) -> Int:
         """Flat position, or -1 out of range — the bounds check every accessor shares."""
         if agg < 0 or agg >= self.n_aggs:
             return -1
@@ -1314,15 +1314,15 @@ struct ManyGroupedResult(Copyable, Movable):
             return -1
         return flat
 
-    fn value_at(self, group: Int, agg: Int) -> Float64:
+    def value_at(self, group: Int, agg: Int) -> Float64:
         var flat = self._flat(group, agg)
         return self.values[flat] if flat >= 0 else 0.0
 
-    fn present_at(self, group: Int, agg: Int) -> Bool:
+    def present_at(self, group: Int, agg: Int) -> Bool:
         var flat = self._flat(group, agg)
         return self.present[flat] if flat >= 0 else False
 
-    fn count_at(self, group: Int, agg: Int) -> Float64:
+    def count_at(self, group: Int, agg: Int) -> Float64:
         var flat = self._flat(group, agg)
         return self.counts[flat] if flat >= 0 else 0.0
 
@@ -1339,15 +1339,15 @@ struct CodedGroupedResult(Copyable, Movable):
     var status: Int
     var result: ManyGroupedResult
 
-    fn __init__(out self, status: Int, var result: ManyGroupedResult):
+    def __init__(out self, status: Int, var result: ManyGroupedResult):
         self.status = status
         self.result = result^
 
-    fn ok(self) -> Bool:
+    def ok(self) -> Bool:
         return self.status == GROUP_CODED_OK
 
 
-fn coded_status_name(status: Int) -> String:
+def coded_status_name(status: Int) -> String:
     """The vocabulary for 330-339."""
     if status == GROUP_CODED_OK:
         return "ok"
@@ -1360,14 +1360,14 @@ fn coded_status_name(status: Int) -> String:
     return "unknown"
 
 
-fn _empty_many() -> ManyGroupedResult:
+def _empty_many() -> ManyGroupedResult:
     """Zero groups, zero aggregates — what a malformed request gets back."""
     return ManyGroupedResult(
         List[Float64](), 0, 0, List[Int](), List[Float64](), List[Bool](), List[Float64](), 0
     )
 
 
-fn _many_request_ok(value_columns: List[Int], opcodes: List[Int]) -> Bool:
+def _many_request_ok(value_columns: List[Int], opcodes: List[Int]) -> Bool:
     """Whether the (value column, opcode) pairing is well-formed.
 
     One opcode per value column, at least one, at most `MAX_FUSED_AGGS`. A
@@ -1381,7 +1381,7 @@ fn _many_request_ok(value_columns: List[Int], opcodes: List[Int]) -> Bool:
     return len(opcodes) == n_aggs
 
 
-fn _finish_many(
+def _finish_many(
     key_tuples: List[Float64],
     width: Int,
     stripes: List[GroupAccumulator],
@@ -1412,7 +1412,7 @@ fn _finish_many(
     )
 
 
-fn _group_many_width0(
+def _group_many_width0(
     batch: RecordBatch, value_columns: List[Int], opcodes: List[Int]
 ) -> ManyGroupedResult:
     """No key columns is one group over everything — `group_by_multi`'s rule,
@@ -1431,7 +1431,7 @@ fn _group_many_width0(
     return _finish_many(List[Float64](), 0, stripes, n_aggs, opcodes, 0)
 
 
-fn probe_cardinality(batch: RecordBatch, key_columns: List[Int], probe_rows: Int) -> Int:
+def probe_cardinality(batch: RecordBatch, key_columns: List[Int], probe_rows: Int) -> Int:
     """Distinct keys among the first `min(probe_rows, n_rows)` rows. Null keys skipped.
 
     The band/radix dispatch input. An ESTIMATE of the batch's cardinality, and a
@@ -1475,7 +1475,7 @@ fn probe_cardinality(batch: RecordBatch, key_columns: List[Int], probe_rows: Int
     return index.size()
 
 
-fn probe_at_least(
+def probe_at_least(
     batch: RecordBatch, key_columns: List[Int], probe_rows: Int, threshold: Int
 ) -> Bool:
     """Whether the probe window holds at least `threshold` distinct keys —
@@ -1531,7 +1531,7 @@ fn probe_at_least(
     return False
 
 
-fn probe_coded_bound(batch: RecordBatch, key_column: Int, probe_rows: Int) -> Int:
+def probe_coded_bound(batch: RecordBatch, key_column: Int, probe_rows: Int) -> Int:
     """The `group_by_coded` cardinality this key column supports, judged from
     the first `min(probe_rows, n_rows)` rows: max integral code + 1 when EVERY
     present probed key is an integral float in [0, MAX_CODED_CARDINALITY),
@@ -1579,7 +1579,7 @@ fn probe_coded_bound(batch: RecordBatch, key_column: Int, probe_rows: Int) -> In
     return max_code + 1
 
 
-fn plan_many_route(
+def plan_many_route(
     batch: RecordBatch, key_columns: List[Int], n_workers: Int
 ) -> ManyRoutePlan:
     """The `group_by_many_parallel` routing table, in one testable place.
@@ -1613,7 +1613,7 @@ fn plan_many_route(
     return ManyRoutePlan(ROUTE_BANDED, 0)
 
 
-fn group_by_many(
+def group_by_many(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -1648,7 +1648,7 @@ fn group_by_many(
     )
 
 
-fn group_by_many_parallel(
+def group_by_many_parallel(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -1695,7 +1695,7 @@ fn group_by_many_parallel(
     return group_by_many_banded(batch, key_columns, value_columns, opcodes, workers)
 
 
-fn _col_guard_flags(cols: List[Float64Array], n_rows: Int) -> List[Bool]:
+def _col_guard_flags(cols: List[Float64Array], n_rows: Int) -> List[Bool]:
     """Whether each column needs its per-row validity check, hoisted once.
 
     True when the column has any null OR is shorter than the scan (`n_rows`
@@ -1713,7 +1713,7 @@ fn _col_guard_flags(cols: List[Float64Array], n_rows: Int) -> List[Bool]:
     return flags^
 
 
-fn _fused_scan_w1(
+def _fused_scan_w1(
     key_col: Float64Array,
     value_cols: List[Float64Array],
     opcodes: List[Int],
@@ -1796,7 +1796,7 @@ fn _fused_scan_w1(
     return nulls
 
 
-fn _fused_scan_wn(
+def _fused_scan_wn(
     key_cols: List[Float64Array],
     value_cols: List[Float64Array],
     opcodes: List[Int],
@@ -1885,7 +1885,7 @@ fn _fused_scan_wn(
     return nulls
 
 
-fn _group_many_serial(
+def _group_many_serial(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -1951,7 +1951,7 @@ fn _group_many_serial(
     return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
 
 
-fn group_by_many_banded(
+def group_by_many_banded(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -2008,7 +2008,7 @@ fn group_by_many_banded(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn band_worker(w: Int):
+    def band_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -2062,7 +2062,7 @@ fn group_by_many_banded(
     return _finish_many(key_tuples, width, stripes, n_aggs, opcodes, null_key_rows)
 
 
-fn group_by_many_radix(
+def group_by_many_radix(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -2157,7 +2157,7 @@ fn group_by_many_radix(
     var np = w_nulls.unsafe_ptr()
 
     @parameter
-    fn count_worker(w: Int):
+    def count_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -2233,7 +2233,7 @@ fn group_by_many_radix(
     var up = cursors.unsafe_ptr()
 
     @parameter
-    fn scatter_worker(w: Int):
+    def scatter_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -2333,7 +2333,7 @@ fn group_by_many_radix(
     var pfp = p_first.unsafe_ptr()
 
     @parameter
-    fn partition_worker(p: Int):
+    def partition_worker(p: Int):
         var group_count = 0
         var s0 = part_start[p]
         var s1 = part_start[p + 1]
@@ -2420,7 +2420,7 @@ fn group_by_many_radix(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn group_by_coded(
+def group_by_coded(
     batch: RecordBatch,
     key_column: Int,
     cardinality: Int,
@@ -2457,7 +2457,7 @@ fn group_by_coded(
     )
 
 
-fn group_by_coded_parallel(
+def group_by_coded_parallel(
     batch: RecordBatch,
     key_column: Int,
     cardinality: Int,
@@ -2567,7 +2567,7 @@ fn group_by_coded_parallel(
     var bp = w_bad.unsafe_ptr()
 
     @parameter
-    fn coded_worker(w: Int):
+    def coded_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:

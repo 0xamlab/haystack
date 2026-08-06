@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from drones import thrust_to_weight_ratio, hover_power, flight_time_minutes, max_range, payload_capacity, disk_loading, propeller_tip_speed, advance_ratio, battery_energy_density, communication_range_los, gsd_from_altitude, endurance_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

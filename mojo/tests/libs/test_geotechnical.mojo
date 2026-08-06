@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from geotechnical import bearing_capacity_terzaghi, effective_stress, overburden_pressure, coefficient_of_earth_pressure_at_rest, rankine_ka, rankine_kp, active_earth_pressure, settlement_elastic, factor_of_safety_slope, void_ratio, porosity_from_void_ratio, degree_of_saturation
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

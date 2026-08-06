@@ -42,7 +42,7 @@ struct Matrix2D(Copyable, Movable):
     var cols: Int
     var data: List[Float64]
 
-    fn __init__(out self, rows: Int, cols: Int):
+    def __init__(out self, rows: Int, cols: Int):
         """Create a zero-initialized rows x cols matrix."""
         self.rows = rows
         self.cols = cols
@@ -54,19 +54,19 @@ struct Matrix2D(Copyable, Movable):
         for _ in range(self.rows * self.cols):
             self.data.append(0.0)
 
-    fn _in_range(self, i: Int, j: Int) -> Bool:
+    def _in_range(self, i: Int, j: Int) -> Bool:
         return i >= 0 and i < self.rows and j >= 0 and j < self.cols
 
 
 # ── constructors ─────────────────────────────────────────────────────────────
 
 
-fn m2_zeros(rows: Int, cols: Int) -> Matrix2D:
+def m2_zeros(rows: Int, cols: Int) -> Matrix2D:
     """rows x cols matrix of zeros (negative dims clamp to 0)."""
     return Matrix2D(rows, cols)
 
 
-fn m2_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix2D:
+def m2_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix2D:
     """Build a rows x cols matrix from a row-major flat list.
 
     Missing trailing values are zero-filled; extra values are ignored.
@@ -83,14 +83,14 @@ fn m2_from_list(data: List[Float64], rows: Int, cols: Int) -> Matrix2D:
 # ── element access ───────────────────────────────────────────────────────────
 
 
-fn m2_get(m: Matrix2D, i: Int, j: Int) -> Float64:
+def m2_get(m: Matrix2D, i: Int, j: Int) -> Float64:
     """Element at (i, j); returns 0.0 when the index is out of range."""
     if not m._in_range(i, j):
         return 0.0
     return m.data[i * m.cols + j]
 
 
-fn m2_set(mut m: Matrix2D, i: Int, j: Int, val: Float64):
+def m2_set(mut m: Matrix2D, i: Int, j: Int, val: Float64):
     """Write val at (i, j); silently no-op when the index is out of range."""
     if not m._in_range(i, j):
         return
@@ -100,7 +100,7 @@ fn m2_set(mut m: Matrix2D, i: Int, j: Int, val: Float64):
 # ── products ─────────────────────────────────────────────────────────────────
 
 
-fn m2_matmul(a: Matrix2D, b: Matrix2D) -> Matrix2D:
+def m2_matmul(a: Matrix2D, b: Matrix2D) -> Matrix2D:
     """Matrix product A(m x p) @ B(p x n) -> (m x n).
 
     Returns an empty 0x0 matrix when a.cols != b.rows. i-k-j loop order
@@ -122,7 +122,7 @@ fn m2_matmul(a: Matrix2D, b: Matrix2D) -> Matrix2D:
     return out^
 
 
-fn m2_matvec(a: Matrix2D, x: List[Float64]) -> List[Float64]:
+def m2_matvec(a: Matrix2D, x: List[Float64]) -> List[Float64]:
     """Matrix-vector product A(m x n) @ x(n) -> list of m values.
 
     Returns an empty list when a.cols != len(x). O(m*n).
@@ -142,7 +142,7 @@ fn m2_matvec(a: Matrix2D, x: List[Float64]) -> List[Float64]:
 # ── shape / element-wise ops ─────────────────────────────────────────────────
 
 
-fn m2_transpose(a: Matrix2D) -> Matrix2D:
+def m2_transpose(a: Matrix2D) -> Matrix2D:
     """A^T: (m x n) -> (n x m). O(m*n)."""
     var out = Matrix2D(a.cols, a.rows)
     for i in range(a.rows):
@@ -151,7 +151,7 @@ fn m2_transpose(a: Matrix2D) -> Matrix2D:
     return out^
 
 
-fn m2_add(a: Matrix2D, b: Matrix2D) -> Matrix2D:
+def m2_add(a: Matrix2D, b: Matrix2D) -> Matrix2D:
     """Element-wise A + B; empty 0x0 matrix when shapes differ. O(m*n)."""
     if a.rows != b.rows or a.cols != b.cols:
         return Matrix2D(0, 0)
@@ -164,7 +164,7 @@ fn m2_add(a: Matrix2D, b: Matrix2D) -> Matrix2D:
     return out^
 
 
-fn m2_scale(a: Matrix2D, c: Float64) -> Matrix2D:
+def m2_scale(a: Matrix2D, c: Float64) -> Matrix2D:
     """Scalar multiple c * A. O(m*n)."""
     # Caller-built structs may violate the len(data)==rows*cols invariant.
     if a.rows < 0 or a.cols < 0 or len(a.data) != a.rows * a.cols:
@@ -178,7 +178,7 @@ fn m2_scale(a: Matrix2D, c: Float64) -> Matrix2D:
 # ── row / column extraction ──────────────────────────────────────────────────
 
 
-fn m2_row(a: Matrix2D, i: Int) -> List[Float64]:
+def m2_row(a: Matrix2D, i: Int) -> List[Float64]:
     """Copy of row i (length cols); empty list when i is out of range."""
     var out = List[Float64]()
     if i < 0 or i >= a.rows:
@@ -189,7 +189,7 @@ fn m2_row(a: Matrix2D, i: Int) -> List[Float64]:
     return out^
 
 
-fn m2_col(a: Matrix2D, j: Int) -> List[Float64]:
+def m2_col(a: Matrix2D, j: Int) -> List[Float64]:
     """Copy of column j (length rows); empty list when j is out of range."""
     var out = List[Float64]()
     if j < 0 or j >= a.cols:

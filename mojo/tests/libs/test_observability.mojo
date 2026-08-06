@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from observability import p99_latency_estimate, memory_pressure_score, token_throughput_ema, cache_miss_rate, batch_queue_wait_percentile, gpu_utilization_rolling, request_success_rate, model_drift_alert_score, cost_per_token_rolling, health_check_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

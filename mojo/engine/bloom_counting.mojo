@@ -32,7 +32,7 @@ struct CountingBloom(Copyable, Movable):
     var n_hashes: Int
     var hash_seeds: List[Int]
 
-    fn __init__(out self, size: Int, n_hashes: Int, seeds: List[Int]):
+    def __init__(out self, size: Int, n_hashes: Int, seeds: List[Int]):
         self.size = size
         self.n_hashes = n_hashes
         self.hash_seeds = seeds.copy()
@@ -44,7 +44,7 @@ struct CountingBloom(Copyable, Movable):
 # ── cb_create ─────────────────────────────────────────────────────────────────
 
 
-fn cb_create(size: Int, n_hashes: Int) -> CountingBloom:
+def cb_create(size: Int, n_hashes: Int) -> CountingBloom:
     """Create a counting Bloom filter with given size and number of hashes.
 
     Args:
@@ -64,7 +64,7 @@ fn cb_create(size: Int, n_hashes: Int) -> CountingBloom:
 # ── cb_hash ───────────────────────────────────────────────────────────────────
 
 
-fn cb_hash(item: Int, seed: Int, size: Int) -> Int:
+def cb_hash(item: Int, seed: Int, size: Int) -> Int:
     """Hash function mapping item+seed to a bucket index.
 
     Uses FNV-1a-inspired mixing for good distribution.
@@ -91,7 +91,7 @@ fn cb_hash(item: Int, seed: Int, size: Int) -> Int:
 # ── cb_add ────────────────────────────────────────────────────────────────────
 
 
-fn cb_add(mut bloom: CountingBloom, item: Int):
+def cb_add(mut bloom: CountingBloom, item: Int):
     """Add an item to the counting Bloom filter.
 
     Increments the counter at each hash position.
@@ -108,7 +108,7 @@ fn cb_add(mut bloom: CountingBloom, item: Int):
 # ── cb_remove ─────────────────────────────────────────────────────────────────
 
 
-fn cb_remove(mut bloom: CountingBloom, item: Int):
+def cb_remove(mut bloom: CountingBloom, item: Int):
     """Remove an item from the counting Bloom filter.
 
     Decrements the counter at each hash position, with a minimum of 0.
@@ -126,7 +126,7 @@ fn cb_remove(mut bloom: CountingBloom, item: Int):
 # ── cb_contains ───────────────────────────────────────────────────────────────
 
 
-fn cb_contains(bloom: CountingBloom, item: Int) -> Bool:
+def cb_contains(bloom: CountingBloom, item: Int) -> Bool:
     """Check if an item is possibly in the filter.
 
     Returns True only if all counters at the item's hash positions are > 0.
@@ -148,7 +148,7 @@ fn cb_contains(bloom: CountingBloom, item: Int) -> Bool:
 # ── cb_count_estimate ─────────────────────────────────────────────────────────
 
 
-fn cb_count_estimate(bloom: CountingBloom, item: Int) -> Int:
+def cb_count_estimate(bloom: CountingBloom, item: Int) -> Int:
     """Estimated count of an item (minimum of counters at hash positions).
 
     Args:
@@ -169,7 +169,7 @@ fn cb_count_estimate(bloom: CountingBloom, item: Int) -> Int:
 # ── cb_false_positive_rate ────────────────────────────────────────────────────
 
 
-fn cb_false_positive_rate(size: Int, n_hashes: Int, n_items: Int) -> Float64:
+def cb_false_positive_rate(size: Int, n_hashes: Int, n_items: Int) -> Float64:
     """Theoretical false positive rate: (1 - e^(-kn/m))^k.
 
     Args:
@@ -195,7 +195,7 @@ fn cb_false_positive_rate(size: Int, n_hashes: Int, n_items: Int) -> Float64:
 # ── cb_optimal_hashes ─────────────────────────────────────────────────────────
 
 
-fn cb_optimal_hashes(size: Int, n_items: Int) -> Int:
+def cb_optimal_hashes(size: Int, n_items: Int) -> Int:
     """Optimal number of hash functions: k = (m/n) * ln(2).
 
     Args:
@@ -217,7 +217,7 @@ fn cb_optimal_hashes(size: Int, n_items: Int) -> Int:
 # ── cb_reset ──────────────────────────────────────────────────────────────────
 
 
-fn cb_reset(mut bloom: CountingBloom):
+def cb_reset(mut bloom: CountingBloom):
     """Reset all counters to 0.
 
     Args:

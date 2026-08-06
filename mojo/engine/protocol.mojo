@@ -22,7 +22,7 @@ Public API:
 # ── Varint encoding ──────────────────────────────────────────────────────────
 
 
-fn encode_varint(value: Int) -> List[Int]:
+def encode_varint(value: Int) -> List[Int]:
     """Encode unsigned int as varint bytes (base-128 encoding).
 
     Each byte uses 7 bits for data and 1 bit (MSB) as continuation flag.
@@ -41,7 +41,7 @@ fn encode_varint(value: Int) -> List[Int]:
     return result^
 
 
-fn decode_varint(data: List[Int], offset: Int) -> List[Int]:
+def decode_varint(data: List[Int], offset: Int) -> List[Int]:
     """Decode varint from data starting at offset.
 
     Returns [decoded_value, bytes_consumed].
@@ -70,7 +70,7 @@ fn decode_varint(data: List[Int], offset: Int) -> List[Int]:
 # ── ZigZag encoding ──────────────────────────────────────────────────────────
 
 
-fn zigzag_encode(value: Int) -> Int:
+def zigzag_encode(value: Int) -> Int:
     """ZigZag encoding for signed integers: (n << 1) ^ (n >> 63).
 
     Maps signed integers to unsigned: 0->0, -1->1, 1->2, -2->3, ...
@@ -78,7 +78,7 @@ fn zigzag_encode(value: Int) -> Int:
     return (value << 1) ^ (value >> 63)
 
 
-fn zigzag_decode(value: Int) -> Int:
+def zigzag_decode(value: Int) -> Int:
     """ZigZag decoding: (n >>> 1) ^ -(n & 1).
 
     Reverses the ZigZag mapping back to signed integers.
@@ -93,7 +93,7 @@ fn zigzag_decode(value: Int) -> Int:
 # ── Field encoding ───────────────────────────────────────────────────────────
 
 
-fn encode_field(field_number: Int, wire_type: Int, value: Int) -> List[Int]:
+def encode_field(field_number: Int, wire_type: Int, value: Int) -> List[Int]:
     """Encode a protobuf field: tag (field_number << 3 | wire_type) + varint value.
 
     Wire types: 0=varint, 2=length-delimited.
@@ -106,7 +106,7 @@ fn encode_field(field_number: Int, wire_type: Int, value: Int) -> List[Int]:
     return result^
 
 
-fn decode_field(data: List[Int], offset: Int) -> List[Int]:
+def decode_field(data: List[Int], offset: Int) -> List[Int]:
     """Decode one field from data at offset.
 
     Returns [field_number, wire_type, value, bytes_consumed].
@@ -141,7 +141,7 @@ fn decode_field(data: List[Int], offset: Int) -> List[Int]:
 # ── String field encoding ────────────────────────────────────────────────────
 
 
-fn encode_string_field(field_number: Int, text: String) -> List[Int]:
+def encode_string_field(field_number: Int, text: String) -> List[Int]:
     """Encode string field: tag (wire_type=2) + length + bytes."""
     var tag = (field_number << 3) | 2  # wire_type 2 = length-delimited
     var result = encode_varint(tag)
@@ -155,7 +155,7 @@ fn encode_string_field(field_number: Int, text: String) -> List[Int]:
     return result^
 
 
-fn decode_string_field(data: List[Int], offset: Int) -> List[Int]:
+def decode_string_field(data: List[Int], offset: Int) -> List[Int]:
     """Decode string field from data at offset.
 
     Returns [field_number, string_start_offset, string_length, total_consumed].
@@ -192,7 +192,7 @@ fn decode_string_field(data: List[Int], offset: Int) -> List[Int]:
 # ── Message encoding ─────────────────────────────────────────────────────────
 
 
-fn encode_message(fields: List[List[Int]]) -> List[Int]:
+def encode_message(fields: List[List[Int]]) -> List[Int]:
     """Encode multiple [field_number, value] pairs as varint fields.
 
     Each entry in fields is [field_number, value]. Wire type is always 0 (varint).
@@ -206,7 +206,7 @@ fn encode_message(fields: List[List[Int]]) -> List[Int]:
     return result^
 
 
-fn decode_message(data: List[Int]) -> List[List[Int]]:
+def decode_message(data: List[Int]) -> List[List[Int]]:
     """Decode all fields from message bytes.
 
     Returns list of [field_number, wire_type, value] triples.

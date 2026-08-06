@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, cos, log, sqrt, pow
 
 
-fn planck_spectral_radiance(wavelength_um: Float64, temperature: Float64) -> Float64:
+def planck_spectral_radiance(wavelength_um: Float64, temperature: Float64) -> Float64:
     """Spectral radiance from Planck's blackbody law.
 
     B_λ = (2hc²/λ⁵) / (exp(hc/λkT) - 1)  → simplified form.
@@ -41,7 +41,7 @@ fn planck_spectral_radiance(wavelength_um: Float64, temperature: Float64) -> Flo
     return c1 / (pow(wavelength_um, 5.0) * denom)
 
 
-fn stefan_boltzmann_radiance(emissivity: Float64, temperature: Float64) -> Float64:
+def stefan_boltzmann_radiance(emissivity: Float64, temperature: Float64) -> Float64:
     """Total emittance from Stefan-Boltzmann law: M = ε·σ·T⁴.
 
     Args:
@@ -57,7 +57,7 @@ fn stefan_boltzmann_radiance(emissivity: Float64, temperature: Float64) -> Float
     return emissivity * sigma * pow(temperature, 4.0)
 
 
-fn photon_energy(wavelength_nm: Float64) -> Float64:
+def photon_energy(wavelength_nm: Float64) -> Float64:
     """Photon energy: E = hc/λ.
 
     Args:
@@ -75,7 +75,7 @@ fn photon_energy(wavelength_nm: Float64) -> Float64:
     return e_joules / 1.602e-19  # to eV
 
 
-fn photon_flux(power_w: Float64, wavelength_nm: Float64) -> Float64:
+def photon_flux(power_w: Float64, wavelength_nm: Float64) -> Float64:
     """Photon flux: N = P/E_photon.
 
     Args:
@@ -96,7 +96,7 @@ fn photon_flux(power_w: Float64, wavelength_nm: Float64) -> Float64:
     return power_w / e_photon
 
 
-fn solid_angle_cone(half_angle_rad: Float64) -> Float64:
+def solid_angle_cone(half_angle_rad: Float64) -> Float64:
     """Solid angle of a cone: Ω = 2π·(1 - cos(θ)).
 
     Args:
@@ -109,7 +109,7 @@ fn solid_angle_cone(half_angle_rad: Float64) -> Float64:
     return 2.0 * pi * (1.0 - cos(half_angle_rad))
 
 
-fn lambertian_irradiance(radiance: Float64, angle_rad: Float64) -> Float64:
+def lambertian_irradiance(radiance: Float64, angle_rad: Float64) -> Float64:
     """Irradiance on a surface from a Lambertian source.
 
     E = L·cos(θ)·π  (if integrating over hemisphere)
@@ -125,7 +125,7 @@ fn lambertian_irradiance(radiance: Float64, angle_rad: Float64) -> Float64:
     return radiance * cos(angle_rad) * pi
 
 
-fn radiant_exitance_blackbody(temperature: Float64) -> Float64:
+def radiant_exitance_blackbody(temperature: Float64) -> Float64:
     """Total radiant exitance of a blackbody: M = σ·T⁴.
 
     Args:
@@ -138,7 +138,7 @@ fn radiant_exitance_blackbody(temperature: Float64) -> Float64:
     return sigma * pow(temperature, 4.0)
 
 
-fn luminous_efficacy(luminous_flux_lm: Float64, power_w: Float64) -> Float64:
+def luminous_efficacy(luminous_flux_lm: Float64, power_w: Float64) -> Float64:
     """Luminous efficacy of a light source.
 
     η = Φ_v / P  (lm/W)
@@ -155,7 +155,7 @@ fn luminous_efficacy(luminous_flux_lm: Float64, power_w: Float64) -> Float64:
     return luminous_flux_lm / power_w
 
 
-fn absorptance_from_reflectance(
+def absorptance_from_reflectance(
     reflectance: Float64, transmittance: Float64
 ) -> Float64:
     """Absorptance from energy balance: A = 1 - R - T.
@@ -173,7 +173,7 @@ fn absorptance_from_reflectance(
     return a
 
 
-fn noise_equivalent_power(
+def noise_equivalent_power(
     noise_voltage_vrms: Float64, responsivity_v_per_w: Float64
 ) -> Float64:
     """Noise equivalent power of a detector.

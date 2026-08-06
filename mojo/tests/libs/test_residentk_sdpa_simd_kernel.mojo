@@ -67,15 +67,15 @@ wrong rescale, not just a wrong single-key score, would show up), matching
 `sdpa_simd_reduce_probe.mojo`'s own Stage-1 choice."""
 
 
-fn _abs(x: Float32) -> Float32:
+def _abs(x: Float32) -> Float32:
     return -x if x < 0.0 else x
 
 
-fn _abs64(x: Float64) -> Float64:
+def _abs64(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
+def _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
     """Deterministic, KNOWN small values — same two-coprime-multiplier discipline
     `test_residentk_kvcache_fp16_kernel.mojo`'s own `_pseudo_f32` uses."""
     var o = List[Float32](capacity=n)
@@ -86,7 +86,7 @@ fn _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
     return o^
 
 
-fn _host_reference(
+def _host_reference(
     q: List[Float32], kv_k: List[Float32], kv_v: List[Float32],
     h_q: Int, h_kv: Int, d_head: Int, n_keys: Int, scale: Float32,
 ) -> List[Float64]:

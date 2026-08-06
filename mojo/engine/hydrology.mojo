@@ -25,7 +25,7 @@ from std.math import sqrt, abs as fabs, exp, log, pow
 # ── manning_velocity ──────────────────────────────────────────────────────────
 
 
-fn manning_velocity(n: Float64, r_h: Float64, slope: Float64) -> Float64:
+def manning_velocity(n: Float64, r_h: Float64, slope: Float64) -> Float64:
     """Manning's equation: V = (1/n) * R_h^(2/3) * S^(1/2)."""
     var r_h_23 = exp(2.0 / 3.0 * log(r_h))
     return (1.0 / n) * r_h_23 * sqrt(slope)
@@ -34,7 +34,7 @@ fn manning_velocity(n: Float64, r_h: Float64, slope: Float64) -> Float64:
 # ── manning_discharge ─────────────────────────────────────────────────────────
 
 
-fn manning_discharge(
+def manning_discharge(
     n: Float64, area: Float64, r_h: Float64, slope: Float64
 ) -> Float64:
     """Q = A * V from Manning's equation."""
@@ -44,7 +44,7 @@ fn manning_discharge(
 # ── hydraulic_radius ──────────────────────────────────────────────────────────
 
 
-fn hydraulic_radius(area: Float64, wetted_perimeter: Float64) -> Float64:
+def hydraulic_radius(area: Float64, wetted_perimeter: Float64) -> Float64:
     """R_h = A / P."""
     return area / wetted_perimeter
 
@@ -52,7 +52,7 @@ fn hydraulic_radius(area: Float64, wetted_perimeter: Float64) -> Float64:
 # ── froude_number ─────────────────────────────────────────────────────────────
 
 
-fn froude_number(velocity: Float64, depth: Float64, g: Float64) -> Float64:
+def froude_number(velocity: Float64, depth: Float64, g: Float64) -> Float64:
     """Fr = V / sqrt(g * d)."""
     return velocity / sqrt(g * depth)
 
@@ -60,7 +60,7 @@ fn froude_number(velocity: Float64, depth: Float64, g: Float64) -> Float64:
 # ── reynolds_number_pipe ──────────────────────────────────────────────────────
 
 
-fn reynolds_number_pipe(
+def reynolds_number_pipe(
     velocity: Float64, diameter: Float64, kinematic_viscosity: Float64
 ) -> Float64:
     """Re = V * D / ν."""
@@ -70,7 +70,7 @@ fn reynolds_number_pipe(
 # ── darcy_weisbach_head_loss ──────────────────────────────────────────────────
 
 
-fn darcy_weisbach_head_loss(
+def darcy_weisbach_head_loss(
     f: Float64,
     length: Float64,
     diameter: Float64,
@@ -84,7 +84,7 @@ fn darcy_weisbach_head_loss(
 # ── rational_method_peak_flow ─────────────────────────────────────────────────
 
 
-fn rational_method_peak_flow(
+def rational_method_peak_flow(
     c: Float64, intensity: Float64, area: Float64
 ) -> Float64:
     """Q = C * i * A (Rational Method)."""
@@ -94,7 +94,7 @@ fn rational_method_peak_flow(
 # ── time_of_concentration_kirpich ─────────────────────────────────────────────
 
 
-fn time_of_concentration_kirpich(
+def time_of_concentration_kirpich(
     length: Float64, slope: Float64
 ) -> Float64:
     """tc = 0.0078 * L^0.77 * S^(-0.385) (Kirpich formula, minutes)."""
@@ -106,7 +106,7 @@ fn time_of_concentration_kirpich(
 # ── curve_number_runoff ───────────────────────────────────────────────────────
 
 
-fn curve_number_runoff(precipitation: Float64, cn: Float64) -> Float64:
+def curve_number_runoff(precipitation: Float64, cn: Float64) -> Float64:
     """SCS Curve Number runoff: Q = (P - 0.2*S)² / (P + 0.8*S).
 
     S = 1000/CN - 10 (in inches).
@@ -123,7 +123,7 @@ fn curve_number_runoff(precipitation: Float64, cn: Float64) -> Float64:
 # ── evapotranspiration_hargreaves ─────────────────────────────────────────────
 
 
-fn evapotranspiration_hargreaves(
+def evapotranspiration_hargreaves(
     t_mean: Float64, t_range: Float64, ra: Float64
 ) -> Float64:
     """Hargreaves ET: ET = 0.0023 * Ra * (T_mean + 17.8) * T_range^0.5.
@@ -137,7 +137,7 @@ fn evapotranspiration_hargreaves(
 # ── specific_yield ────────────────────────────────────────────────────────────
 
 
-fn specific_yield(volume_drained: Float64, total_volume: Float64) -> Float64:
+def specific_yield(volume_drained: Float64, total_volume: Float64) -> Float64:
     """Sy = Vd / Vt."""
     return volume_drained / total_volume
 
@@ -145,6 +145,6 @@ fn specific_yield(volume_drained: Float64, total_volume: Float64) -> Float64:
 # ── darcy_groundwater_velocity ────────────────────────────────────────────────
 
 
-fn darcy_groundwater_velocity(k: Float64, gradient: Float64) -> Float64:
+def darcy_groundwater_velocity(k: Float64, gradient: Float64) -> Float64:
     """Darcy's law for groundwater: v = K * i (hydraulic conductivity * gradient)."""
     return k * gradient

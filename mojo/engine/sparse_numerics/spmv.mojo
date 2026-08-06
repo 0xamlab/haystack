@@ -82,7 +82,7 @@ comptime SPMV_ERR_NOT_STRICTLY_SORTED: Int = 20
 comptime SPMV_ERR_SHAPE_MISMATCH: Int = 21
 
 
-fn spmv_status_name(code: Int) -> String:
+def spmv_status_name(code: Int) -> String:
     """Name for a status code from this module or from `csr`.
 
     Checks this module's codes first, because `csr_status_name` answers
@@ -142,18 +142,18 @@ struct SpmvMatrix(Copyable, Movable):
     var values: List[Float64]
 
 
-fn _vector_invalid(status: Int) -> SpmvVector:
+def _vector_invalid(status: Int) -> SpmvVector:
     return SpmvVector(status, 0, List[Float64]())
 
 
-fn _matrix_invalid(status: Int) -> SpmvMatrix:
+def _matrix_invalid(status: Int) -> SpmvMatrix:
     """No matrix. Zero shape, so an ignored status cannot read as a real 0-nnz matrix."""
     return SpmvMatrix(
         status, 0, 0, 0, True, True, List[Int](), List[Int](), List[Float64]()
     )
 
 
-fn _matrix_from_csr(m: CSRMatrix, status: Int) -> SpmvMatrix:
+def _matrix_from_csr(m: CSRMatrix, status: Int) -> SpmvMatrix:
     return SpmvMatrix(
         status,
         m.nrows,
@@ -167,7 +167,7 @@ fn _matrix_from_csr(m: CSRMatrix, status: Int) -> SpmvMatrix:
     )
 
 
-fn _is_strictly_ascending(indices: List[Int]) -> Bool:
+def _is_strictly_ascending(indices: List[Int]) -> Bool:
     """True when every index is greater than the one before it.
 
     Strict, not merely non-decreasing: `sv_dot` advances both pointers on a match, so a
@@ -182,7 +182,7 @@ fn _is_strictly_ascending(indices: List[Int]) -> Bool:
 # ── matrix-vector products ────────────────────────────────────────────────────
 
 
-fn spmv_matvec(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
+def spmv_matvec(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
     """A @ x. Delegates to `csr.csr_matvec` and restates its result in this module's type.
 
     Not a second implementation: the arithmetic, the validation and the dimension policy
@@ -193,7 +193,7 @@ fn spmv_matvec(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
     return SpmvVector(inner.status, inner.length, inner.values.copy())
 
 
-fn spmv_matvec_transpose(m: CSRMatrix, y: List[Float64]) -> SpmvVector:
+def spmv_matvec_transpose(m: CSRMatrix, y: List[Float64]) -> SpmvVector:
     """A^T @ y, without materialising A^T.
 
     A^T's rows are A's columns, so the product is a scatter: each stored `(i, j, v)`
@@ -224,7 +224,7 @@ fn spmv_matvec_transpose(m: CSRMatrix, y: List[Float64]) -> SpmvVector:
     return SpmvVector(CSR_OK, count, out^)
 
 
-fn spmv_matvec_kahan(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
+def spmv_matvec_kahan(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
     """A @ x with a compensated sum per row.
 
     Same dimension policy and same terms as `spmv_matvec`; only the accumulation differs.
@@ -255,7 +255,7 @@ fn spmv_matvec_kahan(m: CSRMatrix, x: List[Float64]) -> SpmvVector:
 # ── row against a sparse vector ───────────────────────────────────────────────
 
 
-fn spmv_row_dot(
+def spmv_row_dot(
     m: CSRMatrix, row: Int, idx_b: List[Int], val_b: List[Float64]
 ) -> SpmvScalar:
     """Inner product of row `row` with the sparse vector `(idx_b, val_b)`.
@@ -305,7 +305,7 @@ fn spmv_row_dot(
 # ── scale, add, product, norm ─────────────────────────────────────────────────
 
 
-fn spmv_scale(m: CSRMatrix, alpha: Float64) -> CSRMatrix:
+def spmv_scale(m: CSRMatrix, alpha: Float64) -> CSRMatrix:
     """alpha * A. Pattern unchanged; an invalid matrix has no scale (0x0 empty).
 
     `alpha == 0.0` leaves every stored value as an explicit zero rather than emptying the
@@ -330,7 +330,7 @@ fn spmv_scale(m: CSRMatrix, alpha: Float64) -> CSRMatrix:
     )
 
 
-fn spmv_add(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
+def spmv_add(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
     """A + B for matrices of the same shape. Result is canonical. 0x0 empty on failure.
 
     Implemented as "concatenate each row's stored entries, then coalesce". The alternative
@@ -368,7 +368,7 @@ fn spmv_add(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
     return csr_coalesce(merged)
 
 
-fn spmv_spgemm(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
+def spmv_spgemm(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
     """A(m x k) * B(k x n) in CSR. Canonical result. 0x0 empty on failure.
 
     Row-wise expansion (Gustavson): for each stored `a[i,k]`, accumulate `a[i,k] * B[k,:]`
@@ -433,7 +433,7 @@ fn spmv_spgemm(a: CSRMatrix, b: CSRMatrix) -> CSRMatrix:
     return csr_sort_indices(unsorted)
 
 
-fn spmv_frobenius_norm(m: CSRMatrix) -> SpmvScalar:
+def spmv_frobenius_norm(m: CSRMatrix) -> SpmvScalar:
     """sqrt(sum of squares of the matrix entries), via `sv_norm`.
 
     Coalesces first when the matrix does not already claim to be coalesced. This is the
@@ -467,7 +467,7 @@ fn spmv_frobenius_norm(m: CSRMatrix) -> SpmvScalar:
 # parameter per line puts them over that limit, so re-wrapping these is not cosmetic.
 
 
-fn spmv_matvec_transpose_driver(
+def spmv_matvec_transpose_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -481,7 +481,7 @@ fn spmv_matvec_transpose_driver(
     )
 
 
-fn spmv_matvec_kahan_driver(
+def spmv_matvec_kahan_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -495,7 +495,7 @@ fn spmv_matvec_kahan_driver(
     )
 
 
-fn spmv_row_dot_driver(
+def spmv_row_dot_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -518,7 +518,7 @@ fn spmv_row_dot_driver(
     )
 
 
-fn spmv_frobenius_norm_driver(
+def spmv_frobenius_norm_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -530,7 +530,7 @@ fn spmv_frobenius_norm_driver(
     return spmv_frobenius_norm(m)
 
 
-fn spmv_scale_driver(
+def spmv_scale_driver(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -546,7 +546,7 @@ fn spmv_scale_driver(
     return _matrix_from_csr(spmv_scale(m, alpha), CSR_OK)
 
 
-fn spmv_add_driver(
+def spmv_add_driver(
     a_indptr: List[Int], a_indices: List[Int], a_values: List[Float64],
     a_nrows: Int, a_ncols: Int,
     b_indptr: List[Int], b_indices: List[Int], b_values: List[Float64],
@@ -566,7 +566,7 @@ fn spmv_add_driver(
     return _matrix_from_csr(spmv_add(a, b), CSR_OK)
 
 
-fn spmv_spgemm_driver(
+def spmv_spgemm_driver(
     a_indptr: List[Int], a_indices: List[Int], a_values: List[Float64],
     a_nrows: Int, a_ncols: Int,
     b_indptr: List[Int], b_indices: List[Int], b_values: List[Float64],

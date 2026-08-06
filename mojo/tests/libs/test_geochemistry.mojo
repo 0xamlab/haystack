@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from geochemistry import distribution_coefficient, partition_melt, batch_melting, rare_earth_normalization, isotope_mass_balance, weathering_index, redox_potential_pe, carbonate_saturation, henry_law_gas, organic_carbon_toc
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

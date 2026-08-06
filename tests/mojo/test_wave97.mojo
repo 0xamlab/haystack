@@ -52,13 +52,13 @@ from traffic_signal import (
 )
 
 
-fn approx(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     if abs(b) < 1e-12:
         return abs(a - b) < tol
     return abs(a - b) / abs(b) < tol
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 97 Tests ===")
     var n: Int = 0
 

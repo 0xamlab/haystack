@@ -24,7 +24,7 @@ from seq_nn import (
 )
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ seq_nn::" + name)
@@ -33,11 +33,11 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ seq_nn::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _max_rel_err(analytic: List[Float64], numeric: List[Float64]) -> Float64:
+def _max_rel_err(analytic: List[Float64], numeric: List[Float64]) -> Float64:
     """Max elementwise relative error with a small absolute floor."""
     if len(analytic) != len(numeric):
         return 1.0e9
@@ -54,7 +54,7 @@ fn _max_rel_err(analytic: List[Float64], numeric: List[Float64]) -> Float64:
     return m
 
 
-fn _lstm_loss(
+def _lstm_loss(
     x: List[Float64],
     h_prev: List[Float64],
     c_prev: List[Float64],
@@ -73,7 +73,7 @@ fn _lstm_loss(
     return loss
 
 
-fn _gru_loss(
+def _gru_loss(
     x: List[Float64],
     h_prev: List[Float64],
     W: List[Float64],

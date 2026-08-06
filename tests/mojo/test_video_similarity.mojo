@@ -40,7 +40,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _base_clip3x4x4() -> List[Float64]:
+def _base_clip3x4x4() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(16):
         flat.append(10.0)
@@ -54,7 +54,7 @@ fn _base_clip3x4x4() -> List[Float64]:
     return flat^
 
 
-fn _near_clip3x4x4() -> List[Float64]:
+def _near_clip3x4x4() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(16):
         flat.append(12.0)
@@ -68,7 +68,7 @@ fn _near_clip3x4x4() -> List[Float64]:
     return flat^
 
 
-fn _far_clip3x4x4() -> List[Float64]:
+def _far_clip3x4x4() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(16):
         flat.append(200.0)

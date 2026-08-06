@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn fusion_benefit_score(
+def fusion_benefit_score(
     op_a_memory_bytes: Float64, op_b_memory_bytes: Float64,
     shared_intermediate_bytes: Float64, fusion_overhead: Float64
 ) -> Float64:
@@ -38,7 +38,7 @@ fn fusion_benefit_score(
     return shared_intermediate_bytes - fusion_overhead
 
 
-fn dead_op_elimination_check(
+def dead_op_elimination_check(
     output_consumer_count: Float64, grad_flow: Float64
 ) -> Float64:
     """Check if an op is dead (no consumers, no gradient flow).
@@ -57,7 +57,7 @@ fn dead_op_elimination_check(
     return 0.0
 
 
-fn constant_folding_value(
+def constant_folding_value(
     is_constant: Float64, computed_value: Float64
 ) -> Float64:
     """Constant folding: replace constant-only subgraph with its value.
@@ -74,7 +74,7 @@ fn constant_folding_value(
     return 0.0
 
 
-fn op_reorder_priority(
+def op_reorder_priority(
     cache_miss_cost: Float64, compute_intensity: Float64,
     dependency_depth: Float64
 ) -> Float64:
@@ -97,7 +97,7 @@ fn op_reorder_priority(
     return compute_intensity / denom
 
 
-fn common_subexpr_hash(
+def common_subexpr_hash(
     op_type: Float64, input_hash_a: Float64, input_hash_b: Float64
 ) -> Float64:
     """Common subexpression elimination hash component.
@@ -116,7 +116,7 @@ fn common_subexpr_hash(
     return op_type * prime * prime + input_hash_a * prime + input_hash_b
 
 
-fn graph_partition_cost(
+def graph_partition_cost(
     n_cross_edges: Float64, edge_bandwidth_bytes: Float64,
     n_devices: Float64
 ) -> Float64:
@@ -137,7 +137,7 @@ fn graph_partition_cost(
     return n_cross_edges * edge_bandwidth_bytes / n_devices
 
 
-fn shape_inference_broadcast(
+def shape_inference_broadcast(
     dim_a: Float64, dim_b: Float64
 ) -> Float64:
     """Static shape inference for broadcast dimensions.
@@ -160,7 +160,7 @@ fn shape_inference_broadcast(
     return -1.0  # Incompatible shapes
 
 
-fn type_promotion_bits(
+def type_promotion_bits(
     dtype_a_bits: Float64, dtype_b_bits: Float64
 ) -> Float64:
     """Dtype promotion: result type for mixed-dtype ops.
@@ -179,7 +179,7 @@ fn type_promotion_bits(
     return dtype_b_bits
 
 
-fn kernel_selection_score(
+def kernel_selection_score(
     kernel_flops_per_ns: Float64, shape_match_score: Float64,
     memory_efficiency: Float64
 ) -> Float64:
@@ -198,7 +198,7 @@ fn kernel_selection_score(
     return kernel_flops_per_ns * shape_match_score * memory_efficiency
 
 
-fn memory_layout_transform_cost(
+def memory_layout_transform_cost(
     n_elements: Float64, src_stride: Float64,
     dst_stride: Float64, dtype_bytes: Float64
 ) -> Float64:

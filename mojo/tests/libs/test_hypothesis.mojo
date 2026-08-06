@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hypothesis import rank_data, mann_whitney_u, wilcoxon_signed_rank, fisher_exact_2x2, sign_test
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

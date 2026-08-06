@@ -26,7 +26,7 @@ from std.math import sqrt, abs as fabs, atan2, pow
 # ── delta_e_76 ───────────────────────────────────────────────────────────────
 
 
-fn delta_e_76(
+def delta_e_76(
     l1: Float64, a1: Float64, b1: Float64,
     l2: Float64, a2: Float64, b2: Float64,
 ) -> Float64:
@@ -40,7 +40,7 @@ fn delta_e_76(
 # ── lab_to_lch_l ─────────────────────────────────────────────────────────────
 
 
-fn lab_to_lch_l(l: Float64) -> Float64:
+def lab_to_lch_l(l: Float64) -> Float64:
     """L_LCH = L (identity passthrough)."""
     return l
 
@@ -48,7 +48,7 @@ fn lab_to_lch_l(l: Float64) -> Float64:
 # ── lab_to_lch_c ─────────────────────────────────────────────────────────────
 
 
-fn lab_to_lch_c(a: Float64, b: Float64) -> Float64:
+def lab_to_lch_c(a: Float64, b: Float64) -> Float64:
     """Chroma C = sqrt(a² + b²)."""
     return sqrt(a * a + b * b)
 
@@ -56,7 +56,7 @@ fn lab_to_lch_c(a: Float64, b: Float64) -> Float64:
 # ── lab_to_lch_h ─────────────────────────────────────────────────────────────
 
 
-fn lab_to_lch_h(a: Float64, b: Float64) -> Float64:
+def lab_to_lch_h(a: Float64, b: Float64) -> Float64:
     """Hue h = atan2(b, a) * 180/π (degrees). Wraps negative to 0-360."""
     var h = atan2(b, a) * 180.0 / 3.141592653589793
     if h < 0.0:
@@ -67,7 +67,7 @@ fn lab_to_lch_h(a: Float64, b: Float64) -> Float64:
 # ── rgb_to_luminance ─────────────────────────────────────────────────────────
 
 
-fn _srgb_channel_to_linear(channel: Float64) -> Float64:
+def _srgb_channel_to_linear(channel: Float64) -> Float64:
     var c = channel
     if c < 0.0:
         c = 0.0
@@ -78,7 +78,7 @@ fn _srgb_channel_to_linear(channel: Float64) -> Float64:
     return pow((c + 0.055) / 1.055, 2.4)
 
 
-fn rgb_to_luminance(r: Float64, g: Float64, b: Float64) -> Float64:
+def rgb_to_luminance(r: Float64, g: Float64, b: Float64) -> Float64:
     """WCAG relative luminance from gamma-encoded sRGB channels in [0, 1]."""
     var rl = _srgb_channel_to_linear(r)
     var gl = _srgb_channel_to_linear(g)
@@ -89,7 +89,7 @@ fn rgb_to_luminance(r: Float64, g: Float64, b: Float64) -> Float64:
 # ── contrast_ratio ───────────────────────────────────────────────────────────
 
 
-fn contrast_ratio(l1: Float64, l2: Float64) -> Float64:
+def contrast_ratio(l1: Float64, l2: Float64) -> Float64:
     """WCAG contrast ratio CR = (lighter+0.05)/(darker+0.05)."""
     var lighter = l1
     var darker = l2
@@ -102,7 +102,7 @@ fn contrast_ratio(l1: Float64, l2: Float64) -> Float64:
 # ── wcag_aa_pass ─────────────────────────────────────────────────────────────
 
 
-fn wcag_aa_pass(contrast_ratio_val: Float64, font_size_pt: Float64) -> Float64:
+def wcag_aa_pass(contrast_ratio_val: Float64, font_size_pt: Float64) -> Float64:
     """Returns 1.0 if passes WCAG AA, 0.0 otherwise.
     Large text (>=18pt): CR>=3.0. Normal text: CR>=4.5."""
     if font_size_pt >= 18.0:
@@ -117,7 +117,7 @@ fn wcag_aa_pass(contrast_ratio_val: Float64, font_size_pt: Float64) -> Float64:
 # ── color_temperature_approx ────────────────────────────────────────────────
 
 
-fn color_temperature_approx(r: Float64, b: Float64) -> Float64:
+def color_temperature_approx(r: Float64, b: Float64) -> Float64:
     """Simplified CCT ≈ 6500 * (B/R) (Kelvin)."""
     return 6500.0 * (b / r)
 
@@ -125,7 +125,7 @@ fn color_temperature_approx(r: Float64, b: Float64) -> Float64:
 # ── metamerism_index ─────────────────────────────────────────────────────────
 
 
-fn metamerism_index(delta_e_d65: Float64, delta_e_a: Float64) -> Float64:
+def metamerism_index(delta_e_d65: Float64, delta_e_a: Float64) -> Float64:
     """MI = |ΔE_D65 - ΔE_A|."""
     return fabs(delta_e_d65 - delta_e_a)
 
@@ -133,7 +133,7 @@ fn metamerism_index(delta_e_d65: Float64, delta_e_a: Float64) -> Float64:
 # ── chromatic_adaptation_von_kries ───────────────────────────────────────────
 
 
-fn chromatic_adaptation_von_kries(x: Float64, gain: Float64) -> Float64:
+def chromatic_adaptation_von_kries(x: Float64, gain: Float64) -> Float64:
     """von Kries adaptation: x_adapted = x * gain."""
     return x * gain
 
@@ -141,7 +141,7 @@ fn chromatic_adaptation_von_kries(x: Float64, gain: Float64) -> Float64:
 # ── cri_from_delta_e ─────────────────────────────────────────────────────────
 
 
-fn cri_from_delta_e(avg_delta_e: Float64) -> Float64:
+def cri_from_delta_e(avg_delta_e: Float64) -> Float64:
     """CRI ≈ 100 - 4.6 * ΔE (simplified)."""
     return 100.0 - 4.6 * avg_delta_e
 
@@ -149,7 +149,7 @@ fn cri_from_delta_e(avg_delta_e: Float64) -> Float64:
 # ── whiteness_index_cie ──────────────────────────────────────────────────────
 
 
-fn whiteness_index_cie(
+def whiteness_index_cie(
     big_y: Float64, x: Float64, y: Float64, xn: Float64, yn: Float64,
 ) -> Float64:
     """CIE whiteness W = Y + 800*(xn-x) + 1700*(yn-y)."""

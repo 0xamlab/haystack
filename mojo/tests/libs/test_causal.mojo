@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from causal import ate, att, propensity_score, ipw_estimate, diff_in_diff, regression_discontinuity, iv_estimate, stratified_ate, cohens_d, needed_sample_size_ate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

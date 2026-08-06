@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn sample_informativeness(
+def sample_informativeness(
     prediction_entropy: Float64, model_uncertainty: Float64,
     diversity_from_existing: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn sample_informativeness(
     return prediction_entropy * model_uncertainty * diversity_from_existing
 
 
-fn auto_label_confidence(
+def auto_label_confidence(
     teacher_model_logprob: Float64, label_agreement_rate: Float64,
     sample_difficulty: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn auto_label_confidence(
     return exp(teacher_model_logprob) * label_agreement_rate / sample_difficulty
 
 
-fn data_drift_detection_score(
+def data_drift_detection_score(
     current_feature_mean: Float64, baseline_feature_mean: Float64,
     baseline_feature_std: Float64
 ) -> Float64:
@@ -81,7 +81,7 @@ fn data_drift_detection_score(
     return diff / baseline_feature_std
 
 
-fn retraining_trigger_score(
+def retraining_trigger_score(
     performance_degradation: Float64, drift_score: Float64,
     data_volume_new: Float64, retrain_cost: Float64
 ) -> Float64:
@@ -102,7 +102,7 @@ fn retraining_trigger_score(
     return benefit - retrain_cost
 
 
-fn dataset_freshness_score(
+def dataset_freshness_score(
     newest_sample_age_days: Float64, half_life_days: Float64
 ) -> Float64:
     """Recency of training data (exponential decay by age).
@@ -119,7 +119,7 @@ fn dataset_freshness_score(
     return exp(-newest_sample_age_days * 0.693 / half_life_days)
 
 
-fn annotation_effort_estimate(
+def annotation_effort_estimate(
     n_samples: Float64, avg_annotation_time_s: Float64,
     review_fraction: Float64
 ) -> Float64:
@@ -138,7 +138,7 @@ fn annotation_effort_estimate(
     return n_samples * avg_annotation_time_s * (1.0 + review_fraction)
 
 
-fn deployment_readiness_score(
+def deployment_readiness_score(
     validation_accuracy: Float64, accuracy_threshold: Float64,
     bias_score: Float64, bias_threshold: Float64,
     safety_score: Float64
@@ -160,7 +160,7 @@ fn deployment_readiness_score(
     return acc_ok * bias_ok * safety_score
 
 
-fn online_evaluation_stat(
+def online_evaluation_stat(
     treatment_metric: Float64, control_metric: Float64,
     pooled_std: Float64, n_samples: Float64
 ) -> Float64:
@@ -182,7 +182,7 @@ fn online_evaluation_stat(
     return (treatment_metric - control_metric) / (pooled_std / sqrt(n_samples))
 
 
-fn feedback_signal_quality(
+def feedback_signal_quality(
     explicit_feedback_rate: Float64, implicit_signal_rate: Float64,
     label_noise_estimate: Float64
 ) -> Float64:
@@ -202,7 +202,7 @@ fn feedback_signal_quality(
     return signal * (1.0 - label_noise_estimate)
 
 
-fn continuous_learning_rate(
+def continuous_learning_rate(
     base_lr: Float64, drift_magnitude: Float64,
     catastrophic_forgetting_risk: Float64
 ) -> Float64:

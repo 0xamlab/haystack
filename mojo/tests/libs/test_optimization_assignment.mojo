@@ -59,28 +59,28 @@ from optimization.assignment import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _bools(*vals: Bool) -> List[Bool]:
+def _bools(*vals: Bool) -> List[Bool]:
     var out = List[Bool]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -89,7 +89,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Every value compared with this helper is a small integer, so a
     tolerance would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -100,35 +100,35 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     return _floats(1.5, -2.0, 0.5, 3.0, -1.0)
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     return _ints(1, 2, 3, 4, 5)
 
 
-fn _lb5() -> List[Bool]:
+def _lb5() -> List[Bool]:
     return _bools(True, False, True, True, False)
 
 
-fn _rank_one() -> List[Float64]:
+def _rank_one() -> List[Float64]:
     """c[i][j] = (i + 1) * (j + 1) — greedy takes the diagonal (1 + 4 + 9 = 14); the
     optimum is the anti-diagonal (3 + 4 + 3 = 10)."""
     return _floats(1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0)
 
 
-fn _huge_diagonal() -> List[Float64]:
+def _huge_diagonal() -> List[Float64]:
     """One forbidden-by-price pairing per agent, on the diagonal. Every permutation that
     touches the diagonal costs at least 1e9, so the optimum avoids it entirely."""
     return _floats(1.0e9, 1.0, 2.0, 3.0, 1.0e9, 4.0, 5.0, 6.0, 1.0e9)
 
 
-fn _perm(a: Int, b: Int, c: Int) -> List[Int]:
+def _perm(a: Int, b: Int, c: Int) -> List[Int]:
     return _ints(a, b, c)
 
 
-fn _all_perms3() -> List[List[Int]]:
+def _all_perms3() -> List[List[Int]]:
     var out = List[List[Int]]()
     out.append(_perm(0, 1, 2))
     out.append(_perm(0, 2, 1))
@@ -139,7 +139,7 @@ fn _all_perms3() -> List[List[Int]]:
     return out^
 
 
-fn _dual_feasible_everywhere(
+def _dual_feasible_everywhere(
     cost: List[Float64], rows: Int, cols: Int, result: Assignment
 ) -> Bool:
     """Dual feasibility for every pair AND for every agent, computed here rather than
@@ -160,7 +160,7 @@ fn _dual_feasible_everywhere(
     return True
 
 
-fn _chosen_pairs_tight(
+def _chosen_pairs_tight(
     cost: List[Float64], rows: Int, cols: Int, result: Assignment
 ) -> Bool:
     """Equality on every chosen pair — the half of complementary slackness that a
@@ -174,7 +174,7 @@ fn _chosen_pairs_tight(
     return True
 
 
-fn _dual_sum(result: Assignment) -> Float64:
+def _dual_sum(result: Assignment) -> Float64:
     var total = 0.0
     for i in range(len(result.u)):
         total += result.u[i]
@@ -183,7 +183,7 @@ fn _dual_sum(result: Assignment) -> Float64:
     return total
 
 
-fn _is_rejection(result: Assignment) -> Bool:
+def _is_rejection(result: Assignment) -> Bool:
     """A rejection carries no numbers at all: empty lists, absent cost, absent defects."""
     return (
         result.status != ASSIGN_OK
@@ -202,7 +202,7 @@ fn _is_rejection(result: Assignment) -> Bool:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from finance import npv, irr, payback_period, roi, compound_interest, present_value, future_value, annuity_payment, sharpe_ratio, max_drawdown, cagr, wacc
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

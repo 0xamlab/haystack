@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fused_kernels import fused_attention_score, fused_softmax_mask, fused_layernorm_element, fused_matmul_bias_relu, fused_matmul_bias_gelu, fused_rope_attention, fused_add_norm, fused_scale_shift, fused_dropout_residual, kernel_fusion_savings
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

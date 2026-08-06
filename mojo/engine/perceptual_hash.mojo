@@ -27,7 +27,7 @@ from image_resize import reshape_to_grid, resize_for_hash, resize_for_dhash
 # ── popcount (64-bit, no sign-bit loss) ─────────────────────────────────────────
 
 
-fn _popcount_u64(x: UInt64) -> Int:
+def _popcount_u64(x: UInt64) -> Int:
     """Count set bits across all 64 bits (bitops.popcount drops bit 63)."""
     var n = x
     var count = 0
@@ -40,7 +40,7 @@ fn _popcount_u64(x: UInt64) -> Int:
 # ── median (insertion-sort copy) ────────────────────────────────────────────────
 
 
-fn _median(values: List[Float64]) -> Float64:
+def _median(values: List[Float64]) -> Float64:
     var n = len(values)
     if n == 0:
         return 0.0
@@ -62,7 +62,7 @@ fn _median(values: List[Float64]) -> Float64:
 # ── DCT (top-left 8×8 of a 32×32 grid, unnormalized DCT-II) ──────────────────────
 
 
-fn _dct8x8(image: List[List[Float64]]) -> List[Float64]:
+def _dct8x8(image: List[List[Float64]]) -> List[Float64]:
     """Low-frequency 8×8 DCT-II coefficients of a 32×32 grid, row-major u*8+v.
 
     Unnormalized: only relative ordering vs the median matters for hashing, so
@@ -104,7 +104,7 @@ fn _dct8x8(image: List[List[Float64]]) -> List[Float64]:
 # ── ahash ─────────────────────────────────────────────────────────────────────
 
 
-fn ahash(image: List[List[Float64]]) -> UInt64:
+def ahash(image: List[List[Float64]]) -> UInt64:
     """8×8 average hash: bit set where the cell is >= the 8×8 mean."""
     var g = resize_for_hash(image, 8)
     if len(g) < 8 or len(g[0]) < 8:
@@ -126,7 +126,7 @@ fn ahash(image: List[List[Float64]]) -> UInt64:
 # ── dhash ─────────────────────────────────────────────────────────────────────
 
 
-fn dhash(image: List[List[Float64]]) -> UInt64:
+def dhash(image: List[List[Float64]]) -> UInt64:
     """9×8 difference hash: bit set where a cell is brighter than its right neighbor."""
     var g = resize_for_dhash(image, 8, 8)
     if len(g) < 8 or len(g[0]) < 9:
@@ -143,7 +143,7 @@ fn dhash(image: List[List[Float64]]) -> UInt64:
 # ── phash ─────────────────────────────────────────────────────────────────────
 
 
-fn phash(image: List[List[Float64]]) -> UInt64:
+def phash(image: List[List[Float64]]) -> UInt64:
     """32×32 DCT perceptual hash: bit set where a low-freq coeff exceeds the AC median."""
     var g = resize_for_hash(image, 32)
     if len(g) < 32 or len(g[0]) < 32:
@@ -164,12 +164,12 @@ fn phash(image: List[List[Float64]]) -> UInt64:
 # ── distance / duplicate ────────────────────────────────────────────────────────
 
 
-fn hamming_distance(a: UInt64, b: UInt64) -> Int:
+def hamming_distance(a: UInt64, b: UInt64) -> Int:
     """Number of differing bits between two 64-bit hashes (0..64)."""
     return _popcount_u64(a ^ b)
 
 
-fn is_duplicate(a: UInt64, b: UInt64, max_distance: Int) -> Bool:
+def is_duplicate(a: UInt64, b: UInt64, max_distance: Int) -> Bool:
     """True if the two hashes differ by at most max_distance bits."""
     return hamming_distance(a, b) <= max_distance
 
@@ -177,16 +177,16 @@ fn is_duplicate(a: UInt64, b: UInt64, max_distance: Int) -> Bool:
 # ── flat-pixel entry points ─────────────────────────────────────────────────────
 
 
-fn ahash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
+def ahash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
     """aHash from row-major flat grayscale pixels."""
     return ahash(reshape_to_grid(flat, width, height))
 
 
-fn dhash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
+def dhash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
     """dHash from row-major flat grayscale pixels."""
     return dhash(reshape_to_grid(flat, width, height))
 
 
-fn phash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
+def phash_flat(flat: List[Float64], width: Int, height: Int) -> UInt64:
     """pHash from row-major flat grayscale pixels."""
     return phash(reshape_to_grid(flat, width, height))

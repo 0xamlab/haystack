@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from population_genetics import hardy_weinberg_freq, allele_frequency_drift, selection_coefficient, effective_population_size, nucleotide_diversity, tajimas_d_simplified, fst_wright, inbreeding_coefficient, mutation_load, linkage_disequilibrium
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from demographics import crude_birth_rate, crude_death_rate, natural_increase_rate, total_fertility_rate, infant_mortality_rate, life_expectancy_approx, dependency_ratio, sex_ratio, population_growth_rate, doubling_time, urbanization_rate, median_age_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from diffusion_models import linear_beta_schedule, cosine_beta_schedule, alpha_from_beta, forward_diffusion_sample, ddpm_reverse_mean, ddpm_posterior_variance, ddim_step, snr, noise_prediction_to_x0, edm_preconditioning
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

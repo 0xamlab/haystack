@@ -34,19 +34,19 @@ struct Timestamp(Copyable, Movable):
     var epoch_sec: Int
     var nano: Int
 
-    fn __init__(out self, epoch_sec: Int = 0, nano: Int = 0):
+    def __init__(out self, epoch_sec: Int = 0, nano: Int = 0):
         self.epoch_sec = epoch_sec
         self.nano = nano
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.epoch_sec = copy.epoch_sec
         self.nano = copy.nano
 
-    fn total_ms(self) -> Int:
+    def total_ms(self) -> Int:
         """Total milliseconds since epoch."""
         return self.epoch_sec * 1000 + self.nano // 1_000_000
 
-    fn total_us(self) -> Int:
+    def total_us(self) -> Int:
         """Total microseconds since epoch."""
         return self.epoch_sec * 1_000_000 + self.nano // 1000
 
@@ -63,7 +63,7 @@ struct DateComponents(Copyable, Movable):
     var mn: Int
     var sc: Int
 
-    fn __init__(out self, yr: Int = 0, mo: Int = 0, dy: Int = 0, hr: Int = 0, mn: Int = 0, sc: Int = 0):
+    def __init__(out self, yr: Int = 0, mo: Int = 0, dy: Int = 0, hr: Int = 0, mn: Int = 0, sc: Int = 0):
         self.yr = yr
         self.mo = mo
         self.dy = dy
@@ -71,7 +71,7 @@ struct DateComponents(Copyable, Movable):
         self.mn = mn
         self.sc = sc
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.yr = copy.yr
         self.mo = copy.mo
         self.dy = copy.dy
@@ -95,7 +95,7 @@ def now_epoch() raises -> Int:
 # ── Leap year ────────────────────────────────────────────────────────────────
 
 
-fn is_leap_year(y: Int) -> Bool:
+def is_leap_year(y: Int) -> Bool:
     """Return True if year is a leap year."""
     return (y % 4 == 0 and y % 100 != 0) or (y % 400 == 0)
 
@@ -103,7 +103,7 @@ fn is_leap_year(y: Int) -> Bool:
 # ── Internal: days in month ──────────────────────────────────────────────────
 
 
-fn _days_in_month(y: Int, m: Int) -> Int:
+def _days_in_month(y: Int, m: Int) -> Int:
     """Days in given month (1-12) for given year."""
     if m == 2:
         if is_leap_year(y):
@@ -119,7 +119,7 @@ fn _days_in_month(y: Int, m: Int) -> Int:
 # https://howardhinnant.github.io/date_algorithms.html
 
 
-fn _civil_from_epoch(epoch: Int) -> DateComponents:
+def _civil_from_epoch(epoch: Int) -> DateComponents:
     """Convert epoch seconds to DateComponents(year, month, day, hour, minute, second)."""
     var s = epoch
     var sign = 1
@@ -174,37 +174,37 @@ fn _civil_from_epoch(epoch: Int) -> DateComponents:
 # ── Date component accessors ─────────────────────────────────────────────────
 
 
-fn year(epoch: Int) -> Int:
+def year(epoch: Int) -> Int:
     """Extract year from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.yr
 
 
-fn month(epoch: Int) -> Int:
+def month(epoch: Int) -> Int:
     """Extract month (1-12) from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.mo
 
 
-fn day(epoch: Int) -> Int:
+def day(epoch: Int) -> Int:
     """Extract day (1-31) from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.dy
 
 
-fn hour(epoch: Int) -> Int:
+def hour(epoch: Int) -> Int:
     """Extract hour (0-23) from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.hr
 
 
-fn minute(epoch: Int) -> Int:
+def minute(epoch: Int) -> Int:
     """Extract minute (0-59) from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.mn
 
 
-fn second(epoch: Int) -> Int:
+def second(epoch: Int) -> Int:
     """Extract second (0-59) from epoch."""
     var result = _civil_from_epoch(epoch)
     return result.sc
@@ -213,14 +213,14 @@ fn second(epoch: Int) -> Int:
 # ── Epoch → ISO 8601 ─────────────────────────────────────────────────────────
 
 
-fn _pad2(v: Int) -> String:
+def _pad2(v: Int) -> String:
     """Zero-pad integer to 2 digits."""
     if v < 10:
         return "0" + String(v)
     return String(v)
 
 
-fn _pad4(v: Int) -> String:
+def _pad4(v: Int) -> String:
     """Zero-pad integer to 4 digits."""
     if v < 10:
         return "000" + String(v)
@@ -231,7 +231,7 @@ fn _pad4(v: Int) -> String:
     return String(v)
 
 
-fn epoch_to_iso(epoch: Int) -> String:
+def epoch_to_iso(epoch: Int) -> String:
     """Format epoch seconds as ISO 8601 UTC string: YYYY-MM-DDTHH:MM:SSZ."""
     var parts = _civil_from_epoch(epoch)
     return (
@@ -246,7 +246,7 @@ fn epoch_to_iso(epoch: Int) -> String:
 # Civil date → days since epoch (Howard Hinnant days_from_civil)
 
 
-fn _days_from_civil(y_in: Int, m: Int, d: Int) -> Int:
+def _days_from_civil(y_in: Int, m: Int, d: Int) -> Int:
     """Convert year/month/day to days since 1970-01-01."""
     var y = y_in
     if m <= 2:
@@ -266,7 +266,7 @@ fn _days_from_civil(y_in: Int, m: Int, d: Int) -> Int:
     return era * 146097 + doe - 719468
 
 
-fn _parse_int_at(s: String, start: Int, length: Int) -> Int:
+def _parse_int_at(s: String, start: Int, length: Int) -> Int:
     """Parse an integer from string at position start with given length."""
     var bs = s.as_bytes()
     var result = 0
@@ -279,7 +279,7 @@ fn _parse_int_at(s: String, start: Int, length: Int) -> Int:
     return result
 
 
-fn iso_to_epoch(iso: String) -> Int:
+def iso_to_epoch(iso: String) -> Int:
     """Parse ISO 8601 string (YYYY-MM-DDTHH:MM:SSZ) to Unix epoch seconds."""
     var n = len(iso)
     # Minimum: YYYY-MM-DDTHH:MM:SSZ = 20 chars
@@ -300,7 +300,7 @@ fn iso_to_epoch(iso: String) -> Int:
 # ── Duration formatting ──────────────────────────────────────────────────────
 
 
-fn format_duration_ms(ms: Int) -> String:
+def format_duration_ms(ms: Int) -> String:
     """Format milliseconds as human-readable duration.
     Examples: '150ms', '3.75s', '2m 30s', '1h 5m 30s'.
     """
@@ -345,7 +345,7 @@ fn format_duration_ms(ms: Int) -> String:
         return String(secs) + "s"
 
 
-fn _ms_frac(ms: Int) -> String:
+def _ms_frac(ms: Int) -> String:
     """Format milliseconds as decimal fraction (strip trailing zeros)."""
     var d1 = ms // 100
     var d2 = (ms // 10) % 10
@@ -360,7 +360,7 @@ fn _ms_frac(ms: Int) -> String:
 # ── Day arithmetic ───────────────────────────────────────────────────────────
 
 
-fn days_between(epoch1: Int, epoch2: Int) -> Int:
+def days_between(epoch1: Int, epoch2: Int) -> Int:
     """Number of days between two epochs (absolute value)."""
     var diff = epoch2 - epoch1
     if diff < 0:
@@ -368,7 +368,7 @@ fn days_between(epoch1: Int, epoch2: Int) -> Int:
     return diff // _SECONDS_PER_DAY
 
 
-fn add_days(epoch: Int, days: Int) -> Int:
+def add_days(epoch: Int, days: Int) -> Int:
     """Add (or subtract) days to an epoch."""
     return epoch + days * _SECONDS_PER_DAY
 
@@ -376,7 +376,7 @@ fn add_days(epoch: Int, days: Int) -> Int:
 # ── Day of week ──────────────────────────────────────────────────────────────
 
 
-fn day_of_week(epoch: Int) -> Int:
+def day_of_week(epoch: Int) -> Int:
     """Day of week: 0=Monday, 1=Tuesday, ..., 6=Sunday.
     1970-01-01 was a Thursday (3).
     """

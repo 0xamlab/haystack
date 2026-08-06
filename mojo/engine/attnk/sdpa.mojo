@@ -87,7 +87,7 @@ struct SdpaOut(Copyable, Movable):
     var status: Int
 
 
-fn sdpa_scores_flat(
+def sdpa_scores_flat(
     q: List[Float64], k: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int, scale: Float64
 ) -> SdpaScores:
@@ -135,7 +135,7 @@ fn sdpa_scores_flat(
     return SdpaScores(out^, h_q, n_tok_q, n_tok_k, ATTN_OK)
 
 
-fn sdpa_softmax_rows_flat(scores: List[Float64], rows: Int, cols: Int) -> SdpaScores:
+def sdpa_softmax_rows_flat(scores: List[Float64], rows: Int, cols: Int) -> SdpaScores:
     """Row-wise stable softmax over a flat `[rows][cols]` matrix.
 
     Max-subtracted, via the frozen `transformer_attention.attention_softmax_stable`. Without the
@@ -169,7 +169,7 @@ fn sdpa_softmax_rows_flat(scores: List[Float64], rows: Int, cols: Int) -> SdpaSc
     return SdpaScores(out^, 1, rows, cols, ATTN_OK)
 
 
-fn sdpa_forward_flat(
+def sdpa_forward_flat(
     q: List[Float64], k: List[Float64], v: List[Float64], bias: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int,
     scale: Float64, use_bias: Bool
@@ -252,7 +252,7 @@ fn sdpa_forward_flat(
     return SdpaOut(out^, lse^, n_tok_q, h_q, d, ATTN_OK)
 
 
-fn _ln(x: Float64) -> Float64:
+def _ln(x: Float64) -> Float64:
     """Natural log, guarding the zero case.
 
     A fully-masked row can produce a zero normalizer under some bias conventions. `log(0)` is `-inf`,

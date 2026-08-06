@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt
 
 
-fn cardiac_output(heart_rate: Float64, stroke_volume_ml: Float64) -> Float64:
+def cardiac_output(heart_rate: Float64, stroke_volume_ml: Float64) -> Float64:
     """Cardiac output: CO = HR × SV.
 
     Args:
@@ -29,7 +29,7 @@ fn cardiac_output(heart_rate: Float64, stroke_volume_ml: Float64) -> Float64:
     return heart_rate * stroke_volume_ml / 1000.0
 
 
-fn stroke_volume(edv_ml: Float64, esv_ml: Float64) -> Float64:
+def stroke_volume(edv_ml: Float64, esv_ml: Float64) -> Float64:
     """Stroke volume: SV = EDV - ESV.
 
     Args:
@@ -45,7 +45,7 @@ fn stroke_volume(edv_ml: Float64, esv_ml: Float64) -> Float64:
     return sv
 
 
-fn ejection_fraction(edv_ml: Float64, esv_ml: Float64) -> Float64:
+def ejection_fraction(edv_ml: Float64, esv_ml: Float64) -> Float64:
     """Left ventricular ejection fraction: EF = SV / EDV.
 
     Args:
@@ -60,7 +60,7 @@ fn ejection_fraction(edv_ml: Float64, esv_ml: Float64) -> Float64:
     return (edv_ml - esv_ml) / edv_ml
 
 
-fn mean_arterial_pressure(
+def mean_arterial_pressure(
     systolic_mmhg: Float64, diastolic_mmhg: Float64
 ) -> Float64:
     """Mean arterial pressure: MAP = DBP + 1/3 × PP.
@@ -75,7 +75,7 @@ fn mean_arterial_pressure(
     return diastolic_mmhg + (systolic_mmhg - diastolic_mmhg) / 3.0
 
 
-fn pulse_pressure(systolic_mmhg: Float64, diastolic_mmhg: Float64) -> Float64:
+def pulse_pressure(systolic_mmhg: Float64, diastolic_mmhg: Float64) -> Float64:
     """Pulse pressure: PP = SBP - DBP.
 
     Args:
@@ -88,7 +88,7 @@ fn pulse_pressure(systolic_mmhg: Float64, diastolic_mmhg: Float64) -> Float64:
     return systolic_mmhg - diastolic_mmhg
 
 
-fn systemic_vascular_resistance(
+def systemic_vascular_resistance(
     map_mmhg: Float64, cvp_mmhg: Float64, co_l_per_min: Float64
 ) -> Float64:
     """Systemic vascular resistance: SVR = (MAP - CVP) / CO × 80.
@@ -106,7 +106,7 @@ fn systemic_vascular_resistance(
     return (map_mmhg - cvp_mmhg) / co_l_per_min * 80.0
 
 
-fn rate_pressure_product(
+def rate_pressure_product(
     heart_rate: Float64, systolic_mmhg: Float64
 ) -> Float64:
     """Rate-pressure product (double product) — myocardial O2 demand index.
@@ -123,7 +123,7 @@ fn rate_pressure_product(
     return heart_rate * systolic_mmhg
 
 
-fn left_ventricular_work(
+def left_ventricular_work(
     stroke_volume_l: Float64, map_mmhg: Float64
 ) -> Float64:
     """Left ventricular stroke work: LSW = SV × MAP × 0.0136.
@@ -138,7 +138,7 @@ fn left_ventricular_work(
     return stroke_volume_l * map_mmhg * 0.0136 * 1000.0
 
 
-fn coronary_perfusion_pressure(
+def coronary_perfusion_pressure(
     diastolic_mmhg: Float64, lvedp_mmhg: Float64
 ) -> Float64:
     """Coronary perfusion pressure: CPP = DBP - LVEDP.
@@ -153,7 +153,7 @@ fn coronary_perfusion_pressure(
     return diastolic_mmhg - lvedp_mmhg
 
 
-fn fick_cardiac_output(
+def fick_cardiac_output(
     vo2_ml_per_min: Float64, cao2: Float64, cvo2: Float64
 ) -> Float64:
     """Cardiac output by Fick principle: CO = VO2 / (CaO2 - CvO2).

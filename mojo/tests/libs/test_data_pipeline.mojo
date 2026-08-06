@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from data_pipeline import sequence_packing_efficiency, deduplication_minhash_band, curriculum_difficulty_score, dataset_mixing_weight, token_accounting_cost, quality_filter_score, shard_balance_score, streaming_buffer_fullness, epoch_sample_index, data_augmentation_weight
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

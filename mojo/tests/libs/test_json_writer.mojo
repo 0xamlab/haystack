@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from json.writer import json_escape_string, json_object_start, json_object_end, json_add_string, json_add_int, json_add_float, json_add_bool, json_add_null, json_add_array_float, json_add_raw
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -30,7 +30,7 @@ from std.math import exp, sqrt, tanh
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -38,7 +38,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -54,7 +54,7 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1) from the caller's RNG state."""
     state = _xorshift64(state)
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
@@ -63,7 +63,7 @@ fn _rand_unit(mut state: UInt64) -> Float64:
 # ── numerics ─────────────────────────────────────────────────────────────────
 
 
-fn _sigmoid(v: Float64) -> Float64:
+def _sigmoid(v: Float64) -> Float64:
     """Numerically stable logistic sigmoid."""
     if v >= 0.0:
         return 1.0 / (1.0 + exp(-v))
@@ -71,7 +71,7 @@ fn _sigmoid(v: Float64) -> Float64:
     return e / (1.0 + e)
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64](capacity=n)
     for _ in range(n):
         out.append(0.0)
@@ -91,7 +91,7 @@ struct LSTMState(Copyable, Movable):
     var o_gate: List[Float64]
     var c_tanh: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.h = List[Float64]()
         self.c = List[Float64]()
         self.i_gate = List[Float64]()
@@ -110,7 +110,7 @@ struct LSTMGrads(Copyable, Movable):
     var dU: List[Float64]
     var db: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.dx = List[Float64]()
         self.dh_prev = List[Float64]()
         self.dc_prev = List[Float64]()
@@ -127,7 +127,7 @@ struct GRUState(Copyable, Movable):
     var n_cand: List[Float64]
     var s_reset: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.h = List[Float64]()
         self.r_gate = List[Float64]()
         self.z_gate = List[Float64]()
@@ -143,7 +143,7 @@ struct GRUGrads(Copyable, Movable):
     var dU: List[Float64]
     var db: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.dx = List[Float64]()
         self.dh_prev = List[Float64]()
         self.dW = List[Float64]()
@@ -157,7 +157,7 @@ struct RNNParams(Copyable, Movable):
     var U: List[Float64]
     var b: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.W = List[Float64]()
         self.U = List[Float64]()
         self.b = List[Float64]()
@@ -166,7 +166,7 @@ struct RNNParams(Copyable, Movable):
 # ── lstm_cell_forward ────────────────────────────────────────────────────────
 
 
-fn lstm_cell_forward(
+def lstm_cell_forward(
     x: List[Float64],
     h_prev: List[Float64],
     c_prev: List[Float64],
@@ -242,7 +242,7 @@ fn lstm_cell_forward(
 # ── lstm_cell_backward ───────────────────────────────────────────────────────
 
 
-fn lstm_cell_backward(
+def lstm_cell_backward(
     dh: List[Float64],
     dc: List[Float64],
     cache: LSTMState,
@@ -327,7 +327,7 @@ fn lstm_cell_backward(
 # ── gru_cell_forward ─────────────────────────────────────────────────────────
 
 
-fn gru_cell_forward(
+def gru_cell_forward(
     x: List[Float64],
     h_prev: List[Float64],
     W_flat: List[Float64],
@@ -403,7 +403,7 @@ fn gru_cell_forward(
 # ── gru_cell_backward ────────────────────────────────────────────────────────
 
 
-fn gru_cell_backward(
+def gru_cell_backward(
     dh: List[Float64],
     cache: GRUState,
     x: List[Float64],
@@ -504,14 +504,14 @@ fn gru_cell_backward(
 # ── param counts ─────────────────────────────────────────────────────────────
 
 
-fn lstm_param_count(input_size: Int, hidden: Int) -> Int:
+def lstm_param_count(input_size: Int, hidden: Int) -> Int:
     """Total LSTM cell parameters: 4*hidden*(input_size + hidden + 1)."""
     if input_size < 0 or hidden <= 0:
         return 0
     return 4 * hidden * (input_size + hidden + 1)
 
 
-fn gru_param_count(input_size: Int, hidden: Int) -> Int:
+def gru_param_count(input_size: Int, hidden: Int) -> Int:
     """Total GRU cell parameters: 3*hidden*(input_size + hidden + 1)."""
     if input_size < 0 or hidden <= 0:
         return 0
@@ -521,7 +521,7 @@ fn gru_param_count(input_size: Int, hidden: Int) -> Int:
 # ── init helpers ─────────────────────────────────────────────────────────────
 
 
-fn xavier_flat(
+def xavier_flat(
     rows: Int, cols: Int, fan_in: Int, fan_out: Int, seed: Int
 ) -> List[Float64]:
     """Seeded Xavier/Glorot uniform flat [rows x cols] matrix (row-major).
@@ -541,7 +541,7 @@ fn xavier_flat(
     return out^
 
 
-fn init_lstm_params(input_size: Int, hidden: Int, seed: Int) -> RNNParams:
+def init_lstm_params(input_size: Int, hidden: Int, seed: Int) -> RNNParams:
     """Seeded LSTM parameter init.
 
     W [4*hidden x input_size] xavier with fans (input_size, hidden);
@@ -561,7 +561,7 @@ fn init_lstm_params(input_size: Int, hidden: Int, seed: Int) -> RNNParams:
     return out^
 
 
-fn init_gru_params(input_size: Int, hidden: Int, seed: Int) -> RNNParams:
+def init_gru_params(input_size: Int, hidden: Int, seed: Int) -> RNNParams:
     """Seeded GRU parameter init.
 
     W [3*hidden x input_size] xavier with fans (input_size, hidden);

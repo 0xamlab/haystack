@@ -89,42 +89,42 @@ from optimization.quadratic import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _rep(value: Int, n: Int) -> List[Int]:
+def _rep(value: Int, n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(value)
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -133,7 +133,7 @@ fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _exact(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -142,7 +142,7 @@ fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _bits_identical(a: QPSolution, b: QPSolution) -> Bool:
+def _bits_identical(a: QPSolution, b: QPSolution) -> Bool:
     """Bit-for-bit, not approximately: a reproducible search reproduces every field."""
     if a.status != b.status or a.path_signature != b.path_signature:
         return False
@@ -161,7 +161,7 @@ fn _bits_identical(a: QPSolution, b: QPSolution) -> Bool:
     return _exact(a.upper_duals, b.upper_duals)
 
 
-fn _invariant(s: QPSolution) -> Bool:
+def _invariant(s: QPSolution) -> Bool:
     """The module's own stated invariant: a point is returned only when it was verified.
 
     Asserted for EVERY status the suite produces, including the successful ones, because the
@@ -190,26 +190,26 @@ fn _invariant(s: QPSolution) -> Bool:
 # -(11.25 + 30) = -41.25. Both variables are strictly positive there, so both bound
 # multipliers are 0 and the duals solve  [1 1; 5 9]ᵀ μ = (5, 8):  μ = (1.25, 0.75) and the
 # reported duals are their negations, -1.25 and -0.75 (relaxing a `<=` row lowers a minimum).
-fn _lp_c() -> List[Float64]:
+def _lp_c() -> List[Float64]:
     return _floats(-5.0, -8.0)
 
 
-fn _lp_a() -> List[Float64]:
+def _lp_a() -> List[Float64]:
     return _floats(1.0, 1.0, 5.0, 9.0)
 
 
-fn _lp_b() -> List[Float64]:
+def _lp_b() -> List[Float64]:
     return _floats(6.0, 45.0)
 
 
 # The same rows with a different objective, chosen so a variable sits AT its lower bound at
 # the optimum: minimise -5x - y puts the answer at (6, 0), row 2 slack (30 < 45, dual 0), and
 # the bound multiplier of y is 4 — which is precisely lp_solve's reduced cost for y.
-fn _lp2_c() -> List[Float64]:
+def _lp2_c() -> List[Float64]:
     return _floats(-5.0, -1.0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

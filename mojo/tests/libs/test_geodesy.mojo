@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from geodesy import haversine_distance, vincenty_distance, initial_bearing, destination_point, midpoint, cross_track_distance, along_track_distance, geodetic_to_ecef, ecef_to_geodetic, rhumb_distance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

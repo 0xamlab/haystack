@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from stats_bootstrap import bootstrap_replicate, bootstrap_mean_ci, bootstrap_std_ci, bootstrap_median_ci, bootstrap_bias, bootstrap_se, bootstrap_test, jackknife_mean, jackknife_se, bca_correction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

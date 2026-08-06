@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from silviculture import basal_area, stand_basal_area, site_index, volume_scribner, timber_yield_per_ha, relative_density_index, reineke_sdi, mean_annual_increment, current_annual_increment, thinning_ratio
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

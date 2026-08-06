@@ -41,17 +41,17 @@ from privacy import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -59,7 +59,7 @@ fn _assert_eq(a: Int, b: Int, msg: String) raises:
 # ── Pipeline Tests ───────────────────────────────────────────────────────────
 
 
-fn test_pipeline() raises:
+def test_pipeline() raises:
     print("── Pipeline tests ──")
     var count = 0
 
@@ -221,7 +221,7 @@ fn test_pipeline() raises:
 # ── Cache Tests ──────────────────────────────────────────────────────────────
 
 
-fn test_cache() raises:
+def test_cache() raises:
     print("── Cache tests ──")
     var count = 0
 
@@ -317,7 +317,7 @@ fn test_cache() raises:
 # ── Privacy Tests ────────────────────────────────────────────────────────────
 
 
-fn test_privacy() raises:
+def test_privacy() raises:
     print("── Privacy tests ──")
     var count = 0
 
@@ -448,7 +448,7 @@ fn test_privacy() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 26 — Data Pipeline, Advanced Caching, Differential Privacy")
     print("=" * 60)

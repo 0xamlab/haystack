@@ -12,7 +12,7 @@ from std.math import abs as fabs
 # ── Trapezoidal rule ──────────────────────────────────────────────────────────
 
 
-fn trapezoid(y: List[Float64], dx: Float64) -> Float64:
+def trapezoid(y: List[Float64], dx: Float64) -> Float64:
     """Trapezoidal rule for equally-spaced data.
     ∫ ≈ dx * (y[0]/2 + y[1] + y[2] + ... + y[n-1]/2)"""
     var n = len(y)
@@ -27,7 +27,7 @@ fn trapezoid(y: List[Float64], dx: Float64) -> Float64:
 # ── Simpson's 1/3 rule ───────────────────────────────────────────────────────
 
 
-fn simpson(y: List[Float64], dx: Float64) -> Float64:
+def simpson(y: List[Float64], dx: Float64) -> Float64:
     """Simpson's 1/3 rule for equally-spaced data.
     Requires an odd number of points (even number of intervals).
     If even number of points, falls back to composite Simpson + trapezoid for last interval."""
@@ -61,7 +61,7 @@ fn simpson(y: List[Float64], dx: Float64) -> Float64:
 # ── Romberg integration ──────────────────────────────────────────────────────
 
 
-fn romberg(y: List[Float64], dx: Float64, max_iter: Int = 10) -> Float64:
+def romberg(y: List[Float64], dx: Float64, max_iter: Int = 10) -> Float64:
     """Romberg integration using Richardson extrapolation on trapezoidal estimates.
     y: equally-spaced data, dx: spacing.
     Uses as many levels as possible given the data length."""
@@ -118,7 +118,7 @@ fn romberg(y: List[Float64], dx: Float64, max_iter: Int = 10) -> Float64:
 # ── Cumulative trapezoid ──────────────────────────────────────────────────────
 
 
-fn cumulative_trapezoid(y: List[Float64], dx: Float64) -> List[Float64]:
+def cumulative_trapezoid(y: List[Float64], dx: Float64) -> List[Float64]:
     """Cumulative integral using the trapezoidal rule.
     Returns a list of length len(y)-1 with running integral values."""
     var n = len(y)
@@ -137,7 +137,7 @@ fn cumulative_trapezoid(y: List[Float64], dx: Float64) -> List[Float64]:
 # ── Polynomial integration ────────────────────────────────────────────────────
 
 
-fn integrate_poly(coeffs: List[Float64], a: Float64, b: Float64) -> Float64:
+def integrate_poly(coeffs: List[Float64], a: Float64, b: Float64) -> Float64:
     """Exact integral of a polynomial from a to b.
     coeffs[i] is the coefficient of x^i, so:
       p(x) = coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + ...
@@ -159,7 +159,7 @@ fn integrate_poly(coeffs: List[Float64], a: Float64, b: Float64) -> Float64:
 # ── Gauss-Legendre quadrature (5-point) ──────────────────────────────────────
 
 
-fn quad_gauss_legendre(y_values: List[Float64], a: Float64, b: Float64) -> Float64:
+def quad_gauss_legendre(y_values: List[Float64], a: Float64, b: Float64) -> Float64:
     """5-point Gauss-Legendre quadrature approximation.
     y_values: function values sampled at the 5 Gauss-Legendre nodes mapped to [a, b].
     

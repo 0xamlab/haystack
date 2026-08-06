@@ -165,7 +165,7 @@ struct PropensityFit(Copyable, Movable):
     var min_score_control: Float64
     var max_score_control: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_scores = False
         self.scores = List[Float64]()
@@ -224,7 +224,7 @@ struct OverlapReport(Copyable, Movable):
     var standardized_diff: Float64
     var has_standardized_diff: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_report = False
         self.support_lo = 0.0
@@ -279,7 +279,7 @@ struct IpwEstimate(Copyable, Movable):
     var ess_treated: Float64
     var ess_control: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_estimate = False
         self.ate_ht = 0.0
@@ -327,7 +327,7 @@ struct MatchReport(Copyable, Movable):
     var with_replacement: Bool
     var n_controls_used: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_estimate = False
         self.att = 0.0
@@ -349,7 +349,7 @@ struct MatchReport(Copyable, Movable):
 # ── propensity_fit ───────────────────────────────────────────────────────────
 
 
-fn propensity_fit(
+def propensity_fit(
     x: List[Float64], n_units: Int, n_features: Int, treatment: List[Int],
     l2: Float64, max_iter: Int, tol: Float64,
 ) -> PropensityFit:
@@ -490,7 +490,7 @@ fn propensity_fit(
 # ── overlap_report ───────────────────────────────────────────────────────────
 
 
-fn overlap_report(
+def overlap_report(
     scores: List[Float64], treatment: List[Int], eps: Float64
 ) -> OverlapReport:
     """Common support and balance on the propensity score. Checkable, so checked.
@@ -611,7 +611,7 @@ fn overlap_report(
 # ── ipw_ate ──────────────────────────────────────────────────────────────────
 
 
-fn ipw_ate(
+def ipw_ate(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     trim_eps: Float64, extreme_weight_threshold: Float64,
 ) -> IpwEstimate:
@@ -772,7 +772,7 @@ fn ipw_ate(
 # ── matching ─────────────────────────────────────────────────────────────────
 
 
-fn match_nearest(
+def match_nearest(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     caliper: Float64, with_replacement: Bool,
 ) -> MatchReport:
@@ -885,7 +885,7 @@ fn match_nearest(
     return out^
 
 
-fn match_optimal(
+def match_optimal(
     outcomes: List[Float64], treatment: List[Int], scores: List[Float64],
     caliper: Float64,
 ) -> MatchReport:

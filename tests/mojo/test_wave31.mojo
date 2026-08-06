@@ -39,12 +39,12 @@ from currency import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -52,32 +52,32 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helper: build float lists ───────────────────────────────────────────────
 
 
-fn _lf2(a: Float64, b: Float64) -> List[Float64]:
+def _lf2(a: Float64, b: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a); v.append(b)
     return v^
 
 
-fn _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _lf3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a); v.append(b); v.append(c)
     return v^
 
 
-fn _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a); v.append(b); v.append(c); v.append(d)
     return v^
 
 
-fn _lb(vals: List[Bool]) -> List[Bool]:
+def _lb(vals: List[Bool]) -> List[Bool]:
     return List[Bool](copy=vals)
 
 
 # ── Convex Optimization tests ───────────────────────────────────────────────
 
 
-fn test_eval_function_quadratic() raises:
+def test_eval_function_quadratic() raises:
     var x = _lf2(0.0, 0.0)
     _assert_close(eval_function(x, 0), 0.0, 1e-12, "eval_function([0,0], 0)")
     print("  ✓ eval_function([0,0], quadratic) == 0")
@@ -87,13 +87,13 @@ fn test_eval_function_quadratic() raises:
     print("  ✓ eval_function([3,4], quadratic) == 25")
 
 
-fn test_eval_function_rosenbrock() raises:
+def test_eval_function_rosenbrock() raises:
     var x = _lf2(1.0, 1.0)
     _assert_close(eval_function(x, 1), 0.0, 1e-12, "Rosenbrock at [1,1]")
     print("  ✓ eval_function([1,1], Rosenbrock) == 0")
 
 
-fn test_compute_gradient_quadratic() raises:
+def test_compute_gradient_quadratic() raises:
     var x = _lf2(0.0, 0.0)
     var g = compute_gradient(x, 0)
     _assert_close(g[0], 0.0, 1e-12, "grad[0] at origin")
@@ -107,7 +107,7 @@ fn test_compute_gradient_quadratic() raises:
     print("  ✓ compute_gradient([3,-2], quadratic) == [6,-4]")
 
 
-fn test_l2_norm() raises:
+def test_l2_norm() raises:
     var x = _lf2(3.0, 4.0)
     _assert_close(l2_norm(x), 5.0, 1e-12, "l2_norm([3,4])")
     print("  ✓ l2_norm([3,4]) == 5.0")
@@ -117,7 +117,7 @@ fn test_l2_norm() raises:
     print("  ✓ l2_norm([0,0]) == 0.0")
 
 
-fn test_vector_sub() raises:
+def test_vector_sub() raises:
     var a = _lf3(5.0, 3.0, 1.0)
     var b = _lf3(1.0, 2.0, 3.0)
     var c = vector_sub(a, b)
@@ -127,7 +127,7 @@ fn test_vector_sub() raises:
     print("  ✓ vector_sub([5,3,1], [1,2,3]) == [4,1,-2]")
 
 
-fn test_proximal_l1() raises:
+def test_proximal_l1() raises:
     var x = _lf3(0.5, -0.5, 2.0)
     var result = proximal_l1(x, 1.0)
     _assert_close(result[0], 0.0, 1e-12, "prox[0]")
@@ -142,7 +142,7 @@ fn test_proximal_l1() raises:
     print("  ✓ proximal_l1([3,-3], 0.5) == [2.5,-2.5]")
 
 
-fn test_gradient_descent_quadratic() raises:
+def test_gradient_descent_quadratic() raises:
     var x0 = _lf2(5.0, 5.0)
     var result = gradient_descent(x0, 0.1, 1000, 1e-8, 0)
     _assert_close(result[0], 0.0, 1e-4, "GD x[0]")
@@ -150,7 +150,7 @@ fn test_gradient_descent_quadratic() raises:
     print("  ✓ gradient_descent([5,5]) ≈ [0,0] for quadratic")
 
 
-fn test_gradient_descent_converges() raises:
+def test_gradient_descent_converges() raises:
     var x0 = _lf2(10.0, -10.0)
     var result = gradient_descent(x0, 0.1, 2000, 1e-10, 0)
     var fval = eval_function(result, 0)
@@ -158,7 +158,7 @@ fn test_gradient_descent_converges() raises:
     print("  ✓ gradient_descent from [10,-10] converges (f=" + String(fval) + ")")
 
 
-fn test_projected_gradient_descent() raises:
+def test_projected_gradient_descent() raises:
     var x0 = _lf2(5.0, 5.0)
     var result = projected_gradient_descent(x0, 0.1, 1000, 1.0, 3.0, 0)
     # Result should be within bounds [1, 3]
@@ -172,7 +172,7 @@ fn test_projected_gradient_descent() raises:
     print("  ✓ projected_gradient_descent within bounds [1,3]")
 
 
-fn test_adam_optimizer() raises:
+def test_adam_optimizer() raises:
     var x0 = _lf2(5.0, 5.0)
     var result = adam_optimizer(x0, 0.1, 1000, 0)
     _assert(fabs(result[0]) < 0.5, "Adam x[0] near 0")
@@ -180,7 +180,7 @@ fn test_adam_optimizer() raises:
     print("  ✓ adam_optimizer([5,5]) converges near [0,0]")
 
 
-fn test_line_search() raises:
+def test_line_search() raises:
     var x = _lf2(5.0, 5.0)
     var g = compute_gradient(x, 0)
     var step = line_search_backtrack(x, g, 0)
@@ -192,7 +192,7 @@ fn test_line_search() raises:
 # ── Survival Analysis tests ─────────────────────────────────────────────────
 
 
-fn test_kaplan_meier_basic() raises:
+def test_kaplan_meier_basic() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -217,7 +217,7 @@ fn test_kaplan_meier_basic() raises:
     print("  ✓ kaplan_meier values correct: 0.8, 0.6, 0.4...")
 
 
-fn test_kaplan_meier_censored() raises:
+def test_kaplan_meier_censored() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -232,7 +232,7 @@ fn test_kaplan_meier_censored() raises:
     print("  ✓ kaplan_meier with censoring")
 
 
-fn test_median_survival() raises:
+def test_median_survival() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -247,7 +247,7 @@ fn test_median_survival() raises:
     print("  ✓ median_survival == 3.0")
 
 
-fn test_nelson_aalen() raises:
+def test_nelson_aalen() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     var events = List[Bool]()
@@ -262,7 +262,7 @@ fn test_nelson_aalen() raises:
     print("  ✓ nelson_aalen cumulative hazard increases")
 
 
-fn test_survival_at_time() raises:
+def test_survival_at_time() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -280,7 +280,7 @@ fn test_survival_at_time() raises:
     print("  ✓ survival_at_time(1.5) == 0.8")
 
 
-fn test_restricted_mean() raises:
+def test_restricted_mean() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -296,7 +296,7 @@ fn test_restricted_mean() raises:
     print("  ✓ restricted_mean > 0 (" + String(rmst) + ")")
 
 
-fn test_log_rank_statistic() raises:
+def test_log_rank_statistic() raises:
     # Group 1: faster failures
     var t1 = List[Float64]()
     t1.append(1.0); t1.append(2.0); t1.append(3.0)
@@ -315,7 +315,7 @@ fn test_log_rank_statistic() raises:
     print("  ✓ log_rank_statistic finite (" + String(stat) + ")")
 
 
-fn test_life_table() raises:
+def test_life_table() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.5); times.append(3.0)
     times.append(4.5); times.append(6.0)
@@ -335,7 +335,7 @@ fn test_life_table() raises:
     print("  ✓ life_table correct interval counts")
 
 
-fn test_hazard_rate() raises:
+def test_hazard_rate() raises:
     var times = List[Float64]()
     times.append(1.0); times.append(2.0); times.append(3.0)
     times.append(4.0); times.append(5.0)
@@ -352,7 +352,7 @@ fn test_hazard_rate() raises:
 # ── Currency Math tests ──────────────────────────────────────────────────────
 
 
-fn test_round_currency() raises:
+def test_round_currency() raises:
     _assert_close(round_currency(1.235, 2), 1.24, 1e-10, "round 1.235")
     print("  ✓ round_currency(1.235, 2) ≈ 1.24")
 
@@ -363,43 +363,43 @@ fn test_round_currency() raises:
     print("  ✓ round_currency(99.999, 0) ≈ 100")
 
 
-fn test_compound_interest() raises:
+def test_compound_interest() raises:
     var fv = compound_interest(1000.0, 0.05, 10)
     _assert_close(fv, 1628.89, 0.01, "compound_interest(1000, 0.05, 10)")
     print("  ✓ compound_interest(1000, 0.05, 10) ≈ 1628.89")
 
 
-fn test_continuous_compound() raises:
+def test_continuous_compound() raises:
     var fv = continuous_compound(1000.0, 0.05, 10.0)
     _assert_close(fv, 1648.72, 0.01, "continuous_compound(1000, 0.05, 10)")
     print("  ✓ continuous_compound(1000, 0.05, 10) ≈ 1648.72")
 
 
-fn test_amortization_payment() raises:
+def test_amortization_payment() raises:
     var pmt = amortization_payment(100000.0, 0.005, 360)
     _assert_close(pmt, 599.55, 0.01, "amort_pmt(100k, 0.5%, 360)")
     print("  ✓ amortization_payment(100000, 0.005, 360) ≈ 599.55")
 
 
-fn test_present_value() raises:
+def test_present_value() raises:
     var pv = present_value(1000.0, 0.05, 5)
     _assert_close(pv, 783.53, 0.01, "PV(1000, 0.05, 5)")
     print("  ✓ present_value(1000, 0.05, 5) ≈ 783.53")
 
 
-fn test_effective_annual_rate() raises:
+def test_effective_annual_rate() raises:
     var ear = effective_annual_rate(0.12, 12)
     _assert_close(ear, 0.1268, 0.001, "EAR(0.12, 12)")
     print("  ✓ effective_annual_rate(0.12, 12) ≈ 0.1268")
 
 
-fn test_rule_of_72() raises:
+def test_rule_of_72() raises:
     var years = rule_of_72(0.06)
     _assert_close(years, 12.0, 1e-10, "rule_of_72(0.06)")
     print("  ✓ rule_of_72(0.06) == 12.0")
 
 
-fn test_discount_factor() raises:
+def test_discount_factor() raises:
     var df = discount_factor(0.05, 1)
     _assert_close(df, 0.9524, 0.001, "DF(0.05, 1)")
     print("  ✓ discount_factor(0.05, 1) ≈ 0.9524")
@@ -409,7 +409,7 @@ fn test_discount_factor() raises:
     print("  ✓ discount_factor decreases with periods")
 
 
-fn test_amortization_schedule() raises:
+def test_amortization_schedule() raises:
     var sched = amortization_schedule(100000.0, 0.005, 360)
     _assert(len(sched) == 360, "schedule has 360 periods")
     # Final balance should be ~0
@@ -422,21 +422,21 @@ fn test_amortization_schedule() raises:
     print("  ✓ amortization_schedule first interest = 500")
 
 
-fn test_present_value_annuity() raises:
+def test_present_value_annuity() raises:
     var pva = present_value_annuity(100.0, 0.05, 10)
     # PVA = 100 * (1 - 1.05^-10) / 0.05 ≈ 772.17
     _assert_close(pva, 772.17, 0.1, "PVA(100, 0.05, 10)")
     print("  ✓ present_value_annuity(100, 0.05, 10) ≈ 772.17")
 
 
-fn test_future_value_annuity() raises:
+def test_future_value_annuity() raises:
     var fva = future_value_annuity(100.0, 0.05, 10)
     # FVA = 100 * (1.05^10 - 1) / 0.05 ≈ 1257.79
     _assert_close(fva, 1257.79, 0.1, "FVA(100, 0.05, 10)")
     print("  ✓ future_value_annuity(100, 0.05, 10) ≈ 1257.79")
 
 
-fn test_loan_balance_after() raises:
+def test_loan_balance_after() raises:
     var bal = loan_balance_after(100000.0, 0.005, 360, 360)
     _assert(fabs(bal) < 0.01, "loan_balance_after full term ≈ 0")
     print("  ✓ loan_balance_after(100000, 0.005, 360, 360) ≈ 0")
@@ -447,7 +447,7 @@ fn test_loan_balance_after() raises:
     print("  ✓ loan_balance_after 180 payments: " + String(bal_half))
 
 
-fn test_compound_vs_continuous() raises:
+def test_compound_vs_continuous() raises:
     # Continuous compounding always yields more than discrete
     var discrete = compound_interest(1000.0, 0.10, 5)
     var continuous = continuous_compound(1000.0, 0.10, 5.0)
@@ -458,7 +458,7 @@ fn test_compound_vs_continuous() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 31 — Convex Optimization, Survival Analysis, Currency Math")
     print("=" * 60)

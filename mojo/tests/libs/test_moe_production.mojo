@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from moe_production import token_drop_fraction, expert_load_imbalance, communication_efficiency_moe, expert_affinity_score, capacity_overflow_penalty, expert_shard_memory_bytes, routing_entropy_balance, gradient_through_router, expert_activation_sparsity, dynamic_capacity_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -74,7 +74,7 @@ from streaming.quantiles import (
 )
 
 
-fn _ramp(n: Int) -> List[Float64]:
+def _ramp(n: Int) -> List[Float64]:
     """1.0 .. n, in order. The sequence whose quantiles a reader can count."""
     var out = List[Float64]()
     for i in range(1, n + 1):
@@ -82,7 +82,7 @@ fn _ramp(n: Int) -> List[Float64]:
     return out^
 
 
-fn _shuffled(n: Int, seed: Int) -> List[Float64]:
+def _shuffled(n: Int, seed: Int) -> List[Float64]:
     """1.0 .. n in a fixed permutation, so order cannot be what makes an answer right."""
     var out = List[Float64]()
     var step = 2 * seed + 1
@@ -91,7 +91,7 @@ fn _shuffled(n: Int, seed: Int) -> List[Float64]:
     return out^
 
 
-fn _exact_rank(sorted_values: List[Float64], x: Float64) -> Int:
+def _exact_rank(sorted_values: List[Float64], x: Float64) -> Int:
     """How many elements of an ascending list are <= `x`. The oracle for every rank claim."""
     var seen = 0
     for i in range(len(sorted_values)):
@@ -102,7 +102,7 @@ fn _exact_rank(sorted_values: List[Float64], x: Float64) -> Int:
     return seen
 
 
-fn _ceil_rank(q: Float64, n: Int) -> Int:
+def _ceil_rank(q: Float64, n: Int) -> Int:
     """`ceil(q * n)` by INTEGER arithmetic, so the oracle shares no rounding with the kernel.
 
     `q` here is always `i / 100`, so `q * n` is exactly `i * n / 100` as a rational, and the
@@ -119,7 +119,7 @@ fn _ceil_rank(q: Float64, n: Int) -> Int:
     return target
 
 
-fn main() raises:
+def main() raises:
     print("Running streaming.quantiles known-value tests...")
     var passed = 0
     var failed = 0

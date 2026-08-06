@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from paleomagnetism import virtual_geomagnetic_pole_lat, sin_approx, cos_approx, atan_approx, paleolatitude, geomagnetic_intensity, declination_correction, magnetic_reversal_rate, koenigsberger_ratio, stability_index, rock_magnetic_susceptibility, anhysteretic_remanence, coercivity_spectrum_median
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

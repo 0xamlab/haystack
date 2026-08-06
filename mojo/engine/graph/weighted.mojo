@@ -35,13 +35,13 @@ struct WeightedEdge(Copyable, Movable):
     var dst: Int
     var weight: Float64
 
-    fn __init__(out self, src: Int, dst: Int, weight: Float64):
+    def __init__(out self, src: Int, dst: Int, weight: Float64):
         self.src = src
         self.dst = dst
         self.weight = weight
 
 
-fn _edges_valid(n: Int, edges: List[WeightedEdge]) -> Bool:
+def _edges_valid(n: Int, edges: List[WeightedEdge]) -> Bool:
     """True when n >= 0 and every edge endpoint lies in [0, n).
 
     Endpoint values are used directly as indices into dist/parent arrays; an
@@ -58,7 +58,7 @@ fn _edges_valid(n: Int, edges: List[WeightedEdge]) -> Bool:
 # ── Union-Find ───────────────────────────────────────────────────────────────
 
 
-fn union_find_create(n: Int) -> List[Int]:
+def union_find_create(n: Int) -> List[Int]:
     """Create Union-Find parent array (each node is its own parent)."""
     var parent = List[Int]()
     for i in range(n):
@@ -66,7 +66,7 @@ fn union_find_create(n: Int) -> List[Int]:
     return parent^
 
 
-fn union_find_find(mut parent: List[Int], x: Int) -> Int:
+def union_find_find(mut parent: List[Int], x: Int) -> Int:
     """Find root with path compression."""
     if x < 0 or x >= len(parent):
         return -1
@@ -86,7 +86,7 @@ fn union_find_find(mut parent: List[Int], x: Int) -> Int:
     return parent[x]
 
 
-fn union_find_union(mut parent: List[Int], x: Int, y: Int) -> Bool:
+def union_find_union(mut parent: List[Int], x: Int, y: Int) -> Bool:
     """Union two sets. Returns True if they were in different sets."""
     var rx = union_find_find(parent, x)
     var ry = union_find_find(parent, y)
@@ -101,7 +101,7 @@ fn union_find_union(mut parent: List[Int], x: Int, y: Int) -> Bool:
 # ── _sort_edges (insertion sort by weight) ───────────────────────────────────
 
 
-fn _sort_edges(mut edges: List[WeightedEdge]):
+def _sort_edges(mut edges: List[WeightedEdge]):
     """Sort edges by weight using insertion sort."""
     var n = len(edges)
     for i in range(1, n):
@@ -118,7 +118,7 @@ fn _sort_edges(mut edges: List[WeightedEdge]):
 # ── kruskal_mst ──────────────────────────────────────────────────────────────
 
 
-fn kruskal_mst(n_nodes: Int, edges: List[WeightedEdge]) -> List[WeightedEdge]:
+def kruskal_mst(n_nodes: Int, edges: List[WeightedEdge]) -> List[WeightedEdge]:
     """Kruskal's MST using Union-Find. Returns MST edges."""
     if n_nodes <= 0 or not _edges_valid(n_nodes, edges):
         return List[WeightedEdge]()
@@ -143,7 +143,7 @@ fn kruskal_mst(n_nodes: Int, edges: List[WeightedEdge]) -> List[WeightedEdge]:
 # ── mst_total_weight ─────────────────────────────────────────────────────────
 
 
-fn mst_total_weight(mst_edges: List[WeightedEdge]) -> Float64:
+def mst_total_weight(mst_edges: List[WeightedEdge]) -> Float64:
     """Sum of MST edge weights."""
     var total: Float64 = 0.0
     for i in range(len(mst_edges)):
@@ -154,7 +154,7 @@ fn mst_total_weight(mst_edges: List[WeightedEdge]) -> Float64:
 # ── floyd_warshall ───────────────────────────────────────────────────────────
 
 
-fn floyd_warshall(n: Int, edges: List[WeightedEdge]) -> List[List[Float64]]:
+def floyd_warshall(n: Int, edges: List[WeightedEdge]) -> List[List[Float64]]:
     """All-pairs shortest paths. Returns n×n distance matrix."""
     if not _edges_valid(n, edges):
         return List[List[Float64]]()
@@ -187,7 +187,7 @@ fn floyd_warshall(n: Int, edges: List[WeightedEdge]) -> List[List[Float64]]:
 # ── bellman_ford ─────────────────────────────────────────────────────────────
 
 
-fn bellman_ford(
+def bellman_ford(
     n: Int, edges: List[WeightedEdge], source: Int
 ) -> List[Float64]:
     """Single-source shortest paths allowing negative edges."""
@@ -214,7 +214,7 @@ fn bellman_ford(
 # ── has_negative_cycle ───────────────────────────────────────────────────────
 
 
-fn has_negative_cycle(n: Int, edges: List[WeightedEdge]) -> Bool:
+def has_negative_cycle(n: Int, edges: List[WeightedEdge]) -> Bool:
     """Check for negative weight cycles using Bellman-Ford from node 0."""
     if not _edges_valid(n, edges):
         return False
@@ -248,7 +248,7 @@ fn has_negative_cycle(n: Int, edges: List[WeightedEdge]) -> Bool:
 # ── shortest_path_dijkstra ───────────────────────────────────────────────────
 
 
-fn shortest_path_dijkstra(
+def shortest_path_dijkstra(
     n: Int, edges: List[WeightedEdge], source: Int
 ) -> List[Float64]:
     """Dijkstra's algorithm for non-negative weights.

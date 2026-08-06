@@ -25,7 +25,7 @@ from std.math import sqrt, abs as fabs
 # ── fire_load_density ────────────────────────────────────────────────────────
 
 
-fn fire_load_density(total_fire_load_mj: Float64, floor_area: Float64) -> Float64:
+def fire_load_density(total_fire_load_mj: Float64, floor_area: Float64) -> Float64:
     """FLD = total_fire_load / floor_area  (MJ/m²)."""
     if floor_area == 0.0:
         return 0.0
@@ -35,7 +35,7 @@ fn fire_load_density(total_fire_load_mj: Float64, floor_area: Float64) -> Float6
 # ── heat_release_rate ────────────────────────────────────────────────────────
 
 
-fn heat_release_rate(mass_loss_rate: Float64, heat_of_combustion: Float64) -> Float64:
+def heat_release_rate(mass_loss_rate: Float64, heat_of_combustion: Float64) -> Float64:
     """HRR = mass_loss_rate * heat_of_combustion  (kW)."""
     return mass_loss_rate * heat_of_combustion
 
@@ -43,7 +43,7 @@ fn heat_release_rate(mass_loss_rate: Float64, heat_of_combustion: Float64) -> Fl
 # ── flashover_mfo ────────────────────────────────────────────────────────────
 
 
-fn flashover_mfo(
+def flashover_mfo(
     area_vent: Float64, height_vent: Float64, area_total: Float64
 ) -> Float64:
     """Q_fo = 750*Av*sqrt(Hv) + 378*At  (Thomas correlation, simplified)."""
@@ -53,7 +53,7 @@ fn flashover_mfo(
 # ── sprinkler_activation_time ────────────────────────────────────────────────
 
 
-fn sprinkler_activation_time(
+def sprinkler_activation_time(
     rti: Float64, gas_temp: Float64, ambient_temp: Float64, velocity: Float64
 ) -> Float64:
     """Simplified: t ≈ RTI / sqrt(v).  (ignores temperature ratio for simplicity)."""
@@ -65,7 +65,7 @@ fn sprinkler_activation_time(
 # ── smoke_layer_height ───────────────────────────────────────────────────────
 
 
-fn smoke_layer_height(
+def smoke_layer_height(
     ceiling_height: Float64, time_s: Float64, hrr: Float64
 ) -> Float64:
     """Simplified: z ≈ H - 0.1 * sqrt(HRR) * sqrt(t) / H."""
@@ -81,7 +81,7 @@ fn smoke_layer_height(
 # ── evacuation_time ──────────────────────────────────────────────────────────
 
 
-fn evacuation_time(
+def evacuation_time(
     population: Float64, exit_width: Float64, flow_rate: Float64
 ) -> Float64:
     """t = population / (exit_width * flow_rate)."""
@@ -94,7 +94,7 @@ fn evacuation_time(
 # ── safe_egress_time ─────────────────────────────────────────────────────────
 
 
-fn safe_egress_time(
+def safe_egress_time(
     detection: Float64, alarm: Float64, pre_movement: Float64, travel: Float64
 ) -> Float64:
     """RSET = detection + alarm + pre_movement + travel."""
@@ -104,7 +104,7 @@ fn safe_egress_time(
 # ── fire_resistance_rating ───────────────────────────────────────────────────
 
 
-fn fire_resistance_rating(thickness_mm: Float64, material_factor: Float64) -> Float64:
+def fire_resistance_rating(thickness_mm: Float64, material_factor: Float64) -> Float64:
     """FRR = thickness * material_factor  (minutes, simplified)."""
     return thickness_mm * material_factor
 
@@ -112,7 +112,7 @@ fn fire_resistance_rating(thickness_mm: Float64, material_factor: Float64) -> Fl
 # ── ventilation_factor ───────────────────────────────────────────────────────
 
 
-fn ventilation_factor(area_opening: Float64, height_opening: Float64) -> Float64:
+def ventilation_factor(area_opening: Float64, height_opening: Float64) -> Float64:
     """Fv = Ao * sqrt(Ho)."""
     return area_opening * sqrt(height_opening)
 
@@ -120,7 +120,7 @@ fn ventilation_factor(area_opening: Float64, height_opening: Float64) -> Float64
 # ── fire_severity ────────────────────────────────────────────────────────────
 
 
-fn fire_severity(fire_load: Float64, vent_factor: Float64) -> Float64:
+def fire_severity(fire_load: Float64, vent_factor: Float64) -> Float64:
     """Severity = fire_load / ventilation_factor  (simplified)."""
     if vent_factor == 0.0:
         return 0.0
@@ -130,7 +130,7 @@ fn fire_severity(fire_load: Float64, vent_factor: Float64) -> Float64:
 # ── co_concentration_danger ──────────────────────────────────────────────────
 
 
-fn co_concentration_danger(ppm: Float64) -> Int:
+def co_concentration_danger(ppm: Float64) -> Int:
     """Returns danger level: 0=safe(<35), 1=warning(35-200), 2=danger(>200)."""
     if ppm > 200.0:
         return 2
@@ -142,7 +142,7 @@ fn co_concentration_danger(ppm: Float64) -> Int:
 # ── occupant_load ────────────────────────────────────────────────────────────
 
 
-fn occupant_load(floor_area: Float64, occupant_factor: Float64) -> Float64:
+def occupant_load(floor_area: Float64, occupant_factor: Float64) -> Float64:
     """OL = floor_area / occupant_factor."""
     if occupant_factor == 0.0:
         return 0.0

@@ -94,7 +94,7 @@ struct TxElemResult(Copyable, Movable):
     var status: Int
 
 
-fn _broadcast_strides(
+def _broadcast_strides(
     own_dims: List[Int], own_rank: Int, result_dims: List[Int], result_rank: Int
 ) -> List[Int]:
     """Per-axis stride of `own_dims` against `result_dims`, right-aligned: 0 on an axis this operand
@@ -113,7 +113,7 @@ fn _broadcast_strides(
     return out^
 
 
-fn _flat_to_coords(flat_index: Int, dims: List[Int], rank: Int, mut coords: List[Int]) -> None:
+def _flat_to_coords(flat_index: Int, dims: List[Int], rank: Int, mut coords: List[Int]) -> None:
     """Decompose `flat_index` (row-major over `dims[0:rank]`) into per-axis coordinates, written
     into the first `rank` entries of `coords` (caller-sized to at least `rank`)."""
     var remaining = flat_index
@@ -128,7 +128,7 @@ fn _flat_to_coords(flat_index: Int, dims: List[Int], rank: Int, mut coords: List
         axis -= 1
 
 
-fn _binary_op(
+def _binary_op(
     op: Int,
     a_bytes: List[UInt8],
     a_dims: List[Int],
@@ -211,7 +211,7 @@ fn _binary_op(
     return TxElemResult(encoded^, result_dims^, result_rank, a_dtype, n_non_finite, TX_OK)
 
 
-fn tx_ew_add(
+def tx_ew_add(
     a_bytes: List[UInt8],
     a_dims: List[Int],
     a_rank: Int,
@@ -235,7 +235,7 @@ fn tx_ew_add(
     )
 
 
-fn tx_ew_sub(
+def tx_ew_sub(
     a_bytes: List[UInt8],
     a_dims: List[Int],
     a_rank: Int,
@@ -259,7 +259,7 @@ fn tx_ew_sub(
     )
 
 
-fn tx_ew_mul(
+def tx_ew_mul(
     a_bytes: List[UInt8],
     a_dims: List[Int],
     a_rank: Int,
@@ -283,7 +283,7 @@ fn tx_ew_mul(
     )
 
 
-fn tx_ew_div(
+def tx_ew_div(
     a_bytes: List[UInt8],
     a_dims: List[Int],
     a_rank: Int,
@@ -308,7 +308,7 @@ fn tx_ew_div(
     )
 
 
-fn tx_ew_cast(bytes: List[UInt8], n: Int, from_dtype: Int, to_dtype: Int) -> List[UInt8]:
+def tx_ew_cast(bytes: List[UInt8], n: Int, from_dtype: Int, to_dtype: Int) -> List[UInt8]:
     """Convert `n` elements from `from_dtype` to `to_dtype`: decode in the FROM dtype's own
     precision, re-encode in the TO dtype's. Empty if either dtype is `int4`/`nf4` or unsupported, or
     if `bytes` is too short to hold `n` elements of `from_dtype`.

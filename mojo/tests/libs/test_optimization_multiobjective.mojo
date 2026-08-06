@@ -96,31 +96,31 @@ from optimization.multiobjective import (
 from sparse_numerics.csr import MAX_CSR_DIM
 
 
-fn _f(*vals: Float64) -> List[Float64]:
+def _f(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _i(*vals: Int) -> List[Int]:
+def _i(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _five_points() -> List[Float64]:
+def _five_points() -> List[Float64]:
     """The spine set: p0=(1,5) p1=(2,3) p2=(4,1) p3=(3,6) p4=(5,4), row-major."""
     return _f(1.0, 5.0, 2.0, 3.0, 4.0, 1.0, 3.0, 6.0, 5.0, 4.0)
 
 
-fn _first_front() -> List[Float64]:
+def _first_front() -> List[Float64]:
     """Front 0 of the spine set on its own: (1,5), (2,3), (4,1)."""
     return _f(1.0, 5.0, 2.0, 3.0, 4.0, 1.0)
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -129,7 +129,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats_exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats_exact(a: List[Float64], b: List[Float64]) -> Bool:
     """Bit-level equality. Used for determinism and for dyadic known values alike."""
     if len(a) != len(b):
         return False
@@ -139,7 +139,7 @@ fn _same_floats_exact(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _all_finite(v: List[Float64]) -> Bool:
+def _all_finite(v: List[Float64]) -> Bool:
     """No `inf` and no `nan` anywhere in a returned vector.
 
     Load-bearing for crowding distance: the textbook algorithm puts an infinity on every
@@ -151,7 +151,7 @@ fn _all_finite(v: List[Float64]) -> Bool:
     return True
 
 
-fn _point_ceiling_fits(points: Int, passes: Int, shared_ceiling: Int) -> Bool:
+def _point_ceiling_fits(points: Int, passes: Int, shared_ceiling: Int) -> Bool:
     """True when `points^2 * passes` fits the one shared csr ceiling.
 
     Written with DIVISIONS, like `sparse_numerics.csr.dims_fit`: `points * points` is a
@@ -168,7 +168,7 @@ fn _point_ceiling_fits(points: Int, passes: Int, shared_ceiling: Int) -> Bool:
     return points <= budget // points
 
 
-fn _dominates_pair(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
+def _dominates_pair(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
     """Does point `i` strictly dominate point `j`, minimising all? Written independently.
 
     A third implementation on purpose: the module has its flat shim, the frozen kernel has the
@@ -185,7 +185,7 @@ fn _dominates_pair(f: List[Float64], n_obj: Int, i: Int, j: Int) -> Bool:
     return strictly_better
 
 
-fn _rank_by_longest_chain(f: List[Float64], n: Int, n_obj: Int) -> List[Int]:
+def _rank_by_longest_chain(f: List[Float64], n: Int, n_obj: Int) -> List[Int]:
     """`rank[i]` = the length of the longest strictly-dominating chain ending at `i`.
 
     An independent characterisation of the WHOLE front decomposition, not just of front 0:
@@ -210,7 +210,7 @@ fn _rank_by_longest_chain(f: List[Float64], n: Int, n_obj: Int) -> List[Int]:
     return rank^
 
 
-fn _near_list(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _near_list(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     """Element-wise closeness. Used ONLY where a tolerance is the honest comparison.
 
     The lexicographic answers are the one place in this file that cannot be asserted
@@ -232,12 +232,12 @@ fn _near_list(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn _dyadic_hv(hv_value: Float64, expected: Float64) -> Bool:
+def _dyadic_hv(hv_value: Float64, expected: Float64) -> Bool:
     """Exact equality. Every hypervolume asserted in this file is a dyadic rational."""
     return hv_value == expected
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

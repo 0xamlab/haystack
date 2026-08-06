@@ -15,7 +15,7 @@ from algenta_runtime.session import ResidentDatasets
 from algenta_runtime.stream import MAX_CHUNK_ROWS, ResidentStreams
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

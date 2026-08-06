@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn temperature_logit_scale(logit: Float64, temperature: Float64) -> Float64:
+def temperature_logit_scale(logit: Float64, temperature: Float64) -> Float64:
     """Scale logit by generation temperature.
 
     logit_scaled = logit / T
@@ -34,7 +34,7 @@ fn temperature_logit_scale(logit: Float64, temperature: Float64) -> Float64:
     return logit / temperature
 
 
-fn top_k_accept(rank: Float64, k: Float64) -> Float64:
+def top_k_accept(rank: Float64, k: Float64) -> Float64:
     """Accept token if its rank ≤ k (top-k sampling).
 
     Args:
@@ -49,7 +49,7 @@ fn top_k_accept(rank: Float64, k: Float64) -> Float64:
     return 0.0
 
 
-fn top_p_cumulative_accept(
+def top_p_cumulative_accept(
     cumulative_prob: Float64, token_prob: Float64, p: Float64
 ) -> Float64:
     """Nucleus (top-p) sampling: accept if cumulative mass < p before this token.
@@ -67,7 +67,7 @@ fn top_p_cumulative_accept(
     return 0.0
 
 
-fn min_p_accept(
+def min_p_accept(
     token_prob: Float64, max_prob: Float64, min_p: Float64
 ) -> Float64:
     """Min-p sampling: accept if prob ≥ min_p × max_prob.
@@ -85,7 +85,7 @@ fn min_p_accept(
     return 0.0
 
 
-fn repetition_penalty_logit(
+def repetition_penalty_logit(
     logit: Float64, penalty: Float64, was_generated: Float64
 ) -> Float64:
     """Apply repetition penalty to previously generated token logits.
@@ -107,7 +107,7 @@ fn repetition_penalty_logit(
     return logit * penalty
 
 
-fn presence_penalty_logit(
+def presence_penalty_logit(
     logit: Float64, penalty: Float64, is_present: Float64
 ) -> Float64:
     """Presence penalty: subtract flat penalty if token appeared at all.
@@ -125,7 +125,7 @@ fn presence_penalty_logit(
     return logit - penalty
 
 
-fn frequency_penalty_logit(
+def frequency_penalty_logit(
     logit: Float64, penalty: Float64, token_count: Float64
 ) -> Float64:
     """Frequency penalty: subtract penalty × occurrence count.
@@ -141,7 +141,7 @@ fn frequency_penalty_logit(
     return logit - penalty * token_count
 
 
-fn eos_stop_score(
+def eos_stop_score(
     eos_prob: Float64, eos_threshold: Float64
 ) -> Float64:
     """Stopping criterion: stop if EOS probability exceeds threshold.
@@ -160,7 +160,7 @@ fn eos_stop_score(
     return 0.0
 
 
-fn eta_sampling_accept(
+def eta_sampling_accept(
     token_prob: Float64, entropy: Float64, eta: Float64
 ) -> Float64:
     """Eta (entropy-adaptive) sampling acceptance.
@@ -182,7 +182,7 @@ fn eta_sampling_accept(
     return 0.0
 
 
-fn typical_sampling_accept(
+def typical_sampling_accept(
     token_log_prob: Float64, entropy: Float64, tau: Float64
 ) -> Float64:
     """Locally typical sampling: accept if |−log p − H| ≤ τ.

@@ -37,7 +37,7 @@ from conv import parse_float64
 
 # ── String helper ─────────────────────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes = s.as_bytes()
     var n = len(s)
@@ -59,7 +59,7 @@ struct ColProfile(Copyable, Movable):
     var mean: Float64
     var std: Float64
 
-    fn __init__(out self, name: String, semantic_type: String, polarity: Int,
+    def __init__(out self, name: String, semantic_type: String, polarity: Int,
                 distribution: String, mean: Float64, std: Float64):
         self.name = name
         self.semantic_type = semantic_type
@@ -71,7 +71,7 @@ struct ColProfile(Copyable, Movable):
 
 # ── Name normalization ────────────────────────────────────────────────────────
 
-fn _normalize_name(s: String) -> String:
+def _normalize_name(s: String) -> String:
     """Lowercase, strip separators, expand abbreviations."""
     var lower = to_lower(s)
     var result = String("")
@@ -103,7 +103,7 @@ fn _normalize_name(s: String) -> String:
 
 # ── Scoring components ────────────────────────────────────────────────────────
 
-fn _name_score(a: String, b: String) -> Float64:
+def _name_score(a: String, b: String) -> Float64:
     var la = _normalize_name(a)
     var lb = _normalize_name(b)
     if la == lb:
@@ -119,7 +119,7 @@ fn _name_score(a: String, b: String) -> Float64:
     return score
 
 
-fn _semantic_type_score(type_a: String, type_b: String) -> Float64:
+def _semantic_type_score(type_a: String, type_b: String) -> Float64:
     if type_a == type_b:
         return 1.0
     if type_a == "id" or type_b == "id":
@@ -137,7 +137,7 @@ fn _semantic_type_score(type_a: String, type_b: String) -> Float64:
     return 0.0
 
 
-fn _polarity_score(pol_a: Int, pol_b: Int) -> Float64:
+def _polarity_score(pol_a: Int, pol_b: Int) -> Float64:
     if pol_a == pol_b:
         return 1.0
     if pol_a == 0 or pol_b == 0:
@@ -145,7 +145,7 @@ fn _polarity_score(pol_a: Int, pol_b: Int) -> Float64:
     return 0.2
 
 
-fn _distribution_score(dist_a: String, dist_b: String,
+def _distribution_score(dist_a: String, dist_b: String,
                         mean_a: Float64, mean_b: Float64,
                         std_a: Float64, std_b: Float64) -> Float64:
     var base: Float64 = 0.0
@@ -169,7 +169,7 @@ fn _distribution_score(dist_a: String, dist_b: String,
 
 # ── JSON column array parser ──────────────────────────────────────────────────
 
-fn _parse_col_profiles(arr_str: String) -> List[ColProfile]:
+def _parse_col_profiles(arr_str: String) -> List[ColProfile]:
     """Parse JSON array of column profile objects into List[ColProfile]."""
     var result = List[ColProfile]()
     var n = len(arr_str)
@@ -226,7 +226,7 @@ fn _parse_col_profiles(arr_str: String) -> List[ColProfile]:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-fn run_column_match(raw: String) raises -> String:
+def run_column_match(raw: String) raises -> String:
     """Score every N×M column pair between two sources. Returns ranked matches."""
     var source_a = json_get_string(raw, "source_a")
     var source_b = json_get_string(raw, "source_b")

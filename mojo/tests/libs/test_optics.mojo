@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from optics import snells_law, critical_angle, fresnel_reflectance_normal, thin_lens_equation, magnification, wavelength_to_frequency, photon_energy, diffraction_limit, brewster_angle, numerical_aperture
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

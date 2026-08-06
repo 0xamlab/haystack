@@ -42,7 +42,7 @@ from query.aggregate import (
 )
 
 
-fn _batch() -> RecordBatch:
+def _batch() -> RecordBatch:
     """region = [1,1,2,2,2,null];  amount = [10,20,30,40,null,100]."""
     var region = List[Float64]()
     region.append(1.0)
@@ -80,7 +80,7 @@ fn _batch() -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, 6)
 
 
-fn _group_index(result: GroupedResult, key: Float64) -> Int:
+def _group_index(result: GroupedResult, key: Float64) -> Int:
     """Locate a group by key, so the assertions never depend on insertion order."""
     for i in range(len(result.keys)):
         if result.keys[i] == key:
@@ -88,7 +88,7 @@ fn _group_index(result: GroupedResult, key: Float64) -> Int:
     return -1
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var batch = _batch()

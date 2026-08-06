@@ -33,7 +33,7 @@ deprecation_state: active
 from std.ffi import external_call
 
 
-fn _bs_str(buf: List[UInt8]) -> String:
+def _bs_str(buf: List[UInt8]) -> String:
     """Byte-faithful List[UInt8] -> String. `chr(b)` on a byte >= 128 emits
     that CODEPOINT (two UTF-8 bytes), silently double-encoding any non-ASCII
     text — measured live as mojibake'd sheet names failing to resolve. The
@@ -44,7 +44,7 @@ fn _bs_str(buf: List[UInt8]) -> String:
     return out^
 
 
-fn _nul_terminated(s: String) -> List[UInt8]:
+def _nul_terminated(s: String) -> List[UInt8]:
     """A NUL-terminated copy of `s`'s bytes: String.as_bytes() does NOT
     terminate, and strtod reads until a non-numeric byte, so the copy is what
     guarantees no scan can walk off the end."""
@@ -57,7 +57,7 @@ fn _nul_terminated(s: String) -> List[UInt8]:
     return out^
 
 
-fn _is_plain_decimal(bs: Span[UInt8, _]) -> Bool:
+def _is_plain_decimal(bs: Span[UInt8, _]) -> Bool:
     """The grammar `[+-]? (digits [. digits?] | . digits) [(e|E)[+-]?digits]`,
     nothing else — refuses inf/nan/hex floats that strtod would accept."""
     var n = len(bs)
@@ -89,7 +89,7 @@ fn _is_plain_decimal(bs: Span[UInt8, _]) -> Bool:
     return i == n
 
 
-fn _parse_number(text: String, mut value: Float64) -> Bool:
+def _parse_number(text: String, mut value: Float64) -> Bool:
     """Correctly-rounded decimal parse. False (value untouched) when `text`
     is not exactly one plain decimal number."""
     var bs = text.as_bytes()
@@ -104,7 +104,7 @@ fn _parse_number(text: String, mut value: Float64) -> Bool:
     return True
 
 
-fn _parse_number_trimmed(text: String, mut value: Float64) -> Bool:
+def _parse_number_trimmed(text: String, mut value: Float64) -> Bool:
     """Excel text->number coercion: leading/trailing ASCII whitespace is
     forgiven, the body must be one plain decimal number."""
     var bs = text.as_bytes()

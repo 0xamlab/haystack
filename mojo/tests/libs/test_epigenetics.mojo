@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from epigenetics import methylation_index, dna_methylation_age, histone_acetylation_ratio, chromatin_accessibility, imprinting_ratio, cpg_observed_expected, gene_silencing_efficiency, enhancer_activity_index, polycomb_enrichment, transcription_factor_occupancy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

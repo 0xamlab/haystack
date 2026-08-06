@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log
 
 
-fn antibody_titer(dilution_factor: Float64, od_ratio: Float64) -> Float64:
+def antibody_titer(dilution_factor: Float64, od_ratio: Float64) -> Float64:
     """Antibody titer from serial dilution ELISA.
 
     Titer = 1 / (dilution · OD_ratio)
@@ -33,7 +33,7 @@ fn antibody_titer(dilution_factor: Float64, od_ratio: Float64) -> Float64:
     return 1.0 / (dilution_factor * od_ratio)
 
 
-fn seroconversion_rate(
+def seroconversion_rate(
     n_seroconverted: Float64, n_total: Float64
 ) -> Float64:
     """Seroconversion rate in a vaccinated cohort.
@@ -50,7 +50,7 @@ fn seroconversion_rate(
     return n_seroconverted / n_total
 
 
-fn antigen_antibody_binding(
+def antigen_antibody_binding(
     ka: Float64, antigen_conc: Float64, antibody_conc: Float64
 ) -> Float64:
     """Equilibrium antigen-antibody bound fraction.
@@ -72,7 +72,7 @@ fn antigen_antibody_binding(
     return ka * antibody_conc / denom
 
 
-fn complement_activation(
+def complement_activation(
     antibody_conc: Float64, threshold: Float64, rate_constant: Float64
 ) -> Float64:
     """Complement C3 cleavage rate (simplified threshold model).
@@ -90,7 +90,7 @@ fn complement_activation(
     return rate_constant * (antibody_conc - threshold)
 
 
-fn t_cell_proliferation(
+def t_cell_proliferation(
     n0: Float64, max_cells: Float64, growth_rate: Float64, time: Float64
 ) -> Float64:
     """Logistic growth model for T-cell clonal expansion.
@@ -115,7 +115,7 @@ fn t_cell_proliferation(
     return max_cells / denom
 
 
-fn innate_response_decay(
+def innate_response_decay(
     c0: Float64, decay_rate: Float64, time: Float64
 ) -> Float64:
     """Cytokine clearance (first-order kinetics): C(t) = C0·exp(-k·t).
@@ -133,7 +133,7 @@ fn innate_response_decay(
     return c0 * exp(-decay_rate * time)
 
 
-fn vaccine_efficacy(
+def vaccine_efficacy(
     attack_rate_vaccinated: Float64, attack_rate_unvaccinated: Float64
 ) -> Float64:
     """Vaccine efficacy from attack rates.
@@ -153,7 +153,7 @@ fn vaccine_efficacy(
     return 1.0 - rr
 
 
-fn herd_immunity_threshold(r0: Float64) -> Float64:
+def herd_immunity_threshold(r0: Float64) -> Float64:
     """Herd immunity threshold: HIT = 1 - 1/R0.
 
     Args:
@@ -167,7 +167,7 @@ fn herd_immunity_threshold(r0: Float64) -> Float64:
     return 1.0 - 1.0 / r0
 
 
-fn antibody_avidity_index(od_urea: Float64, od_pbs: Float64) -> Float64:
+def antibody_avidity_index(od_urea: Float64, od_pbs: Float64) -> Float64:
     """Antibody avidity index from chaotrope elution ELISA.
 
     AI = (OD_urea / OD_PBS) × 100 (%)
@@ -184,7 +184,7 @@ fn antibody_avidity_index(od_urea: Float64, od_pbs: Float64) -> Float64:
     return (od_urea / od_pbs) * 100.0
 
 
-fn opsonisation_index(
+def opsonisation_index(
     phagocytosis_immune: Float64, phagocytosis_control: Float64
 ) -> Float64:
     """Opsonisation index (phagocytic enhancement by antibodies).

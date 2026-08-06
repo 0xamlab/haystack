@@ -99,7 +99,7 @@ comptime FLAT_RATIO: Float64 = 4.0
 comptime SIGMA_MULTIPLE: Float64 = 4.0
 
 
-fn _keyed_ids(n: Int, n_distinct: Int, stream: UInt64) -> List[Int]:
+def _keyed_ids(n: Int, n_distinct: Int, stream: UInt64) -> List[Int]:
     """`n` identifiers drawn from the frozen keyed generator, over `n_distinct` values."""
     var out = List[Int]()
     for i in range(n):
@@ -108,7 +108,7 @@ fn _keyed_ids(n: Int, n_distinct: Int, stream: UInt64) -> List[Int]:
     return out^
 
 
-fn _keyed_values(n: Int, stream: UInt64) -> List[Float64]:
+def _keyed_values(n: Int, stream: UInt64) -> List[Float64]:
     """`n` observations in [0, 1000) from the frozen keyed generator."""
     var out = List[Float64]()
     for i in range(n):
@@ -116,7 +116,7 @@ fn _keyed_values(n: Int, stream: UInt64) -> List[Float64]:
     return out^
 
 
-fn _exact_distinct(items: List[Int]) -> Int:
+def _exact_distinct(items: List[Int]) -> Int:
     """The oracle: distinct count by a bitmap over the known-bounded id range."""
     var seen = List[Bool]()
     var top = 0
@@ -133,7 +133,7 @@ fn _exact_distinct(items: List[Int]) -> Int:
     return count
 
 
-fn _exact_count(items: List[Int], key: Int) -> Int:
+def _exact_count(items: List[Int], key: Int) -> Int:
     """The oracle: how many times `key` appears, by a scan."""
     var seen = 0
     for i in range(len(items)):
@@ -142,7 +142,7 @@ fn _exact_count(items: List[Int], key: Int) -> Int:
     return seen
 
 
-fn _band(values: List[Float64]) -> Float64:
+def _band(values: List[Float64]) -> Float64:
     """`max / min` over a list of per-unit costs. 1.0 means perfectly flat."""
     var lo = values[0]
     var hi = values[0]
@@ -156,7 +156,7 @@ fn _band(values: List[Float64]) -> Float64:
     return hi / lo
 
 
-fn main() raises:
+def main() raises:
     print("bench_streaming — sketches over unbounded streams")
     print("")
     var failures = 0

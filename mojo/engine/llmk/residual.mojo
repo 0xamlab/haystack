@@ -43,7 +43,7 @@ struct ResidResult(Copyable, Movable):
     var status: Int
 
 
-fn residual_add_flat(a: List[Float64], b: List[Float64], n: Int) -> ResidResult:
+def residual_add_flat(a: List[Float64], b: List[Float64], n: Int) -> ResidResult:
     """`out[i] = a[i] + b[i]` for `i` in `[0, n)`. Exact-length, both operands (rule 1).
 
     @capability residual_add_flat
@@ -70,7 +70,7 @@ fn residual_add_flat(a: List[Float64], b: List[Float64], n: Int) -> ResidResult:
         workers = 1
 
     @parameter
-    fn _band(tid: Int) capturing:
+    def _band(tid: Int) capturing:
         var each = total // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else total

@@ -170,12 +170,12 @@ def run_server_loop(socket_path: String) raises:
             elif msg_type == "library_execute":
                 response = dispatch_runtime_library(raw)
             elif msg_type == "batch_execute":
-                response = run_batch_execute[dispatch_runtime_library](
-                    raw, resident_datasets
+                response = run_batch_execute(
+                    dispatch_runtime_library, raw, resident_datasets
                 )
             elif msg_type == "pipeline_execute":
-                response = run_pipeline_execute[dispatch_runtime_library](
-                    raw, resident_datasets
+                response = run_pipeline_execute(
+                    dispatch_runtime_library, raw, resident_datasets
                 )
             elif msg_type == "query_execute":
                 response = run_query(raw, resident_datasets)

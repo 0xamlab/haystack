@@ -72,12 +72,12 @@ from columnar.batch import RecordBatch, Schema
 alias MAX_RESIDENT_BYTES = 512 * 1024 * 1024
 
 
-fn _empty_batch() -> RecordBatch:
+def _empty_batch() -> RecordBatch:
     """The cache's placeholder for "no parsed batch yet" at a given index."""
     return RecordBatch(Schema(List[String](), List[Int]()), List[Float64Array](), 0)
 
 
-fn _session_error(code: String, message: String) -> String:
+def _session_error(code: String, message: String) -> String:
     return (
         '{"error":"'
         + code
@@ -91,7 +91,7 @@ fn _session_error(code: String, message: String) -> String:
     )
 
 
-fn _extract_value_json(raw: String) -> String:
+def _extract_value_json(raw: String) -> String:
     """The `value` field's raw JSON, whichever container it uses.
 
     Tried as array then object then string, so a dataset can be a list of rows, a
@@ -123,7 +123,7 @@ struct ResidentDatasets(Copyable, Movable):
     var cache_keys: List[String]
     var cache_batches: List[RecordBatch]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.handles = List[String]()
         self.names = List[String]()
         self.values = List[String]()
@@ -132,23 +132,23 @@ struct ResidentDatasets(Copyable, Movable):
         self.cache_keys = List[String]()
         self.cache_batches = List[RecordBatch]()
 
-    fn count(self) -> Int:
+    def count(self) -> Int:
         return len(self.handles)
 
-    fn _index_of(self, handle: String) -> Int:
+    def _index_of(self, handle: String) -> Int:
         for i in range(len(self.handles)):
             if self.handles[i] == handle:
                 return i
         return -1
 
-    fn lookup(self, handle: String) -> String:
+    def lookup(self, handle: String) -> String:
         """Resident JSON for `handle`, or "" when absent."""
         var index = self._index_of(handle)
         if index < 0:
             return ""
         return self.values[index]
 
-    fn has_cached_batch(self, handle: String, signature: String) -> Bool:
+    def has_cached_batch(self, handle: String, signature: String) -> Bool:
         """True when a parsed `RecordBatch` is cached for `handle` under exactly
         `signature` (the request's raw `columns` array text). See the module docstring
         for why the key is the header text, not the handle alone.
@@ -160,7 +160,7 @@ struct ResidentDatasets(Copyable, Movable):
             return False
         return self.cache_keys[index] == signature
 
-    fn cached_batch(self, handle: String) -> RecordBatch:
+    def cached_batch(self, handle: String) -> RecordBatch:
         """The batch most recently cached for `handle`.
 
         Meaningful only right after `has_cached_batch` returned True for the same
@@ -173,7 +173,7 @@ struct ResidentDatasets(Copyable, Movable):
             return _empty_batch()
         return self.cache_batches[index].copy()
 
-    fn cache_batch(mut self, handle: String, signature: String, var batch: RecordBatch):
+    def cache_batch(mut self, handle: String, signature: String, var batch: RecordBatch):
         """Remember `batch` as the parse of `handle`'s resident rows under `signature`.
 
         A no-op for an unknown handle (nothing to attach the cache to) rather than an
@@ -186,7 +186,7 @@ struct ResidentDatasets(Copyable, Movable):
         self.cache_keys[index] = signature
         self.cache_batches[index] = batch^
 
-    fn open_from_json(mut self, raw: String) -> String:
+    def open_from_json(mut self, raw: String) -> String:
         var value = _extract_value_json(raw)
         if len(value) == 0:
             return _session_error(
@@ -223,7 +223,7 @@ struct ResidentDatasets(Copyable, Movable):
             + "}"
         )
 
-    fn close_from_json(mut self, raw: String) -> String:
+    def close_from_json(mut self, raw: String) -> String:
         var handle = json_get_string(raw, "handle")
         if len(handle) == 0:
             return _session_error("invalid_arguments", "dataset_close requires a handle.")
@@ -259,7 +259,7 @@ struct ResidentDatasets(Copyable, Movable):
 
         return '{"closed":true,"count":' + String(self.count()) + "}"
 
-    fn list_json(self) -> String:
+    def list_json(self) -> String:
         var out = String('{"datasets":[')
         for i in range(len(self.handles)):
             if i > 0:
@@ -283,7 +283,7 @@ struct ResidentDatasets(Copyable, Movable):
         return out
 
 
-fn is_dataset_reference(token: String) -> Bool:
+def is_dataset_reference(token: String) -> Bool:
     """True for a `"@handle"` argument token."""
     if len(token) < 4:
         return False
@@ -294,7 +294,7 @@ fn is_dataset_reference(token: String) -> Bool:
     return bytes[1] == 64
 
 
-fn dataset_reference_handle(token: String) -> String:
+def dataset_reference_handle(token: String) -> String:
     """The handle inside a validated `"@handle"` token."""
     var bytes = token.as_bytes()
     var handle = String("")

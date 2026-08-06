@@ -40,19 +40,19 @@ comptime WHOLE_COL: Int = 16
 comptime WHOLE_ROW: Int = 32
 
 
-fn pack_coord(row: Int, col: Int) -> Int:
+def pack_coord(row: Int, col: Int) -> Int:
     return row * MAX_COLS + col
 
 
-fn coord_row(coord: Int) -> Int:
+def coord_row(coord: Int) -> Int:
     return coord // MAX_COLS
 
 
-fn coord_col(coord: Int) -> Int:
+def coord_col(coord: Int) -> Int:
     return coord % MAX_COLS
 
 
-fn col_name(col: Int) -> String:
+def col_name(col: Int) -> String:
     """0-based column index -> letters (0 -> A, 16383 -> XFD)."""
     if col < 0 or col >= MAX_COLS:
         return String("?")
@@ -71,14 +71,14 @@ fn col_name(col: Int) -> String:
     return out^
 
 
-fn a1_of(row: Int, col: Int) -> String:
+def a1_of(row: Int, col: Int) -> String:
     """0-based (row, col) -> "A1" text."""
     var out = col_name(col)
     out += String(row + 1)
     return out^
 
 
-fn parse_col_letters(bs: Span[UInt8, _], start: Int, end: Int, mut col: Int) -> Bool:
+def parse_col_letters(bs: Span[UInt8, _], start: Int, end: Int, mut col: Int) -> Bool:
     """[start, end) uppercase-folded letters -> 0-based column. False when the
     run is empty, too long, or out of the A..XFD grid."""
     var n = end - start
@@ -98,7 +98,7 @@ fn parse_col_letters(bs: Span[UInt8, _], start: Int, end: Int, mut col: Int) -> 
     return True
 
 
-fn parse_row_digits(bs: Span[UInt8, _], start: Int, end: Int, mut row: Int) -> Bool:
+def parse_row_digits(bs: Span[UInt8, _], start: Int, end: Int, mut row: Int) -> Bool:
     """[start, end) digits -> 0-based row. False on empty/overflow/zero."""
     var n = end - start
     if n <= 0 or n > 7:
@@ -124,7 +124,7 @@ struct A1Parse(Copyable, Movable):
     var row_rel: Bool
     var col_rel: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.row = 0
         self.col = 0
@@ -132,7 +132,7 @@ struct A1Parse(Copyable, Movable):
         self.col_rel = True
 
 
-fn parse_a1_cell(text: String) -> A1Parse:
+def parse_a1_cell(text: String) -> A1Parse:
     """Parse a single-cell A1 reference with optional $ marks. Refuses
     anything with leftover bytes, so "A1B", "A0", "XFE1" all fail.
 
@@ -194,7 +194,7 @@ struct RefParse(Copyable, Movable):
     var c1: Int
     var flags: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.has_sheet = False
         self.sheet_name = String("")
@@ -206,7 +206,7 @@ struct RefParse(Copyable, Movable):
         self.flags = 0
 
 
-fn _find_bang(bs: Span[UInt8, _], n: Int) -> Int:
+def _find_bang(bs: Span[UInt8, _], n: Int) -> Int:
     """Index of the `!` separating a sheet qualifier, honouring '...' quoting
     with '' escapes. -1 when there is none."""
     var i = 0
@@ -230,7 +230,7 @@ fn _find_bang(bs: Span[UInt8, _], n: Int) -> Int:
     return -1
 
 
-fn _unquote_sheet(bs: Span[UInt8, _], end: Int) -> String:
+def _unquote_sheet(bs: Span[UInt8, _], end: Int) -> String:
     """The sheet-name text before the `!` at `end`, with quoting removed."""
     var i = 0
     var n = end
@@ -253,7 +253,7 @@ fn _unquote_sheet(bs: Span[UInt8, _], end: Int) -> String:
     return _bs_str(buf)
 
 
-fn parse_ref_text(text: String) -> RefParse:
+def parse_ref_text(text: String) -> RefParse:
     """Parse a (possibly sheet-qualified, possibly rectangular) reference.
     This is the INDIRECT("...") grammar and the loader's grammar for defined
     names; the formula tokenizer uses the piece parsers directly. Sheet-BANG
@@ -370,7 +370,7 @@ struct _ColOnly(Copyable, Movable):
     var col: Int
     var rel: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.col = 0
         self.rel = True
@@ -381,13 +381,13 @@ struct _RowOnly(Copyable, Movable):
     var row: Int
     var rel: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.row = 0
         self.rel = True
 
 
-fn _parse_col_only(text: String) -> _ColOnly:
+def _parse_col_only(text: String) -> _ColOnly:
     var out = _ColOnly()
     var bs = text.as_bytes()
     var n = len(bs)
@@ -402,7 +402,7 @@ fn _parse_col_only(text: String) -> _ColOnly:
     return out^
 
 
-fn _parse_row_only(text: String) -> _RowOnly:
+def _parse_row_only(text: String) -> _RowOnly:
     var out = _RowOnly()
     var bs = text.as_bytes()
     var n = len(bs)
@@ -417,7 +417,7 @@ fn _parse_row_only(text: String) -> _RowOnly:
     return out^
 
 
-fn _sub(bs: Span[UInt8, _], start: Int, end: Int) -> String:
+def _sub(bs: Span[UInt8, _], start: Int, end: Int) -> String:
     var buf = List[UInt8]()
     var e = min(end, len(bs))
     var i = max(0, start)

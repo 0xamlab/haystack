@@ -39,7 +39,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
+def _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
     var count = 0
     for index in range(len(mask)):
         if mask[index] >= threshold:
@@ -47,7 +47,7 @@ fn _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
     return count
 
 
-fn _two_components_mask6() -> List[Float64]:
+def _two_components_mask6() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(6):
         for x in range(6):
@@ -57,7 +57,7 @@ fn _two_components_mask6() -> List[Float64]:
     return flat^
 
 
-fn _blob_doc8() -> List[Float64]:
+def _blob_doc8() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(8):
         for x in range(8):
@@ -67,7 +67,7 @@ fn _blob_doc8() -> List[Float64]:
     return flat^
 
 
-fn _bottom_right_texture16() -> List[Float64]:
+def _bottom_right_texture16() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(16):
         for x in range(16):
@@ -78,7 +78,7 @@ fn _bottom_right_texture16() -> List[Float64]:
     return flat^
 
 
-fn _grid4() -> List[Float64]:
+def _grid4() -> List[Float64]:
     var flat = List[Float64]()
     for index in range(16):
         flat.append(Float64(index))

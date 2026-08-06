@@ -85,21 +85,21 @@ comptime PI: Float64 = 3.141592653589793
 # ── small builders ────────────────────────────────────────────────────────────
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     """Relative comparison for the sqrt-bearing instances only."""
     var scale = fabs(a)
     if fabs(b) > scale:
@@ -107,7 +107,7 @@ fn _close(a: Float64, b: Float64) -> Bool:
     return fabs(a - b) <= 1e-12 * (1.0 + scale)
 
 
-fn _line_matrix(xs: List[Float64]) -> List[Float64]:
+def _line_matrix(xs: List[Float64]) -> List[Float64]:
     """Flat |x_i - x_j| matrix for collinear points."""
     var out = List[Float64]()
     for i in range(len(xs)):
@@ -116,7 +116,7 @@ fn _line_matrix(xs: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _circle_matrix(n: Int) -> List[Float64]:
+def _circle_matrix(n: Int) -> List[Float64]:
     """Euclidean distances between `n` points equally spaced on the unit circle."""
     var xs = List[Float64]()
     var ys = List[Float64]()
@@ -133,12 +133,12 @@ fn _circle_matrix(n: Int) -> List[Float64]:
     return out^
 
 
-fn _cos(x: Float64) -> Float64:
+def _cos(x: Float64) -> Float64:
     """cos via sin, so only one transcendental is imported."""
     return sin(x + 0.5 * PI)
 
 
-fn _nested_of(distance: List[Float64], n: Int) -> List[List[Float64]]:
+def _nested_of(distance: List[Float64], n: Int) -> List[List[Float64]]:
     var out = List[List[Float64]]()
     for i in range(n):
         var row = List[Float64]()
@@ -151,14 +151,14 @@ fn _nested_of(distance: List[Float64], n: Int) -> List[List[Float64]]:
 # ── oracles ───────────────────────────────────────────────────────────────────
 
 
-fn _factorial(m: Int) -> Int:
+def _factorial(m: Int) -> Int:
     var out = 1
     for k in range(2, m + 1):
         out *= k
     return out
 
 
-fn _kth_permutation(m: Int, k: Int) -> List[Int]:
+def _kth_permutation(m: Int, k: Int) -> List[Int]:
     """The `k`-th permutation of `0..m-1` in factorial-number-system order. No recursion."""
     var pool = List[Int]()
     for i in range(m):
@@ -179,7 +179,7 @@ fn _kth_permutation(m: Int, k: Int) -> List[Int]:
     return out^
 
 
-fn _brute_force_optimum(distance: List[Float64], n: Int) -> Float64:
+def _brute_force_optimum(distance: List[Float64], n: Int) -> Float64:
     """Exhaustive minimum over all `(n-1)!` closed tours, priced by `tour_length_flat`.
 
     The true global optimum, so the heuristics can be checked against it rather than against
@@ -205,7 +205,7 @@ fn _brute_force_optimum(distance: List[Float64], n: Int) -> Float64:
     return best
 
 
-fn _no_improving_two_opt(distance: List[Float64], n: Int, tour: List[Int]) -> Bool:
+def _no_improving_two_opt(distance: List[Float64], n: Int, tour: List[Int]) -> Bool:
     """True when no 2-opt neighbour of `tour` is strictly shorter. Re-derived here.
 
     This is what CHECKS the `local_optimum` flag. The neighbourhood is rebuilt from the
@@ -238,7 +238,7 @@ fn _no_improving_two_opt(distance: List[Float64], n: Int, tour: List[Int]) -> Bo
     return True
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for k in range(len(a)):
@@ -247,7 +247,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -> Bool:
+def _partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -> Bool:
     """THE layout oracle: `n_routes + 1` offsets that partition `stops` exactly.
 
     Re-derived from `RouteSolution`'s documented contract in TEST code so it cannot inherit the
@@ -274,7 +274,7 @@ fn _partitions(stops: List[Int], route_start: List[Int], n_routes: Int) -> Bool:
     return True
 
 
-fn _read_as_documented(sol: RouteSolution) -> List[Int]:
+def _read_as_documented(sol: RouteSolution) -> List[Int]:
     """The customers a caller reaches by following the struct's documented layout, in order.
 
     Literally `for v in range(n_routes_used): stops[route_start[v] : route_start[v + 1]]`. On the
@@ -291,7 +291,7 @@ fn _read_as_documented(sol: RouteSolution) -> List[Int]:
     return out^
 
 
-fn _read_offsets_as_documented(sol: RouteSolution) -> List[Int]:
+def _read_offsets_as_documented(sol: RouteSolution) -> List[Int]:
     """Offsets into `_read_as_documented(sol)`, so the reconstruction can be re-audited."""
     var out = List[Int]()
     out.append(0)
@@ -304,7 +304,7 @@ fn _read_offsets_as_documented(sol: RouteSolution) -> List[Int]:
     return out^
 
 
-fn _status_matches_local_opt_tour(r: RouteTour) -> Bool:
+def _status_matches_local_opt_tour(r: RouteTour) -> Bool:
     """`ROUTE_OK` if and only if `local_optimum` — a status may not deny a field beside it.
 
     Code 120's name is `verified_local_optimum_of_the_declared_moves_not_proven_optimal`, so
@@ -316,14 +316,14 @@ fn _status_matches_local_opt_tour(r: RouteTour) -> Bool:
     return (r.status == ROUTE_OK) == r.local_optimum
 
 
-fn _status_matches_local_opt_solution(s: RouteSolution) -> Bool:
+def _status_matches_local_opt_solution(s: RouteSolution) -> Bool:
     """The same self-consistency requirement for a routing."""
     if s.status != ROUTE_OK and s.status != ROUTE_OK_LIMIT:
         return True
     return (s.status == ROUTE_OK) == s.local_optimum
 
 
-fn _lattice(n: Int) -> List[Float64]:
+def _lattice(n: Int) -> List[Float64]:
     """`n` distinct points on a deterministic 2D lattice, Euclidean. No randomness anywhere.
 
     Used for the WORK-BOUND probes, which need an instance big enough that an unclamped effort
@@ -338,7 +338,7 @@ fn _lattice(n: Int) -> List[Float64]:
     return _euclid(xs, ys)
 
 
-fn _ramp_demand(n: Int) -> List[Float64]:
+def _ramp_demand(n: Int) -> List[Float64]:
     """Depot 0.0 then 1..4 cycling, so no single demand can exceed the capacities used here."""
     var out = List[Float64]()
     out.append(0.0)
@@ -350,7 +350,7 @@ fn _ramp_demand(n: Int) -> List[Float64]:
 # ── the instances ─────────────────────────────────────────────────────────────
 
 
-fn _four_city() -> List[Float64]:
+def _four_city() -> List[Float64]:
     """4 cities, 3 distinct tours: 0-1-2-3-0 = 103, 0-1-3-2-0 = 6, 0-2-1-3-0 = 105.
 
     Symmetric, with d[3][0] = 100 as the trap the greedy seed walks into: nearest-neighbour
@@ -364,7 +364,7 @@ fn _four_city() -> List[Float64]:
     )
 
 
-fn _asymmetric_three() -> List[Float64]:
+def _asymmetric_three() -> List[Float64]:
     """3 cities, two directed cycles: 0->1->2->0 = 102 and 0->2->1->0 = 201.
 
     d[0][1] = 100, d[1][2] = 1, d[2][0] = 1 (cycle A = 102);
@@ -382,7 +382,7 @@ fn _asymmetric_three() -> List[Float64]:
     )
 
 
-fn _six_on_a_line() -> List[Float64]:
+def _six_on_a_line() -> List[Float64]:
     """Collinear cities at x = 0, 1, -2, 4, -8, 16.
 
     Nearest-neighbour scores 1+3+6+12+24+16 = 62. The optimum is the sweep
@@ -392,7 +392,7 @@ fn _six_on_a_line() -> List[Float64]:
     return _line_matrix(_floats(0.0, 1.0, -2.0, 4.0, -8.0, 16.0))
 
 
-fn _triangle_violating() -> List[Float64]:
+def _triangle_violating() -> List[Float64]:
     """3 cities with d[1][2] = 10 against d[1][0] + d[0][2] = 2. Symmetric.
 
     Every 3-city tour is the same cycle, so the length is 1 + 10 + 1 = 12 whatever the search
@@ -406,7 +406,7 @@ fn _triangle_violating() -> List[Float64]:
     )
 
 
-fn _two_arms() -> List[Float64]:
+def _two_arms() -> List[Float64]:
     """Depot at 0, customers at x = 1, 2, -1, -2. Travel cost = |dx|.
 
     With demand 5 each and capacity 10, exactly two customers fit per vehicle, so the optimum
@@ -415,12 +415,12 @@ fn _two_arms() -> List[Float64]:
     return _line_matrix(_floats(0.0, 1.0, 2.0, -1.0, -2.0))
 
 
-fn _window_line() -> List[Float64]:
+def _window_line() -> List[Float64]:
     """Depot at 0, customers at x = 1, 2, -1. Travel time = distance."""
     return _line_matrix(_floats(0.0, 1.0, 2.0, -1.0))
 
 
-fn _euclid(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
+def _euclid(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(xs)):
         for j in range(len(xs)):
@@ -430,7 +430,7 @@ fn _euclid(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _scattered() -> List[Float64]:
+def _scattered() -> List[Float64]:
     """Depot at the origin plus 8 scattered customers, Euclidean.
 
     Chosen because the CONSTRUCTION order matters here: with `max_passes = 0` the answer is
@@ -443,7 +443,7 @@ fn _scattered() -> List[Float64]:
     )
 
 
-fn _nine_windowed() -> List[Float64]:
+def _nine_windowed() -> List[Float64]:
     """The 9-city symmetric matrix from the route-layout reproduction, verbatim.
 
     Kept exactly as reported so the regression is the finding's own instance and not a
@@ -475,7 +475,7 @@ fn _nine_windowed() -> List[Float64]:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed: Int = 0
     var failed: Int = 0
     print("[optimization.routing]")

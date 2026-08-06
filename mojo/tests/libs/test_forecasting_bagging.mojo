@@ -33,14 +33,14 @@ from forecasting.point import ets_ann_forecast
 from forecasting.select import _golden_ses_alpha
 
 
-fn _line(n: Int) -> List[Float64]:
+def _line(n: Int) -> List[Float64]:
     var y = List[Float64]()
     for t in range(n):
         y.append(2.0 + 3.0 * Float64(t))
     return y^
 
 
-fn _noisy(n: Int) -> List[Float64]:
+def _noisy(n: Int) -> List[Float64]:
     """Deterministic series with a genuinely non-constant remainder."""
     var y = List[Float64]()
     for t in range(n):
@@ -49,7 +49,7 @@ fn _noisy(n: Int) -> List[Float64]:
     return y^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.bagging] hand-written known-value suite")

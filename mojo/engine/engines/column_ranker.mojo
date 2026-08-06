@@ -71,7 +71,7 @@ comptime ROLE_DERIVED_ID:   UInt8  = 2
 
 # ── String helpers ─────────────────────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     var result = String("")
     var bytes  = s.as_bytes()
     var n      = len(s)
@@ -83,12 +83,12 @@ fn _substr(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn _is_sep(c: UInt8) -> Bool:
+def _is_sep(c: UInt8) -> Bool:
     """Underscore, space, hyphen, or dot are token separators."""
     return c == 95 or c == 32 or c == 45 or c == 46
 
 
-fn _normalize(s: String) -> String:
+def _normalize(s: String) -> String:
     """Lowercase and replace separators with spaces."""
     var result = String("")
     var bytes  = s.as_bytes()
@@ -104,7 +104,7 @@ fn _normalize(s: String) -> String:
     return result
 
 
-fn _tokens(s: String) -> List[String]:
+def _tokens(s: String) -> List[String]:
     """Split a normalised string on spaces → token list."""
     var result = List[String]()
     var norm   = _normalize(s)
@@ -126,7 +126,7 @@ fn _tokens(s: String) -> List[String]:
 
 # ── Bigram vector ──────────────────────────────────────────────────────────────
 
-fn _bigram_vec(s: String) -> List[Float64]:
+def _bigram_vec(s: String) -> List[Float64]:
     """Compute a 64-bucket bigram frequency vector, L2-normalised."""
     var vec   = List[Float64]()
     for _ in range(VEC_BUCKETS):
@@ -151,7 +151,7 @@ fn _bigram_vec(s: String) -> List[Float64]:
     return vec^
 
 
-fn _cosine(a: List[Float64], b: List[Float64]) -> Float64:
+def _cosine(a: List[Float64], b: List[Float64]) -> Float64:
     """Dot product of two pre-normalised 64-dim vectors."""
     var dot = 0.0
     for i in range(VEC_BUCKETS):
@@ -165,7 +165,7 @@ fn _cosine(a: List[Float64], b: List[Float64]) -> Float64:
 
 # ── Token Jaccard ──────────────────────────────────────────────────────────────
 
-fn _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float64:
+def _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float64:
     """Jaccard similarity on token lists."""
     var na = len(a_toks)
     var nb = len(b_toks)
@@ -187,7 +187,7 @@ fn _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float64:
 
 # ── Role type boost ────────────────────────────────────────────────────────────
 
-fn _role_boost(role: String, hint_toks: List[String], query_role: String) -> Float64:
+def _role_boost(role: String, hint_toks: List[String], query_role: String) -> Float64:
     """
     Adds up to +0.12 when hint semantics match the candidate's role.
 
@@ -260,7 +260,7 @@ fn _role_boost(role: String, hint_toks: List[String], query_role: String) -> Flo
 
 # ── Source-context prior ───────────────────────────────────────────────────────
 
-fn _prior_boost(source_type: String, col_norm: String) -> Float64:
+def _prior_boost(source_type: String, col_norm: String) -> Float64:
     """
     Dataset/context prior: certain column patterns are highly likely in known
     source types.  Returns up to +0.10.
@@ -330,7 +330,7 @@ struct RankResult(Copyable, Movable):
     var type_boost:  Float64
     var prior_boost: Float64
 
-    fn __init__(out self, source: String, column: String, score: Float64,
+    def __init__(out self, source: String, column: String, score: Float64,
                 name_sim: Float64, token_sim: Float64,
                 type_boost: Float64, prior_boost: Float64):
         self.source      = source
@@ -342,7 +342,7 @@ struct RankResult(Copyable, Movable):
         self.prior_boost = prior_boost
 
 
-fn _insertion_sort(results: List[RankResult]) -> List[RankResult]:
+def _insertion_sort(results: List[RankResult]) -> List[RankResult]:
     """Sort by score descending (small N — in-place insertion sort)."""
     var n = len(results)
     var sorted = List[RankResult]()
@@ -360,13 +360,13 @@ fn _insertion_sort(results: List[RankResult]) -> List[RankResult]:
 
 # ── JSON output builder ────────────────────────────────────────────────────────
 
-fn _fmt_float(v: Float64) -> String:
+def _fmt_float(v: Float64) -> String:
     """Round to 4 decimal places and convert to string."""
     var rounded = Float64(Int(v * 10000.0 + 0.5)) / 10000.0
     return String(rounded)
 
 
-fn _build_output(sorted: List[RankResult], top_k: Int) -> String:
+def _build_output(sorted: List[RankResult], top_k: Int) -> String:
     var n      = len(sorted)
     var k      = top_k if top_k > 0 and top_k < n else n
     var gap    = 0.0
@@ -394,7 +394,7 @@ fn _build_output(sorted: List[RankResult], top_k: Int) -> String:
 
 
 @always_inline
-fn _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float64:
+def _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float64:
     if query_role == ROLE_OTHER_ID:
         return 0.0
     if cand_role == query_role:
@@ -405,7 +405,7 @@ fn _type_boost_ids(query_role: UInt8, cand_role: UInt8) -> Float64:
 
 
 @always_inline
-fn _prior_boost_ids(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float64:
+def _prior_boost_ids(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float64:
     if query_src == SOURCE_UNKNOWN_ID:
         return 0.0
     if cand_src != SOURCE_UNKNOWN_ID and cand_src != query_src:
@@ -420,7 +420,7 @@ fn _prior_boost_ids(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Fl
 
 
 @always_inline
-fn _dot64_f32(a: List[Float32], b: List[Float32]) -> Float64:
+def _dot64_f32(a: List[Float32], b: List[Float32]) -> Float64:
     var dot = Float64(0.0)
     for i in range(len(a)):
         dot += Float64(a[i]) * Float64(b[i])
@@ -428,7 +428,7 @@ fn _dot64_f32(a: List[Float32], b: List[Float32]) -> Float64:
 
 
 @always_inline
-fn _cosine_resident(
+def _cosine_resident(
     qv: List[Float32],
     cv: List[Float32],
     q_ni: Float32,
@@ -450,26 +450,26 @@ struct ResidentRankSlot(Copyable, Movable):
     var name_sim:   Float64
     var type_boost: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id = 0
         self.score = 0.0
         self.name_sim = 0.0
         self.type_boost = 0.0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id = copy.column_id
         self.score = copy.score
         self.name_sim = copy.name_sim
         self.type_boost = copy.type_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id = take.column_id
         self.score = take.score
         self.name_sim = take.name_sim
         self.type_boost = take.type_boost
 
 
-fn _sort_resident_slots(mut slots: List[ResidentRankSlot]):
+def _sort_resident_slots(mut slots: List[ResidentRankSlot]):
     var n = len(slots)
     for i in range(1, n):
         var ks  = slots[i].score
@@ -499,19 +499,19 @@ struct ResidentColumnRankState(Movable):
     var source_names: List[String]
     var column_names: List[String]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.initialized = False
         self.table = CandidateTable()
         self.source_names = List[String]()
         self.column_names = List[String]()
 
-    fn _reset(mut self):
+    def _reset(mut self):
         self.initialized = False
         self.table = CandidateTable()
         self.source_names = List[String]()
         self.column_names = List[String]()
 
-    fn init_from_json(mut self, raw: String) -> String:
+    def init_from_json(mut self, raw: String) -> String:
         self._reset()
         var entries_arr = json_get_array(raw, "entries")
         var n_entries = json_array_len(entries_arr)
@@ -539,7 +539,7 @@ struct ResidentColumnRankState(Movable):
         self.initialized = True
         return '{"status":"ok","count":' + String(self.table.size()) + '}'
 
-    fn _rank_subset(
+    def _rank_subset(
         self,
         hint: String,
         query_src: UInt16,
@@ -620,7 +620,7 @@ struct ResidentColumnRankState(Movable):
         out += '"gap":' + _fmt_float(gap) + '}'
         return out
 
-    fn run_query(self, raw: String) -> String:
+    def run_query(self, raw: String) -> String:
         var hint = json_get_string(raw, "hint")
         var query_src = json_get_int(raw, "source_id", 0)
         var query_role = json_get_int(raw, "role_id", 0)
@@ -634,7 +634,7 @@ struct ResidentColumnRankState(Movable):
             candidate_ids_arr,
         )
 
-    fn run_batch(self, raw: String) -> String:
+    def run_batch(self, raw: String) -> String:
         var requests_arr = json_get_array(raw, "requests")
         var n_requests = json_array_len(requests_arr)
         var out = String('{"results":[')
@@ -661,7 +661,7 @@ struct ResidentColumnRankState(Movable):
 
 # ── Public entry point ─────────────────────────────────────────────────────────
 
-fn run_column_rank(raw: String) raises -> String:
+def run_column_rank(raw: String) raises -> String:
     """
     Rank candidate columns against a natural-language hint using vector scoring.
 

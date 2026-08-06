@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pandas_groupby import group_mean_update, group_variance_update, group_min_update, group_max_update, group_sum_update, group_count_update, group_std_from_variance, weighted_group_mean, group_median_approx, group_skewness_term
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

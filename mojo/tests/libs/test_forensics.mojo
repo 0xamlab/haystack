@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from forensics import time_of_death_newton, algor_mortis_rate, blood_alcohol_widmark, alcohol_elimination_rate, rigor_mortis_stage, ballistic_drop, bloodstain_impact_angle, dna_match_probability, fingerprint_minutiae_score, glass_refractive_index_match, decomposition_add, toxicology_lethal_dose
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -59,7 +59,7 @@ struct PLSResult(Copyable, Movable):
     var explained_variance_y: List[Float64]
     var n_iter: List[Int]  # NIPALS iterations per component
 
-    fn __init__(out self):
+    def __init__(out self):
         self.n_components = 0
         self.n_features = 0
         self.n_samples = 0
@@ -80,7 +80,7 @@ struct PLSResult(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _solve_small(m: List[Float64], rhs: List[Float64], k: Int) -> List[Float64]:
+def _solve_small(m: List[Float64], rhs: List[Float64], k: Int) -> List[Float64]:
     """Solve the k x k system M z = rhs (M flat row-major) by Gaussian
     elimination with partial pivoting. Degenerate pivots (< 1e-14) yield
     z = 0 for that unknown. k is the component count — tiny in practice."""
@@ -129,7 +129,7 @@ fn _solve_small(m: List[Float64], rhs: List[Float64], k: Int) -> List[Float64]:
 # ── pls_fit ──────────────────────────────────────────────────────────────────
 
 
-fn pls_fit(
+def pls_fit(
     x: List[Float64],
     n_rows: Int,
     n_cols: Int,
@@ -344,7 +344,7 @@ fn pls_fit(
 # ── pls_predict ──────────────────────────────────────────────────────────────
 
 
-fn pls_predict(model: PLSResult, x_row: List[Float64]) -> Float64:
+def pls_predict(model: PLSResult, x_row: List[Float64]) -> Float64:
     """Predict y for one raw feature row using the model's coefs and
     centering/scaling state. Wrong-length rows and empty models return
     y_mean (with zero fitted components coefs are zero, so the prediction
@@ -362,7 +362,7 @@ fn pls_predict(model: PLSResult, x_row: List[Float64]) -> Float64:
 # ── pls_predict_rows ─────────────────────────────────────────────────────────
 
 
-fn pls_predict_rows(
+def pls_predict_rows(
     model: PLSResult, x: List[Float64], n_rows: Int
 ) -> List[Float64]:
     """Predict y for every row of a flat row-major raw feature matrix.
@@ -386,7 +386,7 @@ fn pls_predict_rows(
 # ── pls_r2 ───────────────────────────────────────────────────────────────────
 
 
-fn pls_r2(
+def pls_r2(
     model: PLSResult, x: List[Float64], n_rows: Int, y: List[Float64]
 ) -> Float64:
     """R² = 1 - SS_res / SS_tot of model predictions on raw (X, y).

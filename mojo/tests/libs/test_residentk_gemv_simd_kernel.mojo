@@ -76,15 +76,15 @@ guard in both kernels identically."""
 comptime EPS: Float32 = 1.0e-6
 
 
-fn _abs(x: Float32) -> Float32:
+def _abs(x: Float32) -> Float32:
     return -x if x < 0.0 else x
 
 
-fn _abs64(x: Float64) -> Float64:
+def _abs64(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
+def _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     """Deterministic, KNOWN small values — same two-coprime-multiplier discipline
     `test_residentk_sdpa_simd_kernel.mojo`'s own `_pseudo_f32` uses, in Float64 so the host
     reference below never rounds through Float32 before it has to."""
@@ -96,7 +96,7 @@ fn _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     return o^
 
 
-fn _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64:
+def _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64:
     """Pure-host per-row int8 quantization, independent of `residentk.session`'s own
     `_quantize_transposed_into_i8` — the SAME `scale = max(|row|) / 127` convention, computed here
     from scratch so this file's host reference does not depend on the very upload path the kernels
@@ -118,7 +118,7 @@ fn _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64
     return scale
 
 
-fn _host_norm_gemv(
+def _host_norm_gemv(
     x: List[Float64], gamma: List[Float64], w_rows: List[List[Int8]], wscale: List[Float64],
     k: Int, n: Int, eps: Float64,
 ) -> List[Float64]:
@@ -141,7 +141,7 @@ fn _host_norm_gemv(
     return out^
 
 
-fn _host_gemv_accum(
+def _host_gemv_accum(
     y0: List[Float64], x: List[Float64], w_rows: List[List[Int8]], wscale: List[Float64],
     k: Int, n: Int,
 ) -> List[Float64]:
@@ -155,7 +155,7 @@ fn _host_gemv_accum(
     return out^
 
 
-fn _host_swiglu(
+def _host_swiglu(
     x: List[Float64], gamma: List[Float64],
     gate_rows: List[List[Int8]], gate_scale: List[Float64],
     up_rows: List[List[Int8]], up_scale: List[Float64],
@@ -181,7 +181,7 @@ fn _host_swiglu(
     return out^
 
 
-fn _exp64(x: Float64) -> Float64:
+def _exp64(x: Float64) -> Float64:
     from std.math import exp
     return exp(x)
 

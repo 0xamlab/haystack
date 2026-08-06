@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn session_memory_relevance(
+def session_memory_relevance(
     memory_embedding: Float64, query_embedding: Float64,
     recency_weight: Float64, access_count: Float64
 ) -> Float64:
@@ -40,7 +40,7 @@ fn session_memory_relevance(
     return sim * recency_weight * log(1.0 + access_count)
 
 
-fn memory_decay_score(
+def memory_decay_score(
     memory_strength: Float64, elapsed_steps: Float64,
     decay_rate: Float64
 ) -> Float64:
@@ -59,7 +59,7 @@ fn memory_decay_score(
     return memory_strength * exp(-decay_rate * elapsed_steps)
 
 
-fn state_transition_validity(
+def state_transition_validity(
     from_state: Float64, to_state: Float64,
     n_states: Float64, transition_mask_bit: Float64
 ) -> Float64:
@@ -83,7 +83,7 @@ fn state_transition_validity(
     return transition_mask_bit
 
 
-fn replay_buffer_priority(
+def replay_buffer_priority(
     td_error: Float64, priority_alpha: Float64,
     max_priority: Float64
 ) -> Float64:
@@ -104,7 +104,7 @@ fn replay_buffer_priority(
     return priority
 
 
-fn memory_consolidation_score(
+def memory_consolidation_score(
     access_frequency: Float64, memory_importance: Float64,
     short_term_capacity_pressure: Float64
 ) -> Float64:
@@ -123,7 +123,7 @@ fn memory_consolidation_score(
     return memory_importance * access_frequency * (1.0 + short_term_capacity_pressure) - 1.0
 
 
-fn working_memory_capacity_used(
+def working_memory_capacity_used(
     active_tokens: Float64, context_window: Float64,
     reserved_output_tokens: Float64
 ) -> Float64:
@@ -146,7 +146,7 @@ fn working_memory_capacity_used(
     return used
 
 
-fn long_term_retrieval_score(
+def long_term_retrieval_score(
     semantic_similarity: Float64, temporal_relevance: Float64,
     importance_weight: Float64
 ) -> Float64:
@@ -163,7 +163,7 @@ fn long_term_retrieval_score(
     return semantic_similarity * 0.5 + temporal_relevance * 0.3 + importance_weight * 0.2
 
 
-fn state_compression_ratio(
+def state_compression_ratio(
     raw_state_bytes: Float64, compressed_state_bytes: Float64
 ) -> Float64:
     """Compression ratio for state checkpoint storage.
@@ -180,7 +180,7 @@ fn state_compression_ratio(
     return raw_state_bytes / compressed_state_bytes
 
 
-fn replayability_score(
+def replayability_score(
     deterministic_ops_fraction: Float64, external_state_captured: Float64,
     rng_seed_fixed: Float64
 ) -> Float64:
@@ -197,7 +197,7 @@ fn replayability_score(
     return deterministic_ops_fraction * external_state_captured * (0.5 + 0.5 * rng_seed_fixed)
 
 
-fn session_continuity_score(
+def session_continuity_score(
     overlap_tokens: Float64, session_chunk_tokens: Float64,
     context_coverage: Float64
 ) -> Float64:

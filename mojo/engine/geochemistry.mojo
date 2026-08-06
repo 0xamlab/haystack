@@ -16,11 +16,11 @@ Public API:
 from std.math import log, exp, pow, sqrt
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn distribution_coefficient(
+def distribution_coefficient(
     conc_solid: Float64, conc_liquid: Float64
 ) -> Float64:
     """Distribution (partition) coefficient: Kd = C_solid / C_liquid.
@@ -37,7 +37,7 @@ fn distribution_coefficient(
     return conc_solid / conc_liquid
 
 
-fn partition_melt(
+def partition_melt(
     c0: Float64, d0: Float64, melt_fraction: Float64
 ) -> Float64:
     """Fractional melting trace element model: Cl = C0/(D + F*(1-D)).
@@ -56,7 +56,7 @@ fn partition_melt(
     return c0 / denom
 
 
-fn batch_melting(
+def batch_melting(
     c0: Float64, d0: Float64, melt_fraction: Float64
 ) -> Float64:
     """Batch melting model: Cl = C0 / (D + F*(1-p)).
@@ -77,7 +77,7 @@ fn batch_melting(
     return c0 / denom
 
 
-fn rare_earth_normalization(
+def rare_earth_normalization(
     sample_conc: Float64, chondrite_conc: Float64
 ) -> Float64:
     """CI-chondrite normalised REE abundance.
@@ -96,7 +96,7 @@ fn rare_earth_normalization(
     return sample_conc / chondrite_conc
 
 
-fn isotope_mass_balance(
+def isotope_mass_balance(
     delta_a: Float64, fraction_a: Float64, delta_b: Float64
 ) -> Float64:
     """Two-component isotope mixing: δ_mix = f·δA + (1-f)·δB.
@@ -112,7 +112,7 @@ fn isotope_mass_balance(
     return fraction_a * delta_a + (1.0 - fraction_a) * delta_b
 
 
-fn weathering_index(
+def weathering_index(
     al2o3: Float64, cao: Float64, na2o: Float64, k2o: Float64
 ) -> Float64:
     """Chemical Index of Alteration: CIA = Al₂O₃/(Al₂O₃+CaO+Na₂O+K₂O)×100.
@@ -132,7 +132,7 @@ fn weathering_index(
     return al2o3 / denom * 100.0
 
 
-fn redox_potential_pe(eh_mv: Float64) -> Float64:
+def redox_potential_pe(eh_mv: Float64) -> Float64:
     """Convert Eh to pe (electron activity): pe = Eh/(2.303·RT/F).
 
     At 25°C: pe = Eh(mV) / 59.16
@@ -146,7 +146,7 @@ fn redox_potential_pe(eh_mv: Float64) -> Float64:
     return eh_mv / 59.16
 
 
-fn carbonate_saturation(
+def carbonate_saturation(
     ca_conc: Float64, co3_conc: Float64, ksp: Float64
 ) -> Float64:
     """Carbonate saturation state: Ω = [Ca²⁺]·[CO₃²⁻] / Ksp.
@@ -164,7 +164,7 @@ fn carbonate_saturation(
     return ca_conc * co3_conc / ksp
 
 
-fn henry_law_gas(
+def henry_law_gas(
     partial_pressure: Float64, henry_constant: Float64
 ) -> Float64:
     """Dissolved gas concentration from Henry's law: C = KH·P.
@@ -179,7 +179,7 @@ fn henry_law_gas(
     return henry_constant * partial_pressure
 
 
-fn organic_carbon_toc(
+def organic_carbon_toc(
     total_carbon: Float64, inorganic_carbon: Float64
 ) -> Float64:
     """Total organic carbon: TOC = TC - TIC.

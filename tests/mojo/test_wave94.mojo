@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
+def approx(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < eps
 
 
-fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
+def approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a) < 1e-12
     return fabs((a - b) / b) < rel
@@ -62,7 +62,7 @@ fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
 # ── Greenhouse tests ─────────────────────────────────────────────────────────
 
 
-fn test_greenhouse() raises:
+def test_greenhouse() raises:
     # heat_loss_conduction: U=5, A=100, ΔT=20 => 10000 W
     assert_true(approx(heat_loss_conduction(5.0, 100.0, 20.0), 10000.0), "hlc basic")
     # U=2.5, A=50, ΔT=15 => 1875
@@ -131,7 +131,7 @@ fn test_greenhouse() raises:
 # ── Numismatics tests ────────────────────────────────────────────────────────
 
 
-fn test_numismatics() raises:
+def test_numismatics() raises:
     # melt_value: 1oz * $2000 = 2000
     assert_true(approx(melt_value(1.0, 2000.0), 2000.0), "mv 2k")
     # 0.5oz * $1800 = 900
@@ -200,7 +200,7 @@ fn test_numismatics() raises:
 # ── Pneumatics tests ─────────────────────────────────────────────────────────
 
 
-fn test_pneumatics() raises:
+def test_pneumatics() raises:
     # ideal_gas_volume: 200*10/400 = 5.0
     assert_true(approx(ideal_gas_volume(200.0, 10.0, 400.0), 5.0), "igv 5")
     # 100*5/50 = 10
@@ -267,7 +267,7 @@ fn test_pneumatics() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 94 tests — Greenhouse, Numismatics, Pneumatics")
     test_greenhouse()
     test_numismatics()

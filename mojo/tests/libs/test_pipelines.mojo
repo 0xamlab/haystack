@@ -12,15 +12,15 @@ from pipelines import (
 )
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     return fabs(a - b) <= 1e-12
 
 
-fn _close_tol(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close_tol(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -29,7 +29,7 @@ fn _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ pipelines::" + name)

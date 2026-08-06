@@ -32,18 +32,18 @@ from gemm.contract import (
 from linalg import Matrix, mat_mul
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _ramp(n: Int, start: Float64, step: Float64) -> List[Float64]:
+def _ramp(n: Int, start: Float64, step: Float64) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(start + Float64(i) * step)
     return o^
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic spread of values in roughly [-1, 1], no RNG dependency."""
     var o = List[Float64](capacity=n)
     var s = seed

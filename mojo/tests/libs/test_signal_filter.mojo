@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from signal.filter import lowpass_ema, highpass_ema, bandpass, median_filter, savitzky_golay_3, moving_average_filter, iir_filter_1st, diff_filter, integrate_filter, snr, rms
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

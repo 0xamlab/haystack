@@ -24,7 +24,7 @@ from std.math import sqrt, asin, cos, abs as fabs
 # ── bragg_angle ──────────────────────────────────────────────────────────────
 
 
-fn bragg_angle(n: Float64, wavelength: Float64, d_spacing: Float64) -> Float64:
+def bragg_angle(n: Float64, wavelength: Float64, d_spacing: Float64) -> Float64:
     """Bragg angle: θ = asin(nλ/(2d)).
 
     Args:
@@ -46,7 +46,7 @@ fn bragg_angle(n: Float64, wavelength: Float64, d_spacing: Float64) -> Float64:
 # ── d_spacing_cubic ──────────────────────────────────────────────────────────
 
 
-fn d_spacing_cubic(
+def d_spacing_cubic(
     a: Float64, h: Float64, k: Float64, l: Float64
 ) -> Float64:
     """Cubic d-spacing: d = a / sqrt(h²+k²+l²).
@@ -69,7 +69,7 @@ fn d_spacing_cubic(
 # ── lattice_parameter_from_d ─────────────────────────────────────────────────
 
 
-fn lattice_parameter_from_d(
+def lattice_parameter_from_d(
     d: Float64, h: Float64, k: Float64, l: Float64
 ) -> Float64:
     """Lattice parameter from d-spacing: a = d * sqrt(h²+k²+l²).
@@ -90,7 +90,7 @@ fn lattice_parameter_from_d(
 # ── unit_cell_volume_cubic ───────────────────────────────────────────────────
 
 
-fn unit_cell_volume_cubic(a: Float64) -> Float64:
+def unit_cell_volume_cubic(a: Float64) -> Float64:
     """Cubic unit cell volume: V = a³.
 
     Args:
@@ -105,7 +105,7 @@ fn unit_cell_volume_cubic(a: Float64) -> Float64:
 # ── unit_cell_volume_tetragonal ──────────────────────────────────────────────
 
 
-fn unit_cell_volume_tetragonal(a: Float64, c: Float64) -> Float64:
+def unit_cell_volume_tetragonal(a: Float64, c: Float64) -> Float64:
     """Tetragonal unit cell volume: V = a²*c.
 
     Args:
@@ -121,7 +121,7 @@ fn unit_cell_volume_tetragonal(a: Float64, c: Float64) -> Float64:
 # ── unit_cell_volume_orthorhombic ────────────────────────────────────────────
 
 
-fn unit_cell_volume_orthorhombic(
+def unit_cell_volume_orthorhombic(
     a: Float64, b: Float64, c: Float64
 ) -> Float64:
     """Orthorhombic unit cell volume: V = a*b*c.
@@ -140,7 +140,7 @@ fn unit_cell_volume_orthorhombic(
 # ── atomic_packing_factor_fcc ────────────────────────────────────────────────
 
 
-fn atomic_packing_factor_fcc() -> Float64:
+def atomic_packing_factor_fcc() -> Float64:
     """FCC atomic packing factor: APF = π√2/6 ≈ 0.7405.
 
     Returns:
@@ -153,7 +153,7 @@ fn atomic_packing_factor_fcc() -> Float64:
 # ── atomic_packing_factor_bcc ────────────────────────────────────────────────
 
 
-fn atomic_packing_factor_bcc() -> Float64:
+def atomic_packing_factor_bcc() -> Float64:
     """BCC atomic packing factor: APF = π√3/8 ≈ 0.6802.
 
     Returns:
@@ -166,7 +166,7 @@ fn atomic_packing_factor_bcc() -> Float64:
 # ── scherrer_crystallite_size ────────────────────────────────────────────────
 
 
-fn scherrer_crystallite_size(
+def scherrer_crystallite_size(
     k: Float64, wavelength: Float64, fwhm_rad: Float64, theta: Float64
 ) -> Float64:
     """Scherrer equation: L = Kλ/(β*cos(θ)).
@@ -189,7 +189,7 @@ fn scherrer_crystallite_size(
 # ── interplanar_angle_cubic ──────────────────────────────────────────────────
 
 
-fn interplanar_angle_cubic(
+def interplanar_angle_cubic(
     h1: Float64, k1: Float64, l1: Float64,
     h2: Float64, k2: Float64, l2: Float64,
 ) -> Float64:
@@ -222,7 +222,7 @@ fn interplanar_angle_cubic(
 # ── density_from_crystal ─────────────────────────────────────────────────────
 
 
-fn density_from_crystal(
+def density_from_crystal(
     z: Float64, molar_mass: Float64, avogadro: Float64, volume: Float64
 ) -> Float64:
     """Crystal density: ρ = Z*M/(Na*V).
@@ -245,7 +245,7 @@ fn density_from_crystal(
 # ── structure_factor_magnitude ───────────────────────────────────────────────
 
 
-fn structure_factor_magnitude(
+def structure_factor_magnitude(
     f_real: Float64, f_imag: Float64
 ) -> Float64:
     """Structure factor magnitude: |F| = sqrt(f_real² + f_imag²).

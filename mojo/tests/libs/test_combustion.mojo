@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from combustion import stoichiometric_air_fuel_ratio, equivalence_ratio, excess_air_percentage, adiabatic_flame_temp_estimate, lower_heating_value_methane, thermal_efficiency, carnot_efficiency, brake_specific_fuel_consumption, combustion_efficiency, flame_speed_laminar, nox_formation_rate, heat_release_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

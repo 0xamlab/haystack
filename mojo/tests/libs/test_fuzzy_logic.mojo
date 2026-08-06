@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fuzzy_logic import triangular_mf, trapezoidal_mf, gaussian_mf, fuzzy_and, fuzzy_or, fuzzy_not, defuzzify_centroid, defuzzify_bisector, defuzzify_mom, fuzzy_rule_eval, alpha_cut
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

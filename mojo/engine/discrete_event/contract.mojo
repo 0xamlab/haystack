@@ -127,7 +127,7 @@ comptime DE_DBL_EPSILON: Float64 = 2.220446049250313e-16
 comptime DE_TOL_UNDEFINED: Float64 = -1.0
 
 
-fn de_status_name(code: Int) -> String:
+def de_status_name(code: Int) -> String:
     """Name for a status code, so a refusal surfaces the defect and not a bare number.
 
 
@@ -179,7 +179,7 @@ fn de_status_name(code: Int) -> String:
     return "unknown_status"
 
 
-fn de_finite(v: Float64) -> Bool:
+def de_finite(v: Float64) -> Bool:
     """True for a real number — neither NaN nor an infinity.
 
     A one-line delegation to `inference.core.inference_finite` ON PURPOSE. This package needs
@@ -196,7 +196,7 @@ fn de_finite(v: Float64) -> Bool:
     return inference_finite(v)
 
 
-fn de_absent() -> Float64:
+def de_absent() -> Float64:
     """The value written into a quantity slot whose `has_*` flag is False: exactly 0.0.
 
     NOT a NaN, which is what a scalar-only helper would return. The dispatch REFUSES to
@@ -214,7 +214,7 @@ fn de_absent() -> Float64:
     return 0.0
 
 
-fn de_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
+def de_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
     """`abs_tol + 256 * DBL_EPSILON * |quantity_magnitude|`, from `inference.core`.
 
     `quantity_magnitude` must be the magnitude of THE ONE QUANTITY BEING JUDGED. Never a sum
@@ -231,7 +231,7 @@ fn de_scaled_tol(quantity_magnitude: Float64, abs_tol: Float64) -> Float64:
     return inference_scaled_tol(quantity_magnitude, abs_tol)
 
 
-fn de_scaled_tol_additions(
+def de_scaled_tol_additions(
     quantity_magnitude: Float64, abs_tol: Float64, additions: Int
 ) -> Float64:
     """The same tolerance, widened by one ulp per floating-point addition that built the value.
@@ -257,7 +257,7 @@ fn de_scaled_tol_additions(
     return inference_scaled_tol_ulps(quantity_magnitude, abs_tol, Float64(extra))
 
 
-fn de_event_order() -> String:
+def de_event_order() -> String:
     """The identifier of the calendar's tie-breaking rule. Deterministic, zero-argument.
 
     `time,priority,sequence/v1`: events pop in increasing time; at equal time, in increasing
@@ -278,7 +278,7 @@ fn de_event_order() -> String:
     return String("time,priority,sequence/v1")
 
 
-fn de_rng_version() -> String:
+def de_rng_version() -> String:
     """The frozen generator contract behind every draw, from `determinism.counter_rng`.
 
     Reported back by the run drivers so a stored estimate names the generator that produced
@@ -292,7 +292,7 @@ fn de_rng_version() -> String:
     return rng_version()
 
 
-fn de_stream_arrival() -> Int:
+def de_stream_arrival() -> Int:
     """The independent RNG stream id for inter-arrival draws.
 
     Derived by NAME through `determinism.streams.stream_id`, not hardcoded: an integer picked
@@ -309,7 +309,7 @@ fn de_stream_arrival() -> Int:
     return Int(stream_id("discrete_event.interarrival"))
 
 
-fn de_stream_service() -> Int:
+def de_stream_service() -> Int:
     """The independent RNG stream id for service-time draws.
 
     Separate from the arrival stream so that changing an arrival distribution does not shift a
@@ -325,7 +325,7 @@ fn de_stream_service() -> Int:
     return Int(stream_id("discrete_event.service"))
 
 
-fn de_heap_levels(n: Int) -> Int:
+def de_heap_levels(n: Int) -> Int:
     """`floor(log2(n)) + 1` — the depth of a binary heap holding `n` entries, or 0 for none.
 
     Computed by doubling rather than by a floating-point logarithm: this number multiplies
@@ -349,7 +349,7 @@ fn de_heap_levels(n: Int) -> Int:
     return levels
 
 
-fn de_product_fits(a: Int, b: Int, limit: Int) -> Bool:
+def de_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     """True when `a * b <= limit`, decided WITHOUT forming the product.
 
     `a * b` is a wrapping 64-bit multiply, so comparing it against a limit is not a bound:
@@ -367,7 +367,7 @@ fn de_product_fits(a: Int, b: Int, limit: Int) -> Bool:
     return a <= limit // b
 
 
-fn de_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
+def de_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     """True when `a * b * c <= limit`, grown factor by factor so no intermediate wraps.
 
 
@@ -385,7 +385,7 @@ fn de_product3_fits(a: Int, b: Int, c: Int, limit: Int) -> Bool:
     return a * b <= limit // c
 
 
-fn de_heap_work_fits(n_events: Int) -> Bool:
+def de_heap_work_fits(n_events: Int) -> Bool:
     """True when pushing and popping `n_events` entries fits the work budget.
 
     Each entry is pushed once and popped once, and each operation sifts at most one heap depth,
@@ -404,7 +404,7 @@ fn de_heap_work_fits(n_events: Int) -> Bool:
     return de_product_fits(2 * n_events, de_heap_levels(n_events), DE_MAX_WORK)
 
 
-fn de_heap_work(n_events: Int) -> Int:
+def de_heap_work(n_events: Int) -> Int:
     """The charge `de_heap_work_fits` tests, so a report can carry what it was charged.
 
     Returns -1 when the charge does not fit, rather than a wrapped product: a work figure that
@@ -420,7 +420,7 @@ fn de_heap_work(n_events: Int) -> Int:
     return 2 * n_events * de_heap_levels(n_events)
 
 
-fn de_ceilings() -> List[Int]:
+def de_ceilings() -> List[Int]:
     """Every declared ceiling, in one call, so a caller can size a request before sending it.
 
     Order is fixed and documented: events, jobs, servers, replications, observations, batch
@@ -443,7 +443,7 @@ fn de_ceilings() -> List[Int]:
     return out^
 
 
-fn de_all_finite(values: List[Float64], n: Int) -> Bool:
+def de_all_finite(values: List[Float64], n: Int) -> Bool:
     """True when the FIRST `n` entries are all finite, and `n` is a length the list has.
 
     The count is checked before any read, because `n > len(values)` is not a wrong answer — it
@@ -466,7 +466,7 @@ fn de_all_finite(values: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn de_nondecreasing(values: List[Float64], n: Int) -> Bool:
+def de_nondecreasing(values: List[Float64], n: Int) -> Bool:
     """True when the first `n` entries never decrease. Count checked before any read.
 
     Used by `resource.resource_serve_flat` on its arrival list: an arrival stream out of time
@@ -488,7 +488,7 @@ fn de_nondecreasing(values: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn de_agrees(quantity: Float64, reference: Float64, abs_tol: Float64, additions: Int) -> Bool:
+def de_agrees(quantity: Float64, reference: Float64, abs_tol: Float64, additions: Int) -> Bool:
     """True when `quantity` equals `reference` to within a tolerance built from `quantity`.
 
     `quantity` is the number being judged and is therefore the only magnitude the tolerance is

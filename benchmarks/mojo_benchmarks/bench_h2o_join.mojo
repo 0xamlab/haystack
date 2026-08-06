@@ -60,7 +60,7 @@ comptime N_BIG: Int = 10_000_000
 comptime REPS: Int = 3
 
 
-fn _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
+def _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
     var path = DATA_DIR + "/" + table + "_" + col + ".f64.bin"
     var f = open(path, "r")
     var raw = f.read_bytes()
@@ -77,11 +77,11 @@ fn _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
     return float64_from_list(values^)
 
 
-fn _batch(var names: List[String], var cols: List[Float64Array], n: Int) -> RecordBatch:
+def _batch(var names: List[String], var cols: List[Float64Array], n: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _sum(col: Float64Array) -> Float64:
+def _sum(col: Float64Array) -> Float64:
     var total: Float64 = 0.0
     for i in range(col.length):
         if col.is_valid_at(i):
@@ -89,7 +89,7 @@ fn _sum(col: Float64Array) -> Float64:
     return total
 
 
-fn _run_question(
+def _run_question(
     name: String,
     left: RecordBatch,
     left_key: Int,
@@ -129,7 +129,7 @@ fn _run_question(
     return best
 
 
-fn main() raises:
+def main() raises:
     print("=== H2O join 0.5 GB tier (N=1e7) -- unrouted hash_join_indices baseline ===")
     print("  loading tables from " + DATA_DIR + " ...")
 

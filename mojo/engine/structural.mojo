@@ -30,7 +30,7 @@ comptime TWO_PI: Float64 = 6.283185307179586
 # ── bending_stress ───────────────────────────────────────────────────────────
 
 
-fn bending_stress(moment: Float64, section_modulus: Float64) -> Float64:
+def bending_stress(moment: Float64, section_modulus: Float64) -> Float64:
     """Bending stress σ = M / S."""
     return moment / section_modulus
 
@@ -38,7 +38,7 @@ fn bending_stress(moment: Float64, section_modulus: Float64) -> Float64:
 # ── shear_stress_beam ────────────────────────────────────────────────────────
 
 
-fn shear_stress_beam(shear_force: Float64, area: Float64) -> Float64:
+def shear_stress_beam(shear_force: Float64, area: Float64) -> Float64:
     """Average shear stress τ = V / A."""
     return shear_force / area
 
@@ -46,7 +46,7 @@ fn shear_stress_beam(shear_force: Float64, area: Float64) -> Float64:
 # ── moment_of_inertia_rect ──────────────────────────────────────────────────
 
 
-fn moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
+def moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
     """Moment of inertia for a rectangle I = bh³/12."""
     return width * height * height * height / 12.0
 
@@ -54,7 +54,7 @@ fn moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
 # ── section_modulus_rect ─────────────────────────────────────────────────────
 
 
-fn section_modulus_rect(width: Float64, height: Float64) -> Float64:
+def section_modulus_rect(width: Float64, height: Float64) -> Float64:
     """Section modulus for a rectangle S = bh²/6."""
     return width * height * height / 6.0
 
@@ -62,7 +62,7 @@ fn section_modulus_rect(width: Float64, height: Float64) -> Float64:
 # ── deflection_cantilever_point ──────────────────────────────────────────────
 
 
-fn deflection_cantilever_point(
+def deflection_cantilever_point(
     force: Float64, length: Float64, ei: Float64
 ) -> Float64:
     """Cantilever deflection at tip under point load δ = PL³/(3EI)."""
@@ -72,7 +72,7 @@ fn deflection_cantilever_point(
 # ── deflection_simply_supported_center ───────────────────────────────────────
 
 
-fn deflection_simply_supported_center(
+def deflection_simply_supported_center(
     force: Float64, length: Float64, ei: Float64
 ) -> Float64:
     """Simply supported beam mid-span deflection δ = PL³/(48EI)."""
@@ -82,7 +82,7 @@ fn deflection_simply_supported_center(
 # ── euler_buckling_load ─────────────────────────────────────────────────────
 
 
-fn euler_buckling_load(
+def euler_buckling_load(
     ei: Float64, length: Float64, k: Float64
 ) -> Float64:
     """Euler critical buckling load Pcr = π²EI / (kL)²."""
@@ -93,7 +93,7 @@ fn euler_buckling_load(
 # ── slenderness_ratio ───────────────────────────────────────────────────────
 
 
-fn slenderness_ratio(
+def slenderness_ratio(
     length: Float64, radius_of_gyration: Float64
 ) -> Float64:
     """Slenderness ratio λ = L / r."""
@@ -103,7 +103,7 @@ fn slenderness_ratio(
 # ── axial_stress ─────────────────────────────────────────────────────────────
 
 
-fn axial_stress(force: Float64, area: Float64) -> Float64:
+def axial_stress(force: Float64, area: Float64) -> Float64:
     """Axial stress σ = P / A."""
     return force / area
 
@@ -111,7 +111,7 @@ fn axial_stress(force: Float64, area: Float64) -> Float64:
 # ── combined_stress_von_mises ────────────────────────────────────────────────
 
 
-fn combined_stress_von_mises(
+def combined_stress_von_mises(
     sx: Float64, sy: Float64, txy: Float64
 ) -> Float64:
     """Von Mises equivalent stress σ_vm = sqrt(sx²-sx*sy+sy²+3*txy²)."""
@@ -121,7 +121,7 @@ fn combined_stress_von_mises(
 # ── safety_factor ────────────────────────────────────────────────────────────
 
 
-fn safety_factor(
+def safety_factor(
     ultimate_strength: Float64, working_stress: Float64
 ) -> Float64:
     """Safety factor FS = σ_u / σ_w."""
@@ -131,7 +131,7 @@ fn safety_factor(
 # ── natural_frequency_cantilever ─────────────────────────────────────────────
 
 
-fn natural_frequency_cantilever(
+def natural_frequency_cantilever(
     ei: Float64, mass_per_length: Float64, length: Float64
 ) -> Float64:
     """First natural frequency of a cantilever beam.

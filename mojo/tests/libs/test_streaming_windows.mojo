@@ -66,7 +66,7 @@ from streaming.windows import (
 )
 
 
-fn _probe() -> List[Float64]:
+def _probe() -> List[Float64]:
     """[3, 1, 4, 1, 5, 9, 2, 6] — the series whose every window is tabulated above."""
     var out = List[Float64]()
     out.append(3.0)
@@ -80,7 +80,7 @@ fn _probe() -> List[Float64]:
     return out^
 
 
-fn _matches(series: List[Float64], want: List[Float64]) -> Int:
+def _matches(series: List[Float64], want: List[Float64]) -> Int:
     """How many positions differ EXACTLY. -1 when the lengths disagree."""
     if len(series) != len(want):
         return -1
@@ -91,7 +91,7 @@ fn _matches(series: List[Float64], want: List[Float64]) -> Int:
     return diffs
 
 
-fn _of(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -> List[Float64]:
+def _of(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -> List[Float64]:
     """Six hand-written expected values, in window order."""
     var out = List[Float64]()
     out.append(a)
@@ -103,7 +103,7 @@ fn _of(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -
     return out^
 
 
-fn main() raises:
+def main() raises:
     print("Running streaming.windows known-value tests...")
     var passed = 0
     var failed = 0

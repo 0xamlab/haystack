@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from laundry import water_usage_liters, detergent_dose_ml, wash_temperature_energy, spin_g_force, moisture_retention, drying_time_estimate, energy_per_cycle, cost_per_wash, fabric_wear_cycles, stain_removal_efficiency, color_fastness_delta_e, water_hardness_compensation
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

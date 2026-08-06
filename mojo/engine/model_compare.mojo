@@ -25,7 +25,7 @@ struct DiffCI(Copyable, Movable):
     var hi: Float64
     var point: Float64
 
-    fn __init__(out self, lo: Float64 = 0.0, hi: Float64 = 0.0, point: Float64 = 0.0):
+    def __init__(out self, lo: Float64 = 0.0, hi: Float64 = 0.0, point: Float64 = 0.0):
         self.lo = lo
         self.hi = hi
         self.point = point
@@ -37,7 +37,7 @@ struct DMResult(Copyable, Movable):
     var dm_stat: Float64
     var p_two_sided: Float64
 
-    fn __init__(out self, dm_stat: Float64 = 0.0, p_two_sided: Float64 = 1.0):
+    def __init__(out self, dm_stat: Float64 = 0.0, p_two_sided: Float64 = 1.0):
         self.dm_stat = dm_stat
         self.p_two_sided = p_two_sided
 
@@ -45,7 +45,7 @@ struct DMResult(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _sort_floats(mut arr: List[Float64]):
+def _sort_floats(mut arr: List[Float64]):
     """Insertion sort for float list (bootstrap replicate arrays)."""
     var n = len(arr)
     for i in range(1, n):
@@ -57,7 +57,7 @@ fn _sort_floats(mut arr: List[Float64]):
         arr[j + 1] = key
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -67,7 +67,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -75,11 +75,11 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _xr_f64(state: UInt64) -> Float64:
+def _xr_f64(state: UInt64) -> Float64:
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Mix an explicit user seed into a well-dispersed xorshift64 state."""
     var s = UInt64(seed) * UInt64(6364136223846793005) + UInt64(0xA341316CAABB3D29)
     s = _xorshift64(s)
@@ -88,12 +88,12 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _normal_cdf(x: Float64) -> Float64:
+def _normal_cdf(x: Float64) -> Float64:
     """Standard normal CDF via erf: Φ(x) = (1 + erf(x/√2)) / 2."""
     return 0.5 * (1.0 + erf(x / 1.4142135623730951))
 
 
-fn _percentile_bounds(mut boot: List[Float64], alpha: Float64) -> List[Float64]:
+def _percentile_bounds(mut boot: List[Float64], alpha: Float64) -> List[Float64]:
     """Percentile-method bounds [alpha/2, 1-alpha/2] from a bootstrap distribution.
     Sorts boot in place; returns [lo, hi]."""
     var n_boot = len(boot)
@@ -117,7 +117,7 @@ fn _percentile_bounds(mut boot: List[Float64], alpha: Float64) -> List[Float64]:
     return result^
 
 
-fn _pop_std(data: List[Float64]) -> Float64:
+def _pop_std(data: List[Float64]) -> Float64:
     """Population standard deviation (divide by n)."""
     var n = len(data)
     if n == 0:
@@ -130,7 +130,7 @@ fn _pop_std(data: List[Float64]) -> Float64:
     return sqrt(ss / Float64(n))
 
 
-fn _sharpe(data: List[Float64]) -> Float64:
+def _sharpe(data: List[Float64]) -> Float64:
     """Sharpe ratio = mean / population std; 0.0 when std is 0."""
     var s = _pop_std(data)
     if s <= 0.0:
@@ -138,7 +138,7 @@ fn _sharpe(data: List[Float64]) -> Float64:
     return _mean(data) / s
 
 
-fn _log_binom_cdf_terms(n: Int, k_lo: Int, k_hi: Int) -> Float64:
+def _log_binom_cdf_terms(n: Int, k_lo: Int, k_hi: Int) -> Float64:
     """Sum of Binomial(n, 0.5) pmf for k in [k_lo, k_hi], each term computed
     in log space: log pmf(k) = log C(n,k) - n·log(2), with log C built
     incrementally to avoid factorial overflow."""
@@ -165,7 +165,7 @@ fn _log_binom_cdf_terms(n: Int, k_lo: Int, k_hi: Int) -> Float64:
 # ── paired_bootstrap_diff_ci ─────────────────────────────────────────────────
 
 
-fn paired_bootstrap_diff_ci(
+def paired_bootstrap_diff_ci(
     metric_a: List[Float64],
     metric_b: List[Float64],
     n_boot: Int,
@@ -210,7 +210,7 @@ fn paired_bootstrap_diff_ci(
 # ── mcnemar_exact_p ──────────────────────────────────────────────────────────
 
 
-fn mcnemar_exact_p(b01: Int, b10: Int) -> Float64:
+def mcnemar_exact_p(b01: Int, b10: Int) -> Float64:
     """Exact two-sided binomial McNemar test p-value.
 
     b01 = count of samples model A got wrong and model B got right;
@@ -243,7 +243,7 @@ fn mcnemar_exact_p(b01: Int, b10: Int) -> Float64:
 # ── diebold_mariano ──────────────────────────────────────────────────────────
 
 
-fn diebold_mariano(err_a: List[Float64], err_b: List[Float64], h: Int) -> DMResult:
+def diebold_mariano(err_a: List[Float64], err_b: List[Float64], h: Int) -> DMResult:
     """Diebold-Mariano forecast comparison test under squared-error loss.
 
     Loss differentials d_t = err_a[t]² - err_b[t]². Long-run variance of the
@@ -300,7 +300,7 @@ fn diebold_mariano(err_a: List[Float64], err_b: List[Float64], h: Int) -> DMResu
 # ── sharpe_diff_bootstrap_ci ─────────────────────────────────────────────────
 
 
-fn sharpe_diff_bootstrap_ci(
+def sharpe_diff_bootstrap_ci(
     returns_a: List[Float64],
     returns_b: List[Float64],
     n_boot: Int,

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn normal_pdf(x: Float64, mu: Float64, sigma: Float64) -> Float64:
+def normal_pdf(x: Float64, mu: Float64, sigma: Float64) -> Float64:
     """Normal (Gaussian) PDF.
 
     f(x) = 1/(σ√2π) × exp(-(x-μ)²/(2σ²))
@@ -37,7 +37,7 @@ fn normal_pdf(x: Float64, mu: Float64, sigma: Float64) -> Float64:
     return exp(-0.5 * z * z) / (sigma * sqrt(2.0 * pi))
 
 
-fn normal_cdf_approx(x: Float64, mu: Float64, sigma: Float64) -> Float64:
+def normal_cdf_approx(x: Float64, mu: Float64, sigma: Float64) -> Float64:
     """Normal CDF approximation using tanh-based erf approximation.
 
     Φ(x) ≈ 0.5 × (1 + erf((x-μ)/(σ√2)))
@@ -68,7 +68,7 @@ fn normal_cdf_approx(x: Float64, mu: Float64, sigma: Float64) -> Float64:
     return 0.5 * (1.0 + tanh_val)
 
 
-fn t_distribution_pdf(x: Float64, df: Float64) -> Float64:
+def t_distribution_pdf(x: Float64, df: Float64) -> Float64:
     """Student's t-distribution PDF (unnormalised proportional form).
 
     f(x) ∝ (1 + x²/ν)^(-(ν+1)/2)
@@ -86,7 +86,7 @@ fn t_distribution_pdf(x: Float64, df: Float64) -> Float64:
     return exp(-(df + 1.0) / 2.0 * log(base))
 
 
-fn chi2_pdf(x: Float64, df: Float64) -> Float64:
+def chi2_pdf(x: Float64, df: Float64) -> Float64:
     """Chi-squared PDF (unnormalised).
 
     f(x) ∝ x^(k/2 - 1) × exp(-x/2)
@@ -103,7 +103,7 @@ fn chi2_pdf(x: Float64, df: Float64) -> Float64:
     return exp((df / 2.0 - 1.0) * log(x) - x / 2.0)
 
 
-fn exponential_pdf(x: Float64, rate: Float64) -> Float64:
+def exponential_pdf(x: Float64, rate: Float64) -> Float64:
     """Exponential distribution PDF.
 
     f(x) = λ × exp(-λx)  for x ≥ 0
@@ -120,7 +120,7 @@ fn exponential_pdf(x: Float64, rate: Float64) -> Float64:
     return rate * exp(-rate * x)
 
 
-fn poisson_pmf(k: Float64, lam: Float64) -> Float64:
+def poisson_pmf(k: Float64, lam: Float64) -> Float64:
     """Poisson PMF in log space: log P(X=k) = k log λ - λ - log(k!).
 
     Uses Stirling for log factorial.
@@ -140,7 +140,7 @@ fn poisson_pmf(k: Float64, lam: Float64) -> Float64:
     return k * log(lam) - lam - log_k_fact
 
 
-fn beta_pdf_unnorm(x: Float64, alpha: Float64, beta: Float64) -> Float64:
+def beta_pdf_unnorm(x: Float64, alpha: Float64, beta: Float64) -> Float64:
     """Beta distribution unnormalised PDF.
 
     f(x) ∝ x^(α-1) × (1-x)^(β-1)
@@ -158,7 +158,7 @@ fn beta_pdf_unnorm(x: Float64, alpha: Float64, beta: Float64) -> Float64:
     return exp((alpha - 1.0) * log(x) + (beta - 1.0) * log(1.0 - x))
 
 
-fn gamma_pdf_unnorm(x: Float64, shape: Float64, rate: Float64) -> Float64:
+def gamma_pdf_unnorm(x: Float64, shape: Float64, rate: Float64) -> Float64:
     """Gamma distribution unnormalised PDF.
 
     f(x) ∝ x^(α-1) × exp(-β x)
@@ -176,7 +176,7 @@ fn gamma_pdf_unnorm(x: Float64, shape: Float64, rate: Float64) -> Float64:
     return exp((shape - 1.0) * log(x) - rate * x)
 
 
-fn logistic_pdf(x: Float64, mu: Float64, s: Float64) -> Float64:
+def logistic_pdf(x: Float64, mu: Float64, s: Float64) -> Float64:
     """Logistic distribution PDF.
 
     f(x) = exp(-(x-μ)/s) / (s × (1 + exp(-(x-μ)/s))²)
@@ -197,7 +197,7 @@ fn logistic_pdf(x: Float64, mu: Float64, s: Float64) -> Float64:
     return e / (s * denom * denom)
 
 
-fn weibull_pdf(x: Float64, shape: Float64, scale: Float64) -> Float64:
+def weibull_pdf(x: Float64, shape: Float64, scale: Float64) -> Float64:
     """Weibull distribution PDF.
 
     f(x) = (k/λ) × (x/λ)^(k-1) × exp(-(x/λ)^k)

@@ -37,7 +37,7 @@ alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _I8P = UnsafePointer[Int8, origin=MutAnyOrigin]
 
 
-fn _logit_for_row_kernel(
+def _logit_for_row_kernel(
     out_val: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, row: Int, eps: Float32
 ):
     """ONE threadgroup, ONE row: final rmsnorm(x) then the tied lm_head projection's dot product for
@@ -90,7 +90,7 @@ fn _logit_for_row_kernel(
         out_val[0] = red[0]
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -103,7 +103,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -112,7 +112,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -126,7 +126,7 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 

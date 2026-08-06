@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from stats import compute_mean, compute_variance, compute_std, compute_std_from_values, pctile, count_below_zero, ilog2, sort_values, quantile, percentile, median
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from supply_chain import lead_time_demand, bullwhip_effect, forecast_error_mae, forecast_error_mape, forecast_bias, tracking_signal, economic_production_qty, total_cost_of_ownership, service_level_type1, fill_rate_type2, moving_average_forecast, exponential_smoothing_forecast
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

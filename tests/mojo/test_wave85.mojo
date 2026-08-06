@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt, asin, cos
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Crystallography Tests ────────────────────────────────────────────────────
 
 
-fn test_crystallography() raises:
+def test_crystallography() raises:
     comptime PI: Float64 = 3.141592653589793
     comptime HALF_PI: Float64 = 1.5707963267948966
 
@@ -132,7 +132,7 @@ fn test_crystallography() raises:
 # ── Pension Tests ────────────────────────────────────────────────────────────
 
 
-fn test_pension() raises:
+def test_pension() raises:
     # replacement_ratio: 30000/60000*100 = 50%
     assert_true(approx_eq(replacement_ratio(30000.0, 60000.0), 50.0), "rr 50%")
     assert_true(approx_eq(replacement_ratio(100.0, 0.0), 0.0), "rr zero salary")
@@ -196,7 +196,7 @@ fn test_pension() raises:
 # ── Plumbing Tests ───────────────────────────────────────────────────────────
 
 
-fn test_plumbing() raises:
+def test_plumbing() raises:
     comptime PI: Float64 = 3.141592653589793
 
     # pipe_flow_velocity: Q=0.01 m³/s, d=0.1 m → v = 4*0.01/(π*0.01) ≈ 1.2732
@@ -259,7 +259,7 @@ fn test_plumbing() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 85 tests: Crystallography, Pension, Plumbing")
     test_crystallography()
     test_pension()

@@ -34,7 +34,7 @@ struct KalmanState(Copyable, Movable):
     var x: List[Float64]
     var P: List[List[Float64]]
 
-    fn __init__(out self, x: List[Float64], P: List[List[Float64]]):
+    def __init__(out self, x: List[Float64], P: List[List[Float64]]):
         self.x = x.copy()
         self.P = P.copy()
 
@@ -42,7 +42,7 @@ struct KalmanState(Copyable, Movable):
 # ── Matrix utilities ─────────────────────────────────────────────────────────
 
 
-fn mat_identity(n: Int) -> List[List[Float64]]:
+def mat_identity(n: Int) -> List[List[Float64]]:
     """Create n×n identity matrix."""
     # n drives an n² allocation; clamp the wire-supplied count.
     var dim = n
@@ -60,7 +60,7 @@ fn mat_identity(n: Int) -> List[List[Float64]]:
     return result^
 
 
-fn mat_mul(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
+def mat_mul(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
     """Matrix multiplication: C = A * B."""
     var rows_a = len(a)
     if rows_a == 0 or len(b) == 0:
@@ -89,7 +89,7 @@ fn mat_mul(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]
     return result^
 
 
-fn mat_transpose(a: List[List[Float64]]) -> List[List[Float64]]:
+def mat_transpose(a: List[List[Float64]]) -> List[List[Float64]]:
     """Transpose matrix."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
@@ -106,7 +106,7 @@ fn mat_transpose(a: List[List[Float64]]) -> List[List[Float64]]:
     return result^
 
 
-fn mat_add(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
+def mat_add(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
     """Element-wise matrix addition."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
@@ -126,7 +126,7 @@ fn mat_add(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]
     return result^
 
 
-fn mat_sub(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
+def mat_sub(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]]:
     """Element-wise matrix subtraction."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
@@ -146,7 +146,7 @@ fn mat_sub(a: List[List[Float64]], b: List[List[Float64]]) -> List[List[Float64]
     return result^
 
 
-fn mat_scale(a: List[List[Float64]], s: Float64) -> List[List[Float64]]:
+def mat_scale(a: List[List[Float64]], s: Float64) -> List[List[Float64]]:
     """Scalar multiplication of a matrix."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
@@ -163,7 +163,7 @@ fn mat_scale(a: List[List[Float64]], s: Float64) -> List[List[Float64]]:
     return result^
 
 
-fn mat_inv_2x2(a: List[List[Float64]]) -> List[List[Float64]]:
+def mat_inv_2x2(a: List[List[Float64]]) -> List[List[Float64]]:
     """Inverse of a 2×2 matrix. Returns zero matrix if singular."""
     # Not even 2×2: no inverse exists to return (and the reads below
     # would go past the end — uncatchable abort).
@@ -192,7 +192,7 @@ fn mat_inv_2x2(a: List[List[Float64]]) -> List[List[Float64]]:
     return result^
 
 
-fn matvec(a: List[List[Float64]], v: List[Float64]) -> List[Float64]:
+def matvec(a: List[List[Float64]], v: List[Float64]) -> List[Float64]:
     """Matrix-vector product: result = A * v."""
     var rows = len(a)
     var cols = len(a[0]) if rows > 0 else 0
@@ -215,7 +215,7 @@ fn matvec(a: List[List[Float64]], v: List[Float64]) -> List[Float64]:
 # ── Scalar inverse for 1×1 "matrix" ─────────────────────────────────────────
 
 
-fn _scalar_inv(a: List[List[Float64]]) -> List[List[Float64]]:
+def _scalar_inv(a: List[List[Float64]]) -> List[List[Float64]]:
     """Inverse of a 1×1 matrix."""
     var result = List[List[Float64]]()
     var row = List[Float64]()
@@ -232,7 +232,7 @@ fn _scalar_inv(a: List[List[Float64]]) -> List[List[Float64]]:
     return result^
 
 
-fn _mat_inv(a: List[List[Float64]]) -> List[List[Float64]]:
+def _mat_inv(a: List[List[Float64]]) -> List[List[Float64]]:
     """Invert a 1×1 or 2×2 matrix."""
     var n = len(a)
     if n == 1:
@@ -243,7 +243,7 @@ fn _mat_inv(a: List[List[Float64]]) -> List[List[Float64]]:
 # ── Kalman predict ───────────────────────────────────────────────────────────
 
 
-fn kalman_predict(
+def kalman_predict(
     state: KalmanState,
     F: List[List[Float64]],
     Q: List[List[Float64]],
@@ -259,7 +259,7 @@ fn kalman_predict(
 # ── Kalman update ────────────────────────────────────────────────────────────
 
 
-fn kalman_update(
+def kalman_update(
     state: KalmanState,
     z: List[Float64],
     H: List[List[Float64]],
@@ -315,7 +315,7 @@ fn kalman_update(
 # ── 1D Kalman smoother ──────────────────────────────────────────────────────
 
 
-fn kalman_smooth_1d(
+def kalman_smooth_1d(
     measurements: List[Float64],
     process_var: Float64,
     measurement_var: Float64,

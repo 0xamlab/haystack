@@ -103,37 +103,37 @@ struct Tally(Copyable, Movable):
     var checks: Int
     var failures: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.checks = 0
         self.failures = 0
 
-    fn ok(mut self, name: String, condition: Bool):
+    def ok(mut self, name: String, condition: Bool):
         self.checks += 1
         if not condition:
             self.failures += 1
             print("  FAIL " + name)
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     """The bit pattern, so NaN compares equal to NaN and -0.0 does not compare
     equal to +0.0 — the two distinctions `==` cannot make."""
     return bitcast[DType.uint64](x)
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _rand01(mut state: UInt64) -> Float64:
+def _rand01(mut state: UInt64) -> Float64:
     return Float64(Int(_lcg(state) >> 11)) / Float64(Int(UInt64(1) << 53))
 
 
-fn _canonical() -> Float64:
+def _canonical() -> Float64:
     return bitcast[DType.float64](CANONICAL_NAN_BITS)
 
 
-fn _diff_cells(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
+def _diff_cells(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
     """Cells where two results differ BITWISE. 0 is identity; keys are compared
     IN ORDER so a permutation is not identity."""
     if a.n_groups() != b.n_groups():
@@ -158,7 +158,7 @@ fn _diff_cells(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
     return bad
 
 
-fn _one_key_batch(
+def _one_key_batch(
     var keys: List[Float64], var values: List[List[Float64]]
 ) -> RecordBatch:
     var n = len(keys)
@@ -172,26 +172,26 @@ fn _one_key_batch(
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _ints(n: Int) -> List[Int]:
+def _ints(n: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         out.append(i)
     return out^
 
 
-fn _value_cols(n_aggs: Int) -> List[Int]:
+def _value_cols(n_aggs: Int) -> List[Int]:
     var out = List[Int]()
     for j in range(n_aggs):
         out.append(1 + j)
     return out^
 
 
-fn _ops(var codes: List[Int]) -> List[Int]:
+def _ops(var codes: List[Int]) -> List[Int]:
     return codes^
 
 
 # ══ block 1 ══ the parallel merge moves no bit ════════════════════════════════
-fn block1_merge_decomposition(mut t: Tally):
+def block1_merge_decomposition(mut t: Tally):
     """PARALLEL merge == SERIAL merge, bitwise, over every opcode and layout.
 
     This is the composition's single largest speedup and its single largest
@@ -320,7 +320,7 @@ fn block1_merge_decomposition(mut t: Tally):
 
 
 # ══ block 2 ══ NaN policy across the in-band seed ═════════════════════════════
-fn block2_nan_policy(mut t: Tally):
+def block2_nan_policy(mut t: Tally):
     """A NaN counts, poisons sum/mean, and contributes to NO extremum; an
     all-NaN group reports the canonical quiet NaN with `present` true.
 
@@ -427,7 +427,7 @@ fn block2_nan_policy(mut t: Tally):
         )
 
 
-fn block2b_signed_zero_and_inf(mut t: Tally):
+def block2b_signed_zero_and_inf(mut t: Tally):
     """+0.0 against -0.0, and +/-inf, through the composed merge.
 
     A sum whose every summand is -0.0 must stay -0.0: folding from a 0.0 seed
@@ -510,7 +510,7 @@ fn block2b_signed_zero_and_inf(mut t: Tally):
 
 
 # ══ block 3 ══ nulls, both layouts ════════════════════════════════════════════
-fn block3_nulls(mut t: Tally):
+def block3_nulls(mut t: Tally):
     """Null VALUES in one column and not another (the divergent-count layout),
     a group whose every value is null, and null KEYS (excluded and tallied)."""
     var n = 600
@@ -582,7 +582,7 @@ fn block3_nulls(mut t: Tally):
 
 
 # ══ block 4 ══ the worker cap ════════════════════════════════════════════════
-fn block4_worker_cap(mut t: Tally):
+def block4_worker_cap(mut t: Tally):
     """`compose_dense_workers` is the third composition finding, as arithmetic.
 
     Checked against `dense_state_bytes` directly rather than against remembered
@@ -657,7 +657,7 @@ fn block4_worker_cap(mut t: Tally):
 
 
 # ══ block 5 ══ the exact domain scan agrees with the guard ═══════════════════
-fn block5_exact_domain(mut t: Tally):
+def block5_exact_domain(mut t: Tally):
     """`compose_exact_domain` and `_dense_code` must agree on "is a code".
 
     Not tested through the guard directly — the guard is private to
@@ -772,7 +772,7 @@ fn block5_exact_domain(mut t: Tally):
 
 
 # ══ block 6 ══ routing, and refusal totality past the probe window ═══════════
-fn block6_routing(mut t: Tally):
+def block6_routing(mut t: Tally):
     """`compose_plan` picks the route the shape deserves, and the entry point is
     TOTAL — every refusal falls through to the shipped engine.
 
@@ -934,7 +934,7 @@ fn block6_routing(mut t: Tally):
 
 
 # ══ block 7 ══ the status block has no duplicate ═════════════════════════════
-fn block7_status_registry(mut t: Tally):
+def block7_status_registry(mut t: Tally):
     """330..339 must map to DISTINCT names.
 
     This is the block that exists because composition found a real collision:
@@ -979,7 +979,7 @@ fn block7_status_registry(mut t: Tally):
 
 
 # ══ block 8 ══ the composed engine's refusals are statuses ═══════════════════
-fn block8_engine_refusals(mut t: Tally):
+def block8_engine_refusals(mut t: Tally):
     """The engine's own refusal table, so a refusal cannot be mistaken for an
     empty answer — and so the byte budget is a real gate rather than a comment."""
     var keys = List[Float64]()
@@ -1047,7 +1047,7 @@ fn block8_engine_refusals(mut t: Tally):
     )
 
 
-fn main():
+def main():
     print("test_query_composed")
     var t = Tally()
     block1_merge_decomposition(t)

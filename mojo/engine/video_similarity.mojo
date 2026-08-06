@@ -22,11 +22,11 @@ from video_features import scene_change_scores
 from video_ops import frame_count_from_flat, frame_mean_intensity
 
 
-fn _abs(v: Float64) -> Float64:
+def _abs(v: Float64) -> Float64:
     return -v if v < 0.0 else v
 
 
-fn _clamp01(v: Float64) -> Float64:
+def _clamp01(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 1.0:
@@ -34,13 +34,13 @@ fn _clamp01(v: Float64) -> Float64:
     return v
 
 
-fn _frame_stride(width: Int, height: Int, channels: Int) -> Int:
+def _frame_stride(width: Int, height: Int, channels: Int) -> Int:
     if width <= 0 or height <= 0 or channels <= 0:
         return 0
     return width * height * channels
 
 
-fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
+def _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     if channels <= 0:
         return 0.0
     var total: Float64 = 0.0
@@ -49,7 +49,7 @@ fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     return total / Float64(channels)
 
 
-fn _extract_frame_gray_flat(
+def _extract_frame_gray_flat(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, frame_index: Int,
 ) -> List[Float64]:
     var out = List[Float64]()
@@ -64,7 +64,7 @@ fn _extract_frame_gray_flat(
     return out^
 
 
-fn _paired_frame_count(
+def _paired_frame_count(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int,
 ) -> Int:
     var frames_a = frame_count_from_flat(flat_a, width, height, channels)
@@ -72,7 +72,7 @@ fn _paired_frame_count(
     return frames_a if frames_a <= frames_b else frames_b
 
 
-fn _frame_count_gap_ratio(frames_a: Int, frames_b: Int) -> Float64:
+def _frame_count_gap_ratio(frames_a: Int, frames_b: Int) -> Float64:
     if frames_a <= 0 and frames_b <= 0:
         return 0.0
     var max_frames = frames_a if frames_a >= frames_b else frames_b
@@ -82,7 +82,7 @@ fn _frame_count_gap_ratio(frames_a: Int, frames_b: Int) -> Float64:
     return Float64(gap) / Float64(max_frames)
 
 
-fn frame_duplicate_scores(
+def frame_duplicate_scores(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> List[Float64]:
     """Per-frame duplicate scores for aligned frames up to min(frame_count_a, frame_count_b)."""
@@ -97,7 +97,7 @@ fn frame_duplicate_scores(
     return out^
 
 
-fn average_frame_duplicate_score(
+def average_frame_duplicate_score(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Mean frame duplicate score in [0, 1]. Empty vs empty returns 1.0."""
@@ -116,7 +116,7 @@ fn average_frame_duplicate_score(
     return total / Float64(len(scores))
 
 
-fn frame_hash_hamming_series(
+def frame_hash_hamming_series(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> List[Int]:
     """Per-frame dHash Hamming distances for aligned frames."""
@@ -131,7 +131,7 @@ fn frame_hash_hamming_series(
     return out^
 
 
-fn average_frame_hash_hamming(
+def average_frame_hash_hamming(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Mean frame dHash Hamming distance. Empty vs non-empty returns 64.0."""
@@ -150,7 +150,7 @@ fn average_frame_hash_hamming(
     return total / Float64(len(distances))
 
 
-fn temporal_signature_distance(
+def temporal_signature_distance(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Clip-level temporal distance in [0, 1] from intensity, motion, and length mismatch."""
@@ -186,7 +186,7 @@ fn temporal_signature_distance(
     return _clamp01(0.55 * intensity_gap + 0.30 * motion_gap + 0.15 * count_gap)
 
 
-fn clip_duplicate_score_flat(
+def clip_duplicate_score_flat(
     flat_a: List[Float64], flat_b: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Weighted clip duplicate score in [0, 1] from frame, hash, and temporal agreement."""
@@ -205,7 +205,7 @@ fn clip_duplicate_score_flat(
     return _clamp01(0.55 * frame_score + 0.25 * hash_similarity + 0.20 * temporal_similarity)
 
 
-fn is_duplicate_clip_flat(
+def is_duplicate_clip_flat(
     flat_a: List[Float64], flat_b: List[Float64],
     width: Int, height: Int, channels: Int, min_score: Float64,
 ) -> Bool:

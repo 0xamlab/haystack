@@ -24,7 +24,7 @@ from std.math import exp, log, abs as fabs
 # ── weibull_failure_probability ──────────────────────────────────────────────
 
 
-fn weibull_failure_probability(
+def weibull_failure_probability(
     stress: Float64, sigma0: Float64, m: Float64
 ) -> Float64:
     """Weibull failure probability: P = 1 - exp(-(σ/σ0)^m).
@@ -49,7 +49,7 @@ fn weibull_failure_probability(
 # ── weibull_characteristic_strength ──────────────────────────────────────────
 
 
-fn weibull_characteristic_strength(
+def weibull_characteristic_strength(
     mean_strength: Float64, m: Float64
 ) -> Float64:
     """Characteristic strength: σ0 ≈ mean * 1.1 (simplified for m≈10).
@@ -67,7 +67,7 @@ fn weibull_characteristic_strength(
 # ── thermal_shock_resistance ─────────────────────────────────────────────────
 
 
-fn thermal_shock_resistance(
+def thermal_shock_resistance(
     strength: Float64,
     modulus: Float64,
     alpha: Float64,
@@ -93,7 +93,7 @@ fn thermal_shock_resistance(
 # ── youngs_modulus_porosity ──────────────────────────────────────────────────
 
 
-fn youngs_modulus_porosity(
+def youngs_modulus_porosity(
     e0: Float64, porosity: Float64, b: Float64
 ) -> Float64:
     """Young's modulus with porosity: E = E0 * exp(-b*P).
@@ -112,7 +112,7 @@ fn youngs_modulus_porosity(
 # ── sintering_shrinkage ─────────────────────────────────────────────────────
 
 
-fn sintering_shrinkage(
+def sintering_shrinkage(
     initial_length: Float64, final_length: Float64
 ) -> Float64:
     """Sintering shrinkage: S = (L0 - Lf) / L0 * 100.
@@ -132,7 +132,7 @@ fn sintering_shrinkage(
 # ── density_from_archimedes ──────────────────────────────────────────────────
 
 
-fn density_from_archimedes(
+def density_from_archimedes(
     dry_mass: Float64,
     wet_mass: Float64,
     suspended_mass: Float64,
@@ -158,7 +158,7 @@ fn density_from_archimedes(
 # ── relative_density ─────────────────────────────────────────────────────────
 
 
-fn relative_density(
+def relative_density(
     actual: Float64, theoretical: Float64
 ) -> Float64:
     """Relative density: RD = actual / theoretical * 100.
@@ -178,7 +178,7 @@ fn relative_density(
 # ── porosity_from_density ────────────────────────────────────────────────────
 
 
-fn porosity_from_density(
+def porosity_from_density(
     actual_density: Float64, theoretical_density: Float64
 ) -> Float64:
     """Porosity from density: P = (1 - actual/theoretical) * 100.
@@ -198,7 +198,7 @@ fn porosity_from_density(
 # ── fracture_toughness_indentation ───────────────────────────────────────────
 
 
-fn fracture_toughness_indentation(
+def fracture_toughness_indentation(
     hardness: Float64,
     crack_length: Float64,
     load: Float64,
@@ -231,7 +231,7 @@ fn fracture_toughness_indentation(
 # ── dielectric_constant_mixture ──────────────────────────────────────────────
 
 
-fn dielectric_constant_mixture(
+def dielectric_constant_mixture(
     v1: Float64, k1: Float64, v2: Float64, k2: Float64
 ) -> Float64:
     """Lichtenecker linear mixture rule: K_mix = v1*k1 + v2*k2.
@@ -251,7 +251,7 @@ fn dielectric_constant_mixture(
 # ── coefficient_of_thermal_expansion ─────────────────────────────────────────
 
 
-fn coefficient_of_thermal_expansion(
+def coefficient_of_thermal_expansion(
     delta_l: Float64, l0: Float64, delta_t: Float64
 ) -> Float64:
     """CTE = ΔL / (L0 * ΔT).
@@ -273,7 +273,7 @@ fn coefficient_of_thermal_expansion(
 # ── glass_transition_estimate ────────────────────────────────────────────────
 
 
-fn glass_transition_estimate(melting_point: Float64) -> Float64:
+def glass_transition_estimate(melting_point: Float64) -> Float64:
     """Kauzmann estimate: Tg ≈ 2/3 * Tm.
 
     Args:

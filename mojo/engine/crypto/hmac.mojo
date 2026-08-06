@@ -21,7 +21,7 @@ comptime _OPAD_BYTE = 0x5C
 
 # ── Byte-level SHA-256 helper ────────────────────────────────────────────────
 
-fn _sha256_of_bytes(data: List[UInt8]) -> List[UInt8]:
+def _sha256_of_bytes(data: List[UInt8]) -> List[UInt8]:
     """Compute SHA-256 of raw bytes. Returns 32-byte hash as List[UInt8].
 
     This avoids String/UTF-8 encoding issues when hashing arbitrary bytes.
@@ -82,7 +82,7 @@ fn _sha256_of_bytes(data: List[UInt8]) -> List[UInt8]:
     return result^
 
 
-fn _bytes_to_hex(data: List[UInt8]) -> String:
+def _bytes_to_hex(data: List[UInt8]) -> String:
     """Convert a list of bytes to a lowercase hex string."""
     var result = String("")
     for i in range(len(data)):
@@ -104,7 +104,7 @@ fn _bytes_to_hex(data: List[UInt8]) -> String:
 
 # ── HMAC-SHA256 ──────────────────────────────────────────────────────────────
 
-fn hmac_sha256(key: String, message: String) -> String:
+def hmac_sha256(key: String, message: String) -> String:
     """Compute HMAC-SHA256(key, message). Returns 64-char hex digest.
 
     Algorithm (RFC 2104):
@@ -163,7 +163,7 @@ fn hmac_sha256(key: String, message: String) -> String:
     return _bytes_to_hex(outer_hash)
 
 
-fn hmac_sha256_verify(key: String, message: String, expected_hex: String) -> Bool:
+def hmac_sha256_verify(key: String, message: String, expected_hex: String) -> Bool:
     """Constant-time HMAC verification.
 
     Computes HMAC-SHA256(key, message) and compares with expected_hex

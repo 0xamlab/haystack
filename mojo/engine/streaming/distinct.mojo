@@ -138,7 +138,7 @@ struct DistinctSketch(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         registers: List[Int],
         precision: Int,
@@ -183,7 +183,7 @@ struct DistinctEstimate(Copyable, Movable):
     var n_ingested: Int
     var status: Int
 
-    fn __init__(
+    def __init__(
         out self,
         value: Float64,
         present: Bool,
@@ -200,17 +200,17 @@ struct DistinctEstimate(Copyable, Movable):
         self.status = status
 
 
-fn _invalid(status: Int) -> DistinctSketch:
+def _invalid(status: Int) -> DistinctSketch:
     """Not a sketch, with the reason."""
     return DistinctSketch(List[Int](), 0, 0, 0, status, False)
 
 
-fn _absent(status: Int, n_registers: Int, n_ingested: Int) -> DistinctEstimate:
+def _absent(status: Int, n_registers: Int, n_ingested: Int) -> DistinctEstimate:
     """No cardinality, with the reason. `value` is 0.0 and means nothing."""
     return DistinctEstimate(0.0, False, 0.0, n_registers, n_ingested, status)
 
 
-fn _params_ok(precision: Int, seed: Int) -> Int:
+def _params_ok(precision: Int, seed: Int) -> Int:
     """`STM_OK`, or the status that refuses these parameters."""
     if precision < DISTINCT_MIN_PRECISION or precision > DISTINCT_MAX_PRECISION:
         return STM_ERR_PRECISION
@@ -219,7 +219,7 @@ fn _params_ok(precision: Int, seed: Int) -> Int:
     return STM_OK
 
 
-fn _max_register(precision: Int) -> Int:
+def _max_register(precision: Int) -> Int:
     """Largest register value the frozen `hll_add` can write at this precision.
 
     It hashes into 31 bits, spends `precision` of them on the register index, and counts
@@ -228,7 +228,7 @@ fn _max_register(precision: Int) -> Int:
     return 32 - precision
 
 
-fn _sketch_ok(sketch: DistinctSketch) -> Int:
+def _sketch_ok(sketch: DistinctSketch) -> Int:
     """`STM_OK`, or the status refusing this sketch. O(2^precision).
 
     THE STRUCT PATH IS A CALLER PATH. `DistinctSketch` is decoded from caller JSON by the
@@ -293,7 +293,7 @@ fn _sketch_ok(sketch: DistinctSketch) -> Int:
     return STM_OK
 
 
-fn _frozen(sketch: DistinctSketch) -> HyperLogLog:
+def _frozen(sketch: DistinctSketch) -> HyperLogLog:
     """The frozen `sketch.HyperLogLog` wrapped around these registers.
 
     This is how the frozen register update and the frozen estimator are reached: the
@@ -304,7 +304,7 @@ fn _frozen(sketch: DistinctSketch) -> HyperLogLog:
     )
 
 
-fn distinct_empty(precision: Int, seed: Int) -> DistinctSketch:
+def distinct_empty(precision: Int, seed: Int) -> DistinctSketch:
     """An empty sketch with `2^precision` zeroed registers, keyed by `seed`.
 
     An empty sketch is valid and has no cardinality: `distinct_estimate` reports ABSENT for
@@ -326,7 +326,7 @@ fn distinct_empty(precision: Int, seed: Int) -> DistinctSketch:
     return DistinctSketch(regs^, precision, seed, 0, STM_OK, True)
 
 
-fn distinct_add(sketch: DistinctSketch, item: Int) -> DistinctSketch:
+def distinct_add(sketch: DistinctSketch, item: Int) -> DistinctSketch:
     """`sketch` with one more item folded in, as a new value.
 
     The register update is the frozen `sketch.hll_add`; what happens here is the keyed
@@ -355,7 +355,7 @@ fn distinct_add(sketch: DistinctSketch, item: Int) -> DistinctSketch:
     )
 
 
-fn distinct_ingest(items: List[Int], precision: Int, seed: Int) -> DistinctSketch:
+def distinct_ingest(items: List[Int], precision: Int, seed: Int) -> DistinctSketch:
     """A sketch of every element of `items`.
 
     The element count is `len(items)` and is never taken as a parameter, which removes the
@@ -370,7 +370,7 @@ fn distinct_ingest(items: List[Int], precision: Int, seed: Int) -> DistinctSketc
     return distinct_ingest_prefix(items, len(items), precision, seed)
 
 
-fn distinct_ingest_prefix(
+def distinct_ingest_prefix(
     items: List[Int], n: Int, precision: Int, seed: Int
 ) -> DistinctSketch:
     """A sketch of `items[0..n)`, for replaying a prefix of a stored stream.
@@ -407,7 +407,7 @@ fn distinct_ingest_prefix(
     return DistinctSketch(h.registers, precision, seed, n, STM_OK, True)
 
 
-fn distinct_merge(a: DistinctSketch, b: DistinctSketch) -> DistinctSketch:
+def distinct_merge(a: DistinctSketch, b: DistinctSketch) -> DistinctSketch:
     """The register-wise maximum of `a` and `b` — EXACTLY the sketch of `A ++ B`.
 
     Refuses rather than guesses when the two were not built by the same rules: differing
@@ -451,7 +451,7 @@ fn distinct_merge(a: DistinctSketch, b: DistinctSketch) -> DistinctSketch:
     )
 
 
-fn distinct_estimate(sketch: DistinctSketch) -> DistinctEstimate:
+def distinct_estimate(sketch: DistinctSketch) -> DistinctEstimate:
     """Estimated distinct count, or ABSENCE when there is nothing to estimate.
 
     The estimator is the frozen `sketch.hll_count`. Absence has two causes and they are kept
@@ -488,12 +488,12 @@ fn distinct_estimate(sketch: DistinctSketch) -> DistinctEstimate:
     )
 
 
-fn _representable(x: Float64) -> Bool:
+def _representable(x: Float64) -> Bool:
     """Finite, per the contract, and non-negative: a cardinality below zero is not one."""
     return stm_finite(x) and x >= 0.0
 
 
-fn _feasible(raw: Float64, n_ingested: Int) -> Float64:
+def _feasible(raw: Float64, n_ingested: Int) -> Float64:
     """`raw` projected onto `[1, n_ingested]`, the interval a cardinality can actually occupy.
 
     A stream of `n_ingested` add calls has between 1 and `n_ingested` distinct items. That is
@@ -522,7 +522,7 @@ fn _feasible(raw: Float64, n_ingested: Int) -> Float64:
     return raw
 
 
-fn distinct_snapshot(sketch: DistinctSketch) -> List[Int]:
+def distinct_snapshot(sketch: DistinctSketch) -> List[Int]:
     """Flat snapshot: `[magic, precision, seed, n_ingested] ++ registers`.
 
     Flat because a snapshot has to cross a process boundary as JSON, and because a snapshot
@@ -550,7 +550,7 @@ fn distinct_snapshot(sketch: DistinctSketch) -> List[Int]:
     return out^
 
 
-fn distinct_from_snapshot(snapshot: List[Int]) -> DistinctSketch:
+def distinct_from_snapshot(snapshot: List[Int]) -> DistinctSketch:
     """A sketch from a flat snapshot, or a refusal naming what was wrong with it.
 
     Every field is validated, because the caller of this function is a stored byte string
@@ -599,7 +599,7 @@ fn distinct_from_snapshot(snapshot: List[Int]) -> DistinctSketch:
     return out^
 
 
-fn distinct_merge_snapshots(a: List[Int], b: List[Int]) -> DistinctSketch:
+def distinct_merge_snapshots(a: List[Int], b: List[Int]) -> DistinctSketch:
     """Merge two flat snapshots directly, for combining partials from two processes.
 
     Exactly `distinct_merge(distinct_from_snapshot(a), distinct_from_snapshot(b))`, spelled
@@ -614,7 +614,7 @@ fn distinct_merge_snapshots(a: List[Int], b: List[Int]) -> DistinctSketch:
     return distinct_merge(distinct_from_snapshot(a), distinct_from_snapshot(b))
 
 
-fn distinct_register_count(sketch: DistinctSketch) -> Int:
+def distinct_register_count(sketch: DistinctSketch) -> Int:
     """Register count, or 0 for an unusable sketch. 0 is not a register count.
 
     Reports `len(registers)` and never `1 << precision`, so a caller who compares the two sees
@@ -631,7 +631,7 @@ fn distinct_register_count(sketch: DistinctSketch) -> Int:
     return len(sketch.registers)
 
 
-fn distinct_nonzero_registers(sketch: DistinctSketch) -> Int:
+def distinct_nonzero_registers(sketch: DistinctSketch) -> Int:
     """How many registers have ever been touched, or -1 for an unusable sketch.
 
     Useful as a saturation signal: when this approaches the register count the estimator has

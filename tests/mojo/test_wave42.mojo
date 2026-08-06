@@ -40,17 +40,17 @@ from token_bucket import (
 from std.math import abs as fabs, sqrt
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -58,14 +58,14 @@ fn _assert_eq(a: Int, b: Int, msg: String) raises:
 # ── Helpers to build lists concisely ──────────────────────────────────────────
 
 
-fn _f2(a: Float64, b: Float64) -> List[Float64]:
+def _f2(a: Float64, b: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a)
     v.append(b)
     return v^
 
 
-fn _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var v = List[Float64]()
     v.append(a)
     v.append(b)
@@ -73,14 +73,14 @@ fn _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return v^
 
 
-fn _i2(a: Int, b: Int) -> List[Int]:
+def _i2(a: Int, b: Int) -> List[Int]:
     var v = List[Int]()
     v.append(a)
     v.append(b)
     return v^
 
 
-fn _i3(a: Int, b: Int, c: Int) -> List[Int]:
+def _i3(a: Int, b: Int, c: Int) -> List[Int]:
     var v = List[Int]()
     v.append(a)
     v.append(b)
@@ -91,7 +91,7 @@ fn _i3(a: Int, b: Int, c: Int) -> List[Int]:
 # ── SVM kernel tests ──────────────────────────────────────────────────────────
 
 
-fn test_kernel_linear() raises:
+def test_kernel_linear() raises:
     # 1: orthogonal vectors
     _assert_close(kernel_linear(_f2(1.0, 0.0), _f2(0.0, 1.0)), 0.0, 1e-12, "linear orthogonal")
 
@@ -107,7 +107,7 @@ fn test_kernel_linear() raises:
     print("  ✓ kernel_linear (4 assertions)")
 
 
-fn test_kernel_rbf() raises:
+def test_kernel_rbf() raises:
     # 5: same point → 1.0
     var x = _f2(1.0, 2.0)
     _assert_close(kernel_rbf(x, x), 1.0, 1e-12, "rbf same point")
@@ -130,7 +130,7 @@ fn test_kernel_rbf() raises:
     print("  ✓ kernel_rbf (4 assertions)")
 
 
-fn test_kernel_polynomial() raises:
+def test_kernel_polynomial() raises:
     # 9: (1·1 + 0)^2 = 1.0
     _assert_close(kernel_polynomial(_f2(1.0, 0.0), _f2(1.0, 0.0), 2, 0.0), 1.0, 1e-12, "poly [1,0] deg2")
 
@@ -143,7 +143,7 @@ fn test_kernel_polynomial() raises:
     print("  ✓ kernel_polynomial (3 assertions)")
 
 
-fn test_kernel_sigmoid() raises:
+def test_kernel_sigmoid() raises:
     # 12: tanh(0) = 0
     _assert_close(kernel_sigmoid(_f2(0.0, 0.0), _f2(5.0, 3.0), 1.0, 0.0), 0.0, 1e-12, "sigmoid zero dot")
 
@@ -154,7 +154,7 @@ fn test_kernel_sigmoid() raises:
     print("  ✓ kernel_sigmoid (2 assertions)")
 
 
-fn test_kernel_matrix() raises:
+def test_kernel_matrix() raises:
     # Build a small dataset
     var data = List[List[Float64]]()
     data.append(_f2(1.0, 0.0))
@@ -183,7 +183,7 @@ fn test_kernel_matrix() raises:
     print("  ✓ kernel_matrix (7 assertions)")
 
 
-fn test_frobenius_norm() raises:
+def test_frobenius_norm() raises:
     # 21: identity 2x2 → sqrt(2)
     var I2 = List[List[Float64]]()
     I2.append(_f2(1.0, 0.0))
@@ -206,7 +206,7 @@ fn test_frobenius_norm() raises:
     print("  ✓ frobenius_norm (3 assertions)")
 
 
-fn test_kernel_alignment() raises:
+def test_kernel_alignment() raises:
     # 24: alignment of K with itself ≈ 1.0
     var data = List[List[Float64]]()
     data.append(_f2(1.0, 0.0))
@@ -223,7 +223,7 @@ fn test_kernel_alignment() raises:
     print("  ✓ kernel_alignment (2 assertions)")
 
 
-fn test_kernel_center() raises:
+def test_kernel_center() raises:
     # 26: centered kernel row sums ≈ 0
     var data = List[List[Float64]]()
     data.append(_f2(1.0, 2.0))
@@ -245,7 +245,7 @@ fn test_kernel_center() raises:
     print("  ✓ kernel_center (2 assertions)")
 
 
-fn test_is_psd() raises:
+def test_is_psd() raises:
     # 28: identity is PSD
     var I2 = List[List[Float64]]()
     I2.append(_f2(1.0, 0.0))
@@ -265,7 +265,7 @@ fn test_is_psd() raises:
 # ── Dependency tests ──────────────────────────────────────────────────────────
 
 
-fn test_resolve_order() raises:
+def test_resolve_order() raises:
     # Chain: A(0) → B(1) → C(2)  means 0 depends on 1, 1 depends on 2
     var deps = List[List[Int]]()
     deps.append(_i2(0, 1))  # 0 depends on 1
@@ -291,7 +291,7 @@ fn test_resolve_order() raises:
     print("  ✓ resolve_order (3 assertions)")
 
 
-fn test_has_cycle() raises:
+def test_has_cycle() raises:
     # 33: cycle A→B→A
     var cycled = List[List[Int]]()
     cycled.append(_i2(0, 1))
@@ -313,7 +313,7 @@ fn test_has_cycle() raises:
     print("  ✓ has_cycle (3 assertions)")
 
 
-fn test_transitive_deps() raises:
+def test_transitive_deps() raises:
     # 0→1→2→3
     var deps = List[List[Int]]()
     deps.append(_i2(0, 1))
@@ -341,7 +341,7 @@ fn test_transitive_deps() raises:
     print("  ✓ transitive_deps (3 assertions)")
 
 
-fn test_dependency_depth() raises:
+def test_dependency_depth() raises:
     # 0→1→2→3 chain: depth=3
     var deps = List[List[Int]]()
     deps.append(_i2(0, 1))
@@ -358,7 +358,7 @@ fn test_dependency_depth() raises:
     print("  ✓ dependency_depth (3 assertions)")
 
 
-fn test_is_compatible() raises:
+def test_is_compatible() raises:
     # 42
     _assert(is_compatible(5, 3, 7), "5 in [3,7]")
     # 43
@@ -373,7 +373,7 @@ fn test_is_compatible() raises:
     print("  ✓ is_compatible (5 assertions)")
 
 
-fn test_find_conflicts() raises:
+def test_find_conflicts() raises:
     var reqs = List[List[Int]]()
     reqs.append(_i3(0, 1, 3))   # pkg 0 needs v1-3
     reqs.append(_i3(0, 5, 7))   # pkg 0 needs v5-7 → conflict!
@@ -389,7 +389,7 @@ fn test_find_conflicts() raises:
     print("  ✓ find_conflicts (3 assertions)")
 
 
-fn test_install_plan() raises:
+def test_install_plan() raises:
     # 0→1→2, 0→3
     var deps = List[List[Int]]()
     deps.append(_i2(0, 1))
@@ -418,7 +418,7 @@ fn test_install_plan() raises:
     print("  ✓ install_plan (3 assertions)")
 
 
-fn test_reverse_deps() raises:
+def test_reverse_deps() raises:
     # 0→1, 2→1  → reverse_deps(1) = [0, 2]
     var deps = List[List[Int]]()
     deps.append(_i2(0, 1))
@@ -445,7 +445,7 @@ fn test_reverse_deps() raises:
 # ── Token bucket tests ────────────────────────────────────────────────────────
 
 
-fn test_token_bucket() raises:
+def test_token_bucket() raises:
     # 56: create with full capacity
     var tb = tb_create(10.0, 1.0)
     _assert_close(tb_available(tb), 10.0, 1e-12, "tb_create 10 tokens")
@@ -473,7 +473,7 @@ fn test_token_bucket() raises:
     print("  ✓ token_bucket (7 assertions)")
 
 
-fn test_leaky_bucket() raises:
+def test_leaky_bucket() raises:
     # 63: create empty
     var lb = lb_create(10.0, 2.0)
     _assert_close(lb_level(lb), 0.0, 1e-12, "lb_create level=0")
@@ -504,7 +504,7 @@ fn test_leaky_bucket() raises:
     print("  ✓ leaky_bucket (7 assertions)")
 
 
-fn test_sliding_window() raises:
+def test_sliding_window() raises:
     # max 3 requests per 10s window
     var sw = sw_create(10.0, 3)
 
@@ -532,7 +532,7 @@ fn test_sliding_window() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 42 tests — SVM Kernels, Dependency Resolution, Rate Limiting")
     print("=" * 70)
 

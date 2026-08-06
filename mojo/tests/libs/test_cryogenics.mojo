@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cryogenics import ideal_gas_density, joule_thomson_cooling, carnot_cop_cooling, liquefaction_yield, boiloff_rate, thermal_contraction, heat_leak_through_wall, superconductor_critical_temp_estimate, residual_resistivity_ratio, cryocooler_input_power, vacuum_insulation_heat_flux, helium_lambda_point
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

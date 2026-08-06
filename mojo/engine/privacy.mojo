@@ -24,7 +24,7 @@ from std.random import random_float64
 # ── Internal: Laplace sample via inverse CDF ─────────────────────────────────
 
 
-fn _laplace_sample(scale: Float64) -> Float64:
+def _laplace_sample(scale: Float64) -> Float64:
     """Sample from Laplace(0, scale) using inverse CDF method.
 
     Uses uniform random u in (0,1), then:
@@ -46,7 +46,7 @@ fn _laplace_sample(scale: Float64) -> Float64:
 # ── Internal: Gaussian sample via Box-Muller ─────────────────────────────────
 
 
-fn _gaussian_sample(sigma: Float64) -> Float64:
+def _gaussian_sample(sigma: Float64) -> Float64:
     """Sample from Normal(0, sigma²) using Box-Muller transform."""
     var u1 = random_float64()
     var u2 = random_float64()
@@ -56,7 +56,7 @@ fn _gaussian_sample(sigma: Float64) -> Float64:
     return sigma * z
 
 
-fn _cos_approx(x: Float64) -> Float64:
+def _cos_approx(x: Float64) -> Float64:
     """Cosine via reduction + Taylor series (sufficient for noise generation)."""
     var pi = 3.141592653589793
     var two_pi = 2.0 * pi
@@ -81,7 +81,7 @@ fn _cos_approx(x: Float64) -> Float64:
 # ── laplace_mechanism ────────────────────────────────────────────────────────
 
 
-fn laplace_mechanism(
+def laplace_mechanism(
     value: Float64, sensitivity: Float64, epsilon: Float64
 ) -> Float64:
     """Add Laplace noise: value + Laplace(0, sensitivity/epsilon).
@@ -101,7 +101,7 @@ fn laplace_mechanism(
 # ── gaussian_mechanism ───────────────────────────────────────────────────────
 
 
-fn gaussian_mechanism(
+def gaussian_mechanism(
     value: Float64, sensitivity: Float64, epsilon: Float64, delta: Float64
 ) -> Float64:
     """Add Gaussian noise with σ = sensitivity * sqrt(2*ln(1.25/δ)) / ε.
@@ -122,7 +122,7 @@ fn gaussian_mechanism(
 # ── exponential_mechanism_scores ─────────────────────────────────────────────
 
 
-fn exponential_mechanism_scores(
+def exponential_mechanism_scores(
     scores: List[Float64], sensitivity: Float64, epsilon: Float64
 ) -> List[Float64]:
     """Compute exponential mechanism unnormalized weights.
@@ -147,7 +147,7 @@ fn exponential_mechanism_scores(
 # ── randomized_response ──────────────────────────────────────────────────────
 
 
-fn randomized_response(true_value: Bool, p: Float64) -> Bool:
+def randomized_response(true_value: Bool, p: Float64) -> Bool:
     """Randomized response: with probability p, return true value; else flip.
 
     Args:
@@ -167,7 +167,7 @@ fn randomized_response(true_value: Bool, p: Float64) -> Bool:
 # ── composition_epsilon ──────────────────────────────────────────────────────
 
 
-fn composition_epsilon(epsilons: List[Float64]) -> Float64:
+def composition_epsilon(epsilons: List[Float64]) -> Float64:
     """Basic sequential composition: total ε = Σε_i.
 
     Args:
@@ -185,7 +185,7 @@ fn composition_epsilon(epsilons: List[Float64]) -> Float64:
 # ── advanced_composition ─────────────────────────────────────────────────────
 
 
-fn advanced_composition(
+def advanced_composition(
     epsilon: Float64, delta: Float64, k: Int
 ) -> Float64:
     """Advanced composition theorem.
@@ -209,7 +209,7 @@ fn advanced_composition(
 # ── sensitivity_l1 ───────────────────────────────────────────────────────────
 
 
-fn sensitivity_l1(data: List[Float64]) -> Float64:
+def sensitivity_l1(data: List[Float64]) -> Float64:
     """L1 sensitivity: max(|data_i|) — the maximum absolute value in data.
 
     For a sum query over bounded data, the sensitivity equals
@@ -232,7 +232,7 @@ fn sensitivity_l1(data: List[Float64]) -> Float64:
 # ── sensitivity_l2 ───────────────────────────────────────────────────────────
 
 
-fn sensitivity_l2(data: List[Float64]) -> Float64:
+def sensitivity_l2(data: List[Float64]) -> Float64:
     """L2 sensitivity: sqrt(max²) = max(|data_i|) for single-query case.
 
     For bounded data, the L2 sensitivity of a sum query is the
@@ -256,7 +256,7 @@ fn sensitivity_l2(data: List[Float64]) -> Float64:
 # ── dp_mean ──────────────────────────────────────────────────────────────────
 
 
-fn dp_mean(
+def dp_mean(
     data: List[Float64],
     lower: Float64,
     upper: Float64,
@@ -295,7 +295,7 @@ fn dp_mean(
 # ── dp_count ─────────────────────────────────────────────────────────────────
 
 
-fn dp_count(count: Int, epsilon: Float64) -> Float64:
+def dp_count(count: Int, epsilon: Float64) -> Float64:
     """Differentially private count: add Laplace(0, 1/ε) noise.
 
     Args:

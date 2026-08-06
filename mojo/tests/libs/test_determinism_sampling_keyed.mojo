@@ -14,14 +14,14 @@ from determinism.sampling_keyed import (
 )
 
 
-fn _values(n: Int) -> List[Float64]:
+def _values(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         out.append(Float64(i))
     return out^
 
 
-fn _same(a: List[Float64], b: List[Float64]) -> Bool:
+def _same(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -30,7 +30,7 @@ fn _same(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

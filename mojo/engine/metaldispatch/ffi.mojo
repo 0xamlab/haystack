@@ -67,17 +67,17 @@ comptime MB_TAG_INT: Int32 = 1
 comptime MB_TAG_F32: Int32 = 2
 
 
-fn _mb_open_session() -> Int:
+def _mb_open_session() -> Int:
     """Calls `algenta_open_session`. Returns the number of pipelines discovered (>= 0), or a
     negative value if Metal reported a failure building the device/queue/library/pipelines."""
     return Int(external_call["algenta_open_session", Int64]())
 
 
-fn _mb_pipeline_count() -> Int:
+def _mb_pipeline_count() -> Int:
     return Int(external_call["algenta_pipeline_count", Int64]())
 
 
-fn _mb_gpu_core_count() -> Int:
+def _mb_gpu_core_count() -> Int:
     """Calls `algenta_gpu_core_count` (IOKit `AGXAccelerator`/`gpu-core-count` registry read — see
     that C function's own docstring). Returns the core count (> 0), or -1 if the probe could not
     determine one on this host. `residentk.contract.residentk_splitk_policy` documents the fallback
@@ -86,7 +86,7 @@ fn _mb_gpu_core_count() -> Int:
     return Int(external_call["algenta_gpu_core_count", Int64]())
 
 
-fn _mb_pipeline_name(idx: Int, mut out: String) -> Int:
+def _mb_pipeline_name(idx: Int, mut out: String) -> Int:
     """Writes pipeline `idx`'s Metal function name into `out`. Returns the name's length, or -1 if
     `idx` is out of range."""
     var buf = alloc[UInt8](256)
@@ -104,7 +104,7 @@ fn _mb_pipeline_name(idx: Int, mut out: String) -> Int:
     return Int(n)
 
 
-fn _mb_alloc_buffer(
+def _mb_alloc_buffer(
     nbytes: Int, mut addr: UInt64, mut contents: UnsafePointer[UInt8, origin=MutAnyOrigin]
 ) -> Int:
     """Allocates one Shared-storage-mode `MTLBuffer` of `nbytes`. On success, `addr` holds the
@@ -121,7 +121,7 @@ fn _mb_alloc_buffer(
     )
 
 
-fn _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], n: Int) -> Int:
+def _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], n: Int) -> Int:
     """THE per-token call: one command buffer, one encoder, `n` dispatches, one commit, one wait —
     entirely inside the shim, zero Mojo<->C crossings between the first dispatch and the last.
     Returns 0 on success, -1 if Metal reported a command-buffer failure."""
@@ -132,7 +132,7 @@ fn _mb_run_token(descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], n: Int)
     )
 
 
-fn _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
+def _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
     """Allocates a flat, zero-initialized array of `n` `AlgentaDispatchDesc` records."""
     var total = n * MB_DESC_STRIDE
     var p = alloc[UInt8](total)
@@ -141,7 +141,7 @@ fn _mb_alloc_descriptors(n: Int) -> UnsafePointer[UInt8, origin=MutAnyOrigin]:
     return p
 
 
-fn _mb_set_header(
+def _mb_set_header(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
     desc_idx: Int, pipeline_idx: Int, grid_x: Int, threads_x: Int, num_args: Int,
 ):
@@ -152,7 +152,7 @@ fn _mb_set_header(
     base[3] = Int32(num_args)
 
 
-fn _mb_set_arg_ptr(
+def _mb_set_arg_ptr(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, addr: UInt64
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE
@@ -160,7 +160,7 @@ fn _mb_set_arg_ptr(
     (off + 8).bitcast[UInt64]()[0] = addr
 
 
-fn _mb_set_arg_int(
+def _mb_set_arg_int(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, v: Int
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE
@@ -168,7 +168,7 @@ fn _mb_set_arg_int(
     (off + 8).bitcast[UInt64]()[0] = UInt64(v)
 
 
-fn _mb_set_arg_f32(
+def _mb_set_arg_f32(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin], desc_idx: Int, arg_idx: Int, v: Float32
 ):
     var off = descriptors + desc_idx * MB_DESC_STRIDE + MB_DESC_HEADER + arg_idx * MB_ARG_STRIDE

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fermentation import ethanol_yield, alcohol_by_volume, carbon_dioxide_produced, yeast_growth_rate, substrate_consumption, volumetric_productivity, fermentation_efficiency, dissolved_oxygen_kla, ph_buffer_capacity, heat_generation_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

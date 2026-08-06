@@ -67,7 +67,7 @@ comptime _EQUALS = UInt8(61)      # =
 
 
 @always_inline
-fn skip_whitespace(data: String, pos: Int) -> Int:
+def skip_whitespace(data: String, pos: Int) -> Int:
     """Advance pos past whitespace chars."""
     var bytes = data.as_bytes()
     var n = len(data)
@@ -80,7 +80,7 @@ fn skip_whitespace(data: String, pos: Int) -> Int:
 # ── Skip a complete JSON value ───────────────────────────────────────────────
 
 
-fn skip_json_value(data: String, pos: Int) -> Int:
+def skip_json_value(data: String, pos: Int) -> Int:
     """Advance pos past a complete JSON value (string, number, object, array, bool, null).
 
     Handles:
@@ -213,7 +213,7 @@ fn skip_json_value(data: String, pos: Int) -> Int:
 # ── Find a key's value position in a JSON object ────────────────────────────
 
 
-fn find_key(data: String, key: String) -> Int:
+def find_key(data: String, key: String) -> Int:
     """Find the position of the value for 'key' in a JSON object.
     Returns -1 if not found.
 
@@ -292,7 +292,7 @@ fn find_key(data: String, key: String) -> Int:
 # ── String extraction ─────────────────────────────────────────────────────────
 
 
-fn json_get_string(raw: String, key: String) -> String:
+def json_get_string(raw: String, key: String) -> String:
     """Extract a string value for the given key. Returns "" if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -338,7 +338,7 @@ fn json_get_string(raw: String, key: String) -> String:
 
 
 @always_inline
-fn _extract_number_str(raw: String, pos: Int) -> String:
+def _extract_number_str(raw: String, pos: Int) -> String:
     """Extract the raw number string starting at pos (up to delimiter)."""
     var bytes = raw.as_bytes()
     var n = len(raw)
@@ -358,7 +358,7 @@ fn _extract_number_str(raw: String, pos: Int) -> String:
 # ── Float extraction ──────────────────────────────────────────────────────────
 
 
-fn json_get_float(raw: String, key: String, default: Float64) -> Float64:
+def json_get_float(raw: String, key: String, default: Float64) -> Float64:
     """Extract a float/int value for the given key. Returns default if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -382,7 +382,7 @@ fn json_get_float(raw: String, key: String, default: Float64) -> Float64:
 # ── Int extraction ────────────────────────────────────────────────────────────
 
 
-fn json_get_int(raw: String, key: String, default: Int) -> Int:
+def json_get_int(raw: String, key: String, default: Int) -> Int:
     """Extract an integer value for the given key. Returns default if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -406,7 +406,7 @@ fn json_get_int(raw: String, key: String, default: Int) -> Int:
 # ── Boolean extraction ────────────────────────────────────────────────────────
 
 
-fn json_get_bool(raw: String, key: String, default: Bool) -> Bool:
+def json_get_bool(raw: String, key: String, default: Bool) -> Bool:
     """Extract a boolean value for the given key. Returns default if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -427,7 +427,7 @@ fn json_get_bool(raw: String, key: String, default: Bool) -> Bool:
 # ── Null check ────────────────────────────────────────────────────────────────
 
 
-fn json_is_null(raw: String, key: String) -> Bool:
+def json_is_null(raw: String, key: String) -> Bool:
     """Check if a key's value is null or the key is absent."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -444,7 +444,7 @@ fn json_is_null(raw: String, key: String) -> Bool:
 # ── Object extraction ────────────────────────────────────────────────────────
 
 
-fn json_get_object(raw: String, key: String) -> String:
+def json_get_object(raw: String, key: String) -> String:
     """Extract a nested JSON object as raw string. Returns "" if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -467,7 +467,7 @@ fn json_get_object(raw: String, key: String) -> String:
 # ── Array extraction ──────────────────────────────────────────────────────────
 
 
-fn json_get_array(raw: String, key: String) -> String:
+def json_get_array(raw: String, key: String) -> String:
     """Extract a JSON array as raw string. Returns "" if not found."""
     var pos = find_key(raw, key)
     if pos < 0:
@@ -490,7 +490,7 @@ fn json_get_array(raw: String, key: String) -> String:
 # ── Array length ──────────────────────────────────────────────────────────────
 
 
-fn json_array_len(arr: String) -> Int:
+def json_array_len(arr: String) -> Int:
     """Count elements in a JSON array string like "[1,2,3]"."""
     var bytes = arr.as_bytes()
     var n = len(arr)
@@ -524,7 +524,7 @@ fn json_array_len(arr: String) -> Int:
 # ── Array element access ──────────────────────────────────────────────────────
 
 
-fn json_array_get(arr: String, index: Int) -> String:
+def json_array_get(arr: String, index: Int) -> String:
     """Get element at index from a JSON array. Returns raw element string."""
     var bytes = arr.as_bytes()
     var n = len(arr)
@@ -564,7 +564,7 @@ fn json_array_get(arr: String, index: Int) -> String:
 # ── Single-pass array tokenizer (O(n), replaces per-index json_array_get) ───────
 
 
-fn json_array_tokens(arr: String) raises -> List[String]:
+def json_array_tokens(arr: String) raises -> List[String]:
     """Split a JSON array string into its raw element strings in ONE pass — O(n) total.
 
     The old pattern `for i in range(json_array_len(arr)): json_array_get(arr, i)` re-scans
@@ -601,7 +601,7 @@ fn json_array_tokens(arr: String) raises -> List[String]:
 
 
 @always_inline
-fn _b64_sextet(c: UInt8) -> Int:
+def _b64_sextet(c: UInt8) -> Int:
     """Base64 alphabet → 6-bit value; -1 for padding/whitespace/invalid (skipped)."""
     if c >= UInt8(65) and c <= UInt8(90):      # A-Z
         return Int(c) - 65
@@ -616,7 +616,7 @@ fn _b64_sextet(c: UInt8) -> Int:
     return -1                                  # '=', whitespace, anything else → skip
 
 
-fn json_decode_base64_bytes(s: String) -> List[UInt8]:
+def json_decode_base64_bytes(s: String) -> List[UInt8]:
     """Standard base64 → raw bytes, single pass O(n). Non-alphabet chars are skipped."""
     var bytes = s.as_bytes()
     var n = len(s)
@@ -636,7 +636,7 @@ fn json_decode_base64_bytes(s: String) -> List[UInt8]:
 
 
 
-fn json_parse_float64_list(token: String) raises -> List[Float64]:
+def json_parse_float64_list(token: String) raises -> List[Float64]:
     """Parse a `List[Float64]` arg with a binary fast path.
 
     A JSON-string token of the form `"@u8:<base64>"` is decoded as raw uint8 bytes (pixel

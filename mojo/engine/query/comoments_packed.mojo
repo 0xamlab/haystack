@@ -93,7 +93,7 @@ this ceiling reaches at least as far as `packedkey`'s at the H2O q9 shape
 (10 000 slots, width 2)."""
 
 
-fn comoment_status_name(status: Int) -> String:
+def comoment_status_name(status: Int) -> String:
     if status == GROUP_CODED_OK:
         return "ok"
     if status == GROUP_CODED_BAD_REQUEST:
@@ -111,7 +111,7 @@ comptime COMOMENT_STRIDE: Int = 6
 """[count, sum_x, sum_y, sum_xy, sum_x2, sum_y2] per (band, slot)."""
 
 
-fn comoment_state_bytes(slots: Int, workers: Int) -> Int:
+def comoment_state_bytes(slots: Int, workers: Int) -> Int:
     """Every byte `group_comoments_packed_parallel` allocates, worst case —
     rule 1c, all three arrays: the payload, the per-band first-appearance
     order list and the `seen` bitmap."""
@@ -123,7 +123,7 @@ fn comoment_state_bytes(slots: Int, workers: Int) -> Int:
     return payload + order + seen
 
 
-fn comoment_route_ok(
+def comoment_route_ok(
     batch: RecordBatch, key_columns: List[Int], n_workers: Int
 ) -> PackedDomain:
     """`probe_packed_domain` plus this module's own byte ceiling — the
@@ -151,7 +151,7 @@ struct ComomentGroupedResult(Copyable, Movable):
     var present: List[Bool]
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var key_tuples: List[Float64],
         key_width: Int,
@@ -167,13 +167,13 @@ struct ComomentGroupedResult(Copyable, Movable):
         self.present = present^
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         if self.key_width <= 0:
             return 0
         return len(self.key_tuples) // self.key_width
 
 
-fn _empty_comoments(width: Int) -> ComomentGroupedResult:
+def _empty_comoments(width: Int) -> ComomentGroupedResult:
     return ComomentGroupedResult(
         List[Float64](), width, List[Float64](), List[Float64](), List[Bool](), 0
     )
@@ -183,16 +183,16 @@ struct CodedComomentResult(Copyable, Movable):
     var status: Int
     var result: ComomentGroupedResult
 
-    fn __init__(out self, status: Int, var result: ComomentGroupedResult):
+    def __init__(out self, status: Int, var result: ComomentGroupedResult):
         self.status = status
         self.result = result^
 
-    fn ok(self) -> Bool:
+    def ok(self) -> Bool:
         return self.status == GROUP_CODED_OK
 
 
 @always_inline
-fn _r2_from_moments(
+def _r2_from_moments(
     n: Float64, sx: Float64, sy: Float64, sxy: Float64, sx2: Float64, sy2: Float64,
     mut r2: Float64, mut present: Bool,
 ):
@@ -217,7 +217,7 @@ fn _r2_from_moments(
     present = True
 
 
-fn group_comoments_packed(
+def group_comoments_packed(
     batch: RecordBatch, key_columns: List[Int], domain: PackedDomain,
     x_column: Int, y_column: Int,
 ) -> CodedComomentResult:
@@ -229,7 +229,7 @@ fn group_comoments_packed(
     )
 
 
-fn group_comoments_packed_parallel(
+def group_comoments_packed_parallel(
     batch: RecordBatch, key_columns: List[Int], domain: PackedDomain,
     x_column: Int, y_column: Int, n_workers: Int,
 ) -> CodedComomentResult:
@@ -306,7 +306,7 @@ fn group_comoments_packed_parallel(
     var yp = y_col.values[].unsafe_ptr() + y_col.offset
 
     @parameter
-    fn comoment_worker(w: Int):
+    def comoment_worker(w: Int):
         var lo_row = w * band_rows
         var hi_row = lo_row + band_rows
         if hi_row > n_rows:
@@ -325,7 +325,7 @@ fn group_comoments_packed_parallel(
 
         @parameter
         @always_inline
-        fn commit(r: Int, slot: Int):
+        def commit(r: Int, slot: Int):
             if not (x_has_nulls and not x_col.is_valid_at(r)) and not (
                 y_has_nulls and not y_col.is_valid_at(r)
             ):

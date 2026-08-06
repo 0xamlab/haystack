@@ -122,7 +122,7 @@ cardinality: this one means the DATA's domain is too wide for a dense array, a
 routing fact, not a caller bug."""
 
 
-fn packed_status_name(status: Int) -> String:
+def packed_status_name(status: Int) -> String:
     """The vocabulary this module can return, including query.aggregate's."""
     if status == GROUP_CODED_OK:
         return "ok"
@@ -236,7 +236,7 @@ struct PackedDomain(Copyable, Movable):
     var slots: Int
     var status: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         """An empty, invalid domain carrying why."""
         self.width = 0
         self.los = List[Float64]()
@@ -247,7 +247,7 @@ struct PackedDomain(Copyable, Movable):
         self.slots = 0
         self.status = status
 
-    fn __init__(
+    def __init__(
         out self,
         var los: List[Float64],
         var his: List[Float64],
@@ -265,10 +265,10 @@ struct PackedDomain(Copyable, Movable):
         self.slots = slots
         self.status = GROUP_CODED_OK
 
-    fn valid(self) -> Bool:
+    def valid(self) -> Bool:
         return self.slots > 0 and self.width > 0
 
-    fn describe(self) -> String:
+    def describe(self) -> String:
         var out = String("PackedDomain(status=") + packed_status_name(self.status)
         out += ", width=" + String(self.width) + ", slots=" + String(self.slots)
         for c in range(self.width):
@@ -280,7 +280,7 @@ struct PackedDomain(Copyable, Movable):
         return out^
 
 
-fn packed_state_bytes(slots: Int, n_aggs: Int, bands: Int, width: Int) -> Int:
+def packed_state_bytes(slots: Int, n_aggs: Int, bands: Int, width: Int) -> Int:
     """EVERY byte `group_by_packed_parallel` allocates, worst case, saturating.
 
     Rule 1c: a bound that counts one of the arrays is not a bound. This counts
@@ -352,7 +352,7 @@ fn packed_state_bytes(slots: Int, n_aggs: Int, bands: Int, width: Int) -> Int:
     return banded_total + out_total
 
 
-fn probe_packed_domain(
+def probe_packed_domain(
     batch: RecordBatch, key_columns: List[Int], probe_rows: Int
 ) -> PackedDomain:
     """The packed place value these key columns support, judged from the first
@@ -442,7 +442,7 @@ fn probe_packed_domain(
     return PackedDomain(los^, his^, lo_ints^, spans^, strides^, slots)
 
 
-fn packed_route_ok(
+def packed_route_ok(
     batch: RecordBatch, key_columns: List[Int], n_aggs: Int, n_workers: Int
 ) -> PackedDomain:
     """`probe_packed_domain` plus the two routing gates, so the decision is one
@@ -468,7 +468,7 @@ fn packed_route_ok(
 
 
 @always_inline
-fn _packed_digit(k: Float64, lo_f: Float64, hi_f: Float64, lo_i: Int) -> Int:
+def _packed_digit(k: Float64, lo_f: Float64, hi_f: Float64, lo_i: Int) -> Int:
     """The mixed-radix DIGIT for one key value, or -1 when it is not a code in
     `[lo_f, hi_f)`.
 
@@ -493,7 +493,7 @@ fn _packed_digit(k: Float64, lo_f: Float64, hi_f: Float64, lo_i: Int) -> Int:
     return code - lo_i
 
 
-fn group_by_packed(
+def group_by_packed(
     batch: RecordBatch,
     key_columns: List[Int],
     domain: PackedDomain,
@@ -518,7 +518,7 @@ fn group_by_packed(
     )
 
 
-fn group_by_packed_parallel(
+def group_by_packed_parallel(
     batch: RecordBatch,
     key_columns: List[Int],
     domain: PackedDomain,
@@ -615,7 +615,7 @@ fn group_by_packed_parallel(
     var band_rows = (n_rows + bands - 1) // bands
 
     @parameter
-    fn packed_worker(w: Int):
+    def packed_worker(w: Int):
         var lo_row = w * band_rows
         var hi_row = lo_row + band_rows
         if hi_row > n_rows:
@@ -657,7 +657,7 @@ fn group_by_packed_parallel(
         # licence for the unchecked write.
         @parameter
         @always_inline
-        fn commit(r: Int, slot: Int):
+        def commit(r: Int, slot: Int):
             if not seen[ebase_w + slot]:
                 seen[ebase_w + slot] = True
                 op_ptr[w].append(slot)
@@ -790,7 +790,7 @@ fn group_by_packed_parallel(
     )
 
 
-fn _finish_many_packed(
+def _finish_many_packed(
     var key_tuples: List[Float64],
     width: Int,
     var stripes: List[GroupAccumulator],
@@ -826,7 +826,7 @@ fn _finish_many_packed(
     )
 
 
-fn group_by_many_routed(
+def group_by_many_routed(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -847,7 +847,7 @@ fn group_by_many_routed(
     )
 
 
-fn group_by_many_routed_parallel(
+def group_by_many_routed_parallel(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],

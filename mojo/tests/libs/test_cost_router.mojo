@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cost_router import request_cost_estimate, latency_cost_tradeoff, gpu_vs_cpu_routing_score, batch_vs_single_decision, quantized_vs_full_routing, moe_vs_dense_routing, cascade_model_routing, budget_remaining_fraction, sla_headroom_score, cost_per_output_token
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

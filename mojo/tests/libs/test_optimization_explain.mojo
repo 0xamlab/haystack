@@ -134,35 +134,35 @@ from optimization.model import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _bools(*vals: Bool) -> List[Bool]:
+def _bools(*vals: Bool) -> List[Bool]:
     var out = List[Bool]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -171,7 +171,7 @@ fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     return True
 
 
-fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _exact(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality, used only where every value is a small integer or a dyadic fraction."""
     if len(a) != len(b):
         return False
@@ -181,7 +181,7 @@ fn _exact(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _exact_ints(a: List[Int], b: List[Int]) -> Bool:
+def _exact_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -190,7 +190,7 @@ fn _exact_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _exact_bools(a: List[Bool], b: List[Bool]) -> Bool:
+def _exact_bools(a: List[Bool], b: List[Bool]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -208,19 +208,19 @@ fn _exact_bools(a: List[Bool], b: List[Bool]) -> Bool:
 # Contributions 5*2 = 10, 4*0 = 0, 3*1 = 3, summing to 13 with a zero residual.
 
 
-fn _c3() -> List[Float64]:
+def _c3() -> List[Float64]:
     return _floats(5.0, 4.0, 3.0)
 
 
-fn _a3() -> List[Float64]:
+def _a3() -> List[Float64]:
     return _floats(2.0, 3.0, 1.0, 4.0, 1.0, 2.0, 3.0, 4.0, 2.0)
 
 
-fn _b3() -> List[Float64]:
+def _b3() -> List[Float64]:
     return _floats(5.0, 11.0, 8.0)
 
 
-fn _le3() -> List[Int]:
+def _le3() -> List[Int]:
     return _ints(SENSE_LE, SENSE_LE, SENSE_LE)
 
 
@@ -235,33 +235,33 @@ fn _le3() -> List[Int]:
 # exactly 2.
 
 
-fn _a_inf() -> List[Float64]:
+def _a_inf() -> List[Float64]:
     return _floats(1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0)
 
 
-fn _senses_inf() -> List[Int]:
+def _senses_inf() -> List[Int]:
     return _ints(SENSE_LE, SENSE_GE, SENSE_LE, SENSE_LE)
 
 
-fn _rhs_inf() -> List[Float64]:
+def _rhs_inf() -> List[Float64]:
     return _floats(10.0, 5.0, 4.0, 3.0)
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _repeat_int(value: Int, n: Int) -> List[Int]:
+def _repeat_int(value: Int, n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(value)
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

@@ -33,7 +33,7 @@ from accel.device import accel_has_device, accel_device_name_len, accel_device_p
 from accel.gemm_metal import gemm_metal_available, gemm_metal_flat, gemm_metal_agreement
 
 
-fn main():
+def main():
     var has = accel_has_device()
     var name_len = accel_device_name_len()
     var probe = accel_device_probe()

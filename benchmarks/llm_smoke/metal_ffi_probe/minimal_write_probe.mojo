@@ -10,61 +10,61 @@ from std.memory import alloc
 from std.sys import has_accelerator
 
 
-fn _write42(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
+def _write42(o: UnsafePointer[Float32, origin=MutAnyOrigin]):
     var i = Int(block_idx.x * block_dim.x + thread_idx.x)
     var v = o[i]
     o[i] = v + Float32(42.0)
 
 
-fn _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
+def _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
     return s.unsafe_ptr()
 
 
-fn sel(name: StaticString) -> OpaquePointer[MutAnyOrigin]:
+def sel(name: StaticString) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_sel", OpaquePointer[MutAnyOrigin], UnsafePointer[UInt8, origin=StaticConstantOrigin]](_cstr(name))
 
 
-fn msg0(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
+def msg0(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_msg0", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]](recv, s)
 
 
-fn msg0_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]):
+def msg0_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]):
     external_call["algenta_msg0_void", NoneType, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]](recv, s)
 
 
-fn msg1p_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]):
+def msg1p_void(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]):
     external_call["algenta_msg1p_void", NoneType, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]](recv, s, a0)
 
 
-fn new_buffer(dev: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
+def new_buffer(dev: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_msg_newbuffer", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt64, UInt64](dev, s, length, UInt64(0))
 
 
-fn set_buffer(enc: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], buf: OpaquePointer[MutAnyOrigin], offset: UInt64, index: UInt64):
+def set_buffer(enc: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], buf: OpaquePointer[MutAnyOrigin], offset: UInt64, index: UInt64):
     external_call["algenta_msg_setbuffer", NoneType, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt64, UInt64](enc, s, buf, offset, index)
 
 
-fn dispatch_threadgroups(enc: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], gw: UInt64, gh: UInt64, gd: UInt64, tw: UInt64, th: UInt64, td: UInt64):
+def dispatch_threadgroups(enc: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], gw: UInt64, gh: UInt64, gd: UInt64, tw: UInt64, th: UInt64, td: UInt64):
     external_call["algenta_msg_dispatch", NoneType, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt64, UInt64, UInt64, UInt64, UInt64, UInt64](enc, s, gw, gh, gd, tw, th, td)
 
 
-fn dispatch_data_from(ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
+def dispatch_data_from(ptr: UnsafePointer[UInt8, origin=MutAnyOrigin], length: UInt64) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_dispatch_data_create", OpaquePointer[MutAnyOrigin], UnsafePointer[UInt8, origin=MutAnyOrigin], UInt64](ptr, length)
 
 
-fn msg2p_err(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin], err_out: UnsafePointer[OpaquePointer[MutAnyOrigin], origin=MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
+def msg2p_err(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin], err_out: UnsafePointer[OpaquePointer[MutAnyOrigin], origin=MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_msg_2p_err", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UnsafePointer[OpaquePointer[MutAnyOrigin], origin=MutAnyOrigin]](recv, s, a0, err_out)
 
 
-fn msg1p(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
+def msg1p(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: OpaquePointer[MutAnyOrigin]) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_msg1p", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]](recv, s, a0)
 
 
-fn msg1u_ret(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: UInt64) -> OpaquePointer[MutAnyOrigin]:
+def msg1u_ret(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin], a0: UInt64) -> OpaquePointer[MutAnyOrigin]:
     return external_call["algenta_msg1u_ret", OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin], UInt64](recv, s, a0)
 
 
-fn msg0_i64(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> Int64:
+def msg0_i64(recv: OpaquePointer[MutAnyOrigin], s: OpaquePointer[MutAnyOrigin]) -> Int64:
     return external_call["algenta_msg0_i64", Int64, OpaquePointer[MutAnyOrigin], OpaquePointer[MutAnyOrigin]](recv, s)
 
 

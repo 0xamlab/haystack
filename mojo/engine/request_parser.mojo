@@ -22,7 +22,7 @@ from json.parser import (
 from conv import parse_float64, parse_int, span_to_str, span_to_str_end
 
 
-fn _unquote(s: String) -> String:
+def _unquote(s: String) -> String:
     """Strip surrounding JSON double-quotes from a raw array element string.
 
     json_array_get() returns the raw token including quotes for string

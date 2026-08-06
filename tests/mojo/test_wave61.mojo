@@ -39,12 +39,12 @@ from chaos import (
 from std.math import abs as fabs, log
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -54,7 +54,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Thermodynamics tests ────────────────────────────────────────────────────
 
 
-fn test_ideal_gas_pressure() raises:
+def test_ideal_gas_pressure() raises:
     print("  test_ideal_gas_pressure...")
     # STP: 1 mol, 273.15 K, 22.4 L = 0.0224 m³ → ~101325 Pa
     var P = ideal_gas_pressure(1.0, 273.15, 0.0224)
@@ -68,7 +68,7 @@ fn test_ideal_gas_pressure() raises:
     print("    PASSED")
 
 
-fn test_ideal_gas_volume() raises:
+def test_ideal_gas_volume() raises:
     print("  test_ideal_gas_volume...")
     var V = ideal_gas_volume(1.0, 273.15, 101325.0)
     _assert_close(V, 0.02241, 0.001, "ideal gas STP volume")  # 4
@@ -78,7 +78,7 @@ fn test_ideal_gas_volume() raises:
     print("    PASSED")
 
 
-fn test_carnot_efficiency() raises:
+def test_carnot_efficiency() raises:
     print("  test_carnot_efficiency...")
     var eta = carnot_efficiency(500.0, 300.0)
     _assert_close(eta, 0.4, 1e-10, "carnot 500/300")  # 6
@@ -90,7 +90,7 @@ fn test_carnot_efficiency() raises:
     print("    PASSED")
 
 
-fn test_entropy_change() raises:
+def test_entropy_change() raises:
     print("  test_entropy_change...")
     var dS = entropy_change(100.0, 300.0)
     _assert_close(dS, 0.3333, 0.001, "entropy 100J/300K")  # 9
@@ -99,7 +99,7 @@ fn test_entropy_change() raises:
     print("    PASSED")
 
 
-fn test_heat_capacity() raises:
+def test_heat_capacity() raises:
     print("  test_heat_capacity...")
     # 1 kg water, specific heat 4186, delta_T 10 K
     var Q = heat_capacity(1.0, 4186.0, 10.0)
@@ -110,7 +110,7 @@ fn test_heat_capacity() raises:
     print("    PASSED")
 
 
-fn test_adiabatic_process() raises:
+def test_adiabatic_process() raises:
     print("  test_adiabatic_process...")
     # Compress gas: V1=2, V2=1, gamma=1.4, P1=100000
     var P2 = adiabatic_process(100000.0, 2.0, 1.0, 1.4)
@@ -121,7 +121,7 @@ fn test_adiabatic_process() raises:
     print("    PASSED")
 
 
-fn test_work_isothermal() raises:
+def test_work_isothermal() raises:
     print("  test_work_isothermal...")
     # Expansion: V2 > V1 → positive work
     var W = work_isothermal(1.0, 300.0, 1.0, 2.0)
@@ -134,7 +134,7 @@ fn test_work_isothermal() raises:
     print("    PASSED")
 
 
-fn test_stefan_boltzmann() raises:
+def test_stefan_boltzmann() raises:
     print("  test_stefan_boltzmann...")
     # Sun surface: T=5778K, A=1m², ε=1 → ~6.3e7 W
     var P = stefan_boltzmann(5778.0, 1.0)
@@ -145,7 +145,7 @@ fn test_stefan_boltzmann() raises:
     print("    PASSED")
 
 
-fn test_thermal_conductivity() raises:
+def test_thermal_conductivity() raises:
     print("  test_thermal_conductivity...")
     # k=200 W/(m·K), A=0.01 m², dT=100 K, dx=0.1 m → Q/t = -200*0.01*100/0.1 = -2000
     var flux = thermal_conductivity_flux(200.0, 0.01, 100.0, 0.1)
@@ -156,7 +156,7 @@ fn test_thermal_conductivity() raises:
     print("    PASSED")
 
 
-fn test_gibbs_free_energy() raises:
+def test_gibbs_free_energy() raises:
     print("  test_gibbs_free_energy...")
     # G = H - TS = 100 - 298*0.1 = 70.2
     var G = gibbs_free_energy(100.0, 298.0, 0.1)
@@ -167,7 +167,7 @@ fn test_gibbs_free_energy() raises:
     print("    PASSED")
 
 
-fn test_clausius_clapeyron() raises:
+def test_clausius_clapeyron() raises:
     print("  test_clausius_clapeyron...")
     # Water: P1=101325 Pa, T1=373.15 K, T2=383.15 K, dH_vap=40660 J/mol
     var P2 = clausius_clapeyron(101325.0, 373.15, 383.15, 40660.0)
@@ -181,7 +181,7 @@ fn test_clausius_clapeyron() raises:
 # ── Social Network tests ────────────────────────────────────────────────────
 
 
-fn _make_triangle() -> List[List[Int]]:
+def _make_triangle() -> List[List[Int]]:
     """Fully connected directed triangle: 0→1, 1→0, 0→2, 2→0, 1→2, 2→1."""
     var adj = List[List[Int]]()
     var n0 = List[Int]()
@@ -199,7 +199,7 @@ fn _make_triangle() -> List[List[Int]]:
     return adj^
 
 
-fn _make_line() -> List[List[Int]]:
+def _make_line() -> List[List[Int]]:
     """Line graph: 0→1→2→3."""
     var adj = List[List[Int]]()
     var n0 = List[Int]()
@@ -216,7 +216,7 @@ fn _make_line() -> List[List[Int]]:
     return adj^
 
 
-fn test_out_degree() raises:
+def test_out_degree() raises:
     print("  test_out_degree...")
     var adj = _make_triangle()
     _assert(out_degree(adj, 0) == 2, "out_degree node 0 triangle")  # 26
@@ -227,7 +227,7 @@ fn test_out_degree() raises:
     print("    PASSED")
 
 
-fn test_in_degree() raises:
+def test_in_degree() raises:
     print("  test_in_degree...")
     var adj = _make_triangle()
     _assert(in_degree(adj, 0) == 2, "in_degree node 0 triangle")  # 30
@@ -237,7 +237,7 @@ fn test_in_degree() raises:
     print("    PASSED")
 
 
-fn test_network_density() raises:
+def test_network_density() raises:
     print("  test_network_density...")
     # Complete directed triangle: 6 edges / (3*2) = 1.0
     var adj = _make_triangle()
@@ -248,7 +248,7 @@ fn test_network_density() raises:
     print("    PASSED")
 
 
-fn test_reciprocity() raises:
+def test_reciprocity() raises:
     print("  test_reciprocity...")
     # Symmetric (undirected-like) → reciprocity = 1.0
     var adj = _make_triangle()
@@ -259,7 +259,7 @@ fn test_reciprocity() raises:
     print("    PASSED")
 
 
-fn test_strongly_connected() raises:
+def test_strongly_connected() raises:
     print("  test_strongly_connected...")
     var adj = _make_triangle()
     _assert(strongly_connected_check(adj), "triangle is strongly connected")  # 37
@@ -268,7 +268,7 @@ fn test_strongly_connected() raises:
     print("    PASSED")
 
 
-fn test_community_labels() raises:
+def test_community_labels() raises:
     print("  test_community_labels...")
     var adj = _make_triangle()
     var labels = community_label_propagation(adj, 10)
@@ -279,7 +279,7 @@ fn test_community_labels() raises:
     print("    PASSED")
 
 
-fn test_influence_spread() raises:
+def test_influence_spread() raises:
     print("  test_influence_spread...")
     var adj = _make_triangle()
     var seeds = List[Int]()
@@ -296,7 +296,7 @@ fn test_influence_spread() raises:
     print("    PASSED")
 
 
-fn test_local_clustering() raises:
+def test_local_clustering() raises:
     print("  test_local_clustering...")
     var adj = _make_triangle()
     var cc = local_clustering_directed(adj, 0)
@@ -304,7 +304,7 @@ fn test_local_clustering() raises:
     print("    PASSED")
 
 
-fn test_average_path_length() raises:
+def test_average_path_length() raises:
     print("  test_average_path_length...")
     var adj = _make_triangle()
     var apl = average_path_length_estimate(adj, 3)
@@ -316,7 +316,7 @@ fn test_average_path_length() raises:
 # ── Chaos tests ──────────────────────────────────────────────────────────────
 
 
-fn test_logistic_map_stable() raises:
+def test_logistic_map_stable() raises:
     print("  test_logistic_map_stable...")
     # r=2.0 → converges to fixed point 0.5
     var traj = logistic_map(2.0, 0.5, 100)
@@ -326,7 +326,7 @@ fn test_logistic_map_stable() raises:
     print("    PASSED")
 
 
-fn test_logistic_map_chaotic() raises:
+def test_logistic_map_chaotic() raises:
     print("  test_logistic_map_chaotic...")
     # r=3.6 → chaotic, does not converge to single point
     var traj = logistic_map(3.6, 0.5, 200)
@@ -339,7 +339,7 @@ fn test_logistic_map_chaotic() raises:
     print("    PASSED")
 
 
-fn test_lorenz_simulate() raises:
+def test_lorenz_simulate() raises:
     print("  test_lorenz_simulate...")
     var traj = lorenz_simulate(1.0, 1.0, 1.0, 10.0, 28.0, 8.0 / 3.0, 0.01, 1000)
     _assert(len(traj) == 1001, "lorenz trajectory length")  # 50
@@ -353,7 +353,7 @@ fn test_lorenz_simulate() raises:
     print("    PASSED")
 
 
-fn test_lorenz_step() raises:
+def test_lorenz_step() raises:
     print("  test_lorenz_step...")
     var result = lorenz_step(1.0, 1.0, 1.0, 10.0, 28.0, 8.0 / 3.0, 0.01)
     _assert(len(result) == 3, "lorenz step returns 3 values")  # 52
@@ -363,21 +363,21 @@ fn test_lorenz_step() raises:
     print("    PASSED")
 
 
-fn test_lyapunov_chaotic() raises:
+def test_lyapunov_chaotic() raises:
     print("  test_lyapunov_chaotic...")
     var lyap = lyapunov_exponent_logistic(3.9, 10000, 1000)
     _assert(lyap > 0.0, "lyapunov r=3.9 positive (chaotic)")  # 55
     print("    PASSED")
 
 
-fn test_lyapunov_stable() raises:
+def test_lyapunov_stable() raises:
     print("  test_lyapunov_stable...")
     var lyap = lyapunov_exponent_logistic(2.5, 10000, 1000)
     _assert(lyap < 0.0, "lyapunov r=2.5 negative (stable)")  # 56
     print("    PASSED")
 
 
-fn test_is_chaotic() raises:
+def test_is_chaotic() raises:
     print("  test_is_chaotic...")
     _assert(is_chaotic(0.5), "positive lyapunov → chaotic")  # 57
     _assert(not is_chaotic(-0.5), "negative lyapunov → not chaotic")  # 58
@@ -385,7 +385,7 @@ fn test_is_chaotic() raises:
     print("    PASSED")
 
 
-fn test_tent_map() raises:
+def test_tent_map() raises:
     print("  test_tent_map...")
     var traj = tent_map(2.0, 0.3, 100)
     _assert(len(traj) == 101, "tent map length")  # 60
@@ -399,7 +399,7 @@ fn test_tent_map() raises:
     print("    PASSED")
 
 
-fn test_henon_map() raises:
+def test_henon_map() raises:
     print("  test_henon_map...")
     # Classic Hénon: a=1.4, b=0.3
     var traj = henon_map(1.4, 0.3, 0.0, 0.0, 100)
@@ -414,7 +414,7 @@ fn test_henon_map() raises:
     print("    PASSED")
 
 
-fn test_bifurcation_diagram() raises:
+def test_bifurcation_diagram() raises:
     print("  test_bifurcation_diagram...")
     var pts = bifurcation_diagram(2.5, 4.0, 10, 100, 5)
     _assert(len(pts) == 50, "bifurcation diagram 10 r values * 5 last")  # 64
@@ -426,7 +426,7 @@ fn test_bifurcation_diagram() raises:
     print("    PASSED")
 
 
-fn test_sensitivity() raises:
+def test_sensitivity() raises:
     print("  test_sensitivity...")
     var div = sensitivity_to_initial(3.9, 0.5, 0.5001, 50)
     _assert(len(div) == 51, "sensitivity length")  # 68
@@ -441,7 +441,7 @@ fn test_sensitivity() raises:
     print("    PASSED")
 
 
-fn test_feigenbaum() raises:
+def test_feigenbaum() raises:
     print("  test_feigenbaum...")
     # Known bifurcation points: r1≈3.0, r2≈3.449, r3≈3.5441
     # δ ≈ (3.449 - 3.0) / (3.5441 - 3.449) ≈ 4.72
@@ -454,7 +454,7 @@ fn test_feigenbaum() raises:
     print("    PASSED")
 
 
-fn test_tent_map_mu_half() raises:
+def test_tent_map_mu_half() raises:
     print("  test_tent_map_mu_half...")
     # mu=0.5: tent map converges to 0 from any start
     var traj = tent_map(0.5, 0.3, 50)
@@ -463,7 +463,7 @@ fn test_tent_map_mu_half() raises:
     print("    PASSED")
 
 
-fn test_logistic_map_r3() raises:
+def test_logistic_map_r3() raises:
     print("  test_logistic_map_r3...")
     # r=3.0 → oscillates near 2/3 (period-2 onset)
     var traj = logistic_map(3.0, 0.1, 500)
@@ -474,7 +474,7 @@ fn test_logistic_map_r3() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 61 Tests: Thermodynamics, Social Networks, Chaos ===")
 
     # Thermodynamics

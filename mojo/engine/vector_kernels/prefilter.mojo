@@ -45,7 +45,7 @@ comptime MAX_SHORTLIST: Int = 64   # hard cap on pre-filter output
 # ── Role compatibility gate ───────────────────────────────────────────────────
 
 @always_inline
-fn _role_compatible(query_role: UInt8, cand_role: UInt8) -> Bool:
+def _role_compatible(query_role: UInt8, cand_role: UInt8) -> Bool:
     """
     True if the candidate role is worth scoring given the query role.
 
@@ -93,7 +93,7 @@ struct CandidateScratch(Movable):
     var candidate_ids:  List[UInt32]
     var token_hits:     List[UInt16]
 
-    fn __init__(out self, n_columns: Int, shortlist_cap: Int):
+    def __init__(out self, n_columns: Int, shortlist_cap: Int):
         self.epoch           = 1
         self.n_columns       = n_columns
         self.shortlist_cap   = shortlist_cap
@@ -111,7 +111,7 @@ struct CandidateScratch(Movable):
             self.candidate_ids.append(UInt32(0))
             self.token_hits.append(UInt16(0))
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.epoch           = take.epoch
         self.n_columns       = take.n_columns
         self.shortlist_cap   = take.shortlist_cap
@@ -121,7 +121,7 @@ struct CandidateScratch(Movable):
         self.candidate_ids   = take.candidate_ids.copy()
         self.token_hits      = take.token_hits.copy()
 
-    fn next_epoch(mut self):
+    def next_epoch(mut self):
         """
         O(1) per-query reset. Increment epoch so all prior marks look stale.
         candidate_count reset. On UInt32 wraparound: do a full clear.
@@ -136,7 +136,7 @@ struct CandidateScratch(Movable):
         else:
             self.epoch += 1
 
-    fn is_at_capacity(self) -> Bool:
+    def is_at_capacity(self) -> Bool:
         return self.candidate_count >= self.shortlist_cap
 
 
@@ -148,14 +148,14 @@ struct CandidateScratch(Movable):
 struct _PostingSlice(Copyable, Movable):
     var start: UInt32
     var count: UInt16
-    fn __init__(out self): self.start = 0; self.count = 0
-    fn __copyinit__(out self, copy: Self): self.start = copy.start; self.count = copy.count
-    fn __moveinit__(out self, var take: Self): self.start = take.start; self.count = take.count
+    def __init__(out self): self.start = 0; self.count = 0
+    def __copyinit__(out self, copy: Self): self.start = copy.start; self.count = copy.count
+    def __moveinit__(out self, var take: Self): self.start = take.start; self.count = take.count
 
 
 # ── Pre-filter entry points ───────────────────────────────────────────────────
 
-fn prefilter_by_tokens(
+def prefilter_by_tokens(
     n_columns:       Int,             # table.entries length
     source_ids:      List[UInt16],    # table column source_ids (parallel to entries)
     role_ids:        List[UInt8],     # table column role_ids
@@ -228,7 +228,7 @@ fn prefilter_by_tokens(
                     scratch.token_hits[slot] += UInt16(1)
 
 
-fn prefilter_fallback_all(
+def prefilter_fallback_all(
     n_columns:   Int,
     source_ids:  List[UInt16],
     role_ids:    List[UInt8],
@@ -265,7 +265,7 @@ fn prefilter_fallback_all(
 
 # ── High-level helper: token filter → fallback if needed ─────────────────────
 
-fn prefilter(
+def prefilter(
     n_columns:       Int,
     source_ids:      List[UInt16],
     role_ids:        List[UInt8],
@@ -314,32 +314,32 @@ struct PrefilterStats(Copyable, Movable):
     var total_before: UInt32   # sum of n_columns across all calls
     var total_after:  UInt32   # sum of candidate_count across all calls
 
-    fn __init__(out self):
+    def __init__(out self):
         self.n_queries    = 0
         self.total_before = 0
         self.total_after  = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.n_queries    = copy.n_queries
         self.total_before = copy.total_before
         self.total_after  = copy.total_after
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.n_queries    = take.n_queries
         self.total_before = take.total_before
         self.total_after  = take.total_after
 
-    fn record(mut self, n_before: Int, n_after: Int):
+    def record(mut self, n_before: Int, n_after: Int):
         self.n_queries    += 1
         self.total_before += UInt32(n_before)
         self.total_after  += UInt32(n_after)
 
-    fn reduction_ratio(self) -> Float32:
+    def reduction_ratio(self) -> Float32:
         """Average fraction of columns that reach the scorer."""
         if self.total_before == 0:
             return Float32(1.0)
         return Float32(Int(self.total_after)) / Float32(Int(self.total_before))
 
 
-fn main():
+def main():
     pass

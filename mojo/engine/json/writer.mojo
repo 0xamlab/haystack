@@ -26,7 +26,7 @@ from conv import float_to_string
 # ── JSON escape ──────────────────────────────────────────────────────────────
 
 
-fn json_escape_string(s: String) -> String:
+def json_escape_string(s: String) -> String:
     """Escape special characters for JSON string values.
 
     Handles: \\ \" \\n \\r \\t \\b \\f and control chars < 0x20.
@@ -63,7 +63,7 @@ fn json_escape_string(s: String) -> String:
 
 
 @always_inline
-fn _hex_digit(v: Int) -> String:
+def _hex_digit(v: Int) -> String:
     """Convert 0-15 to hex digit character."""
     if v < 10:
         return chr(48 + v)  # '0' + v
@@ -74,13 +74,13 @@ fn _hex_digit(v: Int) -> String:
 
 
 @always_inline
-fn _quoted(s: String) -> String:
+def _quoted(s: String) -> String:
     """Wrap string in double quotes with JSON escaping."""
     return '"' + json_escape_string(s) + '"'
 
 
 @always_inline
-fn _key_prefix(key: String) -> String:
+def _key_prefix(key: String) -> String:
     """Return '"key":' prefix for a JSON field."""
     return '"' + json_escape_string(key) + '":'
 
@@ -88,12 +88,12 @@ fn _key_prefix(key: String) -> String:
 # ── Object start/end ────────────────────────────────────────────────────────
 
 
-fn json_object_start() -> String:
+def json_object_start() -> String:
     """Start a JSON object. Returns '{'."""
     return String("{")
 
 
-fn json_object_end(s: String) -> String:
+def json_object_end(s: String) -> String:
     """Close a JSON object. Removes trailing comma if present, appends '}'.
 
     Args:
@@ -118,22 +118,22 @@ fn json_object_end(s: String) -> String:
 # ── Add typed fields ────────────────────────────────────────────────────────
 
 
-fn json_add_string(s: String, key: String, value: String) -> String:
+def json_add_string(s: String, key: String, value: String) -> String:
     """Add a string field: "key":"value","""
     return s + _key_prefix(key) + _quoted(value) + ","
 
 
-fn json_add_int(s: String, key: String, value: Int) -> String:
+def json_add_int(s: String, key: String, value: Int) -> String:
     """Add an integer field: "key":123,"""
     return s + _key_prefix(key) + String(value) + ","
 
 
-fn json_add_float(s: String, key: String, value: Float64) -> String:
+def json_add_float(s: String, key: String, value: Float64) -> String:
     """Add a float field: "key":1.23,"""
     return s + _key_prefix(key) + float_to_string(value) + ","
 
 
-fn json_add_bool(s: String, key: String, value: Bool) -> String:
+def json_add_bool(s: String, key: String, value: Bool) -> String:
     """Add a boolean field: "key":true or "key":false,"""
     var val_str: String
     if value:
@@ -143,7 +143,7 @@ fn json_add_bool(s: String, key: String, value: Bool) -> String:
     return s + _key_prefix(key) + val_str + ","
 
 
-fn json_add_null(s: String, key: String) -> String:
+def json_add_null(s: String, key: String) -> String:
     """Add a null field: "key":null,"""
     return s + _key_prefix(key) + "null,"
 
@@ -151,7 +151,7 @@ fn json_add_null(s: String, key: String) -> String:
 # ── Add array fields ────────────────────────────────────────────────────────
 
 
-fn json_add_array_float(s: String, key: String, values: List[Float64]) -> String:
+def json_add_array_float(s: String, key: String, values: List[Float64]) -> String:
     """Add a float array field: "key":[1.0,2.0,3.0],"""
     var arr = String("[")
     for i in range(len(values)):
@@ -162,7 +162,7 @@ fn json_add_array_float(s: String, key: String, values: List[Float64]) -> String
     return s + _key_prefix(key) + arr + ","
 
 
-fn json_add_array_string(s: String, key: String, values: List[String]) -> String:
+def json_add_array_string(s: String, key: String, values: List[String]) -> String:
     """Add a string array field: "key":["a","b","c"],"""
     var arr = String("[")
     for i in range(len(values)):
@@ -176,7 +176,7 @@ fn json_add_array_string(s: String, key: String, values: List[String]) -> String
 # ── Add raw JSON ────────────────────────────────────────────────────────────
 
 
-fn json_add_raw(s: String, key: String, raw_json: String) -> String:
+def json_add_raw(s: String, key: String, raw_json: String) -> String:
     """Add a pre-built JSON value (object or array) as a field.
 
     The raw_json must already be valid JSON. No escaping is performed.
@@ -192,7 +192,7 @@ fn json_add_raw(s: String, key: String, raw_json: String) -> String:
 # ── Build object from pairs ─────────────────────────────────────────────────
 
 
-fn json_build_object(pairs: List[List[String]]) -> String:
+def json_build_object(pairs: List[List[String]]) -> String:
     """Build a JSON object from key-value pairs.
 
     Each pair is a List[String] of length 2: [key, value].

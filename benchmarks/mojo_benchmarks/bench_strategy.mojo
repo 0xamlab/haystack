@@ -128,7 +128,7 @@ from strategy.tournament import (
 )
 
 
-fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
+def _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
     """The empirical growth exponent `p` in `t ~ n^p`, from the two endpoints.
 
     Reported instead of a complexity CLAIM: `p` is what was measured over two points, which is
@@ -139,13 +139,13 @@ fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Fl
     return log(t_last / t_first) / log(Float64(n_last) / Float64(n_first))
 
 
-fn _spread(lo: Float64, hi: Float64) -> Float64:
+def _spread(lo: Float64, hi: Float64) -> Float64:
     if lo <= 0.0:
         return 0.0
     return hi / lo
 
 
-fn _threshold_pair(theta_a: Float64, theta_b: Float64) -> List[Float64]:
+def _threshold_pair(theta_a: Float64, theta_b: Float64) -> List[Float64]:
     """A 2 x 2 THRESHOLD block over one factor: unit weight, then the threshold."""
     var out = List[Float64]()
     out.append(1.0)
@@ -155,7 +155,7 @@ fn _threshold_pair(theta_a: Float64, theta_b: Float64) -> List[Float64]:
     return out^
 
 
-fn _threshold_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
+def _threshold_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
     """An `n_strategies x (n_factors + 1)` THRESHOLD block with spread thresholds.
 
     Thresholds walk across the plausible score range so different rows really do decide
@@ -173,7 +173,7 @@ fn _threshold_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
 # ── one timed driver call per function; see the module docstring ───────────────
 
 
-fn _time_tape(horizon: Int, n_factors: Int) -> List[Float64]:
+def _time_tape(horizon: Int, n_factors: Int) -> List[Float64]:
     """ONE timed `crn_scenario_tape`. Returns [ns, n_cells]."""
     var t0 = perf_counter_ns()
     var tape = crn_scenario_tape(7, 3, 11, horizon, n_factors, STRAT_FACTOR_UNIFORM, 0.0)
@@ -184,7 +184,7 @@ fn _time_tape(horizon: Int, n_factors: Int) -> List[Float64]:
     return out^
 
 
-fn _time_policies(s: Int, r: Int, h: Int, f: Int) -> List[Float64]:
+def _time_policies(s: Int, r: Int, h: Int, f: Int) -> List[Float64]:
     """ONE timed `crn_evaluate_policies`. Returns [ns, status, charge, tapes_built].
 
     The parameter block is built inside so the timer covers the driver only.
@@ -204,7 +204,7 @@ fn _time_policies(s: Int, r: Int, h: Int, f: Int) -> List[Float64]:
     return out^
 
 
-fn _time_audit(n_scenarios: Int) -> List[Float64]:
+def _time_audit(n_scenarios: Int) -> List[Float64]:
     """ONE timed `crn_pairing_audit`. Returns [ns, status, ratio, paired_var, unpaired_var, ok]."""
     var block = _threshold_pair(0.40, 0.50)
     var t0 = perf_counter_ns()
@@ -225,7 +225,7 @@ fn _time_audit(n_scenarios: Int) -> List[Float64]:
     return out^
 
 
-fn _time_refusal(horizon: Int) -> List[Float64]:
+def _time_refusal(horizon: Int) -> List[Float64]:
     """ONE timed REFUSED `crn_pairing_audit`. Returns [ns, status].
 
     2048 scenarios at these horizons is inside every allocation ceiling and past the work budget,
@@ -247,7 +247,7 @@ fn _time_refusal(horizon: Int) -> List[Float64]:
 # ── 1. scenario generation is linear in cells ─────────────────────────────────
 
 
-fn _eq_tensor(n_players: Int, n_actions: Int) -> List[Float64]:
+def _eq_tensor(n_players: Int, n_actions: Int) -> List[Float64]:
     """A payoff tensor filled by closed-form arithmetic — no randomness, so a re-run is the same
     work. `(k * 7919) % 101 / 100` spreads the payoffs over [0, 1] without ties everywhere, which
     matters: an all-ties tensor would make every profile an equilibrium and the enumeration would
@@ -262,7 +262,7 @@ fn _eq_tensor(n_players: Int, n_actions: Int) -> List[Float64]:
     return out^
 
 
-fn _time_enumeration(payoffs: List[Float64], p: Int, a: Int) -> List[Float64]:
+def _time_enumeration(payoffs: List[Float64], p: Int, a: Int) -> List[Float64]:
     """ONE timed `eq_pure_nash_flat`. Returns [ns, status, charge]."""
     var t0 = perf_counter_ns()
     var r = eq_pure_nash_flat(payoffs, p, a, 0.0)
@@ -274,7 +274,7 @@ fn _time_enumeration(payoffs: List[Float64], p: Int, a: Int) -> List[Float64]:
     return out^
 
 
-fn _time_regret(payoffs: List[Float64], p: Int, a: Int, iters: Int) -> List[Float64]:
+def _time_regret(payoffs: List[Float64], p: Int, a: Int, iters: Int) -> List[Float64]:
     """ONE timed `eq_regret_matching_flat`. Returns [ns, status, charge, residual]."""
     var t0 = perf_counter_ns()
     var r = eq_regret_matching_flat(payoffs, p, a, iters, 1.0e-9)
@@ -287,7 +287,7 @@ fn _time_regret(payoffs: List[Float64], p: Int, a: Int, iters: Int) -> List[Floa
     return out^
 
 
-fn _bench_tape() -> Int:
+def _bench_tape() -> Int:
     print("  [1] scenario generation: per-cell cost as the tape grows")
     print("      cells    ms       ns/cell")
     var sizes = List[Int]()
@@ -332,7 +332,7 @@ fn _bench_tape() -> Int:
 # ── 2. policy replay is linear in the horizon ─────────────────────────────────
 
 
-fn _bench_replay() -> Int:
+def _bench_replay() -> Int:
     print("  [2] policy replay: 4 strategies x 16 scenarios x 2 factors, horizon doubling")
     print("      horizon  ms       ns/step")
     var sizes = List[Int]()
@@ -377,7 +377,7 @@ fn _bench_replay() -> Int:
 # ── 3. the declared charge tracks measured time across very different shapes ──
 
 
-fn _bench_charge() -> Int:
+def _bench_charge() -> Int:
     print("  [3] ns per CHARGED unit, at four deliberately different shapes")
     print("      s     r     h     f    charge       ms       ns/unit")
     var ss = List[Int]()
@@ -447,7 +447,7 @@ fn _bench_charge() -> Int:
 # ── 4. pairing still buys variance, at every scenario count ───────────────────
 
 
-fn _bench_pairing() -> Int:
+def _bench_pairing() -> Int:
     print("  [4] the variance reduction, re-measured as a regression gate")
     print("      scenarios  ms       paired var    unpaired var   ratio")
     var sizes = List[Int]()
@@ -496,7 +496,7 @@ fn _bench_pairing() -> Int:
 # ── 5. a refusal costs the same whatever it refuses ───────────────────────────
 
 
-fn _bench_refusal() -> Int:
+def _bench_refusal() -> Int:
     print("  [5] refusal cost against the size of the request it refuses")
     print("      horizon  ns")
     var sizes = List[Int]()
@@ -538,7 +538,7 @@ fn _bench_refusal() -> Int:
 # ── 6. an accepted equilibrium request is one the module finishes ─────────────
 
 
-fn _bench_equilibrium_charge() -> Int:
+def _bench_equilibrium_charge() -> Int:
     print("  [6] equilibrium requests that saturate the work budget, two of each kind")
     print("      p     a     iters  charge       % ceil   s        ns/unit")
     var lo: Float64 = 0.0
@@ -650,7 +650,7 @@ fn _bench_equilibrium_charge() -> Int:
 # ── 7. iteration cost is linear, and the solver converges ─────────────────────
 
 
-fn _bench_equilibrium_convergence() -> Int:
+def _bench_equilibrium_convergence() -> Int:
     print("  [7] adaptive play: cost linear in iterations, exploitability falling")
     print("      iters  charge       ms        ns/unit")
     var ladder = List[Int]()
@@ -745,7 +745,7 @@ fn _bench_equilibrium_convergence() -> Int:
 # disagreement between the two modules cannot pass unnoticed.
 
 
-fn _tourney_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
+def _tourney_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
     """An `n_strategies x (n_factors + 1)` THRESHOLD block with a DISTINCT threshold per row.
 
     Distinct, unlike `_threshold_block`'s `s % 32` walk, because two identical rows produce
@@ -761,7 +761,7 @@ fn _tourney_block(n_strategies: Int, n_factors: Int) -> List[Float64]:
     return out^
 
 
-fn _outcomes(s: Int, r: Int, h: Int, gap_kind: Int) -> List[Float64]:
+def _outcomes(s: Int, r: Int, h: Int, gap_kind: Int) -> List[Float64]:
     """A real payoff block from `crn_evaluate_policies`, strategy-major. Empty on refusal.
 
     `gap_kind < 0` builds the distinct-threshold block over `s` strategies. `gap_kind >= 0`
@@ -780,7 +780,7 @@ fn _outcomes(s: Int, r: Int, h: Int, gap_kind: Int) -> List[Float64]:
     return run.payoffs.copy()
 
 
-fn _time_rank(outcomes: List[Float64], s: Int, r: Int) -> List[Float64]:
+def _time_rank(outcomes: List[Float64], s: Int, r: Int) -> List[Float64]:
     """THE ONLY timed `tourney_rank_flat` call in this file. Flat slots, in this order:
 
     `[0] ns  [1] status  [2] charge  [3] verdict  [4] n_significant  [5] n_comparisons`
@@ -816,7 +816,7 @@ fn _time_rank(outcomes: List[Float64], s: Int, r: Int) -> List[Float64]:
     return out^
 
 
-fn _bench_tournament_charge() -> Int:
+def _bench_tournament_charge() -> Int:
     print("  [8] the ranking's declared charge against measured time")
     print("      s     R     pairs   charge      %ceil   ms      ns/charged-unit")
     var ss = List[Int]()
@@ -896,7 +896,7 @@ fn _bench_tournament_charge() -> Int:
 # ── 9. the verdicts themselves, on a fixed seed, with no timing in the gate ───
 
 
-fn _bench_tournament_verdicts() -> Int:
+def _bench_tournament_verdicts() -> Int:
     print("  [9] verdicts across a threshold gap — crn_evaluate_policies into tourney_rank_flat")
     print("      gap    verdict  winner  p            paired var    ratio")
     var gaps = List[Int]()
@@ -958,7 +958,7 @@ fn _bench_tournament_verdicts() -> Int:
     return 0
 
 
-fn main():
+def main():
     print("\n=== bench_strategy: scenarios, replay, and the price of pairing ===")
     print("Gates are on SHAPE. Absolute times are informational and are not gated.\n")
     var failures = 0

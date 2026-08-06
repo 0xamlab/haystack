@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn shard_offset_bytes(
+def shard_offset_bytes(
     shard_id: Float64, params_per_shard: Float64, dtype_bytes: Float64
 ) -> Float64:
     """Byte offset for weight shard in sharded checkpoint.
@@ -35,7 +35,7 @@ fn shard_offset_bytes(
     return shard_id * params_per_shard * dtype_bytes
 
 
-fn safetensors_header_size(
+def safetensors_header_size(
     n_tensors: Float64, avg_tensor_name_bytes: Float64
 ) -> Float64:
     """Safetensors JSON header size estimate.
@@ -52,7 +52,7 @@ fn safetensors_header_size(
     return n_tensors * (avg_tensor_name_bytes + 64.0)  # 64 bytes metadata per tensor
 
 
-fn lazy_load_priority(
+def lazy_load_priority(
     layer_id: Float64, total_layers: Float64,
     current_inference_layer: Float64
 ) -> Float64:
@@ -73,7 +73,7 @@ fn lazy_load_priority(
     return total_layers / (ahead + 1.0)
 
 
-fn gguf_quantized_block_size(
+def gguf_quantized_block_size(
     n_bits: Float64, block_size: Float64
 ) -> Float64:
     """GGUF quantized block size in bytes.
@@ -93,7 +93,7 @@ fn gguf_quantized_block_size(
     return data_bytes + scale_bytes
 
 
-fn checkpoint_resume_step(
+def checkpoint_resume_step(
     checkpoint_path_hash: Float64, step_encoded: Float64
 ) -> Float64:
     """Extract training step from checkpoint metadata (encoded).
@@ -108,7 +108,7 @@ fn checkpoint_resume_step(
     return step_encoded
 
 
-fn weight_diff_norm(
+def weight_diff_norm(
     weight_new: Float64, weight_old: Float64
 ) -> Float64:
     """Squared difference contribution for weight change norm.
@@ -126,7 +126,7 @@ fn weight_diff_norm(
     return diff * diff
 
 
-fn partial_load_coverage(
+def partial_load_coverage(
     loaded_params: Float64, total_params: Float64
 ) -> Float64:
     """Fraction of model weights currently loaded in memory.
@@ -143,7 +143,7 @@ fn partial_load_coverage(
     return loaded_params / total_params
 
 
-fn adapter_merge_ratio(
+def adapter_merge_ratio(
     base_weight: Float64, adapter_weight: Float64, alpha: Float64
 ) -> Float64:
     """Interpolate between base and adapter weights for deployment.
@@ -161,7 +161,7 @@ fn adapter_merge_ratio(
     return (1.0 - alpha) * base_weight + alpha * adapter_weight
 
 
-fn hf_model_index_shards(
+def hf_model_index_shards(
     total_params: Float64, max_shard_bytes: Float64, dtype_bytes: Float64
 ) -> Float64:
     """Number of shards for HuggingFace model index (model.safetensors.index.json).
@@ -180,7 +180,7 @@ fn hf_model_index_shards(
     return Float64(Int64((total_bytes + max_shard_bytes - 1.0) / max_shard_bytes))
 
 
-fn weight_hash_verify(
+def weight_hash_verify(
     accumulated_hash: Float64, weight: Float64, prime: Float64
 ) -> Float64:
     """Rolling polynomial hash for weight checkpoint verification.

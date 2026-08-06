@@ -14,7 +14,7 @@ from seq_training import (
 from std.math import sqrt, sin, abs as fabs
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ seq_training::" + name)
@@ -23,15 +23,15 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ seq_training::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _is_finite(x: Float64) -> Bool:
+def _is_finite(x: Float64) -> Bool:
     return x == x and fabs(x) < 1e300
 
 
-fn _mse_loss(
+def _mse_loss(
     weights: List[Float64], ds: WindowedDataset, input_dim: Int, hidden: Int
 ) -> Float64:
     """MSE over the dataset via the public lstm_predict — independent of the

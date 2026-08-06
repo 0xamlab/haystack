@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn json_next_token_valid(
+def json_next_token_valid(
     fsm_state: Float64, token_type: Float64
 ) -> Float64:
     """JSON finite state machine: valid transition score.
@@ -43,7 +43,7 @@ fn json_next_token_valid(
     return 1.0
 
 
-fn schema_field_confidence(
+def schema_field_confidence(
     field_log_prob: Float64, schema_match_score: Float64
 ) -> Float64:
     """Confidence of extracted field matching schema.
@@ -60,7 +60,7 @@ fn schema_field_confidence(
     return exp(field_log_prob) * schema_match_score
 
 
-fn sql_clause_transition(
+def sql_clause_transition(
     current_clause: Float64, next_clause: Float64
 ) -> Float64:
     """SQL clause ordering validity score.
@@ -83,7 +83,7 @@ fn sql_clause_transition(
     return 0.0  # Backward transition invalid
 
 
-fn xml_nesting_depth_valid(
+def xml_nesting_depth_valid(
     current_depth: Float64, max_depth: Float64
 ) -> Float64:
     """XML nesting depth validity check.
@@ -100,7 +100,7 @@ fn xml_nesting_depth_valid(
     return 0.0
 
 
-fn output_repair_edit_distance(
+def output_repair_edit_distance(
     original_len: Float64, n_edits: Float64
 ) -> Float64:
     """Normalised edit distance for output repair effort.
@@ -119,7 +119,7 @@ fn output_repair_edit_distance(
     return n_edits / original_len
 
 
-fn regex_constraint_match(
+def regex_constraint_match(
     token_char_code: Float64, pattern_accept_min: Float64,
     pattern_accept_max: Float64
 ) -> Float64:
@@ -138,7 +138,7 @@ fn regex_constraint_match(
     return 0.0
 
 
-fn type_coercion_score(
+def type_coercion_score(
     raw_value: Float64, target_type: Float64
 ) -> Float64:
     """Confidence that raw value can be coerced to target type.
@@ -161,7 +161,7 @@ fn type_coercion_score(
     return 0.8  # string: usually coercible
 
 
-fn field_extraction_recall(
+def field_extraction_recall(
     required_fields_extracted: Float64, total_required_fields: Float64
 ) -> Float64:
     """Recall of required schema fields in structured output.
@@ -178,7 +178,7 @@ fn field_extraction_recall(
     return required_fields_extracted / total_required_fields
 
 
-fn output_diversity_score(
+def output_diversity_score(
     n_unique_outputs: Float64, total_outputs: Float64
 ) -> Float64:
     """Diversity of structured outputs across requests.
@@ -195,7 +195,7 @@ fn output_diversity_score(
     return n_unique_outputs / total_outputs
 
 
-fn format_compliance_rate(
+def format_compliance_rate(
     compliant_outputs: Float64, total_outputs: Float64
 ) -> Float64:
     """Fraction of outputs fully compliant with requested format.

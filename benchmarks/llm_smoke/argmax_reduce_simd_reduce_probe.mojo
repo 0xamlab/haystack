@@ -74,7 +74,7 @@ comptime _NEG_HUGE: Float32 = -3.0e38
 """Same sentinel `residentk.kernels._NEG_HUGE` uses."""
 
 
-fn _argmax_combine_barrier_tree(
+def _argmax_combine_barrier_tree(
     out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
     out_idx: UnsafePointer[Int32, origin=MutAnyOrigin],
     blk_val: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -119,7 +119,7 @@ fn _argmax_combine_barrier_tree(
         out_idx[0] = si[0]
 
 
-fn _argmax_combine_simd_shuffle(
+def _argmax_combine_simd_shuffle(
     out_val: UnsafePointer[Float32, origin=MutAnyOrigin],
     out_idx: UnsafePointer[Int32, origin=MutAnyOrigin],
     blk_val: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -174,7 +174,7 @@ fn _argmax_combine_simd_shuffle(
         out_idx[0] = bi
 
 
-fn _host_argmax(vals: List[Float64], idxs: List[Int], n: Int, mut out_val: List[Float64], mut out_idx: List[Int]):
+def _host_argmax(vals: List[Float64], idxs: List[Int], n: Int, mut out_val: List[Float64], mut out_idx: List[Int]):
     """Pure-host Float64 reference — the SAME tie-break-to-lowest-id combine, applied by scanning
     once left to right. This combine (max value; on an exact tie, min id) is a genuine total-order
     maximum over `(value, id)` pairs, so it is associative and commutative: ANY scan order or
@@ -194,14 +194,14 @@ fn _host_argmax(vals: List[Float64], idxs: List[Int], n: Int, mut out_val: List[
     out_idx.append(best_i)
 
 
-fn _pseudo_vals(n: Int, seed: Int) -> List[Float64]:
+def _pseudo_vals(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _pseudo_ids(n: Int, seed: Int) -> List[Int]:
+def _pseudo_ids(n: Int, seed: Int) -> List[Int]:
     """Deliberately NOT equal to position `i` — a kernel bug that returned the array POSITION
     instead of the stored `blk_idx` VALUE would pass a same-as-position id scheme by accident and
     should not pass this one."""
@@ -342,7 +342,7 @@ def main() raises:
     _time_case(ctx, 2048, 500)
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1
@@ -353,7 +353,7 @@ fn _median(mut s: List[Float64]) -> Float64:
     return s[len(s) // 2]
 
 
-fn _time_case(ctx: DeviceContext, n: Int, reps: Int) raises:
+def _time_case(ctx: DeviceContext, n: Int, reps: Int) raises:
     var vals64 = _pseudo_vals(n, 200)
     var ids64 = _pseudo_ids(n, 300)
     var vbuf = ctx.enqueue_create_buffer[DType.float32](n)

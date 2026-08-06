@@ -106,28 +106,28 @@ from types import ExprNode
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -136,7 +136,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality — every value compared with this helper is a small integer."""
     if len(a) != len(b):
         return False
@@ -146,12 +146,12 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     """The generated A-Z suite's sample list: five copies of 0.5."""
     return _floats(0.5, 0.5, 0.5, 0.5, 0.5)
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     """The generated A-Z suite's sample list: five copies of 5."""
     return _ints(5, 5, 5, 5, 5)
 
@@ -168,7 +168,7 @@ fn _li5() -> List[Int]:
 # Every value is a small integer, so all of it is exact in binary floating point.
 
 
-fn _objective_nodes() -> List[ExprNode]:
+def _objective_nodes() -> List[ExprNode]:
     var nodes = List[ExprNode]()
     nodes.append(ExprNode(1, 0.0, 0, -1, -1, -1))   # 0: x0
     nodes.append(ExprNode(4, 0.0, -1, 0, 0, -1))    # 1: x0 * x0
@@ -179,7 +179,7 @@ fn _objective_nodes() -> List[ExprNode]:
     return nodes^
 
 
-fn _sum_nodes() -> List[ExprNode]:
+def _sum_nodes() -> List[ExprNode]:
     var nodes = List[ExprNode]()
     nodes.append(ExprNode(1, 0.0, 0, -1, -1, -1))
     nodes.append(ExprNode(1, 0.0, 1, -1, -1, -1))
@@ -187,7 +187,7 @@ fn _sum_nodes() -> List[ExprNode]:
     return nodes^
 
 
-fn _diff_nodes() -> List[ExprNode]:
+def _diff_nodes() -> List[ExprNode]:
     var nodes = List[ExprNode]()
     nodes.append(ExprNode(1, 0.0, 0, -1, -1, -1))
     nodes.append(ExprNode(1, 0.0, 1, -1, -1, -1))
@@ -195,20 +195,20 @@ fn _diff_nodes() -> List[ExprNode]:
     return nodes^
 
 
-fn _x1_nodes() -> List[ExprNode]:
+def _x1_nodes() -> List[ExprNode]:
     var nodes = List[ExprNode]()
     nodes.append(ExprNode(1, 0.0, 1, -1, -1, -1))
     return nodes^
 
 
-fn _model_vars() -> List[OptVar]:
+def _model_vars() -> List[OptVar]:
     var variables = List[OptVar]()
     variables.append(opt_var("x0", 0.0, 10.0, VAR_CONTINUOUS))
     variables.append(opt_var("x1", 0.0, 10.0, VAR_CONTINUOUS))
     return variables^
 
 
-fn _model_constraints() -> List[OptConstraint]:
+def _model_constraints() -> List[OptConstraint]:
     var cons = List[OptConstraint]()
     cons.append(make_constraint(_sum_nodes(), 2, SENSE_LE, 6.0, "c0"))
     cons.append(make_constraint(_diff_nodes(), 2, SENSE_EQ, -3.0, "c1"))
@@ -216,19 +216,19 @@ fn _model_constraints() -> List[OptConstraint]:
     return cons^
 
 
-fn _one_var(lower: Float64, upper: Float64, kind: Int) -> List[OptVar]:
+def _one_var(lower: Float64, upper: Float64, kind: Int) -> List[OptVar]:
     var variables = List[OptVar]()
     variables.append(opt_var("v", lower, upper, kind))
     return variables^
 
 
-fn _lift_one(v: OptVar) -> List[OptVar]:
+def _lift_one(v: OptVar) -> List[OptVar]:
     var variables = List[OptVar]()
     variables.append(v.copy())
     return variables^
 
 
-fn _unbounded_integers(n: Int) -> List[OptVar]:
+def _unbounded_integers(n: Int) -> List[OptVar]:
     """`n` integer variables with no bound on either side, so a projection only snaps."""
     var variables = List[OptVar]()
     for i in range(n):
@@ -236,7 +236,7 @@ fn _unbounded_integers(n: Int) -> List[OptVar]:
     return variables^
 
 
-fn _flat_with_ptr(flat: ModelFlat, ptr: List[Int]) -> ModelFlat:
+def _flat_with_ptr(flat: ModelFlat, ptr: List[Int]) -> ModelFlat:
     """The same wire model with a different `con_ptr`, for the pointer-defect cases."""
     return ModelFlat(
         flat.var_lower.copy(),
@@ -270,7 +270,7 @@ fn _flat_with_ptr(flat: ModelFlat, ptr: List[Int]) -> ModelFlat:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

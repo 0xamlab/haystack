@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn basic_reproduction_number(
+def basic_reproduction_number(
     beta: Float64, infectious_period: Float64, population: Float64
 ) -> Float64:
     """Basic reproduction number R0 = β·N·D.
@@ -32,7 +32,7 @@ fn basic_reproduction_number(
     return beta * population * infectious_period
 
 
-fn viral_doubling_time(growth_rate: Float64) -> Float64:
+def viral_doubling_time(growth_rate: Float64) -> Float64:
     """Viral doubling time: T_d = ln2 / r.
 
     Args:
@@ -46,7 +46,7 @@ fn viral_doubling_time(growth_rate: Float64) -> Float64:
     return log(2.0) / growth_rate
 
 
-fn plaque_forming_units(
+def plaque_forming_units(
     plaque_count: Float64, dilution: Float64, volume_ml: Float64
 ) -> Float64:
     """Viral titre: PFU/mL from plaque assay.
@@ -66,7 +66,7 @@ fn plaque_forming_units(
     return plaque_count / (dilution * volume_ml)
 
 
-fn burst_size(
+def burst_size(
     progeny_particles: Float64, initial_infected_cells: Float64
 ) -> Float64:
     """Burst size: average progeny virions per infected cell.
@@ -83,7 +83,7 @@ fn burst_size(
     return progeny_particles / initial_infected_cells
 
 
-fn eclipse_period(
+def eclipse_period(
     time_of_burst: Float64, adsorption_time: Float64
 ) -> Float64:
     """Eclipse period from adsorption to first burst.
@@ -103,7 +103,7 @@ fn eclipse_period(
     return ep
 
 
-fn neutralisation_titre(
+def neutralisation_titre(
     log2_dilution_at_50_inhibition: Float64
 ) -> Float64:
     """Neutralisation titre from 50% inhibition dilution.
@@ -119,7 +119,7 @@ fn neutralisation_titre(
     return pow(2.0, log2_dilution_at_50_inhibition)
 
 
-fn antiviral_ic50(
+def antiviral_ic50(
     conc_high: Float64, conc_low: Float64,
     inhibition_high: Float64, inhibition_low: Float64
 ) -> Float64:
@@ -142,7 +142,7 @@ fn antiviral_ic50(
     return conc_low + (50.0 - inhibition_low) / slope
 
 
-fn virus_decay_rate(
+def virus_decay_rate(
     initial_titre: Float64, final_titre: Float64, time: Float64
 ) -> Float64:
     """First-order viral inactivation rate constant: k = ln(N0/N)/t.
@@ -160,7 +160,7 @@ fn virus_decay_rate(
     return log(initial_titre / final_titre) / time
 
 
-fn infection_threshold(
+def infection_threshold(
     dose: Float64, id50: Float64, probit_slope: Float64
 ) -> Float64:
     """Probability of infection from dose (probit model simplified).
@@ -185,7 +185,7 @@ fn infection_threshold(
     return p
 
 
-fn herd_immunity_threshold_viro(r0: Float64) -> Float64:
+def herd_immunity_threshold_viro(r0: Float64) -> Float64:
     """Herd immunity threshold for virus: HIT = 1 - 1/R0.
 
     Args:

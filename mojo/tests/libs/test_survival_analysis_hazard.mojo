@@ -50,21 +50,21 @@ from survival_analysis.hazard import SA_EPANECHNIKOV_PEAK, na_fit, na_smoothed_h
 comptime EPS: Float64 = 2.220446049250313e-16
 
 
-fn _f(*v: Float64) -> List[Float64]:
+def _f(*v: Float64) -> List[Float64]:
     var o = List[Float64]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _i(*v: Int) -> List[Int]:
+def _i(*v: Int) -> List[Int]:
     var o = List[Int]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _close(got: Float64, want: Float64, ulps: Float64) -> Bool:
+def _close(got: Float64, want: Float64, ulps: Float64) -> Bool:
     """Per-ITEM: scaled by THAT item's own magnitude times DBL_EPSILON. Nothing else."""
     var slop = ulps * EPS * fabs(want)
     if slop < ulps * EPS:
@@ -72,7 +72,7 @@ fn _close(got: Float64, want: Float64, ulps: Float64) -> Bool:
     return fabs(got - want) <= slop
 
 
-fn _rel(got: Float64, want: Float64, rel: Float64) -> Bool:
+def _rel(got: Float64, want: Float64, rel: Float64) -> Bool:
     """A looser per-item comparison for values built through `log`/`exp`/`erf`."""
     var slop = rel * fabs(want)
     if slop < rel:
@@ -80,17 +80,17 @@ fn _rel(got: Float64, want: Float64, rel: Float64) -> Bool:
     return fabs(got - want) <= slop
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var z: Float64 = 0.0
     return z / z
 
 
-fn _inf() -> Float64:
+def _inf() -> Float64:
     var z: Float64 = 0.0
     return 1.0 / z
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[survival_analysis.hazard] hand-written known values")

@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── hall_petch ───────────────────────────────────────────────────────────────
 
 
-fn hall_petch(sigma0: Float64, ky: Float64, d: Float64) -> Float64:
+def hall_petch(sigma0: Float64, ky: Float64, d: Float64) -> Float64:
     """Hall-Petch relation: σ_y = σ0 + k_y / sqrt(d).
 
     Args:
@@ -44,7 +44,7 @@ fn hall_petch(sigma0: Float64, ky: Float64, d: Float64) -> Float64:
 # ── johnson_cook_flow_stress ─────────────────────────────────────────────────
 
 
-fn johnson_cook_flow_stress(a: Float64, b: Float64, strain: Float64, n: Float64) -> Float64:
+def johnson_cook_flow_stress(a: Float64, b: Float64, strain: Float64, n: Float64) -> Float64:
     """Johnson-Cook quasi-static flow stress: σ = A + B*ε^n.
 
     Args:
@@ -64,7 +64,7 @@ fn johnson_cook_flow_stress(a: Float64, b: Float64, strain: Float64, n: Float64)
 # ── hardness_to_tensile ──────────────────────────────────────────────────────
 
 
-fn hardness_to_tensile(hb: Float64) -> Float64:
+def hardness_to_tensile(hb: Float64) -> Float64:
     """Brinell hardness to ultimate tensile strength: σ_uts ≈ 3.45 * HB.
 
     Args:
@@ -79,7 +79,7 @@ fn hardness_to_tensile(hb: Float64) -> Float64:
 # ── carbon_equivalent ────────────────────────────────────────────────────────
 
 
-fn carbon_equivalent(
+def carbon_equivalent(
     c: Float64, mn: Float64, si: Float64,
     ni: Float64, cr: Float64, mo: Float64, v: Float64,
 ) -> Float64:
@@ -106,7 +106,7 @@ fn carbon_equivalent(
 # ── jominy_distance_to_hardness ──────────────────────────────────────────────
 
 
-fn jominy_distance_to_hardness(
+def jominy_distance_to_hardness(
     h0: Float64, decay_rate: Float64, distance: Float64,
 ) -> Float64:
     """Jominy end-quench hardness decay: H = h0 * exp(-decay * d).
@@ -125,7 +125,7 @@ fn jominy_distance_to_hardness(
 # ── avrami_fraction ──────────────────────────────────────────────────────────
 
 
-fn avrami_fraction(k: Float64, n: Float64, t: Float64) -> Float64:
+def avrami_fraction(k: Float64, n: Float64, t: Float64) -> Float64:
     """Avrami (JMAK) phase transformation: f = 1 - exp(-k * t^n).
 
     Args:
@@ -144,7 +144,7 @@ fn avrami_fraction(k: Float64, n: Float64, t: Float64) -> Float64:
 # ── quench_severity ──────────────────────────────────────────────────────────
 
 
-fn quench_severity(h: Float64, diameter: Float64) -> Float64:
+def quench_severity(h: Float64, diameter: Float64) -> Float64:
     """Grossmann ideal diameter: ideal_dia = H * diameter.
 
     Args:
@@ -160,7 +160,7 @@ fn quench_severity(h: Float64, diameter: Float64) -> Float64:
 # ── tempering_parameter ──────────────────────────────────────────────────────
 
 
-fn tempering_parameter(
+def tempering_parameter(
     temperature_k: Float64, time_hours: Float64, c: Float64,
 ) -> Float64:
     """Hollomon-Jaffe tempering parameter: P = T * (C + log10(t)).
@@ -184,7 +184,7 @@ fn tempering_parameter(
 # ── density_of_alloy_rule_of_mixtures ────────────────────────────────────────
 
 
-fn density_of_alloy_rule_of_mixtures(
+def density_of_alloy_rule_of_mixtures(
     f1: Float64, d1: Float64, f2: Float64, d2: Float64,
 ) -> Float64:
     """Rule of mixtures for alloy density: ρ = f1*d1 + f2*d2.
@@ -204,7 +204,7 @@ fn density_of_alloy_rule_of_mixtures(
 # ── thermal_conductivity_wiedemann_franz ─────────────────────────────────────
 
 
-fn thermal_conductivity_wiedemann_franz(
+def thermal_conductivity_wiedemann_franz(
     electrical_cond: Float64, temperature: Float64, lorenz: Float64,
 ) -> Float64:
     """Wiedemann-Franz law: k = L * σ * T.
@@ -223,7 +223,7 @@ fn thermal_conductivity_wiedemann_franz(
 # ── strain_hardening_exponent_from_points ────────────────────────────────────
 
 
-fn strain_hardening_exponent_from_points(
+def strain_hardening_exponent_from_points(
     stress1: Float64, strain1: Float64,
     stress2: Float64, strain2: Float64,
 ) -> Float64:
@@ -251,7 +251,7 @@ fn strain_hardening_exponent_from_points(
 # ── fatigue_life_basquin ─────────────────────────────────────────────────────
 
 
-fn fatigue_life_basquin(
+def fatigue_life_basquin(
     sigma_f: Float64, sigma_a: Float64, b: Float64,
 ) -> Float64:
     """Basquin fatigue life: Nf = (σ_a / σ_f)^(1/b).

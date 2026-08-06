@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn ml_to_simulation_weight(
+def ml_to_simulation_weight(
     ml_probability: Float64, temperature: Float64
 ) -> Float64:
     """Map ML output probability to Monte Carlo simulation weight.
@@ -38,7 +38,7 @@ fn ml_to_simulation_weight(
     return exp(log(ml_probability) / temperature)
 
 
-fn simulation_to_objective(
+def simulation_to_objective(
     sim_mean: Float64, sim_std: Float64, risk_aversion: Float64
 ) -> Float64:
     """Convert simulation statistics to optimisation objective.
@@ -56,7 +56,7 @@ fn simulation_to_objective(
     return sim_mean - risk_aversion * sim_std
 
 
-fn expected_value_under_model(
+def expected_value_under_model(
     outcome: Float64, model_weight: Float64,
     prior_weight: Float64, model_confidence: Float64
 ) -> Float64:
@@ -77,7 +77,7 @@ fn expected_value_under_model(
     return blend * outcome
 
 
-fn regret_from_prediction(
+def regret_from_prediction(
     true_outcome: Float64, predicted_outcome: Float64,
     decision_cost: Float64
 ) -> Float64:
@@ -99,7 +99,7 @@ fn regret_from_prediction(
     return error * decision_cost
 
 
-fn counterfactual_utility(
+def counterfactual_utility(
     chosen_outcome: Float64, best_alternative: Float64
 ) -> Float64:
     """Counterfactual utility: regret vs best alternative.
@@ -116,7 +116,7 @@ fn counterfactual_utility(
     return chosen_outcome - best_alternative
 
 
-fn policy_gradient_advantage(
+def policy_gradient_advantage(
     reward: Float64, baseline: Float64
 ) -> Float64:
     """Advantage estimate A(s,a) = R - b(s) for policy gradient.
@@ -131,7 +131,7 @@ fn policy_gradient_advantage(
     return reward - baseline
 
 
-fn reward_shaping_potential(
+def reward_shaping_potential(
     gamma: Float64, next_potential: Float64, current_potential: Float64
 ) -> Float64:
     """Potential-based reward shaping: F = γ Φ(s') - Φ(s).
@@ -149,7 +149,7 @@ fn reward_shaping_potential(
     return gamma * next_potential - current_potential
 
 
-fn multi_objective_scalarize(
+def multi_objective_scalarize(
     objectives: Float64, ideal: Float64,
     weight: Float64, nadir: Float64
 ) -> Float64:
@@ -177,7 +177,7 @@ fn multi_objective_scalarize(
     return weight * deviation / range
 
 
-fn model_confidence_gate(
+def model_confidence_gate(
     model_output: Float64, confidence: Float64,
     threshold: Float64, fallback: Float64
 ) -> Float64:
@@ -197,7 +197,7 @@ fn model_confidence_gate(
     return fallback
 
 
-fn adaptive_exploration_rate(
+def adaptive_exploration_rate(
     q_value: Float64, visit_count: Float64,
     total_visits: Float64, ucb_c: Float64
 ) -> Float64:

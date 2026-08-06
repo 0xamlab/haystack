@@ -30,7 +30,7 @@ comptime K_BOLTZMANN: Float64 = 1.38e-23
 # ── radar_range_equation ─────────────────────────────────────────────────────
 
 
-fn radar_range_equation(
+def radar_range_equation(
     pt: Float64,
     gt: Float64,
     gr: Float64,
@@ -50,7 +50,7 @@ fn radar_range_equation(
 # ── doppler_frequency ────────────────────────────────────────────────────────
 
 
-fn doppler_frequency(velocity: Float64, wavelength: Float64) -> Float64:
+def doppler_frequency(velocity: Float64, wavelength: Float64) -> Float64:
     """Doppler frequency fd = 2*v / λ  (Hz)."""
     return 2.0 * velocity / wavelength
 
@@ -58,7 +58,7 @@ fn doppler_frequency(velocity: Float64, wavelength: Float64) -> Float64:
 # ── doppler_velocity ─────────────────────────────────────────────────────────
 
 
-fn doppler_velocity(fd: Float64, wavelength: Float64) -> Float64:
+def doppler_velocity(fd: Float64, wavelength: Float64) -> Float64:
     """Velocity from Doppler: v = fd * λ / 2  (m/s)."""
     return fd * wavelength / 2.0
 
@@ -66,7 +66,7 @@ fn doppler_velocity(fd: Float64, wavelength: Float64) -> Float64:
 # ── range_from_time ──────────────────────────────────────────────────────────
 
 
-fn range_from_time(round_trip_time: Float64, c: Float64) -> Float64:
+def range_from_time(round_trip_time: Float64, c: Float64) -> Float64:
     """Range R = c * t / 2  (m)."""
     return c * round_trip_time / 2.0
 
@@ -74,7 +74,7 @@ fn range_from_time(round_trip_time: Float64, c: Float64) -> Float64:
 # ── pulse_repetition_interval ────────────────────────────────────────────────
 
 
-fn pulse_repetition_interval(prf: Float64) -> Float64:
+def pulse_repetition_interval(prf: Float64) -> Float64:
     """PRI = 1 / PRF  (s)."""
     return 1.0 / prf
 
@@ -82,7 +82,7 @@ fn pulse_repetition_interval(prf: Float64) -> Float64:
 # ── max_unambiguous_range ────────────────────────────────────────────────────
 
 
-fn max_unambiguous_range(prf: Float64, c: Float64) -> Float64:
+def max_unambiguous_range(prf: Float64, c: Float64) -> Float64:
     """Rmax = c / (2 * PRF)  (m)."""
     return c / (2.0 * prf)
 
@@ -90,7 +90,7 @@ fn max_unambiguous_range(prf: Float64, c: Float64) -> Float64:
 # ── max_unambiguous_velocity ─────────────────────────────────────────────────
 
 
-fn max_unambiguous_velocity(prf: Float64, wavelength: Float64) -> Float64:
+def max_unambiguous_velocity(prf: Float64, wavelength: Float64) -> Float64:
     """Vmax = PRF * λ / 4  (m/s)."""
     return prf * wavelength / 4.0
 
@@ -98,7 +98,7 @@ fn max_unambiguous_velocity(prf: Float64, wavelength: Float64) -> Float64:
 # ── range_resolution ─────────────────────────────────────────────────────────
 
 
-fn range_resolution(bandwidth: Float64) -> Float64:
+def range_resolution(bandwidth: Float64) -> Float64:
     """Range resolution ΔR = c / (2*B)  (m), c=3e8."""
     return C_LIGHT / (2.0 * bandwidth)
 
@@ -106,7 +106,7 @@ fn range_resolution(bandwidth: Float64) -> Float64:
 # ── antenna_gain_from_area ───────────────────────────────────────────────────
 
 
-fn antenna_gain_from_area(aperture_area: Float64, wavelength: Float64) -> Float64:
+def antenna_gain_from_area(aperture_area: Float64, wavelength: Float64) -> Float64:
     """Antenna gain G = 4π*Ae / λ²."""
     return 4.0 * PI * aperture_area / (wavelength * wavelength)
 
@@ -114,7 +114,7 @@ fn antenna_gain_from_area(aperture_area: Float64, wavelength: Float64) -> Float6
 # ── radar_cross_section_sphere ───────────────────────────────────────────────
 
 
-fn radar_cross_section_sphere(radius: Float64) -> Float64:
+def radar_cross_section_sphere(radius: Float64) -> Float64:
     """RCS of a large sphere σ = π*r²  (m²)."""
     return PI * radius * radius
 
@@ -122,7 +122,7 @@ fn radar_cross_section_sphere(radius: Float64) -> Float64:
 # ── noise_power ──────────────────────────────────────────────────────────────
 
 
-fn noise_power(bandwidth: Float64, noise_figure: Float64, temperature: Float64) -> Float64:
+def noise_power(bandwidth: Float64, noise_figure: Float64, temperature: Float64) -> Float64:
     """Noise power N = k*T*B*F  (W)."""
     return K_BOLTZMANN * temperature * bandwidth * noise_figure
 
@@ -130,6 +130,6 @@ fn noise_power(bandwidth: Float64, noise_figure: Float64, temperature: Float64) 
 # ── signal_to_clutter ────────────────────────────────────────────────────────
 
 
-fn signal_to_clutter(signal_power: Float64, clutter_power: Float64) -> Float64:
+def signal_to_clutter(signal_power: Float64, clutter_power: Float64) -> Float64:
     """Signal-to-clutter ratio SCR = S / C."""
     return signal_power / clutter_power

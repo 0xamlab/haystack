@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bpe_tokenizer import bpe_merge_score, bpe_pair_frequency, subword_log_probability, sentencepiece_vocab_size_est, byte_fallback_encode, tokenization_compression_ratio, vocab_fertility, oov_rate, bpe_merge_rank_score, streaming_token_boundary
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

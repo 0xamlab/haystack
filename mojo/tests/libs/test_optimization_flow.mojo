@@ -79,28 +79,28 @@ from optimization.flow import (
 from sparse_numerics.csr import MAX_CSR_DIM
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _bools(*vals: Bool) -> List[Bool]:
+def _bools(*vals: Bool) -> List[Bool]:
     var out = List[Bool]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Every value compared with this helper is a small integer or a
     dyadic fraction, so a tolerance would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -111,7 +111,7 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _node_ceiling_fits(nodes: Int, arrays: Int, shared_ceiling: Int) -> Bool:
+def _node_ceiling_fits(nodes: Int, arrays: Int, shared_ceiling: Int) -> Bool:
     """True when `arrays` arrays of `nodes` slots fit the one shared csr budget.
 
     Written with a DIVISION, like `sparse_numerics.csr.dims_fit`: `nodes * arrays` is a
@@ -132,7 +132,7 @@ fn _node_ceiling_fits(nodes: Int, arrays: Int, shared_ceiling: Int) -> Bool:
     return nodes <= shared_ceiling // arrays
 
 
-fn _no_answer(r: MaxFlow) -> Bool:
+def _no_answer(r: MaxFlow) -> Bool:
     """A rejected request carries no numbers at all — not "value 0.0 plus a status"."""
     return (
         not r.has_value
@@ -146,7 +146,7 @@ fn _no_answer(r: MaxFlow) -> Bool:
     )
 
 
-fn _invariants_hold(
+def _invariants_hold(
     r: MaxFlow,
     src: List[Int],
     dst: List[Int],
@@ -244,15 +244,15 @@ fn _invariants_hold(
 # minimal min cut — and the cut edges are e0 and e1.
 
 
-fn _classic_src() -> List[Int]:
+def _classic_src() -> List[Int]:
     return _ints(0, 0, 1, 1, 2)
 
 
-fn _classic_dst() -> List[Int]:
+def _classic_dst() -> List[Int]:
     return _ints(1, 2, 2, 3, 3)
 
 
-fn _classic_cap() -> List[Float64]:
+def _classic_cap() -> List[Float64]:
     return _floats(3.0, 2.0, 5.0, 2.0, 3.0)
 
 
@@ -266,15 +266,15 @@ fn _classic_cap() -> List[Float64]:
 # the source side has four nodes and three crossing edges.
 
 
-fn _clrs_src() -> List[Int]:
+def _clrs_src() -> List[Int]:
     return _ints(0, 0, 1, 2, 1, 3, 2, 4, 3, 4)
 
 
-fn _clrs_dst() -> List[Int]:
+def _clrs_dst() -> List[Int]:
     return _ints(1, 2, 2, 1, 3, 2, 4, 3, 5, 5)
 
 
-fn _clrs_cap() -> List[Float64]:
+def _clrs_cap() -> List[Float64]:
     return _floats(16.0, 13.0, 10.0, 4.0, 12.0, 9.0, 14.0, 7.0, 20.0, 4.0)
 
 
@@ -294,23 +294,23 @@ fn _clrs_cap() -> List[Float64]:
 # the expensive edge first would still report a max flow of 2.
 
 
-fn _cost_src() -> List[Int]:
+def _cost_src() -> List[Int]:
     return _ints(0, 1, 1, 2)
 
 
-fn _cost_dst() -> List[Int]:
+def _cost_dst() -> List[Int]:
     return _ints(1, 2, 3, 3)
 
 
-fn _cost_cap() -> List[Float64]:
+def _cost_cap() -> List[Float64]:
     return _floats(2.0, 2.0, 2.0, 1.0)
 
 
-fn _cost_cost() -> List[Float64]:
+def _cost_cost() -> List[Float64]:
     return _floats(0.0, 1.0, 6.0, 0.0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

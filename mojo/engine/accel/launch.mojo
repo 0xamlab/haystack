@@ -77,7 +77,7 @@ width that NVIDIA uses and the 32-wide SIMD group Apple uses, and small enough n
 registers on either."""
 
 
-fn _saxpy_kernel(
+def _saxpy_kernel(
     out_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     x_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     alpha: Float32,
@@ -94,7 +94,7 @@ fn _saxpy_kernel(
         out_ptr[i] = out_ptr[i] + alpha * x_ptr[i]
 
 
-fn _accel_saxpy(mut out_host: List[Float32], x_host: List[Float32], alpha: Float32) raises -> Int:
+def _accel_saxpy(mut out_host: List[Float32], x_host: List[Float32], alpha: Float32) raises -> Int:
     """Run `out += alpha * x` on the accelerator. Returns the element count, or a negative status.
 
     Private: see THE RULE at the top of this file. Making this public would put a launch site in the
@@ -141,7 +141,7 @@ fn _accel_saxpy(mut out_host: List[Float32], x_host: List[Float32], alpha: Float
     return n
 
 
-fn _accel_device_name() raises -> String:
+def _accel_device_name() raises -> String:
     """The accelerator's full name, for a local driver that has already opened the device.
 
     Private, and separate from `accel.device.accel_device_name_len` on purpose: that one is a
@@ -154,7 +154,7 @@ fn _accel_device_name() raises -> String:
     return ctx.name()
 
 
-fn _accel_launch_roundtrip_ok() raises -> Bool:
+def _accel_launch_roundtrip_ok() raises -> Bool:
     """Launch a known kernel and check the arithmetic. The proof that the seam works.
 
     `out = [0, 1, 2, ...]`, `x = [1, 1, 1, ...]`, `alpha = 2` gives `out[i] == i + 2`. Chosen so that

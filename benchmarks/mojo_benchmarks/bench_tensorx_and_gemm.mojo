@@ -48,7 +48,7 @@ from tensorx.dtype import DT_BF16, dtx_round_trip_list
 from tensorx.pack import nf4_levels, quantize_nf4
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic values in roughly [-1, 1]. No RNG dependency, so runs are comparable."""
     var o = List[Float64](capacity=n)
     var s = seed
@@ -58,7 +58,7 @@ fn _pseudo(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 

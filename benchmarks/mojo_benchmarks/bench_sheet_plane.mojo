@@ -27,12 +27,12 @@ Run:
         ../benchmarks/mojo_benchmarks/bench_sheet_plane.mojo
 """
 
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 
 from sheet.api import sheet_eval_cell, sheet_recalc_report
 
 
-fn _chain_workbook(n: Int) -> String:
+def _chain_workbook(n: Int) -> String:
     """A1=1; A<i> = A<i-1>+1 emitted DEEPEST-FIRST so the demand stack walks
     the whole chain; cached values are exact integers."""
     var t = String("SHEETWB\t1\nD\t0\nS\tS\n")
@@ -50,7 +50,7 @@ fn _chain_workbook(n: Int) -> String:
     return t^
 
 
-fn _agg_workbook(rows: Int) -> String:
+def _agg_workbook(rows: Int) -> String:
     """B column of constants 1..rows, then SUM/COUNTIF/MIN/MAX over the whole
     column plus a VLOOKUP per tenth row. All cached values in closed form."""
     var t = String("SHEETWB\t1\nD\t0\nS\tS\n")
@@ -96,7 +96,7 @@ fn _agg_workbook(rows: Int) -> String:
     return t^
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
 
     # ── arm 1+2: correctness sentinel + determinism on the aggregate book ───

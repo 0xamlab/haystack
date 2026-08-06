@@ -78,7 +78,7 @@ from esrnn.global_residual import esrnn_apply_correction
 from regression import RegressionResult, predict, ridge_regression
 
 
-fn esrnn_fit_frequency_corrector(
+def esrnn_fit_frequency_corrector(
     X: List[List[Float64]], y: List[Float64], alpha: Float64 = 1.0
 ) -> RegressionResult:
     """Fit ONE ridge-regression corrector over an already-pooled window matrix `X` (one
@@ -105,7 +105,7 @@ fn esrnn_fit_frequency_corrector(
     return ridge_regression(X, y, alpha)
 
 
-fn esrnn_apply_linear_correction(
+def esrnn_apply_linear_correction(
     backbone: List[Float64], X: List[List[Float64]], coefficients: List[Float64], intercept: Float64
 ) -> List[Float64]:
     """`backbone[i] + (X[i] . coefficients + intercept)` for every `i` — the shipped,

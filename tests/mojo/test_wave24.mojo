@@ -40,12 +40,12 @@ from series import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -53,14 +53,14 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helpers to build lists ───────────────────────────────────────────────────
 
 
-fn _f2(a: Float64, b: Float64) -> List[Float64]:
+def _f2(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
     return r^
 
 
-fn _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
@@ -68,7 +68,7 @@ fn _f3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return r^
 
 
-fn _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
+def _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
@@ -78,7 +78,7 @@ fn _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float
     return r^
 
 
-fn _f10(
+def _f10(
     a: Float64, b: Float64, c: Float64, d: Float64, e: Float64,
     f: Float64, g: Float64, h: Float64, i: Float64, j: Float64,
 ) -> List[Float64]:
@@ -96,7 +96,7 @@ fn _f10(
     return r^
 
 
-fn _f6(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -> List[Float64]:
+def _f6(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
@@ -107,7 +107,7 @@ fn _f6(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64, f: Float64) -
     return r^
 
 
-fn _f12(
+def _f12(
     a: Float64, b: Float64, c: Float64, d: Float64,
     e: Float64, f: Float64, g: Float64, h: Float64,
     i: Float64, j: Float64, k: Float64, l: Float64,
@@ -128,7 +128,7 @@ fn _f12(
     return r^
 
 
-fn _payoffs_2x2() -> List[List[Float64]]:
+def _payoffs_2x2() -> List[List[Float64]]:
     """Alt 0: [100, 20], Alt 1: [50, 80]."""
     var payoffs = List[List[Float64]]()
     payoffs.append(_f2(100.0, 20.0))
@@ -139,7 +139,7 @@ fn _payoffs_2x2() -> List[List[Float64]]:
 # ── Decision Analysis Tests ──────────────────────────────────────────────────
 
 
-fn test_expected_value() raises:
+def test_expected_value() raises:
     print("  test_expected_value...")
     var outcomes = _f2(100.0, -50.0)
     var probs = _f2(0.6, 0.4)
@@ -152,7 +152,7 @@ fn test_expected_value() raises:
     print("    PASS")
 
 
-fn test_expected_utility() raises:
+def test_expected_utility() raises:
     print("  test_expected_utility...")
     var outcomes = _f2(10.0, 20.0)
     var probs = _f2(0.5, 0.5)
@@ -165,7 +165,7 @@ fn test_expected_utility() raises:
     print("    PASS")
 
 
-fn test_decision_matrix_best() raises:
+def test_decision_matrix_best() raises:
     print("  test_decision_matrix_best...")
     var payoffs = _payoffs_2x2()
     var probs = _f2(0.5, 0.5)
@@ -180,7 +180,7 @@ fn test_decision_matrix_best() raises:
     print("    PASS")
 
 
-fn test_minimax_regret() raises:
+def test_minimax_regret() raises:
     print("  test_minimax_regret...")
     # Best per state: [100, 80]
     # Regret: Alt0=[0, 60], Alt1=[50, 0]
@@ -190,7 +190,7 @@ fn test_minimax_regret() raises:
     print("    PASS")
 
 
-fn test_maximin() raises:
+def test_maximin() raises:
     print("  test_maximin...")
     # Alt 0: min=20, Alt 1: min=50 → maximin = Alt 1
     var payoffs = _payoffs_2x2()
@@ -204,7 +204,7 @@ fn test_maximin() raises:
     print("    PASS")
 
 
-fn test_maximax() raises:
+def test_maximax() raises:
     print("  test_maximax...")
     # Alt 0: max=100, Alt 1: max=80 → maximax = Alt 0
     var payoffs = _payoffs_2x2()
@@ -218,7 +218,7 @@ fn test_maximax() raises:
     print("    PASS")
 
 
-fn test_laplace() raises:
+def test_laplace() raises:
     print("  test_laplace_criterion...")
     # Alt 0: avg=60, Alt 1: avg=65 → laplace = Alt 1
     var payoffs = _payoffs_2x2()
@@ -226,7 +226,7 @@ fn test_laplace() raises:
     print("    PASS")
 
 
-fn test_hurwicz() raises:
+def test_hurwicz() raises:
     print("  test_hurwicz_criterion...")
     var payoffs = _payoffs_2x2()
 
@@ -245,7 +245,7 @@ fn test_hurwicz() raises:
     print("    PASS")
 
 
-fn test_evpi() raises:
+def test_evpi() raises:
     print("  test_value_of_perfect_info...")
     var payoffs = _payoffs_2x2()
     var probs = _f2(0.5, 0.5)
@@ -259,7 +259,7 @@ fn test_evpi() raises:
     print("    PASS")
 
 
-fn test_sensitivity_range() raises:
+def test_sensitivity_range() raises:
     print("  test_sensitivity_range...")
     var payoffs = _payoffs_2x2()
     var sr = sensitivity_range(payoffs, 0, 50)
@@ -276,7 +276,7 @@ fn test_sensitivity_range() raises:
 # ── Risk Tests ───────────────────────────────────────────────────────────────
 
 
-fn test_sharpe_ratio() raises:
+def test_sharpe_ratio() raises:
     print("  test_sharpe_ratio...")
     var returns = _f5(0.05, 0.03, 0.04, 0.06, 0.02)
     var sr = sharpe_ratio(returns, 0.0)
@@ -287,7 +287,7 @@ fn test_sharpe_ratio() raises:
     print("    PASS")
 
 
-fn test_var() raises:
+def test_var() raises:
     print("  test_value_at_risk...")
     var returns = _f10(-0.10, -0.05, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.10)
     var var95 = value_at_risk(returns, 0.95)
@@ -301,7 +301,7 @@ fn test_var() raises:
     print("    PASS")
 
 
-fn test_cvar() raises:
+def test_cvar() raises:
     print("  test_conditional_var...")
     var returns = _f10(-0.10, -0.05, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.10)
     var var95 = value_at_risk(returns, 0.95)
@@ -311,7 +311,7 @@ fn test_cvar() raises:
     print("    PASS")
 
 
-fn test_max_drawdown() raises:
+def test_max_drawdown() raises:
     print("  test_max_drawdown...")
     var values = _f5(100.0, 90.0, 95.0, 80.0, 100.0)
     var mdd = max_drawdown(values)
@@ -320,7 +320,7 @@ fn test_max_drawdown() raises:
     print("    PASS")
 
 
-fn test_drawdown_series() raises:
+def test_drawdown_series() raises:
     print("  test_drawdown_series...")
     var values = _f5(100.0, 90.0, 95.0, 80.0, 100.0)
     var dd = drawdown_series(values)
@@ -330,7 +330,7 @@ fn test_drawdown_series() raises:
     print("    PASS")
 
 
-fn test_sortino() raises:
+def test_sortino() raises:
     print("  test_sortino_ratio...")
     var returns = _f5(0.05, -0.02, 0.03, -0.01, 0.04)
     var sr = sortino_ratio(returns, 0.0)
@@ -338,7 +338,7 @@ fn test_sortino() raises:
     print("    PASS")
 
 
-fn test_beta_self() raises:
+def test_beta_self() raises:
     print("  test_beta_self...")
     var returns = _f5(0.01, 0.02, -0.01, 0.03, 0.0)
     var b = beta(returns, returns)
@@ -346,7 +346,7 @@ fn test_beta_self() raises:
     print("    PASS")
 
 
-fn test_alpha_computation() raises:
+def test_alpha_computation() raises:
     print("  test_alpha...")
     # If asset = market, alpha should be 0
     var returns = _f5(0.01, 0.02, -0.01, 0.03, 0.0)
@@ -361,7 +361,7 @@ fn test_alpha_computation() raises:
     print("    PASS")
 
 
-fn test_downside_deviation() raises:
+def test_downside_deviation() raises:
     print("  test_downside_deviation...")
     var returns = _f5(0.05, -0.02, 0.03, -0.01, 0.04)
     var dd = downside_deviation(returns, 0.0)
@@ -374,7 +374,7 @@ fn test_downside_deviation() raises:
     print("    PASS")
 
 
-fn test_information_ratio() raises:
+def test_information_ratio() raises:
     print("  test_information_ratio...")
     var returns = _f5(0.05, 0.03, 0.04, 0.06, 0.02)
     var bench = _f5(0.02, 0.02, 0.02, 0.02, 0.02)
@@ -383,7 +383,7 @@ fn test_information_ratio() raises:
     print("    PASS")
 
 
-fn test_calmar_ratio() raises:
+def test_calmar_ratio() raises:
     print("  test_calmar_ratio...")
     var returns = _f5(0.01, -0.02, 0.01, -0.03, 0.02)
     var values = _f5(100.0, 98.0, 99.0, 96.0, 98.0)
@@ -395,7 +395,7 @@ fn test_calmar_ratio() raises:
 # ── Series Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_naive_forecast() raises:
+def test_naive_forecast() raises:
     print("  test_naive_forecast...")
     var data = _f3(1.0, 2.0, 3.0)
     var fc = naive_forecast(data, 3)
@@ -406,7 +406,7 @@ fn test_naive_forecast() raises:
     print("    PASS")
 
 
-fn test_sma_forecast() raises:
+def test_sma_forecast() raises:
     print("  test_sma_forecast...")
     var data = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var fc = sma_forecast(data, 3, 2)
@@ -416,7 +416,7 @@ fn test_sma_forecast() raises:
     print("    PASS")
 
 
-fn test_linear_extrapolation() raises:
+def test_linear_extrapolation() raises:
     print("  test_linear_extrapolation...")
     var data = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var fc = linear_extrapolation(data, 2)
@@ -426,7 +426,7 @@ fn test_linear_extrapolation() raises:
     print("    PASS")
 
 
-fn test_exponential_forecast() raises:
+def test_exponential_forecast() raises:
     print("  test_exponential_forecast...")
     var data = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var fc = exponential_forecast(data, 0.3, 3)
@@ -436,7 +436,7 @@ fn test_exponential_forecast() raises:
     print("    PASS")
 
 
-fn test_seasonal_naive() raises:
+def test_seasonal_naive() raises:
     print("  test_seasonal_naive...")
     var data = _f6(1.0, 2.0, 3.0, 1.0, 2.0, 3.0)
     var fc = seasonal_naive(data, 3, 4)
@@ -447,7 +447,7 @@ fn test_seasonal_naive() raises:
     print("    PASS")
 
 
-fn test_drift_forecast() raises:
+def test_drift_forecast() raises:
     print("  test_drift_forecast...")
     var data = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var fc = drift_forecast(data, 3)
@@ -459,7 +459,7 @@ fn test_drift_forecast() raises:
     print("    PASS")
 
 
-fn test_forecast_accuracy() raises:
+def test_forecast_accuracy() raises:
     print("  test_forecast_accuracy...")
     var actual = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var predicted = _f5(1.1, 2.2, 2.8, 4.1, 4.9)
@@ -471,7 +471,7 @@ fn test_forecast_accuracy() raises:
     print("    PASS")
 
 
-fn test_trend_strength() raises:
+def test_trend_strength() raises:
     print("  test_trend_strength...")
     # Perfect linear data → trend strength ≈ 1.0
     var data = _f10(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)
@@ -480,7 +480,7 @@ fn test_trend_strength() raises:
     print("    PASS")
 
 
-fn test_detect_seasonality() raises:
+def test_detect_seasonality() raises:
     print("  test_detect_seasonality...")
     # Period-3 seasonal data
     var data = _f12(1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 1.0, 2.0, 3.0)
@@ -489,7 +489,7 @@ fn test_detect_seasonality() raises:
     print("    PASS")
 
 
-fn test_weighted_moving_avg() raises:
+def test_weighted_moving_avg() raises:
     print("  test_weighted_moving_avg...")
     var data = _f5(1.0, 2.0, 3.0, 4.0, 5.0)
     var weights = _f3(1.0, 2.0, 3.0)
@@ -503,7 +503,7 @@ fn test_weighted_moving_avg() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 24 Tests ===")
 
     print("\n-- Decision Analysis --")

@@ -31,12 +31,12 @@ from dimensionality import (
 from std.math import abs as fabs, sqrt
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)
 
 
-fn _flist3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
+def _flist3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -44,7 +44,7 @@ fn _flist3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     return l^
 
 
-fn _flist5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
+def _flist5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -54,7 +54,7 @@ fn _flist5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> L
     return l^
 
 
-fn _slist(a: String, b: String, c: String, d: String) -> List[String]:
+def _slist(a: String, b: String, c: String, d: String) -> List[String]:
     var l = List[String]()
     l.append(a)
     l.append(b)
@@ -63,7 +63,7 @@ fn _slist(a: String, b: String, c: String, d: String) -> List[String]:
     return l^
 
 
-fn _slist3(a: String, b: String, c: String) -> List[String]:
+def _slist3(a: String, b: String, c: String) -> List[String]:
     var l = List[String]()
     l.append(a)
     l.append(b)
@@ -71,7 +71,7 @@ fn _slist3(a: String, b: String, c: String) -> List[String]:
     return l^
 
 
-fn _slist5(a: String, b: String, c: String, d: String, e: String) -> List[String]:
+def _slist5(a: String, b: String, c: String, d: String, e: String) -> List[String]:
     var l = List[String]()
     l.append(a)
     l.append(b)
@@ -81,7 +81,7 @@ fn _slist5(a: String, b: String, c: String, d: String, e: String) -> List[String
     return l^
 
 
-fn _ilist3(a: Int, b: Int, c: Int) -> List[Int]:
+def _ilist3(a: Int, b: Int, c: Int) -> List[Int]:
     var l = List[Int]()
     l.append(a)
     l.append(b)
@@ -89,7 +89,7 @@ fn _ilist3(a: Int, b: Int, c: Int) -> List[Int]:
     return l^
 
 
-fn _make_row2(a: Float64, b: Float64) -> List[Float64]:
+def _make_row2(a: Float64, b: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(a)
     l.append(b)

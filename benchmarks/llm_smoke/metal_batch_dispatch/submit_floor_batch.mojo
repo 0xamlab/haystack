@@ -28,7 +28,7 @@ comptime N_LAYERS: Int = 28
 comptime REPS: Int = 30
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1

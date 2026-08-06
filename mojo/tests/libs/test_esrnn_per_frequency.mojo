@@ -32,7 +32,7 @@ from esrnn.per_frequency import esrnn_apply_linear_correction, esrnn_fit_frequen
 from regression import predict, ridge_regression
 
 
-fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     """Elementwise `==` over two value lists, the same helper convention
     `test_esrnn_global_residual.mojo` uses for every bit-exact comparison in this suite."""
     if len(a) != len(b):
@@ -43,11 +43,11 @@ fn _same_values(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _abs(v: Float64) -> Float64:
+def _abs(v: Float64) -> Float64:
     return -v if v < 0.0 else v
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[esrnn.per_frequency] hand-written known-value suite")

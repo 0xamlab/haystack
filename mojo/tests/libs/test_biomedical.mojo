@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from biomedical import cardiac_output, mean_arterial_pressure, body_surface_area_dubois, glomerular_filtration_rate, oxygen_delivery, alveolar_gas_equation, bmi, drug_clearance, anion_gap, corrected_qt_bazett, fick_cardiac_output, pulse_pressure
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

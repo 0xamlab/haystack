@@ -23,7 +23,7 @@ comptime STORYBOARD_MAX_FRAMES: Int = 2
 comptime ITERATIONS: Int = 24
 
 
-fn _scene(frame_index: Int) -> Int:
+def _scene(frame_index: Int) -> Int:
     if frame_index < 3:
         return 0
     if frame_index < 8:
@@ -60,14 +60,14 @@ def build_clip() -> List[Float64]:
     return clip^
 
 
-fn _sum_list_int(values: List[Int]) -> Float64:
+def _sum_list_int(values: List[Int]) -> Float64:
     var total: Float64 = 0.0
     for index in range(len(values)):
         total += Float64(values[index])
     return total
 
 
-fn _csv_list_int(values: List[Int]) -> String:
+def _csv_list_int(values: List[Int]) -> String:
     if len(values) == 0:
         return "empty"
 

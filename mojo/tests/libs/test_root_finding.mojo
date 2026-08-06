@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from root_finding import eval_func, eval_deriv, bisection, newton_raphson, secant_method, fixed_point, regula_falsi, bracket_root, convergence_order
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

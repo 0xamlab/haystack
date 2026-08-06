@@ -150,7 +150,7 @@ struct DidReport(Copyable, Movable):
     var control_mean: List[Float64]
     var gap: List[Float64]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_att = False
         self.att = 0.0
@@ -210,7 +210,7 @@ struct SynthResult(Copyable, Movable):
     var effect_per_period: List[Float64]
     var synthetic: List[Float64]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.has_effect = False
         self.effect = 0.0
@@ -233,7 +233,7 @@ struct SynthResult(Copyable, Movable):
 # ── did_panel ────────────────────────────────────────────────────────────────
 
 
-fn did_panel(
+def did_panel(
     y: List[Float64], n_units: Int, n_periods: Int,
     treated_unit: List[Int], first_treated_period: Int,
 ) -> DidReport:
@@ -357,7 +357,7 @@ fn did_panel(
 # ── synthetic_control ────────────────────────────────────────────────────────
 
 
-fn synthetic_control(
+def synthetic_control(
     y: List[Float64], n_units: Int, n_periods: Int, treated_index: Int,
     first_treated_period: Int, max_iter: Int, tol: Float64,
 ) -> SynthResult:

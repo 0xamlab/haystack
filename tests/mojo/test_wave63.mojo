@@ -42,12 +42,12 @@ from music_theory import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -57,7 +57,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Cellular Automata tests ─────────────────────────────────────────────────
 
 
-fn test_elementary_rule() raises:
+def test_elementary_rule() raises:
     print("  test_elementary_rule...")
     # Rule 30: 111->0, 110->0, 101->0, 100->1, 011->1, 010->1, 001->1, 000->0
     _assert(elementary_rule(30, 1, 1, 1) == 0, "rule30 111->0")        # 1
@@ -71,7 +71,7 @@ fn test_elementary_rule() raises:
     print("    PASSED")
 
 
-fn test_rule_step_1d() raises:
+def test_rule_step_1d() raises:
     print("  test_rule_step_1d...")
     # Single 1 in center with rule 30
     var cells = List[Int]()
@@ -88,7 +88,7 @@ fn test_rule_step_1d() raises:
     print("    PASSED")
 
 
-fn test_game_of_life_cell() raises:
+def test_game_of_life_cell() raises:
     print("  test_game_of_life_cell...")
     # Live cell with 2 neighbors → survives
     _assert(game_of_life_cell(True, 2) == True, "alive+2 survives")     # 12
@@ -105,7 +105,7 @@ fn test_game_of_life_cell() raises:
     print("    PASSED")
 
 
-fn test_game_of_life_step() raises:
+def test_game_of_life_step() raises:
     print("  test_game_of_life_step...")
     # 3x3 grid with blinker (horizontal)
     # 0 0 0
@@ -127,7 +127,7 @@ fn test_game_of_life_step() raises:
     print("    PASSED")
 
 
-fn test_totalistic_rule() raises:
+def test_totalistic_rule() raises:
     print("  test_totalistic_rule...")
     # k=2, rule_number=110, total=0 → 110 % 2 = 0
     _assert(totalistic_rule(2, 110, 0) == 0, "totalistic k=2 r=110 t=0")  # 21
@@ -140,7 +140,7 @@ fn test_totalistic_rule() raises:
     print("    PASSED")
 
 
-fn test_langtons_ant() raises:
+def test_langtons_ant() raises:
     print("  test_langtons_ant...")
     # On white (0), facing north (0) → turn right → east (1), flip to black (1)
     var r1 = langtons_ant_step(0, 0)
@@ -156,7 +156,7 @@ fn test_langtons_ant() raises:
     print("    PASSED")
 
 
-fn test_wireworld_cell() raises:
+def test_wireworld_cell() raises:
     print("  test_wireworld_cell...")
     _assert(wireworld_cell(0, 0) == 0, "empty stays empty")            # 30
     _assert(wireworld_cell(1, 0) == 2, "head → tail")                  # 31
@@ -168,7 +168,7 @@ fn test_wireworld_cell() raises:
     print("    PASSED")
 
 
-fn test_rule110_cell() raises:
+def test_rule110_cell() raises:
     print("  test_rule110_cell...")
     _assert(rule110_cell(1, 1, 1) == 0, "rule110 111→0")               # 37
     _assert(rule110_cell(1, 1, 0) == 1, "rule110 110→1")               # 38
@@ -177,7 +177,7 @@ fn test_rule110_cell() raises:
     print("    PASSED")
 
 
-fn test_majority_parity() raises:
+def test_majority_parity() raises:
     print("  test_majority_parity...")
     _assert(majority_rule(3, 5) == 1, "3/5 majority → 1")              # 41
     _assert(majority_rule(2, 5) == 0, "2/5 majority → 0")              # 42
@@ -191,7 +191,7 @@ fn test_majority_parity() raises:
 # ── Auction tests ────────────────────────────────────────────────────────────
 
 
-fn test_first_price_sealed() raises:
+def test_first_price_sealed() raises:
     print("  test_first_price_sealed...")
     var bids = List[Float64]()
     bids.append(10.0); bids.append(20.0); bids.append(15.0)
@@ -201,7 +201,7 @@ fn test_first_price_sealed() raises:
     print("    PASSED")
 
 
-fn test_second_price_sealed() raises:
+def test_second_price_sealed() raises:
     print("  test_second_price_sealed...")
     var bids = List[Float64]()
     bids.append(10.0); bids.append(20.0); bids.append(15.0)
@@ -211,7 +211,7 @@ fn test_second_price_sealed() raises:
     print("    PASSED")
 
 
-fn test_english_dutch_revenue() raises:
+def test_english_dutch_revenue() raises:
     print("  test_english_dutch_revenue...")
     var bids = List[Float64]()
     bids.append(10.0); bids.append(20.0); bids.append(15.0)
@@ -222,7 +222,7 @@ fn test_english_dutch_revenue() raises:
     print("    PASSED")
 
 
-fn test_all_pay_revenue() raises:
+def test_all_pay_revenue() raises:
     print("  test_all_pay_revenue...")
     var bids = List[Float64]()
     bids.append(10.0); bids.append(20.0); bids.append(15.0)
@@ -231,7 +231,7 @@ fn test_all_pay_revenue() raises:
     print("    PASSED")
 
 
-fn test_revenue_equivalence() raises:
+def test_revenue_equivalence() raises:
     print("  test_revenue_equivalence...")
     # Close bids should pass revenue equivalence
     var bids = List[Float64]()
@@ -246,7 +246,7 @@ fn test_revenue_equivalence() raises:
     print("    PASSED")
 
 
-fn test_vcg_payment() raises:
+def test_vcg_payment() raises:
     print("  test_vcg_payment...")
     var vals = List[Float64]()
     vals.append(10.0); vals.append(20.0); vals.append(15.0)
@@ -256,7 +256,7 @@ fn test_vcg_payment() raises:
     print("    PASSED")
 
 
-fn test_reserve_price_filter() raises:
+def test_reserve_price_filter() raises:
     print("  test_reserve_price_filter...")
     var bids = List[Float64]()
     bids.append(10.0); bids.append(20.0); bids.append(15.0)
@@ -266,7 +266,7 @@ fn test_reserve_price_filter() raises:
     print("    PASSED")
 
 
-fn test_bid_shading() raises:
+def test_bid_shading() raises:
     print("  test_bid_shading...")
     # value=100, n=2 → bid = 100*(1/2) = 50
     var b = bid_shading_optimal(100.0, 2)
@@ -280,7 +280,7 @@ fn test_bid_shading() raises:
     print("    PASSED")
 
 
-fn test_expected_revenue_uniform() raises:
+def test_expected_revenue_uniform() raises:
     print("  test_expected_revenue_uniform...")
     # n=2, max=100 → (1/3)*100 = 33.33
     var r = expected_revenue_uniform(2, 100.0)
@@ -291,7 +291,7 @@ fn test_expected_revenue_uniform() raises:
     print("    PASSED")
 
 
-fn test_winners_curse() raises:
+def test_winners_curse() raises:
     print("  test_winners_curse...")
     var adj = winners_curse_adjustment(100.0, 5)
     _assert_close(adj, 80.0, 0.01, "winner's curse adj n=5 → 80")      # 64
@@ -303,7 +303,7 @@ fn test_winners_curse() raises:
 # ── Music Theory tests ───────────────────────────────────────────────────────
 
 
-fn test_frequency_from_midi() raises:
+def test_frequency_from_midi() raises:
     print("  test_frequency_from_midi...")
     # A4 = MIDI 69 → 440 Hz
     var f = frequency_from_midi(69)
@@ -317,7 +317,7 @@ fn test_frequency_from_midi() raises:
     print("    PASSED")
 
 
-fn test_midi_from_frequency() raises:
+def test_midi_from_frequency() raises:
     print("  test_midi_from_frequency...")
     _assert(midi_from_frequency(440.0) == 69, "440 Hz → MIDI 69")      # 69
     _assert(midi_from_frequency(261.63) == 60, "261.63 Hz → MIDI 60")  # 70
@@ -325,7 +325,7 @@ fn test_midi_from_frequency() raises:
     print("    PASSED")
 
 
-fn test_cents_between() raises:
+def test_cents_between() raises:
     print("  test_cents_between...")
     # Octave = 1200 cents
     var c = cents_between(440.0, 880.0)
@@ -339,7 +339,7 @@ fn test_cents_between() raises:
     print("    PASSED")
 
 
-fn test_semitones_between() raises:
+def test_semitones_between() raises:
     print("  test_semitones_between...")
     _assert(semitones_between(60, 72) == 12, "C4-C5 = 12 semitones")   # 75
     _assert(semitones_between(69, 69) == 0, "same note = 0")           # 76
@@ -347,7 +347,7 @@ fn test_semitones_between() raises:
     print("    PASSED")
 
 
-fn test_note_in_scale() raises:
+def test_note_in_scale() raises:
     print("  test_note_in_scale...")
     # C major (root=0): C(0), D(2), E(4), F(5), G(7), A(9), B(11) ✓
     _assert(note_in_scale(0, 0, 0) == True, "C in C major")            # 78
@@ -359,7 +359,7 @@ fn test_note_in_scale() raises:
     print("    PASSED")
 
 
-fn test_interval_ratio_just() raises:
+def test_interval_ratio_just() raises:
     print("  test_interval_ratio_just...")
     _assert_close(interval_ratio_just(0), 1.0, 0.001, "unison = 1")    # 83
     _assert_close(interval_ratio_just(7), 1.5, 0.001, "fifth = 3/2")   # 84
@@ -368,14 +368,14 @@ fn test_interval_ratio_just() raises:
     print("    PASSED")
 
 
-fn test_beat_frequency() raises:
+def test_beat_frequency() raises:
     print("  test_beat_frequency...")
     _assert_close(beat_frequency(440.0, 442.0), 2.0, 0.01, "beat=2Hz") # 87
     _assert_close(beat_frequency(440.0, 440.0), 0.0, 0.01, "beat=0Hz") # 88
     print("    PASSED")
 
 
-fn test_tempo_duration() raises:
+def test_tempo_duration() raises:
     print("  test_tempo_duration...")
     # 120 BPM → 0.5 sec per beat
     var bd = tempo_to_beat_duration(120.0)
@@ -389,7 +389,7 @@ fn test_tempo_duration() raises:
     print("    PASSED")
 
 
-fn test_transpose_midi() raises:
+def test_transpose_midi() raises:
     print("  test_transpose_midi...")
     _assert(transpose_midi(60, 12) == 72, "C4+octave=C5")              # 92
     _assert(transpose_midi(69, -12) == 57, "A4-octave=A3")             # 93
@@ -397,7 +397,7 @@ fn test_transpose_midi() raises:
     print("    PASSED")
 
 
-fn test_octave_from_midi() raises:
+def test_octave_from_midi() raises:
     print("  test_octave_from_midi...")
     _assert(octave_from_midi(60) == 4, "MIDI 60 = octave 4")           # 95
     _assert(octave_from_midi(69) == 4, "MIDI 69 = octave 4")           # 96
@@ -405,7 +405,7 @@ fn test_octave_from_midi() raises:
     print("    PASSED")
 
 
-fn test_is_enharmonic() raises:
+def test_is_enharmonic() raises:
     print("  test_is_enharmonic...")
     _assert(is_enharmonic(60, 72) == True, "C4 and C5 enharmonic")     # 98
     _assert(is_enharmonic(60, 61) == False, "C4 and C#4 not")          # 99
@@ -416,7 +416,7 @@ fn test_is_enharmonic() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 63 tests: Cellular Automata, Auction, Music Theory")
     print("=" * 60)
 

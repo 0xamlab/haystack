@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from numerical_stability import logsumexp, softmax, log_softmax, kahan_sum, welford_mean_var, log_add_exp, sigmoid_stable, log_sigmoid, softplus, normalize_probabilities, relative_error, safe_divide
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

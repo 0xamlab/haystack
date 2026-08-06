@@ -169,7 +169,7 @@ struct ManifestDigest(Copyable, Movable):
     var status: Int
 
 
-fn manifest_version() -> String:
+def manifest_version() -> String:
     """Identity of the manifest schema. Deterministic, zero-argument.
 
     Distinct from `canonical.encode.encoding_version` (how bytes are formed) and from
@@ -179,7 +179,7 @@ fn manifest_version() -> String:
     return MANIFEST_VERSION
 
 
-fn manifest_status_name(code: Int) -> String:
+def manifest_status_name(code: Int) -> String:
     """Name for a status code, so a refusal names the missing field, not a number."""
     if code == MANIFEST_OK:
         return "ok"
@@ -207,7 +207,7 @@ fn manifest_status_name(code: Int) -> String:
 # ── the field registry: the authoritative list of what the hash covers ────────
 
 
-fn manifest_field_names() -> List[String]:
+def manifest_field_names() -> List[String]:
     """The hashed fields, in canonical byte order.
 
     Returned already sorted by `canonical.encode.sort_keys` rather than hand-ordered, so
@@ -226,7 +226,7 @@ fn manifest_field_names() -> List[String]:
     return sort_keys(names)
 
 
-fn manifest_derived_field_names() -> List[String]:
+def manifest_derived_field_names() -> List[String]:
     """Fields deliberately NOT hashed, with the reason recorded in this docstring.
 
     `status` is this builder's verdict on the other seven fields, not an input to the run.
@@ -238,7 +238,7 @@ fn manifest_derived_field_names() -> List[String]:
     return names^
 
 
-fn manifest_declared_field_count() -> Int:
+def manifest_declared_field_count() -> Int:
     """`MANIFEST_DECLARED_FIELDS` — the number of `var`s on `ReplayManifest`."""
     return MANIFEST_DECLARED_FIELDS
 
@@ -246,7 +246,7 @@ fn manifest_declared_field_count() -> Int:
 # ── encoding ──────────────────────────────────────────────────────────────────
 
 
-fn _write_u64(mut out: List[UInt8], value: UInt64):
+def _write_u64(mut out: List[UInt8], value: UInt64):
     """A `UInt64` as eight big-endian byte values inside a canonical array.
 
     NOT `write_int(Int(value))`: an `Int` is signed, so a seed above `2^63 - 1` would wrap
@@ -259,13 +259,13 @@ fn _write_u64(mut out: List[UInt8], value: UInt64):
         write_int(out, Int((value >> UInt64(shift * 8)) & 0xFF))
 
 
-fn _write_u64_list(mut out: List[UInt8], values: List[UInt64]):
+def _write_u64_list(mut out: List[UInt8], values: List[UInt64]):
     write_array_header(out, len(values))
     for i in range(len(values)):
         _write_u64(out, values[i])
 
 
-fn _write_field(mut out: List[UInt8], m: ReplayManifest, name: String) -> Bool:
+def _write_field(mut out: List[UInt8], m: ReplayManifest, name: String) -> Bool:
     """Append one field's canonical value. False when `name` is not a field this handles.
 
     False is a refusal, not a skip: a name registered in `manifest_field_names()` that
@@ -296,7 +296,7 @@ fn _write_field(mut out: List[UInt8], m: ReplayManifest, name: String) -> Bool:
     return False
 
 
-fn manifest_encode(m: ReplayManifest) -> List[UInt8]:
+def manifest_encode(m: ReplayManifest) -> List[UInt8]:
     """Canonical bytes for a manifest, or an EMPTY list if it cannot be encoded.
 
     An empty return is unambiguous: a real encoding always begins with an object tag and a
@@ -321,7 +321,7 @@ fn manifest_encode(m: ReplayManifest) -> List[UInt8]:
     return out^
 
 
-fn manifest_digest(m: ReplayManifest) -> ManifestDigest:
+def manifest_digest(m: ReplayManifest) -> ManifestDigest:
     """`<encoding-version>:<sha256>` over the manifest's canonical bytes, or absent.
 
     Goes through `canonical.hash.versioned_digest`, so the digest carries the encoding
@@ -339,7 +339,7 @@ fn manifest_digest(m: ReplayManifest) -> ManifestDigest:
 # ── building ──────────────────────────────────────────────────────────────────
 
 
-fn _validate(
+def _validate(
     rng_version_in: String, n_streams: Int, stream_names: List[String],
     n_dims: Int, input_shape: List[Int], reduction_shape: String
 ) -> Int:
@@ -374,7 +374,7 @@ fn _validate(
     return MANIFEST_OK
 
 
-fn _derive_stream_ids(n_streams: Int, stream_names: List[String]) -> List[UInt64]:
+def _derive_stream_ids(n_streams: Int, stream_names: List[String]) -> List[UInt64]:
     """Ids for the named streams, via the frozen `determinism.streams.stream_id`.
 
     Derived rather than accepted, and hashed alongside the names, so the manifest pins the
@@ -391,7 +391,7 @@ fn _derive_stream_ids(n_streams: Int, stream_names: List[String]) -> List[UInt64
     return ids^
 
 
-fn _refused(status: Int) -> ReplayManifest:
+def _refused(status: Int) -> ReplayManifest:
     """A refused manifest. Every field is empty and none of them is a record of anything.
 
     Positional and complete on purpose: adding a `var` to `ReplayManifest` breaks this
@@ -405,7 +405,7 @@ fn _refused(status: Int) -> ReplayManifest:
 # Signature packing below is LOAD-BEARING: `apps/runtime/mojo_inventory.py` matches a
 # signature inside a nine-line window, so a reflow that pushes the closing paren past line
 # nine drops the function from the contract with no error (rule 2).
-fn manifest_build_declared(
+def manifest_build_declared(
     rng_version_in: String, sentinel: UInt64, master_seed: UInt64,
     n_streams: Int, stream_names: List[String],
     n_dims: Int, input_shape: List[Int], reduction_shape: String
@@ -447,7 +447,7 @@ fn manifest_build_declared(
     )
 
 
-fn manifest_build(
+def manifest_build(
     master_seed: UInt64, n_streams: Int, stream_names: List[String],
     n_dims: Int, input_shape: List[Int]
 ) -> ReplayManifest:
@@ -471,7 +471,7 @@ fn manifest_build(
     )
 
 
-fn manifest_same_run(a: ReplayManifest, b: ReplayManifest) -> Bool:
+def manifest_same_run(a: ReplayManifest, b: ReplayManifest) -> Bool:
     """True when both manifests are valid and describe the same run.
 
     Compares digests rather than fields, so this cannot drift away from what the hash
@@ -488,7 +488,7 @@ fn manifest_same_run(a: ReplayManifest, b: ReplayManifest) -> Bool:
 # ── the field-coverage harness ────────────────────────────────────────────────
 
 
-fn manifest_perturb_field(m: ReplayManifest, field: String) -> ReplayManifest:
+def manifest_perturb_field(m: ReplayManifest, field: String) -> ReplayManifest:
     """`m` with exactly one hashed field changed, for the coverage gate.
 
     Exported rather than test-local on purpose: the gate has to be driven by the SAME name

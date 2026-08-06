@@ -147,7 +147,7 @@ comptime GRAPH_MAX_DENSE_CELLS: Int = 4194304
 comptime GRAPH_MAX_NODES: Int = MAX_CSR_DIM
 
 
-fn graph_status_name(code: Int) -> String:
+def graph_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number.
     """
     if code == GRAPH_OK:
@@ -205,11 +205,11 @@ struct GraphCSR(Copyable, Movable):
     var deduplicated: Bool
     var skipped_edges: Int
 
-    fn n_edges(self) -> Int:
+    def n_edges(self) -> Int:
         """Stored out-edges, counting parallel edges and self-loops separately."""
         return len(self.targets)
 
-    fn out_degree(self, node: Int) -> Int:
+    def out_degree(self, node: Int) -> Int:
         """Out-edges of one node, or 0 for a node this graph does not have.
 
         0 rather than a negative span for a broken `row_ptr`: callers size loops with
@@ -223,7 +223,7 @@ struct GraphCSR(Copyable, Movable):
             return 0
         return span
 
-    fn is_canonical(self) -> Bool:
+    def is_canonical(self) -> Bool:
         """Rows ascend and hold no repeated target — the form `dedupe_min` produces."""
         return self.sorted_targets and self.deduplicated
 
@@ -374,7 +374,7 @@ struct GraphSymmetry(Copyable, Movable):
 # ── constructors ──────────────────────────────────────────────────────────────
 
 
-fn graph_csr_empty(n_nodes: Int) -> GraphCSR:
+def graph_csr_empty(n_nodes: Int) -> GraphCSR:
     """A graph with `n_nodes` nodes and no edges. Trivially sorted and deduplicated."""
     var n = n_nodes
     if n < 0 or n > GRAPH_MAX_NODES:
@@ -388,7 +388,7 @@ fn graph_csr_empty(n_nodes: Int) -> GraphCSR:
     return GraphCSR(row_ptr^, List[Int](), List[Float64](), n, True, True, 0)
 
 
-fn _empty_with_skipped(n_nodes: Int, skipped: Int) -> GraphCSR:
+def _empty_with_skipped(n_nodes: Int, skipped: Int) -> GraphCSR:
     var n = n_nodes
     if n < 0:
         n = 0
@@ -400,7 +400,7 @@ fn _empty_with_skipped(n_nodes: Int, skipped: Int) -> GraphCSR:
     )
 
 
-fn graph_csr_from_arrays(
+def graph_csr_from_arrays(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -417,7 +417,7 @@ fn graph_csr_from_arrays(
     )
 
 
-fn graph_csr_from_triplets(
+def graph_csr_from_triplets(
     src: List[Int], dst: List[Int], weight: List[Float64], n_nodes: Int
 ) -> GraphCSR:
     """CSR from parallel triplet arrays in one O(V + E) pass pair. Strays are skipped.
@@ -520,7 +520,7 @@ fn graph_csr_from_triplets(
 # ── validation ────────────────────────────────────────────────────────────────
 
 
-fn graph_csr_validate_flat(
+def graph_csr_validate_flat(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -564,13 +564,13 @@ fn graph_csr_validate_flat(
     return GRAPH_ERR_INVALID_DIMENSIONS
 
 
-fn graph_csr_validate(g: GraphCSR) -> Int:
+def graph_csr_validate(g: GraphCSR) -> Int:
     """`GRAPH_OK` or the first defect's code. The flags are not checked: they are claims.
     """
     return graph_csr_validate_flat(g.row_ptr, g.targets, g.weights, g.n_nodes)
 
 
-fn graph_csr_has_negative_weight(g: GraphCSR) -> Bool:
+def graph_csr_has_negative_weight(g: GraphCSR) -> Bool:
     """True if any stored weight is negative — i.e. Dijkstra does not apply here.
 
     False for a structurally broken graph too: there is no weight set to speak of, and
@@ -584,7 +584,7 @@ fn graph_csr_has_negative_weight(g: GraphCSR) -> Bool:
     return False
 
 
-fn _weight_defect(weights: List[Float64]) -> Int:
+def _weight_defect(weights: List[Float64]) -> Int:
     """`GRAPH_OK`, or the code for the first weight Dijkstra cannot use.
 
     NaN is caught before the sign test on purpose: `nan < 0.0` is False, so a NaN weight
@@ -602,7 +602,7 @@ fn _weight_defect(weights: List[Float64]) -> Int:
 # ── reverse graph and canonical form ──────────────────────────────────────────
 
 
-fn graph_csr_reverse(g: GraphCSR) -> GraphCSR:
+def graph_csr_reverse(g: GraphCSR) -> GraphCSR:
     """The graph with every edge reversed, in O(V + E) by counting sort.
 
     An invalid graph has no reverse, so the result is the 0-node empty graph rather than
@@ -651,7 +651,7 @@ fn graph_csr_reverse(g: GraphCSR) -> GraphCSR:
     )
 
 
-fn graph_csr_sorted(g: GraphCSR) -> GraphCSR:
+def graph_csr_sorted(g: GraphCSR) -> GraphCSR:
     """`g` with every row ascending by target, established rather than assumed.
 
     Reversing twice sorts, in O(V + E) with no comparison sort, and reuses one
@@ -665,7 +665,7 @@ fn graph_csr_sorted(g: GraphCSR) -> GraphCSR:
     return graph_csr_reverse(graph_csr_reverse(g))
 
 
-fn graph_csr_dedupe_min(g: GraphCSR) -> GraphCSR:
+def graph_csr_dedupe_min(g: GraphCSR) -> GraphCSR:
     """Collapse parallel edges to their minimum weight. Self-loops are kept, collapsed.
 
     Minimum, not sum: for a distance question two parallel roads are one road of the
@@ -705,7 +705,7 @@ fn graph_csr_dedupe_min(g: GraphCSR) -> GraphCSR:
 # ── degrees ───────────────────────────────────────────────────────────────────
 
 
-fn graph_csr_out_degrees(g: GraphCSR) -> List[Int]:
+def graph_csr_out_degrees(g: GraphCSR) -> List[Int]:
     """Out-degree per node, or an empty list for a structurally invalid graph."""
     var out = List[Int]()
     if graph_csr_validate(g) != GRAPH_OK:
@@ -715,7 +715,7 @@ fn graph_csr_out_degrees(g: GraphCSR) -> List[Int]:
     return out^
 
 
-fn graph_csr_in_degrees(g: GraphCSR) -> List[Int]:
+def graph_csr_in_degrees(g: GraphCSR) -> List[Int]:
     """In-degree per node, counted directly from `targets` — no reverse graph built."""
     var out = List[Int]()
     if graph_csr_validate(g) != GRAPH_OK:
@@ -727,7 +727,7 @@ fn graph_csr_in_degrees(g: GraphCSR) -> List[Int]:
     return out^
 
 
-fn graph_csr_degree_sequence(g: GraphCSR) -> List[Int]:
+def graph_csr_degree_sequence(g: GraphCSR) -> List[Int]:
     """Out-degrees in descending order — the classic graph invariant, for comparison.
 
     Sorted by the frozen `sorting.counting_sort_int`, which is exactly right here:
@@ -747,7 +747,7 @@ fn graph_csr_degree_sequence(g: GraphCSR) -> List[Int]:
 # ── edge queries ──────────────────────────────────────────────────────────────
 
 
-fn graph_csr_edge_min_weight(g: GraphCSR, u: Int, v: Int) -> GraphEdgeQuery:
+def graph_csr_edge_min_weight(g: GraphCSR, u: Int, v: Int) -> GraphEdgeQuery:
     """Lightest `(u, v)` edge and how many copies exist.
 
     A sorted graph stops scanning as soon as the row passes `v`; an unsorted one has to
@@ -776,7 +776,7 @@ fn graph_csr_edge_min_weight(g: GraphCSR, u: Int, v: Int) -> GraphEdgeQuery:
     return GraphEdgeQuery(GRAPH_OK, True, count, best)
 
 
-fn graph_csr_has_edge(g: GraphCSR, u: Int, v: Int) -> Bool:
+def graph_csr_has_edge(g: GraphCSR, u: Int, v: Int) -> Bool:
     """True only when `(u, v)` really is an edge of a structurally valid graph."""
     var q = graph_csr_edge_min_weight(g, u, v)
     return q.status == GRAPH_OK and q.found
@@ -785,7 +785,7 @@ fn graph_csr_has_edge(g: GraphCSR, u: Int, v: Int) -> Bool:
 # ── symmetry ──────────────────────────────────────────────────────────────────
 
 
-fn graph_csr_symmetry(g: GraphCSR, tol: Float64) -> GraphSymmetry:
+def graph_csr_symmetry(g: GraphCSR, tol: Float64) -> GraphSymmetry:
     """Is this directed CSR the adjacency of an undirected graph, and if not, how far off.
 
     Canonicalised first, so two parallel copies of one edge are one edge and cannot
@@ -819,7 +819,7 @@ fn graph_csr_symmetry(g: GraphCSR, tol: Float64) -> GraphSymmetry:
 # ── dense image ───────────────────────────────────────────────────────────────
 
 
-fn graph_csr_to_dense(g: GraphCSR, absent: Float64) -> GraphVectorResult:
+def graph_csr_to_dense(g: GraphCSR, absent: Float64) -> GraphVectorResult:
     """Flat row-major `n_nodes * n_nodes` adjacency matrix, `absent` where there is no edge.
 
     The caller chooses `absent` because there is no universally right value: 0.0 for an
@@ -850,7 +850,7 @@ fn graph_csr_to_dense(g: GraphCSR, absent: Float64) -> GraphVectorResult:
 # ── Dijkstra ──────────────────────────────────────────────────────────────────
 
 
-fn _no_distances(status: Int, n_nodes: Int, source: Int) -> GraphDistances:
+def _no_distances(status: Int, n_nodes: Int, source: Int) -> GraphDistances:
     """No answer. Empty lists and zero counts, so an ignored status cannot be read as one.
     """
     return GraphDistances(
@@ -858,7 +858,7 @@ fn _no_distances(status: Int, n_nodes: Int, source: Int) -> GraphDistances:
     )
 
 
-fn graph_csr_dijkstra(g: GraphCSR, source: Int) -> GraphDistances:
+def graph_csr_dijkstra(g: GraphCSR, source: Int) -> GraphDistances:
     """Single-source shortest distances over a prebuilt CSR, heap-ordered.
 
     Uses the frozen `heap.heap_push_min` / `heap_pop_min` for the ordering and a
@@ -959,7 +959,7 @@ fn graph_csr_dijkstra(g: GraphCSR, source: Int) -> GraphDistances:
     )
 
 
-fn graph_csr_bfs_levels(g: GraphCSR, source: Int) -> GraphLevels:
+def graph_csr_bfs_levels(g: GraphCSR, source: Int) -> GraphLevels:
     """Hop counts from `source`, ignoring weights. Unreached nodes are `GRAPH_NO_LEVEL`.
 
     A queue with a front index, not a recursive walk: the frozen `graph.algorithms.bfs`
@@ -1009,7 +1009,7 @@ fn graph_csr_bfs_levels(g: GraphCSR, source: Int) -> GraphLevels:
     )
 
 
-fn graph_csr_shortest_path(g: GraphCSR, source: Int, target: Int) -> GraphPath:
+def graph_csr_shortest_path(g: GraphCSR, source: Int, target: Int) -> GraphPath:
     """The node sequence of one shortest path, or an explicit "no path".
 
     Reconstructed from the predecessor array Dijkstra already fills, so the path and the
@@ -1063,14 +1063,14 @@ fn graph_csr_shortest_path(g: GraphCSR, source: Int, target: Int) -> GraphPath:
 # the output side carries its status next to its numbers.
 
 
-fn _no_build(status: Int) -> GraphBuildResult:
+def _no_build(status: Int) -> GraphBuildResult:
     return GraphBuildResult(
         status, 0, 0, 0, 0, 0, 0, 0, True, True, List[Int](), List[Int](),
         List[Float64](),
     )
 
 
-fn _build_result(g: GraphCSR, status: Int) -> GraphBuildResult:
+def _build_result(g: GraphCSR, status: Int) -> GraphBuildResult:
     # Duplicates are counted as adjacent repeats, which is exact because every caller
     # here hands over a graph with sorted rows (construction, reverse and dedupe all
     # establish that flag). An unsorted graph would under-count, so do not add one.
@@ -1107,7 +1107,7 @@ fn _build_result(g: GraphCSR, status: Int) -> GraphBuildResult:
     )
 
 
-fn graph_csr_build(
+def graph_csr_build(
     src: List[Int], dst: List[Int], weight: List[Float64], n_nodes: Int
 ) -> GraphBuildResult:
     """Build a CSR from triplet arrays and report everything the build learned.
@@ -1123,7 +1123,7 @@ fn graph_csr_build(
     return _build_result(graph_csr_from_triplets(src, dst, weight, n_nodes), GRAPH_OK)
 
 
-fn graph_csr_reverse_driver(
+def graph_csr_reverse_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1136,7 +1136,7 @@ fn graph_csr_reverse_driver(
     return _build_result(graph_csr_reverse(g), GRAPH_OK)
 
 
-fn graph_csr_dedupe_min_driver(
+def graph_csr_dedupe_min_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1149,7 +1149,7 @@ fn graph_csr_dedupe_min_driver(
     return _build_result(graph_csr_dedupe_min(g), GRAPH_OK)
 
 
-fn graph_csr_validate_driver(
+def graph_csr_validate_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1161,7 +1161,7 @@ fn graph_csr_validate_driver(
     )
 
 
-fn graph_csr_out_degrees_driver(
+def graph_csr_out_degrees_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1176,7 +1176,7 @@ fn graph_csr_out_degrees_driver(
     return GraphIntsResult(GRAPH_OK, count, degrees^)
 
 
-fn graph_csr_in_degrees_driver(
+def graph_csr_in_degrees_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1191,7 +1191,7 @@ fn graph_csr_in_degrees_driver(
     return GraphIntsResult(GRAPH_OK, count, degrees^)
 
 
-fn graph_csr_degree_sequence_driver(
+def graph_csr_degree_sequence_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1206,7 +1206,7 @@ fn graph_csr_degree_sequence_driver(
     return GraphIntsResult(GRAPH_OK, count, sequence^)
 
 
-fn graph_csr_to_dense_driver(
+def graph_csr_to_dense_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1218,7 +1218,7 @@ fn graph_csr_to_dense_driver(
     )
 
 
-fn graph_csr_edge_min_weight_driver(
+def graph_csr_edge_min_weight_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1231,7 +1231,7 @@ fn graph_csr_edge_min_weight_driver(
     )
 
 
-fn graph_csr_symmetry_driver(
+def graph_csr_symmetry_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1243,7 +1243,7 @@ fn graph_csr_symmetry_driver(
     )
 
 
-fn graph_csr_dijkstra_driver(
+def graph_csr_dijkstra_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1255,7 +1255,7 @@ fn graph_csr_dijkstra_driver(
     )
 
 
-fn graph_csr_bfs_levels_driver(
+def graph_csr_bfs_levels_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1267,7 +1267,7 @@ fn graph_csr_bfs_levels_driver(
     )
 
 
-fn graph_csr_shortest_path_driver(
+def graph_csr_shortest_path_driver(
     row_ptr: List[Int],
     targets: List[Int],
     weights: List[Float64],
@@ -1280,7 +1280,7 @@ fn graph_csr_shortest_path_driver(
     )
 
 
-fn graph_dijkstra_from_triplets(
+def graph_dijkstra_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],
@@ -1304,7 +1304,7 @@ fn graph_dijkstra_from_triplets(
     )
 
 
-fn graph_bfs_levels_from_triplets(
+def graph_bfs_levels_from_triplets(
     src: List[Int],
     dst: List[Int],
     weight: List[Float64],

@@ -56,28 +56,28 @@ from survival_analysis.parametric import PAR_MAX_ITER
 comptime EPS: Float64 = 2.220446049250313e-16
 
 
-fn _f(*v: Float64) -> List[Float64]:
+def _f(*v: Float64) -> List[Float64]:
     var o = List[Float64]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _i(*v: Int) -> List[Int]:
+def _i(*v: Int) -> List[Int]:
     var o = List[Int]()
     for i in range(len(v)):
         o.append(v[i])
     return o^
 
 
-fn _rel(got: Float64, want: Float64, rel: Float64) -> Bool:
+def _rel(got: Float64, want: Float64, rel: Float64) -> Bool:
     var slop = rel * fabs(want)
     if slop < rel:
         slop = rel
     return fabs(got - want) <= slop
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[survival_analysis.cox] hand-written known values")

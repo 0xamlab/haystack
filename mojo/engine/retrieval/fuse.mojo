@@ -101,7 +101,7 @@ from retrieval.score import (
 comptime RETR_EPS: Float64 = 2.220446049250313e-16
 
 
-fn _rrf_term(rank: Int, k: Float64) -> Float64:
+def _rrf_term(rank: Int, k: Float64) -> Float64:
     """`1/(k + rank)`, taken from the frozen kernel rather than rewritten.
 
     `rrf_score(r, r, k)` is `t + t` with `t = 1/(k+r)`; that sum is exact (it only
@@ -152,7 +152,7 @@ struct Fusion(Copyable, Movable):
     var lane_returned: List[Int]
 
 
-fn _no_fusion(status: Int) -> Fusion:
+def _no_fusion(status: Int) -> Fusion:
     """A rejection: every list empty, every count 0."""
     return Fusion(
         status,
@@ -213,7 +213,7 @@ struct Provenance(Copyable, Movable):
     var fused_positions: List[Int]
 
 
-fn _no_provenance(status: Int) -> Provenance:
+def _no_provenance(status: Int) -> Provenance:
     """A rejection: every list empty, the certificate flagged absent."""
     return Provenance(
         status,
@@ -230,7 +230,7 @@ fn _no_provenance(status: Int) -> Provenance:
     )
 
 
-fn _validate_lanes(
+def _validate_lanes(
     doc_ids: List[Int], lane_lengths: List[Int],
     n_lanes: Int, k: Float64, top_k: Int,
 ) -> Int:
@@ -297,7 +297,7 @@ struct _Grouped(Copyable, Movable):
     var best_rank: List[Int]
 
 
-fn _group_lanes(
+def _group_lanes(
     doc_ids: List[Int], lane_lengths: List[Int], n_lanes: Int, k: Float64
 ) -> _Grouped:
     """Fold every lane's contributions onto one slot per distinct document.
@@ -381,7 +381,7 @@ fn _group_lanes(
     )
 
 
-fn _empty_lane_count(lane_lengths: List[Int], n_lanes: Int) -> Int:
+def _empty_lane_count(lane_lengths: List[Int], n_lanes: Int) -> Int:
     """Lanes that ranked nothing. Caller has pinned `n_lanes` to `len(lane_lengths)`."""
     var empty = 0
     for lane in range(n_lanes):
@@ -390,7 +390,7 @@ fn _empty_lane_count(lane_lengths: List[Int], n_lanes: Int) -> Int:
     return empty
 
 
-fn rrf_fuse_flat(
+def rrf_fuse_flat(
     doc_ids: List[Int], lane_lengths: List[Int],
     n_lanes: Int, k: Float64, top_k: Int,
 ) -> Fusion:
@@ -470,7 +470,7 @@ fn rrf_fuse_flat(
     )
 
 
-fn rrf_provenance_flat(
+def rrf_provenance_flat(
     doc_ids: List[Int], lane_lengths: List[Int],
     n_lanes: Int, k: Float64, top_k: Int,
 ) -> Provenance:

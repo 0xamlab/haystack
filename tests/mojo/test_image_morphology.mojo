@@ -42,7 +42,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _flatten(grid: List[List[Float64]]) -> List[Float64]:
+def _flatten(grid: List[List[Float64]]) -> List[Float64]:
     var out = List[Float64]()
     for y in range(len(grid)):
         for x in range(len(grid[y])):
@@ -50,7 +50,7 @@ fn _flatten(grid: List[List[Float64]]) -> List[Float64]:
     return out^
 
 
-fn _count_foreground(flat: List[Float64], threshold: Float64) -> Int:
+def _count_foreground(flat: List[Float64], threshold: Float64) -> Int:
     var count = 0
     for index in range(len(flat)):
         if flat[index] >= threshold:
@@ -58,7 +58,7 @@ fn _count_foreground(flat: List[Float64], threshold: Float64) -> Int:
     return count
 
 
-fn _block5() -> List[Float64]:
+def _block5() -> List[Float64]:
     var grid = List[List[Float64]]()
     for y in range(5):
         var row = List[Float64]()
@@ -71,7 +71,7 @@ fn _block5() -> List[Float64]:
     return _flatten(grid)
 
 
-fn _single_pixel5() -> List[Float64]:
+def _single_pixel5() -> List[Float64]:
     var grid = List[List[Float64]]()
     for y in range(5):
         var row = List[Float64]()
@@ -81,7 +81,7 @@ fn _single_pixel5() -> List[Float64]:
     return _flatten(grid)
 
 
-fn _ring5() -> List[Float64]:
+def _ring5() -> List[Float64]:
     var grid = List[List[Float64]]()
     for y in range(5):
         var row = List[Float64]()
@@ -94,7 +94,7 @@ fn _ring5() -> List[Float64]:
     return _flatten(grid)
 
 
-fn _two_components6() -> List[Float64]:
+def _two_components6() -> List[Float64]:
     var grid = List[List[Float64]]()
     for y in range(6):
         var row = List[Float64]()

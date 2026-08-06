@@ -83,21 +83,21 @@ from inference.core import (
 from stat_tests import anderson_darling_normal, shapiro_wilk_approx, t_test_2sample
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _no_verdict(v: AssumptionVerdict) -> Bool:
+def _no_verdict(v: AssumptionVerdict) -> Bool:
     """A refusal has no statistic, no p-value and no verdict."""
     return (
         v.status != INF_OK
@@ -108,7 +108,7 @@ fn _no_verdict(v: AssumptionVerdict) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

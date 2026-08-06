@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from logistics import vehicle_utilization, order_fill_rate, perfect_order_rate, inventory_turns, days_of_supply, warehouse_utilization, cost_per_unit_shipped, on_time_delivery_rate, dwell_time, cross_dock_throughput, route_efficiency, carbon_per_tonne_km
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

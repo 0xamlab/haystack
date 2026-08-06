@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from evaluation_feedback import accuracy_rolling_update, model_drift_ks_stat, population_stability_index, prediction_shift_score, feedback_reward_signal, label_noise_rate_estimate, online_auc_update, calibration_drift_score, shadow_model_divergence, evaluation_sample_efficiency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -36,22 +36,22 @@ from compression.huffman import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq_f(a: Float64, b: Float64, msg: String) raises:
+def _assert_eq_f(a: Float64, b: Float64, msg: String) raises:
     if fabs(a - b) > 1e-12:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -59,7 +59,7 @@ fn _assert_eq_f(a: Float64, b: Float64, msg: String) raises:
 # ── Fuzzy Logic Tests ─────────────────────────────────────────────────────────
 
 
-fn test_triangular_mf() raises:
+def test_triangular_mf() raises:
     print("  test_triangular_mf...")
     # 1: Peak at b
     _assert_eq_f(triangular_mf(5.0, 0.0, 5.0, 10.0), 1.0, "tri peak")
@@ -78,7 +78,7 @@ fn test_triangular_mf() raises:
     print("    PASS")
 
 
-fn test_trapezoidal_mf() raises:
+def test_trapezoidal_mf() raises:
     print("  test_trapezoidal_mf...")
     # 8: Flat region
     _assert_eq_f(trapezoidal_mf(5.0, 0.0, 3.0, 7.0, 10.0), 1.0, "trap flat")
@@ -91,7 +91,7 @@ fn test_trapezoidal_mf() raises:
     print("    PASS")
 
 
-fn test_gaussian_mf() raises:
+def test_gaussian_mf() raises:
     print("  test_gaussian_mf...")
     # 12: Center
     _assert_close(gaussian_mf(0.0, 0.0, 1.0), 1.0, 1e-9, "gauss center")
@@ -102,7 +102,7 @@ fn test_gaussian_mf() raises:
     print("    PASS")
 
 
-fn test_fuzzy_operators() raises:
+def test_fuzzy_operators() raises:
     print("  test_fuzzy_operators...")
     # 15: fuzzy_and
     _assert_eq_f(fuzzy_and(0.3, 0.7), 0.3, "fuzzy_and(0.3,0.7)")
@@ -117,7 +117,7 @@ fn test_fuzzy_operators() raises:
     print("    PASS")
 
 
-fn test_defuzzification() raises:
+def test_defuzzification() raises:
     print("  test_defuzzification...")
     var x = List[Float64]()
     var mu = List[Float64]()
@@ -148,7 +148,7 @@ fn test_defuzzification() raises:
     print("    PASS")
 
 
-fn test_fuzzy_rule_eval() raises:
+def test_fuzzy_rule_eval() raises:
     print("  test_fuzzy_rule_eval...")
     var inputs = List[Float64]()
     inputs.append(0.3); inputs.append(0.7); inputs.append(0.5)
@@ -159,7 +159,7 @@ fn test_fuzzy_rule_eval() raises:
     print("    PASS")
 
 
-fn test_alpha_cut() raises:
+def test_alpha_cut() raises:
     print("  test_alpha_cut...")
     var x = List[Float64]()
     var mu = List[Float64]()
@@ -180,7 +180,7 @@ fn test_alpha_cut() raises:
 # ── Game Theory Tests ─────────────────────────────────────────────────────────
 
 
-fn test_prisoners_dilemma() raises:
+def test_prisoners_dilemma() raises:
     print("  test_prisoners_dilemma...")
     # 30: CC = (3,3)
     var cc = prisoners_dilemma_payoff(True, True)
@@ -204,7 +204,7 @@ fn test_prisoners_dilemma() raises:
     print("    PASS")
 
 
-fn test_iterated_pd() raises:
+def test_iterated_pd() raises:
     print("  test_iterated_pd...")
     # 38: Both cooperate → (30, 30) over 10 rounds
     var r1 = iterated_pd(0, 0, 10)
@@ -223,7 +223,7 @@ fn test_iterated_pd() raises:
     print("    PASS")
 
 
-fn test_nash_2x2() raises:
+def test_nash_2x2() raises:
     print("  test_nash_2x2...")
     # Matching pennies: A=[[1,-1],[-1,1]], B=[[-1,1],[1,-1]]
     var pa = List[List[Float64]]()
@@ -247,7 +247,7 @@ fn test_nash_2x2() raises:
     print("    PASS")
 
 
-fn test_minimax() raises:
+def test_minimax() raises:
     print("  test_minimax...")
     var payoff = List[List[Float64]]()
     var r0 = List[Float64](); r0.append(3.0); r0.append(-2.0)
@@ -260,7 +260,7 @@ fn test_minimax() raises:
     print("    PASS")
 
 
-fn test_dominated_strategy() raises:
+def test_dominated_strategy() raises:
     print("  test_dominated_strategy...")
     var payoff = List[List[Float64]]()
     var r0 = List[Float64](); r0.append(1.0); r0.append(2.0)
@@ -275,7 +275,7 @@ fn test_dominated_strategy() raises:
     print("    PASS")
 
 
-fn test_expected_payoff() raises:
+def test_expected_payoff() raises:
     print("  test_expected_payoff...")
     var payoff = List[List[Float64]]()
     var r0 = List[Float64](); r0.append(4.0); r0.append(0.0)
@@ -290,7 +290,7 @@ fn test_expected_payoff() raises:
     print("    PASS")
 
 
-fn test_shapley_value() raises:
+def test_shapley_value() raises:
     print("  test_shapley_value...")
     # Simple majority game: coalition wins if ≥ 2 players
     var v = List[Float64]()
@@ -313,7 +313,7 @@ fn test_shapley_value() raises:
     print("    PASS")
 
 
-fn test_pareto_optimal() raises:
+def test_pareto_optimal() raises:
     print("  test_pareto_optimal...")
     var pa = List[Float64]()
     var pb = List[Float64]()
@@ -341,7 +341,7 @@ fn test_pareto_optimal() raises:
 # ── Huffman Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_frequency_count() raises:
+def test_frequency_count() raises:
     print("  test_frequency_count...")
     var data = List[Int]()
     data.append(1); data.append(1); data.append(2); data.append(2); data.append(2); data.append(3)
@@ -366,7 +366,7 @@ fn test_frequency_count() raises:
     print("    PASS")
 
 
-fn test_build_huffman_tree() raises:
+def test_build_huffman_tree() raises:
     print("  test_build_huffman_tree...")
     var data = List[Int]()
     data.append(1); data.append(1); data.append(2); data.append(2); data.append(2); data.append(3)
@@ -386,7 +386,7 @@ fn test_build_huffman_tree() raises:
     print("    PASS")
 
 
-fn test_generate_codes() raises:
+def test_generate_codes() raises:
     print("  test_generate_codes...")
     var data = List[Int]()
     data.append(1); data.append(1); data.append(2); data.append(2); data.append(2); data.append(3)
@@ -410,7 +410,7 @@ fn test_generate_codes() raises:
     print("    PASS")
 
 
-fn test_huffman_roundtrip() raises:
+def test_huffman_roundtrip() raises:
     print("  test_huffman_roundtrip...")
     var data = List[Int]()
     data.append(1); data.append(1); data.append(2); data.append(2); data.append(2); data.append(3)
@@ -434,7 +434,7 @@ fn test_huffman_roundtrip() raises:
     print("    PASS")
 
 
-fn test_huffman_compression() raises:
+def test_huffman_compression() raises:
     print("  test_huffman_compression...")
     # Highly compressible data: lots of repeats
     var data = List[Int]()
@@ -457,7 +457,7 @@ fn test_huffman_compression() raises:
     print("    PASS")
 
 
-fn test_avg_code_length() raises:
+def test_avg_code_length() raises:
     print("  test_avg_code_length...")
     var data = List[Int]()
     data.append(1); data.append(1); data.append(2); data.append(2); data.append(2); data.append(3)
@@ -475,7 +475,7 @@ fn test_avg_code_length() raises:
     print("    PASS")
 
 
-fn test_compression_ratio_edge() raises:
+def test_compression_ratio_edge() raises:
     print("  test_compression_ratio_edge...")
     # 80: Zero encoded bits → 0.0
     _assert_eq_f(compression_ratio_huffman(100, 0), 0.0, "ratio with 0 bits")
@@ -487,7 +487,7 @@ fn test_compression_ratio_edge() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 28 Tests ===")
 
     print("\n--- Fuzzy Logic ---")

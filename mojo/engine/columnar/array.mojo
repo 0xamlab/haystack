@@ -45,21 +45,21 @@ struct Float64Array(Copyable, Movable):
     var offset: Int
     var length: Int
 
-    fn __init__(out self, var values: ArcPointer[List[Float64]], var validity: List[UInt8], offset: Int, length: Int):
+    def __init__(out self, var values: ArcPointer[List[Float64]], var validity: List[UInt8], offset: Int, length: Int):
         self.values = values^
         self.validity = validity^
         self.offset = offset
         self.length = length
 
-    fn dtype(self) -> Int:
+    def dtype(self) -> Int:
         return DTYPE_FLOAT64
 
-    fn is_valid_at(self, index: Int) -> Bool:
+    def is_valid_at(self, index: Int) -> Bool:
         if index < 0 or index >= self.length:
             return False
         return is_valid(self.validity, index)
 
-    fn get(self, index: Int) -> Float64:
+    def get(self, index: Int) -> Float64:
         """The value at `index`, or 0.0 when absent or out of range.
 
         The 0.0 is not a value — check `is_valid_at` first. Returning it rather than
@@ -69,7 +69,7 @@ struct Float64Array(Copyable, Movable):
             return 0.0
         return self.values[][self.offset + index]
 
-    fn get_unchecked(self, index: Int) -> Float64:
+    def get_unchecked(self, index: Int) -> Float64:
         """`get`'s value, without re-deriving `is_valid_at`.
 
         For a caller that has ALREADY confirmed `is_valid_at(index)` is True — e.g.
@@ -88,13 +88,13 @@ struct Float64Array(Copyable, Movable):
         """
         return self.values[][self.offset + index]
 
-    fn null_count(self) -> Int:
+    def null_count(self) -> Int:
         return count_null(self.validity, self.length)
 
-    fn valid_count(self) -> Int:
+    def valid_count(self) -> Int:
         return count_valid(self.validity, self.length)
 
-    fn slice(self, start: Int, count: Int) -> Float64Array:
+    def slice(self, start: Int, count: Int) -> Float64Array:
         """A window over the same values — no element copy.
 
         Out-of-range requests clamp rather than raise: a slice past the end is an
@@ -118,14 +118,14 @@ struct Float64Array(Copyable, Movable):
             take,
         )
 
-    fn values_list(self) -> List[Float64]:
+    def values_list(self) -> List[Float64]:
         """This window's values, for `numeric.reduce`. Pair with `mask_list`."""
         var out = List[Float64]()
         for i in range(self.length):
             out.append(self.values[][self.offset + i])
         return out^
 
-    fn mask_list(self) -> List[Bool]:
+    def mask_list(self) -> List[Bool]:
         """This window's validity as a Bool mask, aligned to `values_list`."""
         var out = List[Bool]()
         for i in range(self.length):
@@ -133,13 +133,13 @@ struct Float64Array(Copyable, Movable):
         return out^
 
 
-fn float64_from_list(var values: List[Float64]) -> Float64Array:
+def float64_from_list(var values: List[Float64]) -> Float64Array:
     """A column with every slot present — the no-nulls case."""
     var n = len(values)
     return Float64Array(ArcPointer(values^), new_all_valid(n), 0, n)
 
 
-fn float64_with_nulls(var values: List[Float64], mask: List[Bool]) -> Float64Array:
+def float64_with_nulls(var values: List[Float64], mask: List[Bool]) -> Float64Array:
     """A column whose presence comes from `mask`. Missing mask entries are absent."""
     var n = len(values)
     var bitmap = new_all_null(n)
@@ -157,29 +157,29 @@ struct Int64Array(Copyable, Movable):
     var offset: Int
     var length: Int
 
-    fn __init__(out self, var values: ArcPointer[List[Int]], var validity: List[UInt8], offset: Int, length: Int):
+    def __init__(out self, var values: ArcPointer[List[Int]], var validity: List[UInt8], offset: Int, length: Int):
         self.values = values^
         self.validity = validity^
         self.offset = offset
         self.length = length
 
-    fn dtype(self) -> Int:
+    def dtype(self) -> Int:
         return DTYPE_INT64
 
-    fn is_valid_at(self, index: Int) -> Bool:
+    def is_valid_at(self, index: Int) -> Bool:
         if index < 0 or index >= self.length:
             return False
         return is_valid(self.validity, index)
 
-    fn get(self, index: Int) -> Int:
+    def get(self, index: Int) -> Int:
         if not self.is_valid_at(index):
             return 0
         return self.values[][self.offset + index]
 
-    fn null_count(self) -> Int:
+    def null_count(self) -> Int:
         return count_null(self.validity, self.length)
 
-    fn slice(self, start: Int, count: Int) -> Int64Array:
+    def slice(self, start: Int, count: Int) -> Int64Array:
         var begin = start
         if begin < 0:
             begin = 0
@@ -197,7 +197,7 @@ struct Int64Array(Copyable, Movable):
             take,
         )
 
-    fn to_float64(self) -> Float64Array:
+    def to_float64(self) -> Float64Array:
         """Widen to Float64. Lossy above 2^53 — `dtype.promotion_loses_precision`
         reports that, and this is the operation it is warning about."""
         var widened = List[Float64]()
@@ -207,12 +207,12 @@ struct Int64Array(Copyable, Movable):
         return Float64Array(ArcPointer(widened^), slice_bitmap(self.validity, 0, n), 0, n)
 
 
-fn int64_from_list(var values: List[Int]) -> Int64Array:
+def int64_from_list(var values: List[Int]) -> Int64Array:
     var n = len(values)
     return Int64Array(ArcPointer(values^), new_all_valid(n), 0, n)
 
 
-fn int64_with_nulls(var values: List[Int], mask: List[Bool]) -> Int64Array:
+def int64_with_nulls(var values: List[Int], mask: List[Bool]) -> Int64Array:
     """An Int64 column whose presence comes from `mask` — `float64_with_nulls`'s
     exact analog, added for `query.aggregate.group_by_int64` (int64-columnar-fidelity):
     that function needs a nullable Int64 key column to keep `group_by`'s null-key
@@ -239,26 +239,26 @@ struct BoolArray(Copyable, Movable):
     var offset: Int
     var length: Int
 
-    fn __init__(out self, var values: ArcPointer[List[Bool]], var validity: List[UInt8], offset: Int, length: Int):
+    def __init__(out self, var values: ArcPointer[List[Bool]], var validity: List[UInt8], offset: Int, length: Int):
         self.values = values^
         self.validity = validity^
         self.offset = offset
         self.length = length
 
-    fn dtype(self) -> Int:
+    def dtype(self) -> Int:
         return DTYPE_BOOL
 
-    fn is_valid_at(self, index: Int) -> Bool:
+    def is_valid_at(self, index: Int) -> Bool:
         if index < 0 or index >= self.length:
             return False
         return is_valid(self.validity, index)
 
-    fn get(self, index: Int) -> Bool:
+    def get(self, index: Int) -> Bool:
         if not self.is_valid_at(index):
             return False
         return self.values[][self.offset + index]
 
-    fn true_count(self) -> Int:
+    def true_count(self) -> Int:
         """Present-and-true slots — the row count a filter would keep."""
         var n = 0
         for i in range(self.length):
@@ -267,7 +267,7 @@ struct BoolArray(Copyable, Movable):
         return n
 
 
-fn bool_from_list(var values: List[Bool]) -> BoolArray:
+def bool_from_list(var values: List[Bool]) -> BoolArray:
     var n = len(values)
     return BoolArray(ArcPointer(values^), new_all_valid(n), 0, n)
 
@@ -286,37 +286,37 @@ struct StringArray(Copyable, Movable):
     var offset: Int
     var length: Int
 
-    fn __init__(out self, var values: ArcPointer[List[String]], var validity: List[UInt8], offset: Int, length: Int):
+    def __init__(out self, var values: ArcPointer[List[String]], var validity: List[UInt8], offset: Int, length: Int):
         self.values = values^
         self.validity = validity^
         self.offset = offset
         self.length = length
 
-    fn dtype(self) -> Int:
+    def dtype(self) -> Int:
         return DTYPE_STRING
 
-    fn is_valid_at(self, index: Int) -> Bool:
+    def is_valid_at(self, index: Int) -> Bool:
         if index < 0 or index >= self.length:
             return False
         return is_valid(self.validity, index)
 
-    fn get(self, index: Int) -> String:
+    def get(self, index: Int) -> String:
         """The value, or "" when absent. Empty string is a legitimate value, so
         callers must distinguish it from absent via `is_valid_at`."""
         if not self.is_valid_at(index):
             return ""
         return self.values[][self.offset + index]
 
-    fn null_count(self) -> Int:
+    def null_count(self) -> Int:
         return count_null(self.validity, self.length)
 
 
-fn string_from_list(var values: List[String]) -> StringArray:
+def string_from_list(var values: List[String]) -> StringArray:
     var n = len(values)
     return StringArray(ArcPointer(values^), new_all_valid(n), 0, n)
 
 
-fn describe(dtype: Int, length: Int, nulls: Int) -> String:
+def describe(dtype: Int, length: Int, nulls: Int) -> String:
     """A one-line column summary, for lineage and error messages."""
     return (
         dtype_name(dtype)

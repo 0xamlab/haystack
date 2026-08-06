@@ -18,7 +18,7 @@ from std.math import sqrt, abs as fabs, log, exp
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _insertion_sort(mut a: List[Float64]):
+def _insertion_sort(mut a: List[Float64]):
     """In-place insertion sort."""
     var n = len(a)
     for i in range(1, n):
@@ -30,7 +30,7 @@ fn _insertion_sort(mut a: List[Float64]):
         a[j + 1] = k
 
 
-fn _sort_indices(data: List[Float64]) -> List[Int]:
+def _sort_indices(data: List[Float64]) -> List[Int]:
     """Return indices that sort data in ascending order."""
     var n = len(data)
     var indices = List[Int]()
@@ -47,7 +47,7 @@ fn _sort_indices(data: List[Float64]) -> List[Int]:
     return indices^
 
 
-fn _log_factorial(n: Int) -> Float64:
+def _log_factorial(n: Int) -> Float64:
     """Compute log(n!) via summation."""
     var result: Float64 = 0.0
     for i in range(2, n + 1):
@@ -55,7 +55,7 @@ fn _log_factorial(n: Int) -> Float64:
     return result
 
 
-fn _log_choose(n: Int, k: Int) -> Float64:
+def _log_choose(n: Int, k: Int) -> Float64:
     """Compute log(C(n, k)) = log(n!) - log(k!) - log((n-k)!)."""
     if k < 0 or k > n:
         return -1e300  # log(0)
@@ -65,7 +65,7 @@ fn _log_choose(n: Int, k: Int) -> Float64:
 # ── rank_data ─────────────────────────────────────────────────────────────────
 
 
-fn rank_data(data: List[Float64]) -> List[Float64]:
+def rank_data(data: List[Float64]) -> List[Float64]:
     """Assign ranks (1-based) to data with average tie-breaking.
 
     Equal values receive the mean of the ranks they would span.
@@ -96,7 +96,7 @@ fn rank_data(data: List[Float64]) -> List[Float64]:
 # ── mann_whitney_u ────────────────────────────────────────────────────────────
 
 
-fn mann_whitney_u(x: List[Float64], y: List[Float64]) -> List[Float64]:
+def mann_whitney_u(x: List[Float64], y: List[Float64]) -> List[Float64]:
     """Mann-Whitney U test for two independent samples.
 
     Returns [U_statistic, z_score].
@@ -146,7 +146,7 @@ fn mann_whitney_u(x: List[Float64], y: List[Float64]) -> List[Float64]:
 # ── wilcoxon_signed_rank ──────────────────────────────────────────────────────
 
 
-fn wilcoxon_signed_rank(x: List[Float64], y: List[Float64]) -> List[Float64]:
+def wilcoxon_signed_rank(x: List[Float64], y: List[Float64]) -> List[Float64]:
     """Wilcoxon signed-rank test for paired samples.
 
     Returns [W_statistic, z_score].
@@ -201,7 +201,7 @@ fn wilcoxon_signed_rank(x: List[Float64], y: List[Float64]) -> List[Float64]:
 # ── kruskal_wallis ────────────────────────────────────────────────────────────
 
 
-fn kruskal_wallis(groups: List[List[Float64]]) -> List[Float64]:
+def kruskal_wallis(groups: List[List[Float64]]) -> List[Float64]:
     """Kruskal-Wallis H test for k independent groups.
 
     Returns [H_statistic, degrees_of_freedom].
@@ -254,7 +254,7 @@ fn kruskal_wallis(groups: List[List[Float64]]) -> List[Float64]:
 # ── fisher_exact_2x2 ─────────────────────────────────────────────────────────
 
 
-fn fisher_exact_2x2(a: Int, b: Int, c: Int, d: Int) -> Float64:
+def fisher_exact_2x2(a: Int, b: Int, c: Int, d: Int) -> Float64:
     """Fisher's exact test for a 2×2 contingency table.
 
     Table:  [[a, b], [c, d]]
@@ -270,7 +270,7 @@ fn fisher_exact_2x2(a: Int, b: Int, c: Int, d: Int) -> Float64:
 # ── sign_test ─────────────────────────────────────────────────────────────────
 
 
-fn sign_test(x: List[Float64], median: Float64 = 0.0) -> List[Float64]:
+def sign_test(x: List[Float64], median: Float64 = 0.0) -> List[Float64]:
     """Sign test: count values above, below, and equal to the median.
 
     Returns [n_positive, n_negative, n_ties].

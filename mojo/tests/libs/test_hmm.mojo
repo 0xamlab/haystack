@@ -25,7 +25,7 @@ comptime LN_02364: Float64 = -1.4422299934501939  # ln(0.2364)
 comptime LN_0252: Float64 = -1.3783261914707137  # ln(0.252)
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ hmm::" + name)
@@ -34,11 +34,11 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ hmm::" + name)
 
 
-fn _close(x: Float64, y: Float64, tol: Float64) -> Bool:
+def _close(x: Float64, y: Float64, tol: Float64) -> Bool:
     return fabs(x - y) < tol
 
 
-fn _paths_equal(a: List[Int], b: List[Int]) -> Bool:
+def _paths_equal(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -47,14 +47,14 @@ fn _paths_equal(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _row(v0: Float64, v1: Float64) -> List[Float64]:
+def _row(v0: Float64, v1: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(v0)
     r.append(v1)
     return r^
 
 
-fn _row3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
+def _row3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(v0)
     r.append(v1)
@@ -62,7 +62,7 @@ fn _row3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     return r^
 
 
-fn _row_sum(r: List[Float64]) -> Float64:
+def _row_sum(r: List[Float64]) -> Float64:
     var s = 0.0
     for i in range(len(r)):
         s += r[i]
@@ -71,14 +71,14 @@ fn _row_sum(r: List[Float64]) -> Float64:
 
 # 2-state / 2-symbol hand model for forward/backward:
 #   pi = [0.8, 0.2]; A = [[0.6, 0.4], [0.5, 0.5]]; B = [[0.7, 0.3], [0.4, 0.6]]
-fn _fwd_a() -> List[List[Float64]]:
+def _fwd_a() -> List[List[Float64]]:
     var a = List[List[Float64]]()
     a.append(_row(0.6, 0.4))
     a.append(_row(0.5, 0.5))
     return a^
 
 
-fn _fwd_b() -> List[List[Float64]]:
+def _fwd_b() -> List[List[Float64]]:
     var b = List[List[Float64]]()
     b.append(_row(0.7, 0.3))
     b.append(_row(0.4, 0.6))
@@ -88,14 +88,14 @@ fn _fwd_b() -> List[List[Float64]]:
 # Classic 2-state weather model (Rainy=0, Sunny=1; walk=0, shop=1, clean=2):
 #   pi = [0.6, 0.4]; A = [[0.7, 0.3], [0.4, 0.6]]
 #   B  = [[0.1, 0.4, 0.5], [0.6, 0.3, 0.1]]
-fn _wx_a() -> List[List[Float64]]:
+def _wx_a() -> List[List[Float64]]:
     var a = List[List[Float64]]()
     a.append(_row(0.7, 0.3))
     a.append(_row(0.4, 0.6))
     return a^
 
 
-fn _wx_b() -> List[List[Float64]]:
+def _wx_b() -> List[List[Float64]]:
     var b = List[List[Float64]]()
     b.append(_row3(0.1, 0.4, 0.5))
     b.append(_row3(0.6, 0.3, 0.1))

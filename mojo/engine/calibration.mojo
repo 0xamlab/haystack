@@ -29,7 +29,7 @@ struct IsotonicFit(Copyable, Movable):
     var thresholds: List[Float64]
     var values: List[Float64]
 
-    fn __init__(
+    def __init__(
         out self, thresholds: List[Float64], values: List[Float64]
     ):
         self.thresholds = thresholds.copy()
@@ -42,7 +42,7 @@ struct PlattParams(Copyable, Movable):
     var a: Float64
     var b: Float64
 
-    fn __init__(out self, a: Float64, b: Float64):
+    def __init__(out self, a: Float64, b: Float64):
         self.a = a
         self.b = b
 
@@ -55,7 +55,7 @@ struct CalibrationCurve(Copyable, Movable):
     var observed_freq: List[Float64]
     var counts: List[Int]
 
-    fn __init__(
+    def __init__(
         out self,
         bin_centers: List[Float64],
         observed_freq: List[Float64],
@@ -69,7 +69,7 @@ struct CalibrationCurve(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _sort_pairs(mut xs: List[Float64], mut ys: List[Float64]):
+def _sort_pairs(mut xs: List[Float64], mut ys: List[Float64]):
     """Stable bottom-up merge sort of (xs, ys) pairs keyed on xs."""
     var n = len(xs)
     if n < 2:
@@ -119,7 +119,7 @@ fn _sort_pairs(mut xs: List[Float64], mut ys: List[Float64]):
         width *= 2
 
 
-fn _platt_nll(
+def _platt_nll(
     scores: List[Float64], targets: List[Float64], n: Int, a: Float64, b: Float64
 ) -> Float64:
     """Numerically stable NLL of the Platt sigmoid at (a, b)."""
@@ -133,7 +133,7 @@ fn _platt_nll(
     return f
 
 
-fn _sigmoid_neg(fapb: Float64) -> Float64:
+def _sigmoid_neg(fapb: Float64) -> Float64:
     """Stable 1/(1+exp(fapb))."""
     if fapb >= 0.0:
         var e = exp(-fapb)
@@ -144,7 +144,7 @@ fn _sigmoid_neg(fapb: Float64) -> Float64:
 # ── isotonic_fit ─────────────────────────────────────────────────────────────
 
 
-fn isotonic_fit(x: List[Float64], y: List[Float64]) -> IsotonicFit:
+def isotonic_fit(x: List[Float64], y: List[Float64]) -> IsotonicFit:
     """Isotonic regression via Pool Adjacent Violators.
 
     Sorts (x, y) by x, averages y over tied x values (weight = tie count),
@@ -218,7 +218,7 @@ fn isotonic_fit(x: List[Float64], y: List[Float64]) -> IsotonicFit:
 # ── isotonic_transform ───────────────────────────────────────────────────────
 
 
-fn isotonic_transform(
+def isotonic_transform(
     thresholds: List[Float64], values: List[Float64], x_new: List[Float64]
 ) -> List[Float64]:
     """Evaluate an isotonic fit at new points.
@@ -267,7 +267,7 @@ fn isotonic_transform(
 # ── platt_fit ────────────────────────────────────────────────────────────────
 
 
-fn platt_fit(
+def platt_fit(
     scores: List[Float64], labels: List[Float64], max_iter: Int = 100
 ) -> PlattParams:
     """Fit Platt sigmoid p = 1/(1+exp(a*s+b)) by Newton descent on the NLL.
@@ -350,7 +350,7 @@ fn platt_fit(
 # ── platt_transform ──────────────────────────────────────────────────────────
 
 
-fn platt_transform(
+def platt_transform(
     a: Float64, b: Float64, scores: List[Float64]
 ) -> List[Float64]:
     """Apply the fitted Platt sigmoid: p_i = 1/(1+exp(a*s_i+b))."""
@@ -363,7 +363,7 @@ fn platt_transform(
 # ── calibration_curve ────────────────────────────────────────────────────────
 
 
-fn calibration_curve(
+def calibration_curve(
     probs: List[Float64], labels: List[Float64], n_bins: Int
 ) -> CalibrationCurve:
     """Reliability curve: equal-width bins on [0,1].

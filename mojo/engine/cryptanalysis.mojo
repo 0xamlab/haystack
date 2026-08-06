@@ -26,12 +26,12 @@ from std.math import log as _log
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _log2(x: Float64) -> Float64:
+def _log2(x: Float64) -> Float64:
     """Log base 2."""
     return _log(x) / _log(2.0)
 
 
-fn _gcd(a_in: Int, b_in: Int) -> Int:
+def _gcd(a_in: Int, b_in: Int) -> Int:
     """Euclidean GCD."""
     var a = a_in
     var b = b_in
@@ -46,7 +46,7 @@ fn _gcd(a_in: Int, b_in: Int) -> Int:
     return a
 
 
-fn _entropy_term(p: Float64) -> Float64:
+def _entropy_term(p: Float64) -> Float64:
     """Single term of Shannon entropy: -p*log2(p) if p>0, else 0."""
     if p > 0.0:
         return -p * _log2(p)
@@ -56,7 +56,7 @@ fn _entropy_term(p: Float64) -> Float64:
 # ── frequency_score_2 ────────────────────────────────────────────────────────
 
 
-fn frequency_score_2(
+def frequency_score_2(
     c0: Int, c1: Int, ef0: Float64, ef1: Float64
 ) -> Float64:
     """Chi-squared score for 2-bin letter frequency analysis.
@@ -80,7 +80,7 @@ fn frequency_score_2(
 # ── index_of_coincidence_2 ───────────────────────────────────────────────────
 
 
-fn index_of_coincidence_2(c0: Int, c1: Int, total: Int) -> Float64:
+def index_of_coincidence_2(c0: Int, c1: Int, total: Int) -> Float64:
     """IC = sum(ni*(ni-1)) / (N*(N-1)) for 2 letter counts."""
     if total <= 1:
         return 0.0
@@ -91,7 +91,7 @@ fn index_of_coincidence_2(c0: Int, c1: Int, total: Int) -> Float64:
 # ── expected_ic_random ───────────────────────────────────────────────────────
 
 
-fn expected_ic_random(alphabet_size: Int) -> Float64:
+def expected_ic_random(alphabet_size: Int) -> Float64:
     """Expected IC for random text = 1/alphabet_size."""
     if alphabet_size <= 0:
         return 0.0
@@ -101,7 +101,7 @@ fn expected_ic_random(alphabet_size: Int) -> Float64:
 # ── expected_ic_english ──────────────────────────────────────────────────────
 
 
-fn expected_ic_english() -> Float64:
+def expected_ic_english() -> Float64:
     """Expected IC for English ≈ 0.0667."""
     return 0.0667
 
@@ -109,7 +109,7 @@ fn expected_ic_english() -> Float64:
 # ── friedman_key_length ──────────────────────────────────────────────────────
 
 
-fn friedman_key_length(ic: Float64, alphabet_size: Int) -> Float64:
+def friedman_key_length(ic: Float64, alphabet_size: Int) -> Float64:
     """Estimate key length from observed IC using Friedman's formula.
 
     k ≈ (kp - kr) / (ic - kr)
@@ -127,7 +127,7 @@ fn friedman_key_length(ic: Float64, alphabet_size: Int) -> Float64:
 # ── kasiski_distance_gcd ─────────────────────────────────────────────────────
 
 
-fn kasiski_distance_gcd(d1: Int, d2: Int) -> Int:
+def kasiski_distance_gcd(d1: Int, d2: Int) -> Int:
     """GCD of two distances (for Kasiski examination)."""
     return _gcd(d1, d2)
 
@@ -135,7 +135,7 @@ fn kasiski_distance_gcd(d1: Int, d2: Int) -> Int:
 # ── caesar_decrypt_score ─────────────────────────────────────────────────────
 
 
-fn caesar_decrypt_score(
+def caesar_decrypt_score(
     shift: Int, expected_e_freq: Float64, actual_freq_at_e: Float64
 ) -> Float64:
     """Score a Caesar shift by how well the frequency matches expected 'e'.
@@ -151,7 +151,7 @@ fn caesar_decrypt_score(
 # ── hamming_distance_bytes ───────────────────────────────────────────────────
 
 
-fn hamming_distance_bytes(a: Int, b: Int) -> Int:
+def hamming_distance_bytes(a: Int, b: Int) -> Int:
     """Bit-level Hamming distance between two byte values (0-255)."""
     var xor_val = a ^ b
     var count: Int = 0
@@ -165,7 +165,7 @@ fn hamming_distance_bytes(a: Int, b: Int) -> Int:
 # ── entropy_bits_2 ───────────────────────────────────────────────────────────
 
 
-fn entropy_bits_2(p0: Float64, p1: Float64) -> Float64:
+def entropy_bits_2(p0: Float64, p1: Float64) -> Float64:
     """Shannon entropy in bits for 2-symbol distribution."""
     return _entropy_term(p0) + _entropy_term(p1)
 
@@ -173,7 +173,7 @@ fn entropy_bits_2(p0: Float64, p1: Float64) -> Float64:
 # ── entropy_bits_4 ───────────────────────────────────────────────────────────
 
 
-fn entropy_bits_4(p0: Float64, p1: Float64, p2: Float64, p3: Float64) -> Float64:
+def entropy_bits_4(p0: Float64, p1: Float64, p2: Float64, p3: Float64) -> Float64:
     """Shannon entropy in bits for 4-symbol distribution."""
     return _entropy_term(p0) + _entropy_term(p1) + _entropy_term(p2) + _entropy_term(p3)
 
@@ -181,7 +181,7 @@ fn entropy_bits_4(p0: Float64, p1: Float64, p2: Float64, p3: Float64) -> Float64
 # ── brute_force_time_estimate ────────────────────────────────────────────────
 
 
-fn brute_force_time_estimate(key_bits: Int, ops_per_second: Float64) -> Float64:
+def brute_force_time_estimate(key_bits: Int, ops_per_second: Float64) -> Float64:
     """Estimated seconds to brute-force = 2^key_bits / ops_per_second.
 
     Uses loop-based power of 2 for Float64 precision.
@@ -197,7 +197,7 @@ fn brute_force_time_estimate(key_bits: Int, ops_per_second: Float64) -> Float64:
 # ── avalanche_effect ─────────────────────────────────────────────────────────
 
 
-fn avalanche_effect(changed_bits: Int, total_bits: Int) -> Float64:
+def avalanche_effect(changed_bits: Int, total_bits: Int) -> Float64:
     """Ratio of changed bits (ideal ≈ 0.5 for good cipher)."""
     if total_bits <= 0:
         return 0.0

@@ -48,12 +48,12 @@ comptime _CROP_EDGE_MIN: Float64 = 0.15      # edge density above this ⇒ a reg
 # ── Predicate helpers ───────────────────────────────────────────────────────────
 
 
-fn should_use_cache(is_duplicate_flag: Bool) -> Bool:
+def should_use_cache(is_duplicate_flag: Bool) -> Bool:
     """True when the image duplicates one already analyzed (reuse the result)."""
     return is_duplicate_flag
 
 
-fn needs_clearer_image(blur_score: Float64, brightness: Float64) -> Bool:
+def needs_clearer_image(blur_score: Float64, brightness: Float64) -> Bool:
     """True when blur or exposure make the image not worth a model call."""
     return (
         blur_score < _BLUR_MIN
@@ -62,12 +62,12 @@ fn needs_clearer_image(blur_score: Float64, brightness: Float64) -> Bool:
     )
 
 
-fn is_text_heavy(edge_density: Float64, entropy: Float64) -> Bool:
+def is_text_heavy(edge_density: Float64, entropy: Float64) -> Bool:
     """Heuristic: dense edges plus moderate entropy look like printed text."""
     return edge_density > _TEXT_EDGE_MIN and entropy > _TEXT_ENTROPY_MIN
 
 
-fn quality_gate_passed(
+def quality_gate_passed(
     blur_score: Float64, brightness: Float64, entropy: Float64
 ) -> Bool:
     """True when the image is sharp enough, exposed, and not near-blank."""
@@ -80,7 +80,7 @@ fn quality_gate_passed(
 # ── Router ──────────────────────────────────────────────────────────────────────
 
 
-fn route_image_request(
+def route_image_request(
     blur_score: Float64,
     brightness: Float64,
     entropy: Float64,

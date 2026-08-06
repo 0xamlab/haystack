@@ -40,7 +40,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
+def _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
     var count = 0
     for value in mask:
         if value >= threshold:
@@ -48,7 +48,7 @@ fn _count_foreground(mask: List[Float64], threshold: Float64) -> Int:
     return count
 
 
-fn _motion_clip3x5x5() -> List[Float64]:
+def _motion_clip3x5x5() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(25):
         flat.append(10.0)

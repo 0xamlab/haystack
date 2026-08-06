@@ -18,7 +18,7 @@ from video_ops import (
 )
 
 
-fn scene_change_scores(
+def scene_change_scores(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int
 ) -> List[Float64]:
     """Consecutive-frame change scores normalized to [0, 1] by 255."""
@@ -40,7 +40,7 @@ fn scene_change_scores(
     return out^
 
 
-fn scene_cut_count(
+def scene_cut_count(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, cut_threshold: Float64
 ) -> Int:
     """Count scene changes whose normalized score exceeds cut_threshold."""
@@ -52,7 +52,7 @@ fn scene_cut_count(
     return total
 
 
-fn scene_cut_rate(
+def scene_cut_rate(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, cut_threshold: Float64
 ) -> Float64:
     """Scene cuts divided by the number of consecutive transitions."""
@@ -65,7 +65,7 @@ fn scene_cut_rate(
     )
 
 
-fn peak_motion_frame(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
+def peak_motion_frame(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
     """Later frame index of the strongest consecutive transition."""
     var frames = frame_count_from_flat(flat_frames, width, height, channels)
     if frames <= 0:
@@ -89,7 +89,7 @@ fn peak_motion_frame(flat_frames: List[Float64], width: Int, height: Int, channe
     return best_index
 
 
-fn keyframe_indices(
+def keyframe_indices(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int,
     cut_threshold: Float64, max_frames: Int,
 ) -> List[Int]:

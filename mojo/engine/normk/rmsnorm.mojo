@@ -110,7 +110,7 @@ struct NormAgreement(Copyable, Movable):
     var status: Int
 
 
-fn rmsnorm_fwd_flat(
+def rmsnorm_fwd_flat(
     x: List[Float64], gamma: List[Float64], n_rows: Int, n_cols: Int, eps: Float64
 ) -> NormOut:
     """RMSNorm over `[n_rows][n_cols]` row-major, scaled by a shared `gamma` of length `n_cols`.
@@ -147,7 +147,7 @@ fn rmsnorm_fwd_flat(
         workers = 1
 
     @parameter
-    fn _row_band(tid: Int) capturing:
+    def _row_band(tid: Int) capturing:
         var each = rows // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else rows
@@ -186,7 +186,7 @@ fn rmsnorm_fwd_flat(
     return NormOut(y^, rstd^, n_rows, n_cols, NORM_OK)
 
 
-fn rmsnorm_bwd_flat(
+def rmsnorm_bwd_flat(
     dy: List[Float64], x: List[Float64], gamma: List[Float64], rstd: List[Float64],
     n_rows: Int, n_cols: Int
 ) -> NormGrad:
@@ -229,7 +229,7 @@ fn rmsnorm_bwd_flat(
         workers = 1
 
     @parameter
-    fn _dx_band(tid: Int) capturing:
+    def _dx_band(tid: Int) capturing:
         var each = rows // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else rows
@@ -253,7 +253,7 @@ fn rmsnorm_bwd_flat(
         gworkers = 1
 
     @parameter
-    fn _dgamma_band(tid: Int) capturing:
+    def _dgamma_band(tid: Int) capturing:
         var each = cols // gworkers
         var lo = tid * each
         var hi = lo + each if tid < gworkers - 1 else cols
@@ -268,7 +268,7 @@ fn rmsnorm_bwd_flat(
     return NormGrad(dx^, dgamma^, n_rows, n_cols, NORM_OK)
 
 
-fn rmsnorm_agrees_with_frozen_flat(
+def rmsnorm_agrees_with_frozen_flat(
     x: List[Float64], gamma: List[Float64], n_rows: Int, n_cols: Int, eps: Float64
 ) -> NormAgreement:
     """Re-derive the forward one element at a time through the frozen kernel and report the delta.
@@ -316,7 +316,7 @@ fn rmsnorm_agrees_with_frozen_flat(
     return NormAgreement(worst, tol_at_worst, worst <= tol_at_worst, n_rows * n_cols, NORM_OK)
 
 
-fn rmsnorm_gradcheck_flat(
+def rmsnorm_gradcheck_flat(
     x: List[Float64], gamma: List[Float64], n_rows: Int, n_cols: Int,
     eps: Float64, step: Float64
 ) -> NormAgreement:
@@ -388,7 +388,7 @@ fn rmsnorm_gradcheck_flat(
     return NormAgreement(worst, tol_at_worst, worst <= tol_at_worst, n_rows * n_cols, NORM_OK)
 
 
-fn _sum_of_forward(
+def _sum_of_forward(
     x: List[Float64], gamma: List[Float64], n_rows: Int, n_cols: Int, eps: Float64
 ) -> Float64:
     """`SUM(y)` for one perturbed input. Underscore-prefixed: a gradcheck helper, not a kernel."""

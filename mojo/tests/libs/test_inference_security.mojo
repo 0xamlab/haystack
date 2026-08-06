@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from inference_security import prompt_injection_score, token_level_safety_score, tool_call_validation_score, data_leakage_risk_score, jailbreak_pattern_score, output_toxicity_estimate, pii_token_risk, sandboxed_exec_trust_score, rate_limit_violation_score, adversarial_input_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

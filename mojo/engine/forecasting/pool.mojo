@@ -172,7 +172,7 @@ comptime POOL_MAX_CANDIDATES: Int = 64
 comptime POOL_MIN_FIT: Int = 3
 
 
-fn pool_candidate_name(index: Int) -> String:
+def pool_candidate_name(index: Int) -> String:
     """The pool-local vocabulary, one place. Unknown indices are loud, never blank.
 
     @capability pool_candidate_name
@@ -199,7 +199,7 @@ fn pool_candidate_name(index: Int) -> String:
     return "unknown_candidate"
 
 
-fn pool_mode_name(mode: Int) -> String:
+def pool_mode_name(mode: Int) -> String:
     """The blend-mode vocabulary, one place. Unknown modes are loud, never blank.
 
     @capability pool_mode_name
@@ -282,7 +282,7 @@ struct PoolForecast(Copyable, Movable):
     var status_name: String
 
 
-fn _no_report(
+def _no_report(
     status: Int, horizon: Int, n_train: Int, n_fit: Int, period: Int,
     candidate_status: List[Int],
 ) -> PoolReport:
@@ -297,7 +297,7 @@ fn _no_report(
     )
 
 
-fn _uniform_status(status: Int) -> List[Int]:
+def _uniform_status(status: Int) -> List[Int]:
     """The whole pool refused for one shared reason."""
     var out = List[Int]()
     for _ in range(POOL_N_CANDIDATES):
@@ -305,7 +305,7 @@ fn _uniform_status(status: Int) -> List[Int]:
     return out^
 
 
-fn _no_pool(
+def _no_pool(
     status: Int, horizon: Int, mode: Int, top_k: Int, n_candidates: Int
 ) -> PoolForecast:
     """A refusal: no path, no winner; parallel slots only when the count is trusted."""
@@ -323,7 +323,7 @@ fn _no_pool(
     )
 
 
-fn _si_at(y_raw: List[Float64], y_des: List[Float64], index: Int) -> List[Float64]:
+def _si_at(y_raw: List[Float64], y_des: List[Float64], index: Int) -> List[Float64]:
     """`[factor]` at one position, or EMPTY when the deseasonalisation is inconsistent.
 
     `0/0` is factor 1.0 — the correct reading of "no seasonal component at a zero
@@ -346,7 +346,7 @@ fn _si_at(y_raw: List[Float64], y_des: List[Float64], index: Int) -> List[Float6
     return out^
 
 
-fn _prefix(y: List[Float64], end: Int) -> List[Float64]:
+def _prefix(y: List[Float64], end: Int) -> List[Float64]:
     """The first `end` observations — the truncated training window."""
     var out = List[Float64]()
     for t in range(end):
@@ -362,7 +362,7 @@ struct _PoolPaths(Copyable, Movable):
     var paths: List[Float64]
 
 
-fn _candidate_paths(
+def _candidate_paths(
     y_raw: List[Float64], y_des: List[Float64], period: Int, horizon: Int,
     si: List[Float64],
 ) -> _PoolPaths:
@@ -470,7 +470,7 @@ fn _candidate_paths(
     return _PoolPaths(status^, paths^)
 
 
-fn pool_holdout_report(
+def pool_holdout_report(
     y_raw: List[Float64], y_des: List[Float64], period: Int, horizon: Int
 ) -> PoolReport:
     """Fit the pool twice — on `y[:n-horizon]` and on `y` — and expose every decision input.
@@ -581,7 +581,7 @@ fn pool_holdout_report(
     )
 
 
-fn _rank_fitted(holdout_mae: List[Float64], candidate_status: List[Int]) -> List[Int]:
+def _rank_fitted(holdout_mae: List[Float64], candidate_status: List[Int]) -> List[Int]:
     """Fitted candidate indices, ascending holdout MAE, ties to the LOWER index.
 
     Stable insertion sort over at most POOL_MAX_CANDIDATES entries: the strict `>`
@@ -602,7 +602,7 @@ fn _rank_fitted(holdout_mae: List[Float64], candidate_status: List[Int]) -> List
     return idx^
 
 
-fn _median_of(values: List[Float64]) -> Float64:
+def _median_of(values: List[Float64]) -> Float64:
     """The median by insertion sort of a copy; even counts average the two middles."""
     var v = values.copy()
     for i in range(1, len(v)):
@@ -618,7 +618,7 @@ fn _median_of(values: List[Float64]) -> Float64:
     return 0.5 * (v[n // 2 - 1] + v[n // 2])
 
 
-fn _blend_defect(
+def _blend_defect(
     full_values: List[Float64], holdout_mae: List[Float64],
     candidate_status: List[Int], n_candidates: Int, horizon: Int,
     mode: Int, top_k: Int,
@@ -656,7 +656,7 @@ fn _blend_defect(
     return FC_OK
 
 
-fn pool_blend_flat(
+def pool_blend_flat(
     full_values: List[Float64], holdout_mae: List[Float64],
     candidate_status: List[Int], n_candidates: Int, horizon: Int,
     mode: Int, top_k: Int,
@@ -773,7 +773,7 @@ fn pool_blend_flat(
     )
 
 
-fn pool_holdout_forecast(
+def pool_holdout_forecast(
     y_raw: List[Float64], y_des: List[Float64], period: Int, horizon: Int,
     mode: Int, top_k: Int,
 ) -> PoolForecast:

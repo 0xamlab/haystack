@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from graph_compiler import fusion_benefit_score, dead_op_elimination_check, constant_folding_value, op_reorder_priority, common_subexpr_hash, graph_partition_cost, shape_inference_broadcast, type_promotion_bits, kernel_selection_score, memory_layout_transform_cost
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

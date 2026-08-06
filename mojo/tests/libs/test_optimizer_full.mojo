@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from optimizer_full import lbfgs_two_loop_scale, adadelta_update, nadam_update, sophia_hessian_clip, sophia_update, prodigy_d_estimate, adan_update, schedule_free_update, muon_orthogonal_update, gradient_centralization
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

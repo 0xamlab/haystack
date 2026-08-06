@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from model_interop import safetensors_tensor_offset, gguf_kv_metadata_size, onnx_node_flops, hf_config_head_dim, hf_rope_theta_scale, dtype_convert_scale, checkpoint_version_compat, weight_remap_cost, tokenizer_vocab_overlap, model_card_perplexity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

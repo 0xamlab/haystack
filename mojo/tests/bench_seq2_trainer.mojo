@@ -4,16 +4,16 @@ dense 32, batch 64, 5 epochs) so the keras/CPU-TF comparison has
 like-for-like numbers. Compares scalar single-thread BPTT vs SIMD
 single-thread vs SIMD parallel. Not a test; prints [BENCH] lines."""
 
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 from std.sys import info
 from seq2_trainer import seq2_init, seq2_train_workers, seq2_train_scalar
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * UInt64(6364136223846793005) + UInt64(1442695040888963407)
 
 
-fn _lcg_f64(state: UInt64) -> Float64:
+def _lcg_f64(state: UInt64) -> Float64:
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
 
 

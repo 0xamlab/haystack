@@ -23,7 +23,7 @@ comptime SQRT2: Float64 = 1.4142135623730951
 # ── norm_cdf_approx ──────────────────────────────────────────────────────────
 
 
-fn norm_cdf_approx(x: Float64) -> Float64:
+def norm_cdf_approx(x: Float64) -> Float64:
     """Abramowitz & Stegun approximation for the standard normal CDF Φ(x).
 
     Uses formula 26.2.17 with maximum error < 7.5e-8.
@@ -63,7 +63,7 @@ fn norm_cdf_approx(x: Float64) -> Float64:
 # ── norm_ppf_approx ──────────────────────────────────────────────────────────
 
 
-fn norm_ppf_approx(p: Float64) -> Float64:
+def norm_ppf_approx(p: Float64) -> Float64:
     """Rational approximation for the inverse standard normal CDF (quantile).
 
     Uses the Beasley-Springer-Moro algorithm. Accurate to ~1e-9.
@@ -125,7 +125,7 @@ fn norm_ppf_approx(p: Float64) -> Float64:
 # ── Box-Muller normal RNG ─────────────────────────────────────────────────────
 
 
-fn _box_muller_pair() -> List[Float64]:
+def _box_muller_pair() -> List[Float64]:
     """Generate a pair of independent standard normal variates via Box-Muller."""
     var u1 = random_float64()
     var u2 = random_float64()
@@ -143,7 +143,7 @@ fn _box_muller_pair() -> List[Float64]:
     return result^
 
 
-fn _sin_approx(x: Float64) -> Float64:
+def _sin_approx(x: Float64) -> Float64:
     """Sin approximation via range reduction + Taylor series."""
     # Reduce to [-PI, PI]
     var v = x
@@ -161,7 +161,7 @@ fn _sin_approx(x: Float64) -> Float64:
     return v - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0
 
 
-fn _cos_approx(x: Float64) -> Float64:
+def _cos_approx(x: Float64) -> Float64:
     """Cos approximation via range reduction + Taylor series."""
     var v = x
     while v > PI:
@@ -179,7 +179,7 @@ fn _cos_approx(x: Float64) -> Float64:
 # ── gaussian_copula_sample ────────────────────────────────────────────────────
 
 
-fn gaussian_copula_sample(n: Int, rho: Float64) -> List[List[Float64]]:
+def gaussian_copula_sample(n: Int, rho: Float64) -> List[List[Float64]]:
     """Generate n bivariate samples from a Gaussian copula with correlation rho.
 
     Uses Box-Muller for normal RNG and Cholesky factorisation for correlation.
@@ -226,7 +226,7 @@ fn gaussian_copula_sample(n: Int, rho: Float64) -> List[List[Float64]]:
 # ── rank_correlation ──────────────────────────────────────────────────────────
 
 
-fn _rank(values: List[Float64]) -> List[Float64]:
+def _rank(values: List[Float64]) -> List[Float64]:
     """Compute ranks (1-based, with average ranks for ties)."""
     var n = len(values)
     var indices = List[Int]()
@@ -261,7 +261,7 @@ fn _rank(values: List[Float64]) -> List[Float64]:
     return ranks^
 
 
-fn rank_correlation(x: List[Float64], y: List[Float64]) -> Float64:
+def rank_correlation(x: List[Float64], y: List[Float64]) -> Float64:
     """Spearman rank correlation coefficient.
 
     Computes Pearson correlation on rank-transformed data.
@@ -303,7 +303,7 @@ fn rank_correlation(x: List[Float64], y: List[Float64]) -> Float64:
 # ── kendall_tau ───────────────────────────────────────────────────────────────
 
 
-fn kendall_tau(x: List[Float64], y: List[Float64]) -> Float64:
+def kendall_tau(x: List[Float64], y: List[Float64]) -> Float64:
     """Kendall's tau-b rank correlation.
 
     tau-b = (concordant - discordant) / sqrt((n0-n1)*(n0-n2))

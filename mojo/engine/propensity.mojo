@@ -22,7 +22,7 @@ from std.math import abs as fabs, exp, log, sqrt
 # ── _sigmoid ────────────────────────────────────────────────────────────────
 
 
-fn _sigmoid(x: Float64) -> Float64:
+def _sigmoid(x: Float64) -> Float64:
     """Logistic sigmoid: 1 / (1 + exp(-x))."""
     if x > 500.0:
         return 1.0
@@ -34,7 +34,7 @@ fn _sigmoid(x: Float64) -> Float64:
 # ── propensity_scores ───────────────────────────────────────────────────────
 
 
-fn propensity_scores(features: List[List[Float64]], treatment: List[Int]) -> List[Float64]:
+def propensity_scores(features: List[List[Float64]], treatment: List[Int]) -> List[Float64]:
     """Compute simple logistic propensity scores.
 
     Fits a single-pass logistic model using feature means to produce
@@ -112,7 +112,7 @@ fn propensity_scores(features: List[List[Float64]], treatment: List[Int]) -> Lis
 # ── nearest_neighbor_match ──────────────────────────────────────────────────
 
 
-fn nearest_neighbor_match(scores_treated: List[Float64], scores_control: List[Float64]) -> List[Int]:
+def nearest_neighbor_match(scores_treated: List[Float64], scores_control: List[Float64]) -> List[Int]:
     """For each treated unit, find the nearest control unit by propensity score.
 
     Args:
@@ -141,7 +141,7 @@ fn nearest_neighbor_match(scores_treated: List[Float64], scores_control: List[Fl
 # ── caliper_match ───────────────────────────────────────────────────────────
 
 
-fn caliper_match(scores_treated: List[Float64], scores_control: List[Float64], caliper: Float64) -> List[Int]:
+def caliper_match(scores_treated: List[Float64], scores_control: List[Float64], caliper: Float64) -> List[Int]:
     """Match treated to control within a caliper distance.
 
     Args:
@@ -168,7 +168,7 @@ fn caliper_match(scores_treated: List[Float64], scores_control: List[Float64], c
 # ── matched_ate ─────────────────────────────────────────────────────────────
 
 
-fn matched_ate(outcomes: List[Float64], treatment: List[Int], matches: List[Int]) -> Float64:
+def matched_ate(outcomes: List[Float64], treatment: List[Int], matches: List[Int]) -> Float64:
     """Average Treatment Effect from matched pairs.
 
     For each treated unit i with match matches[treated_idx] into controls,
@@ -215,7 +215,7 @@ fn matched_ate(outcomes: List[Float64], treatment: List[Int], matches: List[Int]
 # ── balance_check ───────────────────────────────────────────────────────────
 
 
-fn balance_check(features_treated: List[Float64], features_control: List[Float64]) -> Float64:
+def balance_check(features_treated: List[Float64], features_control: List[Float64]) -> Float64:
     """Standardized mean difference for balance assessment.
 
     SMD = |mean_t - mean_c| / pooled_sd.
@@ -265,7 +265,7 @@ fn balance_check(features_treated: List[Float64], features_control: List[Float64
 # ── propensity_overlap ──────────────────────────────────────────────────────
 
 
-fn propensity_overlap(scores: List[Float64], treatment: List[Int]) -> Float64:
+def propensity_overlap(scores: List[Float64], treatment: List[Int]) -> Float64:
     """Overlap measure between treated and control propensity distributions.
 
     Overlap = min(max(treated), max(control)) - max(min(treated), min(control)).
@@ -317,7 +317,7 @@ fn propensity_overlap(scores: List[Float64], treatment: List[Int]) -> Float64:
 # ── trimmed_sample ──────────────────────────────────────────────────────────
 
 
-fn trimmed_sample(scores: List[Float64], treatment: List[Int], lo: Float64, hi: Float64) -> List[Int]:
+def trimmed_sample(scores: List[Float64], treatment: List[Int], lo: Float64, hi: Float64) -> List[Int]:
     """Indices of samples with propensity scores within [lo, hi].
 
     Args:
@@ -339,7 +339,7 @@ fn trimmed_sample(scores: List[Float64], treatment: List[Int], lo: Float64, hi: 
 # ── stratified_estimate ─────────────────────────────────────────────────────
 
 
-fn stratified_estimate(outcomes: List[Float64], treatment: List[Int], scores: List[Float64], n_strata: Int) -> Float64:
+def stratified_estimate(outcomes: List[Float64], treatment: List[Int], scores: List[Float64], n_strata: Int) -> Float64:
     """Stratified ATE by propensity score strata.
 
     Divides the score range into n_strata equal-width bins and computes
@@ -423,7 +423,7 @@ fn stratified_estimate(outcomes: List[Float64], treatment: List[Int], scores: Li
 # ── match_quality ───────────────────────────────────────────────────────────
 
 
-fn match_quality(matches: List[Int]) -> Float64:
+def match_quality(matches: List[Int]) -> Float64:
     """Fraction of successful matches (non -1).
 
     Args:

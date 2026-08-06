@@ -49,7 +49,7 @@ from graph_analytics.adjacency import graph_csr_from_triplets, GRAPH_OK
 from graph_analytics.centrality import graph_betweenness_unweighted
 
 
-fn _read_all(path: String) raises -> String:
+def _read_all(path: String) raises -> String:
     var f = open(path, "r")
     var s = f.read()
     f.close()
@@ -64,7 +64,7 @@ struct EdgeList(Copyable, Movable):
     var weight: List[Float64]
 
 
-fn read_edge_file(path: String) raises -> EdgeList:
+def read_edge_file(path: String) raises -> EdgeList:
     """Parses the format above, doubling each undirected edge into two directed ones."""
     var text = _read_all(path)
     var lines = text.split("\n")
@@ -87,7 +87,7 @@ fn read_edge_file(path: String) raises -> EdgeList:
     return EdgeList(n_nodes, src^, dst^, weight^)
 
 
-fn _dump_values(path: String, values: List[Float64]) raises:
+def _dump_values(path: String, values: List[Float64]) raises:
     var f = open(path, "w")
     var s = String("")
     for i in range(len(values)):

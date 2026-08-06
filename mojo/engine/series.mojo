@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs
 # ── sma_forecast ──────────────────────────────────────────────────────────────
 
 
-fn sma_forecast(data: List[Float64], window: Int, horizon: Int) -> List[Float64]:
+def sma_forecast(data: List[Float64], window: Int, horizon: Int) -> List[Float64]:
     """Forecast next horizon values using SMA of last window values."""
     var n = len(data)
     var result = List[Float64]()
@@ -48,7 +48,7 @@ fn sma_forecast(data: List[Float64], window: Int, horizon: Int) -> List[Float64]
 # ── _ols_fit (helper) ─────────────────────────────────────────────────────────
 
 
-fn _ols_fit(data: List[Float64]) -> List[Float64]:
+def _ols_fit(data: List[Float64]) -> List[Float64]:
     """Fit y = a + b*x by OLS. Returns [a, b]."""
     var n = len(data)
     var sx: Float64 = 0.0
@@ -79,7 +79,7 @@ fn _ols_fit(data: List[Float64]) -> List[Float64]:
 # ── linear_extrapolation ─────────────────────────────────────────────────────
 
 
-fn linear_extrapolation(data: List[Float64], horizon: Int) -> List[Float64]:
+def linear_extrapolation(data: List[Float64], horizon: Int) -> List[Float64]:
     """Fit a line to all data (OLS), extrapolate horizon steps."""
     var n = len(data)
     var result = List[Float64]()
@@ -100,7 +100,7 @@ fn linear_extrapolation(data: List[Float64], horizon: Int) -> List[Float64]:
 # ── weighted_moving_avg ───────────────────────────────────────────────────────
 
 
-fn weighted_moving_avg(data: List[Float64], weights: List[Float64]) -> Float64:
+def weighted_moving_avg(data: List[Float64], weights: List[Float64]) -> Float64:
     """Weighted average of last len(weights) values."""
     var n = len(data)
     var w = len(weights)
@@ -119,7 +119,7 @@ fn weighted_moving_avg(data: List[Float64], weights: List[Float64]) -> Float64:
 # ── exponential_forecast ──────────────────────────────────────────────────────
 
 
-fn exponential_forecast(
+def exponential_forecast(
     data: List[Float64], alpha: Float64, horizon: Int
 ) -> List[Float64]:
     """Single exponential smoothing. All forecasts = last smoothed value."""
@@ -141,7 +141,7 @@ fn exponential_forecast(
 # ── naive_forecast ────────────────────────────────────────────────────────────
 
 
-fn naive_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
+def naive_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
     """Repeat last value for horizon steps."""
     var result = List[Float64]()
     # data[len-1] on an empty list is an uncatchable out-of-bounds read;
@@ -159,7 +159,7 @@ fn naive_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
 # ── seasonal_naive ────────────────────────────────────────────────────────────
 
 
-fn seasonal_naive(
+def seasonal_naive(
     data: List[Float64], period: Int, horizon: Int
 ) -> List[Float64]:
     """Repeat the last season (last period values) cyclically for horizon."""
@@ -183,7 +183,7 @@ fn seasonal_naive(
 # ── drift_forecast ────────────────────────────────────────────────────────────
 
 
-fn drift_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
+def drift_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
     """Drift: y_{T+h} = y_T + h * (y_T - y_1) / (T-1)."""
     var n = len(data)
     var result = List[Float64]()
@@ -202,7 +202,7 @@ fn drift_forecast(data: List[Float64], horizon: Int) -> List[Float64]:
 # ── forecast_accuracy ─────────────────────────────────────────────────────────
 
 
-fn forecast_accuracy(
+def forecast_accuracy(
     actual: List[Float64], predicted: List[Float64]
 ) -> List[Float64]:
     """Returns [MAE, MAPE, RMSE]."""
@@ -232,7 +232,7 @@ fn forecast_accuracy(
 # ── trend_strength ────────────────────────────────────────────────────────────
 
 
-fn trend_strength(data: List[Float64]) -> Float64:
+def trend_strength(data: List[Float64]) -> Float64:
     """Trend strength: 1 - var(residuals)/var(data)."""
     var n = len(data)
     if n < 2:
@@ -263,7 +263,7 @@ fn trend_strength(data: List[Float64]) -> Float64:
 # ── _autocorrelation (helper) ─────────────────────────────────────────────────
 
 
-fn _autocorrelation(data: List[Float64], lag: Int) -> Float64:
+def _autocorrelation(data: List[Float64], lag: Int) -> Float64:
     """Autocorrelation at given lag."""
     var n = len(data)
     if lag >= n:
@@ -286,7 +286,7 @@ fn _autocorrelation(data: List[Float64], lag: Int) -> Float64:
 # ── detect_seasonality ────────────────────────────────────────────────────────
 
 
-fn detect_seasonality(data: List[Float64], max_period: Int) -> Int:
+def detect_seasonality(data: List[Float64], max_period: Int) -> Int:
     """Detect dominant seasonality period (2..max_period) by autocorrelation."""
     var best_period = 2
     var best_acf: Float64 = -2.0

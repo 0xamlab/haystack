@@ -20,7 +20,7 @@ from std.random import random_float64
 # ── halton_sequence ──────────────────────────────────────────────────────────
 
 
-fn halton_sequence(n: Int, base: Int) -> List[Float64]:
+def halton_sequence(n: Int, base: Int) -> List[Float64]:
     """Generate n values of the Halton (van der Corput) sequence in given base.
 
     Each value lies in (0, 1). The Halton sequence is a deterministic
@@ -49,7 +49,7 @@ fn halton_sequence(n: Int, base: Int) -> List[Float64]:
 # ── halton_2d ────────────────────────────────────────────────────────────────
 
 
-fn halton_2d(n: Int) -> List[List[Float64]]:
+def halton_2d(n: Int) -> List[List[Float64]]:
     """Generate n 2D Halton points using bases 2 and 3.
 
     Returns list of [x, y] pairs where each coordinate is in (0, 1).
@@ -74,7 +74,7 @@ fn halton_2d(n: Int) -> List[List[Float64]]:
 # ── stratified_sample_1d ─────────────────────────────────────────────────────
 
 
-fn stratified_sample_1d(n_strata: Int) -> List[Float64]:
+def stratified_sample_1d(n_strata: Int) -> List[Float64]:
     """Divide [0,1] into n_strata equal bins, sample one uniform value from each.
 
     Ensures better coverage than pure random sampling by guaranteeing
@@ -98,7 +98,7 @@ fn stratified_sample_1d(n_strata: Int) -> List[Float64]:
 # ── latin_hypercube_sample ───────────────────────────────────────────────────
 
 
-fn latin_hypercube_sample(n: Int, d: Int) -> List[List[Float64]]:
+def latin_hypercube_sample(n: Int, d: Int) -> List[List[Float64]]:
     """Generate n samples in d dimensions using Latin Hypercube Sampling.
 
     Each dimension is divided into n equal strata. In each dimension,
@@ -152,7 +152,7 @@ fn latin_hypercube_sample(n: Int, d: Int) -> List[List[Float64]]:
 # ── sobol_like_2d ────────────────────────────────────────────────────────────
 
 
-fn sobol_like_2d(n: Int) -> List[List[Float64]]:
+def sobol_like_2d(n: Int) -> List[List[Float64]]:
     """Simple additive recurrence low-discrepancy sequence in 2D.
 
     Uses the golden ratio φ = (1+√5)/2 and its generalization for 2D:
@@ -191,7 +191,7 @@ fn sobol_like_2d(n: Int) -> List[List[Float64]]:
 # ── discrepancy_l2_star ──────────────────────────────────────────────────────
 
 
-fn discrepancy_l2_star(points: List[List[Float64]]) -> Float64:
+def discrepancy_l2_star(points: List[List[Float64]]) -> Float64:
     """L2-star discrepancy for 2D point sets.
 
     Measures how uniformly distributed a set of 2D points is in [0,1]².

@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp, log, pow
 
 
-fn nernst_potential(
+def nernst_potential(
     z: Float64, conc_outside: Float64, conc_inside: Float64, temperature: Float64
 ) -> Float64:
     """Nernst equation: reversal potential for a single ion.
@@ -39,7 +39,7 @@ fn nernst_potential(
     return (R * temperature / (z * F)) * log(conc_outside / conc_inside) * 1000.0
 
 
-fn goldman_equation(
+def goldman_equation(
     pk: Float64, pna: Float64, pcl: Float64,
     k_out: Float64, na_out: Float64, cl_in: Float64,
     k_in: Float64, na_in: Float64, cl_out: Float64
@@ -65,7 +65,7 @@ fn goldman_equation(
     return (R * T / F) * log(num / den) * 1000.0
 
 
-fn membrane_time_constant(r_membrane: Float64, c_membrane: Float64) -> Float64:
+def membrane_time_constant(r_membrane: Float64, c_membrane: Float64) -> Float64:
     """Membrane time constant: τm = Rm·Cm.
 
     Args:
@@ -80,7 +80,7 @@ fn membrane_time_constant(r_membrane: Float64, c_membrane: Float64) -> Float64:
     return r_membrane * c_membrane / 1000.0  # to ms (if Rm in Ω·cm², Cm in μF/cm²)
 
 
-fn cable_length_constant(r_membrane: Float64, r_internal: Float64) -> Float64:
+def cable_length_constant(r_membrane: Float64, r_internal: Float64) -> Float64:
     """Dendritic cable length constant: λ = sqrt(Rm/Ri).
 
     Args:
@@ -95,7 +95,7 @@ fn cable_length_constant(r_membrane: Float64, r_internal: Float64) -> Float64:
     return sqrt(r_membrane / r_internal)
 
 
-fn action_potential_threshold(
+def action_potential_threshold(
     v_threshold: Float64, v_rest: Float64, r_input: Float64
 ) -> Float64:
     """Minimum current to reach action potential threshold.
@@ -115,7 +115,7 @@ fn action_potential_threshold(
     return (v_threshold - v_rest) / r_input
 
 
-fn firing_rate_simple(
+def firing_rate_simple(
     refractory_ms: Float64, integration_time_ms: Float64
 ) -> Float64:
     """Maximum firing rate from refractory period.
@@ -135,7 +135,7 @@ fn firing_rate_simple(
     return 1000.0 / total
 
 
-fn synaptic_current(
+def synaptic_current(
     conductance: Float64, v_membrane: Float64, e_synapse: Float64
 ) -> Float64:
     """Synaptic current: I_syn = g·(Vm - Esyn).
@@ -151,7 +151,7 @@ fn synaptic_current(
     return conductance * (v_membrane - e_synapse)
 
 
-fn integrate_and_fire_voltage(
+def integrate_and_fire_voltage(
     v_rest: Float64, i_input: Float64, r_input: Float64,
     tau: Float64, time: Float64
 ) -> Float64:
@@ -174,7 +174,7 @@ fn integrate_and_fire_voltage(
     return v_rest + i_input * r_input * (1.0 - exp(-time / tau))
 
 
-fn eeg_spectral_power(frequency: Float64, beta: Float64) -> Float64:
+def eeg_spectral_power(frequency: Float64, beta: Float64) -> Float64:
     """Power spectral density following 1/f^β law.
 
     Args:
@@ -189,7 +189,7 @@ fn eeg_spectral_power(frequency: Float64, beta: Float64) -> Float64:
     return 1.0 / pow(frequency, beta)
 
 
-fn conduction_velocity(axon_diameter_um: Float64) -> Float64:
+def conduction_velocity(axon_diameter_um: Float64) -> Float64:
     """Myelinated axon conduction velocity estimate.
 
     v ≈ 5.5 · √(d_axon)

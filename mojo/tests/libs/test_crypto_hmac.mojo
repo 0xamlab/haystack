@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crypto.hmac import hmac_sha256, hmac_sha256_verify
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

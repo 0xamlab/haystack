@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs
 # ── haar_forward ──────────────────────────────────────────────────────────────
 
 
-fn haar_forward(data: List[Float64]) -> List[Float64]:
+def haar_forward(data: List[Float64]) -> List[Float64]:
     """1-level Haar DWT: output = [averages..., details...].
 
     Input length must be even. Uses normalised Haar coefficients:
@@ -46,7 +46,7 @@ fn haar_forward(data: List[Float64]) -> List[Float64]:
 # ── haar_inverse ──────────────────────────────────────────────────────────────
 
 
-fn haar_inverse(coeffs: List[Float64]) -> List[Float64]:
+def haar_inverse(coeffs: List[Float64]) -> List[Float64]:
     """Inverse 1-level Haar DWT.
 
     Input = [averages..., details...] of length 2*half.
@@ -66,7 +66,7 @@ fn haar_inverse(coeffs: List[Float64]) -> List[Float64]:
 # ── haar_multilevel ───────────────────────────────────────────────────────────
 
 
-fn haar_multilevel(data: List[Float64], levels: Int) -> List[Float64]:
+def haar_multilevel(data: List[Float64], levels: Int) -> List[Float64]:
     """Multi-level Haar DWT.
 
     Recursively transforms the approximation part.
@@ -107,7 +107,7 @@ fn haar_multilevel(data: List[Float64], levels: Int) -> List[Float64]:
 # ── haar_multilevel_inverse ───────────────────────────────────────────────────
 
 
-fn haar_multilevel_inverse(coeffs: List[Float64], levels: Int) -> List[Float64]:
+def haar_multilevel_inverse(coeffs: List[Float64], levels: Int) -> List[Float64]:
     """Multi-level inverse Haar DWT."""
     var n = len(coeffs)
     # Find the length of the approximation part at deepest level
@@ -135,7 +135,7 @@ fn haar_multilevel_inverse(coeffs: List[Float64], levels: Int) -> List[Float64]:
 # ── threshold_hard ────────────────────────────────────────────────────────────
 
 
-fn threshold_hard(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
+def threshold_hard(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
     """Hard thresholding: zero out |c| < threshold."""
     var out = List[Float64]()
     for i in range(len(coeffs)):
@@ -149,7 +149,7 @@ fn threshold_hard(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
 # ── threshold_soft ────────────────────────────────────────────────────────────
 
 
-fn threshold_soft(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
+def threshold_soft(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
     """Soft thresholding: sign(c) * max(|c| - threshold, 0)."""
     var out = List[Float64]()
     for i in range(len(coeffs)):
@@ -167,7 +167,7 @@ fn threshold_soft(coeffs: List[Float64], threshold: Float64) -> List[Float64]:
 # ── denoise_haar ──────────────────────────────────────────────────────────────
 
 
-fn denoise_haar(
+def denoise_haar(
     data: List[Float64], threshold: Float64, levels: Int = 1
 ) -> List[Float64]:
     """Denoise: forward DWT → soft threshold → inverse DWT."""
@@ -179,7 +179,7 @@ fn denoise_haar(
 # ── energy_ratio ──────────────────────────────────────────────────────────────
 
 
-fn energy_ratio(coeffs: List[Float64]) -> Float64:
+def energy_ratio(coeffs: List[Float64]) -> Float64:
     """Ratio of detail energy to total energy.
 
     Assumes coeffs = [approx..., detail...] from haar_forward.
@@ -202,7 +202,7 @@ fn energy_ratio(coeffs: List[Float64]) -> Float64:
 # ── detail_coefficients ───────────────────────────────────────────────────────
 
 
-fn detail_coefficients(coeffs: List[Float64]) -> List[Float64]:
+def detail_coefficients(coeffs: List[Float64]) -> List[Float64]:
     """Extract detail part (second half of Haar output)."""
     var n = len(coeffs)
     var half = n // 2
@@ -215,7 +215,7 @@ fn detail_coefficients(coeffs: List[Float64]) -> List[Float64]:
 # ── approx_coefficients ──────────────────────────────────────────────────────
 
 
-fn approx_coefficients(coeffs: List[Float64]) -> List[Float64]:
+def approx_coefficients(coeffs: List[Float64]) -> List[Float64]:
     """Extract approximation part (first half of Haar output)."""
     var n = len(coeffs)
     var half = n // 2

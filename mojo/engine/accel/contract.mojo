@@ -90,7 +90,7 @@ more time being scheduled than being computed. This is the DEFAULT floor; `accel
 takes a real cost model on top of it."""
 
 
-fn accel_status_name(code: Int) -> String:
+def accel_status_name(code: Int) -> String:
     """Name a status code. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == ACCEL_OK:
         return String("ok")
@@ -109,7 +109,7 @@ fn accel_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn accel_policy_name(policy: Int) -> String:
+def accel_policy_name(policy: Int) -> String:
     """Name a policy, for reporting what was REQUESTED alongside what ran."""
     if policy == ACCEL_POLICY_AUTO:
         return String("auto")
@@ -120,7 +120,7 @@ fn accel_policy_name(policy: Int) -> String:
     return String("unknown_policy")
 
 
-fn accel_backend_name(backend: Int) -> String:
+def accel_backend_name(backend: Int) -> String:
     """Name a backend, for the `device_used` field every result carries."""
     if backend == ACCEL_BACKEND_CPU:
         return String("cpu")
@@ -135,7 +135,7 @@ fn accel_backend_name(backend: Int) -> String:
     return String("unknown_backend")
 
 
-fn accel_policy_known(policy: Int) -> Bool:
+def accel_policy_known(policy: Int) -> Bool:
     """True for a policy this plane implements.
 
     An unrecognised policy is refused rather than treated as `auto`. Defaulting would mean a typo in
@@ -149,7 +149,7 @@ fn accel_policy_known(policy: Int) -> Bool:
     )
 
 
-fn accel_resolve(policy: Int, gpu_backend: Int, gpu_usable: Bool) -> Int:
+def accel_resolve(policy: Int, gpu_backend: Int, gpu_usable: Bool) -> Int:
     """Resolve a policy to the backend that will run, or a negative status if it cannot.
 
     The ONE place the choice is made, so there is exactly one thing to test and exactly one thing to
@@ -179,7 +179,7 @@ fn accel_resolve(policy: Int, gpu_backend: Int, gpu_usable: Bool) -> Int:
     return ACCEL_BACKEND_CPU
 
 
-fn accel_worth_offloading(
+def accel_worth_offloading(
     cells: Int, arithmetic_intensity: Float64, peak_tflops: Float64,
     peak_bandwidth_tbs: Float64, launch_overhead_us: Float64
 ) -> Bool:

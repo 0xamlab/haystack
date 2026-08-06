@@ -241,7 +241,7 @@ struct GeoKnn(Copyable, Movable):
 # ── internals ─────────────────────────────────────────────────────────────────
 
 
-fn _no_grid(status: Int, n: Int, frame: Int) -> GeoGrid:
+def _no_grid(status: Int, n: Int, frame: Int) -> GeoGrid:
     var a = List[Int]()
     var b = List[Int]()
     return GeoGrid(
@@ -249,18 +249,18 @@ fn _no_grid(status: Int, n: Int, frame: Int) -> GeoGrid:
     )
 
 
-fn _no_window(status: Int, full_scan_cost: Int) -> GeoWindow:
+def _no_window(status: Int, full_scan_cost: Int) -> GeoWindow:
     var ids = List[Int]()
     return GeoWindow(status, 0, 0, 0, full_scan_cost, False, 0.0, ids^)
 
 
-fn _no_knn(status: Int, k: Int) -> GeoKnn:
+def _no_knn(status: Int, k: Int) -> GeoKnn:
     var ids = List[Int]()
     var ds = List[Float64]()
     return GeoKnn(status, k, 0, False, 0, 0, 0, False, 0.0, ids^, ds^)
 
 
-fn _cell_axis(value: Float64, lo: Float64, width: Float64, side: Int) -> Int:
+def _cell_axis(value: Float64, lo: Float64, width: Float64, side: Int) -> Int:
     """The cell index along one axis, clamped into `[0, side - 1]`.
 
     Clamped in BOTH directions, and the comparison is done in floating point BEFORE the
@@ -291,7 +291,7 @@ fn _cell_axis(value: Float64, lo: Float64, width: Float64, side: Int) -> Int:
     return idx
 
 
-fn _side_for(n: Int, target_per_cell: Int) -> Int:
+def _side_for(n: Int, target_per_cell: Int) -> Int:
     """The smallest `side` with `side * side * target_per_cell >= n`, capped at the ceiling.
 
     An integer loop rather than `ceil(sqrt(n / target))`: `side` is at most 1024, so the loop
@@ -320,7 +320,7 @@ fn _side_for(n: Int, target_per_cell: Int) -> Int:
     return GEO_MAX_GRID_SIDE
 
 
-fn _ring_gap_lower_m(
+def _ring_gap_lower_m(
     gap_coord: Float64,
     frame: Int,
     min_x: Float64,
@@ -343,7 +343,7 @@ fn _ring_gap_lower_m(
 # ── build ─────────────────────────────────────────────────────────────────────
 
 
-fn grid_build_flat(
+def grid_build_flat(
     xs: List[Float64], ys: List[Float64], n: Int, frame: Int, target_per_cell: Int
 ) -> GeoGrid:
     """Build a uniform cell grid over the first `n` points, in their own extent.
@@ -454,7 +454,7 @@ fn grid_build_flat(
     )
 
 
-fn grid_validate_flat(
+def grid_validate_flat(
     cell_start: List[Int], cell_items: List[Int], n: Int, side: Int
 ) -> Int:
     """The FULL O(n + cells) certificate for a layout, for a caller who wants one.
@@ -499,7 +499,7 @@ fn grid_validate_flat(
 # ── window query ──────────────────────────────────────────────────────────────
 
 
-fn _window_defect(
+def _window_defect(
     qminx: Float64, qminy: Float64, qmaxx: Float64, qmaxy: Float64, frame: Int
 ) -> Int:
     """`GEO_OK` for a usable query box, else why it is not one.
@@ -537,7 +537,7 @@ fn _window_defect(
 # function simply is not there. Measured on this package: `grid_window_flat` and
 # `grid_knn_flat` at one parameter per line closed on line 17 and were both silently absent
 # from the contract until they were packed. Do not reflow these.
-fn window_scan_flat(
+def window_scan_flat(
     xs: List[Float64], ys: List[Float64], n: Int,
     qminx: Float64, qminy: Float64, qmaxx: Float64, qmaxy: Float64, frame: Int,
 ) -> GeoWindow:
@@ -570,7 +570,7 @@ fn window_scan_flat(
 
 
 # Packing is load-bearing — see the note above `window_scan_flat`.
-fn grid_window_flat(
+def grid_window_flat(
     cell_start: List[Int], cell_items: List[Int],
     xs: List[Float64], ys: List[Float64], n: Int, side: Int,
     min_x: Float64, min_y: Float64, cell_w: Float64, cell_h: Float64,
@@ -668,7 +668,7 @@ fn grid_window_flat(
 # ── k nearest ─────────────────────────────────────────────────────────────────
 
 
-fn _knn_insert(
+def _knn_insert(
     mut ids: List[Int],
     mut dists: List[Float64],
     k: Int,
@@ -705,7 +705,7 @@ fn _knn_insert(
 
 
 # Packing is load-bearing — see the note above `window_scan_flat`.
-fn knn_scan_flat(
+def knn_scan_flat(
     xs: List[Float64], ys: List[Float64], n: Int,
     qx: Float64, qy: Float64, k: Int, frame: Int, metric: Int,
 ) -> GeoKnn:
@@ -767,7 +767,7 @@ fn knn_scan_flat(
 
 
 # Packing is load-bearing — see the note above `window_scan_flat`.
-fn grid_knn_flat(
+def grid_knn_flat(
     cell_start: List[Int], cell_items: List[Int],
     xs: List[Float64], ys: List[Float64], n: Int, side: Int,
     min_x: Float64, min_y: Float64, cell_w: Float64, cell_h: Float64,

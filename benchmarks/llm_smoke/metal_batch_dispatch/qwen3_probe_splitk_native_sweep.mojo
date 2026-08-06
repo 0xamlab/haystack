@@ -231,7 +231,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
     `pos_offsets`/`nkeys_offsets` patching already relies on, just duplicated across two plans instead
     of one."""
 
-    fn __init__(
+    def __init__(
         out self, d_model: Int, h_q: Int, h_kv: Int, d_head: Int, d_ff: Int,
         n_layers: Int, vocab: Int, max_ctx: Int, eps: Float64, scale: Float64, n_splits_max: Int,
     ) raises:
@@ -470,7 +470,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
 
         self._build_descriptors(n_qkv)
 
-    fn _ensure_deep_initialized(mut self) raises:
+    def _ensure_deep_initialized(mut self) raises:
         """Lazily finishes constructing the deep-context (split/merge) path — the two kernel
         compiles, the three scratch-buffer allocations, and building `self.descriptors_deep` — the
         FIRST time `step()` actually crosses `_ATTN_SPLITK_THRESHOLD`, instead of unconditionally in
@@ -514,7 +514,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
         self._build_descriptors_deep(n_qkv)
         self.deep_ready = True
 
-    fn _build_descriptors(mut self, n_qkv: Int) raises:
+    def _build_descriptors(mut self, n_qkv: Int) raises:
         """Same descriptor PLAN as `_MBQwen3I8AllSimd2`'s own — same roles, same grid/threadgroup
         shapes, same per-step-varying slots; both the lm_head role's AND the argmax_reduce role's
         descriptors are unaffected (each still carries the SAME argument count and order —
@@ -652,7 +652,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn _build_descriptors_deep(mut self, n_qkv: Int) raises:
+    def _build_descriptors_deep(mut self, n_qkv: Int) raises:
         """The SECOND descriptor table `step()` submits when `n_keys >= _ATTN_SPLITK_THRESHOLD` —
         IDENTICAL per-layer plan to `_build_descriptors` above, roles and order both, with exactly
         ONE substitution: the single `_ROLE_SDPA` dispatch (`grid_x=h_q`) is replaced by TWO
@@ -839,7 +839,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
                 + String(MB_ERR_DISPATCH_COUNT_MISMATCH)
             )
 
-    fn set_n_splits(mut self, new_n_splits: Int) raises:
+    def set_n_splits(mut self, new_n_splits: Int) raises:
         """Scratch-sweep-only mutator. `_mb_set_header` (`metaldispatch.ffi`) only ever writes a
         descriptor's 16-byte HEADER (pipeline_idx/grid_x/threads_x/num_args) -- never the args area --
         so calling it again here to change `grid_x` cannot corrupt any argument this same descriptor
@@ -867,13 +867,13 @@ struct _MBQwen3I8SplitKSweep(Movable):
             _mb_set_arg_int(self.descriptors_deep, d_split, 7, new_n_splits)
             _mb_set_arg_int(self.descriptors_deep, d_merge, 4, new_n_splits)
 
-    fn device_name(self) -> String:
+    def device_name(self) -> String:
         return "metal (batched shim, int8 weights, SDPA + GEMV + lm_head + argmax-reduce SIMD-shuffle reduction, deep split-K native single-SIMD-group reduction)"
 
-    fn dispatch_budget(self) -> Int:
+    def dispatch_budget(self) -> Int:
         return self.n_descriptors
 
-    fn upload_globals(
+    def upload_globals(
         mut self, embed: List[Float64], final_norm: List[Float64],
         cos_t: List[Float64], sin_t: List[Float64], n_pos: Int,
     ) raises -> Int:
@@ -897,7 +897,7 @@ struct _MBQwen3I8SplitKSweep(Movable):
             sin_f[i] = Float32(sin_t[i])
         return MB_OK
 
-    fn upload_layer(
+    def upload_layer(
         mut self, layer: Int,
         ln1: List[Float64], ln2: List[Float64], qn: List[Float64], kn: List[Float64],
         wq: List[Float64], wk: List[Float64], wv: List[Float64], wo: List[Float64],
@@ -956,10 +956,10 @@ struct _MBQwen3I8SplitKSweep(Movable):
             return s
         return MB_OK
 
-    fn seal(mut self) -> Int:
+    def seal(mut self) -> Int:
         return MB_OK
 
-    fn step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
+    def step(mut self, token_id: Int, pos: Int) raises -> _StepOut:
         """`_MBQwen3I8AllSimd2.step`'s own body (which is itself `_MBQwen3I8AllSimd.step`'s), PLUS
         one gate: below `_ATTN_SPLITK_THRESHOLD`, this is BYTE-FOR-BYTE that body, patching and
         submitting `self.descriptors` exactly as every sibling struct's `step()` does — the published
@@ -1030,19 +1030,19 @@ struct _MBQwen3I8SplitKSweep(Movable):
             return _StepOut(tok, lg, dispatches_used, MB_OK)
 
 
-fn _mb_counters_supported() -> Int:
+def _mb_counters_supported() -> Int:
     return Int(external_call["algenta_counters_supported", Int64]())
 
 
-fn _mb_timestamp_frequency() -> UInt64:
+def _mb_timestamp_frequency() -> UInt64:
     return external_call["algenta_timestamp_frequency", UInt64]()
 
 
-fn _mb_sample_gpu_timestamp() -> UInt64:
+def _mb_sample_gpu_timestamp() -> UInt64:
     return external_call["algenta_sample_gpu_timestamp", UInt64]()
 
 
-fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
+def _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     var t_wall0 = perf_counter_ns()
     var gpu0 = _mb_sample_gpu_timestamp()
     var deadline = t_wall0 + UInt(hold_ms) * 1_000_000
@@ -1057,11 +1057,11 @@ fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     return 1.0e9 / tick_rate_hz
 
 
-fn _mb_open_counters(max_samples: Int) -> Int:
+def _mb_open_counters(max_samples: Int) -> Int:
     return Int(external_call["algenta_open_counters", Int64, Int64](Int64(max_samples)))
 
 
-fn _mb_run_token_counters(
+def _mb_run_token_counters(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
     n: Int,
     out_ticks: UnsafePointer[UInt64, origin=MutAnyOrigin],
@@ -1075,7 +1075,7 @@ fn _mb_run_token_counters(
     )
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -1088,7 +1088,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -1097,7 +1097,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -1111,12 +1111,12 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _check_mb(status: Int) raises:
+def _check_mb(status: Int) raises:
     if status != MB_OK:
         raise Error(
             "qwen3_probe_splitk_native_sweep: metaldispatch call failed, status=" + String(status)
@@ -1124,7 +1124,7 @@ fn _check_mb(status: Int) raises:
         )
 
 
-fn _sample_shallow_sdpa(
+def _sample_shallow_sdpa(
     mut s: _MBQwen3I8SplitKSweep,
     pos: Int,
     n_samples: Int,
@@ -1168,7 +1168,7 @@ fn _sample_shallow_sdpa(
     wall_ms_out = wall_total_ms / Float64(n_samples)
 
 
-fn _sample_split_merge(
+def _sample_split_merge(
     mut s: _MBQwen3I8SplitKSweep,
     pos: Int,
     n_samples: Int,

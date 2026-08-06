@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from autonomous_vehicles import safe_following_distance, time_to_collision, braking_distance, sensor_range_required, lane_change_distance, perception_latency_distance, comfort_deceleration, emergency_deceleration, headway_time, fuel_efficiency_at_speed, v2x_communication_range, localization_error_gps
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

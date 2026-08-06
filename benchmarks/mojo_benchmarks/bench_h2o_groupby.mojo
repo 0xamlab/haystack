@@ -83,7 +83,7 @@ comptime N_QUESTIONS: Int = 6
 comptime GATE_MARGIN: Float64 = 1.05
 
 
-fn _load_column(name: String) raises -> Float64Array:
+def _load_column(name: String) raises -> Float64Array:
     """One raw float64 column written by generate.py, as a no-null column."""
     var f = open(DATA_DIR + "/" + name + ".f64.bin", "r")
     var raw = f.read_bytes()
@@ -100,7 +100,7 @@ fn _load_column(name: String) raises -> Float64Array:
     return float64_from_list(values^)
 
 
-fn _checksum(values: List[Float64], present: List[Bool]) -> Float64:
+def _checksum(values: List[Float64], present: List[Bool]) -> Float64:
     var total: Float64 = 0.0
     for i in range(len(values)):
         if present[i]:
@@ -108,7 +108,7 @@ fn _checksum(values: List[Float64], present: List[Bool]) -> Float64:
     return total
 
 
-fn _report(name: String, ns: UInt, groups: Int, checksum: Float64):
+def _report(name: String, ns: UInt, groups: Int, checksum: Float64):
     print(
         "  " + name
         + "  s=" + String(Float64(Int(ns)) / 1e9)
@@ -117,7 +117,7 @@ fn _report(name: String, ns: UInt, groups: Int, checksum: Float64):
     )
 
 
-fn _agree(a: Float64, b: Float64, rel_tol: Float64) -> Bool:
+def _agree(a: Float64, b: Float64, rel_tol: Float64) -> Bool:
     """|a-b| within rel_tol of max(1, |a|) — the cross-round checksum gate."""
     var scale = a if a > 0.0 else -a
     if scale < 1.0:
@@ -128,11 +128,11 @@ fn _agree(a: Float64, b: Float64, rel_tol: Float64) -> Bool:
     return delta <= rel_tol * scale
 
 
-fn _record(mut times: List[Float64], q: Int, rep: Int, ns: UInt):
+def _record(mut times: List[Float64], q: Int, rep: Int, ns: UInt):
     times[q * REPS + rep] = Float64(Int(ns)) / 1e9
 
 
-fn _best_of(times: List[Float64], q: Int) -> Float64:
+def _best_of(times: List[Float64], q: Int) -> Float64:
     var best = 1e30
     for rep in range(REPS):
         if times[q * REPS + rep] < best:
@@ -140,7 +140,7 @@ fn _best_of(times: List[Float64], q: Int) -> Float64:
     return best
 
 
-fn main() raises:
+def main() raises:
     print("=== H2O groupby 0.5 GB tier (N=1e7, K=100) via query.aggregate ===")
     print("  loading columns from " + DATA_DIR + " ...")
     var id1 = _load_column("id1")

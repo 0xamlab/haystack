@@ -16,11 +16,11 @@ Public API:
 from std.math import log, sin, sqrt, pow
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn mineral_density(mass_g: Float64, volume_cm3: Float64) -> Float64:
+def mineral_density(mass_g: Float64, volume_cm3: Float64) -> Float64:
     """Mineral density: ρ = m/V.
 
     Args:
@@ -35,7 +35,7 @@ fn mineral_density(mass_g: Float64, volume_cm3: Float64) -> Float64:
     return mass_g / volume_cm3
 
 
-fn mohs_hardness_scratch(hardness_a: Float64, hardness_b: Float64) -> Float64:
+def mohs_hardness_scratch(hardness_a: Float64, hardness_b: Float64) -> Float64:
     """Mohs hardness difference (positive: A scratches B).
 
     Args:
@@ -48,7 +48,7 @@ fn mohs_hardness_scratch(hardness_a: Float64, hardness_b: Float64) -> Float64:
     return hardness_a - hardness_b
 
 
-fn crystal_d_spacing(n: Float64, wavelength_angstrom: Float64, theta_rad: Float64) -> Float64:
+def crystal_d_spacing(n: Float64, wavelength_angstrom: Float64, theta_rad: Float64) -> Float64:
     """Bragg's law d-spacing: d = nλ / (2·sin(θ)).
 
     Args:
@@ -65,7 +65,7 @@ fn crystal_d_spacing(n: Float64, wavelength_angstrom: Float64, theta_rad: Float6
     return n * wavelength_angstrom / (2.0 * s)
 
 
-fn mineral_formula_weight(
+def mineral_formula_weight(
     atomic_weight1: Float64, count1: Float64,
     atomic_weight2: Float64, count2: Float64
 ) -> Float64:
@@ -85,7 +85,7 @@ fn mineral_formula_weight(
     return count1 * atomic_weight1 + count2 * atomic_weight2
 
 
-fn solubility_product(
+def solubility_product(
     cation_conc: Float64, anion_conc: Float64,
     cation_stoich: Float64, anion_stoich: Float64
 ) -> Float64:
@@ -105,7 +105,7 @@ fn solubility_product(
     return pow(cation_conc, cation_stoich) * pow(anion_conc, anion_stoich)
 
 
-fn geochemical_activity(
+def geochemical_activity(
     concentration: Float64, activity_coefficient: Float64
 ) -> Float64:
     """Ion activity: a = γ·c.
@@ -120,7 +120,7 @@ fn geochemical_activity(
     return activity_coefficient * concentration
 
 
-fn mineral_saturation_index(
+def mineral_saturation_index(
     ion_activity_product: Float64, ksp: Float64
 ) -> Float64:
     """Saturation index: SI = log10(IAP/Ksp).
@@ -137,7 +137,7 @@ fn mineral_saturation_index(
     return _log10(ion_activity_product / ksp)
 
 
-fn specific_gravity_ratio(mineral_density_g_cm3: Float64) -> Float64:
+def specific_gravity_ratio(mineral_density_g_cm3: Float64) -> Float64:
     """Specific gravity relative to water at 4°C.
 
     SG = ρ_mineral / 1.0 g/cm³
@@ -151,7 +151,7 @@ fn specific_gravity_ratio(mineral_density_g_cm3: Float64) -> Float64:
     return mineral_density_g_cm3  # / 1.0 g/cm³ water
 
 
-fn thermal_conductivity_mixing(
+def thermal_conductivity_mixing(
     k1: Float64, k2: Float64, vol_fraction1: Float64
 ) -> Float64:
     """Effective thermal conductivity of two-mineral mixture (geometric mean).
@@ -172,7 +172,7 @@ fn thermal_conductivity_mixing(
     return pow(k1, f) * pow(k2, 1.0 - f)
 
 
-fn birefringence(n_extraordinary: Float64, n_ordinary: Float64) -> Float64:
+def birefringence(n_extraordinary: Float64, n_ordinary: Float64) -> Float64:
     """Optical birefringence: Δn = |ne - no|.
 
     Args:

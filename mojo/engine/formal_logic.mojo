@@ -25,7 +25,7 @@ Public API:
 # ── truth_and ────────────────────────────────────────────────────────────────
 
 
-fn truth_and(a: Bool, b: Bool) -> Bool:
+def truth_and(a: Bool, b: Bool) -> Bool:
     """Logical AND: True iff both are True."""
     return a and b
 
@@ -33,7 +33,7 @@ fn truth_and(a: Bool, b: Bool) -> Bool:
 # ── truth_or ─────────────────────────────────────────────────────────────────
 
 
-fn truth_or(a: Bool, b: Bool) -> Bool:
+def truth_or(a: Bool, b: Bool) -> Bool:
     """Logical OR: True iff at least one is True."""
     return a or b
 
@@ -41,7 +41,7 @@ fn truth_or(a: Bool, b: Bool) -> Bool:
 # ── truth_not ────────────────────────────────────────────────────────────────
 
 
-fn truth_not(a: Bool) -> Bool:
+def truth_not(a: Bool) -> Bool:
     """Logical NOT: negation."""
     return not a
 
@@ -49,7 +49,7 @@ fn truth_not(a: Bool) -> Bool:
 # ── truth_implies ────────────────────────────────────────────────────────────
 
 
-fn truth_implies(a: Bool, b: Bool) -> Bool:
+def truth_implies(a: Bool, b: Bool) -> Bool:
     """Material implication: a → b ≡ ¬a ∨ b."""
     return (not a) or b
 
@@ -57,7 +57,7 @@ fn truth_implies(a: Bool, b: Bool) -> Bool:
 # ── truth_iff ────────────────────────────────────────────────────────────────
 
 
-fn truth_iff(a: Bool, b: Bool) -> Bool:
+def truth_iff(a: Bool, b: Bool) -> Bool:
     """Biconditional: a ↔ b. True iff both have same truth value."""
     return a == b
 
@@ -65,7 +65,7 @@ fn truth_iff(a: Bool, b: Bool) -> Bool:
 # ── truth_xor ────────────────────────────────────────────────────────────────
 
 
-fn truth_xor(a: Bool, b: Bool) -> Bool:
+def truth_xor(a: Bool, b: Bool) -> Bool:
     """Exclusive OR: True iff exactly one is True."""
     return a != b
 
@@ -73,7 +73,7 @@ fn truth_xor(a: Bool, b: Bool) -> Bool:
 # ── truth_nand ───────────────────────────────────────────────────────────────
 
 
-fn truth_nand(a: Bool, b: Bool) -> Bool:
+def truth_nand(a: Bool, b: Bool) -> Bool:
     """NOT AND: ¬(a ∧ b)."""
     return not (a and b)
 
@@ -81,7 +81,7 @@ fn truth_nand(a: Bool, b: Bool) -> Bool:
 # ── truth_nor ────────────────────────────────────────────────────────────────
 
 
-fn truth_nor(a: Bool, b: Bool) -> Bool:
+def truth_nor(a: Bool, b: Bool) -> Bool:
     """NOT OR: ¬(a ∨ b)."""
     return not (a or b)
 
@@ -89,7 +89,7 @@ fn truth_nor(a: Bool, b: Bool) -> Bool:
 # ── modus_ponens ─────────────────────────────────────────────────────────────
 
 
-fn modus_ponens(p: Bool, p_implies_q: Bool) -> Bool:
+def modus_ponens(p: Bool, p_implies_q: Bool) -> Bool:
     """Modus ponens: If p is True and p→q is True, conclude q.
     Returns True (q) only when both premises hold.
     If premises don't hold, returns False (no valid conclusion)."""
@@ -101,7 +101,7 @@ fn modus_ponens(p: Bool, p_implies_q: Bool) -> Bool:
 # ── modus_tollens ────────────────────────────────────────────────────────────
 
 
-fn modus_tollens(not_q: Bool, p_implies_q: Bool) -> Bool:
+def modus_tollens(not_q: Bool, p_implies_q: Bool) -> Bool:
     """Modus tollens: If ¬q is True and p→q is True, conclude ¬p (True).
     Returns True (¬p) only when both premises hold."""
     if not_q and p_implies_q:
@@ -112,7 +112,7 @@ fn modus_tollens(not_q: Bool, p_implies_q: Bool) -> Bool:
 # ── hypothetical_syllogism ───────────────────────────────────────────────────
 
 
-fn hypothetical_syllogism(p_implies_q: Bool, q_implies_r: Bool) -> Bool:
+def hypothetical_syllogism(p_implies_q: Bool, q_implies_r: Bool) -> Bool:
     """If p→q and q→r, then p→r.
     Returns True when both conditional premises are True."""
     return p_implies_q and q_implies_r
@@ -121,7 +121,7 @@ fn hypothetical_syllogism(p_implies_q: Bool, q_implies_r: Bool) -> Bool:
 # ── disjunctive_syllogism ────────────────────────────────────────────────────
 
 
-fn disjunctive_syllogism(p_or_q: Bool, not_p: Bool) -> Bool:
+def disjunctive_syllogism(p_or_q: Bool, not_p: Bool) -> Bool:
     """If p∨q and ¬p, then q.
     Returns True (concluding q) when both premises hold."""
     return p_or_q and not_p
@@ -130,7 +130,7 @@ fn disjunctive_syllogism(p_or_q: Bool, not_p: Bool) -> Bool:
 # ── _eval_2var ───────────────────────────────────────────────────────────────
 
 
-fn _eval_2var(fn_idx: Int, a: Bool, b: Bool) -> Bool:
+def _eval_2var(fn_idx: Int, a: Bool, b: Bool) -> Bool:
     """Evaluate a 2-variable boolean function by index.
     fn_idx encodes one of 16 possible 2-var functions:
       0=contradiction, 1=AND, 2=a∧¬b, 3=a, 4=¬a∧b, 5=b,
@@ -174,7 +174,7 @@ fn _eval_2var(fn_idx: Int, a: Bool, b: Bool) -> Bool:
 # ── is_tautology_2var ────────────────────────────────────────────────────────
 
 
-fn is_tautology_2var(fn_idx: Int) -> Bool:
+def is_tautology_2var(fn_idx: Int) -> Bool:
     """Check if a 2-variable function (by index) is a tautology (all True)."""
     var vals = List[Bool]()
     vals.append(False)
@@ -189,7 +189,7 @@ fn is_tautology_2var(fn_idx: Int) -> Bool:
 # ── is_contradiction_2var ────────────────────────────────────────────────────
 
 
-fn is_contradiction_2var(fn_idx: Int) -> Bool:
+def is_contradiction_2var(fn_idx: Int) -> Bool:
     """Check if a 2-variable function (by index) is a contradiction (all False)."""
     var vals = List[Bool]()
     vals.append(False)

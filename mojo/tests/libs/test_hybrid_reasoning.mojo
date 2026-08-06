@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hybrid_reasoning import ml_simulation_blend, optimization_objective_gate, rule_violation_penalty, simulation_rollout_value, ml_confidence_simulation_cost, counterfactual_reasoning_score, symbolic_constraint_score, reasoning_chain_coherence, hybrid_uncertainty_estimate, meta_reasoning_switch
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -31,7 +31,7 @@ def _assert_close(got: Float64, expected: Float64, tol: Float64, label: String) 
         raise Error("assertion failed: " + label)
 
 
-fn _bad_clip() -> List[Float64]:
+def _bad_clip() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(16):
         flat.append(10.0)
@@ -45,7 +45,7 @@ fn _bad_clip() -> List[Float64]:
     return flat^
 
 
-fn _good_clip() -> List[Float64]:
+def _good_clip() -> List[Float64]:
     var flat = List[Float64]()
     for frame_index in range(3):
         for y in range(4):

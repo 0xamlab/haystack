@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cellular import grid_create, grid_randomize, rule_lookup, elementary_ca_step, run_elementary_ca
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

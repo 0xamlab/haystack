@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp
 
 
-fn molecular_weight_da(
+def molecular_weight_da(
     residue_count: Float64, avg_residue_mass: Float64
 ) -> Float64:
     """Protein molecular weight estimate.
@@ -33,7 +33,7 @@ fn molecular_weight_da(
     return residue_count * avg_residue_mass + 18.0
 
 
-fn isoelectric_point_approx(
+def isoelectric_point_approx(
     positive_residues: Float64, negative_residues: Float64
 ) -> Float64:
     """Approximate isoelectric point from charged residue counts.
@@ -51,7 +51,7 @@ fn isoelectric_point_approx(
     return 7.0 + log(ratio) * 1.5
 
 
-fn extinction_coefficient(
+def extinction_coefficient(
     trp_count: Float64, tyr_count: Float64, cys_pairs: Float64
 ) -> Float64:
     """Molar extinction coefficient at 280 nm (Pace 1995).
@@ -69,7 +69,7 @@ fn extinction_coefficient(
     return 5500.0 * trp_count + 1490.0 * tyr_count + 125.0 * cys_pairs
 
 
-fn protein_concentration_a280(
+def protein_concentration_a280(
     absorbance_280: Float64, extinction_coeff: Float64, path_cm: Float64
 ) -> Float64:
     """Protein concentration from Beer-Lambert at 280 nm.
@@ -90,7 +90,7 @@ fn protein_concentration_a280(
     return absorbance_280 / denom
 
 
-fn sequence_coverage(
+def sequence_coverage(
     identified_residues: Float64, total_residues: Float64
 ) -> Float64:
     """Sequence coverage from identified peptides.
@@ -107,7 +107,7 @@ fn sequence_coverage(
     return identified_residues / total_residues
 
 
-fn peptide_mass_monoisotopic(
+def peptide_mass_monoisotopic(
     formula_mass: Float64, charge: Float64
 ) -> Float64:
     """m/z of a peptide ion.
@@ -126,7 +126,7 @@ fn peptide_mass_monoisotopic(
     return (formula_mass + charge * 1.00728) / charge
 
 
-fn peak_area_ratio(
+def peak_area_ratio(
     sample_area: Float64, reference_area: Float64
 ) -> Float64:
     """Label-free quantification ratio from peak areas.
@@ -143,7 +143,7 @@ fn peak_area_ratio(
     return sample_area / reference_area
 
 
-fn protein_abundance_index(
+def protein_abundance_index(
     observed_peptides: Float64, theoretical_peptides: Float64
 ) -> Float64:
     """Protein Abundance Index: PAI = observed / theoretical peptides.
@@ -160,7 +160,7 @@ fn protein_abundance_index(
     return observed_peptides / theoretical_peptides
 
 
-fn empa_score(pai: Float64) -> Float64:
+def empa_score(pai: Float64) -> Float64:
     """Exponentially modified PAI (emPAI) for absolute quantification.
 
     emPAI = 10^PAI - 1
@@ -174,7 +174,7 @@ fn empa_score(pai: Float64) -> Float64:
     return (10.0 ** pai) - 1.0
 
 
-fn fdr_target_decoy(
+def fdr_target_decoy(
     decoy_hits: Float64, target_hits: Float64
 ) -> Float64:
     """False discovery rate by target-decoy strategy.

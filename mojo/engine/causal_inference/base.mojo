@@ -213,7 +213,7 @@ comptime MAX_CI_SYNTH_WORK: Int = 1 << 28
 comptime MAX_CI_ITERATIONS: Int = 1 << 20
 
 
-fn ci_status_name(code: Int) -> String:
+def ci_status_name(code: Int) -> String:
     """Name for a status code, so a failure surfaces the defect and not a bare number.
 
     One vocabulary for the whole package (rule 4e). An unrecognised code is reported as
@@ -265,7 +265,7 @@ fn ci_status_name(code: Int) -> String:
 # ── finiteness ───────────────────────────────────────────────────────────────
 
 
-fn ci_finite(v: Float64) -> Bool:
+def ci_finite(v: Float64) -> Bool:
     """True when `v` is neither NaN nor +/-inf.
 
     NaN fails `v == v`; +/-inf fails `(v - v) == 0.0` because `inf - inf` is NaN. The same
@@ -278,7 +278,7 @@ fn ci_finite(v: Float64) -> Bool:
     return v == v and (v - v) == 0.0
 
 
-fn ci_all_finite(v: List[Float64]) -> Bool:
+def ci_all_finite(v: List[Float64]) -> Bool:
     """True when every element of the WHOLE list is finite.
 
     Deliberately not `(v, n)`: a count parameter here would be one more thing to bound, and
@@ -293,7 +293,7 @@ fn ci_all_finite(v: List[Float64]) -> Bool:
 # ── the one tolerance builder (rule 4b) ──────────────────────────────────────
 
 
-fn ci_tolerance(magnitude: Float64, abs_tol: Float64) -> Float64:
+def ci_tolerance(magnitude: Float64, abs_tol: Float64) -> Float64:
     """Rounding allowance for ONE comparison: `abs_tol + 1024 * DBL_EPSILON * magnitude`.
 
     `magnitude` must be the magnitude of THE QUANTITY BEING JUDGED — for a residual
@@ -328,7 +328,7 @@ fn ci_tolerance(magnitude: Float64, abs_tol: Float64) -> Float64:
 # ── budgets ──────────────────────────────────────────────────────────────────
 
 
-fn ci_product_fits(a: Int, b: Int, budget: Int) -> Bool:
+def ci_product_fits(a: Int, b: Int, budget: Int) -> Bool:
     """True when `a * b <= budget`, WITHOUT forming `a * b`.
 
     `a * b` is a wrapping 64-bit multiply, so a guard written on the product is not a bound
@@ -348,7 +348,7 @@ fn ci_product_fits(a: Int, b: Int, budget: Int) -> Bool:
     return True
 
 
-fn ci_product3_fits(a: Int, b: Int, c: Int, budget: Int) -> Bool:
+def ci_product3_fits(a: Int, b: Int, c: Int, budget: Int) -> Bool:
     """True when `a * b * c <= budget`, forming no product larger than `budget`.
 
     Grown factor by factor: once `a * b <= budget` is established the product is safe to
@@ -363,7 +363,7 @@ fn ci_product3_fits(a: Int, b: Int, c: Int, budget: Int) -> Bool:
     return ci_product_fits(a * b, c, budget)
 
 
-fn ci_matrix_fits(n_rows: Int, n_cols: Int, length: Int) -> Bool:
+def ci_matrix_fits(n_rows: Int, n_cols: Int, length: Int) -> Bool:
     """True when `n_rows x n_cols` is exactly `length` cells AND both sit under this
     package's ceilings.
 
@@ -382,7 +382,7 @@ fn ci_matrix_fits(n_rows: Int, n_cols: Int, length: Int) -> Bool:
     return dims_fit(n_rows, n_cols, length)
 
 
-fn ci_panel_fits(n_units: Int, n_periods: Int, length: Int) -> Bool:
+def ci_panel_fits(n_units: Int, n_periods: Int, length: Int) -> Bool:
     """`ci_matrix_fits` for a panel, whose columns are PERIODS and not features.
 
     A separate function rather than a wider `ci_matrix_fits`, because `MAX_CI_FEATURES` (2^7)
@@ -399,7 +399,7 @@ fn ci_panel_fits(n_units: Int, n_periods: Int, length: Int) -> Bool:
 # ── treatment vectors ────────────────────────────────────────────────────────
 
 
-fn ci_treatment_defect(treatment: List[Int]) -> Int:
+def ci_treatment_defect(treatment: List[Int]) -> Int:
     """`CI_OK`, or the code naming why this is not a binary treatment vector.
 
     Every estimator here is defined for `T in {0, 1}`, and a value of 2 is not a treatment
@@ -427,7 +427,7 @@ fn ci_treatment_defect(treatment: List[Int]) -> Int:
     return CI_OK
 
 
-fn ci_count_treated(treatment: List[Int]) -> Int:
+def ci_count_treated(treatment: List[Int]) -> Int:
     """How many entries equal 1. Counts nothing else as treated; see `ci_treatment_defect`."""
     var n_t = 0
     for i in range(len(treatment)):
@@ -439,7 +439,7 @@ fn ci_count_treated(treatment: List[Int]) -> Int:
 # ── deterministic index orderings ────────────────────────────────────────────
 
 
-fn _argsort(keys: List[Float64], descending: Bool) -> List[Int]:
+def _argsort(keys: List[Float64], descending: Bool) -> List[Int]:
     """STABLE merge sort over indices. Iterative (bottom-up), never recursive.
 
     Stability is the determinism property that matters: ties break by original index, so the
@@ -502,7 +502,7 @@ fn _argsort(keys: List[Float64], descending: Bool) -> List[Int]:
     return order^
 
 
-fn ci_argsort_asc(keys: List[Float64]) -> List[Int]:
+def ci_argsort_asc(keys: List[Float64]) -> List[Int]:
     """Indices of `keys` in ascending order, ties by original index. Empty on a non-finite key.
 
     A NaN key makes every comparison False, so a sort would still terminate and would return
@@ -514,14 +514,14 @@ fn ci_argsort_asc(keys: List[Float64]) -> List[Int]:
     return _argsort(keys, False)
 
 
-fn ci_argsort_desc(keys: List[Float64]) -> List[Int]:
+def ci_argsort_desc(keys: List[Float64]) -> List[Int]:
     """Indices of `keys` in descending order, ties by original index. Empty on a non-finite key."""
     if not ci_all_finite(keys):
         return List[Int]()
     return _argsort(keys, True)
 
 
-fn ci_is_permutation(order: List[Int], n: Int) -> Bool:
+def ci_is_permutation(order: List[Int], n: Int) -> Bool:
     """True when `order` is exactly a permutation of `0..n-1`.
 
     Exists so a caller — and the suite — can CHECK a permutation instead of trusting one.

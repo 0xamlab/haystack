@@ -39,17 +39,17 @@ from compression.lz77 import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn test_kalman() raises:
+def test_kalman() raises:
     print("── Kalman Filter tests ──")
     var n_pass: Int = 0
 
@@ -257,7 +257,7 @@ fn test_kalman() raises:
     print("  Kalman: " + String(n_pass) + " assertions passed")
 
 
-fn test_queueing() raises:
+def test_queueing() raises:
     print("── Queueing Theory tests ──")
     var n_pass: Int = 0
 
@@ -333,7 +333,7 @@ fn test_queueing() raises:
     print("  Queueing: " + String(n_pass) + " assertions passed")
 
 
-fn test_lz77() raises:
+def test_lz77() raises:
     print("── LZ77 Compression tests ──")
     var n_pass: Int = 0
 
@@ -438,7 +438,7 @@ fn test_lz77() raises:
     print("  LZ77: " + String(n_pass) + " assertions passed")
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 21 Tests: Kalman, Queueing, LZ77 ===")
     test_kalman()
     test_queueing()

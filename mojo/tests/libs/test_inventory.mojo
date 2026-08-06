@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from inventory import eoq, reorder_point, safety_stock, total_inventory_cost, newsvendor_qty, service_level, abc_classify, days_of_supply, inventory_turnover, fill_rate, periodic_review_order
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

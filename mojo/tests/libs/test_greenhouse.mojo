@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from greenhouse import heat_loss_conduction, ventilation_rate, solar_gain, heating_requirement, co2_enrichment_rate, light_supplementation_hours, irrigation_volume, growing_area_utilization, energy_cost_heating, yield_per_sq_meter, temperature_setpoint_night, shade_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

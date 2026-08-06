@@ -16,7 +16,7 @@ Public API:
 from std.math import log, sqrt, exp
 
 
-fn carbonate_alkalinity(
+def carbonate_alkalinity(
     hco3_meq_l: Float64, co3_meq_l: Float64, oh_meq_l: Float64, h_meq_l: Float64
 ) -> Float64:
     """Total carbonate alkalinity.
@@ -35,7 +35,7 @@ fn carbonate_alkalinity(
     return hco3_meq_l + 2.0 * co3_meq_l + oh_meq_l - h_meq_l
 
 
-fn ionic_strength(
+def ionic_strength(
     concentrations: Float64, charges_sq: Float64
 ) -> Float64:
     """Ionic strength: I = 0.5 × Σ(ci × zi²).
@@ -50,7 +50,7 @@ fn ionic_strength(
     return 0.5 * charges_sq
 
 
-fn activity_coefficient_davies(
+def activity_coefficient_davies(
     ionic_strength: Float64, charge: Float64
 ) -> Float64:
     """Davies equation activity coefficient for ion in freshwater.
@@ -70,11 +70,11 @@ fn activity_coefficient_davies(
     return pow_10(log_gamma)
 
 
-fn pow_10(x: Float64) -> Float64:
+def pow_10(x: Float64) -> Float64:
     return exp(x * log(10.0))
 
 
-fn saturation_index_calcite(
+def saturation_index_calcite(
     ca_mmol_l: Float64, alk_meq_l: Float64, ph: Float64, temp_c: Float64
 ) -> Float64:
     """Langelier saturation index for calcite in lake water.
@@ -96,7 +96,7 @@ fn saturation_index_calcite(
     return ph - ph_sat
 
 
-fn silicon_weathering_flux(
+def silicon_weathering_flux(
     si_conc_umol_l: Float64, discharge_m3_s: Float64, catchment_km2: Float64
 ) -> Float64:
     """Silica weathering flux from river export.
@@ -117,7 +117,7 @@ fn silicon_weathering_flux(
     return flux_mol_s * 31557600.0 / catchment_km2
 
 
-fn redox_pe_eh(eh_mv: Float64, temperature_c: Float64) -> Float64:
+def redox_pe_eh(eh_mv: Float64, temperature_c: Float64) -> Float64:
     """Convert Eh to pe at given temperature.
 
     pe = Eh × F / (2.303 × R × T)
@@ -134,7 +134,7 @@ fn redox_pe_eh(eh_mv: Float64, temperature_c: Float64) -> Float64:
     return eh_mv / 1000.0 * factor
 
 
-fn phosphorus_fractionation(
+def phosphorus_fractionation(
     total_p_ug_l: Float64, dissolved_p_ug_l: Float64
 ) -> Float64:
     """Particulate phosphorus fraction.
@@ -154,7 +154,7 @@ fn phosphorus_fractionation(
     return pp
 
 
-fn nitrogen_speciation(
+def nitrogen_speciation(
     nh4_mg_l: Float64, no3_mg_l: Float64, no2_mg_l: Float64
 ) -> Float64:
     """Dissolved inorganic nitrogen sum.
@@ -172,7 +172,7 @@ fn nitrogen_speciation(
     return nh4_mg_l + no3_mg_l + no2_mg_l
 
 
-fn doc_light_attenuation(
+def doc_light_attenuation(
     doc_mg_l: Float64, specific_absorption: Float64
 ) -> Float64:
     """CDOM light attenuation from DOC.
@@ -189,7 +189,7 @@ fn doc_light_attenuation(
     return specific_absorption * doc_mg_l
 
 
-fn epilimnion_mixing_depth(
+def epilimnion_mixing_depth(
     surface_temp_c: Float64, bottom_temp_c: Float64, total_depth_m: Float64
 ) -> Float64:
     """Approximate epilimnion depth from temperature difference.

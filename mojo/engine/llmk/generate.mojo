@@ -102,7 +102,7 @@ struct GreedyResult(Copyable, Movable):
     var status: Int
 
 
-fn kv_cache_append_flat(
+def kv_cache_append_flat(
     cache: List[Float64], new_vals: List[Float64], cache_len: Int, n_new: Int
 ) -> KvAppendResult:
     """`out = cache ++ new_vals`, exact-length on both operands (rule 1). One decode step's worth of
@@ -130,7 +130,7 @@ fn kv_cache_append_flat(
     return KvAppendResult(out^, cache_len + n_new, LLMK_OK)
 
 
-fn _kv_cache_reserve_flat(max_elements: Int) -> List[Float64]:
+def _kv_cache_reserve_flat(max_elements: Int) -> List[Float64]:
     """Allocate a decode loop's ENTIRE per-layer K (or V) cache buffer once, at the maximum element
     count it will ever hold, zero-filled. Pairs with `_kv_cache_append_into_flat` below: every step
     after this one writes into memory this call already owns, so the reallocation-plus-copy
@@ -154,7 +154,7 @@ fn _kv_cache_reserve_flat(max_elements: Int) -> List[Float64]:
     return List[Float64](length=max_elements, fill=0.0)
 
 
-fn _kv_cache_append_into_flat(
+def _kv_cache_append_into_flat(
     mut cache: List[Float64], new_vals: List[Float64], cache_len: Int, n_new: Int
 ) -> Int:
     """The reserved-capacity replacement for `kv_cache_append_flat` in a decode hot loop: writes
@@ -191,7 +191,7 @@ fn _kv_cache_append_into_flat(
     return LLMK_OK
 
 
-fn greedy_argmax_flat(logits: List[Float64], n: Int) -> GreedyResult:
+def greedy_argmax_flat(logits: List[Float64], n: Int) -> GreedyResult:
     """The greedy next token: argmax over one row of `n` logits, via the frozen per-candidate formula
     `llm_sampling.greedy_token_id`.
 

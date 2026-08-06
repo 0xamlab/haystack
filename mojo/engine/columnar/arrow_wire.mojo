@@ -193,7 +193,7 @@ comptime MAX_WIRE_COLUMNS: Int = 512
 comptime _B64_ALPHABET: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 
-fn _saturating_product(a: Int, b: Int) -> Int:
+def _saturating_product(a: Int, b: Int) -> Int:
     """`a * b`, clamped instead of wrapped.
 
     `3 * 6148914691236517206` is 2 on a wrapping multiply, so a length check against a
@@ -210,7 +210,7 @@ fn _saturating_product(a: Int, b: Int) -> Int:
     return a * b
 
 
-fn _saturating_sum(a: Int, b: Int) -> Int:
+def _saturating_sum(a: Int, b: Int) -> Int:
     """`a + b`, clamped instead of wrapped. See `_saturating_product`."""
     comptime CEILING: Int = 1 << 62
     if a < 0 or b < 0:
@@ -220,7 +220,7 @@ fn _saturating_sum(a: Int, b: Int) -> Int:
     return a + b
 
 
-fn bytes_to_string(data: List[UInt8]) -> String:
+def bytes_to_string(data: List[UInt8]) -> String:
     """A String OWNING a copy of `data`, byte for byte.
 
     Two idioms are wrong here and both have cost this tree a defect:
@@ -244,7 +244,7 @@ fn bytes_to_string(data: List[UInt8]) -> String:
     return out
 
 
-fn wire_bytes_required(n_rows: Int, n_columns: Int) -> Int:
+def wire_bytes_required(n_rows: Int, n_columns: Int) -> Int:
     """Bytes a `n_rows x n_columns` Float64 batch occupies in this layout, saturating.
 
     `n_columns * (8 * n_rows + bytes_for_bits(n_rows))`. Every step saturates, so the
@@ -258,14 +258,14 @@ fn wire_bytes_required(n_rows: Int, n_columns: Int) -> Int:
     return _saturating_product(per_column, n_columns)
 
 
-fn _append_f64(mut out: List[UInt8], value: Float64):
+def _append_f64(mut out: List[UInt8], value: Float64):
     """Append `value` as 8 little-endian bytes of its IEEE-754 bit pattern."""
     var bits = bitcast[DType.uint64](value)
     for k in range(8):
         out.append(UInt8((bits >> UInt64(8 * k)) & UInt64(0xFF)))
 
 
-fn _read_f64(data: List[UInt8], at: Int) -> Float64:
+def _read_f64(data: List[UInt8], at: Int) -> Float64:
     """The double at byte offset `at`, or 0.0 if the eight bytes are not all there.
 
     The guard is unreachable from every public entry point here — each validates the
@@ -280,7 +280,7 @@ fn _read_f64(data: List[UInt8], at: Int) -> Float64:
     return bitcast[DType.float64](bits)
 
 
-fn _read_u64(data: List[UInt8], at: Int) -> UInt64:
+def _read_u64(data: List[UInt8], at: Int) -> UInt64:
     """The little-endian UInt64 at `at`, or 0. Kept UNSIGNED on purpose.
 
     An offset of 0xFFFFFFFFFFFFFFFF converted straight to `Int` is -1, and a naive
@@ -299,7 +299,7 @@ fn _read_u64(data: List[UInt8], at: Int) -> UInt64:
 # ── encode ────────────────────────────────────────────────────────────────────
 
 
-fn encode_column(column: Float64Array) -> List[UInt8]:
+def encode_column(column: Float64Array) -> List[UInt8]:
     """One column as `[validity][values]`, canonical.
 
     A slot whose validity bit is clear is written as `+0.0`, and pad bits past the
@@ -334,7 +334,7 @@ struct WireEncoded(Copyable, Movable):
     var n_columns: Int
 
 
-fn encode_batch(batch: RecordBatch) -> WireEncoded:
+def encode_batch(batch: RecordBatch) -> WireEncoded:
     """Encode every column in field order. Refuses a ragged batch.
 
     `RecordBatch.is_consistent` is the existing check for "every column is exactly
@@ -380,14 +380,14 @@ struct WireDecoded(Copyable, Movable):
     var n_columns: Int
 
 
-fn _empty_batch() -> RecordBatch:
+def _empty_batch() -> RecordBatch:
     var names = List[String]()
     var dtypes = List[Int]()
     var columns = List[Float64Array]()
     return RecordBatch(Schema(names^, dtypes^), columns^, 0)
 
 
-fn positional_names(n_columns: Int) -> List[String]:
+def positional_names(n_columns: Int) -> List[String]:
     """`col_0 .. col_{n-1}` — the names `query.plan.parse_rows` gives a positional batch.
 
     Provided so the two ingest paths can be compared for byte-identity without a caller
@@ -402,7 +402,7 @@ fn positional_names(n_columns: Int) -> List[String]:
     return names^
 
 
-fn null_dtypes(n_columns: Int) -> List[Int]:
+def null_dtypes(n_columns: Int) -> List[Int]:
     """`DTYPE_NULL` per column — what `query.plan.build_batch` writes today (`0`)."""
     var dtypes = List[Int]()
     if n_columns <= 0 or n_columns > MAX_WIRE_COLUMNS:
@@ -412,7 +412,7 @@ fn null_dtypes(n_columns: Int) -> List[Int]:
     return dtypes^
 
 
-fn decode_batch(
+def decode_batch(
     packed: List[UInt8], names: List[String], dtypes: List[Int], n_rows: Int, n_columns: Int
 ) -> WireDecoded:
     """Rebuild a `RecordBatch` from the layout. Shape is validated before any read.
@@ -478,7 +478,7 @@ fn decode_batch(
     return out^
 
 
-fn is_valid_at_offset(packed: List[UInt8], base: Int, row: Int) -> Bool:
+def is_valid_at_offset(packed: List[UInt8], base: Int, row: Int) -> Bool:
     """Validity bit `row` of the bitmap that starts at byte `base`.
 
     A thin adapter over `validity.is_valid`, which reads a bitmap starting at index 0.
@@ -493,7 +493,7 @@ fn is_valid_at_offset(packed: List[UInt8], base: Int, row: Int) -> Bool:
     return (packed[byte] >> UInt8(row % 8)) & UInt8(1) == UInt8(1)
 
 
-fn decode_batch_positional(packed: List[UInt8], n_rows: Int, n_columns: Int) -> WireDecoded:
+def decode_batch_positional(packed: List[UInt8], n_rows: Int, n_columns: Int) -> WireDecoded:
     """`decode_batch` with `col_0..` names and `DTYPE_NULL` dtypes.
 
     The shape `query.plan.parse_rows` produces, so the two ingest paths are directly
@@ -512,7 +512,7 @@ struct ByteBuffer(Copyable, Movable):
     var bytes: List[UInt8]
 
 
-fn packed_floats_to_bytes(packed: List[Float64]) -> ByteBuffer:
+def packed_floats_to_bytes(packed: List[Float64]) -> ByteBuffer:
     """The bytes behind a `"@u8:<base64>"` argument, validated element by element.
 
     The runtime hands a packed buffer to a kernel as a `List[Float64]` of byte values
@@ -547,7 +547,7 @@ fn packed_floats_to_bytes(packed: List[Float64]) -> ByteBuffer:
     return out^
 
 
-fn decode_batch_from_packed_floats(
+def decode_batch_from_packed_floats(
     packed: List[Float64], names: List[String], dtypes: List[Int], n_rows: Int, n_columns: Int
 ) -> WireDecoded:
     """`packed_floats_to_bytes` then `decode_batch` — the whole server-side path."""
@@ -560,7 +560,7 @@ fn decode_batch_from_packed_floats(
 # ── equality, so a timing comparison is between two identical answers ─────────
 
 
-fn columns_identical(a: Float64Array, b: Float64Array) -> Bool:
+def columns_identical(a: Float64Array, b: Float64Array) -> Bool:
     """Bit-for-bit column equality: same length, same validity, same value BITS.
 
     Bits, not `==`: `0.0 == -0.0` is true and `nan == nan` is false, so a value
@@ -578,7 +578,7 @@ fn columns_identical(a: Float64Array, b: Float64Array) -> Bool:
     return True
 
 
-fn batches_identical(a: RecordBatch, b: RecordBatch) -> Bool:
+def batches_identical(a: RecordBatch, b: RecordBatch) -> Bool:
     """Same schema, same row count, same validity bits, same value bits.
 
     This is the gate a timing comparison has to pass first: two ingest paths that
@@ -604,7 +604,7 @@ fn batches_identical(a: RecordBatch, b: RecordBatch) -> Bool:
     return True
 
 
-fn buffers_identical(a: List[UInt8], b: List[UInt8]) -> Bool:
+def buffers_identical(a: List[UInt8], b: List[UInt8]) -> Bool:
     """Byte equality of two buffers — used to assert the encoding is canonical."""
     if len(a) != len(b):
         return False
@@ -617,7 +617,7 @@ fn buffers_identical(a: List[UInt8], b: List[UInt8]) -> Bool:
 # ── string columns: Arrow's utf8 layout ──────────────────────────────────────
 
 
-fn encode_string_column(values: List[String], mask: List[Bool]) -> List[UInt8]:
+def encode_string_column(values: List[String], mask: List[Bool]) -> List[UInt8]:
     """A nullable string column as `[validity][offsets][utf8 bytes]`.
 
     `n_rows + 1` little-endian 8-byte offsets, Arrow's `LargeUtf8` width. 8 rather than
@@ -667,7 +667,7 @@ struct WireStrings(Copyable, Movable):
     var n_rows: Int
 
 
-fn decode_string_column(packed: List[UInt8], n_rows: Int) -> WireStrings:
+def decode_string_column(packed: List[UInt8], n_rows: Int) -> WireStrings:
     """Rebuild a nullable string column. Offsets are validated before any read.
 
     Four things are checked, in this order, and all four have to be:
@@ -735,7 +735,7 @@ fn decode_string_column(packed: List[UInt8], n_rows: Int) -> WireStrings:
     return out^
 
 
-fn strings_identical(a: List[String], b: List[String]) -> Bool:
+def strings_identical(a: List[String], b: List[String]) -> Bool:
     """Byte-exact list equality, length compared first."""
     if len(a) != len(b):
         return False
@@ -750,7 +750,7 @@ fn strings_identical(a: List[String], b: List[String]) -> Bool:
     return True
 
 
-fn string_columns_identical(
+def string_columns_identical(
     a_values: List[String], a_mask: List[Bool], b_values: List[String], b_mask: List[Bool]
 ) -> Bool:
     """Column equality for a nullable string column: same absences, same present bytes.
@@ -781,7 +781,7 @@ fn string_columns_identical(
     return True
 
 
-fn string_column_to_array(decoded: WireStrings) -> StringArray:
+def string_column_to_array(decoded: WireStrings) -> StringArray:
     """A decoded string column as `columnar.array.StringArray`."""
     var n = len(decoded.values)
     var bitmap = new_all_null(n)
@@ -795,7 +795,7 @@ fn string_column_to_array(decoded: WireStrings) -> StringArray:
 # ── the wire spelling ────────────────────────────────────────────────────────
 
 
-fn wire_base64(data: List[UInt8]) -> String:
+def wire_base64(data: List[UInt8]) -> String:
     """Standard base64 (RFC 4648, `=` padded) of a raw byte buffer.
 
     `crypto.base64.b64_encode` is NOT reused, for a measured reason rather than taste:
@@ -834,7 +834,7 @@ fn wire_base64(data: List[UInt8]) -> String:
     return bytes_to_string(out)
 
 
-fn wire_arg(data: List[UInt8]) -> String:
+def wire_arg(data: List[UInt8]) -> String:
     """The buffer as the `"@u8:<base64>"` argument body, without the JSON quotes.
 
     The existing spelling, unchanged: `json_parser.json_parse_float64_list` recognises
@@ -844,7 +844,7 @@ fn wire_arg(data: List[UInt8]) -> String:
     return "@u8:" + wire_base64(data)
 
 
-fn arrow_status_name(status: Int) -> String:
+def arrow_status_name(status: Int) -> String:
     """The vocabulary for 310-329. See rule 4e on per-package ranges."""
     if status == ARROW_OK:
         return "ok"

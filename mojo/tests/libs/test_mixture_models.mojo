@@ -11,7 +11,7 @@ from mixture_models import (
 from std.math import abs as fabs, log
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ mixture_models::" + name)
@@ -20,11 +20,11 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ mixture_models::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _two_clusters_1d(n0: Int, n1: Int) -> List[Float64]:
+def _two_clusters_1d(n0: Int, n1: Int) -> List[Float64]:
     """Deterministic 1D data: n0 points near 0.0, n1 points near 10.0.
 
     Offsets cycle through {-0.4, -0.2, 0.0, +0.2, +0.4} so each cluster
@@ -38,7 +38,7 @@ fn _two_clusters_1d(n0: Int, n1: Int) -> List[Float64]:
     return x^
 
 
-fn _monotone_nondecreasing(t: List[Float64], slack: Float64) -> Bool:
+def _monotone_nondecreasing(t: List[Float64], slack: Float64) -> Bool:
     for i in range(1, len(t)):
         if t[i] < t[i - 1] - slack:
             return False

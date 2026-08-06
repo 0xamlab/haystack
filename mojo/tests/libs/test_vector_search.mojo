@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from vector_search import hnsw_layer_probability, hnsw_search_ef_scale, ivf_coarse_quantizer_dist, pq_quantization_error, lsh_hash_bit, recall_at_k, mrr_score, beam_search_score, faiss_nprobe_coverage, ann_distance_bound
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -13,7 +13,7 @@ from feature_hashing import (
 from std.math import exp, abs as fabs
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ feature_hashing::" + name)
@@ -22,7 +22,7 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ feature_hashing::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 

@@ -68,18 +68,18 @@ comptime _I4_MAX: Float64 = 7.0
 # ── Part 1: host-only quantization-error measurement ──────────────────────────────────────────
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _round_half_away(q: Float64) -> Int:
+def _round_half_away(q: Float64) -> Int:
     return Int(q + 0.5) if q >= 0.0 else Int(q - 0.5)
 
 
-fn _quantize_row_generic(
+def _quantize_row_generic(
     v: List[Float64], row: Int, k: Int, levels: Float64
 ) -> Tuple[List[Int64], Float64]:
     """Per-row symmetric quantize at an arbitrary level count -- the SAME scheme
@@ -107,7 +107,7 @@ fn _quantize_row_generic(
     return (out^, scale)
 
 
-fn _measure_quant_error(n_rows: Int, k: Int) -> None:
+def _measure_quant_error(n_rows: Int, k: Int) -> None:
     """Quantize a moderate pseudo-random matrix (some rows with tiny/zero max, to exercise the
     forced-scale=1.0 edge case both schemes share) to int8 and int4, dequantize each back to
     Float64, and report mean/max absolute error against the Float64 source for both, plus their
@@ -172,7 +172,7 @@ struct _QRow4(Copyable, Movable):
     var scale: Float64
 
 
-fn _quantize_row_i4_pack(v: List[Float64], row: Int, k: Int) -> _QRow4:
+def _quantize_row_i4_pack(v: List[Float64], row: Int, k: Int) -> _QRow4:
     """Per-row symmetric int4 quantize AND pack two nibbles per byte, host reference. `scale =
     max(|row|) / 7`, values clamped to `[-7, 7]`, byte = `(hi << 4) | (lo & 0xF)` -- low nibble is
     the EVEN k-index, high nibble the ODD one, matching the unpack convention the GPU kernels below
@@ -213,7 +213,7 @@ fn _quantize_row_i4_pack(v: List[Float64], row: Int, k: Int) -> _QRow4:
     return _QRow4(out^, scale)
 
 
-fn _gemv_i4_scalar_ref(
+def _gemv_i4_scalar_ref(
     x: List[Float64], packed: List[UInt8], scale: List[Float64], k: Int, n: Int
 ) -> List[Float64]:
     """Pure-host, no-vectorization Int4 GEMV reference: unpack each byte's two nibbles with plain
@@ -241,7 +241,7 @@ fn _gemv_i4_scalar_ref(
     return out^
 
 
-fn _gemv_i4_uchar2(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
+def _gemv_i4_uchar2(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
     """Variant `uchar2`: native `w.load[width=2]` (2 packed bytes = 4 int4 elements) per lane per
     step, unpacked with mask+shift into two Float32x2 halves, dequantized, multiplied against two
     Float32x2 slices of the staged activation, accumulated."""
@@ -296,7 +296,7 @@ fn _gemv_i4_uchar2(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_i4_uchar4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
+def _gemv_i4_uchar4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
     """Variant `uchar4`: native `w.load[width=4]` (4 packed bytes = 8 int4 elements) per lane per
     step -- twice `uchar2`'s elements/step, same mask+shift unpack, four Float32x2 unpack pairs
     combined into the accumulator."""
@@ -351,11 +351,11 @@ fn _gemv_i4_uchar4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
         y[j] = red[sub * _LANES]
 
 
-fn _ceil_div(a: Int, b: Int) -> Int:
+def _ceil_div(a: Int, b: Int) -> Int:
     return (a + b - 1) // b
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1
@@ -366,7 +366,7 @@ fn _median(mut s: List[Float64]) -> Float64:
     return s[len(s) // 2]
 
 
-fn _worst_delta(ybuf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
+def _worst_delta(ybuf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
     var worst = 0.0
     with ybuf.map_to_host() as h:
         for j in range(n):
@@ -378,7 +378,7 @@ fn _worst_delta(ybuf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) 
     return worst
 
 
-fn _build_case(k: Int, n: Int) -> Tuple[List[Float64], List[UInt8], List[Float64], List[Float64]]:
+def _build_case(k: Int, n: Int) -> Tuple[List[Float64], List[UInt8], List[Float64], List[Float64]]:
     """Returns (x, packed_weights, per_row_scales, scalar_reference_output)."""
     var x64 = _pseudo(k, 3)
     var wf = _pseudo(n * k, 11)
@@ -394,7 +394,7 @@ fn _build_case(k: Int, n: Int) -> Tuple[List[Float64], List[UInt8], List[Float64
     return (x64^, packed^, scales^, refv^)
 
 
-fn _run_correctness(ctx: DeviceContext) raises -> Bool:
+def _run_correctness(ctx: DeviceContext) raises -> Bool:
     """Stage 1 (GPU): small, hand-computable, deliberately-misaligned shape (`k=136`, not a
     multiple of either variant's element stride), checked against the independent pure-host scalar
     Int4 reference."""
@@ -452,7 +452,7 @@ fn _run_correctness(ctx: DeviceContext) raises -> Bool:
     return all_ok
 
 
-fn _time_shape(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
+def _time_shape(ctx: DeviceContext, k: Int, n: Int, reps: Int) raises:
     var built = _build_case(k, n)
     var x64 = built[0].copy()
     var packed = built[1].copy()

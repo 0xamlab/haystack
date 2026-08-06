@@ -92,21 +92,21 @@ from optimization.scheduling import (
 from sparse_numerics.csr import MAX_CSR_DIM
 
 
-fn _f(*vals: Float64) -> List[Float64]:
+def _f(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _i(*vals: Int) -> List[Int]:
+def _i(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_f(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_f(a: List[Float64], b: List[Float64]) -> Bool:
     """Bit-for-bit equality of two schedules. Exact on purpose — see the module docstring."""
     if len(a) != len(b):
         return False
@@ -116,7 +116,7 @@ fn _same_f(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _same_i(a: List[Int], b: List[Int]) -> Bool:
+def _same_i(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -125,7 +125,7 @@ fn _same_i(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _bound_at_most_verified(
+def _bound_at_most_verified(
     duration: List[Float64], demand: List[Float64], capacity: List[Float64],
     pred_from: List[Int], pred_to: List[Int], n_acts: Int, n_res: Int,
     start: List[Float64]
@@ -161,7 +161,7 @@ fn _bound_at_most_verified(
     return b.lower_bound <= a.makespan + 1.0e-12 * a.makespan
 
 
-fn _no_numbers(r: JobShopResult) -> Bool:
+def _no_numbers(r: JobShopResult) -> Bool:
     """A rejected job-shop request carries no schedule, no bound and no gap."""
     return (
         not r.feasible
@@ -176,7 +176,7 @@ fn _no_numbers(r: JobShopResult) -> Bool:
     )
 
 
-fn _identical(a: JobShopResult, b: JobShopResult) -> Bool:
+def _identical(a: JobShopResult, b: JobShopResult) -> Bool:
     """Everything a caller can observe, including the search's own history."""
     return (
         a.status == b.status
@@ -195,7 +195,7 @@ fn _identical(a: JobShopResult, b: JobShopResult) -> Bool:
     )
 
 
-fn _identical_r(a: RcpspResult, b: RcpspResult) -> Bool:
+def _identical_r(a: RcpspResult, b: RcpspResult) -> Bool:
     return (
         a.status == b.status
         and a.makespan == b.makespan
@@ -228,15 +228,15 @@ fn _identical_r(a: RcpspResult, b: RcpspResult) -> Bool:
 # max(6, 7) = 7, which MEETS the optimum.
 
 
-fn _dur22() -> List[Float64]:
+def _dur22() -> List[Float64]:
     return _f(3.0, 2.0, 2.0, 4.0)
 
 
-fn _mach22() -> List[Int]:
+def _mach22() -> List[Int]:
     return _i(0, 1, 1, 0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

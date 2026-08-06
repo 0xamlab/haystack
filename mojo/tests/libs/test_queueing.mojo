@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from queueing import factorial, mm1_utilization, mm1_avg_queue_length, mm1_avg_system_size, mm1_avg_wait_time, mm1_avg_system_time, mmc_erlang_c, mmc_avg_wait_time, erlang_b, littles_law_L, littles_law_W
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

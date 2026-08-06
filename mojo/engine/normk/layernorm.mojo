@@ -97,7 +97,7 @@ struct LayerNormAgreement(Copyable, Movable):
     var status: Int
 
 
-fn layernorm_fwd_flat(
+def layernorm_fwd_flat(
     x: List[Float64], gamma: List[Float64], beta: List[Float64],
     n_rows: Int, n_cols: Int, eps: Float64
 ) -> LayerNormOut:
@@ -140,7 +140,7 @@ fn layernorm_fwd_flat(
         workers = 1
 
     @parameter
-    fn _row_band(tid: Int) capturing:
+    def _row_band(tid: Int) capturing:
         var each = rows // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else rows
@@ -195,7 +195,7 @@ fn layernorm_fwd_flat(
     return LayerNormOut(y^, mean^, rstd^, n_rows, n_cols, NORM_OK)
 
 
-fn layernorm_bwd_flat(
+def layernorm_bwd_flat(
     dy: List[Float64], x: List[Float64], gamma: List[Float64],
     mean: List[Float64], rstd: List[Float64], n_rows: Int, n_cols: Int
 ) -> LayerNormGrad:
@@ -251,7 +251,7 @@ fn layernorm_bwd_flat(
         workers = 1
 
     @parameter
-    fn _dx_band(tid: Int) capturing:
+    def _dx_band(tid: Int) capturing:
         var each = rows // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else rows
@@ -282,7 +282,7 @@ fn layernorm_bwd_flat(
         gworkers = 1
 
     @parameter
-    fn _param_band(tid: Int) capturing:
+    def _param_band(tid: Int) capturing:
         var each = cols // gworkers
         var lo = tid * each
         var hi = lo + each if tid < gworkers - 1 else cols
@@ -301,7 +301,7 @@ fn layernorm_bwd_flat(
     return LayerNormGrad(dx^, dgamma^, dbeta^, n_rows, n_cols, NORM_OK)
 
 
-fn layernorm_variance_agrees_flat(
+def layernorm_variance_agrees_flat(
     x: List[Float64], n_rows: Int, n_cols: Int
 ) -> LayerNormAgreement:
     """Measure the one-pass variance identity against the two-pass one, worst row.
@@ -354,7 +354,7 @@ fn layernorm_variance_agrees_flat(
     return LayerNormAgreement(worst, tol_at_worst, worst <= tol_at_worst, n_rows, NORM_OK)
 
 
-fn layernorm_gradcheck_flat(
+def layernorm_gradcheck_flat(
     x: List[Float64], gamma: List[Float64], beta: List[Float64],
     n_rows: Int, n_cols: Int, eps: Float64, step: Float64
 ) -> LayerNormAgreement:
@@ -418,7 +418,7 @@ fn layernorm_gradcheck_flat(
     return LayerNormAgreement(worst, tol_at_worst, worst <= tol_at_worst, n_rows * n_cols, NORM_OK)
 
 
-fn _sum_of_layernorm(
+def _sum_of_layernorm(
     x: List[Float64], gamma: List[Float64], beta: List[Float64],
     n_rows: Int, n_cols: Int, eps: Float64
 ) -> Float64:

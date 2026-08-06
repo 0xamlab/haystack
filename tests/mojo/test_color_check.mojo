@@ -53,7 +53,7 @@ def _assert_eq_string(got: String, expected: String, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _red_dominant_image() -> List[Float64]:
+def _red_dominant_image() -> List[Float64]:
     var flat = List[Float64]()
     # 3 red pixels, 1 blue pixel -> dominant weight 0.75.
     flat.append(200.0); flat.append(20.0); flat.append(20.0)
@@ -63,7 +63,7 @@ fn _red_dominant_image() -> List[Float64]:
     return flat^
 
 
-fn _yellow_image() -> List[Float64]:
+def _yellow_image() -> List[Float64]:
     var flat = List[Float64]()
     for _ in range(4):
         flat.append(250.0)

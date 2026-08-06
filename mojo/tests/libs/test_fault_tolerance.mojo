@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fault_tolerance import checkpoint_interval_optimal, recovery_cost_estimate, deterministic_seed, partial_batch_replay_loss, node_failure_probability, mtbf_checkpoint_frequency, gradient_staleness_factor, elastic_training_scale, failure_detection_latency, replication_overhead
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

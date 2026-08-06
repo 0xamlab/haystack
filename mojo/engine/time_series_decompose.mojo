@@ -22,7 +22,7 @@ from std.math import sqrt, abs as fabs
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     """Mean of a list."""
     var n = len(data)
     if n == 0:
@@ -33,7 +33,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _variance(data: List[Float64]) -> Float64:
+def _variance(data: List[Float64]) -> Float64:
     """Population variance."""
     var n = len(data)
     if n == 0:
@@ -49,7 +49,7 @@ fn _variance(data: List[Float64]) -> Float64:
 # ── moving_average_trend ─────────────────────────────────────────────────────
 
 
-fn moving_average_trend(data: List[Float64], window: Int) -> List[Float64]:
+def moving_average_trend(data: List[Float64], window: Int) -> List[Float64]:
     """Extract trend via centered moving average.
 
     Returns same-length list with edges zero-padded where the window doesn't fit.
@@ -75,7 +75,7 @@ fn moving_average_trend(data: List[Float64], window: Int) -> List[Float64]:
 # ── detrend ──────────────────────────────────────────────────────────────────
 
 
-fn detrend(data: List[Float64], trend: List[Float64]) -> List[Float64]:
+def detrend(data: List[Float64], trend: List[Float64]) -> List[Float64]:
     """Remove trend: data - trend."""
     var n = len(data)
     var result = List[Float64]()
@@ -90,7 +90,7 @@ fn detrend(data: List[Float64], trend: List[Float64]) -> List[Float64]:
 # ── seasonal_component ───────────────────────────────────────────────────────
 
 
-fn seasonal_component(detrended: List[Float64], period: Int) -> List[Float64]:
+def seasonal_component(detrended: List[Float64], period: Int) -> List[Float64]:
     """Extract seasonal pattern: average each position within period, then tile."""
     var n = len(detrended)
     if n == 0 or period <= 0:
@@ -117,7 +117,7 @@ fn seasonal_component(detrended: List[Float64], period: Int) -> List[Float64]:
 # ── residual ─────────────────────────────────────────────────────────────────
 
 
-fn residual(data: List[Float64], trend: List[Float64],
+def residual(data: List[Float64], trend: List[Float64],
             seasonal: List[Float64]) -> List[Float64]:
     """Residual = data - trend - seasonal."""
     var n = len(data)
@@ -136,7 +136,7 @@ fn residual(data: List[Float64], trend: List[Float64],
 # ── decompose_additive ──────────────────────────────────────────────────────
 
 
-fn decompose_additive(data: List[Float64],
+def decompose_additive(data: List[Float64],
                       period: Int) -> List[List[Float64]]:
     """Full additive decomposition. Returns [trend, seasonal, residual]."""
     var trend_comp = moving_average_trend(data, period)
@@ -153,7 +153,7 @@ fn decompose_additive(data: List[Float64],
 # ── seasonal_strength ────────────────────────────────────────────────────────
 
 
-fn seasonal_strength(resid: List[Float64],
+def seasonal_strength(resid: List[Float64],
                      seasonal_plus_residual: List[Float64]) -> Float64:
     """1 - var(residual) / var(seasonal + residual)."""
     var var_r = _variance(resid)
@@ -171,7 +171,7 @@ fn seasonal_strength(resid: List[Float64],
 # ── trend_strength ───────────────────────────────────────────────────────────
 
 
-fn trend_strength(resid: List[Float64],
+def trend_strength(resid: List[Float64],
                   trend_plus_residual: List[Float64]) -> Float64:
     """1 - var(residual) / var(trend + residual)."""
     var var_r = _variance(resid)
@@ -189,7 +189,7 @@ fn trend_strength(resid: List[Float64],
 # ── detect_period ────────────────────────────────────────────────────────────
 
 
-fn detect_period(data: List[Float64], max_period: Int) -> Int:
+def detect_period(data: List[Float64], max_period: Int) -> Int:
     """Auto-detect dominant period via autocorrelation peak."""
     var n = len(data)
     if n < 4 or max_period < 2:
@@ -220,7 +220,7 @@ fn detect_period(data: List[Float64], max_period: Int) -> Int:
 # ── stl_like ─────────────────────────────────────────────────────────────────
 
 
-fn stl_like(data: List[Float64], period: Int,
+def stl_like(data: List[Float64], period: Int,
             n_iter: Int = 2) -> List[List[Float64]]:
     """Simplified STL: iterative trend + seasonal extraction.
 

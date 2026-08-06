@@ -7,8 +7,8 @@ Public API:
   struct MinHeap     — binary min-heap for priority queues
   struct RingBuffer  — fixed-size circular buffer for streaming data
   struct SortedList  — maintains sorted order on insert
-  fn counter()       — frequency count (like Counter)
-  fn unique()        — unique values sorted
+  def counter()       — frequency count (like Counter)
+  def unique()        — unique values sorted
 """
 
 
@@ -20,14 +20,14 @@ struct MinHeap(Copyable, Movable):
 
     var _data: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self._data = List[Float64]()
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         """Return the number of elements in the heap."""
         return len(self._data)
 
-    fn peek(self) -> Float64:
+    def peek(self) -> Float64:
         """Return the minimum element without removing it.
         Returns 0.0 if heap is empty.
         """
@@ -35,12 +35,12 @@ struct MinHeap(Copyable, Movable):
             return 0.0
         return self._data[0]
 
-    fn push(mut self, value: Float64):
+    def push(mut self, value: Float64):
         """Insert a value into the heap, maintaining the heap property."""
         self._data.append(value)
         self._sift_up(len(self._data) - 1)
 
-    fn pop(mut self) -> Float64:
+    def pop(mut self) -> Float64:
         """Remove and return the minimum element.
         Returns 0.0 if heap is empty.
         """
@@ -62,7 +62,7 @@ struct MinHeap(Copyable, Movable):
         self._sift_down(0)
         return result
 
-    fn _sift_up(mut self, idx: Int):
+    def _sift_up(mut self, idx: Int):
         """Bubble element at idx up to restore heap property."""
         var i = idx
         while i > 0:
@@ -75,7 +75,7 @@ struct MinHeap(Copyable, Movable):
             else:
                 break
 
-    fn _sift_down(mut self, idx: Int):
+    def _sift_down(mut self, idx: Int):
         """Push element at idx down to restore heap property."""
         var n = len(self._data)
         var i = idx
@@ -107,7 +107,7 @@ struct RingBuffer(Copyable, Movable):
     var _head: Int      # next write position
     var _count: Int     # current number of elements
 
-    fn __init__(out self, capacity: Int):
+    def __init__(out self, capacity: Int):
         self._capacity = capacity
         self._head = 0
         self._count = 0
@@ -115,14 +115,14 @@ struct RingBuffer(Copyable, Movable):
         for _ in range(capacity):
             self._data.append(0.0)
 
-    fn push(mut self, value: Float64):
+    def push(mut self, value: Float64):
         """Insert a value. If full, overwrites the oldest element."""
         self._data[self._head] = value
         self._head = (self._head + 1) % self._capacity
         if self._count < self._capacity:
             self._count += 1
 
-    fn get(self, index: Int) -> Float64:
+    def get(self, index: Int) -> Float64:
         """Get element by logical index (0 = oldest).
         Returns 0.0 if index is out of range.
         """
@@ -133,7 +133,7 @@ struct RingBuffer(Copyable, Movable):
         var actual = (start + index) % self._capacity
         return self._data[actual]
 
-    fn mean(self) -> Float64:
+    def mean(self) -> Float64:
         """Compute the arithmetic mean of elements in the buffer.
         Returns 0.0 if empty.
         """
@@ -146,11 +146,11 @@ struct RingBuffer(Copyable, Movable):
             total += self._data[idx]
         return total / Float64(self._count)
 
-    fn is_full(self) -> Bool:
+    def is_full(self) -> Bool:
         """Return True if the buffer has reached capacity."""
         return self._count == self._capacity
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         """Return the current number of elements."""
         return self._count
 
@@ -163,10 +163,10 @@ struct SortedList(Copyable, Movable):
 
     var _data: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self._data = List[Float64]()
 
-    fn insert(mut self, value: Float64):
+    def insert(mut self, value: Float64):
         """Insert value in sorted position using binary search."""
         var n = len(self._data)
         # Binary search for insertion point
@@ -188,13 +188,13 @@ struct SortedList(Copyable, Movable):
             new_data.append(self._data[i])
         self._data = new_data^
 
-    fn get(self, index: Int) -> Float64:
+    def get(self, index: Int) -> Float64:
         """Get element at index. Returns 0.0 if out of range."""
         if index < 0 or index >= len(self._data):
             return 0.0
         return self._data[index]
 
-    fn median(self) -> Float64:
+    def median(self) -> Float64:
         """Return the median value. Returns 0.0 if empty."""
         var n = len(self._data)
         if n == 0:
@@ -203,7 +203,7 @@ struct SortedList(Copyable, Movable):
             return self._data[n // 2]
         return (self._data[n // 2 - 1] + self._data[n // 2]) / 2.0
 
-    fn remove(mut self, index: Int):
+    def remove(mut self, index: Int):
         """Remove element at index. No-op if out of range."""
         var n = len(self._data)
         if index < 0 or index >= n:
@@ -214,7 +214,7 @@ struct SortedList(Copyable, Movable):
                 new_data.append(self._data[i])
         self._data = new_data^
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         """Return the number of elements."""
         return len(self._data)
 
@@ -222,7 +222,7 @@ struct SortedList(Copyable, Movable):
 # ── counter ──────────────────────────────────────────────────────────────────
 
 
-fn counter(data: List[Float64], bins: Int) -> List[Int]:
+def counter(data: List[Float64], bins: Int) -> List[Int]:
     """Frequency count: divide the range [min, max] into `bins` equal bins.
     Returns a list of counts per bin. Like a histogram / Counter.
     """
@@ -265,7 +265,7 @@ fn counter(data: List[Float64], bins: Int) -> List[Int]:
 # ── unique ───────────────────────────────────────────────────────────────────
 
 
-fn unique(data: List[Float64]) -> List[Float64]:
+def unique(data: List[Float64]) -> List[Float64]:
     """Return unique values from data, sorted in ascending order."""
     var n = len(data)
     if n == 0:

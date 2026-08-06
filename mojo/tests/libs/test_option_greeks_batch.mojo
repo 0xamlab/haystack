@@ -1,6 +1,6 @@
 """tests for option_greeks_batch — parity vs scalar option_pricing, parity
 identities, degenerate lanes, SIMD/tail boundary, and a throughput print."""
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 
 from option_greeks_batch import chain_greeks
 from option_pricing import (
@@ -14,7 +14,7 @@ from option_pricing import (
 from std.math import abs as fabs, exp
 
 
-fn close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 

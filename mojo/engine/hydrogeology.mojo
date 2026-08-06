@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn darcy_velocity(hydraulic_conductivity: Float64, gradient: Float64) -> Float64:
+def darcy_velocity(hydraulic_conductivity: Float64, gradient: Float64) -> Float64:
     """Darcy flux (specific discharge): q = K·i.
 
     Args:
@@ -29,7 +29,7 @@ fn darcy_velocity(hydraulic_conductivity: Float64, gradient: Float64) -> Float64
     return hydraulic_conductivity * gradient
 
 
-fn transmissivity(hydraulic_conductivity: Float64, aquifer_thickness: Float64) -> Float64:
+def transmissivity(hydraulic_conductivity: Float64, aquifer_thickness: Float64) -> Float64:
     """Aquifer transmissivity: T = K·b.
 
     Args:
@@ -42,7 +42,7 @@ fn transmissivity(hydraulic_conductivity: Float64, aquifer_thickness: Float64) -
     return hydraulic_conductivity * aquifer_thickness
 
 
-fn storativity(
+def storativity(
     specific_storage: Float64, aquifer_thickness: Float64
 ) -> Float64:
     """Storativity of a confined aquifer: S = Ss·b.
@@ -57,7 +57,7 @@ fn storativity(
     return specific_storage * aquifer_thickness
 
 
-fn theis_drawdown(
+def theis_drawdown(
     pumping_rate: Float64, transmissivity: Float64, well_function: Float64
 ) -> Float64:
     """Theis drawdown: s = Q/(4πT) · W(u).
@@ -76,7 +76,7 @@ fn theis_drawdown(
     return pumping_rate / (4.0 * pi * transmissivity) * well_function
 
 
-fn dupuit_discharge(
+def dupuit_discharge(
     hydraulic_conductivity: Float64, h1: Float64, h2: Float64, length: Float64
 ) -> Float64:
     """Dupuit discharge for unconfined aquifer (per unit width).
@@ -97,7 +97,7 @@ fn dupuit_discharge(
     return hydraulic_conductivity * (h1 * h1 - h2 * h2) / (2.0 * length)
 
 
-fn hydraulic_gradient(head_diff: Float64, flow_length: Float64) -> Float64:
+def hydraulic_gradient(head_diff: Float64, flow_length: Float64) -> Float64:
     """Hydraulic gradient: i = Δh / L.
 
     Args:
@@ -112,7 +112,7 @@ fn hydraulic_gradient(head_diff: Float64, flow_length: Float64) -> Float64:
     return head_diff / flow_length
 
 
-fn specific_yield(porosity: Float64, residual_moisture: Float64) -> Float64:
+def specific_yield(porosity: Float64, residual_moisture: Float64) -> Float64:
     """Specific yield of an unconfined aquifer.
 
     Sy ≈ n - θ_r
@@ -130,7 +130,7 @@ fn specific_yield(porosity: Float64, residual_moisture: Float64) -> Float64:
     return sy
 
 
-fn capillary_rise_height(
+def capillary_rise_height(
     surface_tension: Float64, contact_angle_rad: Float64,
     density: Float64, pore_radius: Float64
 ) -> Float64:
@@ -152,7 +152,7 @@ fn capillary_rise_height(
     return 2.0 * surface_tension * cos(contact_angle_rad) / (density * g * pore_radius)
 
 
-fn leakance_factor(
+def leakance_factor(
     transmissivity: Float64, confining_thickness: Float64, confining_k: Float64
 ) -> Float64:
     """Leakance factor B for leaky confined aquifer.
@@ -172,7 +172,7 @@ fn leakance_factor(
     return sqrt(transmissivity * confining_thickness / confining_k)
 
 
-fn groundwater_age_mixing(
+def groundwater_age_mixing(
     tracer_young: Float64, tracer_sample: Float64, tracer_old: Float64
 ) -> Float64:
     """Binary mixing fraction of young water in a groundwater sample.

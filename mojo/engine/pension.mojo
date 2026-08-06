@@ -24,7 +24,7 @@ from std.math import abs as fabs
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _pow(base: Float64, n: Int) -> Float64:
+def _pow(base: Float64, n: Int) -> Float64:
     """Integer power via repeated multiplication."""
     if n == 0:
         return 1.0
@@ -42,7 +42,7 @@ fn _pow(base: Float64, n: Int) -> Float64:
 # ── replacement_ratio ────────────────────────────────────────────────────────
 
 
-fn replacement_ratio(
+def replacement_ratio(
     pension_income: Float64, final_salary: Float64
 ) -> Float64:
     """Replacement ratio: RR = pension / salary * 100.
@@ -62,7 +62,7 @@ fn replacement_ratio(
 # ── defined_benefit_pension ──────────────────────────────────────────────────
 
 
-fn defined_benefit_pension(
+def defined_benefit_pension(
     years: Float64, salary: Float64, accrual_rate: Float64
 ) -> Float64:
     """Defined benefit pension: P = years * salary * accrual_rate.
@@ -81,7 +81,7 @@ fn defined_benefit_pension(
 # ── defined_contribution_value ───────────────────────────────────────────────
 
 
-fn defined_contribution_value(
+def defined_contribution_value(
     contributions: Float64, return_rate: Float64, years: Int
 ) -> Float64:
     """Defined contribution FV: C * ((1+r)^n - 1)/r.
@@ -103,7 +103,7 @@ fn defined_contribution_value(
 # ── annuity_factor ───────────────────────────────────────────────────────────
 
 
-fn annuity_factor(rate: Float64, years: Int) -> Float64:
+def annuity_factor(rate: Float64, years: Int) -> Float64:
     """Annuity factor: AF = (1 - (1+r)^(-n)) / r.
 
     Args:
@@ -122,7 +122,7 @@ fn annuity_factor(rate: Float64, years: Int) -> Float64:
 # ── pension_lump_sum_from_annuity ────────────────────────────────────────────
 
 
-fn pension_lump_sum_from_annuity(
+def pension_lump_sum_from_annuity(
     annual_pension: Float64, annuity_factor_val: Float64
 ) -> Float64:
     """Lump sum from annuity: LS = pension * annuity_factor.
@@ -140,7 +140,7 @@ fn pension_lump_sum_from_annuity(
 # ── funding_ratio ────────────────────────────────────────────────────────────
 
 
-fn funding_ratio(
+def funding_ratio(
     plan_assets: Float64, plan_liabilities: Float64
 ) -> Float64:
     """Funding ratio: FR = assets / liabilities * 100.
@@ -160,7 +160,7 @@ fn funding_ratio(
 # ── contribution_rate_required ───────────────────────────────────────────────
 
 
-fn contribution_rate_required(
+def contribution_rate_required(
     target_fund: Float64, years: Int, salary: Float64, return_rate: Float64
 ) -> Float64:
     """Required contribution rate: CR = target / (salary * FV_factor) * 100.
@@ -191,7 +191,7 @@ fn contribution_rate_required(
 # ── inflation_adjusted_pension ───────────────────────────────────────────────
 
 
-fn inflation_adjusted_pension(
+def inflation_adjusted_pension(
     nominal: Float64, inflation_rate: Float64, years: Int
 ) -> Float64:
     """Real pension: Real = nominal / (1+i)^n.
@@ -213,7 +213,7 @@ fn inflation_adjusted_pension(
 # ── pension_gap ──────────────────────────────────────────────────────────────
 
 
-fn pension_gap(
+def pension_gap(
     required_income: Float64, expected_pension: Float64
 ) -> Float64:
     """Pension gap: Gap = required - expected.
@@ -231,7 +231,7 @@ fn pension_gap(
 # ── social_security_bend_points ──────────────────────────────────────────────
 
 
-fn social_security_bend_points(
+def social_security_bend_points(
     aime: Float64, bp1: Float64, bp2: Float64
 ) -> Float64:
     """Social Security PIA from AIME and bend points.
@@ -265,7 +265,7 @@ fn social_security_bend_points(
 # ── years_to_full_vesting ────────────────────────────────────────────────────
 
 
-fn years_to_full_vesting(
+def years_to_full_vesting(
     service_years: Float64, vesting_schedule: Float64
 ) -> Float64:
     """Vested percentage: min(100, service/schedule*100).
@@ -290,7 +290,7 @@ fn years_to_full_vesting(
 # ── withdrawal_rate ──────────────────────────────────────────────────────────
 
 
-fn withdrawal_rate(
+def withdrawal_rate(
     annual_withdrawal: Float64, portfolio_value: Float64
 ) -> Float64:
     """Withdrawal rate: WR = withdrawal / portfolio * 100.

@@ -72,14 +72,14 @@ from forecasting.point import ets_aaa_forecast, ets_aan_forecast, theta_forecast
 from forecasting.select import _golden_ses_alpha, _theta_line
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _corrupted() -> List[Float64]:
+def _corrupted() -> List[Float64]:
     """y[0] = 107 (one corrupted first difference: y[1]-y[0] = -4), then y_t = 100+3t."""
     var y = List[Float64]()
     y.append(107.0)
@@ -88,7 +88,7 @@ fn _corrupted() -> List[Float64]:
     return y^
 
 
-fn _line() -> List[Float64]:
+def _line() -> List[Float64]:
     """y_t = 2 + 3t, twelve points, every value a small integer."""
     var y = List[Float64]()
     for t in range(12):
@@ -96,7 +96,7 @@ fn _line() -> List[Float64]:
     return y^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.fitted] hand-written known-value suite")

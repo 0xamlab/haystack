@@ -37,32 +37,32 @@ from ml.random_forest import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
         )
 
 
-fn _is_finite(v: Float64) -> Bool:
+def _is_finite(v: Float64) -> Bool:
     return v == v and v < 1e18 and v > -1e18
 
 
 # ── Persistence Tests ────────────────────────────────────────────────────────
 
 
-fn test_kv_create() raises:
+def test_kv_create() raises:
     var store = kv_create()
     _assert(kv_size(store) == 0, "kv_create: size should be 0")  # 1
     print("  ✓ kv_create")
 
 
-fn test_kv_put_get() raises:
+def test_kv_put_get() raises:
     var store = kv_create()
     kv_put(store, 10, 3.14)
     _assert(kv_size(store) == 1, "kv_put: size should be 1")  # 2
@@ -80,7 +80,7 @@ fn test_kv_put_get() raises:
     print("  ✓ kv_put / kv_get")
 
 
-fn test_kv_get_miss() raises:
+def test_kv_get_miss() raises:
     var store = kv_create()
     _assert_close(kv_get(store, 99), -999999.0, 1e-10, "kv_get miss: sentinel")  # 9
     kv_put(store, 1, 5.0)
@@ -88,7 +88,7 @@ fn test_kv_get_miss() raises:
     print("  ✓ kv_get miss → sentinel")
 
 
-fn test_kv_contains() raises:
+def test_kv_contains() raises:
     var store = kv_create()
     _assert(not kv_contains(store, 1), "kv_contains: empty → False")  # 11
     kv_put(store, 1, 10.0)
@@ -97,7 +97,7 @@ fn test_kv_contains() raises:
     print("  ✓ kv_contains")
 
 
-fn test_kv_delete() raises:
+def test_kv_delete() raises:
     var store = kv_create()
     kv_put(store, 1, 1.0)
     kv_put(store, 2, 2.0)
@@ -113,7 +113,7 @@ fn test_kv_delete() raises:
     print("  ✓ kv_delete")
 
 
-fn test_kv_keys_values() raises:
+def test_kv_keys_values() raises:
     var store = kv_create()
     kv_put(store, 10, 100.0)
     kv_put(store, 20, 200.0)
@@ -133,7 +133,7 @@ fn test_kv_keys_values() raises:
     print("  ✓ kv_keys / kv_values")
 
 
-fn test_kv_clear() raises:
+def test_kv_clear() raises:
     var store = kv_create()
     kv_put(store, 1, 1.0)
     kv_put(store, 2, 2.0)
@@ -144,7 +144,7 @@ fn test_kv_clear() raises:
     print("  ✓ kv_clear")
 
 
-fn test_snapshot_restore() raises:
+def test_snapshot_restore() raises:
     var store = kv_create()
     kv_put(store, 1, 10.0)
     kv_put(store, 2, 20.0)
@@ -165,7 +165,7 @@ fn test_snapshot_restore() raises:
 # ── Constrained Optimization Tests ───────────────────────────────────────────
 
 
-fn test_eval_objective_c() raises:
+def test_eval_objective_c() raises:
     var x = List[Float64]()
     x.append(1.0)
     x.append(2.0)
@@ -178,7 +178,7 @@ fn test_eval_objective_c() raises:
     print("  ✓ eval_objective_c")
 
 
-fn test_eval_constraint() raises:
+def test_eval_constraint() raises:
     var x = List[Float64]()
     x.append(0.3)
     x.append(0.3)
@@ -197,7 +197,7 @@ fn test_eval_constraint() raises:
     print("  ✓ eval_constraint")
 
 
-fn test_is_feasible_c() raises:
+def test_is_feasible_c() raises:
     var x_feas = List[Float64]()
     x_feas.append(0.3)
     x_feas.append(0.3)
@@ -215,7 +215,7 @@ fn test_is_feasible_c() raises:
     print("  ✓ is_feasible_c")
 
 
-fn test_penalty_value() raises:
+def test_penalty_value() raises:
     var x = List[Float64]()
     x.append(0.3)
     x.append(0.3)
@@ -234,7 +234,7 @@ fn test_penalty_value() raises:
     print("  ✓ penalty_value")
 
 
-fn test_gradient_estimate() raises:
+def test_gradient_estimate() raises:
     var x = List[Float64]()
     x.append(1.0)
     x.append(1.0)
@@ -247,7 +247,7 @@ fn test_gradient_estimate() raises:
     print("  ✓ gradient_estimate")
 
 
-fn test_penalty_method() raises:
+def test_penalty_method() raises:
     var x0 = List[Float64]()
     x0.append(0.8)
     x0.append(0.8)
@@ -264,7 +264,7 @@ fn test_penalty_method() raises:
     print("  ✓ penalty_method")
 
 
-fn test_barrier_method() raises:
+def test_barrier_method() raises:
     var x0 = List[Float64]()
     x0.append(0.3)
     x0.append(0.3)
@@ -281,7 +281,7 @@ fn test_barrier_method() raises:
     print("  ✓ barrier_method")
 
 
-fn test_augmented_lagrangian() raises:
+def test_augmented_lagrangian() raises:
     var x = List[Float64]()
     x.append(0.7)
     x.append(0.7)
@@ -304,7 +304,7 @@ fn test_augmented_lagrangian() raises:
 # ── Random Forest Tests ──────────────────────────────────────────────────────
 
 
-fn test_bootstrap_indices() raises:
+def test_bootstrap_indices() raises:
     var idxs = bootstrap_indices(100, 50)
     _assert(len(idxs) == 50, "bootstrap: correct length")  # 59
     var all_valid = True
@@ -315,7 +315,7 @@ fn test_bootstrap_indices() raises:
     print("  ✓ bootstrap_indices")
 
 
-fn test_feature_subsample() raises:
+def test_feature_subsample() raises:
     var fs = feature_subsample(10, 4)
     _assert(len(fs) == 4, "feature_subsample: correct length")  # 61
     var no_dup = True
@@ -334,7 +334,7 @@ fn test_feature_subsample() raises:
     print("  ✓ feature_subsample")
 
 
-fn _make_train_X() -> List[List[Float64]]:
+def _make_train_X() -> List[List[Float64]]:
     """Create simple training data X."""
     var X = List[List[Float64]]()
     # row 1: [1, 0]
@@ -380,7 +380,7 @@ fn _make_train_X() -> List[List[Float64]]:
     return X^
 
 
-fn _make_train_y() -> List[Float64]:
+def _make_train_y() -> List[Float64]:
     var y = List[Float64]()
     y.append(2.0)   # 2*1+0
     y.append(1.0)   # 2*0+1
@@ -393,7 +393,7 @@ fn _make_train_y() -> List[Float64]:
     return y^
 
 
-fn test_tree_predict_simple() raises:
+def test_tree_predict_simple() raises:
     var X = _make_train_X()
     var y = _make_train_y()
     var feats = List[Int]()
@@ -408,7 +408,7 @@ fn test_tree_predict_simple() raises:
     print("  ✓ tree_predict_simple")
 
 
-fn test_random_forest_predict() raises:
+def test_random_forest_predict() raises:
     var X = _make_train_X()
     var y = _make_train_y()
     var x_test = List[Float64]()
@@ -421,7 +421,7 @@ fn test_random_forest_predict() raises:
     print("  ✓ random_forest_predict")
 
 
-fn test_random_forest_predict_batch() raises:
+def test_random_forest_predict_batch() raises:
     var X = _make_train_X()
     var y = _make_train_y()
     var X_test = List[List[Float64]]()
@@ -445,7 +445,7 @@ fn test_random_forest_predict_batch() raises:
     print("  ✓ random_forest_predict_batch")
 
 
-fn test_oob_score() raises:
+def test_oob_score() raises:
     var X = _make_train_X()
     var y = _make_train_y()
     var score = oob_score(X, y, 10, 2)
@@ -455,7 +455,7 @@ fn test_oob_score() raises:
     print("  ✓ oob_score")
 
 
-fn test_bagging_variance() raises:
+def test_bagging_variance() raises:
     # 3 trees, 4 samples each
     var preds = List[List[Float64]]()
     var p1 = List[Float64]()
@@ -484,7 +484,7 @@ fn test_bagging_variance() raises:
     print("  ✓ bagging_variance")
 
 
-fn test_feature_importance_rf() raises:
+def test_feature_importance_rf() raises:
     var X = _make_train_X()
     var y = _make_train_y()
     var imp = feature_importance_rf(X, y, 3, 2)
@@ -497,7 +497,7 @@ fn test_feature_importance_rf() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 57 Tests ===")
 
     print("\n── Persistence ──")

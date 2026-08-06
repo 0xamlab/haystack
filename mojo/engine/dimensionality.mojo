@@ -37,7 +37,7 @@ struct PCAResult(Copyable, Movable):
     var explained_variance_ratio: List[Float64]
     var mean: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.components = List[List[Float64]]()
         self.explained_variance = List[Float64]()
         self.explained_variance_ratio = List[Float64]()
@@ -47,7 +47,7 @@ struct PCAResult(Copyable, Movable):
 # ── column_means ──────────────────────────────────────────────────────────────
 
 
-fn column_means(data: List[List[Float64]]) -> List[Float64]:
+def column_means(data: List[List[Float64]]) -> List[Float64]:
     """Compute mean of each column."""
     var n = len(data)
     if n == 0:
@@ -65,7 +65,7 @@ fn column_means(data: List[List[Float64]]) -> List[Float64]:
 # ── center_data ───────────────────────────────────────────────────────────────
 
 
-fn center_data(data: List[List[Float64]]) -> List[List[Float64]]:
+def center_data(data: List[List[Float64]]) -> List[List[Float64]]:
     """Subtract column means from each row."""
     var n = len(data)
     if n == 0:
@@ -84,7 +84,7 @@ fn center_data(data: List[List[Float64]]) -> List[List[Float64]]:
 # ── covariance_matrix ─────────────────────────────────────────────────────────
 
 
-fn covariance_matrix(data: List[List[Float64]]) -> List[List[Float64]]:
+def covariance_matrix(data: List[List[Float64]]) -> List[List[Float64]]:
     """Compute covariance matrix of column-centered data.
 
     Cov(j, k) = (1/(n-1)) * Σᵢ data[i][j] * data[i][k]
@@ -110,7 +110,7 @@ fn covariance_matrix(data: List[List[Float64]]) -> List[List[Float64]]:
 # ── power_iteration ───────────────────────────────────────────────────────────
 
 
-fn power_iteration(
+def power_iteration(
     matrix: List[List[Float64]], n_iter: Int = 100
 ) -> List[Float64]:
     """Find dominant eigenvector via power iteration.
@@ -154,7 +154,7 @@ fn power_iteration(
 # ── eigenvalue_from_vector ────────────────────────────────────────────────────
 
 
-fn eigenvalue_from_vector(
+def eigenvalue_from_vector(
     matrix: List[List[Float64]], eigvec: List[Float64]
 ) -> Float64:
     """Compute eigenvalue given eigenvector: λ = (Av · v) / (v · v)."""
@@ -195,7 +195,7 @@ fn eigenvalue_from_vector(
 # ── deflate_matrix ────────────────────────────────────────────────────────────
 
 
-fn deflate_matrix(
+def deflate_matrix(
     matrix: List[List[Float64]], eigval: Float64, eigvec: List[Float64]
 ) -> List[List[Float64]]:
     """Matrix deflation: A' = A - λ * v * vᵀ.
@@ -222,7 +222,7 @@ fn deflate_matrix(
 # ── pca ───────────────────────────────────────────────────────────────────────
 
 
-fn pca(data: List[List[Float64]], n_components: Int) -> PCAResult:
+def pca(data: List[List[Float64]], n_components: Int) -> PCAResult:
     """Principal Component Analysis.
 
     Centers data, computes covariance matrix, extracts top-k eigenvectors
@@ -275,7 +275,7 @@ fn pca(data: List[List[Float64]], n_components: Int) -> PCAResult:
 # ── transform_pca ─────────────────────────────────────────────────────────────
 
 
-fn transform_pca(
+def transform_pca(
     data: List[List[Float64]], result: PCAResult
 ) -> List[List[Float64]]:
     """Project data onto principal components.

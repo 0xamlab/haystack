@@ -91,7 +91,7 @@ multiplies by the SAME Float64 constant rather than by its own sqrt(12), and the
 bit-identical."""
 
 
-fn _splitmix(i: UInt64) -> Float64:
+def _splitmix(i: UInt64) -> Float64:
     """splitmix64 of an index, mapped to [-0.5, 0.5) with no rounding, then scaled to unit variance.
 
     Indexing by position rather than iterating a stream is deliberate: it is vectorizable on the NumPy
@@ -104,14 +104,14 @@ fn _splitmix(i: UInt64) -> Float64:
     return (Float64(Int(z >> 40)) / 16777216.0 - 0.5) * UNIT_VAR
 
 
-fn _fill(count: Int, salt: UInt64) -> List[Float64]:
+def _fill(count: Int, salt: UInt64) -> List[Float64]:
     var out = List[Float64](capacity=count if count > 0 else 1)
     for i in range(count):
         out.append(_splitmix(UInt64(i) + salt))
     return out^
 
 
-fn _fill_amplified(count: Int, salt: UInt64, amp: Float64) -> List[Float64]:
+def _fill_amplified(count: Int, salt: UInt64, amp: Float64) -> List[Float64]:
     """Same stream, scaled. Used only to drive the logits past `exp`'s overflow point."""
     var out = List[Float64](capacity=count if count > 0 else 1)
     for i in range(count):
@@ -119,7 +119,7 @@ fn _fill_amplified(count: Int, salt: UInt64, amp: Float64) -> List[Float64]:
     return out^
 
 
-fn _dump(path: String, data: List[Float64], count: Int) -> Int:
+def _dump(path: String, data: List[Float64], count: Int) -> Int:
     """Write `count` Float64 little-endian to `path`. Returns bytes written, or -1."""
     if count <= 0 or count > len(data):
         return -1
@@ -133,7 +133,7 @@ fn _dump(path: String, data: List[Float64], count: Int) -> Int:
         return -1
 
 
-fn _env_int(name: String, fallback: Int) -> Int:
+def _env_int(name: String, fallback: Int) -> Int:
     var raw = getenv(name)
     if raw.byte_length() == 0:
         return fallback
@@ -144,13 +144,13 @@ fn _env_int(name: String, fallback: Int) -> Int:
         return fallback
 
 
-fn _gflops(flops: Float64, ns: Float64) -> Float64:
+def _gflops(flops: Float64, ns: Float64) -> Float64:
     if ns <= 0.0:
         return 0.0
     return flops / ns
 
 
-fn _self_mode() raises:
+def _self_mode() raises:
     """Cold / warm / hot for one shape, plus the tiled-vs-direct correctness delta."""
     var b = _env_int("ATTN_BENCH_B", 1)
     var hq = _env_int("ATTN_BENCH_HQ", 8)
@@ -273,7 +273,7 @@ fn _self_mode() raises:
         print("INVALID hot>warm or spread>", MAX_SPREAD, "; no ratio reported")
 
 
-fn _serve() raises:
+def _serve() raises:
     """One command per line on stdin, one reply per line on stdout.
 
     SHAPE b hq hkv s d causal   rebuild Q/K/V for a shape; replies `SHAPE ok <lenq> <lenk> <lenv>`
@@ -393,7 +393,7 @@ fn _serve() raises:
             print("ERR unknown", cmd)
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) > 1 and String(args[1]) == "SERVE":
         _serve()

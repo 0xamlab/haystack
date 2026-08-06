@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from water_chemistry import ph_from_hydrogen_ion, hydrogen_ion_from_ph, water_hardness, alkalinity_as_caco3, langelier_saturation_index, turbidity_ntu_to_sdd, chlorine_demand, dissolved_oxygen_deficit, conductivity_tds, bod_removal
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

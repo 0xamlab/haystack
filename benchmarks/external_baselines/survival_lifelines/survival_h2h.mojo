@@ -82,7 +82,7 @@ from survival_analysis.cox import cox_fit
 from survival_analysis.km import km_fit
 
 
-fn read_f64(path: String) raises -> List[Float64]:
+def read_f64(path: String) raises -> List[Float64]:
     """Copied from `forecasting_m4_h2h.mojo`'s helper of the same name."""
     var f = open(path, "r")
     var b = f.read_bytes()
@@ -95,7 +95,7 @@ fn read_f64(path: String) raises -> List[Float64]:
     return out^
 
 
-fn _dump(path: String, mut v: List[Float64]) raises:
+def _dump(path: String, mut v: List[Float64]) raises:
     """Copied from `forecasting_m4_h2h.mojo`'s `write_f64`: raw little-endian bytes."""
     var w = open(path, "w")
     var bp = v.unsafe_ptr().bitcast[UInt8]()
@@ -103,11 +103,11 @@ fn _dump(path: String, mut v: List[Float64]) raises:
     w.close()
 
 
-fn _b(flag: Bool) -> Float64:
+def _b(flag: Bool) -> Float64:
     return 1.0 if flag else 0.0
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Bit-identical to `gemm_h2h.mojo`'s `_pseudo` (and to `gemm_refs.py`'s `pseudo`)."""
     var o = List[Float64](capacity=n)
     var s = seed
@@ -117,7 +117,7 @@ fn _pseudo(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-fn _pseudo_u01(n: Int, seed: Int) -> List[Float64]:
+def _pseudo_u01(n: Int, seed: Int) -> List[Float64]:
     """Same LCG, mapped to the open interval (0, 1) rather than [-1, 1)."""
     var o = List[Float64](capacity=n)
     var s = seed
@@ -127,7 +127,7 @@ fn _pseudo_u01(n: Int, seed: Int) -> List[Float64]:
     return o^
 
 
-fn _km_times(n: Int, step: Float64, tie_period: Int) -> List[Float64]:
+def _km_times(n: Int, step: Float64, tie_period: Int) -> List[Float64]:
     """`1 + i*step`, with every `tie_period`-th row forced onto the previous row's time."""
     var out = List[Float64](capacity=n)
     for i in range(n):
@@ -138,14 +138,14 @@ fn _km_times(n: Int, step: Float64, tie_period: Int) -> List[Float64]:
     return out^
 
 
-fn _km_events(n: Int, censor_period: Int) -> List[Int]:
+def _km_events(n: Int, censor_period: Int) -> List[Int]:
     var out = List[Int](capacity=n)
     for i in range(n):
         out.append(0 if (censor_period > 0 and i % censor_period == 0) else 1)
     return out^
 
 
-fn _cox_synth_beta_true(p: Int) -> List[Float64]:
+def _cox_synth_beta_true(p: Int) -> List[Float64]:
     """A fixed, non-degenerate coefficient pattern: alternating +0.3 / -0.2."""
     var out = List[Float64](capacity=p)
     for k in range(p):
@@ -158,13 +158,13 @@ struct _CoxSynth(Movable):
     var times: List[Float64]
     var event: List[Int]
 
-    fn __init__(out self, var x: List[Float64], var times: List[Float64], var event: List[Int]):
+    def __init__(out self, var x: List[Float64], var times: List[Float64], var event: List[Int]):
         self.x = x^
         self.times = times^
         self.event = event^
 
 
-fn _cox_synth_data(n: Int, p: Int) -> _CoxSynth:
+def _cox_synth_data(n: Int, p: Int) -> _CoxSynth:
     """Covariates from `_pseudo`, times from an actual proportional-hazards draw.
 
     `tau = ln(4)` is the administrative censoring horizon: for a pure `Exp(1)` (the
@@ -192,7 +192,7 @@ fn _cox_synth_data(n: Int, p: Int) -> _CoxSynth:
     return _CoxSynth(x^, times^, event^)
 
 
-fn main() raises:
+def main() raises:
     var a = argv()
     var mode = String(a[1])
 

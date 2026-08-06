@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── ld50_dose ────────────────────────────────────────────────────────────────
 
 
-fn ld50_dose(ld50_mg_kg: Float64, body_weight_kg: Float64) -> Float64:
+def ld50_dose(ld50_mg_kg: Float64, body_weight_kg: Float64) -> Float64:
     """Lethal dose: Dose = LD50 * BW (mg)."""
     return ld50_mg_kg * body_weight_kg
 
@@ -33,7 +33,7 @@ fn ld50_dose(ld50_mg_kg: Float64, body_weight_kg: Float64) -> Float64:
 # ── therapeutic_index ────────────────────────────────────────────────────────
 
 
-fn therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
+def therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
     """Therapeutic index: TI = TD50 / ED50."""
     return td50 / ed50
 
@@ -41,7 +41,7 @@ fn therapeutic_index(td50: Float64, ed50: Float64) -> Float64:
 # ── margin_of_safety ─────────────────────────────────────────────────────────
 
 
-fn margin_of_safety(td01: Float64, ed99: Float64) -> Float64:
+def margin_of_safety(td01: Float64, ed99: Float64) -> Float64:
     """Margin of safety: MOS = TD01 / ED99."""
     return td01 / ed99
 
@@ -49,7 +49,7 @@ fn margin_of_safety(td01: Float64, ed99: Float64) -> Float64:
 # ── bioconcentration_factor ──────────────────────────────────────────────────
 
 
-fn bioconcentration_factor(conc_organism: Float64, conc_water: Float64) -> Float64:
+def bioconcentration_factor(conc_organism: Float64, conc_water: Float64) -> Float64:
     """Bioconcentration factor: BCF = Corg / Cwater."""
     return conc_organism / conc_water
 
@@ -57,7 +57,7 @@ fn bioconcentration_factor(conc_organism: Float64, conc_water: Float64) -> Float
 # ── hazard_quotient ──────────────────────────────────────────────────────────
 
 
-fn hazard_quotient(exposure_dose: Float64, reference_dose: Float64) -> Float64:
+def hazard_quotient(exposure_dose: Float64, reference_dose: Float64) -> Float64:
     """Hazard quotient: HQ = exposure dose / reference dose."""
     return exposure_dose / reference_dose
 
@@ -65,7 +65,7 @@ fn hazard_quotient(exposure_dose: Float64, reference_dose: Float64) -> Float64:
 # ── hazard_index ─────────────────────────────────────────────────────────────
 
 
-fn hazard_index(hq_values_sum: Float64) -> Float64:
+def hazard_index(hq_values_sum: Float64) -> Float64:
     """Hazard index: HI = Σ(HQi). Pass the pre-summed total."""
     return hq_values_sum
 
@@ -73,7 +73,7 @@ fn hazard_index(hq_values_sum: Float64) -> Float64:
 # ── cancer_risk ──────────────────────────────────────────────────────────────
 
 
-fn cancer_risk(cdi: Float64, slope_factor: Float64) -> Float64:
+def cancer_risk(cdi: Float64, slope_factor: Float64) -> Float64:
     """Cancer risk: Risk = CDI * SF."""
     return cdi * slope_factor
 
@@ -81,7 +81,7 @@ fn cancer_risk(cdi: Float64, slope_factor: Float64) -> Float64:
 # ── average_daily_dose ───────────────────────────────────────────────────────
 
 
-fn average_daily_dose(
+def average_daily_dose(
     conc: Float64,
     intake_rate: Float64,
     exposure_freq: Float64,
@@ -98,7 +98,7 @@ fn average_daily_dose(
 # ── no_observed_adverse_effect_level ─────────────────────────────────────────
 
 
-fn no_observed_adverse_effect_level(
+def no_observed_adverse_effect_level(
     loael: Float64, uncertainty_factor: Float64
 ) -> Float64:
     """NOAEL ≈ LOAEL / UF."""
@@ -108,7 +108,7 @@ fn no_observed_adverse_effect_level(
 # ── reference_dose_calc ──────────────────────────────────────────────────────
 
 
-fn reference_dose(noael: Float64, total_uf: Float64) -> Float64:
+def reference_dose(noael: Float64, total_uf: Float64) -> Float64:
     """Reference dose: RfD = NOAEL / total UF."""
     return noael / total_uf
 
@@ -116,7 +116,7 @@ fn reference_dose(noael: Float64, total_uf: Float64) -> Float64:
 # ── dose_response_hill ───────────────────────────────────────────────────────
 
 
-fn dose_response_hill(
+def dose_response_hill(
     dose: Float64, emax: Float64, ec50: Float64, n: Float64
 ) -> Float64:
     """Hill equation: E = Emax * D^n / (EC50^n + D^n).
@@ -133,7 +133,7 @@ fn dose_response_hill(
 # ── acute_exposure_ratio ─────────────────────────────────────────────────────
 
 
-fn acute_exposure_ratio(
+def acute_exposure_ratio(
     measured_conc: Float64, acute_toxicity_value: Float64
 ) -> Float64:
     """Acute exposure ratio: AER = Cmeas / ATV."""

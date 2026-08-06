@@ -18,7 +18,7 @@ from std.math import sqrt, abs as fabs, cos, sin, exp, log, isinf, isnan
 # ── Function evaluation ──────────────────────────────────────────────────────
 
 
-fn eval_func(x: Float64, func_id: Int) -> Float64:
+def eval_func(x: Float64, func_id: Int) -> Float64:
     """Evaluate test function identified by func_id."""
     if func_id == 0:
         return x * x - 2.0
@@ -31,7 +31,7 @@ fn eval_func(x: Float64, func_id: Int) -> Float64:
     return 0.0
 
 
-fn eval_deriv(x: Float64, func_id: Int) -> Float64:
+def eval_deriv(x: Float64, func_id: Int) -> Float64:
     """Evaluate derivative of test function identified by func_id."""
     if func_id == 0:
         return 2.0 * x
@@ -47,7 +47,7 @@ fn eval_deriv(x: Float64, func_id: Int) -> Float64:
 # ── Bisection method ────────────────────────────────────────────────────────
 
 
-fn bisection(
+def bisection(
     a: Float64,
     b: Float64,
     func_id: Int,
@@ -81,7 +81,7 @@ fn bisection(
 # ── Newton-Raphson method ───────────────────────────────────────────────────
 
 
-fn newton_raphson(
+def newton_raphson(
     x0: Float64,
     func_id: Int,
     tol: Float64 = 1e-10,
@@ -103,7 +103,7 @@ fn newton_raphson(
 # ── Secant method ───────────────────────────────────────────────────────────
 
 
-fn secant_method(
+def secant_method(
     x0: Float64,
     x1: Float64,
     func_id: Int,
@@ -133,7 +133,7 @@ fn secant_method(
 # ── Fixed-point iteration ───────────────────────────────────────────────────
 
 
-fn fixed_point(
+def fixed_point(
     x0: Float64,
     func_id: Int,
     tol: Float64 = 1e-10,
@@ -158,7 +158,7 @@ fn fixed_point(
 # ── Regula Falsi (False Position) ───────────────────────────────────────────
 
 
-fn regula_falsi(
+def regula_falsi(
     a: Float64,
     b: Float64,
     func_id: Int,
@@ -195,7 +195,7 @@ fn regula_falsi(
 # ── Bracket finding ─────────────────────────────────────────────────────────
 
 
-fn bracket_root(
+def bracket_root(
     func_id: Int,
     start: Float64 = 0.0,
     step: Float64 = 0.5,
@@ -236,7 +236,7 @@ fn bracket_root(
 # ── Convergence order estimation ─────────────────────────────────────────────
 
 
-fn convergence_order(errors: List[Float64]) -> Float64:
+def convergence_order(errors: List[Float64]) -> Float64:
     """Estimate convergence order from error sequence.
 
     Uses log(e_{n+1}/e_n) / log(e_n/e_{n-1}) for last valid triple.

@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs
 # ── euclidean_distance_knn ───────────────────────────────────────────────────
 
 
-fn euclidean_distance_knn(a: List[Float64], b: List[Float64]) -> Float64:
+def euclidean_distance_knn(a: List[Float64], b: List[Float64]) -> Float64:
     """Euclidean (L2) distance between two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -39,7 +39,7 @@ fn euclidean_distance_knn(a: List[Float64], b: List[Float64]) -> Float64:
 # ── manhattan_distance ───────────────────────────────────────────────────────
 
 
-fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
+def manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
     """Manhattan (L1) distance between two vectors."""
     var n = len(a)
     if len(b) < n:
@@ -53,7 +53,7 @@ fn manhattan_distance(a: List[Float64], b: List[Float64]) -> Float64:
 # ── knn_distances ────────────────────────────────────────────────────────────
 
 
-fn knn_distances(X_train: List[List[Float64]],
+def knn_distances(X_train: List[List[Float64]],
                  x_test: List[Float64]) -> List[Float64]:
     """Compute Euclidean distances from test point to all training points."""
     var result = List[Float64]()
@@ -65,7 +65,7 @@ fn knn_distances(X_train: List[List[Float64]],
 # ── k_nearest_indices ────────────────────────────────────────────────────────
 
 
-fn k_nearest_indices(distances: List[Float64], k: Int) -> List[Int]:
+def k_nearest_indices(distances: List[Float64], k: Int) -> List[Int]:
     """Find indices of k nearest points (smallest distances)."""
     var n = len(distances)
     var actual_k = k
@@ -91,7 +91,7 @@ fn k_nearest_indices(distances: List[Float64], k: Int) -> List[Int]:
 # ── _majority_vote ───────────────────────────────────────────────────────────
 
 
-fn _majority_vote(labels: List[Int]) -> Int:
+def _majority_vote(labels: List[Int]) -> Int:
     """Return the most common label. Ties broken by first occurrence."""
     var n = len(labels)
     if n == 0:
@@ -112,7 +112,7 @@ fn _majority_vote(labels: List[Int]) -> Int:
 # ── knn_predict ──────────────────────────────────────────────────────────────
 
 
-fn knn_predict(X_train: List[List[Float64]], y_train: List[Int],
+def knn_predict(X_train: List[List[Float64]], y_train: List[Int],
                x_test: List[Float64], k: Int) -> Int:
     """Predict class for single test point using k-NN (majority vote)."""
     # A short or empty y_train would be indexed past its end below (uncatchable abort).
@@ -129,7 +129,7 @@ fn knn_predict(X_train: List[List[Float64]], y_train: List[Int],
 # ── knn_predict_batch ────────────────────────────────────────────────────────
 
 
-fn knn_predict_batch(X_train: List[List[Float64]], y_train: List[Int],
+def knn_predict_batch(X_train: List[List[Float64]], y_train: List[Int],
                      X_test: List[List[Float64]], k: Int) -> List[Int]:
     """Batch prediction for multiple test points."""
     var result = List[Int]()
@@ -144,7 +144,7 @@ fn knn_predict_batch(X_train: List[List[Float64]], y_train: List[Int],
 # ── weighted_knn_predict ─────────────────────────────────────────────────────
 
 
-fn weighted_knn_predict(X_train: List[List[Float64]], y_train: List[Int],
+def weighted_knn_predict(X_train: List[List[Float64]], y_train: List[Int],
                         x_test: List[Float64], k: Int) -> Int:
     """Distance-weighted k-NN: weight = 1/distance."""
     # A short or empty y_train would be indexed past its end below (uncatchable abort).
@@ -185,7 +185,7 @@ fn weighted_knn_predict(X_train: List[List[Float64]], y_train: List[Int],
 # ── knn_regression ───────────────────────────────────────────────────────────
 
 
-fn knn_regression(X_train: List[List[Float64]], y_train: List[Float64],
+def knn_regression(X_train: List[List[Float64]], y_train: List[Float64],
                   x_test: List[Float64], k: Int) -> Float64:
     """KNN for regression: average of k nearest y values."""
     # A short or empty y_train would be indexed past its end below (uncatchable abort).
@@ -204,7 +204,7 @@ fn knn_regression(X_train: List[List[Float64]], y_train: List[Float64],
 # ── leave_one_out_cv ─────────────────────────────────────────────────────────
 
 
-fn leave_one_out_cv(X: List[List[Float64]], y: List[Int],
+def leave_one_out_cv(X: List[List[Float64]], y: List[Int],
                     k: Int) -> Float64:
     """Leave-one-out cross-validation accuracy for k-NN classification."""
     var n = len(X)
@@ -230,7 +230,7 @@ fn leave_one_out_cv(X: List[List[Float64]], y: List[Int],
 # ── optimal_k ────────────────────────────────────────────────────────────────
 
 
-fn optimal_k(X: List[List[Float64]], y: List[Int], max_k: Int) -> Int:
+def optimal_k(X: List[List[Float64]], y: List[Int], max_k: Int) -> Int:
     """Find best k in [1, max_k] via LOO cross-validation accuracy."""
     var n = len(X)
     # A short y would be read past its end in leave_one_out_cv (uncatchable abort).

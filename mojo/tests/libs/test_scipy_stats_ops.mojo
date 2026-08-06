@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from scipy_stats_ops import normal_pdf, normal_cdf_approx, t_distribution_pdf, chi2_pdf, exponential_pdf, poisson_pmf, beta_pdf_unnorm, gamma_pdf_unnorm, logistic_pdf, weibull_pdf
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

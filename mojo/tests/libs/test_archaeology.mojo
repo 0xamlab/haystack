@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from archaeology import radiocarbon_age_bp, calibrated_date_linear, stratigraphy_depth_to_age_linear, artifact_density, site_area_from_scatter, ceramic_seriation_similarity, dating_uncertainty_combined, occupation_span, discard_rate, surveyed_area_coverage, excavation_volume, artifact_diversity_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

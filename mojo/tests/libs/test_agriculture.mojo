@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from agriculture import growing_degree_days, crop_water_need, irrigation_efficiency, fertilizer_rate, seed_rate, harvest_index, yield_per_hectare, soil_ph_lime_requirement, water_use_efficiency, photosynthetically_active_radiation, leaf_area_index, nitrogen_use_efficiency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

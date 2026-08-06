@@ -97,7 +97,7 @@ of a hang. A hang is indistinguishable from the uncatchable abort in rule 1 from
 the work budget exists for the same reason the length guards do."""
 
 
-fn gemm_status_name(code: Int) -> String:
+def gemm_status_name(code: Int) -> String:
     """Name a status code. An unknown code says so rather than borrowing a neighbour's meaning."""
     if code == GEMM_OK:
         return String("ok")
@@ -122,7 +122,7 @@ fn gemm_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn gemm_backend_name(code: Int) -> String:
+def gemm_backend_name(code: Int) -> String:
     """Name a backend tag, for the `kernel_variant` field of a result envelope."""
     if code == GEMM_BACKEND_SCALAR:
         return String("cpu_scalar")
@@ -137,7 +137,7 @@ fn gemm_backend_name(code: Int) -> String:
     return String("unknown_backend")
 
 
-fn gemm_work_fits(m: Int, n: Int, k: Int, ceiling: Int) -> Bool:
+def gemm_work_fits(m: Int, n: Int, k: Int, ceiling: Int) -> Bool:
     """True when `m * n * k` fits in `ceiling`, computed WITHOUT forming the product.
 
     Grows the bound by division one factor at a time, so no oversized product is ever materialized
@@ -162,7 +162,7 @@ fn gemm_work_fits(m: Int, n: Int, k: Int, ceiling: Int) -> Bool:
     return k <= remaining
 
 
-fn gemm_dims_check(m: Int, n: Int, k: Int, len_a: Int, len_b: Int) -> Int:
+def gemm_dims_check(m: Int, n: Int, k: Int, len_a: Int, len_b: Int) -> Int:
     """Validate a GEMM's shapes against its real buffer lengths. Exact equality, both operands.
 
     Transposition does not change either count — A holds `m * k` values whether it is read as m-by-k
@@ -199,7 +199,7 @@ fn gemm_dims_check(m: Int, n: Int, k: Int, len_a: Int, len_b: Int) -> Int:
     return GEMM_OK
 
 
-fn gemm_scalars_ok(alpha: Float64, beta: Float64) -> Bool:
+def gemm_scalars_ok(alpha: Float64, beta: Float64) -> Bool:
     """True when both scaling factors are finite.
 
     Checked before any tolerance or accumulation is built from them: a NaN alpha makes every output

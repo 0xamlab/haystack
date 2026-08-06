@@ -123,7 +123,7 @@ struct RopeAgreement(Copyable, Movable):
     var agree: Bool
 
 
-fn rope_theta_agreement(
+def rope_theta_agreement(
     base: Float64, original_context: Float64, target_context: Float64
 ) -> RopeAgreement:
     """Both frozen theta answers for the same extension, plus their ratio.
@@ -147,7 +147,7 @@ fn rope_theta_agreement(
     return RopeAgreement(squared, linear, ratio, diff <= 1e-9 * scale_of)
 
 
-fn rope_theta_for(base: Float64, factor: Float64, scaling_code: Int) -> Float64:
+def rope_theta_for(base: Float64, factor: Float64, scaling_code: Int) -> Float64:
     """The theta this module will use. `-1.0` for an unknown scaling code — never a silent default.
 
     `ROPE_SCALING_LINEAR` is what a Hugging Face config's scaling factor means, and a checkpoint's own
@@ -173,7 +173,7 @@ fn rope_theta_for(base: Float64, factor: Float64, scaling_code: Int) -> Float64:
     return -1.0
 
 
-fn rope_inv_freq(head_dim: Int, theta: Float64) -> List[Float64]:
+def rope_inv_freq(head_dim: Int, theta: Float64) -> List[Float64]:
     """Inverse frequency per dimension pair: `theta ** (-2i / head_dim)` for i in 0..head_dim/2.
 
     Empty list on an odd or out-of-range `head_dim`. RoPE rotates pairs, so an odd head dimension has
@@ -191,7 +191,7 @@ fn rope_inv_freq(head_dim: Int, theta: Float64) -> List[Float64]:
     return out^
 
 
-fn rope_table(head_dim: Int, max_pos: Int, theta: Float64) -> RopeTable:
+def rope_table(head_dim: Int, max_pos: Int, theta: Float64) -> RopeTable:
     """Build cos/sin for every (position, pair). Row-major: `pos * n_pairs + pair`.
 
     Always Float64. See the module docstring — a bf16 table loses positional resolution at long
@@ -231,7 +231,7 @@ fn rope_table(head_dim: Int, max_pos: Int, theta: Float64) -> RopeTable:
     return RopeTable(c^, s^, max_pos, n_pairs, theta, ATTN_OK)
 
 
-fn _rope_apply(
+def _rope_apply(
     x: List[Float64], cos_t: List[Float64], sin_t: List[Float64],
     n_tok: Int, n_heads: Int, head_dim: Int, pos: List[Int],
     interleaved: Bool, inverse: Bool
@@ -283,7 +283,7 @@ fn _rope_apply(
     return RopeApplied(out^, n_tok, n_heads, head_dim, ATTN_OK)
 
 
-fn rope_apply_flat(
+def rope_apply_flat(
     x: List[Float64], cos_t: List[Float64], sin_t: List[Float64],
     n_tok: Int, n_heads: Int, head_dim: Int, pos: List[Int], interleaved: Bool
 ) -> RopeApplied:
@@ -303,7 +303,7 @@ fn rope_apply_flat(
     return _rope_apply(x, cos_t, sin_t, n_tok, n_heads, head_dim, pos, interleaved, False)
 
 
-fn rope_apply_inverse_flat(
+def rope_apply_inverse_flat(
     x: List[Float64], cos_t: List[Float64], sin_t: List[Float64],
     n_tok: Int, n_heads: Int, head_dim: Int, pos: List[Int], interleaved: Bool
 ) -> RopeApplied:

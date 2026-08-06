@@ -43,27 +43,27 @@ struct Tally(Copyable, Movable):
     var checks: Int
     var failures: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.checks = 0
         self.failures = 0
 
-    fn ok(mut self, name: String, condition: Bool):
+    def ok(mut self, name: String, condition: Bool):
         self.checks += 1
         if not condition:
             self.failures += 1
             print("  FAIL " + name)
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _rand01(mut state: UInt64) -> Float64:
+def _rand01(mut state: UInt64) -> Float64:
     return Float64(Int(_lcg(state) >> 11)) / Float64(Int(UInt64(1) << 53))
 
 
-fn _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
+def _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
     var names = List[String]()
     names.append("k")
     names.append("v")
@@ -73,11 +73,11 @@ fn _batch1(keys: List[Float64], v: List[Float64]) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, len(keys))
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     return bitcast[DType.uint64](x)
 
 
-fn block1_random_crosscheck(mut t: Tally):
+def block1_random_crosscheck(mut t: Tally):
     var state: UInt64 = 0xC0FFEE
     var n = 4000
     var cardinality = 23
@@ -152,7 +152,7 @@ fn block1_random_crosscheck(mut t: Tally):
         )
 
 
-fn block2_edge_cases(mut t: Tally):
+def block2_edge_cases(mut t: Tally):
     # group size 1
     var k1 = List[Float64]()
     var v1 = List[Float64]()
@@ -221,7 +221,7 @@ fn block2_edge_cases(mut t: Tally):
     t.ok("block2.allnan.present1_false", not r5.result.present1[0])
 
 
-fn block3_nulls(mut t: Tally):
+def block3_nulls(mut t: Tally):
     var names = List[String]()
     names.append("k")
     names.append("v")
@@ -256,7 +256,7 @@ fn block3_nulls(mut t: Tally):
     t.ok("block3.group1.top1", res.result.top1[1] == 3.0)
 
 
-fn block4_refusals(mut t: Tally):
+def block4_refusals(mut t: Tally):
     var k = List[Float64]()
     var v = List[Float64]()
     k.append(0.0)
@@ -322,7 +322,7 @@ fn block4_refusals(mut t: Tally):
     )
 
 
-fn block5_worker_invariance(mut t: Tally):
+def block5_worker_invariance(mut t: Tally):
     """The fold performs no arithmetic (compares only), so two DIFFERENT
     worker counts over the SAME data must report the identical top1/top2 —
     not merely close, identical, because there is no floating-point
@@ -359,7 +359,7 @@ fn block5_worker_invariance(mut t: Tally):
     t.ok("block5.worker_invariant", mismatches == 0)
 
 
-fn block6_fold_unit(mut t: Tally):
+def block6_fold_unit(mut t: Tally):
     """`_fold_top2` in isolation: the exact three-way tie the module header
     argues about, and the sequence a running fold sees one value at a time."""
     var t1: Float64 = Float64(0.0) / Float64(0.0)
@@ -376,7 +376,7 @@ fn block6_fold_unit(mut t: Tally):
     t.ok("block6.nan_no_effect", t1 == 9.0 and t2 == 5.0)
 
 
-fn main():
+def main():
     print("=== test_query_topk_dense ===")
     var t = Tally()
     block1_random_crosscheck(t)

@@ -14,7 +14,7 @@ Public API:
 # ── Primality ────────────────────────────────────────────────────────────────
 
 
-fn is_prime(n: Int) -> Bool:
+def is_prime(n: Int) -> Bool:
     """Deterministic Miller-Rabin-like primality test for n < 2^31."""
     if n < 2:
         return False
@@ -55,7 +55,7 @@ fn is_prime(n: Int) -> Bool:
 # ── GCD / LCM ───────────────────────────────────────────────────────────────
 
 
-fn gcd(a: Int, b: Int) -> Int:
+def gcd(a: Int, b: Int) -> Int:
     """Greatest common divisor via Euclidean algorithm."""
     var x = a
     var y = b
@@ -70,7 +70,7 @@ fn gcd(a: Int, b: Int) -> Int:
     return x
 
 
-fn lcm(a: Int, b: Int) -> Int:
+def lcm(a: Int, b: Int) -> Int:
     """Least common multiple: a*b / gcd(a,b)."""
     if a == 0 or b == 0:
         return 0
@@ -87,7 +87,7 @@ fn lcm(a: Int, b: Int) -> Int:
 # ── Modular Exponentiation ───────────────────────────────────────────────────
 
 
-fn mod_pow(base: Int, exp: Int, modulus: Int) -> Int:
+def mod_pow(base: Int, exp: Int, modulus: Int) -> Int:
     """Modular exponentiation by squaring: base^exp mod modulus."""
     if modulus == 1:
         return 0
@@ -107,7 +107,7 @@ fn mod_pow(base: Int, exp: Int, modulus: Int) -> Int:
 # ── Euler Totient ────────────────────────────────────────────────────────────
 
 
-fn euler_totient(n: Int) -> Int:
+def euler_totient(n: Int) -> Int:
     """Euler's totient φ(n) by trial division."""
     if n <= 0:
         return 0
@@ -130,7 +130,7 @@ fn euler_totient(n: Int) -> Int:
 # ── Prime Factors ────────────────────────────────────────────────────────────
 
 
-fn prime_factors(n: Int) -> List[Int]:
+def prime_factors(n: Int) -> List[Int]:
     """List of prime factors with repetition."""
     var factors = List[Int]()
     if n <= 1:
@@ -153,7 +153,7 @@ fn prime_factors(n: Int) -> List[Int]:
 # ── Sieve of Eratosthenes ───────────────────────────────────────────────────
 
 
-fn sieve_of_eratosthenes(limit: Int) -> List[Int]:
+def sieve_of_eratosthenes(limit: Int) -> List[Int]:
     """All primes up to limit (inclusive)."""
     var primes = List[Int]()
     if limit < 2:
@@ -179,7 +179,7 @@ fn sieve_of_eratosthenes(limit: Int) -> List[Int]:
 # ── Coprimality ──────────────────────────────────────────────────────────────
 
 
-fn is_coprime(a: Int, b: Int) -> Bool:
+def is_coprime(a: Int, b: Int) -> Bool:
     """True if gcd(a, b) == 1."""
     return gcd(a, b) == 1
 
@@ -187,7 +187,7 @@ fn is_coprime(a: Int, b: Int) -> Bool:
 # ── Extended GCD ─────────────────────────────────────────────────────────────
 
 
-fn extended_gcd(a: Int, b: Int) -> List[Int]:
+def extended_gcd(a: Int, b: Int) -> List[Int]:
     """Returns [gcd, x, y] where a*x + b*y = gcd(a, b)."""
     var old_r = a
     var r = b
@@ -216,7 +216,7 @@ fn extended_gcd(a: Int, b: Int) -> List[Int]:
 # ── Modular Inverse ──────────────────────────────────────────────────────────
 
 
-fn mod_inverse(a: Int, m: Int) -> Int:
+def mod_inverse(a: Int, m: Int) -> Int:
     """Modular multiplicative inverse of a mod m. Returns -1 if none."""
     var res = extended_gcd(a, m)
     if res[0] != 1:
@@ -230,7 +230,7 @@ fn mod_inverse(a: Int, m: Int) -> Int:
 # ── Fibonacci ────────────────────────────────────────────────────────────────
 
 
-fn fibonacci(n: Int) -> Int:
+def fibonacci(n: Int) -> Int:
     """Nth Fibonacci number (iterative). fib(0)=0, fib(1)=1."""
     if n <= 0:
         return 0
@@ -248,7 +248,7 @@ fn fibonacci(n: Int) -> Int:
 # ── Perfect Square ───────────────────────────────────────────────────────────
 
 
-fn is_perfect_square(n: Int) -> Bool:
+def is_perfect_square(n: Int) -> Bool:
     """Check if n is a perfect square."""
     if n < 0:
         return False

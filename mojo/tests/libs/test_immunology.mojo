@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from immunology import antibody_titer, seroconversion_rate, antigen_antibody_binding, complement_activation, t_cell_proliferation, innate_response_decay, vaccine_efficacy, herd_immunity_threshold, antibody_avidity_index, opsonisation_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

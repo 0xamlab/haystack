@@ -68,7 +68,7 @@ from json.parser import json_parse_float64_list
 from query.plan import json_raw_tokens, parse_rows
 
 
-fn parse_rows_lean(rows_json: String, n_columns: Int) -> RecordBatch:
+def parse_rows_lean(rows_json: String, n_columns: Int) -> RecordBatch:
     """The leanest TEXT ingest reachable from existing public helpers.
 
     Not a kernel and not shipped: it lives in the measurement because a fair baseline is
@@ -110,14 +110,14 @@ fn parse_rows_lean(rows_json: String, n_columns: Int) -> RecordBatch:
     return RecordBatch(Schema(names^, dtypes^), columns^, n_rows)
 
 
-fn _bytes_to_string(data: List[UInt8]) -> String:
+def _bytes_to_string(data: List[UInt8]) -> String:
     """Owned copy of raw bytes. See `arrow_wire.bytes_to_string` for why not `chr`."""
     var out = String("")
     out += StringSlice(unsafe_from_utf8=Span(data))
     return out
 
 
-fn _cell_value(index: Int, profile: Int) -> Float64:
+def _cell_value(index: Int, profile: Int) -> Float64:
     """The datum at flat position `index`.
 
     Two profiles, because the JSON path's cost is a function of TEXT LENGTH and the
@@ -133,7 +133,7 @@ fn _cell_value(index: Int, profile: Int) -> Float64:
     return Float64(index) * 0.1 + 1.4142135623730951
 
 
-fn build_rows_json(n_rows: Int, n_columns: Int, profile: Int) -> String:
+def build_rows_json(n_rows: Int, n_columns: Int, profile: Int) -> String:
     """`[[..],[..]]` with a `null` every seventh cell, built in ONE pass.
 
     Accumulated into a `List[UInt8]` and converted once. Repeated `String +=` over half
@@ -163,7 +163,7 @@ fn build_rows_json(n_rows: Int, n_columns: Int, profile: Int) -> String:
     return _bytes_to_string(out)
 
 
-fn _quote(body: String) -> String:
+def _quote(body: String) -> String:
     var out = String("\"")
     out += body
     out += "\""
@@ -172,7 +172,7 @@ fn _quote(body: String) -> String:
 
 
 
-fn measure_one(n_rows: Int, n_columns: Int, profile: Int, repeats: Int) -> Int:
+def measure_one(n_rows: Int, n_columns: Int, profile: Int, repeats: Int) -> Int:
     """One (size, profile) cell of the matrix. Returns the number of failures.
 
     Correctness is gated BEFORE any timing is printed, and a failure returns early
@@ -331,7 +331,7 @@ fn measure_one(n_rows: Int, n_columns: Int, profile: Int, repeats: Int) -> Int:
     return 0
 
 
-fn main():
+def main():
     print("measure_columnar_arrow_wire — JSON rows vs Arrow layout, same table")
     print("compiled binary; both paths start from a wire String and end at a RecordBatch")
     print("")

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from encryption_modes import ecb_block_count, cbc_iv_required, ctr_nonce_size, gcm_tag_length_default, padding_pkcs7_bytes, ciphertext_length_cbc, ciphertext_length_gcm, aead_overhead, key_schedule_rounds_aes, throughput_estimate, parallel_blocks_ctr, security_margin_bits
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -45,7 +45,7 @@ comptime TWO_POW_NEG_53: Float64 = 1.1102230246251565e-16
 comptime TWO_PI: Float64 = 6.283185307179586
 
 
-fn _mul_hi64(a: UInt64, b: UInt64) -> UInt64:
+def _mul_hi64(a: UInt64, b: UInt64) -> UInt64:
     """High 64 bits of a 64x64 product, via 32-bit decomposition."""
     var a_lo = a & 0xFFFFFFFF
     var a_hi = a >> 32
@@ -59,7 +59,7 @@ fn _mul_hi64(a: UInt64, b: UInt64) -> UInt64:
     return p3 + (p1 >> 32) + (p2 >> 32) + (mid >> 32)
 
 
-fn philox_word(
+def philox_word(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64
 ) -> UInt64:
@@ -98,7 +98,7 @@ fn philox_word(
     return c3
 
 
-fn rng_uniform(
+def rng_uniform(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64
 ) -> Float64:
@@ -109,7 +109,7 @@ fn rng_uniform(
     return Float64(u >> 11) * TWO_POW_NEG_53
 
 
-fn rng_uniform_left_open(
+def rng_uniform_left_open(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64
 ) -> Float64:
@@ -120,7 +120,7 @@ fn rng_uniform_left_open(
     return Float64((u >> 11) + 1) * TWO_POW_NEG_53
 
 
-fn rng_bernoulli(
+def rng_bernoulli(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64, p: Float64
 ) -> Bool:
@@ -130,7 +130,7 @@ fn rng_bernoulli(
     ) < p
 
 
-fn rng_exponential(
+def rng_exponential(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64, rate: Float64
 ) -> Float64:
@@ -143,7 +143,7 @@ fn rng_exponential(
     return -log(u) / rate
 
 
-fn rng_normal(
+def rng_normal(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64
 ) -> Float64:
@@ -162,7 +162,7 @@ fn rng_normal(
     return sqrt(-2.0 * log(u1)) * cos(TWO_PI * u2)
 
 
-fn rng_normal_scaled(
+def rng_normal_scaled(
     master_seed: UInt64, scenario_id: UInt64, replication_id: UInt64,
     dim0: UInt64, dim1: UInt64, stream_id: UInt64, draw_index: UInt64,
     mean: Float64, sigma: Float64
@@ -177,17 +177,17 @@ fn rng_normal_scaled(
 # ── Deterministic zero-argument probes (shard requirement) ────────────────────
 
 
-fn rng_version() -> String:
+def rng_version() -> String:
     """The frozen generator contract identifier. Deterministic, zero-argument."""
     return String("philox4x64-10/v1")
 
 
-fn rng_global_sentinel() -> UInt64:
+def rng_global_sentinel() -> UInt64:
     """dim1 value used by global (non-per-car) processes. Deterministic, zero-argument."""
     return GLOBAL_SENTINEL
 
 
-fn rng_selftest() -> UInt64:
+def rng_selftest() -> UInt64:
     """Fold 64 words from fixed coordinates into one value. Deterministic, zero-argument.
 
     Changing the generator, layout, or word selection changes this value — which is the point.

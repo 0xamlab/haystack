@@ -32,7 +32,7 @@ comptime RAD2DEG: Float64 = 180.0 / PI
 # ── Julian Date ───────────────────────────────────────────────────────────────
 
 
-fn julian_date(year: Int, month: Int, day: Int) -> Float64:
+def julian_date(year: Int, month: Int, day: Int) -> Float64:
     """Julian Date from calendar date (at noon UT).
     
     Uses the algorithm from Meeus, Astronomical Algorithms.
@@ -51,7 +51,7 @@ fn julian_date(year: Int, month: Int, day: Int) -> Float64:
 # ── Modified Julian Date ──────────────────────────────────────────────────────
 
 
-fn modified_julian_date(jd: Float64) -> Float64:
+def modified_julian_date(jd: Float64) -> Float64:
     """MJD = JD - 2400000.5."""
     return jd - 2400000.5
 
@@ -59,7 +59,7 @@ fn modified_julian_date(jd: Float64) -> Float64:
 # ── Sidereal Time ────────────────────────────────────────────────────────────
 
 
-fn sidereal_time(jd: Float64, longitude: Float64) -> Float64:
+def sidereal_time(jd: Float64, longitude: Float64) -> Float64:
     """Greenwich Mean Sidereal Time in hours + local correction.
     
     longitude in degrees (positive east).
@@ -80,7 +80,7 @@ fn sidereal_time(jd: Float64, longitude: Float64) -> Float64:
 # ── Solar Declination ─────────────────────────────────────────────────────────
 
 
-fn solar_declination(day_of_year: Int) -> Float64:
+def solar_declination(day_of_year: Int) -> Float64:
     """Solar declination angle in degrees: -23.45*cos(360/365*(day+10))."""
     var angle = 360.0 / 365.0 * Float64(day_of_year + 10) * DEG2RAD
     return -23.45 * cos(angle)
@@ -89,7 +89,7 @@ fn solar_declination(day_of_year: Int) -> Float64:
 # ── Sunrise Hour Angle ────────────────────────────────────────────────────────
 
 
-fn sunrise_hour_angle(latitude: Float64, declination: Float64) -> Float64:
+def sunrise_hour_angle(latitude: Float64, declination: Float64) -> Float64:
     """Hour angle of sunrise in degrees: cos⁻¹(-tan(lat)*tan(dec)).
     
     Returns 0 if no sunrise (polar night) or 180 if no sunset (midnight sun).
@@ -107,7 +107,7 @@ fn sunrise_hour_angle(latitude: Float64, declination: Float64) -> Float64:
 # ── Day Length ────────────────────────────────────────────────────────────────
 
 
-fn day_length(latitude: Float64, day_of_year: Int) -> Float64:
+def day_length(latitude: Float64, day_of_year: Int) -> Float64:
     """Hours of daylight."""
     var dec = solar_declination(day_of_year)
     var ha = sunrise_hour_angle(latitude, dec)
@@ -118,7 +118,7 @@ fn day_length(latitude: Float64, day_of_year: Int) -> Float64:
 # ── Parallax Correction ──────────────────────────────────────────────────────
 
 
-fn parallax_correction(distance_au: Float64, radius_earth: Float64) -> Float64:
+def parallax_correction(distance_au: Float64, radius_earth: Float64) -> Float64:
     """Parallax angle in arcseconds.
     
     p = arctan(R_earth / d) converted to arcseconds.
@@ -136,7 +136,7 @@ fn parallax_correction(distance_au: Float64, radius_earth: Float64) -> Float64:
 # ── Kepler Equation ───────────────────────────────────────────────────────────
 
 
-fn kepler_equation(M: Float64, e: Float64, tol: Float64 = 1e-10) -> Float64:
+def kepler_equation(M: Float64, e: Float64, tol: Float64 = 1e-10) -> Float64:
     """Solve M = E - e*sin(E) for E via Newton's method.
     
     M: mean anomaly in radians.
@@ -156,7 +156,7 @@ fn kepler_equation(M: Float64, e: Float64, tol: Float64 = 1e-10) -> Float64:
 # ── Orbital Period ────────────────────────────────────────────────────────────
 
 
-fn orbital_period(semi_major_au: Float64) -> Float64:
+def orbital_period(semi_major_au: Float64) -> Float64:
     """Kepler's 3rd law: T = a^(3/2) years (for solar system)."""
     return pow(semi_major_au, 1.5)
 
@@ -164,7 +164,7 @@ fn orbital_period(semi_major_au: Float64) -> Float64:
 # ── Apparent Magnitude ────────────────────────────────────────────────────────
 
 
-fn apparent_magnitude(abs_mag: Float64, distance_pc: Float64) -> Float64:
+def apparent_magnitude(abs_mag: Float64, distance_pc: Float64) -> Float64:
     """m = M + 5*log10(d) - 5. Distance in parsecs."""
     if distance_pc <= 0.0:
         return 0.0
@@ -174,7 +174,7 @@ fn apparent_magnitude(abs_mag: Float64, distance_pc: Float64) -> Float64:
 # ── Distance from Magnitude ──────────────────────────────────────────────────
 
 
-fn distance_from_magnitude(abs_mag: Float64, app_mag: Float64) -> Float64:
+def distance_from_magnitude(abs_mag: Float64, app_mag: Float64) -> Float64:
     """d = 10^((m-M+5)/5) parsecs."""
     return pow(10.0, (app_mag - abs_mag + 5.0) / 5.0)
 
@@ -182,7 +182,7 @@ fn distance_from_magnitude(abs_mag: Float64, app_mag: Float64) -> Float64:
 # ── Ecliptic to Equatorial ───────────────────────────────────────────────────
 
 
-fn ecliptic_to_equatorial(
+def ecliptic_to_equatorial(
     ecliptic_lon: Float64, ecliptic_lat: Float64, obliquity: Float64
 ) -> List[Float64]:
     """Convert ecliptic to equatorial [RA, Dec] in degrees.
@@ -221,7 +221,7 @@ fn ecliptic_to_equatorial(
     return result^
 
 
-fn _atan2(y: Float64, x: Float64) -> Float64:
+def _atan2(y: Float64, x: Float64) -> Float64:
     """atan2(y, x) using acos and sign."""
     var r = sqrt(x * x + y * y)
     if r < 1e-15:

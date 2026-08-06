@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, pow
 
 
-fn cell_volume_sphere(radius_um: Float64) -> Float64:
+def cell_volume_sphere(radius_um: Float64) -> Float64:
     """Cell volume assuming spherical shape: V = (4/3)·π·r³.
 
     Args:
@@ -29,7 +29,7 @@ fn cell_volume_sphere(radius_um: Float64) -> Float64:
     return (4.0 / 3.0) * pi * radius_um * radius_um * radius_um
 
 
-fn nuclear_cytoplasmic_ratio(
+def nuclear_cytoplasmic_ratio(
     nucleus_volume: Float64, cell_volume: Float64
 ) -> Float64:
     """Nuclear-to-cytoplasmic volume ratio.
@@ -47,7 +47,7 @@ fn nuclear_cytoplasmic_ratio(
     return nucleus_volume / cytoplasm
 
 
-fn membrane_permeability(
+def membrane_permeability(
     flux: Float64, area: Float64, delta_conc: Float64
 ) -> Float64:
     """Membrane permeability coefficient: P = J / (A · ΔC).
@@ -66,7 +66,7 @@ fn membrane_permeability(
     return flux / denom
 
 
-fn cell_doubling_time(growth_rate: Float64) -> Float64:
+def cell_doubling_time(growth_rate: Float64) -> Float64:
     """Cell population doubling time: Td = ln2 / μ.
 
     Args:
@@ -80,7 +80,7 @@ fn cell_doubling_time(growth_rate: Float64) -> Float64:
     return log(2.0) / growth_rate
 
 
-fn mitotic_index(dividing_cells: Float64, total_cells: Float64) -> Float64:
+def mitotic_index(dividing_cells: Float64, total_cells: Float64) -> Float64:
     """Mitotic index: fraction of cells in mitosis.
 
     Args:
@@ -95,7 +95,7 @@ fn mitotic_index(dividing_cells: Float64, total_cells: Float64) -> Float64:
     return dividing_cells / total_cells
 
 
-fn cell_viability(live_cells: Float64, total_cells: Float64) -> Float64:
+def cell_viability(live_cells: Float64, total_cells: Float64) -> Float64:
     """Cell viability from dye exclusion assay.
 
     Args:
@@ -110,7 +110,7 @@ fn cell_viability(live_cells: Float64, total_cells: Float64) -> Float64:
     return live_cells / total_cells
 
 
-fn apoptosis_rate(
+def apoptosis_rate(
     annexin_positive: Float64, total_cells: Float64, time_h: Float64
 ) -> Float64:
     """Apoptosis rate from Annexin-V positive fraction over time.
@@ -128,7 +128,7 @@ fn apoptosis_rate(
     return (annexin_positive / total_cells) / time_h
 
 
-fn phagocytic_index(
+def phagocytic_index(
     particles_ingested: Float64, macrophage_count: Float64
 ) -> Float64:
     """Phagocytic index: particles engulfed per macrophage.
@@ -145,7 +145,7 @@ fn phagocytic_index(
     return particles_ingested / macrophage_count
 
 
-fn cell_adhesion_strength(
+def cell_adhesion_strength(
     detachment_force_pn: Float64, contact_area_um2: Float64
 ) -> Float64:
     """Cell adhesion strength: force per unit contact area.
@@ -162,7 +162,7 @@ fn cell_adhesion_strength(
     return detachment_force_pn / contact_area_um2
 
 
-fn osmotic_fragility(
+def osmotic_fragility(
     nacl_conc_g_dl: Float64, median_conc: Float64
 ) -> Float64:
     """Osmotic fragility index relative to median haemolytic concentration.

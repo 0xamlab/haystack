@@ -51,7 +51,7 @@ comptime REPS: Int = 5
 comptime BUILD_WORKERS: Int = 16
 
 
-fn _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
+def _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
     var path = DATA_DIR + "/" + table + "_" + col + ".f64.bin"
     var f = open(path, "r")
     var raw = f.read_bytes()
@@ -68,7 +68,7 @@ fn _load_column(table: String, col: String, n_rows: Int) raises -> Float64Array:
     return float64_from_list(values^)
 
 
-fn main() raises:
+def main() raises:
     print("=== H2O join q5, direct-address vs radix-partitioned hash join ===")
     print("  loading id3 columns from " + DATA_DIR + " ...")
     var left_key = _load_column("x", "id3", N_X)

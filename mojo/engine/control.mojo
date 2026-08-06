@@ -35,7 +35,7 @@ struct PIDState:
     var output_min: Float64
     var output_max: Float64
 
-    fn __init__(out self, kp: Float64, ki: Float64, kd: Float64,
+    def __init__(out self, kp: Float64, ki: Float64, kd: Float64,
                 output_min: Float64, output_max: Float64):
         self.kp = kp
         self.ki = ki
@@ -49,7 +49,7 @@ struct PIDState:
 # ── create_pid ───────────────────────────────────────────────────────────────
 
 
-fn create_pid(kp: Float64, ki: Float64, kd: Float64,
+def create_pid(kp: Float64, ki: Float64, kd: Float64,
               output_min: Float64 = -1e18, output_max: Float64 = 1e18) -> PIDState:
     """Initialize a PID controller.
 
@@ -69,7 +69,7 @@ fn create_pid(kp: Float64, ki: Float64, kd: Float64,
 # ── pid_update ───────────────────────────────────────────────────────────────
 
 
-fn pid_update(mut state: PIDState, setpoint: Float64, measured: Float64,
+def pid_update(mut state: PIDState, setpoint: Float64, measured: Float64,
               dt: Float64) -> Float64:
     """Compute one PID step.
 
@@ -102,7 +102,7 @@ fn pid_update(mut state: PIDState, setpoint: Float64, measured: Float64,
 # ── pid_simulate ─────────────────────────────────────────────────────────────
 
 
-fn pid_simulate(kp: Float64, ki: Float64, kd: Float64, setpoint: Float64,
+def pid_simulate(kp: Float64, ki: Float64, kd: Float64, setpoint: Float64,
                 initial: Float64, plant_gain: Float64, dt: Float64,
                 steps: Int) -> List[Float64]:
     """Simulate PID controlling a first-order plant.
@@ -137,7 +137,7 @@ fn pid_simulate(kp: Float64, ki: Float64, kd: Float64, setpoint: Float64,
 # ── bang_bang ─────────────────────────────────────────────────────────────────
 
 
-fn bang_bang(setpoint: Float64, measured: Float64,
+def bang_bang(setpoint: Float64, measured: Float64,
             hysteresis: Float64 = 0.0) -> Float64:
     """Bang-bang (on/off) control.
 
@@ -161,7 +161,7 @@ fn bang_bang(setpoint: Float64, measured: Float64,
 # ── step_response ────────────────────────────────────────────────────────────
 
 
-fn step_response(gain: Float64, time_constant: Float64, dt: Float64,
+def step_response(gain: Float64, time_constant: Float64, dt: Float64,
                  steps: Int) -> List[Float64]:
     """First-order system step response: y(t) = gain * (1 - exp(-t/tau)).
 
@@ -184,7 +184,7 @@ fn step_response(gain: Float64, time_constant: Float64, dt: Float64,
 # ── ramp_response ────────────────────────────────────────────────────────────
 
 
-fn ramp_response(gain: Float64, time_constant: Float64, dt: Float64,
+def ramp_response(gain: Float64, time_constant: Float64, dt: Float64,
                  steps: Int) -> List[Float64]:
     """First-order ramp response: y(t) = gain * (t - tau*(1 - exp(-t/tau))).
 
@@ -207,7 +207,7 @@ fn ramp_response(gain: Float64, time_constant: Float64, dt: Float64,
 # ── settling_time ────────────────────────────────────────────────────────────
 
 
-fn settling_time(response: List[Float64], setpoint: Float64,
+def settling_time(response: List[Float64], setpoint: Float64,
                  tolerance: Float64 = 0.02) -> Float64:
     """Time index at which response settles within tolerance band.
 
@@ -244,7 +244,7 @@ fn settling_time(response: List[Float64], setpoint: Float64,
 # ── overshoot ────────────────────────────────────────────────────────────────
 
 
-fn overshoot(response: List[Float64], setpoint: Float64) -> Float64:
+def overshoot(response: List[Float64], setpoint: Float64) -> Float64:
     """Maximum overshoot as fraction: (peak - setpoint) / setpoint.
 
     Args:
@@ -277,7 +277,7 @@ fn overshoot(response: List[Float64], setpoint: Float64) -> Float64:
 # ── steady_state_error ───────────────────────────────────────────────────────
 
 
-fn steady_state_error(response: List[Float64], setpoint: Float64) -> Float64:
+def steady_state_error(response: List[Float64], setpoint: Float64) -> Float64:
     """Absolute steady-state error: |final_value - setpoint|.
 
     Args:

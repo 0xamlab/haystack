@@ -47,11 +47,11 @@ comptime WARMUP: Int = 1
 comptime REPS: Int = 2
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn _batch(n_rows: Int, n_groups: Int, second_key: Bool) -> RecordBatch:
+def _batch(n_rows: Int, n_groups: Int, second_key: Bool) -> RecordBatch:
     """key1 (and optionally key2) uniform over n_groups; integer values 0..999."""
     var state: UInt64 = 0x9E3779B97F4A7C15
     var k1 = List[Float64](capacity=n_rows)
@@ -79,7 +79,7 @@ fn _batch(n_rows: Int, n_groups: Int, second_key: Bool) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _grouped_equal(a: GroupedResult, b: GroupedResult) -> Bool:
+def _grouped_equal(a: GroupedResult, b: GroupedResult) -> Bool:
     if a.n_groups() != b.n_groups() or a.null_key_rows != b.null_key_rows:
         return False
     for i in range(a.n_groups()):
@@ -90,7 +90,7 @@ fn _grouped_equal(a: GroupedResult, b: GroupedResult) -> Bool:
     return True
 
 
-fn _multi_equal(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
+def _multi_equal(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
     if a.n_groups() != b.n_groups() or a.key_width != b.key_width:
         return False
     for i in range(len(a.key_tuples)):
@@ -102,7 +102,7 @@ fn _multi_equal(a: MultiGroupedResult, b: MultiGroupedResult) -> Bool:
     return True
 
 
-fn main() raises:
+def main() raises:
     var cores = info.num_physical_cores()
     print("=== parallel group_by: crossover sweep (100 groups, serial vs " + String(cores) + " workers) ===")
     var sizes = List[Int]()

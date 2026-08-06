@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cardiology import cardiac_output, stroke_volume, ejection_fraction, mean_arterial_pressure, pulse_pressure, systemic_vascular_resistance, rate_pressure_product, left_ventricular_work, coronary_perfusion_pressure, fick_cardiac_output
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

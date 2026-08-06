@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, sin, cos, log, pow
 
 
-fn gravity_anomaly_bouguer(
+def gravity_anomaly_bouguer(
     observed_g: Float64, latitude_rad: Float64, elevation_m: Float64, rock_density: Float64
 ) -> Float64:
     """Bouguer gravity anomaly.
@@ -40,7 +40,7 @@ fn gravity_anomaly_bouguer(
     return observed_g - g_th + fac - bouguer
 
 
-fn gravitational_acceleration(latitude_rad: Float64, elevation_m: Float64) -> Float64:
+def gravitational_acceleration(latitude_rad: Float64, elevation_m: Float64) -> Float64:
     """Gravitational acceleration at a given latitude and elevation.
 
     g(φ, h) ≈ g_e·(1 + 0.00193185·sin²φ)·(1 - 2h/Re)
@@ -59,7 +59,7 @@ fn gravitational_acceleration(latitude_rad: Float64, elevation_m: Float64) -> Fl
     return g_lat * (1.0 - 2.0 * elevation_m / re)
 
 
-fn magnetic_inclination(bz: Float64, bh: Float64) -> Float64:
+def magnetic_inclination(bz: Float64, bh: Float64) -> Float64:
     """Magnetic inclination (dip) angle from vertical and horizontal components.
 
     I = atan(Bz / Bh)  returned as ratio (tan I)
@@ -76,7 +76,7 @@ fn magnetic_inclination(bz: Float64, bh: Float64) -> Float64:
     return bz / bh
 
 
-fn seismic_p_wave_velocity(
+def seismic_p_wave_velocity(
     bulk_modulus: Float64, shear_modulus: Float64, density: Float64
 ) -> Float64:
     """P-wave velocity: Vp = sqrt((K + 4G/3) / ρ).
@@ -95,7 +95,7 @@ fn seismic_p_wave_velocity(
     return sqrt(M / density)
 
 
-fn seismic_s_wave_velocity(shear_modulus: Float64, density: Float64) -> Float64:
+def seismic_s_wave_velocity(shear_modulus: Float64, density: Float64) -> Float64:
     """S-wave velocity: Vs = sqrt(G / ρ).
 
     Args:
@@ -110,7 +110,7 @@ fn seismic_s_wave_velocity(shear_modulus: Float64, density: Float64) -> Float64:
     return sqrt(shear_modulus * 1e9 / density)
 
 
-fn depth_from_reflection(two_way_time: Float64, velocity: Float64) -> Float64:
+def depth_from_reflection(two_way_time: Float64, velocity: Float64) -> Float64:
     """Depth from seismic two-way travel time.
 
     d = v · t_TWT / 2
@@ -125,7 +125,7 @@ fn depth_from_reflection(two_way_time: Float64, velocity: Float64) -> Float64:
     return velocity * two_way_time / 2.0
 
 
-fn vp_vs_ratio(vp: Float64, vs: Float64) -> Float64:
+def vp_vs_ratio(vp: Float64, vs: Float64) -> Float64:
     """Vp/Vs ratio (related to Poisson's ratio).
 
     σ = (Vp² - 2Vs²) / (2·(Vp² - Vs²))
@@ -147,7 +147,7 @@ fn vp_vs_ratio(vp: Float64, vs: Float64) -> Float64:
     return num / den
 
 
-fn earth_radius_at_latitude(latitude_rad: Float64) -> Float64:
+def earth_radius_at_latitude(latitude_rad: Float64) -> Float64:
     """Geocentric Earth radius at a given latitude.
 
     Args:
@@ -167,7 +167,7 @@ fn earth_radius_at_latitude(latitude_rad: Float64) -> Float64:
     return sqrt(num / den)
 
 
-fn free_air_correction(elevation_m: Float64) -> Float64:
+def free_air_correction(elevation_m: Float64) -> Float64:
     """Free-air gravity correction: FAC = 0.3086·h mGal.
 
     Args:
@@ -179,7 +179,7 @@ fn free_air_correction(elevation_m: Float64) -> Float64:
     return 0.3086 * elevation_m
 
 
-fn isostasy_airy(
+def isostasy_airy(
     topography_m: Float64, crust_density: Float64, mantle_density: Float64
 ) -> Float64:
     """Airy isostasy: crustal root thickness below sea level.

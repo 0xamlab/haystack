@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from welding import heat_input, heat_input_kj, preheat_carbon_equivalent, cooling_rate_2d, weld_dilution, electrode_consumption, welding_speed_from_deposition, joint_efficiency, throat_thickness_fillet, allowable_shear_fillet, interpass_temperature_max, hydrogen_cracking_risk
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

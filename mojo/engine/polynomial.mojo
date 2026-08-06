@@ -26,7 +26,7 @@ from std.math import abs as fabs, sqrt
 # ── poly_eval ────────────────────────────────────────────────────────────────
 
 
-fn poly_eval(coeffs: List[Float64], x: Float64) -> Float64:
+def poly_eval(coeffs: List[Float64], x: Float64) -> Float64:
     """Evaluate polynomial at x using Horner's method."""
     var n = len(coeffs)
     if n == 0:
@@ -43,7 +43,7 @@ fn poly_eval(coeffs: List[Float64], x: Float64) -> Float64:
 # ── poly_add ─────────────────────────────────────────────────────────────────
 
 
-fn poly_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def poly_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Add two polynomials."""
     var na = len(a)
     var nb = len(b)
@@ -63,7 +63,7 @@ fn poly_add(a: List[Float64], b: List[Float64]) -> List[Float64]:
 # ── poly_multiply ────────────────────────────────────────────────────────────
 
 
-fn poly_multiply(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def poly_multiply(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Multiply two polynomials (convolution)."""
     var na = len(a)
     var nb = len(b)
@@ -82,7 +82,7 @@ fn poly_multiply(a: List[Float64], b: List[Float64]) -> List[Float64]:
 # ── poly_derivative ──────────────────────────────────────────────────────────
 
 
-fn poly_derivative(coeffs: List[Float64]) -> List[Float64]:
+def poly_derivative(coeffs: List[Float64]) -> List[Float64]:
     """Derivative: d/dx of polynomial."""
     var n = len(coeffs)
     if n <= 1:
@@ -98,7 +98,7 @@ fn poly_derivative(coeffs: List[Float64]) -> List[Float64]:
 # ── poly_integral ────────────────────────────────────────────────────────────
 
 
-fn poly_integral(coeffs: List[Float64], C: Float64 = 0.0) -> List[Float64]:
+def poly_integral(coeffs: List[Float64], C: Float64 = 0.0) -> List[Float64]:
     """Indefinite integral with constant C."""
     var n = len(coeffs)
     var result = List[Float64]()
@@ -111,7 +111,7 @@ fn poly_integral(coeffs: List[Float64], C: Float64 = 0.0) -> List[Float64]:
 # ── poly_degree ──────────────────────────────────────────────────────────────
 
 
-fn poly_degree(coeffs: List[Float64]) -> Int:
+def poly_degree(coeffs: List[Float64]) -> Int:
     """Degree (index of highest non-zero coefficient)."""
     var n = len(coeffs)
     if n == 0:
@@ -125,7 +125,7 @@ fn poly_degree(coeffs: List[Float64]) -> Int:
 # ── quadratic_roots ──────────────────────────────────────────────────────────
 
 
-fn quadratic_roots(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def quadratic_roots(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     """Roots of ax² + bx + c. Returns [r1, r2] or [] if complex."""
     var result = List[Float64]()
     if fabs(a) < 1e-15:
@@ -147,7 +147,7 @@ fn quadratic_roots(a: Float64, b: Float64, c: Float64) -> List[Float64]:
 # ── poly_scale ───────────────────────────────────────────────────────────────
 
 
-fn poly_scale(coeffs: List[Float64], s: Float64) -> List[Float64]:
+def poly_scale(coeffs: List[Float64], s: Float64) -> List[Float64]:
     """Multiply all coefficients by scalar."""
     var n = len(coeffs)
     var result = List[Float64]()
@@ -159,7 +159,7 @@ fn poly_scale(coeffs: List[Float64], s: Float64) -> List[Float64]:
 # ── poly_compose ─────────────────────────────────────────────────────────────
 
 
-fn poly_compose(f: List[Float64], g: List[Float64]) -> List[Float64]:
+def poly_compose(f: List[Float64], g: List[Float64]) -> List[Float64]:
     """Compose f(g(x)): substitute g into f.
 
     Uses Horner-like approach: result = f[n-1], then
@@ -187,7 +187,7 @@ fn poly_compose(f: List[Float64], g: List[Float64]) -> List[Float64]:
 # ── poly_from_roots ──────────────────────────────────────────────────────────
 
 
-fn poly_from_roots(roots: List[Float64]) -> List[Float64]:
+def poly_from_roots(roots: List[Float64]) -> List[Float64]:
     """Build polynomial from roots: (x-r1)(x-r2)...
 
     Each factor (x - ri) = [-ri, 1] in our representation.

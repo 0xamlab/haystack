@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from traffic_signal import cycle_length_webster, effective_green, green_ratio, capacity_lane, volume_to_capacity, delay_uniform, pedestrian_crossing_time, yellow_interval, all_red_interval, level_of_service_delay, intersection_capacity_utilization, peak_hour_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

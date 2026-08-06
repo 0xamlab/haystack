@@ -28,7 +28,7 @@ alias TWO_PI: Float64 = 6.283185307179586
 # ── Window functions ───────────────────────────────────────────────────────────
 
 
-fn hamming_window(n: Int) -> List[Float64]:
+def hamming_window(n: Int) -> List[Float64]:
     """Hamming window: 0.54 - 0.46*cos(2πk/(n-1)).
 
     Returns n coefficients for the symmetric Hamming window.
@@ -46,7 +46,7 @@ fn hamming_window(n: Int) -> List[Float64]:
     return w^
 
 
-fn hann_window(n: Int) -> List[Float64]:
+def hann_window(n: Int) -> List[Float64]:
     """Hann window: 0.5*(1 - cos(2πk/(n-1))).
 
     Returns n coefficients for the symmetric Hann window.
@@ -64,7 +64,7 @@ fn hann_window(n: Int) -> List[Float64]:
     return w^
 
 
-fn blackman_window(n: Int) -> List[Float64]:
+def blackman_window(n: Int) -> List[Float64]:
     """Blackman window: 0.42 - 0.5*cos(2πk/(n-1)) + 0.08*cos(4πk/(n-1)).
 
     Returns n coefficients for the symmetric Blackman window.
@@ -88,7 +88,7 @@ fn blackman_window(n: Int) -> List[Float64]:
 # ── Window application ─────────────────────────────────────────────────────────
 
 
-fn apply_window(
+def apply_window(
     data: List[Float64], window: List[Float64]
 ) -> List[Float64]:
     """Element-wise multiply data by window.
@@ -107,7 +107,7 @@ fn apply_window(
 # ── Peak detection ─────────────────────────────────────────────────────────────
 
 
-fn peak_detect(data: List[Float64], threshold: Float64) -> List[Int]:
+def peak_detect(data: List[Float64], threshold: Float64) -> List[Int]:
     """Find local peaks above threshold.
 
     A peak at index i means data[i] > data[i-1] and data[i] > data[i+1]
@@ -126,7 +126,7 @@ fn peak_detect(data: List[Float64], threshold: Float64) -> List[Int]:
 # ── Zero crossings ─────────────────────────────────────────────────────────────
 
 
-fn zero_crossings(data: List[Float64]) -> List[Int]:
+def zero_crossings(data: List[Float64]) -> List[Int]:
     """Find zero-crossing indices.
 
     Index i is a crossing if sign(data[i]) != sign(data[i+1]).
@@ -147,7 +147,7 @@ fn zero_crossings(data: List[Float64]) -> List[Int]:
 # ── Spectral features ─────────────────────────────────────────────────────────
 
 
-fn spectral_energy(magnitudes: List[Float64]) -> Float64:
+def spectral_energy(magnitudes: List[Float64]) -> Float64:
     """Total spectral energy: Σ|X[k]|².
 
     Sum of squared magnitudes.
@@ -158,7 +158,7 @@ fn spectral_energy(magnitudes: List[Float64]) -> Float64:
     return energy
 
 
-fn spectral_centroid(
+def spectral_centroid(
     magnitudes: List[Float64], sample_rate: Float64
 ) -> Float64:
     """Weighted mean frequency.
@@ -184,7 +184,7 @@ fn spectral_centroid(
     return weighted_sum / total
 
 
-fn spectral_flatness(magnitudes: List[Float64]) -> Float64:
+def spectral_flatness(magnitudes: List[Float64]) -> Float64:
     """Spectral flatness: geometric mean / arithmetic mean (Wiener entropy).
 
     Returns value in [0, 1]. 1 = flat (white noise), 0 = tonal.
@@ -220,7 +220,7 @@ fn spectral_flatness(magnitudes: List[Float64]) -> Float64:
 # ── Signal power ───────────────────────────────────────────────────────────────
 
 
-fn signal_power(data: List[Float64]) -> Float64:
+def signal_power(data: List[Float64]) -> Float64:
     """Mean of x² (signal power).
 
     Returns the average power of the signal.

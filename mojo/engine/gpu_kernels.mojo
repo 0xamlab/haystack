@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn tile_size_for_smem(
+def tile_size_for_smem(
     shared_mem_bytes: Float64, dtype_bytes: Float64, n_operands: Float64
 ) -> Float64:
     """Optimal square tile size fitting in shared memory.
@@ -44,7 +44,7 @@ fn tile_size_for_smem(
     return p
 
 
-fn warp_occupancy(
+def warp_occupancy(
     active_warps: Float64, max_warps_per_sm: Float64
 ) -> Float64:
     """Warp occupancy: fraction of max warps that are active.
@@ -64,7 +64,7 @@ fn warp_occupancy(
     return occ
 
 
-fn arithmetic_intensity(
+def arithmetic_intensity(
     flops: Float64, bytes_transferred: Float64
 ) -> Float64:
     """Arithmetic intensity: FLOPs per byte (roofline x-axis).
@@ -81,7 +81,7 @@ fn arithmetic_intensity(
     return flops / bytes_transferred
 
 
-fn roofline_performance(
+def roofline_performance(
     arithmetic_intensity_val: Float64,
     peak_tflops: Float64, peak_bandwidth_tbs: Float64
 ) -> Float64:
@@ -103,7 +103,7 @@ fn roofline_performance(
     return peak_tflops
 
 
-fn memory_coalescing_efficiency(
+def memory_coalescing_efficiency(
     useful_bytes: Float64, cache_line_bytes: Float64
 ) -> Float64:
     """Memory coalescing efficiency: fraction of cache line actually used.
@@ -123,7 +123,7 @@ fn memory_coalescing_efficiency(
     return eff
 
 
-fn kernel_launch_overhead_ratio(
+def kernel_launch_overhead_ratio(
     kernel_duration_us: Float64, launch_overhead_us: Float64
 ) -> Float64:
     """Fraction of time spent on kernel launch overhead.
@@ -141,7 +141,7 @@ fn kernel_launch_overhead_ratio(
     return launch_overhead_us / total
 
 
-fn tensor_core_flops(
+def tensor_core_flops(
     m: Float64, n: Float64, k: Float64, clock_ghz: Float64, n_sms: Float64
 ) -> Float64:
     """Theoretical tensor core TFLOPS for matmul M×N×K.
@@ -164,7 +164,7 @@ fn tensor_core_flops(
     return flops * clock_ghz * n_sms / 1e3
 
 
-fn flash_attention_hbm_reads(
+def flash_attention_hbm_reads(
     seq_len: Float64, head_dim: Float64, n_heads: Float64, dtype_bytes: Float64
 ) -> Float64:
     """HBM reads for one Flash Attention forward pass.
@@ -185,7 +185,7 @@ fn flash_attention_hbm_reads(
     return 3.0 * seq_len * head_dim * n_heads * dtype_bytes
 
 
-fn register_pressure(
+def register_pressure(
     thread_local_vars: Float64, dtype_bytes: Float64
 ) -> Float64:
     """Register file usage estimate per thread.
@@ -200,7 +200,7 @@ fn register_pressure(
     return thread_local_vars * dtype_bytes
 
 
-fn stream_multiprocessor_util(
+def stream_multiprocessor_util(
     active_cycles: Float64, total_cycles: Float64
 ) -> Float64:
     """SM utilization: fraction of cycles with active warps.

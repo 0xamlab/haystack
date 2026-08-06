@@ -126,7 +126,7 @@ comptime MAX_OUTPUT_BYTES: Int = 512 * 1024 * 1024
 comptime OFFSET_BYTES: Int = 4
 
 
-fn _saturating_add(a: Int, b: Int) -> Int:
+def _saturating_add(a: Int, b: Int) -> Int:
     """`a + b`, clamped instead of wrapped.
 
     A wrapped sum compares SMALL, so a budget check on it passes and the allocation it
@@ -141,7 +141,7 @@ fn _saturating_add(a: Int, b: Int) -> Int:
     return a + b
 
 
-fn string_key(value: String) -> UInt64:
+def string_key(value: String) -> UInt64:
     """A 64-bit key for `value`, folded through `hash_index.hash_bits`.
 
     `hash_bits` is the package's one FNV-1a mixer, over the eight bytes of a UInt64.
@@ -174,7 +174,7 @@ fn string_key(value: String) -> UInt64:
     return acc
 
 
-fn key_as_float(key: UInt64) -> Float64:
+def key_as_float(key: UInt64) -> Float64:
     """The Float64 `HashIndex` is keyed on. Bit pattern, not a numeric value."""
     return bitcast[DType.float64](key)
 
@@ -194,16 +194,16 @@ struct StringDictionary(Copyable, Movable):
     var bucket_head: List[Int]
     var next_in_bucket: List[Int]
 
-    fn __init__(out self, initial_capacity: Int = 64):
+    def __init__(out self, initial_capacity: Int = 64):
         self.values = List[String]()
         self.index = HashIndex(initial_capacity)
         self.bucket_head = List[Int]()
         self.next_in_bucket = List[Int]()
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         return len(self.values)
 
-    fn find(self, value: String) -> Int:
+    def find(self, value: String) -> Int:
         """`value`'s code, or `NULL_CODE` if it is not in the dictionary. No insert."""
         var bucket = self.index.find(key_as_float(string_key(value)))
         if bucket < 0 or bucket >= len(self.bucket_head):
@@ -215,10 +215,10 @@ struct StringDictionary(Copyable, Movable):
             code = self.next_in_bucket[code]
         return NULL_CODE
 
-    fn contains(self, value: String) -> Bool:
+    def contains(self, value: String) -> Bool:
         return self.find(value) >= 0
 
-    fn get_or_add(mut self, value: String) -> Int:
+    def get_or_add(mut self, value: String) -> Int:
         """`value`'s existing code, or a fresh one after appending it.
 
         Codes are handed out in first-appearance order, so the dictionary is a
@@ -241,7 +241,7 @@ struct StringDictionary(Copyable, Movable):
         self.bucket_head[bucket] = fresh
         return fresh
 
-    fn value_at(self, code: Int) -> String:
+    def value_at(self, code: Int) -> String:
         """The value for `code`, or "" when the code names nothing.
 
         The "" is NOT a value — it is what a caller gets for asking a question with no
@@ -269,7 +269,7 @@ struct DictEncoded(Copyable, Movable):
     var n_distinct: Int
 
 
-fn encode_strings(values: List[String], mask: List[Bool]) -> DictEncoded:
+def encode_strings(values: List[String], mask: List[Bool]) -> DictEncoded:
     """Dictionary-encode a nullable string column. `n_rows` is `len(values)`.
 
     The row count is DERIVED from the payload rather than accepted as an argument
@@ -309,7 +309,7 @@ fn encode_strings(values: List[String], mask: List[Bool]) -> DictEncoded:
     return out^
 
 
-fn encode_all_present(values: List[String]) -> DictEncoded:
+def encode_all_present(values: List[String]) -> DictEncoded:
     """`encode_strings` for a column with no nulls."""
     var mask = List[Bool]()
     for _ in range(len(values)):
@@ -332,7 +332,7 @@ struct DictDecoded(Copyable, Movable):
     var n_rows: Int
 
 
-fn decoded_bytes_required(
+def decoded_bytes_required(
     dictionary: List[String], codes: List[Int], validity: List[UInt8], n_rows: Int
 ) -> Int:
     """Value bytes `decode_strings` would materialise, saturating on overflow.
@@ -362,7 +362,7 @@ fn decoded_bytes_required(
     return total
 
 
-fn decode_strings(
+def decode_strings(
     dictionary: List[String],
     codes: List[Int],
     validity: List[UInt8],
@@ -431,7 +431,7 @@ fn decode_strings(
     return out^
 
 
-fn decode_to_array(
+def decode_to_array(
     dictionary: List[String],
     codes: List[Int],
     validity: List[UInt8],
@@ -449,7 +449,7 @@ fn decode_to_array(
     return strings_to_array(decoded.values, decoded.mask)
 
 
-fn strings_to_array(values: List[String], mask: List[Bool]) -> StringArray:
+def strings_to_array(values: List[String], mask: List[Bool]) -> StringArray:
     """A nullable `StringArray`. `array.string_from_list` is the all-present case."""
     var n = len(values)
     var bitmap = new_all_null(n)
@@ -460,7 +460,7 @@ fn strings_to_array(values: List[String], mask: List[Bool]) -> StringArray:
     return StringArray(ArcPointer(owned^), bitmap^, 0, n)
 
 
-fn encode_to_float64_column(values: List[String], mask: List[Bool]) -> Float64Array:
+def encode_to_float64_column(values: List[String], mask: List[Bool]) -> Float64Array:
     """The codes as a `Float64Array`, so `hash_index` can group a string column.
 
     A code is a small non-negative integer, exact in Float64 well past any dictionary
@@ -482,7 +482,7 @@ fn encode_to_float64_column(values: List[String], mask: List[Bool]) -> Float64Ar
     return float64_with_nulls(numbers^, present)
 
 
-fn code_byte_width(n_distinct: Int) -> Int:
+def code_byte_width(n_distinct: Int) -> Int:
     """Narrowest integer width that can name `n_distinct` codes: 1, 2, 4 or 8 bytes.
 
     What a wire format would actually spend per row. `footprint` charges this rather
@@ -530,7 +530,7 @@ struct DictFootprint(Copyable, Movable):
     var ratio: Float64
 
 
-fn footprint(values: List[String], mask: List[Bool]) -> DictFootprint:
+def footprint(values: List[String], mask: List[Bool]) -> DictFootprint:
     """Measure the plain and coded footprints of a column. No estimate, a count.
 
     Every byte total below is summed from the actual values, so the number this returns
@@ -581,7 +581,7 @@ fn footprint(values: List[String], mask: List[Bool]) -> DictFootprint:
     return out^
 
 
-fn dict_status_name(status: Int) -> String:
+def dict_status_name(status: Int) -> String:
     """The vocabulary for 300-309. See rule 4e on per-package ranges."""
     if status == DICT_OK:
         return "ok"

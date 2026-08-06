@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn temperature_scale(logit: Float64, temperature: Float64) -> Float64:
+def temperature_scale(logit: Float64, temperature: Float64) -> Float64:
     """Scale logit by temperature: l' = l / T.
 
     Args:
@@ -31,7 +31,7 @@ fn temperature_scale(logit: Float64, temperature: Float64) -> Float64:
     return logit / temperature
 
 
-fn top_k_threshold(
+def top_k_threshold(
     k_th_logit: Float64
 ) -> Float64:
     """Logit threshold for top-k filtering.
@@ -47,7 +47,7 @@ fn top_k_threshold(
     return k_th_logit
 
 
-fn top_p_cumulative(
+def top_p_cumulative(
     sorted_prob: Float64, cumulative_so_far: Float64, p: Float64
 ) -> Float64:
     """Nucleus (top-p) sampling: include token if cumulative < p.
@@ -60,7 +60,7 @@ fn top_p_cumulative(
     return 0.0
 
 
-fn greedy_token_id(
+def greedy_token_id(
     max_logit: Float64, current_logit: Float64, current_id: Float64
 ) -> Float64:
     """Check if current token is the greedy choice.
@@ -78,7 +78,7 @@ fn greedy_token_id(
     return -1.0
 
 
-fn beam_score_update(
+def beam_score_update(
     current_score: Float64, next_log_prob: Float64
 ) -> Float64:
     """Accumulate beam search score: score += log P(token).
@@ -93,7 +93,7 @@ fn beam_score_update(
     return current_score + next_log_prob
 
 
-fn repetition_penalty_scale(
+def repetition_penalty_scale(
     logit: Float64, penalty: Float64, token_appeared: Float64
 ) -> Float64:
     """Apply repetition penalty (Keskar et al. 2019).
@@ -115,7 +115,7 @@ fn repetition_penalty_scale(
     return logit * penalty
 
 
-fn length_penalty(
+def length_penalty(
     log_prob_sum: Float64, length: Float64, alpha: Float64
 ) -> Float64:
     """Beam search length penalty (Wu et al. 2016 Google NMT).
@@ -136,13 +136,13 @@ fn length_penalty(
     return log_prob_sum / lp
 
 
-fn pow_approx(base: Float64, exponent: Float64) -> Float64:
+def pow_approx(base: Float64, exponent: Float64) -> Float64:
     if base <= 0.0:
         return 1.0
     return exp(exponent * log(base))
 
 
-fn min_p_threshold(
+def min_p_threshold(
     max_prob: Float64, min_p: Float64
 ) -> Float64:
     """Min-p dynamic threshold: threshold = max_prob × min_p.
@@ -157,7 +157,7 @@ fn min_p_threshold(
     return max_prob * min_p
 
 
-fn typical_p_score(
+def typical_p_score(
     token_log_prob: Float64, entropy: Float64
 ) -> Float64:
     """Locally typical sampling: |log p(x) + H| for each token.
@@ -175,7 +175,7 @@ fn typical_p_score(
     return diff
 
 
-fn token_frequency_penalty(
+def token_frequency_penalty(
     logit: Float64, token_count: Float64,
     frequency_penalty: Float64, presence_penalty: Float64
 ) -> Float64:

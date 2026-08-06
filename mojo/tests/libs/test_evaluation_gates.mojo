@@ -79,16 +79,16 @@ from evaluation.gates import (
 )
 
 
-fn close(got: Float64, want: Float64) -> Bool:
+def close(got: Float64, want: Float64) -> Bool:
     return fabs(got - want) <= 8.0 * EVAL_DBL_EPSILON * fabs(want)
 
 
-fn close_log(got: Float64, want: Float64) -> Bool:
+def close_log(got: Float64, want: Float64) -> Bool:
     """1e-8 relative — the frozen `std.math.log`'s measured accuracy, not slack."""
     return fabs(got - want) <= 1e-8 * fabs(want)
 
 
-fn four(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def four(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
@@ -97,7 +97,7 @@ fn four(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     return out^
 
 
-fn two(a: Float64, b: Float64) -> List[Float64]:
+def two(a: Float64, b: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from metabolomics import metabolite_fold_change, pathway_enrichment_score, chemical_similarity_index, metabolic_flux_ratio, isotope_label_fraction, metabolite_half_life, normalization_zscore, principal_component_variance, vip_score, metabolic_distance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

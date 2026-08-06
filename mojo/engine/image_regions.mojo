@@ -19,24 +19,24 @@ from image_morphology import connected_components_4_flat
 from image_resize import reshape_to_grid
 
 
-fn _pixel_count(width: Int, height: Int) -> Int:
+def _pixel_count(width: Int, height: Int) -> Int:
     if width <= 0 or height <= 0:
         return 0
     return width * height
 
 
-fn _pixel_value(flat: List[Float64], index: Int) -> Float64:
+def _pixel_value(flat: List[Float64], index: Int) -> Float64:
     if index < 0 or index >= len(flat):
         return 0.0
     return flat[index]
 
 
-fn foreground_mask_otsu_flat(flat: List[Float64], width: Int, height: Int) -> List[Float64]:
+def foreground_mask_otsu_flat(flat: List[Float64], width: Int, height: Int) -> List[Float64]:
     """Otsu-based dark-foreground mask."""
     return binarize_otsu_flat(flat, width, height)
 
 
-fn connected_component_boxes_flat(
+def connected_component_boxes_flat(
     mask_flat: List[Float64], width: Int, height: Int, fg_threshold: Float64, max_regions: Int
 ) -> List[Int]:
     """Flattened boxes sorted by descending area: [x0,y0,x1,y1,area] × N."""
@@ -101,7 +101,7 @@ fn connected_component_boxes_flat(
         out.append(max_y[label])
         out.append(area[label])
     return out^
-fn largest_foreground_box_flat(flat: List[Float64], width: Int, height: Int) -> List[Int]:
+def largest_foreground_box_flat(flat: List[Float64], width: Int, height: Int) -> List[Int]:
     """Largest Otsu-thresholded component box as [x0, y0, x1, y1, area]."""
     var mask = foreground_mask_otsu_flat(flat, width, height)
     var boxes = connected_component_boxes_flat(mask, width, height, 128.0, 1)
@@ -109,7 +109,7 @@ fn largest_foreground_box_flat(flat: List[Float64], width: Int, height: Int) -> 
     for i in range(len(boxes)):
         out.append(boxes[i])
     return out^
-fn saliency_box_flat(
+def saliency_box_flat(
     flat: List[Float64], width: Int, height: Int, grid_rows: Int, grid_cols: Int
 ) -> List[Int]:
     """Most salient grid cell as [x0, y0, x1, y1, area]."""
@@ -136,7 +136,7 @@ fn saliency_box_flat(
     out.append(y1)
     out.append((x1 - x0 + 1) * (y1 - y0 + 1))
     return out^
-fn extract_box_flat(
+def extract_box_flat(
     flat: List[Float64], width: Int, height: Int, x0: Int, y0: Int, x1: Int, y1: Int
 ) -> List[Float64]:
     """Inclusive crop extraction as a flat list. Invalid boxes return []."""
@@ -161,7 +161,7 @@ fn extract_box_flat(
         for x in range(left, right + 1):
             out.append(_pixel_value(flat, y * width + x))
     return out^
-fn box_iou(box_a: List[Int], box_b: List[Int]) -> Float64:
+def box_iou(box_a: List[Int], box_b: List[Int]) -> Float64:
     """Intersection-over-union for two inclusive boxes."""
     if len(box_a) < 4 or len(box_b) < 4:
         return 0.0

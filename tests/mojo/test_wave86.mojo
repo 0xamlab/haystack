@@ -49,11 +49,11 @@ from std.math import abs as fabs
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Paper Science Tests ─────────────────────────────────────────────────────
 
 
-fn test_paper_science() raises:
+def test_paper_science() raises:
     # basis_weight: 80g over 1 m² = 80 GSM
     assert_true(approx_eq(basis_weight(80.0, 1.0), 80.0))
     # 160g over 2 m² = 80 GSM
@@ -114,7 +114,7 @@ fn test_paper_science() raises:
 # ── Radar Tests ──────────────────────────────────────────────────────────────
 
 
-fn test_radar() raises:
+def test_radar() raises:
     # doppler_frequency: 300 m/s, λ=0.03m → 2*300/0.03 = 20000 Hz
     assert_true(approx_eq(doppler_frequency(300.0, 0.03), 20000.0))
 
@@ -178,7 +178,7 @@ fn test_radar() raises:
 # ── Veterinary Tests ─────────────────────────────────────────────────────────
 
 
-fn test_veterinary() raises:
+def test_veterinary() raises:
     # dose_mg: 25kg dog, 10 mg/kg → 250 mg
     assert_true(approx_eq(dose_mg(25.0, 10.0), 250.0))
     # 4kg cat, 5 mg/kg → 20 mg
@@ -246,7 +246,7 @@ fn test_veterinary() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 86 tests:")
     test_paper_science()
     test_radar()

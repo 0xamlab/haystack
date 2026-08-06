@@ -115,7 +115,7 @@ comptime LLMK_MAX_DIM: Int = 1 << 24
 or an unbounded accumulation length where an element count belongs is refused rather than allocated."""
 
 
-fn llmk_status_name(code: Int) -> String:
+def llmk_status_name(code: Int) -> String:
     """Human name for a status code. Every code above appears here exactly once."""
     if code == LLMK_OK:
         return String("llmk_ok")
@@ -142,7 +142,7 @@ fn llmk_status_name(code: Int) -> String:
     return String("llmk_code_out_of_range")
 
 
-fn llmk_residual_dims_check(n: Int, len_a: Int, len_b: Int) -> Int:
+def llmk_residual_dims_check(n: Int, len_a: Int, len_b: Int) -> Int:
     """Validate a residual add's shape against its real buffer lengths, exactly.
 
     @capability llmk_residual_dims_check
@@ -162,7 +162,7 @@ fn llmk_residual_dims_check(n: Int, len_a: Int, len_b: Int) -> Int:
     return LLMK_OK
 
 
-fn llmk_kv_append_dims_check(cache_len: Int, len_cache: Int, n_new: Int, len_new: Int) -> Int:
+def llmk_kv_append_dims_check(cache_len: Int, len_cache: Int, n_new: Int, len_new: Int) -> Int:
     """Validate one decode step's KV-cache growth against the real buffer lengths, exactly.
 
     @capability llmk_kv_append_dims_check
@@ -183,7 +183,7 @@ fn llmk_kv_append_dims_check(cache_len: Int, len_cache: Int, n_new: Int, len_new
     return LLMK_OK
 
 
-fn llmk_argmax_dims_check(n: Int, len_logits: Int) -> Int:
+def llmk_argmax_dims_check(n: Int, len_logits: Int) -> Int:
     """Validate a full-vocabulary argmax row against its real length, exactly.
 
     @capability llmk_argmax_dims_check
@@ -201,7 +201,7 @@ fn llmk_argmax_dims_check(n: Int, len_logits: Int) -> Int:
     return LLMK_OK
 
 
-fn llmk_gemv_dims_check(m: Int, n: Int, len_a: Int, len_x: Int) -> Int:
+def llmk_gemv_dims_check(m: Int, n: Int, len_a: Int, len_x: Int) -> Int:
     """Validate the parallel transposed-GEMV's shape against its real buffer lengths, exactly.
 
     `a` is `m` rows by `n` columns, row-major (the in-features-by-out-features layout

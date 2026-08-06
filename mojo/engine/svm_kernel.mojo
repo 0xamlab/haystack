@@ -22,7 +22,7 @@ from std.math import sqrt, exp, abs as fabs, tanh
 # ── kernel_linear ─────────────────────────────────────────────────────────────
 
 
-fn kernel_linear(a: List[Float64], b: List[Float64]) -> Float64:
+def kernel_linear(a: List[Float64], b: List[Float64]) -> Float64:
     """Linear kernel: dot product a·b."""
     var n = len(a)
     if len(b) < n:
@@ -36,7 +36,7 @@ fn kernel_linear(a: List[Float64], b: List[Float64]) -> Float64:
 # ── kernel_rbf ────────────────────────────────────────────────────────────────
 
 
-fn kernel_rbf(
+def kernel_rbf(
     a: List[Float64], b: List[Float64], gamma: Float64 = 1.0
 ) -> Float64:
     """RBF (Gaussian) kernel: exp(-γ·‖a-b‖²)."""
@@ -53,7 +53,7 @@ fn kernel_rbf(
 # ── kernel_polynomial ─────────────────────────────────────────────────────────
 
 
-fn kernel_polynomial(
+def kernel_polynomial(
     a: List[Float64],
     b: List[Float64],
     degree: Int = 3,
@@ -74,7 +74,7 @@ fn kernel_polynomial(
 # ── kernel_sigmoid ────────────────────────────────────────────────────────────
 
 
-fn kernel_sigmoid(
+def kernel_sigmoid(
     a: List[Float64],
     b: List[Float64],
     gamma: Float64 = 1.0,
@@ -88,7 +88,7 @@ fn kernel_sigmoid(
 # ── kernel_matrix ─────────────────────────────────────────────────────────────
 
 
-fn kernel_matrix(
+def kernel_matrix(
     data: List[List[Float64]],
     kernel_type: Int,
     gamma: Float64 = 1.0,
@@ -116,7 +116,7 @@ fn kernel_matrix(
 # ── kernel_center ─────────────────────────────────────────────────────────────
 
 
-fn kernel_center(K: List[List[Float64]]) -> List[List[Float64]]:
+def kernel_center(K: List[List[Float64]]) -> List[List[Float64]]:
     """Center kernel matrix in feature space.
 
     Kc = K - 1_n K - K 1_n + 1_n K 1_n
@@ -162,7 +162,7 @@ fn kernel_center(K: List[List[Float64]]) -> List[List[Float64]]:
 # ── frobenius_norm ────────────────────────────────────────────────────────────
 
 
-fn frobenius_norm(K: List[List[Float64]]) -> Float64:
+def frobenius_norm(K: List[List[Float64]]) -> Float64:
     """Frobenius norm: sqrt(Σᵢⱼ K[i][j]²)."""
     var s: Float64 = 0.0
     for i in range(len(K)):
@@ -174,7 +174,7 @@ fn frobenius_norm(K: List[List[Float64]]) -> Float64:
 # ── kernel_alignment ──────────────────────────────────────────────────────────
 
 
-fn kernel_alignment(
+def kernel_alignment(
     K1: List[List[Float64]], K2: List[List[Float64]]
 ) -> Float64:
     """Kernel alignment: ⟨K1,K2⟩_F / (‖K1‖_F · ‖K2‖_F)."""
@@ -197,7 +197,7 @@ fn kernel_alignment(
 # ── is_positive_semidefinite ──────────────────────────────────────────────────
 
 
-fn is_positive_semidefinite(K: List[List[Float64]]) -> Bool:
+def is_positive_semidefinite(K: List[List[Float64]]) -> Bool:
     """Check if kernel matrix is PSD using diagonal dominance heuristic.
 
     A symmetric diagonally dominant matrix with non-negative diagonal

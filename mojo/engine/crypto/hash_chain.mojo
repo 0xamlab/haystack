@@ -4,15 +4,15 @@ hash_chain.mojo — Hash chains & Merkle trees. Zero Python imports.
 Uses simple integer hashing (FNV-1a style) for demonstration.
 
 Public API:
-  fn simple_hash(data)                 — FNV-1a-like hash → 32-bit int
-  fn hash_chain_build(items)           — Build hash chain
-  fn hash_chain_verify(items, chain)   — Verify hash chain integrity
-  fn merkle_root(leaves)               — Compute Merkle root
-  fn merkle_proof(leaves, index)       — Generate Merkle proof
-  fn merkle_verify(leaf, proof, idx, root) — Verify Merkle proof
-  fn combine_hashes(a, b)              — Combine two hashes
-  fn int_to_bytes(value)               — Int → 4 big-endian bytes
-  fn hash_single(value)                — Hash a single integer
+  def simple_hash(data)                 — FNV-1a-like hash → 32-bit int
+  def hash_chain_build(items)           — Build hash chain
+  def hash_chain_verify(items, chain)   — Verify hash chain integrity
+  def merkle_root(leaves)               — Compute Merkle root
+  def merkle_proof(leaves, index)       — Generate Merkle proof
+  def merkle_verify(leaf, proof, idx, root) — Verify Merkle proof
+  def combine_hashes(a, b)              — Combine two hashes
+  def int_to_bytes(value)               — Int → 4 big-endian bytes
+  def hash_single(value)                — Hash a single integer
 """
 
 
@@ -26,7 +26,7 @@ comptime MASK_32: Int = 0xFFFFFFFF
 # ── Core Hash Functions ──────────────────────────────────────────────────────
 
 
-fn simple_hash(data: List[Int]) -> Int:
+def simple_hash(data: List[Int]) -> Int:
     """FNV-1a-like hash of a byte list → 32-bit integer."""
     var h = FNV_OFFSET
     for i in range(len(data)):
@@ -35,7 +35,7 @@ fn simple_hash(data: List[Int]) -> Int:
     return h
 
 
-fn int_to_bytes(value: Int) -> List[Int]:
+def int_to_bytes(value: Int) -> List[Int]:
     """Convert int to 4 big-endian bytes."""
     var result = List[Int]()
     var v = value & MASK_32
@@ -46,12 +46,12 @@ fn int_to_bytes(value: Int) -> List[Int]:
     return result^
 
 
-fn hash_single(value: Int) -> Int:
+def hash_single(value: Int) -> Int:
     """Hash a single integer."""
     return simple_hash(int_to_bytes(value))
 
 
-fn combine_hashes(a: Int, b: Int) -> Int:
+def combine_hashes(a: Int, b: Int) -> Int:
     """Combine two hashes by hashing their concatenated bytes."""
     var data = List[Int]()
     var a_bytes = int_to_bytes(a)
@@ -66,7 +66,7 @@ fn combine_hashes(a: Int, b: Int) -> Int:
 # ── Hash Chain ───────────────────────────────────────────────────────────────
 
 
-fn hash_chain_build(items: List[List[Int]]) -> List[Int]:
+def hash_chain_build(items: List[List[Int]]) -> List[Int]:
     """Build hash chain: h[0]=hash(items[0]),
     h[i]=hash(h[i-1]_bytes || items[i]).
     Returns chain of hashes."""
@@ -85,7 +85,7 @@ fn hash_chain_build(items: List[List[Int]]) -> List[Int]:
     return chain^
 
 
-fn hash_chain_verify(items: List[List[Int]], chain: List[Int]) -> Bool:
+def hash_chain_verify(items: List[List[Int]], chain: List[Int]) -> Bool:
     """Verify hash chain integrity. Recomputes and compares."""
     if len(items) != len(chain):
         return False
@@ -110,7 +110,7 @@ fn hash_chain_verify(items: List[List[Int]], chain: List[Int]) -> Bool:
 # ── Merkle Tree ──────────────────────────────────────────────────────────────
 
 
-fn _next_level(level: List[Int]) -> List[Int]:
+def _next_level(level: List[Int]) -> List[Int]:
     """Compute next level of Merkle tree by pairing and combining."""
     var result = List[Int]()
     var padded = List[Int]()
@@ -126,7 +126,7 @@ fn _next_level(level: List[Int]) -> List[Int]:
     return result^
 
 
-fn merkle_root(leaves: List[Int]) -> Int:
+def merkle_root(leaves: List[Int]) -> Int:
     """Compute Merkle root from leaf hashes.
     Pads with last leaf if odd number."""
     if len(leaves) == 0:
@@ -141,7 +141,7 @@ fn merkle_root(leaves: List[Int]) -> Int:
     return current[0]
 
 
-fn merkle_proof(leaves: List[Int], index: Int) -> List[Int]:
+def merkle_proof(leaves: List[Int], index: Int) -> List[Int]:
     """Generate Merkle proof (sibling hashes) for leaf at index."""
     var proof = List[Int]()
     if index < 0 or index >= len(leaves):
@@ -172,7 +172,7 @@ fn merkle_proof(leaves: List[Int], index: Int) -> List[Int]:
     return proof^
 
 
-fn merkle_verify(
+def merkle_verify(
     leaf_hash: Int, proof: List[Int], index: Int, root: Int
 ) -> Bool:
     """Verify a Merkle proof against a known root."""

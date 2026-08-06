@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from wastewater import bod_removal_efficiency, hydraulic_retention_time, solids_retention_time, food_to_microorganism_ratio, sludge_volume_index, oxygen_demand, chlorine_demand, ct_value, alkalinity_consumption, sludge_production, trickling_filter_efficiency, detention_time_settling
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

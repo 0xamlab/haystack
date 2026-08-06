@@ -150,7 +150,7 @@ comptime DQ_INT_GRID_MAX: Float64 = 9.007199254740992e15
 comptime DQ_MAX_DECIMALS: Int = 15
 
 
-fn dq_status_name(code: Int) -> String:
+def dq_status_name(code: Int) -> String:
     """Name for any status code this package can return.
 
     One vocabulary for all five modules: a caller that logs a bare integer must be able
@@ -194,13 +194,13 @@ fn dq_status_name(code: Int) -> String:
     return "unknown_status_" + String(code)
 
 
-fn _profile_status_text(code: Int) -> String:
+def _profile_status_text(code: Int) -> String:
     if code == 410:
         return "no_columns_to_profile"
     return "unknown_profile_status_" + String(code)
 
 
-fn _expect_status_text(code: Int) -> String:
+def _expect_status_text(code: Int) -> String:
     if code == 420:
         return "unknown_expectation_op"
     if code == 421:
@@ -224,7 +224,7 @@ fn _expect_status_text(code: Int) -> String:
     return "unknown_expect_status_" + String(code)
 
 
-fn _leakage_status_text(code: Int) -> String:
+def _leakage_status_text(code: Int) -> String:
     if code == 430:
         return "no_leakage_signal"
     if code == 431:
@@ -242,7 +242,7 @@ fn _leakage_status_text(code: Int) -> String:
     return "unknown_leakage_status_" + String(code)
 
 
-fn _duplicates_status_text(code: Int) -> String:
+def _duplicates_status_text(code: Int) -> String:
     if code == 440:
         return "no_key_columns_given"
     if code == 441:
@@ -252,7 +252,7 @@ fn _duplicates_status_text(code: Int) -> String:
     return "unknown_duplicates_status_" + String(code)
 
 
-fn dq_is_finite(value: Float64) -> Bool:
+def dq_is_finite(value: Float64) -> Bool:
     """True for a finite Float64. Delegates to the frozen `numeric.reduce`.
 
     Not reimplemented: this package and every reduction it calls must agree on what
@@ -267,7 +267,7 @@ fn dq_is_finite(value: Float64) -> Bool:
     return is_finite_value(value)
 
 
-fn dq_relative_tolerance(magnitude: Float64, absolute_tol: Float64) -> Float64:
+def dq_relative_tolerance(magnitude: Float64, absolute_tol: Float64) -> Float64:
     """`|absolute_tol| + DBL_EPSILON * |magnitude|`, where `magnitude` is THE quantity
     being judged.
 
@@ -292,7 +292,7 @@ fn dq_relative_tolerance(magnitude: Float64, absolute_tol: Float64) -> Float64:
     return absolute + DQ_DBL_EPSILON * fabs(magnitude)
 
 
-fn dq_ulp_tolerance(magnitude: Float64, ulps: Int) -> Float64:
+def dq_ulp_tolerance(magnitude: Float64, ulps: Int) -> Float64:
     """`ulps * DBL_EPSILON * |magnitude|` — a few-ulp slack on ONE item's own magnitude.
 
     For a comparison against a value that took several arithmetic operations to compute,
@@ -315,7 +315,7 @@ fn dq_ulp_tolerance(magnitude: Float64, ulps: Int) -> Float64:
     return Float64(count) * DQ_DBL_EPSILON * fabs(magnitude)
 
 
-fn dq_values_equal(a: Float64, b: Float64) -> Bool:
+def dq_values_equal(a: Float64, b: Float64) -> Bool:
     """The package's stated float equality: identical normalized IEEE-754 bit patterns.
 
     Delegates to the frozen `columnar.hash_index.normalize_bits`, so two consequences are
@@ -339,7 +339,7 @@ fn dq_values_equal(a: Float64, b: Float64) -> Bool:
     return normalize_bits(a) == normalize_bits(b)
 
 
-fn dq_decimal_scale(decimals: Int) -> Float64:
+def dq_decimal_scale(decimals: Int) -> Float64:
     """`10^decimals` for `decimals` in [0, DQ_MAX_DECIMALS], else 0.0.
 
     Built by repeated multiplication of exactly-representable powers of ten rather than
@@ -360,7 +360,7 @@ fn dq_decimal_scale(decimals: Int) -> Float64:
     return scale
 
 
-fn dq_quantize_exact(value: Float64, decimals: Int) -> Bool:
+def dq_quantize_exact(value: Float64, decimals: Int) -> Bool:
     """Whether `value` can be placed on the `decimals`-place grid without invention.
 
     False when `decimals` is out of range, when `value` is not finite, or when
@@ -385,7 +385,7 @@ fn dq_quantize_exact(value: Float64, decimals: Int) -> Bool:
     return fabs(scaled) <= DQ_INT_GRID_MAX
 
 
-fn dq_quantize(value: Float64, decimals: Int) -> Float64:
+def dq_quantize(value: Float64, decimals: Int) -> Float64:
     """`value` rounded to `decimals` places, half away from zero.
 
     Returns `value` UNCHANGED when `dq_quantize_exact` is False, so this function never
@@ -412,7 +412,7 @@ fn dq_quantize(value: Float64, decimals: Int) -> Float64:
     return rounded / scale
 
 
-fn dq_table_defect(table: List[Float64], n_rows: Int, n_cols: Int) -> Int:
+def dq_table_defect(table: List[Float64], n_rows: Int, n_cols: Int) -> Int:
     """`DQ_OK` when `n_rows` x `n_cols` is a sound row-major shape for `table`.
 
     Order matters: the ceilings are checked BEFORE the shape, so a caller cannot get a
@@ -440,7 +440,7 @@ fn dq_table_defect(table: List[Float64], n_rows: Int, n_cols: Int) -> Int:
     return DQ_OK
 
 
-fn dq_work_fits(a: Int, b: Int) -> Bool:
+def dq_work_fits(a: Int, b: Int) -> Bool:
     """True when `a * b <= DQ_MAX_WORK`, decided WITHOUT forming the product.
 
     `a * b` wraps at 64 bits, so a comparison against the budget is not a bound: with
@@ -459,7 +459,7 @@ fn dq_work_fits(a: Int, b: Int) -> Bool:
     return a <= DQ_MAX_WORK // b
 
 
-fn dq_rows_within_budget(n_rows: Int, unit_cost: Int) -> Int:
+def dq_rows_within_budget(n_rows: Int, unit_cost: Int) -> Int:
     """Rows of `n_rows` a driver may examine at `unit_cost` work units per row.
 
     `min(n_rows, DQ_MAX_WORK // unit_cost)`, and 0 for a non-positive `unit_cost` or a
@@ -492,7 +492,7 @@ fn dq_rows_within_budget(n_rows: Int, unit_cost: Int) -> Int:
     return n_rows if n_rows < allowed else allowed
 
 
-fn dq_mask_defect(null_mask: List[Bool], n_rows: Int) -> Int:
+def dq_mask_defect(null_mask: List[Bool], n_rows: Int) -> Int:
     """`DQ_OK` when `null_mask` describes exactly `n_rows` positions.
 
     `True` means the value at that position is PRESENT. A shorter or longer mask is
@@ -515,7 +515,7 @@ fn dq_mask_defect(null_mask: List[Bool], n_rows: Int) -> Int:
     return DQ_OK
 
 
-fn dq_mask_all_valid(n_rows: Int) -> List[Bool]:
+def dq_mask_all_valid(n_rows: Int) -> List[Bool]:
     """A mask marking every one of `n_rows` positions present — how a caller with no
     nulls says so.
 
@@ -534,7 +534,7 @@ fn dq_mask_all_valid(n_rows: Int) -> List[Bool]:
     return all_valid(n_rows)
 
 
-fn dq_column(table: List[Float64], n_rows: Int, n_cols: Int, col: Int) -> List[Float64]:
+def dq_column(table: List[Float64], n_rows: Int, n_cols: Int, col: Int) -> List[Float64]:
     """Column `col` of a row-major `table`, or an EMPTY list on any defect.
 
     The single place in this package that indexes a table, so the bounds argument is made
@@ -561,7 +561,7 @@ fn dq_column(table: List[Float64], n_rows: Int, n_cols: Int, col: Int) -> List[F
     return out^
 
 
-fn dq_column_mask(
+def dq_column_mask(
     null_mask: List[Bool], n_rows: Int, n_cols: Int, col: Int
 ) -> List[Bool]:
     """The presence mask for column `col` of a row-major table mask, or EMPTY on defect.
@@ -591,7 +591,7 @@ fn dq_column_mask(
     return out^
 
 
-fn dq_column_prefix(
+def dq_column_prefix(
     table: List[Float64], n_rows: Int, n_cols: Int, col: Int, rows: Int
 ) -> List[Float64]:
     """The FIRST `rows` entries of column `col`, or an EMPTY list on any defect.
@@ -631,7 +631,7 @@ fn dq_column_prefix(
     return out^
 
 
-fn dq_column_mask_prefix(
+def dq_column_mask_prefix(
     null_mask: List[Bool], n_rows: Int, n_cols: Int, col: Int, rows: Int
 ) -> List[Bool]:
     """The FIRST `rows` presence bits of column `col`, or an EMPTY list on any defect.
@@ -667,7 +667,7 @@ fn dq_column_mask_prefix(
     return out^
 
 
-fn dq_live_and_finite(values: List[Float64], null_mask: List[Bool]) -> List[Bool]:
+def dq_live_and_finite(values: List[Float64], null_mask: List[Bool]) -> List[Bool]:
     """A mask marking positions that are PRESENT and FINITE.
 
     This is the mask every statistic in this package is computed over, and building it is

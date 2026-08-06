@@ -67,14 +67,14 @@ from forecasting.intermittent import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _refused(f: IntermittentForecast) -> Bool:
+def _refused(f: IntermittentForecast) -> Bool:
     """A refusal carries no path and no levels — never a rate of 0.0."""
     return (
         f.status != FC_OK
@@ -86,7 +86,7 @@ fn _refused(f: IntermittentForecast) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.intermittent] known-value suite")

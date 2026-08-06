@@ -24,14 +24,14 @@ from std.math import sqrt, abs as fabs, isnan, isinf
 # ── simplex_objective_value ───────────────────────────────────────────────────
 
 
-fn simplex_objective_value_2(
+def simplex_objective_value_2(
     c1: Float64, x1: Float64, c2: Float64, x2: Float64
 ) -> Float64:
     """Z = c1*x1 + c2*x2 — objective for 2 variables."""
     return c1 * x1 + c2 * x2
 
 
-fn simplex_objective_value_3(
+def simplex_objective_value_3(
     c1: Float64, x1: Float64,
     c2: Float64, x2: Float64,
     c3: Float64, x3: Float64,
@@ -43,7 +43,7 @@ fn simplex_objective_value_3(
 # ── transportation_cost ───────────────────────────────────────────────────────
 
 
-fn transportation_cost(cost: Float64, allocation: Float64) -> Float64:
+def transportation_cost(cost: Float64, allocation: Float64) -> Float64:
     """Single cell: cost * allocation."""
     return cost * allocation
 
@@ -51,7 +51,7 @@ fn transportation_cost(cost: Float64, allocation: Float64) -> Float64:
 # ── total_transportation_cost_2x2 ────────────────────────────────────────────
 
 
-fn total_transportation_cost_2x2(
+def total_transportation_cost_2x2(
     c1: Float64, a1: Float64,
     c2: Float64, a2: Float64,
     c3: Float64, a3: Float64,
@@ -64,7 +64,7 @@ fn total_transportation_cost_2x2(
 # ── assignment_cost ───────────────────────────────────────────────────────────
 
 
-fn assignment_cost_3(
+def assignment_cost_3(
     c1: Float64, c2: Float64, c3: Float64
 ) -> Float64:
     """Total assignment cost for 3 tasks (costs already matched)."""
@@ -74,7 +74,7 @@ fn assignment_cost_3(
 # ── eoq_quantity ──────────────────────────────────────────────────────────────
 
 
-fn eoq_quantity(
+def eoq_quantity(
     demand: Float64, ordering_cost: Float64, holding_cost: Float64
 ) -> Float64:
     """EOQ = sqrt(2*D*S/H)."""
@@ -84,7 +84,7 @@ fn eoq_quantity(
 # ── eoq_total_cost ────────────────────────────────────────────────────────────
 
 
-fn eoq_total_cost(
+def eoq_total_cost(
     demand: Float64, ordering_cost: Float64, holding_cost: Float64
 ) -> Float64:
     """TC = sqrt(2*D*S*H) — total annual inventory cost at EOQ."""
@@ -94,7 +94,7 @@ fn eoq_total_cost(
 # ── newsvendor_critical_ratio ─────────────────────────────────────────────────
 
 
-fn newsvendor_critical_ratio(cu: Float64, co: Float64) -> Float64:
+def newsvendor_critical_ratio(cu: Float64, co: Float64) -> Float64:
     """CR = cu / (cu + co) — critical ratio for newsvendor model."""
     return cu / (cu + co)
 
@@ -102,7 +102,7 @@ fn newsvendor_critical_ratio(cu: Float64, co: Float64) -> Float64:
 # ── little_law_l ──────────────────────────────────────────────────────────────
 
 
-fn little_law_l(lambda_rate: Float64, w: Float64) -> Float64:
+def little_law_l(lambda_rate: Float64, w: Float64) -> Float64:
     """L = λ * W — expected number in system."""
     return lambda_rate * w
 
@@ -110,7 +110,7 @@ fn little_law_l(lambda_rate: Float64, w: Float64) -> Float64:
 # ── little_law_w ──────────────────────────────────────────────────────────────
 
 
-fn little_law_w(l: Float64, lambda_rate: Float64) -> Float64:
+def little_law_w(l: Float64, lambda_rate: Float64) -> Float64:
     """W = L / λ — expected time in system."""
     return l / lambda_rate
 
@@ -118,7 +118,7 @@ fn little_law_w(l: Float64, lambda_rate: Float64) -> Float64:
 # ── utilization_factor ────────────────────────────────────────────────────────
 
 
-fn utilization_factor(
+def utilization_factor(
     arrival_rate: Float64, service_rate: Float64
 ) -> Float64:
     """ρ = λ / μ — server utilization."""
@@ -128,7 +128,7 @@ fn utilization_factor(
 # ── mm1_expected_queue_length ─────────────────────────────────────────────────
 
 
-fn mm1_expected_queue_length(rho: Float64) -> Float64:
+def mm1_expected_queue_length(rho: Float64) -> Float64:
     """Lq = ρ² / (1 - ρ) — expected queue length in M/M/1."""
     # ρ outside [0, 1) zeroes or flips the divisor, and the resulting
     # inf/nan cannot cross the result wire; report the degenerate value.
@@ -140,7 +140,7 @@ fn mm1_expected_queue_length(rho: Float64) -> Float64:
 # ── mm1_expected_wait_time ────────────────────────────────────────────────────
 
 
-fn mm1_expected_wait_time(rho: Float64, mu: Float64) -> Float64:
+def mm1_expected_wait_time(rho: Float64, mu: Float64) -> Float64:
     """Wq = ρ / (μ*(1-ρ)) — expected waiting time in queue (M/M/1)."""
     # ρ outside [0, 1) or a non-positive μ zeroes or flips the divisor, and
     # the resulting inf/nan cannot cross the result wire; report degenerate.

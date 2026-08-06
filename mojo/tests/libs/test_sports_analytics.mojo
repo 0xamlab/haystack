@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sports_analytics import batting_average, on_base_percentage, slugging_percentage, ops, era, whip, passer_rating_nfl, pythagorean_wins, elo_expected_score, elo_new_rating, true_shooting_percentage, player_efficiency_rating_approx
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

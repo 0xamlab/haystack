@@ -42,7 +42,7 @@ old arm is asserted before any clock starts.
 `BENCH_GATE csr_matvec PASS|FAIL <n>` where n counts arms that failed their own dispersion
 check; an INVALID arm prints no ns/nnz and contributes no ratio.
 """
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 from sparse_numerics.csr import (
     CSRMatrix,
     csr_matvec,
@@ -65,7 +65,7 @@ comptime MAX_MAXMIN_SPREAD: Float64 = 8.0
 comptime ROUNDS: Int = 9
 
 
-fn splitmix64(seed: UInt64) -> UInt64:
+def splitmix64(seed: UInt64) -> UInt64:
     var z = seed + 0x9E3779B97F4A7C15
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
     z = (z ^ (z >> 27)) * 0x94D049BB133111EB
@@ -75,7 +75,7 @@ fn splitmix64(seed: UInt64) -> UInt64:
 # ── the BEFORE arms, verbatim ─────────────────────────────────────────────────
 
 
-fn old_csr_validate_flat(
+def old_csr_validate_flat(
     indptr: List[Int],
     indices: List[Int],
     values: List[Float64],
@@ -104,11 +104,11 @@ fn old_csr_validate_flat(
     return CSR_OK
 
 
-fn old_csr_validate(m: CSRMatrix) -> Int:
+def old_csr_validate(m: CSRMatrix) -> Int:
     return old_csr_validate_flat(m.indptr, m.indices, m.values, m.nrows, m.ncols)
 
 
-fn old_csr_matvec(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
+def old_csr_matvec(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
     """`csr.csr_matvec` as it shipped: validate, then a bounds-checked appending loop."""
     var status = old_csr_validate(m)
     if status != CSR_OK:
@@ -127,7 +127,7 @@ fn old_csr_matvec(m: CSRMatrix, x: List[Float64]) -> List[Float64]:
 # ── matrices ──────────────────────────────────────────────────────────────────
 
 
-fn build_band9(nrows: Int) -> CSRMatrix:
+def build_band9(nrows: Int) -> CSRMatrix:
     """Nine-point band. The gather is local, so this is the pattern where a fraction of
     streaming bandwidth is even meaningful."""
     var indptr = List[Int](unsafe_uninit_length=nrows + 1)
@@ -144,7 +144,7 @@ fn build_band9(nrows: Int) -> CSRMatrix:
     return CSRMatrix(indptr^, indices^, values^, nrows, nrows, True, True)
 
 
-fn build_scatter(nrows: Int, per_row: Int) -> CSRMatrix:
+def build_scatter(nrows: Int, per_row: Int) -> CSRMatrix:
     """Columns drawn across the whole space, so `x` does NOT stay cache-resident and the
     dependent gather actually pays. Indices ascending per row, as the layout requires."""
     var indptr = List[Int](unsafe_uninit_length=nrows + 1)
@@ -177,7 +177,7 @@ fn build_scatter(nrows: Int, per_row: Int) -> CSRMatrix:
     return CSRMatrix(indptr^, indices^, values^, nrows, nrows, True, True)
 
 
-fn median_of(var xs: List[Int]) -> Int:
+def median_of(var xs: List[Int]) -> Int:
     for i in range(1, len(xs)):
         var v = xs[i]
         var j = i - 1
@@ -197,7 +197,7 @@ struct Cell(Copyable, Movable):
     var mx: Int
 
 
-fn summarise(samples: List[Int]) -> Cell:
+def summarise(samples: List[Int]) -> Cell:
     var cold = samples[0]
     var warm = samples[1] if len(samples) > 1 else samples[0]
     var hot = 0
@@ -216,7 +216,7 @@ fn summarise(samples: List[Int]) -> Cell:
     return Cell(cold, warm, hot, median_of(rest^), mx)
 
 
-fn gate_reason(c: Cell) -> String:
+def gate_reason(c: Cell) -> String:
     """Names every condition that FAILED, and only those."""
     var reason = String("")
     if c.hot > c.warm:
@@ -230,7 +230,7 @@ fn gate_reason(c: Cell) -> String:
     return reason
 
 
-fn main():
+def main():
     print("bench_vs_csr_matvec: shipped SpMV entry, BEFORE vs AFTER")
     print("rounds", ROUNDS, "gate median/min <=", MAX_SPREAD, " max/min <=", MAX_MAXMIN_SPREAD)
     print("")
@@ -356,7 +356,7 @@ fn main():
             if len(rr) != 0:
                 invalid += 1
 
-        fn cellstr(c: Cell, reason: String, denom: Int) -> String:
+        def cellstr(c: Cell, reason: String, denom: Int) -> String:
             if len(reason) != 0:
                 return String("INVALID")
             return String(Float64(c.hot) / Float64(denom))

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn weight_quantization_bits(
+def weight_quantization_bits(
     precision: Float64
 ) -> Float64:
     """Bits required for given weight precision.
@@ -43,7 +43,7 @@ fn weight_quantization_bits(
     return 32.0
 
 
-fn checkpoint_size_estimate(
+def checkpoint_size_estimate(
     n_parameters: Float64, dtype_bits: Float64,
     include_optimizer: Float64
 ) -> Float64:
@@ -65,7 +65,7 @@ fn checkpoint_size_estimate(
     return base
 
 
-fn delta_compression_ratio(
+def delta_compression_ratio(
     delta_norm: Float64, weight_norm: Float64
 ) -> Float64:
     """Gradient delta compression ratio: how sparse are weight updates.
@@ -84,7 +84,7 @@ fn delta_compression_ratio(
     return delta_norm / weight_norm
 
 
-fn weight_sparsity_ratio(
+def weight_sparsity_ratio(
     near_zero_count: Float64, total_weights: Float64,
     threshold: Float64
 ) -> Float64:
@@ -103,7 +103,7 @@ fn weight_sparsity_ratio(
     return near_zero_count / total_weights
 
 
-fn model_flops_estimate(
+def model_flops_estimate(
     n_params: Float64, seq_len: Float64, batch_size: Float64
 ) -> Float64:
     """FLOPs for one forward pass (Chinchilla approximation).
@@ -121,7 +121,7 @@ fn model_flops_estimate(
     return 2.0 * n_params * seq_len * batch_size
 
 
-fn onnx_op_count_estimate(
+def onnx_op_count_estimate(
     n_layers: Float64, ops_per_layer: Float64, n_heads: Float64
 ) -> Float64:
     """Estimate ONNX graph operator count for a transformer.
@@ -139,7 +139,7 @@ fn onnx_op_count_estimate(
     return n_layers * (ops_per_layer + 4.0 * n_heads)
 
 
-fn lora_parameter_count(
+def lora_parameter_count(
     d_model: Float64, rank: Float64, n_target_modules: Float64
 ) -> Float64:
     """LoRA adapter parameter count.
@@ -157,7 +157,7 @@ fn lora_parameter_count(
     return 2.0 * d_model * rank * n_target_modules
 
 
-fn pruning_sparsity_speedup(
+def pruning_sparsity_speedup(
     sparsity: Float64, memory_bound_fraction: Float64
 ) -> Float64:
     """Theoretical speedup from unstructured pruning.
@@ -176,7 +176,7 @@ fn pruning_sparsity_speedup(
     return 1.0 + memory_bound_fraction * (compute_speedup - 1.0)
 
 
-fn weight_sharing_ratio(
+def weight_sharing_ratio(
     unique_weights: Float64, total_weights: Float64
 ) -> Float64:
     """Parameter sharing compression ratio.
@@ -195,7 +195,7 @@ fn weight_sharing_ratio(
     return unique_weights / total_weights
 
 
-fn version_hash_component(
+def version_hash_component(
     param_value: Float64, index: Float64, prime: Float64
 ) -> Float64:
     """Lightweight rolling hash component for model version checksums.

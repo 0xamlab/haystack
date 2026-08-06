@@ -38,12 +38,12 @@ from text.tokenizer import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -53,7 +53,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Network Protocol Tests ───────────────────────────────────────────────────
 
 
-fn test_http_status_text() raises:
+def test_http_status_text() raises:
     print("  http_status_text...")
     _assert(http_status_text(200) == "OK", "200→OK")                        # 1
     _assert(http_status_text(201) == "Created", "201→Created")              # 2
@@ -69,7 +69,7 @@ fn test_http_status_text() raises:
     _assert(http_status_text(999) == "Unknown", "999→Unknown")              # 10
 
 
-fn test_status_classification() raises:
+def test_status_classification() raises:
     print("  is_success/redirect/client_error/server_error...")
     _assert(is_success(200), "200 is success")                              # 11
     _assert(is_success(299), "299 is success")                              # 12
@@ -85,7 +85,7 @@ fn test_status_classification() raises:
     _assert(not is_server_error(200), "200 not server error")               # 22
 
 
-fn test_mime_types() raises:
+def test_mime_types() raises:
     print("  mime_type...")
     _assert(mime_type("json") == "application/json", "json mime")           # 23
     _assert(mime_type("html") == "text/html", "html mime")                  # 24
@@ -95,7 +95,7 @@ fn test_mime_types() raises:
     _assert(mime_type("xyz") == "application/octet-stream", "unknown")      # 28
 
 
-fn test_content_type_parsing() raises:
+def test_content_type_parsing() raises:
     print("  parse_content_type / is_json / is_text...")
     _assert(
         parse_content_type("text/html; charset=utf-8") == "text/html",
@@ -113,7 +113,7 @@ fn test_content_type_parsing() raises:
     _assert(not is_text_type("image/png"), "image not text")                # 36
 
 
-fn test_query_string() raises:
+def test_query_string() raises:
     print("  build_query_string / parse_query_string...")
     var keys = List[String]()
     keys.append("a")
@@ -140,7 +140,7 @@ fn test_query_string() raises:
 # ── Naive Bayes Tests ─────────────────────────────────────────────────────────
 
 
-fn test_compute_priors() raises:
+def test_compute_priors() raises:
     print("  compute_priors...")
     var y = List[Int]()
     y.append(0)
@@ -161,7 +161,7 @@ fn test_compute_priors() raises:
     _assert_close(priors2[1], 0.25, 1e-12, "prior 1 = 0.25")              # 47
 
 
-fn test_gaussian_log_likelihood() raises:
+def test_gaussian_log_likelihood() raises:
     print("  gaussian_log_likelihood...")
     var ll = gaussian_log_likelihood(0.0, 0.0, 1.0)
     _assert(ll > -10.0 and ll < 0.0, "log-lik finite and negative")       # 48
@@ -171,7 +171,7 @@ fn test_gaussian_log_likelihood() raises:
     _assert(ll_at_mean > ll_away, "log-lik higher at mean")               # 49
 
 
-fn test_nb_fit_predict() raises:
+def test_nb_fit_predict() raises:
     print("  gaussian_nb_fit / predict...")
     # Simple 2-class, 2-feature dataset
     var X = List[List[Float64]]()
@@ -251,7 +251,7 @@ fn test_nb_fit_predict() raises:
     _assert(acc >= 0.75, "training accuracy >= 75%")                       # 55
 
 
-fn test_accuracy_fn() raises:
+def test_accuracy_fn() raises:
     print("  accuracy...")
     var p = List[Int]()
     p.append(1)
@@ -266,7 +266,7 @@ fn test_accuracy_fn() raises:
     _assert_close(accuracy(p, a), 0.75, 1e-12, "accuracy 0.75")           # 56
 
 
-fn test_confusion_matrix() raises:
+def test_confusion_matrix() raises:
     print("  confusion_matrix...")
     var p = List[Int]()
     p.append(0)
@@ -288,7 +288,7 @@ fn test_confusion_matrix() raises:
     _assert(cm[1][1] == 1, "TP=1")                                        # 61
 
 
-fn test_precision_recall() raises:
+def test_precision_recall() raises:
     print("  precision_recall...")
     var p = List[Int]()
     p.append(1)
@@ -312,7 +312,7 @@ fn test_precision_recall() raises:
 # ── Tokenizer Tests ───────────────────────────────────────────────────────────
 
 
-fn test_word_tokenize() raises:
+def test_word_tokenize() raises:
     print("  word_tokenize...")
     var tokens = word_tokenize("Hello, world!")
     _assert(len(tokens) == 2, "2 word tokens")                            # 68
@@ -327,7 +327,7 @@ fn test_word_tokenize() raises:
     _assert(tokens3[0] == "test", "plain token remains unchanged")        # 71c
 
 
-fn test_sentence_tokenize() raises:
+def test_sentence_tokenize() raises:
     print("  sentence_tokenize...")
     var sents = sentence_tokenize("Hello. World!")
     _assert(len(sents) == 2, "2 sentences")                               # 72
@@ -338,7 +338,7 @@ fn test_sentence_tokenize() raises:
     _assert(len(sents2) == 3, "3 sentences")                              # 75
 
 
-fn test_char_ngrams() raises:
+def test_char_ngrams() raises:
     print("  char_ngrams...")
     var ng = char_ngrams("abc", 2)
     _assert(len(ng) == 2, "2 bigrams from abc")                           # 76
@@ -349,7 +349,7 @@ fn test_char_ngrams() raises:
     _assert(len(ng3) == 3, "3 trigrams from hello")                       # 79
 
 
-fn test_word_ngrams() raises:
+def test_word_ngrams() raises:
     print("  word_ngrams...")
     var toks = List[String]()
     toks.append("a")
@@ -365,7 +365,7 @@ fn test_word_ngrams() raises:
     _assert(wn_exact[0] == "a_b_c", "exact-length gram joined once")      # 82c
 
 
-fn test_stopwords() raises:
+def test_stopwords() raises:
     print("  remove_stopwords / is_stopword...")
     var toks = List[String]()
     toks.append("the")
@@ -382,7 +382,7 @@ fn test_stopwords() raises:
     _assert(not is_stopword("cat"), "cat not stopword")                    # 89
 
 
-fn test_stem_simple() raises:
+def test_stem_simple() raises:
     print("  stem_simple...")
     _assert(stem_simple("running") == "runn", "running→runn")             # 90
     _assert(stem_simple("walked") == "walk", "walked→walk")               # 91
@@ -391,7 +391,7 @@ fn test_stem_simple() raises:
     _assert(stem_simple("hi") == "hi", "short word unchanged")            # 94
 
 
-fn test_vocabulary_size() raises:
+def test_vocabulary_size() raises:
     print("  vocabulary_size...")
     var toks = List[String]()
     toks.append("a")
@@ -401,7 +401,7 @@ fn test_vocabulary_size() raises:
     _assert(vocabulary_size(toks) == 3, "3 unique tokens")                 # 95
 
 
-fn test_token_frequency() raises:
+def test_token_frequency() raises:
     print("  token_frequency...")
     var toks = List[String]()
     toks.append("a")
@@ -424,7 +424,7 @@ fn test_token_frequency() raises:
     _assert(freq2[2][0] == "c", "stable tie order keeps third token")     # 98d
 
 
-fn test_pad_sequence() raises:
+def test_pad_sequence() raises:
     print("  pad_sequence...")
     var toks = List[String]()
     toks.append("a")
@@ -461,7 +461,7 @@ fn test_pad_sequence() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 53 Tests ===")
 
     # Network Protocol

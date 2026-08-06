@@ -25,7 +25,7 @@ from std.math import sqrt, exp
 # ── item_difficulty ──────────────────────────────────────────────────────────
 
 
-fn item_difficulty(n_correct: Float64, n_total: Float64) -> Float64:
+def item_difficulty(n_correct: Float64, n_total: Float64) -> Float64:
     """Item difficulty: p = correct / total."""
     if n_total == 0.0:
         return 0.0
@@ -35,7 +35,7 @@ fn item_difficulty(n_correct: Float64, n_total: Float64) -> Float64:
 # ── item_discrimination ──────────────────────────────────────────────────────
 
 
-fn item_discrimination(
+def item_discrimination(
     upper_correct: Float64,
     upper_total: Float64,
     lower_correct: Float64,
@@ -50,7 +50,7 @@ fn item_discrimination(
 # ── point_biserial ───────────────────────────────────────────────────────────
 
 
-fn point_biserial(
+def point_biserial(
     mean_correct: Float64,
     mean_total: Float64,
     sd_total: Float64,
@@ -66,7 +66,7 @@ fn point_biserial(
 # ── kuder_richardson_20 ─────────────────────────────────────────────────────
 
 
-fn kuder_richardson_20(
+def kuder_richardson_20(
     n_items: Float64, variance_total: Float64, p_sum_pq: Float64
 ) -> Float64:
     """KR-20 = (n/(n-1)) * (1 - Σpq/σ²)."""
@@ -78,7 +78,7 @@ fn kuder_richardson_20(
 # ── cronbach_alpha ───────────────────────────────────────────────────────────
 
 
-fn cronbach_alpha(
+def cronbach_alpha(
     n_items: Float64, sum_item_variance: Float64, total_variance: Float64
 ) -> Float64:
     """Cronbach's α = (n/(n-1)) * (1 - Σσi²/σt²)."""
@@ -90,7 +90,7 @@ fn cronbach_alpha(
 # ── spearman_brown_prophecy ──────────────────────────────────────────────────
 
 
-fn spearman_brown_prophecy(r: Float64, n: Float64) -> Float64:
+def spearman_brown_prophecy(r: Float64, n: Float64) -> Float64:
     """Spearman-Brown prophecy: r_new = n*r / (1 + (n-1)*r)."""
     var denom = 1.0 + (n - 1.0) * r
     if denom == 0.0:
@@ -101,7 +101,7 @@ fn spearman_brown_prophecy(r: Float64, n: Float64) -> Float64:
 # ── standard_error_of_measurement ────────────────────────────────────────────
 
 
-fn standard_error_of_measurement(sd: Float64, reliability: Float64) -> Float64:
+def standard_error_of_measurement(sd: Float64, reliability: Float64) -> Float64:
     """SEM = SD * sqrt(1 - reliability)."""
     var val = 1.0 - reliability
     if val < 0.0:
@@ -112,7 +112,7 @@ fn standard_error_of_measurement(sd: Float64, reliability: Float64) -> Float64:
 # ── z_score ──────────────────────────────────────────────────────────────────
 
 
-fn z_score(raw: Float64, mean: Float64, sd: Float64) -> Float64:
+def z_score(raw: Float64, mean: Float64, sd: Float64) -> Float64:
     """z = (x - μ) / σ."""
     if sd == 0.0:
         return 0.0
@@ -122,7 +122,7 @@ fn z_score(raw: Float64, mean: Float64, sd: Float64) -> Float64:
 # ── t_score ──────────────────────────────────────────────────────────────────
 
 
-fn t_score(z: Float64) -> Float64:
+def t_score(z: Float64) -> Float64:
     """T-score = 50 + 10*z."""
     return 50.0 + 10.0 * z
 
@@ -130,7 +130,7 @@ fn t_score(z: Float64) -> Float64:
 # ── stanine ──────────────────────────────────────────────────────────────────
 
 
-fn stanine(z: Float64) -> Int:
+def stanine(z: Float64) -> Int:
     """Map z-score to stanine (1-9 scale, approximate boundaries)."""
     if z < -1.75:
         return 1
@@ -154,7 +154,7 @@ fn stanine(z: Float64) -> Int:
 # ── irt_1pl_probability ─────────────────────────────────────────────────────
 
 
-fn irt_1pl_probability(theta: Float64, b: Float64) -> Float64:
+def irt_1pl_probability(theta: Float64, b: Float64) -> Float64:
     """1PL IRT: P(θ) = 1 / (1 + exp(-(θ - b)))."""
     return 1.0 / (1.0 + exp(-(theta - b)))
 
@@ -162,6 +162,6 @@ fn irt_1pl_probability(theta: Float64, b: Float64) -> Float64:
 # ── irt_2pl_probability ─────────────────────────────────────────────────────
 
 
-fn irt_2pl_probability(theta: Float64, a: Float64, b: Float64) -> Float64:
+def irt_2pl_probability(theta: Float64, a: Float64, b: Float64) -> Float64:
     """2PL IRT: P(θ) = 1 / (1 + exp(-a*(θ - b)))."""
     return 1.0 / (1.0 + exp(-a * (theta - b)))

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from stochastic import random_walk_1d, random_walk_2d, brownian_motion, geometric_brownian_motion, poisson_process, ornstein_uhlenbeck, birth_death_process, monte_carlo_pi, expected_hitting_time, first_passage_time
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

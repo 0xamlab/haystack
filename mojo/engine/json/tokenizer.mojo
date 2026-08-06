@@ -17,11 +17,11 @@ If this changes (e.g. when running 1M runs per request, making 10k-run latency
 drop below 5ms, pushing parse fraction above 10%), implement the fields below.
 
 Reserved schema-specific tokenizer API (not yet implemented):
-  fn extract_string_field(raw: String, key: String) -> String
-  fn extract_int_field(raw: String, key: String, default: Int) -> Int
-  fn extract_float_field(raw: String, key: String, default: Float64) -> Float64
-  fn extract_bool_field(raw: String, key: String, default: Bool) -> Bool
-  fn extract_variables_array(raw: String) -> List[VarSpec]
+  def extract_string_field(raw: String, key: String) -> String
+  def extract_int_field(raw: String, key: String, default: Int) -> Int
+  def extract_float_field(raw: String, key: String, default: Float64) -> Float64
+  def extract_bool_field(raw: String, key: String, default: Bool) -> Bool
+  def extract_variables_array(raw: String) -> List[VarSpec]
 
 To re-evaluate: run `make bench-boundary` after any significant engine speedup.
 """

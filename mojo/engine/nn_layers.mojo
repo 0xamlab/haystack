@@ -28,7 +28,7 @@ comptime MAX_NN_DIM: Int = 1024
 # ── dense_forward ────────────────────────────────────────────────────────────
 
 
-fn dense_forward(
+def dense_forward(
     input: List[Float64],
     weights: List[List[Float64]],
     bias: List[Float64],
@@ -55,7 +55,7 @@ fn dense_forward(
 # ── relu ─────────────────────────────────────────────────────────────────────
 
 
-fn relu(x: List[Float64]) -> List[Float64]:
+def relu(x: List[Float64]) -> List[Float64]:
     """ReLU activation: max(0, x)."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -69,7 +69,7 @@ fn relu(x: List[Float64]) -> List[Float64]:
 # ── sigmoid_activation ───────────────────────────────────────────────────────
 
 
-fn sigmoid_activation(x: List[Float64]) -> List[Float64]:
+def sigmoid_activation(x: List[Float64]) -> List[Float64]:
     """Sigmoid activation: 1 / (1 + exp(-x))."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -80,7 +80,7 @@ fn sigmoid_activation(x: List[Float64]) -> List[Float64]:
 # ── tanh_activation ──────────────────────────────────────────────────────────
 
 
-fn tanh_activation(x: List[Float64]) -> List[Float64]:
+def tanh_activation(x: List[Float64]) -> List[Float64]:
     """Tanh activation."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -91,7 +91,7 @@ fn tanh_activation(x: List[Float64]) -> List[Float64]:
 # ── softmax_layer ────────────────────────────────────────────────────────────
 
 
-fn softmax_layer(x: List[Float64]) -> List[Float64]:
+def softmax_layer(x: List[Float64]) -> List[Float64]:
     """Numerically stable softmax: exp(x-max) / sum(exp(x-max))."""
     var n = len(x)
     # x[0] below would read past the end (uncatchable abort); the softmax
@@ -117,7 +117,7 @@ fn softmax_layer(x: List[Float64]) -> List[Float64]:
 # ── mse_loss ─────────────────────────────────────────────────────────────────
 
 
-fn mse_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def mse_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Mean squared error loss: sum((p-a)^2) / n."""
     var n = len(predicted)
     # A short actual would be read past its end below, and n == 0 would zero
@@ -134,7 +134,7 @@ fn mse_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── cross_entropy_loss ───────────────────────────────────────────────────────
 
 
-fn cross_entropy_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def cross_entropy_loss(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Binary cross entropy: -sum(y*log(p) + (1-y)*log(1-p)) / n."""
     var n = len(predicted)
     # A short actual would be read past its end below, and n == 0 would zero
@@ -156,7 +156,7 @@ fn cross_entropy_loss(predicted: List[Float64], actual: List[Float64]) -> Float6
 # ── dropout ──────────────────────────────────────────────────────────────────
 
 
-fn dropout(x: List[Float64], rate: Float64) -> List[Float64]:
+def dropout(x: List[Float64], rate: Float64) -> List[Float64]:
     """Random dropout: zero out with probability `rate`, scale by 1/(1-rate)."""
     var result = List[Float64]()
     var scale = 1.0 / (1.0 - rate)
@@ -171,7 +171,7 @@ fn dropout(x: List[Float64], rate: Float64) -> List[Float64]:
 # ── batch_norm ───────────────────────────────────────────────────────────────
 
 
-fn batch_norm(
+def batch_norm(
     x: List[Float64], gamma: Float64 = 1.0, beta: Float64 = 0.0
 ) -> List[Float64]:
     """Batch normalization: (x - mean)/std * gamma + beta."""
@@ -195,7 +195,7 @@ fn batch_norm(
 # ── leaky_relu ───────────────────────────────────────────────────────────────
 
 
-fn leaky_relu(x: List[Float64], alpha: Float64 = 0.01) -> List[Float64]:
+def leaky_relu(x: List[Float64], alpha: Float64 = 0.01) -> List[Float64]:
     """Leaky ReLU: x if x > 0 else alpha*x."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -209,7 +209,7 @@ fn leaky_relu(x: List[Float64], alpha: Float64 = 0.01) -> List[Float64]:
 # ── init_weights_xavier ──────────────────────────────────────────────────────
 
 
-fn init_weights_xavier(n_in: Int, n_out: Int) -> List[List[Float64]]:
+def init_weights_xavier(n_in: Int, n_out: Int) -> List[List[Float64]]:
     """Xavier/Glorot uniform init: U(-limit, limit) where limit=sqrt(6/(n_in+n_out))."""
     # Non-positive dims zero the limit's divisor; huge dims are an allocation
     # bomb, so clamp the wire-supplied counts.

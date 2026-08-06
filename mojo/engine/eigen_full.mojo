@@ -40,7 +40,7 @@ struct EighResult(Copyable, Movable):
     var sweeps: Int
     var converged: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.eigenvalues = List[Float64]()
         self.eigenvectors = List[Float64]()
         self.sweeps = 0
@@ -63,7 +63,7 @@ struct SVDResult(Copyable, Movable):
     var v: List[Float64]
     var converged: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.u = List[Float64]()
         self.singular_values = List[Float64]()
         self.v = List[Float64]()
@@ -73,7 +73,7 @@ struct SVDResult(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _fro_norm(S: List[Float64]) -> Float64:
+def _fro_norm(S: List[Float64]) -> Float64:
     """Frobenius norm of a flat matrix."""
     var s: Float64 = 0.0
     for i in range(len(S)):
@@ -81,7 +81,7 @@ fn _fro_norm(S: List[Float64]) -> Float64:
     return sqrt(s)
 
 
-fn _off_diag_norm(S: List[Float64], n: Int) -> Float64:
+def _off_diag_norm(S: List[Float64], n: Int) -> Float64:
     """Frobenius norm of the off-diagonal part of symmetric flat S."""
     var s: Float64 = 0.0
     for i in range(n):
@@ -94,7 +94,7 @@ fn _off_diag_norm(S: List[Float64], n: Int) -> Float64:
 # ── eigh_symmetric ───────────────────────────────────────────────────────────
 
 
-fn eigh_symmetric(
+def eigh_symmetric(
     A: List[Float64], n: Int, max_sweeps: Int = 50, tol: Float64 = 1e-12
 ) -> EighResult:
     """Full eigendecomposition of a symmetric n×n matrix via cyclic Jacobi.
@@ -224,7 +224,7 @@ fn eigh_symmetric(
 # ── svd_via_eigh ─────────────────────────────────────────────────────────────
 
 
-fn svd_via_eigh(
+def svd_via_eigh(
     A: List[Float64],
     rows: Int,
     cols: Int,

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log
 
 
-fn dijkstra_relax(
+def dijkstra_relax(
     dist_u: Float64, edge_weight: Float64, dist_v: Float64
 ) -> Float64:
     """Dijkstra edge relaxation: dist[v] = min(dist[v], dist[u] + w).
@@ -36,7 +36,7 @@ fn dijkstra_relax(
     return dist_v
 
 
-fn bellman_ford_relax(
+def bellman_ford_relax(
     dist_u: Float64, edge_weight: Float64, dist_v: Float64
 ) -> Float64:
     """Bellman-Ford edge relaxation (handles negative weights).
@@ -55,7 +55,7 @@ fn bellman_ford_relax(
     return dist_v
 
 
-fn pagerank_update(
+def pagerank_update(
     in_neighbor_pr: Float64, out_degree: Float64,
     damping: Float64, n_nodes: Float64
 ) -> Float64:
@@ -78,7 +78,7 @@ fn pagerank_update(
     return teleport + damping * in_neighbor_pr / out_degree
 
 
-fn betweenness_centrality_norm(
+def betweenness_centrality_norm(
     raw_betweenness: Float64, n_nodes: Float64, directed: Float64
 ) -> Float64:
     """Normalised betweenness centrality.
@@ -103,7 +103,7 @@ fn betweenness_centrality_norm(
     return raw_betweenness / norm
 
 
-fn clustering_coefficient(
+def clustering_coefficient(
     triangles: Float64, degree: Float64
 ) -> Float64:
     """Local clustering coefficient: 2T / (k(k-1)).
@@ -120,7 +120,7 @@ fn clustering_coefficient(
     return 2.0 * triangles / (degree * (degree - 1.0))
 
 
-fn degree_centrality(degree: Float64, n_nodes: Float64) -> Float64:
+def degree_centrality(degree: Float64, n_nodes: Float64) -> Float64:
     """Degree centrality: k / (n-1).
 
     Args:
@@ -135,7 +135,7 @@ fn degree_centrality(degree: Float64, n_nodes: Float64) -> Float64:
     return degree / (n_nodes - 1.0)
 
 
-fn closeness_centrality(
+def closeness_centrality(
     sum_shortest_paths: Float64, n_nodes: Float64
 ) -> Float64:
     """Closeness centrality: (n-1) / Σd(u,v).
@@ -152,7 +152,7 @@ fn closeness_centrality(
     return (n_nodes - 1.0) / sum_shortest_paths
 
 
-fn eigenvector_centrality_update(
+def eigenvector_centrality_update(
     neighbor_scores_sum: Float64, lambda_max: Float64
 ) -> Float64:
     """Power iteration step for eigenvector centrality.
@@ -171,7 +171,7 @@ fn eigenvector_centrality_update(
     return neighbor_scores_sum / lambda_max
 
 
-fn modularity_contribution(
+def modularity_contribution(
     edge_in_community: Float64, degree_u: Float64,
     degree_v: Float64, total_edges: Float64
 ) -> Float64:
@@ -193,7 +193,7 @@ fn modularity_contribution(
     return edge_in_community - degree_u * degree_v / (2.0 * total_edges)
 
 
-fn graph_density(n_edges: Float64, n_nodes: Float64, directed: Float64) -> Float64:
+def graph_density(n_edges: Float64, n_nodes: Float64, directed: Float64) -> Float64:
     """Graph density: E / (N(N-1)) for directed, ×2 for undirected.
 
     Args:

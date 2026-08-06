@@ -395,7 +395,7 @@ comptime ROBUST_LP_SETUP_UNITS: Int = 16
 comptime ROBUST_MAX_WORK_UNITS: Int = 1 << 23
 
 
-fn robust_status_name(code: Int) -> String:
+def robust_status_name(code: Int) -> String:
     """Name for a robust status, falling through to the shared `optimization` chain.
 
     The fall-through is what makes an input rejection legible: a bad LP shape comes back as
@@ -634,7 +634,7 @@ struct ChanceResult(Copyable, Movable):
 # ── shared guards ─────────────────────────────────────────────────────────────
 
 
-fn _row_budget(feasibility_tol: Float64, rhs_value: Float64, activity: Float64) -> Float64:
+def _row_budget(feasibility_tol: Float64, rhs_value: Float64, activity: Float64) -> Float64:
     """The absolute slack one row may have, from ITS OWN magnitude and nothing else.
 
     `feasibility_tol` is the caller's absolute allowance; the second term is a ROUNDING
@@ -650,7 +650,7 @@ fn _row_budget(feasibility_tol: Float64, rhs_value: Float64, activity: Float64) 
     return feasibility_tol + LP_FEAS_ULP_BUDGET * LP_DBL_EPSILON * mag
 
 
-fn _bound_direction(maximize: Bool) -> Int:
+def _bound_direction(maximize: Bool) -> Int:
     """+1 when a reported optimum is an UPPER bound, -1 when it is a LOWER bound, 0 has no value.
 
     THE ONE PLACE either driver decides this, because the same flip governs both of the module's
@@ -676,7 +676,7 @@ fn _bound_direction(maximize: Bool) -> Int:
     return -1
 
 
-fn _bound_direction_agrees(reported: Float64, over_wider_set: Float64, direction: Int) -> Bool:
+def _bound_direction_agrees(reported: Float64, over_wider_set: Float64, direction: Int) -> Bool:
     """Does `direction` describe how `reported` actually relates to a WIDER scenario set's value.
 
     `direction == 1` claims `reported` is an upper bound, so a wider (tighter-feasible) set must
@@ -693,7 +693,7 @@ fn _bound_direction_agrees(reported: Float64, over_wider_set: Float64, direction
     return False
 
 
-fn _cvar_bracket_slack(n_scenarios: Int, a: Float64, b: Float64) -> Float64:
+def _cvar_bracket_slack(n_scenarios: Int, a: Float64, b: Float64) -> Float64:
     """Rounding allowance for comparing two averages of the SAME `S` costs.
 
     `a` and `b` are both an average (or a single member) of the one cost list, so what floating
@@ -712,7 +712,7 @@ fn _cvar_bracket_slack(n_scenarios: Int, a: Float64, b: Float64) -> Float64:
     return ROBUST_CVAR_ULP_BUDGET * LP_DBL_EPSILON * Float64(n_scenarios) * mag
 
 
-fn _lp_work_units(rows: Int, cols: Int) -> Int:
+def _lp_work_units(rows: Int, cols: Int) -> Int:
     """Cost proxy for ONE `lp_solve` call, in the units `ROBUST_MAX_WORK_UNITS` counts.
 
     A fixed setup charge plus the phase-1 tableau area `(rows + 1) * (rows + cols + 1)`, which
@@ -733,7 +733,7 @@ fn _lp_work_units(rows: Int, cols: Int) -> Int:
     return ROBUST_LP_SETUP_UNITS + m * n
 
 
-fn _cell_units(n_scenarios: Int, per_scenario: Int) -> Int:
+def _cell_units(n_scenarios: Int, per_scenario: Int) -> Int:
     """`n_scenarios * per_scenario` units, saturating rather than wrapping.
 
     One unit per drawn cell and one per row-scan, both of which measured under a unit
@@ -748,7 +748,7 @@ fn _cell_units(n_scenarios: Int, per_scenario: Int) -> Int:
     return n_scenarios * per_scenario
 
 
-fn _work_defect(n_solves: Int, rows: Int, cols: Int, cell_units: Int) -> Int:
+def _work_defect(n_solves: Int, rows: Int, cols: Int, cell_units: Int) -> Int:
     """`MODEL_OK` when `n_solves` solves plus `cell_units` cell operations fit the CPU budget.
 
     Charged BEFORE any of it runs, and every loop bound that multiplies an UNPAYLOADED integer
@@ -781,7 +781,7 @@ fn _work_defect(n_solves: Int, rows: Int, cols: Int, cell_units: Int) -> Int:
     return MODEL_OK
 
 
-fn _scenario_count_defect(n_scenarios: Int, rows: Int) -> Int:
+def _scenario_count_defect(n_scenarios: Int, rows: Int) -> Int:
     """`MODEL_OK` when `S` and `S * rows` are both inside the allocation budget.
 
     Both halves are needed. The count alone does not bound the block (`S = 8` with
@@ -798,7 +798,7 @@ fn _scenario_count_defect(n_scenarios: Int, rows: Int) -> Int:
     return MODEL_OK
 
 
-fn _scenario_block_defect(block: List[Float64], n_scenarios: Int, width: Int) -> Int:
+def _scenario_block_defect(block: List[Float64], n_scenarios: Int, width: Int) -> Int:
     """`MODEL_OK` when `block` is either EMPTY or exactly `S * width` finite cells.
 
     Empty means "this quantity does not vary", which is a real answer and not a rejection:
@@ -815,7 +815,7 @@ fn _scenario_block_defect(block: List[Float64], n_scenarios: Int, width: Int) ->
     return MODEL_OK
 
 
-fn _level_defect(level: Float64) -> Int:
+def _level_defect(level: Float64) -> Int:
     """`MODEL_OK` for a level in (0, 1]. A `nan` fails every comparison, so it is rejected."""
     if not _finite(level):
         return ROBUST_ERR_CONFIDENCE
@@ -824,7 +824,7 @@ fn _level_defect(level: Float64) -> Int:
     return MODEL_OK
 
 
-fn _rate_meets(count: Int, n_scenarios: Int, level: Float64) -> Bool:
+def _rate_meets(count: Int, n_scenarios: Int, level: Float64) -> Bool:
     """`count / S >= level`, compared as `count >= level * S` with an ulp-sized slack.
 
     The multiply keeps the exact integer count out of a division that would round it, and the
@@ -837,7 +837,7 @@ fn _rate_meets(count: Int, n_scenarios: Int, level: Float64) -> Bool:
     return Float64(count) >= needed - slack
 
 
-fn _row_of(a: List[Float64], row: Int, cols: Int) -> List[Float64]:
+def _row_of(a: List[Float64], row: Int, cols: Int) -> List[Float64]:
     """Row `row` of a flat row-major matrix, copied out so `vec_dot` can take it."""
     var out = List[Float64]()
     for j in range(cols):
@@ -845,7 +845,7 @@ fn _row_of(a: List[Float64], row: Int, cols: Int) -> List[Float64]:
     return out^
 
 
-fn _activity(
+def _activity(
     a: List[Float64], rows: Int, cols: Int, x: List[Float64], mut ok: Bool
 ) -> List[Float64]:
     """`A x`, one entry per row, through the frozen `linalg.vec_dot`.
@@ -882,7 +882,7 @@ struct _Violation(Copyable, Movable):
     var row: Int
 
 
-fn _negativity(x: List[Float64], feasibility_tol: Float64) -> Float64:
+def _negativity(x: List[Float64], feasibility_tol: Float64) -> Float64:
     """How far below zero the most negative component of `x` sits, 0.0 when none is.
 
     `lp_solve` optimises over `A x {senses} b` AND `x >= 0`, so a certificate that only checks
@@ -898,7 +898,7 @@ fn _negativity(x: List[Float64], feasibility_tol: Float64) -> Float64:
     return worst
 
 
-fn _scan_violations(
+def _scan_violations(
     activity: List[Float64], senses: List[Int], rhs_vector: List[Float64],
     rows: Int, feasibility_tol: Float64,
 ) -> _Violation:
@@ -927,11 +927,11 @@ fn _scan_violations(
     return _Violation(True, worst, worst_row)
 
 
-fn _empty_scenario_set(status: Int, kind: Int, seed: UInt64, stream: UInt64) -> ScenarioSet:
+def _empty_scenario_set(status: Int, kind: Int, seed: UInt64, stream: UInt64) -> ScenarioSet:
     return ScenarioSet(status, 0, 0, kind, seed, stream, rng_version(), List[Float64]())
 
 
-fn _no_scenario_result(status: Int, n_scenarios: Int, cvar_level: Float64) -> RobustScenarioResult:
+def _no_scenario_result(status: Int, n_scenarios: Int, cvar_level: Float64) -> RobustScenarioResult:
     """A rejection: no aggregates, no per-scenario record, and `bound_direction` 0.
 
     `first_failed_scenario` is -1 and `first_failed_status` is `MODEL_OK` because no scenario
@@ -951,7 +951,7 @@ fn _no_scenario_result(status: Int, n_scenarios: Int, cvar_level: Float64) -> Ro
     )
 
 
-fn _no_min_max_result(status: Int, n_scenarios: Int) -> RobustMinMaxResult:
+def _no_min_max_result(status: Int, n_scenarios: Int) -> RobustMinMaxResult:
     """An input rejection: nothing solved, nothing verified, no direction claimed.
 
     `lp_status` is `MODEL_OK`, NOT `status`. Every caller of this helper rejects before any LP
@@ -969,7 +969,7 @@ fn _no_min_max_result(status: Int, n_scenarios: Int) -> RobustMinMaxResult:
     )
 
 
-fn _no_chance_result(
+def _no_chance_result(
     status: Int, n_scenarios: Int, confidence: Float64, drawn: Bool,
     seed: UInt64, stream: UInt64,
 ) -> ChanceResult:
@@ -987,7 +987,7 @@ fn _no_chance_result(
 # ── scenario generation ───────────────────────────────────────────────────────
 
 
-fn _draw_input_defect(base_rhs: List[Float64], dispersion: List[Float64], n_scenarios: Int) -> Int:
+def _draw_input_defect(base_rhs: List[Float64], dispersion: List[Float64], n_scenarios: Int) -> Int:
     """Validate a generator's arguments before a single cell is allocated.
 
     `n_rows` is DERIVED from `len(base_rhs)` rather than declared, so there is no caller
@@ -1017,7 +1017,7 @@ fn _draw_input_defect(base_rhs: List[Float64], dispersion: List[Float64], n_scen
     return MODEL_OK
 
 
-fn scenario_rhs_normal(
+def scenario_rhs_normal(
     base_rhs: List[Float64], sigma: List[Float64], n_scenarios: Int,
     seed: UInt64, stream_name: String,
 ) -> ScenarioSet:
@@ -1055,7 +1055,7 @@ fn scenario_rhs_normal(
     )
 
 
-fn scenario_rhs_uniform(
+def scenario_rhs_uniform(
     base_rhs: List[Float64], half_width: List[Float64], n_scenarios: Int,
     seed: UInt64, stream_name: String,
 ) -> ScenarioSet:
@@ -1096,7 +1096,7 @@ fn scenario_rhs_uniform(
 # ── the wait-and-see distribution ─────────────────────────────────────────────
 
 
-fn _scenario_vector(
+def _scenario_vector(
     block: List[Float64], base: List[Float64], scenario: Int, width: Int
 ) -> List[Float64]:
     """Scenario `scenario`'s slice of `block`, or a copy of `base` when the block is empty.
@@ -1119,7 +1119,7 @@ fn _scenario_vector(
 # PACKING IS LOAD-BEARING: `mojo_inventory` matches a signature inside a nine-line lookahead
 # and drops the function from the contract AND from dispatch, silently, if the closing paren
 # lands later. This closes on line 5 of 9.
-fn robust_scenario_solve(
+def robust_scenario_solve(
     c: List[Float64], constant: Float64, a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, n_scenarios: Int,
     rhs_scenarios: List[Float64], c_scenarios: List[Float64], cvar_level: Float64,
@@ -1300,7 +1300,7 @@ fn robust_scenario_solve(
     )
 
 
-fn robust_scenario_solve_default(
+def robust_scenario_solve_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, n_scenarios: Int,
     rhs_scenarios: List[Float64], cvar_level: Float64,
@@ -1317,7 +1317,7 @@ fn robust_scenario_solve_default(
 # ── the here-and-now robust solution ──────────────────────────────────────────
 
 
-fn robust_min_max_rhs(
+def robust_min_max_rhs(
     c: List[Float64], constant: Float64, a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, n_scenarios: Int,
     rhs_scenarios: List[Float64], max_iterations: Int,
@@ -1554,7 +1554,7 @@ fn robust_min_max_rhs(
     )
 
 
-fn robust_min_max_rhs_default(
+def robust_min_max_rhs_default(
     c: List[Float64], a: List[Float64], rows: Int, cols: Int,
     senses: List[Int], rhs: List[Float64], maximize: Bool, n_scenarios: Int,
     rhs_scenarios: List[Float64],
@@ -1569,7 +1569,7 @@ fn robust_min_max_rhs_default(
 # ── chance constraints ────────────────────────────────────────────────────────
 
 
-fn _chance_rates_at(
+def _chance_rates_at(
     x: List[Float64], a: List[Float64], rows: Int, cols: Int, senses: List[Int],
     rhs_scenarios: List[Float64], n_scenarios: Int, confidence: Float64,
     feasibility_tol: Float64, drawn: Bool, seed: UInt64, stream: UInt64,
@@ -1714,7 +1714,7 @@ fn _chance_rates_at(
     )
 
 
-fn robust_chance_rates(
+def robust_chance_rates(
     x: List[Float64], a: List[Float64], rows: Int, cols: Int, senses: List[Int],
     rhs_scenarios: List[Float64], n_scenarios: Int, confidence: Float64,
     feasibility_tol: Float64,
@@ -1745,7 +1745,7 @@ fn robust_chance_rates(
     )
 
 
-fn robust_chance_normal(
+def robust_chance_normal(
     x: List[Float64], a: List[Float64], rows: Int, cols: Int, senses: List[Int],
     base_rhs: List[Float64], sigma: List[Float64], n_scenarios: Int, seed: UInt64,
     stream_name: String, confidence: Float64, feasibility_tol: Float64,

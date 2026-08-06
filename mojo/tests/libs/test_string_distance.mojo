@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from string_distance import damerau_levenshtein, soundex, edit_similarity, common_prefix_length, common_suffix_length, bigrams, dice_coefficient, overlap_coefficient, string_reverse, is_palindrome
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

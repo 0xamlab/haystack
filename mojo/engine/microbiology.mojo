@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn exponential_growth(
+def exponential_growth(
     n0: Float64, growth_rate: Float64, time: Float64
 ) -> Float64:
     """Exponential microbial growth: N(t) = N0·exp(μ·t).
@@ -34,7 +34,7 @@ fn exponential_growth(
     return n0 * exp(growth_rate * time)
 
 
-fn doubling_time(growth_rate: Float64) -> Float64:
+def doubling_time(growth_rate: Float64) -> Float64:
     """Generation (doubling) time: td = ln(2)/μ.
 
     Args:
@@ -48,7 +48,7 @@ fn doubling_time(growth_rate: Float64) -> Float64:
     return log(2.0) / growth_rate
 
 
-fn monod_growth_rate(
+def monod_growth_rate(
     mu_max: Float64, substrate: Float64, ks: Float64
 ) -> Float64:
     """Monod model specific growth rate: μ = μmax·S/(Ks+S).
@@ -67,7 +67,7 @@ fn monod_growth_rate(
     return mu_max * substrate / denom
 
 
-fn bacterial_generation_time(
+def bacterial_generation_time(
     n_initial: Float64, n_final: Float64, elapsed_h: Float64
 ) -> Float64:
     """Generation time from two population measurements.
@@ -90,7 +90,7 @@ fn bacterial_generation_time(
     return elapsed_h / generations
 
 
-fn colony_forming_units(
+def colony_forming_units(
     colony_count: Float64, dilution_factor: Float64, volume_ml: Float64
 ) -> Float64:
     """CFU per mL from plate count and dilution.
@@ -108,7 +108,7 @@ fn colony_forming_units(
     return colony_count / (dilution_factor * volume_ml)
 
 
-fn minimum_inhibitory_conc(
+def minimum_inhibitory_conc(
     inhibition_zone_mm: Float64, disk_conc_ug: Float64
 ) -> Float64:
     """Estimated MIC from disk diffusion (Kirby-Bauer index).
@@ -127,7 +127,7 @@ fn minimum_inhibitory_conc(
     return disk_conc_ug / (inhibition_zone_mm - 6.0)
 
 
-fn biofilm_formation_index(
+def biofilm_formation_index(
     od_sample: Float64, od_control: Float64
 ) -> Float64:
     """Biofilm formation index from crystal violet assay.
@@ -144,7 +144,7 @@ fn biofilm_formation_index(
     return od_sample / od_control
 
 
-fn inactivation_first_order(
+def inactivation_first_order(
     n0: Float64, inactivation_rate: Float64, time: Float64
 ) -> Float64:
     """First-order microbial inactivation: N(t) = N0·exp(-kd·t).
@@ -162,7 +162,7 @@ fn inactivation_first_order(
     return n0 * exp(-inactivation_rate * time)
 
 
-fn d_value(inactivation_rate: Float64) -> Float64:
+def d_value(inactivation_rate: Float64) -> Float64:
     """D-value (decimal reduction time): D = ln(10)/kd.
 
     Args:
@@ -176,7 +176,7 @@ fn d_value(inactivation_rate: Float64) -> Float64:
     return log(10.0) / inactivation_rate
 
 
-fn z_value(d1: Float64, d2: Float64, t1: Float64, t2: Float64) -> Float64:
+def z_value(d1: Float64, d2: Float64, t1: Float64, t2: Float64) -> Float64:
     """Z-value: temperature change for 10-fold change in D-value.
 
     Args:

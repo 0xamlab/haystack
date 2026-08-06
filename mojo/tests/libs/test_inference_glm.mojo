@@ -71,21 +71,21 @@ from linear_models import logistic_fit, logistic_predict_proba, logistic_std_err
 from special_functions import log_gamma
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _no_fit(g: GlmFit) -> Bool:
+def _no_fit(g: GlmFit) -> Bool:
     """A refusal carries NO coefficients, NO standard errors and NO Wald statistics.
 
     This is the single property the module exists for: there is no partial fit, so a caller
@@ -102,7 +102,7 @@ fn _no_fit(g: GlmFit) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed: Int = 0
     var failed: Int = 0
 

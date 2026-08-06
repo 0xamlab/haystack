@@ -93,7 +93,7 @@ struct ParallelGemvResult(Copyable, Movable):
     var status: Int
 
 
-fn gemv_transposed_parallel_flat(a: List[Float64], x: List[Float64], m: Int, n: Int) -> ParallelGemvResult:
+def gemv_transposed_parallel_flat(a: List[Float64], x: List[Float64], m: Int, n: Int) -> ParallelGemvResult:
     """`y = A^T @ x` for `A` stored `[m, n]` row-major, `x` length `m`, `y` length `n` — the exact
     shape `gemm.blocked.gemv_flat(..., trans=True)` computes on its documented scalar path. See the
     module docstring for why the output columns, not the input rows, are the axis this partitions.
@@ -141,7 +141,7 @@ fn gemv_transposed_parallel_flat(a: List[Float64], x: List[Float64], m: Int, n: 
     var pnw = nw
 
     @parameter
-    fn col_band(tid: Int) capturing:
+    def col_band(tid: Int) capturing:
         var cols_each = pn // pnw
         var lo = tid * cols_each
         var hi = lo + cols_each if tid < pnw - 1 else pn

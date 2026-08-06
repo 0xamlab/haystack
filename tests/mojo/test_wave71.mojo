@@ -47,7 +47,7 @@ from std.math import abs as fabs, sqrt, exp, log, sin
 comptime PI: Float64 = 3.141592653589793
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
@@ -55,7 +55,7 @@ fn _assert(cond: Bool, msg: String) raises:
 # ── Agriculture tests ────────────────────────────────────────────────────────
 
 
-fn test_growing_degree_days() raises:
+def test_growing_degree_days() raises:
     # (30+10)/2 - 10 = 10
     var v = growing_degree_days(30.0, 10.0, 10.0)
     _assert(fabs(v - 10.0) < 1e-9, "gdd basic")
@@ -70,7 +70,7 @@ fn test_growing_degree_days() raises:
     print("  ✓ growing_degree_days (3 assertions)")
 
 
-fn test_crop_water_need() raises:
+def test_crop_water_need() raises:
     # ET0=5, Kc=1.2 => 6.0
     var v = crop_water_need(5.0, 1.2)
     _assert(fabs(v - 6.0) < 1e-9, "cwn basic")
@@ -81,7 +81,7 @@ fn test_crop_water_need() raises:
     print("  ✓ crop_water_need (2 assertions)")
 
 
-fn test_irrigation_efficiency() raises:
+def test_irrigation_efficiency() raises:
     # 80/100 = 0.8
     var v = irrigation_efficiency(100.0, 80.0)
     _assert(fabs(v - 0.8) < 1e-9, "irr_eff basic")
@@ -92,7 +92,7 @@ fn test_irrigation_efficiency() raises:
     print("  ✓ irrigation_efficiency (2 assertions)")
 
 
-fn test_fertilizer_rate() raises:
+def test_fertilizer_rate() raises:
     # (10*0.5 - 2) / 0.8 = (5-2)/0.8 = 3.75
     var v = fertilizer_rate(10.0, 0.5, 2.0, 0.8)
     _assert(fabs(v - 3.75) < 1e-9, "fert_rate basic")
@@ -103,7 +103,7 @@ fn test_fertilizer_rate() raises:
     print("  ✓ fertilizer_rate (2 assertions)")
 
 
-fn test_seed_rate() raises:
+def test_seed_rate() raises:
     # 100000 / (0.9 * 0.95) = 100000/0.855 ≈ 116959.06
     var v = seed_rate(100000.0, 0.9, 0.95)
     _assert(fabs(v - 100000.0 / 0.855) < 1e-2, "seed_rate basic")
@@ -114,7 +114,7 @@ fn test_seed_rate() raises:
     print("  ✓ seed_rate (2 assertions)")
 
 
-fn test_harvest_index() raises:
+def test_harvest_index() raises:
     # 4000/10000 = 0.4
     var v = harvest_index(4000.0, 10000.0)
     _assert(fabs(v - 0.4) < 1e-9, "hi basic")
@@ -125,7 +125,7 @@ fn test_harvest_index() raises:
     print("  ✓ harvest_index (2 assertions)")
 
 
-fn test_yield_per_hectare() raises:
+def test_yield_per_hectare() raises:
     # 5000 / 2.0 = 2500
     var v = yield_per_hectare(5000.0, 2.0)
     _assert(fabs(v - 2500.0) < 1e-9, "yph basic")
@@ -136,7 +136,7 @@ fn test_yield_per_hectare() raises:
     print("  ✓ yield_per_hectare (2 assertions)")
 
 
-fn test_soil_ph_lime_requirement() raises:
+def test_soil_ph_lime_requirement() raises:
     # (6.5 - 5.5) * 2.0 = 2.0
     var v = soil_ph_lime_requirement(5.5, 6.5, 2.0)
     _assert(fabs(v - 2.0) < 1e-9, "lime basic")
@@ -147,7 +147,7 @@ fn test_soil_ph_lime_requirement() raises:
     print("  ✓ soil_ph_lime_requirement (2 assertions)")
 
 
-fn test_water_use_efficiency() raises:
+def test_water_use_efficiency() raises:
     # 3000 / 500 = 6.0
     var v = water_use_efficiency(3000.0, 500.0)
     _assert(fabs(v - 6.0) < 1e-9, "wue basic")
@@ -158,7 +158,7 @@ fn test_water_use_efficiency() raises:
     print("  ✓ water_use_efficiency (2 assertions)")
 
 
-fn test_par() raises:
+def test_par() raises:
     # 0.48 * 1000 = 480
     var v = photosynthetically_active_radiation(1000.0)
     _assert(fabs(v - 480.0) < 1e-9, "par basic")
@@ -169,7 +169,7 @@ fn test_par() raises:
     print("  ✓ photosynthetically_active_radiation (2 assertions)")
 
 
-fn test_leaf_area_index() raises:
+def test_leaf_area_index() raises:
     # 5.0 / 2.0 = 2.5
     var v = leaf_area_index(5.0, 2.0)
     _assert(fabs(v - 2.5) < 1e-9, "lai basic")
@@ -180,7 +180,7 @@ fn test_leaf_area_index() raises:
     print("  ✓ leaf_area_index (2 assertions)")
 
 
-fn test_nitrogen_use_efficiency() raises:
+def test_nitrogen_use_efficiency() raises:
     # 500 / 100 = 5.0
     var v = nitrogen_use_efficiency(500.0, 100.0)
     _assert(fabs(v - 5.0) < 1e-9, "nue basic")
@@ -194,7 +194,7 @@ fn test_nitrogen_use_efficiency() raises:
 # ── Marine tests ─────────────────────────────────────────────────────────────
 
 
-fn test_seawater_density() raises:
+def test_seawater_density() raises:
     # T=10, S=35 => 1025 + 0 - 0 = 1025
     var v = seawater_density(10.0, 35.0)
     _assert(fabs(v - 1025.0) < 1e-9, "sw_density baseline")
@@ -209,7 +209,7 @@ fn test_seawater_density() raises:
     print("  ✓ seawater_density (3 assertions)")
 
 
-fn test_wave_speed_deep() raises:
+def test_wave_speed_deep() raises:
     # λ=100, g=9.81 => sqrt(9.81*100/(2π)) = sqrt(156.13) ≈ 12.495
     var v = wave_speed_deep(100.0, 9.81)
     var expected = sqrt(9.81 * 100.0 / (2.0 * PI))
@@ -217,7 +217,7 @@ fn test_wave_speed_deep() raises:
     print("  ✓ wave_speed_deep (1 assertion)")
 
 
-fn test_wave_speed_shallow() raises:
+def test_wave_speed_shallow() raises:
     # d=10, g=9.81 => sqrt(98.1) ≈ 9.905
     var v = wave_speed_shallow(10.0, 9.81)
     _assert(fabs(v - sqrt(98.1)) < 1e-6, "wave_shallow basic")
@@ -228,7 +228,7 @@ fn test_wave_speed_shallow() raises:
     print("  ✓ wave_speed_shallow (2 assertions)")
 
 
-fn test_wave_period() raises:
+def test_wave_period() raises:
     # λ=100, c=10 => T=10
     var v = wave_period(100.0, 10.0)
     _assert(fabs(v - 10.0) < 1e-9, "wave_period basic")
@@ -239,7 +239,7 @@ fn test_wave_period() raises:
     print("  ✓ wave_period (2 assertions)")
 
 
-fn test_significant_wave_height() raises:
+def test_significant_wave_height() raises:
     # E=4 => 4*sqrt(4) = 8
     var v = significant_wave_height(4.0)
     _assert(fabs(v - 8.0) < 1e-9, "swh basic")
@@ -250,7 +250,7 @@ fn test_significant_wave_height() raises:
     print("  ✓ significant_wave_height (2 assertions)")
 
 
-fn test_tidal_range() raises:
+def test_tidal_range() raises:
     # 3.5 - 0.5 = 3.0
     var v = tidal_range(3.5, 0.5)
     _assert(fabs(v - 3.0) < 1e-9, "tidal basic")
@@ -261,7 +261,7 @@ fn test_tidal_range() raises:
     print("  ✓ tidal_range (2 assertions)")
 
 
-fn test_mixed_layer_depth() raises:
+def test_mixed_layer_depth() raises:
     # wind=10 => 0.5*100 + 10 = 60
     var v = mixed_layer_depth_estimate(10.0, 45.0)
     _assert(fabs(v - 60.0) < 1e-9, "mld basic")
@@ -272,7 +272,7 @@ fn test_mixed_layer_depth() raises:
     print("  ✓ mixed_layer_depth_estimate (2 assertions)")
 
 
-fn test_ekman_depth() raises:
+def test_ekman_depth() raises:
     # Av=0.01, f=0.0001 => π*sqrt(2*0.01/0.0001) = π*sqrt(200) ≈ 44.43
     var v = ekman_depth(0.0, 0.0001, 0.01)
     var expected = PI * sqrt(200.0)
@@ -284,7 +284,7 @@ fn test_ekman_depth() raises:
     print("  ✓ ekman_depth (2 assertions)")
 
 
-fn test_coriolis_parameter() raises:
+def test_coriolis_parameter() raises:
     # lat=90 => f = 2*Ω*sin(π/2) = 2*7.2921e-5 = 1.45842e-4
     var v = coriolis_parameter(90.0)
     _assert(fabs(v - 2.0 * 7.2921e-5) < 1e-9, "coriolis 90")
@@ -299,7 +299,7 @@ fn test_coriolis_parameter() raises:
     print("  ✓ coriolis_parameter (3 assertions)")
 
 
-fn test_buoyancy_frequency() raises:
+def test_buoyancy_frequency() raises:
     # drho_dz=-0.01, rho0=1025, g=9.81 => N = sqrt(9.81/1025*0.01) = sqrt(9.571e-5) ≈ 0.00978
     var v = buoyancy_frequency(-0.01, 1025.0, 9.81)
     var expected = sqrt(9.81 / 1025.0 * 0.01)
@@ -311,7 +311,7 @@ fn test_buoyancy_frequency() raises:
     print("  ✓ buoyancy_frequency (2 assertions)")
 
 
-fn test_salinity_from_conductivity() raises:
+def test_salinity_from_conductivity() raises:
     # C=70, T=25 => 0.5*70*(1-0) = 35
     var v = salinity_from_conductivity(70.0, 25.0)
     _assert(fabs(v - 35.0) < 1e-9, "salinity baseline")
@@ -322,7 +322,7 @@ fn test_salinity_from_conductivity() raises:
     print("  ✓ salinity_from_conductivity (2 assertions)")
 
 
-fn test_ocean_pressure_at_depth() raises:
+def test_ocean_pressure_at_depth() raises:
     # d=100, ρ=1025, g=9.81 => 1025*9.81*100 = 1005525
     var v = ocean_pressure_at_depth(100.0, 1025.0, 9.81)
     _assert(fabs(v - 1005525.0) < 1e-2, "ocean_p basic")
@@ -336,7 +336,7 @@ fn test_ocean_pressure_at_depth() raises:
 # ── Brewing tests ────────────────────────────────────────────────────────────
 
 
-fn test_original_gravity_to_plato() raises:
+def test_original_gravity_to_plato() raises:
     # OG=1.048 => (0.048)*1000/4 = 12
     var v = original_gravity_to_plato(1.048)
     _assert(fabs(v - 12.0) < 1e-9, "og_to_plato basic")
@@ -347,7 +347,7 @@ fn test_original_gravity_to_plato() raises:
     print("  ✓ original_gravity_to_plato (2 assertions)")
 
 
-fn test_plato_to_gravity() raises:
+def test_plato_to_gravity() raises:
     # P=12 => 1 + 48/1000 = 1.048
     var v = plato_to_gravity(12.0)
     _assert(fabs(v - 1.048) < 1e-9, "plato_to_g basic")
@@ -358,7 +358,7 @@ fn test_plato_to_gravity() raises:
     print("  ✓ plato_to_gravity (2 assertions)")
 
 
-fn test_abv_from_og_fg() raises:
+def test_abv_from_og_fg() raises:
     # OG=1.050, FG=1.010 => 0.040*131.25 = 5.25
     var v = abv_from_og_fg(1.050, 1.010)
     _assert(fabs(v - 5.25) < 1e-6, "abv basic")
@@ -369,7 +369,7 @@ fn test_abv_from_og_fg() raises:
     print("  ✓ abv_from_og_fg (2 assertions)")
 
 
-fn test_apparent_attenuation() raises:
+def test_apparent_attenuation() raises:
     # OG=1.050, FG=1.010 => (0.040/0.050)*100 = 80%
     var v = apparent_attenuation(1.050, 1.010)
     _assert(fabs(v - 80.0) < 1e-6, "aa basic")
@@ -380,7 +380,7 @@ fn test_apparent_attenuation() raises:
     print("  ✓ apparent_attenuation (2 assertions)")
 
 
-fn test_real_attenuation() raises:
+def test_real_attenuation() raises:
     # AA=80 => 80*0.8192 = 65.536
     var v = real_attenuation(80.0)
     _assert(fabs(v - 65.536) < 1e-6, "ra basic")
@@ -391,7 +391,7 @@ fn test_real_attenuation() raises:
     print("  ✓ real_attenuation (2 assertions)")
 
 
-fn test_ibu_tinseth() raises:
+def test_ibu_tinseth() raises:
     # U=0.2, AA=0.10, W=2.0, V=5.0 => (0.2*0.10*2.0*7490)/5 = 59.92
     var v = ibu_tinseth(0.2, 0.10, 2.0, 5.0)
     _assert(fabs(v - 59.92) < 1e-6, "ibu basic")
@@ -402,7 +402,7 @@ fn test_ibu_tinseth() raises:
     print("  ✓ ibu_tinseth (2 assertions)")
 
 
-fn test_utilization_tinseth() raises:
+def test_utilization_tinseth() raises:
     # At G=1.050, t=60
     var v = utilization_tinseth(1.050, 60.0)
     var bigness = 1.65 * exp(0.050 * log(0.000125))
@@ -416,7 +416,7 @@ fn test_utilization_tinseth() raises:
     print("  ✓ utilization_tinseth (2 assertions)")
 
 
-fn test_mash_water_volume() raises:
+def test_mash_water_volume() raises:
     # 5kg * 3.0 L/kg = 15 L
     var v = mash_water_volume(5.0, 3.0)
     _assert(fabs(v - 15.0) < 1e-9, "mash_vol basic")
@@ -427,7 +427,7 @@ fn test_mash_water_volume() raises:
     print("  ✓ mash_water_volume (2 assertions)")
 
 
-fn test_strike_water_temp() raises:
+def test_strike_water_temp() raises:
     # target=67, grain=20, ratio=2.5 => (0.2/2.5)*(67-20)+67 = 0.08*47+67 = 70.76
     var v = strike_water_temp(67.0, 20.0, 2.5)
     var expected = (0.2 / 2.5) * (67.0 - 20.0) + 67.0
@@ -439,7 +439,7 @@ fn test_strike_water_temp() raises:
     print("  ✓ strike_water_temp (2 assertions)")
 
 
-fn test_color_srm_from_mcu() raises:
+def test_color_srm_from_mcu() raises:
     # MCU=10 => 1.4922 * 10^0.6859 = 1.4922 * exp(0.6859*ln(10))
     var v = color_srm_from_mcu(10.0)
     var expected = 1.4922 * exp(0.6859 * log(10.0))
@@ -455,7 +455,7 @@ fn test_color_srm_from_mcu() raises:
     print("  ✓ color_srm_from_mcu (3 assertions)")
 
 
-fn test_calories_per_12oz() raises:
+def test_calories_per_12oz() raises:
     # OG=1.050, FG=1.010
     var v = calories_per_12oz(1.050, 1.010)
     _assert(v > 0.0, "cal positive")
@@ -466,7 +466,7 @@ fn test_calories_per_12oz() raises:
     print("  ✓ calories_per_12oz (2 assertions)")
 
 
-fn test_priming_sugar_g() raises:
+def test_priming_sugar_g() raises:
     # volume_co2=2.5, temp=20, beer=20L
     var v = priming_sugar_g(2.5, 20.0, 20.0)
     _assert(v > 0.0, "priming positive")
@@ -481,7 +481,7 @@ fn test_priming_sugar_g() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 71 Tests: Agriculture, Marine, Brewing ===")
     print()
 

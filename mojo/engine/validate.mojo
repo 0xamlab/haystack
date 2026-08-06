@@ -12,7 +12,7 @@ from std.math import abs as fabs
 
 # ── Helper: byte-level substring ──────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var e = end
@@ -27,7 +27,7 @@ fn _substr(s: String, start: Int, end: Int) -> String:
 # ── Email validation ──────────────────────────────────────────────────────────
 
 
-fn is_valid_email(s: String) -> Bool:
+def is_valid_email(s: String) -> Bool:
     """Basic email format check: has exactly one @, local part and domain are non-empty,
     domain has at least one dot, no spaces."""
     var n = len(s)
@@ -98,7 +98,7 @@ fn is_valid_email(s: String) -> Bool:
 # ── IPv4 validation ───────────────────────────────────────────────────────────
 
 
-fn is_valid_ip4(s: String) -> Bool:
+def is_valid_ip4(s: String) -> Bool:
     """IPv4 address validation: four decimal octets 0-255 separated by dots."""
     var n = len(s)
     if n < 7 or n > 15:
@@ -144,7 +144,7 @@ fn is_valid_ip4(s: String) -> Bool:
 # ── Number validation ─────────────────────────────────────────────────────────
 
 
-fn is_valid_number(s: String) -> Bool:
+def is_valid_number(s: String) -> Bool:
     """Check if string can be parsed as a number (integer or float).
     Accepts optional leading sign, digits, optional decimal point, optional exponent."""
     var n = len(s)
@@ -213,7 +213,7 @@ fn is_valid_number(s: String) -> Bool:
 # ── JSON validation ───────────────────────────────────────────────────────────
 
 
-fn is_valid_json(s: String) -> Bool:
+def is_valid_json(s: String) -> Bool:
     """Basic JSON structure validation.
     Checks balanced braces/brackets and basic structural correctness."""
     var n = len(s)
@@ -314,7 +314,7 @@ fn is_valid_json(s: String) -> Bool:
 # ── Range check ───────────────────────────────────────────────────────────────
 
 
-fn is_in_range(value: Float64, low: Float64, high: Float64) -> Bool:
+def is_in_range(value: Float64, low: Float64, high: Float64) -> Bool:
     """Check if value is in [low, high] inclusive."""
     return value >= low and value <= high
 
@@ -322,7 +322,7 @@ fn is_in_range(value: Float64, low: Float64, high: Float64) -> Bool:
 # ── Positive check ────────────────────────────────────────────────────────────
 
 
-fn is_positive(value: Float64) -> Bool:
+def is_positive(value: Float64) -> Bool:
     """Check if value is strictly positive."""
     return value > 0.0
 
@@ -330,7 +330,7 @@ fn is_positive(value: Float64) -> Bool:
 # ── Finite check ──────────────────────────────────────────────────────────────
 
 
-fn is_finite(value: Float64) -> Bool:
+def is_finite(value: Float64) -> Bool:
     """Check if value is finite (not NaN or Inf).
     NaN != NaN, and Inf - Inf = NaN."""
     # NaN check: NaN != NaN
@@ -346,7 +346,7 @@ fn is_finite(value: Float64) -> Bool:
 # ── Clamp ─────────────────────────────────────────────────────────────────────
 
 
-fn clamp(value: Float64, low: Float64, high: Float64) -> Float64:
+def clamp(value: Float64, low: Float64, high: Float64) -> Float64:
     """Clamp value to [low, high]."""
     if value < low:
         return low
@@ -358,7 +358,7 @@ fn clamp(value: Float64, low: Float64, high: Float64) -> Float64:
 # ── Sanitize string ──────────────────────────────────────────────────────────
 
 
-fn sanitize_string(s: String) -> String:
+def sanitize_string(s: String) -> String:
     """Remove control characters (ASCII 0-31 except tab, newline, carriage return)."""
     var bs = s.as_bytes()
     var result = String("")
@@ -373,7 +373,7 @@ fn sanitize_string(s: String) -> String:
 # ── Array bounds validation ───────────────────────────────────────────────────
 
 
-fn validate_array_bounds(data: List[Float64], min_val: Float64, max_val: Float64) -> Bool:
+def validate_array_bounds(data: List[Float64], min_val: Float64, max_val: Float64) -> Bool:
     """Check that all elements in data are within [min_val, max_val]."""
     for i in range(len(data)):
         if data[i] < min_val or data[i] > max_val:
@@ -384,7 +384,7 @@ fn validate_array_bounds(data: List[Float64], min_val: Float64, max_val: Float64
 # ── Monotonicity check ───────────────────────────────────────────────────────
 
 
-fn check_monotonic(data: List[Float64]) -> Int:
+def check_monotonic(data: List[Float64]) -> Int:
     """Check monotonicity of a sequence.
     Returns: 1 if strictly increasing, -1 if strictly decreasing, 0 if neither.
     A sequence of length 0 or 1 is considered both (returns 1)."""

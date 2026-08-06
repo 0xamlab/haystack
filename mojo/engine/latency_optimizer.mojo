@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn early_exit_confidence(
+def early_exit_confidence(
     intermediate_logit_entropy: Float64, exit_threshold: Float64,
     layer_depth_fraction: Float64
 ) -> Float64:
@@ -37,7 +37,7 @@ fn early_exit_confidence(
     return entropy_margin * layer_depth_fraction
 
 
-fn adaptive_depth_score(
+def adaptive_depth_score(
     token_difficulty: Float64, available_compute_budget: Float64,
     full_model_compute: Float64
 ) -> Float64:
@@ -60,7 +60,7 @@ fn adaptive_depth_score(
     return depth
 
 
-fn prefill_decode_split_latency(
+def prefill_decode_split_latency(
     prefill_tokens: Float64, decode_tokens: Float64,
     prefill_throughput_tps: Float64, decode_throughput_tps: Float64
 ) -> Float64:
@@ -84,7 +84,7 @@ fn prefill_decode_split_latency(
     return prefill_time + decode_time
 
 
-fn async_speculation_gain(
+def async_speculation_gain(
     accepted_tokens: Float64, total_speculated: Float64,
     speculation_overhead: Float64
 ) -> Float64:
@@ -103,7 +103,7 @@ fn async_speculation_gain(
     return accepted_tokens - speculation_overhead * total_speculated
 
 
-fn token_streaming_headroom(
+def token_streaming_headroom(
     buffer_tokens: Float64, generation_rate_tps: Float64,
     consumption_rate_tps: Float64
 ) -> Float64:
@@ -125,7 +125,7 @@ fn token_streaming_headroom(
     return buffer_tokens / consumption_rate_tps + net_rate
 
 
-fn layer_skip_quality_cost(
+def layer_skip_quality_cost(
     layer_importance_score: Float64, n_skipped_layers: Float64,
     model_depth: Float64
 ) -> Float64:
@@ -147,7 +147,7 @@ fn layer_skip_quality_cost(
     return layer_importance_score * skip_fraction * skip_fraction
 
 
-fn partial_forward_savings(
+def partial_forward_savings(
     full_forward_flops: Float64, partial_forward_flops: Float64,
     quality_degradation: Float64, quality_threshold: Float64
 ) -> Float64:
@@ -169,7 +169,7 @@ fn partial_forward_savings(
     return full_forward_flops - partial_forward_flops
 
 
-fn kv_prefetch_overlap(
+def kv_prefetch_overlap(
     decode_step_latency_ms: Float64, kv_load_latency_ms: Float64
 ) -> Float64:
     """Overlap fraction of KV prefetch with decode computation.
@@ -192,7 +192,7 @@ fn kv_prefetch_overlap(
     return fraction
 
 
-fn attention_skip_score(
+def attention_skip_score(
     layer_attention_entropy: Float64, skip_entropy_threshold: Float64,
     positional_importance: Float64
 ) -> Float64:
@@ -209,7 +209,7 @@ fn attention_skip_score(
     return (skip_entropy_threshold - layer_attention_entropy) * positional_importance
 
 
-fn output_caching_hit_benefit(
+def output_caching_hit_benefit(
     cache_hit_rate: Float64, full_generation_latency_ms: Float64,
     cache_lookup_latency_ms: Float64
 ) -> Float64:

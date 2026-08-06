@@ -24,7 +24,7 @@ from std.math import abs as fabs
 # ── cop_refrigeration ────────────────────────────────────────────────────────
 
 
-fn cop_refrigeration(qc: Float64, w: Float64) -> Float64:
+def cop_refrigeration(qc: Float64, w: Float64) -> Float64:
     """Coefficient of Performance (cooling): COP = Qc / W.
 
     Args:
@@ -42,7 +42,7 @@ fn cop_refrigeration(qc: Float64, w: Float64) -> Float64:
 # ── cop_heat_pump ────────────────────────────────────────────────────────────
 
 
-fn cop_heat_pump(qh: Float64, w: Float64) -> Float64:
+def cop_heat_pump(qh: Float64, w: Float64) -> Float64:
     """Coefficient of Performance (heating): COP_hp = Qh / W.
 
     Args:
@@ -60,7 +60,7 @@ fn cop_heat_pump(qh: Float64, w: Float64) -> Float64:
 # ── carnot_cop_refrigeration ─────────────────────────────────────────────────
 
 
-fn carnot_cop_refrigeration(tc: Float64, th: Float64) -> Float64:
+def carnot_cop_refrigeration(tc: Float64, th: Float64) -> Float64:
     """Carnot COP for refrigeration: COP = Tc / (Th - Tc).
 
     Args:
@@ -79,7 +79,7 @@ fn carnot_cop_refrigeration(tc: Float64, th: Float64) -> Float64:
 # ── carnot_cop_heat_pump ─────────────────────────────────────────────────────
 
 
-fn carnot_cop_heat_pump(th: Float64, tc: Float64) -> Float64:
+def carnot_cop_heat_pump(th: Float64, tc: Float64) -> Float64:
     """Carnot COP for heat pump: COP_hp = Th / (Th - Tc).
 
     Args:
@@ -98,7 +98,7 @@ fn carnot_cop_heat_pump(th: Float64, tc: Float64) -> Float64:
 # ── refrigeration_capacity_tons ──────────────────────────────────────────────
 
 
-fn refrigeration_capacity_tons(btu_per_hr: Float64) -> Float64:
+def refrigeration_capacity_tons(btu_per_hr: Float64) -> Float64:
     """Convert BTU/hr to tons of refrigeration: Tons = BTU/hr / 12000.
 
     Args:
@@ -113,7 +113,7 @@ fn refrigeration_capacity_tons(btu_per_hr: Float64) -> Float64:
 # ── superheat ────────────────────────────────────────────────────────────────
 
 
-fn superheat(t_suction: Float64, t_saturation: Float64) -> Float64:
+def superheat(t_suction: Float64, t_saturation: Float64) -> Float64:
     """Superheat: SH = T_suction - T_saturation.
 
     Args:
@@ -129,7 +129,7 @@ fn superheat(t_suction: Float64, t_saturation: Float64) -> Float64:
 # ── subcooling ───────────────────────────────────────────────────────────────
 
 
-fn subcooling(t_saturation: Float64, t_liquid: Float64) -> Float64:
+def subcooling(t_saturation: Float64, t_liquid: Float64) -> Float64:
     """Subcooling: SC = T_saturation - T_liquid.
 
     Args:
@@ -145,7 +145,7 @@ fn subcooling(t_saturation: Float64, t_liquid: Float64) -> Float64:
 # ── mass_flow_rate ───────────────────────────────────────────────────────────
 
 
-fn mass_flow_rate(capacity: Float64, enthalpy_diff: Float64) -> Float64:
+def mass_flow_rate(capacity: Float64, enthalpy_diff: Float64) -> Float64:
     """Refrigerant mass flow rate: m_dot = Q / Δh.
 
     Args:
@@ -163,7 +163,7 @@ fn mass_flow_rate(capacity: Float64, enthalpy_diff: Float64) -> Float64:
 # ── compressor_work ──────────────────────────────────────────────────────────
 
 
-fn compressor_work(m_dot: Float64, h2: Float64, h1: Float64) -> Float64:
+def compressor_work(m_dot: Float64, h2: Float64, h1: Float64) -> Float64:
     """Compressor work: W = m_dot * (h2 - h1).
 
     Args:
@@ -180,7 +180,7 @@ fn compressor_work(m_dot: Float64, h2: Float64, h1: Float64) -> Float64:
 # ── energy_efficiency_ratio ──────────────────────────────────────────────────
 
 
-fn energy_efficiency_ratio(cooling_btu: Float64, power_watts: Float64) -> Float64:
+def energy_efficiency_ratio(cooling_btu: Float64, power_watts: Float64) -> Float64:
     """Energy Efficiency Ratio: EER = BTU/hr / W.
 
     Args:
@@ -198,7 +198,7 @@ fn energy_efficiency_ratio(cooling_btu: Float64, power_watts: Float64) -> Float6
 # ── seer_to_cop ──────────────────────────────────────────────────────────────
 
 
-fn seer_to_cop(seer: Float64) -> Float64:
+def seer_to_cop(seer: Float64) -> Float64:
     """Convert SEER to COP: COP ≈ SEER / 3.412.
 
     Args:
@@ -213,7 +213,7 @@ fn seer_to_cop(seer: Float64) -> Float64:
 # ── refrigerant_charge_estimate ──────────────────────────────────────────────
 
 
-fn refrigerant_charge_estimate(system_volume: Float64, density: Float64) -> Float64:
+def refrigerant_charge_estimate(system_volume: Float64, density: Float64) -> Float64:
     """Estimate refrigerant charge: Charge = V * ρ.
 
     Args:

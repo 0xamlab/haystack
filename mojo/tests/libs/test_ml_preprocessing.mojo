@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ml.preprocessing import normalize_minmax, normalize_zscore, normalize_robust, one_hot_encode, polynomial_features, train_test_split
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

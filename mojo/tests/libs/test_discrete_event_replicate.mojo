@@ -70,14 +70,14 @@ from discrete_event.contract import (
 from discrete_event.replicate import replicate_ci_flat, replicate_mm1_flat
 
 
-fn _five() -> List[Float64]:
+def _five() -> List[Float64]:
     var o = List[Float64]()
     for i in range(5):
         o.append(Float64(i + 1))
     return o^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[discrete_event.replicate] known-value suite")

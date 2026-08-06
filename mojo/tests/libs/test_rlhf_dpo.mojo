@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from rlhf_dpo import dpo_loss, ipo_loss, orpo_ratio, ppo_clip_objective, reward_model_score, kl_penalty_term, advantage_gae, grpo_group_advantage, sft_loss_token, preference_margin_loss
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

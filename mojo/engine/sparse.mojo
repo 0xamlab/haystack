@@ -33,7 +33,7 @@ struct COOEntry(Copyable, Movable):
     var col: Int
     var val: Float64
 
-    fn __init__(out self, row: Int, col: Int, val: Float64):
+    def __init__(out self, row: Int, col: Int, val: Float64):
         self.row = row
         self.col = col
         self.val = val
@@ -50,20 +50,20 @@ struct SparseMatrixCOO(Copyable, Movable):
     var nrows: Int
     var ncols: Int
 
-    fn __init__(out self, nrows: Int, ncols: Int):
+    def __init__(out self, nrows: Int, ncols: Int):
         self.entries = List[COOEntry]()
         self.nrows = nrows
         self.ncols = ncols
 
-    fn add_entry(mut self, row: Int, col: Int, val: Float64):
+    def add_entry(mut self, row: Int, col: Int, val: Float64):
         """Add a non-zero entry."""
         self.entries.append(COOEntry(row, col, val))
 
-    fn nnz(self) -> Int:
+    def nnz(self) -> Int:
         """Number of non-zero entries."""
         return len(self.entries)
 
-    fn to_dense(self) -> List[List[Float64]]:
+    def to_dense(self) -> List[List[Float64]]:
         """Convert to dense matrix (List of rows)."""
         var result = List[List[Float64]]()
         for i in range(self.nrows):
@@ -80,7 +80,7 @@ struct SparseMatrixCOO(Copyable, Movable):
 # ── sparse_from_dense ────────────────────────────────────────────────────────
 
 
-fn sparse_from_dense(dense: List[List[Float64]], tol: Float64 = 1e-15) -> SparseMatrixCOO:
+def sparse_from_dense(dense: List[List[Float64]], tol: Float64 = 1e-15) -> SparseMatrixCOO:
     """Create sparse matrix from dense, ignoring values with |v| < tol."""
     var nrows = len(dense)
     var ncols = 0
@@ -97,7 +97,7 @@ fn sparse_from_dense(dense: List[List[Float64]], tol: Float64 = 1e-15) -> Sparse
 # ── sparse_matvec ────────────────────────────────────────────────────────────
 
 
-fn sparse_matvec(mat: SparseMatrixCOO, vec: List[Float64]) -> List[Float64]:
+def sparse_matvec(mat: SparseMatrixCOO, vec: List[Float64]) -> List[Float64]:
     """Sparse matrix-vector multiply: result = mat @ vec."""
     var result = List[Float64]()
     # Entries arrive over the wire and index result by row / vec by column;
@@ -127,7 +127,7 @@ fn sparse_matvec(mat: SparseMatrixCOO, vec: List[Float64]) -> List[Float64]:
 # ── sparse_add ───────────────────────────────────────────────────────────────
 
 
-fn sparse_add(a: SparseMatrixCOO, b: SparseMatrixCOO) -> SparseMatrixCOO:
+def sparse_add(a: SparseMatrixCOO, b: SparseMatrixCOO) -> SparseMatrixCOO:
     """Element-wise addition of two sparse matrices (same dimensions)."""
     var result = SparseMatrixCOO(a.nrows, a.ncols)
     for i in range(len(a.entries)):
@@ -142,7 +142,7 @@ fn sparse_add(a: SparseMatrixCOO, b: SparseMatrixCOO) -> SparseMatrixCOO:
 # ── sparse_transpose ─────────────────────────────────────────────────────────
 
 
-fn sparse_transpose(mat: SparseMatrixCOO) -> SparseMatrixCOO:
+def sparse_transpose(mat: SparseMatrixCOO) -> SparseMatrixCOO:
     """Transpose sparse matrix (swap row and col in each entry)."""
     var result = SparseMatrixCOO(mat.ncols, mat.nrows)
     for i in range(len(mat.entries)):
@@ -154,7 +154,7 @@ fn sparse_transpose(mat: SparseMatrixCOO) -> SparseMatrixCOO:
 # ── sparse_density ───────────────────────────────────────────────────────────
 
 
-fn sparse_density(mat: SparseMatrixCOO) -> Float64:
+def sparse_density(mat: SparseMatrixCOO) -> Float64:
     """Fraction of non-zero entries: nnz / (nrows * ncols)."""
     var total = mat.nrows * mat.ncols
     if total == 0:
@@ -165,7 +165,7 @@ fn sparse_density(mat: SparseMatrixCOO) -> Float64:
 # ── sparse_trace ─────────────────────────────────────────────────────────────
 
 
-fn sparse_trace(mat: SparseMatrixCOO) -> Float64:
+def sparse_trace(mat: SparseMatrixCOO) -> Float64:
     """Sum of diagonal entries (where row == col)."""
     var s: Float64 = 0.0
     for i in range(len(mat.entries)):

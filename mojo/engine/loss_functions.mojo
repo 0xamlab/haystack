@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn binary_cross_entropy(
+def binary_cross_entropy(
     y_true: Float64, y_pred: Float64
 ) -> Float64:
     """Binary cross-entropy loss.
@@ -39,7 +39,7 @@ fn binary_cross_entropy(
     return -(y_true * log(p) + (1.0 - y_true) * log(1.0 - p))
 
 
-fn categorical_cross_entropy(
+def categorical_cross_entropy(
     y_true: Float64, y_pred: Float64
 ) -> Float64:
     """Categorical cross-entropy for one class: -y log(p).
@@ -56,7 +56,7 @@ fn categorical_cross_entropy(
     return -y_true * log(p)
 
 
-fn focal_loss(
+def focal_loss(
     y_true: Float64, y_pred: Float64, gamma: Float64, alpha: Float64
 ) -> Float64:
     """Focal loss (Lin et al. 2017) for class imbalance.
@@ -81,13 +81,13 @@ fn focal_loss(
     return -alpha_t * pow_approx(1.0 - p_t, gamma) * log(p_t)
 
 
-fn pow_approx(base: Float64, exponent: Float64) -> Float64:
+def pow_approx(base: Float64, exponent: Float64) -> Float64:
     if base <= 0.0:
         return 0.0
     return exp(exponent * log(base))
 
 
-fn huber_loss(
+def huber_loss(
     y_true: Float64, y_pred: Float64, delta: Float64
 ) -> Float64:
     """Huber (smooth L1) loss.
@@ -111,7 +111,7 @@ fn huber_loss(
     return delta * diff - 0.5 * delta * delta
 
 
-fn kl_divergence(p: Float64, q: Float64) -> Float64:
+def kl_divergence(p: Float64, q: Float64) -> Float64:
     """KL divergence contribution: p × log(p/q).
 
     Args:
@@ -128,7 +128,7 @@ fn kl_divergence(p: Float64, q: Float64) -> Float64:
     return p * log(p / q_safe)
 
 
-fn contrastive_loss(
+def contrastive_loss(
     distance: Float64, label: Float64, margin: Float64
 ) -> Float64:
     """Contrastive loss (Hadsell et al. 2006).
@@ -151,7 +151,7 @@ fn contrastive_loss(
     return diff * diff
 
 
-fn triplet_loss(
+def triplet_loss(
     dist_pos: Float64, dist_neg: Float64, margin: Float64
 ) -> Float64:
     """Triplet loss: max(0, d_pos - d_neg + margin).
@@ -170,7 +170,7 @@ fn triplet_loss(
     return loss
 
 
-fn mse_loss(y_true: Float64, y_pred: Float64) -> Float64:
+def mse_loss(y_true: Float64, y_pred: Float64) -> Float64:
     """Mean squared error (per sample): (y - p)².
 
     Args:
@@ -184,7 +184,7 @@ fn mse_loss(y_true: Float64, y_pred: Float64) -> Float64:
     return diff * diff
 
 
-fn mae_loss(y_true: Float64, y_pred: Float64) -> Float64:
+def mae_loss(y_true: Float64, y_pred: Float64) -> Float64:
     """Mean absolute error (per sample): |y - p|.
 
     Args:
@@ -200,7 +200,7 @@ fn mae_loss(y_true: Float64, y_pred: Float64) -> Float64:
     return diff
 
 
-fn label_smoothing_loss(
+def label_smoothing_loss(
     y_true: Float64, y_pred: Float64,
     epsilon: Float64, n_classes: Float64
 ) -> Float64:

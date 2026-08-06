@@ -30,7 +30,7 @@ struct LZ77Token(Copyable, Movable):
     var length: Int
     var next_char: Int
 
-    fn __init__(out self, offset: Int, length: Int, next_char: Int):
+    def __init__(out self, offset: Int, length: Int, next_char: Int):
         self.offset = offset
         self.length = length
         self.next_char = next_char
@@ -39,7 +39,7 @@ struct LZ77Token(Copyable, Movable):
 # ── String/byte conversion ──────────────────────────────────────────────────
 
 
-fn bytes_to_ints(s: String) -> List[Int]:
+def bytes_to_ints(s: String) -> List[Int]:
     """Convert string to list of byte values (0-255)."""
     var result = List[Int]()
     var bs = s.as_bytes()
@@ -48,7 +48,7 @@ fn bytes_to_ints(s: String) -> List[Int]:
     return result^
 
 
-fn ints_to_string(data: List[Int]) -> String:
+def ints_to_string(data: List[Int]) -> String:
     """Convert list of byte values back to string."""
     # A value outside the Unicode range has no character; chr() aborts the worker on it
     # (uncatchable), so refuse the whole input with an empty string.
@@ -64,7 +64,7 @@ fn ints_to_string(data: List[Int]) -> String:
 # ── find_longest_match ──────────────────────────────────────────────────────
 
 
-fn find_longest_match(
+def find_longest_match(
     data: List[Int], pos: Int, window_size: Int, lookahead_size: Int
 ) -> List[Int]:
     """Find longest match in the sliding window.
@@ -120,7 +120,7 @@ fn find_longest_match(
 # ── lz77_encode ─────────────────────────────────────────────────────────────
 
 
-fn lz77_encode(
+def lz77_encode(
     data: List[Int], window_size: Int = 256, lookahead_size: Int = 16
 ) -> List[LZ77Token]:
     """LZ77 encoding. data is list of byte values (0-255).
@@ -149,7 +149,7 @@ fn lz77_encode(
 # ── lz77_decode ─────────────────────────────────────────────────────────────
 
 
-fn lz77_decode(tokens: List[LZ77Token]) -> List[Int]:
+def lz77_decode(tokens: List[LZ77Token]) -> List[Int]:
     """Decode LZ77 tokens back to original byte stream."""
     var result = List[Int]()
 
@@ -177,7 +177,7 @@ fn lz77_decode(tokens: List[LZ77Token]) -> List[Int]:
 # ── compression_ratio ───────────────────────────────────────────────────────
 
 
-fn compression_ratio(original_size: Int, n_tokens: Int) -> Float64:
+def compression_ratio(original_size: Int, n_tokens: Int) -> Float64:
     """Approximate compression ratio: original_size / (n_tokens * 3).
 
     Each token is approximately 3 values (offset, length, next_char).

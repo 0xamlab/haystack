@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from time_series_decompose import moving_average_trend, detrend, seasonal_component, residual, decompose_additive, seasonal_strength, trend_strength, detect_period, stl_like
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

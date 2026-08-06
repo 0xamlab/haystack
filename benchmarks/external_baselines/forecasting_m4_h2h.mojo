@@ -24,14 +24,14 @@ argv: <dir> <freq> <m> <h> <n> <mode> <nsample> <reps> <workers> [methods] [out_
                <out_prefix>_<freq>_<method>.f64 AFTER the timer stops
 """
 from sys import argv
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 from std.algorithm import parallelize
 from std.memory import Span
 
 from forecasting.fitted import damped_fitted, ets_aaa_fitted, holt_fitted
 
 
-fn read_f64(path: String) raises -> List[Float64]:
+def read_f64(path: String) raises -> List[Float64]:
     var f = open(path, "r")
     var b = f.read_bytes()
     f.close()
@@ -43,7 +43,7 @@ fn read_f64(path: String) raises -> List[Float64]:
     return out^
 
 
-fn read_i64(path: String) raises -> List[Int]:
+def read_i64(path: String) raises -> List[Int]:
     var f = open(path, "r")
     var b = f.read_bytes()
     f.close()
@@ -55,7 +55,7 @@ fn read_i64(path: String) raises -> List[Int]:
     return out^
 
 
-fn write_f64(path: String, mut v: List[Float64]) raises:
+def write_f64(path: String, mut v: List[Float64]) raises:
     var w = open(path, "w")
     var bp = v.unsafe_ptr().bitcast[UInt8]()
     w.write_bytes(Span[UInt8, origin_of(v)](ptr=bp, length=len(v) * 8))
@@ -68,7 +68,7 @@ struct Bundle(Movable):
     var raw: List[List[Float64]]
     var des: List[List[Float64]]
 
-    fn __init__(
+    def __init__(
         out self,
         m: Int,
         h: Int,
@@ -81,7 +81,7 @@ struct Bundle(Movable):
         self.des = des^
 
 
-fn one_series(ref b: Bundle, i: Int, method: Int, op: UnsafePointer[Float64, origin=MutAnyOrigin]) -> Int:
+def one_series(ref b: Bundle, i: Int, method: Int, op: UnsafePointer[Float64, origin=MutAnyOrigin]) -> Int:
     """One shipped-kernel call, result stored into the preallocated output slot.
 
     Returns 1 when the kernel produced a forecast. NaN-fills a refused series so the
@@ -112,14 +112,14 @@ fn one_series(ref b: Bundle, i: Int, method: Int, op: UnsafePointer[Float64, ori
     return 0
 
 
-fn pass_serial(ref b: Bundle, method: Int, op: UnsafePointer[Float64, origin=MutAnyOrigin]) -> Int:
+def pass_serial(ref b: Bundle, method: Int, op: UnsafePointer[Float64, origin=MutAnyOrigin]) -> Int:
     var ok = 0
     for i in range(len(b.raw)):
         ok += one_series(b, i, method, op)
     return ok
 
 
-fn pass_parallel(
+def pass_parallel(
     ref b: Bundle, method: Int, op: UnsafePointer[Float64, origin=MutAnyOrigin], workers: Int
 ) -> Int:
     var n = len(b.raw)
@@ -129,7 +129,7 @@ fn pass_parallel(
     var pp = part.unsafe_ptr()
 
     @parameter
-    fn worker(w: Int):
+    def worker(w: Int):
         var lo = (n * w) // workers
         var hi = (n * (w + 1)) // workers
         var ok = 0
@@ -144,7 +144,7 @@ fn pass_parallel(
     return tot
 
 
-fn main() raises:
+def main() raises:
     var a = argv()
     var d = String(a[1])
     var freq = String(a[2])

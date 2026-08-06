@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from video_similarity import frame_duplicate_scores, average_frame_duplicate_score, frame_hash_hamming_series, average_frame_hash_hamming, temporal_signature_distance, clip_duplicate_score_flat, is_duplicate_clip_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

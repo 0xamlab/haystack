@@ -25,7 +25,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── Trig helpers ──────────────────────────────────────────────────────────────
 
 
-fn _sin(x: Float64) -> Float64:
+def _sin(x: Float64) -> Float64:
     """Sin via range reduction + Taylor series."""
     var v = x
     while v > PI:
@@ -41,7 +41,7 @@ fn _sin(x: Float64) -> Float64:
     return v - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0
 
 
-fn _cos(x: Float64) -> Float64:
+def _cos(x: Float64) -> Float64:
     """Cos via range reduction + Taylor series."""
     var v = x
     while v > PI:
@@ -56,7 +56,7 @@ fn _cos(x: Float64) -> Float64:
     return 1.0 - x2 / 2.0 + x4 / 24.0 - x6 / 720.0 + x8 / 40320.0 - x10 / 3628800.0
 
 
-fn _atan2(y: Float64, x: Float64) -> Float64:
+def _atan2(y: Float64, x: Float64) -> Float64:
     """atan2(y, x) approximation."""
     if fabs(x) < 1e-15 and fabs(y) < 1e-15:
         return 0.0
@@ -94,17 +94,17 @@ struct Complex(Copyable, Movable):
     var re: Float64
     var im: Float64
 
-    fn __init__(out self, re: Float64, im: Float64):
+    def __init__(out self, re: Float64, im: Float64):
         self.re = re
         self.im = im
 
-    fn __add__(self, other: Complex) -> Complex:
+    def __add__(self, other: Complex) -> Complex:
         return Complex(self.re + other.re, self.im + other.im)
 
-    fn __sub__(self, other: Complex) -> Complex:
+    def __sub__(self, other: Complex) -> Complex:
         return Complex(self.re - other.re, self.im - other.im)
 
-    fn __mul__(self, other: Complex) -> Complex:
+    def __mul__(self, other: Complex) -> Complex:
         return Complex(
             self.re * other.re - self.im * other.im,
             self.re * other.im + self.im * other.re,
@@ -114,7 +114,7 @@ struct Complex(Copyable, Movable):
 # ── next_power_of_2 ──────────────────────────────────────────────────────────
 
 
-fn next_power_of_2(n: Int) -> Int:
+def next_power_of_2(n: Int) -> Int:
     """Smallest power of 2 >= n."""
     if n <= 1:
         return 1
@@ -127,7 +127,7 @@ fn next_power_of_2(n: Int) -> Int:
 # ── zero_pad ─────────────────────────────────────────────────────────────────
 
 
-fn zero_pad(x: List[Float64], target_len: Int) -> List[Float64]:
+def zero_pad(x: List[Float64], target_len: Int) -> List[Float64]:
     """Pad signal with zeros to target length."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -140,7 +140,7 @@ fn zero_pad(x: List[Float64], target_len: Int) -> List[Float64]:
 # ── fft (Cooley-Tukey radix-2 DIT) ──────────────────────────────────────────
 
 
-fn _fft_recursive(x: List[Complex], invert: Bool) -> List[Complex]:
+def _fft_recursive(x: List[Complex], invert: Bool) -> List[Complex]:
     """Recursive Cooley-Tukey radix-2 FFT/IFFT on complex input."""
     var n = len(x)
     if n == 1:
@@ -178,7 +178,7 @@ fn _fft_recursive(x: List[Complex], invert: Bool) -> List[Complex]:
     return result^
 
 
-fn fft(x: List[Float64]) -> List[Complex]:
+def fft(x: List[Float64]) -> List[Complex]:
     """Cooley-Tukey radix-2 DIT FFT. Input length must be power of 2."""
     var n = len(x)
     # Empty input would recurse forever in _fft_recursive (n=0 splits into
@@ -191,7 +191,7 @@ fn fft(x: List[Float64]) -> List[Complex]:
     return _fft_recursive(cx, False)
 
 
-fn ifft(X: List[Complex]) -> List[Complex]:
+def ifft(X: List[Complex]) -> List[Complex]:
     """Inverse FFT. Returns complex time-domain signal."""
     var n = len(X)
     # Empty input would recurse forever in _fft_recursive (and divide by
@@ -208,7 +208,7 @@ fn ifft(X: List[Complex]) -> List[Complex]:
 # ── fft_magnitude ────────────────────────────────────────────────────────────
 
 
-fn fft_magnitude(X: List[Complex]) -> List[Float64]:
+def fft_magnitude(X: List[Complex]) -> List[Float64]:
     """|X[k]| = sqrt(re² + im²) for each frequency bin."""
     var result = List[Float64]()
     for i in range(len(X)):
@@ -219,7 +219,7 @@ fn fft_magnitude(X: List[Complex]) -> List[Float64]:
 # ── fft_phase ────────────────────────────────────────────────────────────────
 
 
-fn fft_phase(X: List[Complex]) -> List[Float64]:
+def fft_phase(X: List[Complex]) -> List[Float64]:
     """Phase angle atan2(im, re) for each bin."""
     var result = List[Float64]()
     for i in range(len(X)):
@@ -230,7 +230,7 @@ fn fft_phase(X: List[Complex]) -> List[Float64]:
 # ── power_spectrum ───────────────────────────────────────────────────────────
 
 
-fn power_spectrum(x: List[Float64]) -> List[Float64]:
+def power_spectrum(x: List[Float64]) -> List[Float64]:
     """|FFT(x)|² / N."""
     # Empty input would divide by N == 0 below.
     if len(x) == 0:

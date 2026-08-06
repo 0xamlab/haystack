@@ -41,12 +41,12 @@ from combinatorial import (
 from std.math import abs as fabs, log
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -54,7 +54,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── String Distance tests ────────────────────────────────────────────────────
 
 
-fn test_string_distance() raises:
+def test_string_distance() raises:
     print("── String Distance tests ──")
     var passed = 0
 
@@ -169,7 +169,7 @@ fn test_string_distance() raises:
 # ── Transform tests ──────────────────────────────────────────────────────────
 
 
-fn test_transform() raises:
+def test_transform() raises:
     print("── Transform tests ──")
     var passed = 0
 
@@ -363,7 +363,7 @@ fn test_transform() raises:
 # ── Combinatorial tests ──────────────────────────────────────────────────────
 
 
-fn test_combinatorial() raises:
+def test_combinatorial() raises:
     print("── Combinatorial tests ──")
     var passed = 0
 
@@ -564,7 +564,7 @@ fn test_combinatorial() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 38 Tests ===")
     test_string_distance()
     test_transform()

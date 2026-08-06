@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_similarity import mean_squared_error_flat, mean_abs_error_flat, psnr_flat, normalized_cross_correlation_flat, ssim_global_flat, diff_fraction_flat, crop_region_similarity_flat, duplicate_score_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

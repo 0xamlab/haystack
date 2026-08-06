@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from genomics import gc_content, genome_size_from_cot, coverage_depth, n50_approximation, snp_density, indel_rate, repeat_fraction, gene_density, read_mapping_efficiency, sequencing_error_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

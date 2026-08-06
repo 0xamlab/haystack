@@ -40,21 +40,21 @@ struct YamlNode(Copyable, Movable):
     # List: child node indices
     var list_vals: List[Int]  # indices into a shared node pool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.kind = _YAML_SCALAR
         self.scalar = String("")
         self.map_keys = List[String]()
         self.map_vals = List[Int]()
         self.list_vals = List[Int]()
 
-    fn __init__(out self, kind: Int, scalar: String):
+    def __init__(out self, kind: Int, scalar: String):
         self.kind = kind
         self.scalar = scalar
         self.map_keys = List[String]()
         self.map_vals = List[Int]()
         self.list_vals = List[Int]()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.kind = copy.kind
         self.scalar = copy.scalar
         self.map_keys = copy.map_keys.copy()
@@ -70,23 +70,23 @@ struct _YamlPool(Copyable, Movable):
     """Flat storage for YAML nodes. Nodes reference children by index."""
     var nodes: List[YamlNode]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.nodes = List[YamlNode]()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.nodes = copy.nodes.copy()
 
-    fn add_scalar(mut self, value: String) -> Int:
+    def add_scalar(mut self, value: String) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(YamlNode(_YAML_SCALAR, value))
         return idx
 
-    fn add_map(mut self) -> Int:
+    def add_map(mut self) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(YamlNode(_YAML_MAP, String("")))
         return idx
 
-    fn add_list(mut self) -> Int:
+    def add_list(mut self) -> Int:
         var idx = len(self.nodes)
         self.nodes.append(YamlNode(_YAML_LIST, String("")))
         return idx
@@ -95,7 +95,7 @@ struct _YamlPool(Copyable, Movable):
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
 
-fn _count_indent(line: String) -> Int:
+def _count_indent(line: String) -> Int:
     """Count leading spaces in a line."""
     var bs = line.as_bytes()
     var n = len(line)
@@ -105,7 +105,7 @@ fn _count_indent(line: String) -> Int:
     return count
 
 
-fn _strip(s: String) -> String:
+def _strip(s: String) -> String:
     """Strip leading and trailing whitespace."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -127,7 +127,7 @@ fn _strip(s: String) -> String:
     return result
 
 
-fn _starts_with(s: String, prefix: String) -> Bool:
+def _starts_with(s: String, prefix: String) -> Bool:
     """Check if s starts with prefix."""
     var sbs = s.as_bytes()
     var pbs = prefix.as_bytes()
@@ -139,7 +139,7 @@ fn _starts_with(s: String, prefix: String) -> Bool:
     return True
 
 
-fn _split_lines(content: String) -> List[String]:
+def _split_lines(content: String) -> List[String]:
     """Split string by newline into lines."""
     var lines = List[String]()
     var bs = content.as_bytes()
@@ -161,7 +161,7 @@ fn _split_lines(content: String) -> List[String]:
     return lines^
 
 
-fn _find_colon(line: String) -> Int:
+def _find_colon(line: String) -> Int:
     """Find the index of the first ': ' or ':' at end in a trimmed line.
     Returns -1 if not found.
     """
@@ -174,7 +174,7 @@ fn _find_colon(line: String) -> Int:
     return -1
 
 
-fn _substring(s: String, start: Int, end: Int) -> String:
+def _substring(s: String, start: Int, end: Int) -> String:
     """Extract substring s[start:end]."""
     var bs = s.as_bytes()
     var result = String("")
@@ -184,7 +184,7 @@ fn _substring(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn _unquote(s: String) -> String:
+def _unquote(s: String) -> String:
     """Remove surrounding quotes if present."""
     var n = len(s)
     if n < 2:
@@ -206,12 +206,12 @@ struct _ParseState(Copyable, Movable):
     var pos: Int
     var pool: _YamlPool
 
-    fn __init__(out self, lines: List[String]):
+    def __init__(out self, lines: List[String]):
         self.lines = lines.copy()
         self.pos = 0
         self.pool = _YamlPool()
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.lines = copy.lines.copy()
         self.pos = copy.pos
         self.pool = copy.pool.copy()
@@ -220,7 +220,7 @@ struct _ParseState(Copyable, Movable):
 # ── Recursive parser ─────────────────────────────────────────────────────────
 
 
-fn _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
+def _parse_block(mut state: _ParseState, base_indent: Int) -> Int:
     """Parse a block at the given indentation level. Returns node index."""
     var n_lines = len(state.lines)
 
@@ -318,15 +318,15 @@ struct YamlDoc(Copyable, Movable):
     var pool: _YamlPool
     var root: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.pool = _YamlPool()
         self.root = 0
 
-    fn __init__(out self, pool: _YamlPool, root: Int):
+    def __init__(out self, pool: _YamlPool, root: Int):
         self.pool = pool.copy()
         self.root = root
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.pool = copy.pool.copy()
         self.root = copy.root
 
@@ -334,7 +334,7 @@ struct YamlDoc(Copyable, Movable):
 # ── Public API: yaml_parse ───────────────────────────────────────────────────
 
 
-fn yaml_parse(content: String) -> YamlDoc:
+def yaml_parse(content: String) -> YamlDoc:
     """Parse YAML content string into a YamlDoc tree."""
     var lines = _split_lines(content)
     var state = _ParseState(lines)
@@ -345,7 +345,7 @@ fn yaml_parse(content: String) -> YamlDoc:
 # ── Public API: dot-notation accessors ────────────────────────────────────────
 
 
-fn _split_path(path: String) -> List[String]:
+def _split_path(path: String) -> List[String]:
     """Split a dot-notation path into segments."""
     var parts = List[String]()
     var bs = path.as_bytes()
@@ -365,7 +365,7 @@ fn _split_path(path: String) -> List[String]:
     return parts^
 
 
-fn _resolve_path(doc: YamlDoc, path: String) -> Int:
+def _resolve_path(doc: YamlDoc, path: String) -> Int:
     """Resolve a dot-notation path to a node index. Returns -1 if not found."""
     var parts = _split_path(path)
     var n_nodes = len(doc.pool.nodes)
@@ -397,7 +397,7 @@ fn _resolve_path(doc: YamlDoc, path: String) -> Int:
     return current
 
 
-fn yaml_get_string(doc: YamlDoc, path: String) -> String:
+def yaml_get_string(doc: YamlDoc, path: String) -> String:
     """Get a string value by dot-notation path. Returns '' if not found."""
     var idx = _resolve_path(doc, path)
     if idx < 0:
@@ -407,7 +407,7 @@ fn yaml_get_string(doc: YamlDoc, path: String) -> String:
     return String("")
 
 
-fn yaml_get_int(doc: YamlDoc, path: String, default: Int) -> Int:
+def yaml_get_int(doc: YamlDoc, path: String, default: Int) -> Int:
     """Get an integer value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
     if len(s) == 0:
@@ -418,7 +418,7 @@ fn yaml_get_int(doc: YamlDoc, path: String, default: Int) -> Int:
         return default
 
 
-fn yaml_get_float(doc: YamlDoc, path: String, default: Float64) -> Float64:
+def yaml_get_float(doc: YamlDoc, path: String, default: Float64) -> Float64:
     """Get a float value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
     if len(s) == 0:
@@ -429,7 +429,7 @@ fn yaml_get_float(doc: YamlDoc, path: String, default: Float64) -> Float64:
         return default
 
 
-fn yaml_get_bool(doc: YamlDoc, path: String, default: Bool) -> Bool:
+def yaml_get_bool(doc: YamlDoc, path: String, default: Bool) -> Bool:
     """Get a boolean value by dot-notation path. Returns default if not found."""
     var s = yaml_get_string(doc, path)
     if len(s) == 0:

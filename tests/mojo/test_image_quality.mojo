@@ -46,7 +46,7 @@ def _assert_close(got: Float64, expected: Float64, tol: Float64, label: String) 
         raise Error("assertion failed: " + label)
 
 
-fn _constant(n: Int, value: Float64) -> List[List[Float64]]:
+def _constant(n: Int, value: Float64) -> List[List[Float64]]:
     var g = List[List[Float64]]()
     for _ in range(n):
         var row = List[Float64]()
@@ -56,7 +56,7 @@ fn _constant(n: Int, value: Float64) -> List[List[Float64]]:
     return g^
 
 
-fn _checker(n: Int) -> List[List[Float64]]:
+def _checker(n: Int) -> List[List[Float64]]:
     """Alternating 0/255 cells → maximal high-frequency content."""
     var g = List[List[Float64]]()
     for r in range(n):
@@ -70,7 +70,7 @@ fn _checker(n: Int) -> List[List[Float64]]:
     return g^
 
 
-fn _gradient(n: Int) -> List[List[Float64]]:
+def _gradient(n: Int) -> List[List[Float64]]:
     """Linear ramp → Laplacian ≈ 0 in the interior (a 'smooth/blurry' image)."""
     var g = List[List[Float64]]()
     for r in range(n):
@@ -81,7 +81,7 @@ fn _gradient(n: Int) -> List[List[Float64]]:
     return g^
 
 
-fn _two_value(n: Int) -> List[List[Float64]]:
+def _two_value(n: Int) -> List[List[Float64]]:
     """Top half 0, bottom half 255 → two equiprobable intensities → entropy 1 bit."""
     var g = List[List[Float64]]()
     for r in range(n):

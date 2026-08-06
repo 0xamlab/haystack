@@ -70,11 +70,11 @@ from network_analysis import (
 )
 
 
-fn _near(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _near(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _add_edge(
+def _add_edge(
     mut src: List[Int],
     mut dst: List[Int],
     mut weight: List[Float64],
@@ -87,7 +87,7 @@ fn _add_edge(
     weight.append(w)
 
 
-fn _add_both(
+def _add_both(
     mut src: List[Int],
     mut dst: List[Int],
     mut weight: List[Float64],
@@ -100,7 +100,7 @@ fn _add_both(
     _add_edge(src, dst, weight, b, a, w)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

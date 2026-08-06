@@ -95,7 +95,7 @@ struct SheetRecalcReport(Copyable, Movable):
     var unsupported_names: String
     var mismatch_samples: String
 
-    fn __init__(out self):
+    def __init__(out self):
         self.status = 0
         self.load_line = 0
         self.sheets = 0
@@ -122,11 +122,11 @@ struct SheetRecalcReport(Copyable, Movable):
         self.mismatch_samples = String("")
 
 
-fn _is_volatile_name(name: String) -> Bool:
+def _is_volatile_name(name: String) -> Bool:
     return name == "TODAY" or name == "NOW" or name == "RAND" or name == "RANDBETWEEN"
 
 
-fn _tally(mut names: List[String], mut counts: List[Int], name: String):
+def _tally(mut names: List[String], mut counts: List[Int], name: String):
     for i in range(len(names)):
         if names[i] == name:
             counts[i] += 1
@@ -136,7 +136,7 @@ fn _tally(mut names: List[String], mut counts: List[Int], name: String):
         counts.append(1)
 
 
-fn _num_close(a: Float64, b: Float64) -> Bool:
+def _num_close(a: Float64, b: Float64) -> Bool:
     var d = fabs(a - b)
     if d <= ABS_TOL:
         return True
@@ -146,7 +146,7 @@ fn _num_close(a: Float64, b: Float64) -> Bool:
     return d <= REL_TOL * scale
 
 
-fn _trunc80(s: String) -> String:
+def _trunc80(s: String) -> String:
     var bs = s.as_bytes()
     if len(bs) <= 80:
         return s
@@ -161,7 +161,7 @@ fn _trunc80(s: String) -> String:
     return out^
 
 
-fn sheet_recalc_report(workbook_text: String, budget_ops: Int) -> SheetRecalcReport:
+def sheet_recalc_report(workbook_text: String, budget_ops: Int) -> SheetRecalcReport:
     """Load an extracted workbook, recalc every formula cell from the input
     cells, and compare cell-by-cell against Excel's cached values. Refusal
     on malformed input reports the loader status and offending line; junk
@@ -310,7 +310,7 @@ struct SheetCellResult(Copyable, Movable):
     var text: String
     var err_name: String
 
-    fn __init__(out self):
+    def __init__(out self):
         self.status = 0
         self.found = False
         self.kind = 0
@@ -319,7 +319,7 @@ struct SheetCellResult(Copyable, Movable):
         self.err_name = String("")
 
 
-fn sheet_eval_cell(
+def sheet_eval_cell(
     workbook_text: String, sheet_name: String, ref_text: String, budget_ops: Int
 ) -> SheetCellResult:
     """Recalc the workbook and return the computed value of one cell,

@@ -32,7 +32,7 @@ struct HuffmanNode(Copyable, Movable):
     var left: Int
     var right: Int
 
-    fn __init__(out self, symbol: Int, freq: Int, left: Int, right: Int):
+    def __init__(out self, symbol: Int, freq: Int, left: Int, right: Int):
         self.symbol = symbol
         self.freq = freq
         self.left = left
@@ -42,7 +42,7 @@ struct HuffmanNode(Copyable, Movable):
 # ── frequency_count ───────────────────────────────────────────────────────────
 
 
-fn frequency_count(data: List[Int]) -> List[List[Int]]:
+def frequency_count(data: List[Int]) -> List[List[Int]]:
     """Count frequency of each value in data.
 
     Args:
@@ -93,7 +93,7 @@ fn frequency_count(data: List[Int]) -> List[List[Int]]:
 # ── build_huffman_tree ────────────────────────────────────────────────────────
 
 
-fn build_huffman_tree(freqs: List[List[Int]]) -> List[HuffmanNode]:
+def build_huffman_tree(freqs: List[List[Int]]) -> List[HuffmanNode]:
     """Build Huffman tree from frequency list.
 
     Uses an array-based approach: leaf nodes first, then internal nodes
@@ -164,7 +164,7 @@ fn build_huffman_tree(freqs: List[List[Int]]) -> List[HuffmanNode]:
 # ── generate_codes ────────────────────────────────────────────────────────────
 
 
-fn generate_codes(tree: List[HuffmanNode]) -> List[List[Int]]:
+def generate_codes(tree: List[HuffmanNode]) -> List[List[Int]]:
     """Generate Huffman codes (as lengths) from tree.
 
     Uses iterative depth computation via a stack.
@@ -227,7 +227,7 @@ fn generate_codes(tree: List[HuffmanNode]) -> List[List[Int]]:
 # ── _build_code_table ─────────────────────────────────────────────────────────
 
 
-fn _build_code_table(tree: List[HuffmanNode]) -> List[List[Int]]:
+def _build_code_table(tree: List[HuffmanNode]) -> List[List[Int]]:
     """Build actual bit codes for each symbol via DFS.
 
     Returns [[symbol, bit0, bit1, ...], ...] for each leaf.
@@ -296,7 +296,7 @@ fn _build_code_table(tree: List[HuffmanNode]) -> List[List[Int]]:
 # ── huffman_encode ────────────────────────────────────────────────────────────
 
 
-fn huffman_encode(data: List[Int]) -> List[Int]:
+def huffman_encode(data: List[Int]) -> List[Int]:
     """Encode data using Huffman coding.
 
     Args:
@@ -325,7 +325,7 @@ fn huffman_encode(data: List[Int]) -> List[Int]:
 # ── huffman_decode ────────────────────────────────────────────────────────────
 
 
-fn huffman_decode(bits: List[Int], tree: List[HuffmanNode]) -> List[Int]:
+def huffman_decode(bits: List[Int], tree: List[HuffmanNode]) -> List[Int]:
     """Decode bit sequence back to original data.
 
     Args:
@@ -369,7 +369,7 @@ fn huffman_decode(bits: List[Int], tree: List[HuffmanNode]) -> List[Int]:
 # ── compression_ratio_huffman ─────────────────────────────────────────────────
 
 
-fn compression_ratio_huffman(original_size: Int, encoded_bits: Int) -> Float64:
+def compression_ratio_huffman(original_size: Int, encoded_bits: Int) -> Float64:
     """Compression ratio: original_size * 8 / encoded_bits.
 
     Args:
@@ -387,7 +387,7 @@ fn compression_ratio_huffman(original_size: Int, encoded_bits: Int) -> Float64:
 # ── avg_code_length ───────────────────────────────────────────────────────────
 
 
-fn avg_code_length(freqs: List[List[Int]], codes: List[List[Int]]) -> Float64:
+def avg_code_length(freqs: List[List[Int]], codes: List[List[Int]]) -> Float64:
     """Weighted average code length.
 
     Args:

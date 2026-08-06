@@ -4,16 +4,16 @@ population.mojo — Population dynamics models. Zero Python imports.
 Replaces custom ecology code with pure-Mojo implementations.
 
 Public API:
-  fn logistic_growth(N, r, K)               — Single logistic step
-  fn logistic_simulate(N0, r, K, n_steps)   — Logistic simulation
-  fn lotka_volterra_step(...)               — One predator-prey step
-  fn lotka_volterra_simulate(...)           — Full predator-prey sim
-  fn exponential_growth(N0, r, t)           — Exponential growth
-  fn carrying_capacity_estimate(pops)       — Estimate K from data
-  fn growth_rate_estimate(N_t, N_t1, K)     — Estimate r from two points
-  fn competition_model(N1, N2, ...)         — Lotka-Volterra competition
-  fn population_doubling_time(r)            — ln(2)/r
-  fn extinction_risk(population, threshold) — Population below threshold?
+  def logistic_growth(N, r, K)               — Single logistic step
+  def logistic_simulate(N0, r, K, n_steps)   — Logistic simulation
+  def lotka_volterra_step(...)               — One predator-prey step
+  def lotka_volterra_simulate(...)           — Full predator-prey sim
+  def exponential_growth(N0, r, t)           — Exponential growth
+  def carrying_capacity_estimate(pops)       — Estimate K from data
+  def growth_rate_estimate(N_t, N_t1, K)     — Estimate r from two points
+  def competition_model(N1, N2, ...)         — Lotka-Volterra competition
+  def population_doubling_time(r)            — ln(2)/r
+  def extinction_risk(population, threshold) — Population below threshold?
 """
 
 from std.math import log, exp
@@ -22,7 +22,7 @@ from std.math import log, exp
 # ── Exponential Growth ────────────────────────────────────────────────────────
 
 
-fn exponential_growth(N0: Float64, r: Float64, t: Float64) -> Float64:
+def exponential_growth(N0: Float64, r: Float64, t: Float64) -> Float64:
     """N = N0 * e^(rt). Continuous exponential growth."""
     return N0 * exp(r * t)
 
@@ -30,12 +30,12 @@ fn exponential_growth(N0: Float64, r: Float64, t: Float64) -> Float64:
 # ── Logistic Growth ──────────────────────────────────────────────────────────
 
 
-fn logistic_growth(N: Float64, r: Float64, K: Float64) -> Float64:
+def logistic_growth(N: Float64, r: Float64, K: Float64) -> Float64:
     """Discrete logistic growth step: N' = N + r*N*(1 - N/K), dt=1."""
     return N + r * N * (1.0 - N / K)
 
 
-fn logistic_simulate(
+def logistic_simulate(
     N0: Float64, r: Float64, K: Float64, n_steps: Int
 ) -> List[Float64]:
     """Simulate logistic growth for n_steps. Returns population at each step."""
@@ -53,7 +53,7 @@ fn logistic_simulate(
 # ── Lotka-Volterra Predator-Prey ─────────────────────────────────────────────
 
 
-fn lotka_volterra_step(
+def lotka_volterra_step(
     prey: Float64,
     pred: Float64,
     alpha: Float64,
@@ -80,7 +80,7 @@ fn lotka_volterra_step(
     return result^
 
 
-fn lotka_volterra_simulate(
+def lotka_volterra_simulate(
     prey0: Float64,
     pred0: Float64,
     alpha: Float64,
@@ -109,7 +109,7 @@ fn lotka_volterra_simulate(
 # ── Carrying Capacity Estimation ─────────────────────────────────────────────
 
 
-fn carrying_capacity_estimate(populations: List[Float64]) -> Float64:
+def carrying_capacity_estimate(populations: List[Float64]) -> Float64:
     """Estimate K from population data as max(observed) * 1.1."""
     if len(populations) == 0:
         return 0.0
@@ -123,7 +123,7 @@ fn carrying_capacity_estimate(populations: List[Float64]) -> Float64:
 # ── Growth Rate Estimation ───────────────────────────────────────────────────
 
 
-fn growth_rate_estimate(
+def growth_rate_estimate(
     N_t: Float64, N_t1: Float64, K: Float64
 ) -> Float64:
     """Estimate r from two consecutive populations using logistic model.
@@ -137,7 +137,7 @@ fn growth_rate_estimate(
 # ── Lotka-Volterra Competition ───────────────────────────────────────────────
 
 
-fn competition_model(
+def competition_model(
     N1: Float64,
     N2: Float64,
     r1: Float64,
@@ -168,7 +168,7 @@ fn competition_model(
 # ── Population Doubling Time ─────────────────────────────────────────────────
 
 
-fn population_doubling_time(r: Float64) -> Float64:
+def population_doubling_time(r: Float64) -> Float64:
     """Time for population to double: ln(2)/r."""
     return log(2.0) / r
 
@@ -176,6 +176,6 @@ fn population_doubling_time(r: Float64) -> Float64:
 # ── Extinction Risk ──────────────────────────────────────────────────────────
 
 
-fn extinction_risk(population: Float64, threshold: Float64) -> Bool:
+def extinction_risk(population: Float64, threshold: Float64) -> Bool:
     """Returns True if population is below threshold."""
     return population < threshold

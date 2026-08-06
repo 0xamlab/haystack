@@ -7,13 +7,13 @@ are shifted on access/evict to maintain LRU order.
 
 Public API:
   struct LRUCache(Copyable, Movable)
-    fn __init__(out self, capacity: Int)
-    fn put(mut self, key: String, value: Float64)
-    fn get(mut self, key: String, default: Float64 = 0.0) -> Float64
-    fn contains(self, key: String) -> Bool
-    fn size(self) -> Int
-    fn hit_rate(self) -> Float64
-    fn clear(mut self)
+    def __init__(out self, capacity: Int)
+    def put(mut self, key: String, value: Float64)
+    def get(mut self, key: String, default: Float64 = 0.0) -> Float64
+    def contains(self, key: String) -> Bool
+    def size(self) -> Int
+    def hit_rate(self) -> Float64
+    def clear(mut self)
 """
 
 
@@ -35,7 +35,7 @@ struct LRUCache(Copyable, Movable):
     var _hits: Int
     var _misses: Int
 
-    fn __init__(out self, capacity: Int):
+    def __init__(out self, capacity: Int):
         """Create a new LRU cache with the given maximum capacity.
 
         Args:
@@ -51,14 +51,14 @@ struct LRUCache(Copyable, Movable):
         self._hits = 0
         self._misses = 0
 
-    fn _find_index(self, key: String) -> Int:
+    def _find_index(self, key: String) -> Int:
         """Find the index of a key in the cache. Returns -1 if not found."""
         for i in range(self._size):
             if self._keys[i] == key:
                 return i
         return -1
 
-    fn _move_to_mru(mut self, idx: Int):
+    def _move_to_mru(mut self, idx: Int):
         """Move element at idx to the MRU position (end of list)."""
         if idx == self._size - 1:
             return  # Already at MRU position
@@ -75,7 +75,7 @@ struct LRUCache(Copyable, Movable):
         self._keys[self._size - 1] = key
         self._values[self._size - 1] = value
 
-    fn put(mut self, key: String, value: Float64):
+    def put(mut self, key: String, value: Float64):
         """Insert or update a key-value pair. Evicts LRU entry if at capacity.
 
         Args:
@@ -106,7 +106,7 @@ struct LRUCache(Copyable, Movable):
             self._values.append(value)
             self._size += 1
 
-    fn get(mut self, key: String, default: Float64 = 0.0) -> Float64:
+    def get(mut self, key: String, default: Float64 = 0.0) -> Float64:
         """Get value for key and move it to MRU position.
 
         Args:
@@ -126,7 +126,7 @@ struct LRUCache(Copyable, Movable):
         self._move_to_mru(idx)
         return value
 
-    fn contains(self, key: String) -> Bool:
+    def contains(self, key: String) -> Bool:
         """Check if key exists in the cache (does NOT affect LRU order).
 
         Args:
@@ -137,11 +137,11 @@ struct LRUCache(Copyable, Movable):
         """
         return self._find_index(key) >= 0
 
-    fn size(self) -> Int:
+    def size(self) -> Int:
         """Return the number of entries currently in the cache."""
         return self._size
 
-    fn hit_rate(self) -> Float64:
+    def hit_rate(self) -> Float64:
         """Return the cache hit rate as hits / (hits + misses).
 
         Returns 0.0 if no lookups have been made.
@@ -151,7 +151,7 @@ struct LRUCache(Copyable, Movable):
             return 0.0
         return Float64(self._hits) / Float64(total)
 
-    fn clear(mut self):
+    def clear(mut self):
         """Remove all entries from the cache and reset hit/miss counters."""
         self._keys = List[String]()
         self._values = List[Float64]()

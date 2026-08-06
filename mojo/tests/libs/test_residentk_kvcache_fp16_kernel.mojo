@@ -61,11 +61,11 @@ comptime EPS: Float32 = 1.0e-6
 comptime THETA: Float64 = 10000.0
 
 
-fn _abs(x: Float32) -> Float32:
+def _abs(x: Float32) -> Float32:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
+def _pseudo_f32(n: Int, seed: Int, amp: Float32) -> List[Float32]:
     """Deterministic, KNOWN small values — the controlled test case this file's task asked for.
     Two coprime multipliers, same discipline `test_residentk_session.mojo`'s own `_pseudo` uses at
     Float64, so a wrong stride does not alias into a pattern that happens to give the same answer."""

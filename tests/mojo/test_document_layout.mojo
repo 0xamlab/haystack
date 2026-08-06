@@ -40,7 +40,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _docmask8() -> List[Float64]:
+def _docmask8() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(8):
         for x in range(8):
@@ -51,7 +51,7 @@ fn _docmask8() -> List[Float64]:
     return flat^
 
 
-fn _twocol_mask8() -> List[Float64]:
+def _twocol_mask8() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(8):
         for x in range(8):
@@ -62,7 +62,7 @@ fn _twocol_mask8() -> List[Float64]:
     return flat^
 
 
-fn _table_mask9() -> List[Float64]:
+def _table_mask9() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(9):
         for x in range(9):

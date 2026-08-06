@@ -249,7 +249,7 @@ comptime FC_MAX_SEASONAL_WORK: Int = 1 << 30
 comptime FC_MAX_LEVEL_SAMPLES_F: Float64 = 1.0e9
 
 
-fn fc_status_name(code: Int) -> String:
+def fc_status_name(code: Int) -> String:
     """Name for a status code, so an error surfaces the defect and not a bare number.
 
     THE one vocabulary for `forecasting/`. Every module's `status_name` field is filled from
@@ -298,7 +298,7 @@ fn fc_status_name(code: Int) -> String:
     return "unknown"
 
 
-fn fc_method_name(method_id: Int) -> String:
+def fc_method_name(method_id: Int) -> String:
     """Name for a method id — THE one table for all THREE method ranges in this package.
 
     Shared by `point`, `intermittent` and `backtest` (0-10), by `interval` (100-101) and by
@@ -349,7 +349,7 @@ fn fc_method_name(method_id: Int) -> String:
     return "unknown"
 
 
-fn fc_method_family(method_id: Int) -> String:
+def fc_method_family(method_id: Int) -> String:
     """Which of the three method vocabularies `method_id` belongs to, or FC_FAMILY_UNKNOWN.
 
     THE reason the ranges are disjoint: a `method_id` read out of a stored report, a log line
@@ -369,7 +369,7 @@ fn fc_method_family(method_id: Int) -> String:
     return FC_FAMILY_UNKNOWN
 
 
-fn fc_finite(v: Float64) -> Bool:
+def fc_finite(v: Float64) -> Bool:
     """True for a real number: neither NaN nor +/-inf.
 
     THE single definition of "finite" for this package, public for exactly the reason
@@ -383,7 +383,7 @@ fn fc_finite(v: Float64) -> Bool:
     return not isnan(v) and not isinf(v)
 
 
-fn fc_all_finite(values: List[Float64]) -> Bool:
+def fc_all_finite(values: List[Float64]) -> Bool:
     """True when every element is a real number. O(n)."""
     for i in range(len(values)):
         if not fc_finite(values[i]):
@@ -391,7 +391,7 @@ fn fc_all_finite(values: List[Float64]) -> Bool:
     return True
 
 
-fn fc_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
+def fc_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
     """`abs_tol + FC_TOL_SLACK * DBL_EPSILON * |quantity|` — the module docstring's rule.
 
     `quantity` must be the magnitude of THE ONE NUMBER BEING JUDGED. Not `1 + |quantity|`
@@ -408,7 +408,7 @@ fn fc_tolerance(quantity: Float64, abs_tol: Float64) -> Float64:
     return abs_tol + FC_TOL_SLACK * FC_DBL_EPSILON * fabs(quantity)
 
 
-fn fc_sum_tolerance(
+def fc_sum_tolerance(
     term_magnitude_sum: Float64, n_terms: Int, abs_tol: Float64
 ) -> Float64:
     """`abs_tol + DBL_EPSILON * (n_terms + 1) * term_magnitude_sum` — for a SUM's own residual.
@@ -438,7 +438,7 @@ fn fc_sum_tolerance(
     return abs_tol + FC_DBL_EPSILON * Float64(n_terms + 1) * term_magnitude_sum
 
 
-fn fc_ceilings() -> List[Int]:
+def fc_ceilings() -> List[Int]:
     """The declared ceilings, in order, so a caller can size a request before making it.
 
     [MAX_FC_SERIES, MAX_FC_HORIZON, MAX_FC_CELLS, MAX_FC_NODES, MAX_FC_AR_ORDER,
@@ -467,7 +467,7 @@ fn fc_ceilings() -> List[Int]:
     return out^
 
 
-fn fc_series_defect(y: List[Float64]) -> Int:
+def fc_series_defect(y: List[Float64]) -> Int:
     """Validate an observation series: non-empty, all finite, within the series ceiling.
 
     The count comes from `len(y)`, so there is no count/list relation to declare and no way
@@ -488,7 +488,7 @@ fn fc_series_defect(y: List[Float64]) -> Int:
     return FC_OK
 
 
-fn fc_horizon_defect(n_obs: Int, horizon: Int) -> Int:
+def fc_horizon_defect(n_obs: Int, horizon: Int) -> Int:
     """Validate a forecast horizon against the ceiling AND against the data behind it.
 
     Three refusals, in the order a caller most needs to distinguish:
@@ -515,7 +515,7 @@ fn fc_horizon_defect(n_obs: Int, horizon: Int) -> Int:
     return FC_OK
 
 
-fn fc_period_defect(n_obs: Int, period: Int) -> Int:
+def fc_period_defect(n_obs: Int, period: Int) -> Int:
     """Validate a seasonal period against the data length.
 
     `period < 1` is not a season. `period == 1` is "no seasonality" and is accepted by the
@@ -557,7 +557,7 @@ fn fc_period_defect(n_obs: Int, period: Int) -> Int:
     return FC_OK
 
 
-fn fc_smoothing_defect(alpha: Float64) -> Int:
+def fc_smoothing_defect(alpha: Float64) -> Int:
     """Validate a smoothing weight: finite and in (0, 1].
 
     `alpha = 0` is refused rather than clamped: it means "never update", so the level stays
@@ -572,7 +572,7 @@ fn fc_smoothing_defect(alpha: Float64) -> Int:
     return FC_OK
 
 
-fn fc_damping_defect(phi: Float64) -> Int:
+def fc_damping_defect(phi: Float64) -> Int:
     """Validate a trend damping factor: finite and in (0, 1].
 
     `phi = 1` is undamped Holt. `phi > 1` compounds the trend geometrically and is refused;
@@ -585,7 +585,7 @@ fn fc_damping_defect(phi: Float64) -> Int:
     return FC_OK
 
 
-fn fc_level_defect(level: Float64) -> Int:
+def fc_level_defect(level: Float64) -> Int:
     """Validate a two-sided interval level: finite and strictly inside (0, 1).
 
     `level = 1` asks for a band containing every future value with certainty, which no
@@ -598,7 +598,7 @@ fn fc_level_defect(level: Float64) -> Int:
     return FC_OK
 
 
-fn fc_cells_fit(rows: Int, cols: Int, length: Int) -> Bool:
+def fc_cells_fit(rows: Int, cols: Int, length: Int) -> Bool:
     """True when `rows x cols` is exactly `length` cells AND inside this package's ceiling.
 
     Delegates the shape test to `sparse_numerics.csr.dims_fit`, which does it with a
@@ -615,7 +615,7 @@ fn fc_cells_fit(rows: Int, cols: Int, length: Int) -> Bool:
     return length <= MAX_FC_CELLS
 
 
-fn fc_work_fits(units: Int, cost_per_unit: Int, budget: Int) -> Bool:
+def fc_work_fits(units: Int, cost_per_unit: Int, budget: Int) -> Bool:
     """True when `units * cost_per_unit <= budget`, computed WITHOUT forming the product.
 
     Same division shape as `dims_fit`, for the same reason: a work charge that overflows is
@@ -629,7 +629,7 @@ fn fc_work_fits(units: Int, cost_per_unit: Int, budget: Int) -> Bool:
     return units <= budget // cost_per_unit
 
 
-fn fc_min_samples_for_level(level: Float64) -> Int:
+def fc_min_samples_for_level(level: Float64) -> Int:
     """Smallest residual sample size at which a two-sided `level` band is ESTIMABLE.
 
     A two-sided band at level `L` needs the `(1-L)/2` and `(1+L)/2` empirical quantiles. The
@@ -672,7 +672,7 @@ fn fc_min_samples_for_level(level: Float64) -> Int:
     return Int(need)
 
 
-fn _fc_ses_level(y: List[Float64], alpha: Float64) -> List[Float64]:
+def _fc_ses_level(y: List[Float64], alpha: Float64) -> List[Float64]:
     """`[terminal SES level]` from the frozen `series.exponential_forecast`, or empty.
 
     THE package's one route to a simple-exponential-smoothing level. `point` needs it for
@@ -719,7 +719,7 @@ struct FcQuantile(Copyable, Movable):
     var status_name: String
 
 
-fn fc_quantile_of(values: List[Float64], p: Float64) -> FcQuantile:
+def fc_quantile_of(values: List[Float64], p: Float64) -> FcQuantile:
     """The type-7 (linear-interpolated) empirical quantile at probability `p`.
 
     Computed as `-risk.value_at_risk(values, 1 - p)`, which is an identity and not a trick:

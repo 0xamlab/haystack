@@ -52,11 +52,11 @@ from logistics import (
 )
 
 
-fn _close(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return abs(a - b) < tol
 
 
-fn test_quantum_computing() raises:
+def test_quantum_computing() raises:
     print("== quantum_computing ==")
 
     # qubit_state_probability
@@ -116,7 +116,7 @@ fn test_quantum_computing() raises:
     print("  ✓ quantum_computing passed")
 
 
-fn test_nanotechnology() raises:
+def test_nanotechnology() raises:
     print("== nanotechnology ==")
 
     var pi = 3.141592653589793
@@ -176,7 +176,7 @@ fn test_nanotechnology() raises:
     print("  ✓ nanotechnology passed")
 
 
-fn test_logistics() raises:
+def test_logistics() raises:
     print("== logistics ==")
 
     # vehicle_utilization: loaded/total * 100
@@ -226,7 +226,7 @@ fn test_logistics() raises:
     print("  ✓ logistics passed")
 
 
-fn main() raises:
+def main() raises:
     test_quantum_computing()
     test_nanotechnology()
     test_logistics()

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from survival import kaplan_meier, nelson_aalen, log_rank_statistic, hazard_rate, life_table
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

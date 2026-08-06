@@ -33,7 +33,7 @@ def _assert_close(got: Float64, expected: Float64, tol: Float64, label: String) 
         raise Error("assertion failed: " + label)
 
 
-fn _pattern8() -> List[Float64]:
+def _pattern8() -> List[Float64]:
     var flat = List[Float64]()
     for y in range(8):
         for x in range(8):
@@ -41,7 +41,7 @@ fn _pattern8() -> List[Float64]:
     return flat^
 
 
-fn _patch_brighten(flat: List[Float64]) -> List[Float64]:
+def _patch_brighten(flat: List[Float64]) -> List[Float64]:
     var out = List[Float64]()
     for index in range(len(flat)):
         out.append(flat[index])
@@ -55,7 +55,7 @@ fn _patch_brighten(flat: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _invert(flat: List[Float64]) -> List[Float64]:
+def _invert(flat: List[Float64]) -> List[Float64]:
     var out = List[Float64]()
     for index in range(len(flat)):
         out.append(255.0 - flat[index])

@@ -24,7 +24,7 @@ from std.math import sqrt, abs as fabs
 # ── pipe_flow_velocity ───────────────────────────────────────────────────────
 
 
-fn pipe_flow_velocity(
+def pipe_flow_velocity(
     flow_rate: Float64, diameter: Float64
 ) -> Float64:
     """Flow velocity: v = 4*Q/(π*d²).
@@ -45,7 +45,7 @@ fn pipe_flow_velocity(
 # ── reynolds_number ──────────────────────────────────────────────────────────
 
 
-fn reynolds_number(
+def reynolds_number(
     velocity: Float64, diameter: Float64, viscosity: Float64
 ) -> Float64:
     """Reynolds number: Re = v*d/ν.
@@ -66,7 +66,7 @@ fn reynolds_number(
 # ── friction_factor_laminar ──────────────────────────────────────────────────
 
 
-fn friction_factor_laminar(re: Float64) -> Float64:
+def friction_factor_laminar(re: Float64) -> Float64:
     """Laminar friction factor: f = 64/Re.
 
     Args:
@@ -83,7 +83,7 @@ fn friction_factor_laminar(re: Float64) -> Float64:
 # ── head_loss_darcy ──────────────────────────────────────────────────────────
 
 
-fn head_loss_darcy(
+def head_loss_darcy(
     f: Float64, length: Float64, diameter: Float64,
     velocity: Float64, g: Float64,
 ) -> Float64:
@@ -108,7 +108,7 @@ fn head_loss_darcy(
 # ── head_loss_minor ──────────────────────────────────────────────────────────
 
 
-fn head_loss_minor(
+def head_loss_minor(
     k: Float64, velocity: Float64, g: Float64
 ) -> Float64:
     """Minor head loss: hm = K*v²/(2g).
@@ -129,7 +129,7 @@ fn head_loss_minor(
 # ── total_dynamic_head ───────────────────────────────────────────────────────
 
 
-fn total_dynamic_head(
+def total_dynamic_head(
     static_head: Float64, friction_loss: Float64, minor_loss: Float64
 ) -> Float64:
     """Total dynamic head: TDH = static + friction + minor.
@@ -148,7 +148,7 @@ fn total_dynamic_head(
 # ── pump_power ───────────────────────────────────────────────────────────────
 
 
-fn pump_power(
+def pump_power(
     flow_rate: Float64, head: Float64, density: Float64,
     gravity: Float64, efficiency: Float64,
 ) -> Float64:
@@ -172,7 +172,7 @@ fn pump_power(
 # ── water_demand_fixture_units ───────────────────────────────────────────────
 
 
-fn water_demand_fixture_units(
+def water_demand_fixture_units(
     n_fixtures: Float64, fu_per_fixture: Float64
 ) -> Float64:
     """Water demand in fixture units: FU = n * fu.
@@ -190,7 +190,7 @@ fn water_demand_fixture_units(
 # ── pipe_sizing_velocity_method ──────────────────────────────────────────────
 
 
-fn pipe_sizing_velocity_method(
+def pipe_sizing_velocity_method(
     flow_rate: Float64, max_velocity: Float64
 ) -> Float64:
     """Pipe diameter from velocity: d = sqrt(4*Q/(π*v_max)).
@@ -211,7 +211,7 @@ fn pipe_sizing_velocity_method(
 # ── thermal_expansion_pipe ───────────────────────────────────────────────────
 
 
-fn thermal_expansion_pipe(
+def thermal_expansion_pipe(
     alpha: Float64, length: Float64, delta_t: Float64
 ) -> Float64:
     """Thermal expansion: ΔL = α*L*ΔT.
@@ -230,7 +230,7 @@ fn thermal_expansion_pipe(
 # ── water_hammer_pressure ────────────────────────────────────────────────────
 
 
-fn water_hammer_pressure(
+def water_hammer_pressure(
     density: Float64, velocity: Float64, wave_speed: Float64
 ) -> Float64:
     """Water hammer pressure: ΔP = ρ*v*c.
@@ -249,7 +249,7 @@ fn water_hammer_pressure(
 # ── drainage_slope_minimum ───────────────────────────────────────────────────
 
 
-fn drainage_slope_minimum(pipe_diameter_inches: Float64) -> Float64:
+def drainage_slope_minimum(pipe_diameter_inches: Float64) -> Float64:
     """Minimum drainage slope (simplified).
 
     slope = 0.125 in/ft for pipes < 3 inches,

@@ -75,7 +75,7 @@ comptime N_ROWS: Int = 10_000_000
 comptime DATA_DIR: String = "/tmp/h2o_groupby"
 
 
-fn _load_column(name: String) raises -> Float64Array:
+def _load_column(name: String) raises -> Float64Array:
     var f = open(DATA_DIR + "/" + name + ".f64.bin", "r")
     var raw = f.read_bytes()
     f.close()
@@ -92,11 +92,11 @@ fn _load_column(name: String) raises -> Float64Array:
     return float64_from_list(values^)
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     return bitcast[DType.uint64](x)
 
 
-fn _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
+def _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
     """Cells where two results differ BITWISE. 0 is identity.
 
     Bit patterns and not `==`: `==` calls +0.0 and -0.0 equal and calls every
@@ -125,7 +125,7 @@ fn _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> Int:
     return bad
 
 
-fn _checksum(values: List[Float64], present: List[Bool]) -> Float64:
+def _checksum(values: List[Float64], present: List[Bool]) -> Float64:
     var total: Float64 = 0.0
     for i in range(len(values)):
         if present[i]:
@@ -133,11 +133,11 @@ fn _checksum(values: List[Float64], present: List[Bool]) -> Float64:
     return total
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1e6
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 4:
         print("usage: bench_h2o_composed <q1|q2|q3|q4|q5|q7> <reps> <workers>")

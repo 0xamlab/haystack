@@ -26,7 +26,7 @@ comptime LN2: Float64 = 0.6931471805599453  # ln(2) for log2 conversion
 # ── Bayes' Theorem ────────────────────────────────────────────────────────────
 
 
-fn bayes(prior: Float64, likelihood: Float64, evidence: Float64) -> Float64:
+def bayes(prior: Float64, likelihood: Float64, evidence: Float64) -> Float64:
     """Bayes' theorem: P(A|B) = P(B|A) * P(A) / P(B).
 
     Args:
@@ -45,7 +45,7 @@ fn bayes(prior: Float64, likelihood: Float64, evidence: Float64) -> Float64:
 # ── Joint Probability ─────────────────────────────────────────────────────────
 
 
-fn joint_probability(p_a: Float64, p_b_given_a: Float64) -> Float64:
+def joint_probability(p_a: Float64, p_b_given_a: Float64) -> Float64:
     """Joint probability: P(A∩B) = P(B|A) * P(A).
 
     Args:
@@ -61,7 +61,7 @@ fn joint_probability(p_a: Float64, p_b_given_a: Float64) -> Float64:
 # ── Law of Total Probability ─────────────────────────────────────────────────
 
 
-fn total_probability(
+def total_probability(
     priors: List[Float64], likelihoods: List[Float64]
 ) -> Float64:
     """Law of total probability: P(B) = Σ P(B|Aᵢ) * P(Aᵢ).
@@ -85,7 +85,7 @@ fn total_probability(
 # ── Factorial ─────────────────────────────────────────────────────────────────
 
 
-fn factorial(n: Int) -> Float64:
+def factorial(n: Int) -> Float64:
     """Compute n! as Float64.
 
     Returns 1.0 for n <= 1. Uses iterative multiplication.
@@ -101,7 +101,7 @@ fn factorial(n: Int) -> Float64:
 # ── Combinations ──────────────────────────────────────────────────────────────
 
 
-fn combinations(n: Int, k: Int) -> Float64:
+def combinations(n: Int, k: Int) -> Float64:
     """Binomial coefficient: C(n, k) = n! / (k! * (n-k)!).
 
     Uses multiplicative formula to avoid overflow for moderate n.
@@ -124,7 +124,7 @@ fn combinations(n: Int, k: Int) -> Float64:
 # ── Permutations ──────────────────────────────────────────────────────────────
 
 
-fn permutations(n: Int, k: Int) -> Float64:
+def permutations(n: Int, k: Int) -> Float64:
     """Permutations: P(n, k) = n! / (n-k)!.
 
     Returns 0.0 if k < 0 or k > n.
@@ -142,7 +142,7 @@ fn permutations(n: Int, k: Int) -> Float64:
 # ── Binomial PMF ──────────────────────────────────────────────────────────────
 
 
-fn binomial_pmf(k: Int, n: Int, p: Float64) -> Float64:
+def binomial_pmf(k: Int, n: Int, p: Float64) -> Float64:
     """Binomial PMF: P(X=k) = C(n,k) * p^k * (1-p)^(n-k).
 
     Args:
@@ -162,7 +162,7 @@ fn binomial_pmf(k: Int, n: Int, p: Float64) -> Float64:
 # ── Poisson PMF ───────────────────────────────────────────────────────────────
 
 
-fn poisson_pmf(k: Int, lam: Float64) -> Float64:
+def poisson_pmf(k: Int, lam: Float64) -> Float64:
     """Poisson PMF: P(X=k) = λ^k * e^(-λ) / k!.
 
     Args:
@@ -180,7 +180,7 @@ fn poisson_pmf(k: Int, lam: Float64) -> Float64:
 # ── Shannon Entropy ───────────────────────────────────────────────────────────
 
 
-fn entropy(probs: List[Float64]) -> Float64:
+def entropy(probs: List[Float64]) -> Float64:
     """Shannon entropy in bits: H = -Σ p * log2(p).
 
     Uses natural log internally, then divides by ln(2) for bits.
@@ -203,7 +203,7 @@ fn entropy(probs: List[Float64]) -> Float64:
 # ── KL Divergence ─────────────────────────────────────────────────────────────
 
 
-fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
+def kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
     """Kullback-Leibler divergence in bits: D_KL(P||Q) = Σ p * log2(p/q).
 
     Uses natural log internally, then divides by ln(2) for bits.
@@ -236,7 +236,7 @@ fn kl_divergence(p: List[Float64], q: List[Float64]) -> Float64:
 # ── Mutual Information ────────────────────────────────────────────────────────
 
 
-fn mutual_information(joint: List[List[Float64]]) -> Float64:
+def mutual_information(joint: List[List[Float64]]) -> Float64:
     """Mutual information from joint distribution in bits.
 
     I(X;Y) = Σᵢ Σⱼ p(x,y) * log2(p(x,y) / (p(x)*p(y)))

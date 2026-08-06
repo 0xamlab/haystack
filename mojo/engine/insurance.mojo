@@ -24,7 +24,7 @@ Public API:
 # ── pure_premium ─────────────────────────────────────────────────────────────
 
 
-fn pure_premium(expected_loss: Float64, exposure: Float64) -> Float64:
+def pure_premium(expected_loss: Float64, exposure: Float64) -> Float64:
     """PP = expected_loss / exposure."""
     return expected_loss / exposure
 
@@ -32,7 +32,7 @@ fn pure_premium(expected_loss: Float64, exposure: Float64) -> Float64:
 # ── gross_premium ────────────────────────────────────────────────────────────
 
 
-fn gross_premium(
+def gross_premium(
     pure_premium_val: Float64, expense_ratio: Float64, profit_margin: Float64
 ) -> Float64:
     """GP = PP / (1 - ER - PM)."""
@@ -42,7 +42,7 @@ fn gross_premium(
 # ── loss_ratio ───────────────────────────────────────────────────────────────
 
 
-fn loss_ratio(incurred_losses: Float64, earned_premiums: Float64) -> Float64:
+def loss_ratio(incurred_losses: Float64, earned_premiums: Float64) -> Float64:
     """LR = incurred_losses / earned_premiums."""
     return incurred_losses / earned_premiums
 
@@ -50,7 +50,7 @@ fn loss_ratio(incurred_losses: Float64, earned_premiums: Float64) -> Float64:
 # ── expense_ratio ────────────────────────────────────────────────────────────
 
 
-fn expense_ratio(expenses: Float64, written_premiums: Float64) -> Float64:
+def expense_ratio(expenses: Float64, written_premiums: Float64) -> Float64:
     """ER = expenses / written_premiums."""
     return expenses / written_premiums
 
@@ -58,7 +58,7 @@ fn expense_ratio(expenses: Float64, written_premiums: Float64) -> Float64:
 # ── combined_ratio ───────────────────────────────────────────────────────────
 
 
-fn combined_ratio(loss_r: Float64, expense_r: Float64) -> Float64:
+def combined_ratio(loss_r: Float64, expense_r: Float64) -> Float64:
     """CR = LR + ER."""
     return loss_r + expense_r
 
@@ -66,7 +66,7 @@ fn combined_ratio(loss_r: Float64, expense_r: Float64) -> Float64:
 # ── expected_claim_frequency ─────────────────────────────────────────────────
 
 
-fn expected_claim_frequency(n_claims: Float64, n_policies: Float64) -> Float64:
+def expected_claim_frequency(n_claims: Float64, n_policies: Float64) -> Float64:
     """freq = n_claims / n_policies."""
     return n_claims / n_policies
 
@@ -74,7 +74,7 @@ fn expected_claim_frequency(n_claims: Float64, n_policies: Float64) -> Float64:
 # ── expected_claim_severity ──────────────────────────────────────────────────
 
 
-fn expected_claim_severity(total_losses: Float64, n_claims: Float64) -> Float64:
+def expected_claim_severity(total_losses: Float64, n_claims: Float64) -> Float64:
     """severity = total_losses / n_claims."""
     return total_losses / n_claims
 
@@ -82,7 +82,7 @@ fn expected_claim_severity(total_losses: Float64, n_claims: Float64) -> Float64:
 # ── burning_cost ─────────────────────────────────────────────────────────────
 
 
-fn burning_cost(total_losses: Float64, total_exposure: Float64) -> Float64:
+def burning_cost(total_losses: Float64, total_exposure: Float64) -> Float64:
     """BC = total_losses / total_exposure."""
     return total_losses / total_exposure
 
@@ -90,7 +90,7 @@ fn burning_cost(total_losses: Float64, total_exposure: Float64) -> Float64:
 # ── credibility_buhlmann ─────────────────────────────────────────────────────
 
 
-fn credibility_buhlmann(n: Float64, k: Float64) -> Float64:
+def credibility_buhlmann(n: Float64, k: Float64) -> Float64:
     """Bühlmann credibility factor: Z = n / (n + k).
 
     n = number of observations/years.
@@ -102,7 +102,7 @@ fn credibility_buhlmann(n: Float64, k: Float64) -> Float64:
 # ── risk_load ────────────────────────────────────────────────────────────────
 
 
-fn risk_load(variance: Float64, lambda_val: Float64) -> Float64:
+def risk_load(variance: Float64, lambda_val: Float64) -> Float64:
     """RL = λ * variance — risk loading on premium."""
     return lambda_val * variance
 
@@ -110,7 +110,7 @@ fn risk_load(variance: Float64, lambda_val: Float64) -> Float64:
 # ── aggregate_deductible_savings ─────────────────────────────────────────────
 
 
-fn aggregate_deductible_savings(
+def aggregate_deductible_savings(
     deductible: Float64, claim_freq: Float64, avg_claim: Float64
 ) -> Float64:
     """Savings = min(deductible, avg_claim) * claim_freq.
@@ -126,6 +126,6 @@ fn aggregate_deductible_savings(
 # ── retention_rate ───────────────────────────────────────────────────────────
 
 
-fn retention_rate(renewed: Float64, total: Float64) -> Float64:
+def retention_rate(renewed: Float64, total: Float64) -> Float64:
     """RR = renewed / total * 100 (percentage)."""
     return renewed / total * 100.0

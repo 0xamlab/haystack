@@ -61,7 +61,7 @@ from forecasting.pool import (
 from forecasting.select import select_best_fitted
 
 
-fn _break_series() -> List[Float64]:
+def _break_series() -> List[Float64]:
     """30 points of y = 10 + 2t, then a 6-point plateau with a deterministic wiggle."""
     var y = List[Float64]()
     for t in range(30):
@@ -75,7 +75,7 @@ fn _break_series() -> List[Float64]:
     return y^
 
 
-fn _trend_13() -> List[Float64]:
+def _trend_13() -> List[Float64]:
     """A pure line at the M4-Yearly minimum shape: n = 13, so u = 7 with h = 6."""
     var y = List[Float64]()
     for t in range(13):
@@ -83,7 +83,7 @@ fn _trend_13() -> List[Float64]:
     return y^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.pool] hand-written known-value suite")

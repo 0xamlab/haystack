@@ -80,14 +80,14 @@ from discrete_event.contract import (
 from discrete_event.resource import resource_serve_flat
 
 
-fn _rate_ok(rate: Float64) -> Bool:
+def _rate_ok(rate: Float64) -> Bool:
     """A rate must be a positive real number. Zero is not a slow process: an exponential with
     rate 0 has infinite mean and the frozen kernel answers 0.0 for it, which would silently
     become "everything arrives at once"."""
     return de_finite(rate) and rate > 0.0
 
 
-fn qs_interarrivals(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
+def qs_interarrivals(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
     """`n` Exponential(rate) inter-arrival gaps, drawn on the arrival stream.
 
     Gap `i` is `rng_exponential(seed, 0, replication, i, 0, de_stream_arrival(), 0, rate)` —
@@ -120,7 +120,7 @@ fn qs_interarrivals(rate: Float64, n: Int, seed: Int, replication: Int) -> List[
     return out^
 
 
-fn qs_service_times(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
+def qs_service_times(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
     """`n` Exponential(rate) service durations, drawn on the SERVICE stream.
 
     Identical coordinates to `qs_interarrivals` except the stream id, so service time `i`
@@ -148,7 +148,7 @@ fn qs_service_times(rate: Float64, n: Int, seed: Int, replication: Int) -> List[
     return out^
 
 
-fn qs_arrival_times(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
+def qs_arrival_times(rate: Float64, n: Int, seed: Int, replication: Int) -> List[Float64]:
     """The running sum of `qs_interarrivals` — absolute arrival instants, non-decreasing.
 
     Separate from the gaps because the resource engine needs instants and refuses a
@@ -201,11 +201,11 @@ struct ClosedForm(Copyable, Movable):
     var prob_wait: Float64
 
 
-fn _closed_form_refusal(code: Int) -> ClosedForm:
+def _closed_form_refusal(code: Int) -> ClosedForm:
     return ClosedForm(code, False, 0, 0.0, 0.0, 0.0, 0.0, 0.0, False, 0.0)
 
 
-fn qs_closed_form_flat(
+def qs_closed_form_flat(
     arrival_rate: Float64, service_rate: Float64, capacity: Int
 ) -> ClosedForm:
     """The exact M/M/1 (capacity 1) or M/M/c steady state, from the frozen queueing kernels.
@@ -315,7 +315,7 @@ struct QueueRun(Copyable, Movable):
     var little_law_gap: Float64
 
 
-fn _queue_refusal(code: Int) -> QueueRun:
+def _queue_refusal(code: Int) -> QueueRun:
     return QueueRun(
         code, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0.0, 0.0, 0.0, 0.0, 0.0,
@@ -325,7 +325,7 @@ fn _queue_refusal(code: Int) -> QueueRun:
     )
 
 
-fn qs_run_flat(
+def qs_run_flat(
     arrival_rate: Float64, service_rate: Float64, n_customers: Int, capacity: Int,
     seed: Int, replication: Int, warmup_jobs: Int,
 ) -> QueueRun:

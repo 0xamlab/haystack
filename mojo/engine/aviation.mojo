@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, pow
 
 
-fn lift_force(
+def lift_force(
     air_density: Float64, velocity: Float64, wing_area: Float64, cl: Float64
 ) -> Float64:
     """Aerodynamic lift: L = ½·ρ·v²·A·CL.
@@ -33,7 +33,7 @@ fn lift_force(
     return 0.5 * air_density * velocity * velocity * wing_area * cl
 
 
-fn drag_force(
+def drag_force(
     air_density: Float64, velocity: Float64, wing_area: Float64, cd: Float64
 ) -> Float64:
     """Aerodynamic drag: D = ½·ρ·v²·A·CD.
@@ -50,7 +50,7 @@ fn drag_force(
     return 0.5 * air_density * velocity * velocity * wing_area * cd
 
 
-fn lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
+def lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
     """Aerodynamic efficiency: L/D = CL/CD.
 
     Args:
@@ -65,7 +65,7 @@ fn lift_to_drag_ratio(cl: Float64, cd: Float64) -> Float64:
     return cl / cd
 
 
-fn thrust_required(
+def thrust_required(
     weight: Float64, cl: Float64, cd: Float64
 ) -> Float64:
     """Thrust required for level flight: T = W·CD/CL.
@@ -83,7 +83,7 @@ fn thrust_required(
     return weight * cd / cl
 
 
-fn range_breguet(
+def range_breguet(
     ld_ratio: Float64, sfc: Float64, weight_initial: Float64, weight_final: Float64
 ) -> Float64:
     """Breguet range equation: R = (v/sfc)·(L/D)·ln(Wi/Wf).
@@ -102,7 +102,7 @@ fn range_breguet(
     return (ld_ratio / sfc) * log(weight_initial / weight_final)
 
 
-fn endurance_breguet(
+def endurance_breguet(
     ld_ratio: Float64, sfc: Float64,
     weight_initial: Float64, weight_final: Float64
 ) -> Float64:
@@ -122,7 +122,7 @@ fn endurance_breguet(
     return (ld_ratio / sfc) * log(weight_initial / weight_final)
 
 
-fn indicated_airspeed(dynamic_pressure: Float64) -> Float64:
+def indicated_airspeed(dynamic_pressure: Float64) -> Float64:
     """Indicated airspeed from dynamic pressure (ISA sea-level density).
 
     IAS = sqrt(2·q / ρ0)
@@ -139,7 +139,7 @@ fn indicated_airspeed(dynamic_pressure: Float64) -> Float64:
     return sqrt(2.0 * dynamic_pressure / rho0)
 
 
-fn true_airspeed(ias: Float64, density_ratio: Float64) -> Float64:
+def true_airspeed(ias: Float64, density_ratio: Float64) -> Float64:
     """True airspeed from IAS and density ratio.
 
     TAS = IAS / sqrt(σ)  where σ = ρ/ρ0
@@ -156,7 +156,7 @@ fn true_airspeed(ias: Float64, density_ratio: Float64) -> Float64:
     return ias / sqrt(density_ratio)
 
 
-fn mach_number(velocity: Float64, temperature_k: Float64) -> Float64:
+def mach_number(velocity: Float64, temperature_k: Float64) -> Float64:
     """Mach number: M = v/a where a = sqrt(γ·R·T).
 
     Args:
@@ -174,7 +174,7 @@ fn mach_number(velocity: Float64, temperature_k: Float64) -> Float64:
     return velocity / a
 
 
-fn rate_of_climb(
+def rate_of_climb(
     excess_thrust: Float64, weight: Float64, velocity: Float64
 ) -> Float64:
     """Rate of climb from excess thrust.

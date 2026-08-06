@@ -22,7 +22,7 @@ from algenta_runtime.pipeline import (
 )
 
 
-fn _stub_dispatch(raw: String) raises -> String:
+def _stub_dispatch(raw: String) raises -> String:
     """Echo the bound args so tests can prove substitution happened.
 
     `__boom__` fails, `double` returns 2x its first numeric arg, everything else
@@ -41,11 +41,11 @@ fn _stub_dispatch(raw: String) raises -> String:
     return '{"result":' + args + "}"
 
 
-fn _node(function: String, args: String) -> String:
+def _node(function: String, args: String) -> String:
     return '{"module":"stub","function":"' + function + '","args":' + args + "}"
 
 
-fn main() raises:
+def main() raises:
     # Empty registry: these suites exercise the DAG/batch contract, not residency.
     var _datasets = ResidentDatasets()
     var passed = 0
@@ -72,7 +72,7 @@ fn main() raises:
         + _node("second", '["$0"]')
         + "]}"
     )
-    var out = run_pipeline_execute[_stub_dispatch](chain, _datasets)
+    var out = run_pipeline_execute(_stub_dispatch, chain, _datasets)
     # node 0 returns [7]; node 1 receives [[7]] because $0 == [7].
     if json_get_int(out, "ok", -1) == 2 and json_get_string(out, "result") == "":
         # result is a list, so json_get_string is empty — check the array instead.
@@ -111,10 +111,10 @@ fn main() raises:
         print("  ❌ lineage wrong:", lineage)
 
     # ── plan hash is stable for the same plan, different for a changed one ───
-    var again = run_pipeline_execute[_stub_dispatch](chain, _datasets)
+    var again = run_pipeline_execute(_stub_dispatch, chain, _datasets)
     var hash_a = json_get_string(out, "plan_hash")
     var hash_b = json_get_string(again, "plan_hash")
-    var other = run_pipeline_execute[_stub_dispatch]('{"type":"pipeline_execute","nodes":[' + _node("first", "[8]") + "]}", _datasets)
+    var other = run_pipeline_execute(_stub_dispatch, '{"type":"pipeline_execute","nodes":[' + _node("first", "[8]") + "]}", _datasets)
     var hash_c = json_get_string(other, "plan_hash")
     if len(hash_a) == 64 and hash_a == hash_b and hash_a != hash_c:
         passed += 1
@@ -149,7 +149,7 @@ fn main() raises:
         + _node("never", "[]")
         + "]}"
     )
-    var out_fail = run_pipeline_execute[_stub_dispatch](failing, _datasets)
+    var out_fail = run_pipeline_execute(_stub_dispatch, failing, _datasets)
     if (
         json_get_string(out_fail, "error_code") == "pipeline_node_failed"
         and json_get_int(out_fail, "failed_index", -1) == 1
@@ -172,7 +172,7 @@ fn main() raises:
         + _node("third", "[3]")
         + "]}"
     )
-    var out_lenient = run_pipeline_execute[_stub_dispatch](lenient, _datasets)
+    var out_lenient = run_pipeline_execute(_stub_dispatch, lenient, _datasets)
     if (
         json_get_int(out_lenient, "ok", -1) == 2
         and json_get_int(out_lenient, "failed", -1) == 1
@@ -192,7 +192,7 @@ fn main() raises:
         + _node("second", "[2]")
         + "]}"
     )
-    var out_forward = run_pipeline_execute[_stub_dispatch](forward, _datasets)
+    var out_forward = run_pipeline_execute(_stub_dispatch, forward, _datasets)
     if json_get_string(out_forward, "error_code") == "invalid_arguments":
         passed += 1
         print("  ✅ forward reference rejected up front")
@@ -202,7 +202,7 @@ fn main() raises:
 
     # ── a self reference is rejected too ────────────────────────────────────
     var selfref = '{"type":"pipeline_execute","nodes":[' + _node("first", '["$0"]') + "]}"
-    if json_get_string(run_pipeline_execute[_stub_dispatch](selfref, _datasets), "error_code") == (
+    if json_get_string(run_pipeline_execute(_stub_dispatch, selfref, _datasets), "error_code") == (
         "invalid_arguments"
     ):
         passed += 1
@@ -213,7 +213,7 @@ fn main() raises:
 
     # ── empty plan is a typed error ─────────────────────────────────────────
     if json_get_string(
-        run_pipeline_execute[_stub_dispatch]('{"type":"pipeline_execute"}', _datasets), "error_code"
+        run_pipeline_execute(_stub_dispatch, '{"type":"pipeline_execute"}', _datasets), "error_code"
     ) == "invalid_arguments":
         passed += 1
         print("  ✅ missing nodes array → typed error")
@@ -223,7 +223,7 @@ fn main() raises:
 
     # ── a literal that merely looks like a reference is left alone ───────────
     var literal = '{"type":"pipeline_execute","nodes":[' + _node("first", '["$notanindex"]') + "]}"
-    var out_literal = run_pipeline_execute[_stub_dispatch](literal, _datasets)
+    var out_literal = run_pipeline_execute(_stub_dispatch, literal, _datasets)
     if json_get_int(out_literal, "ok", -1) == 1:
         passed += 1
         print('  ✅ "$notanindex" treated as a literal string, not a reference')
@@ -240,7 +240,7 @@ fn main() raises:
         + _node("consume", '["@' + handle + '"]')
         + "]}"
     )
-    var out_ds = run_pipeline_execute[_stub_dispatch](with_dataset, live)
+    var out_ds = run_pipeline_execute(_stub_dispatch, with_dataset, live)
     # The stub echoes its bound args, so the resident value must appear in them.
     if json_get_array(out_ds, "result") == "[[10.0,20.0,30.0]]":
         passed += 1
@@ -253,7 +253,7 @@ fn main() raises:
     var bad_handle = (
         '{"type":"pipeline_execute","nodes":[' + _node("consume", '["@ds_404"]') + "]}"
     )
-    var out_bad = run_pipeline_execute[_stub_dispatch](bad_handle, live)
+    var out_bad = run_pipeline_execute(_stub_dispatch, bad_handle, live)
     if len(json_get_string(out_bad, "error_code")) > 0:
         passed += 1
         print("  ✅ unknown @handle is an error, not a silent null")

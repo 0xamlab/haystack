@@ -43,12 +43,12 @@ from embeddings import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -56,7 +56,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Physics tests ────────────────────────────────────────────────────────────
 
 
-fn test_physics() raises:
+def test_physics() raises:
     print("  Testing physics...")
     var passed = 0
 
@@ -139,7 +139,7 @@ fn test_physics() raises:
 # ── Sorting tests ────────────────────────────────────────────────────────────
 
 
-fn test_sorting() raises:
+def test_sorting() raises:
     print("  Testing sorting...")
     var passed = 0
 
@@ -284,7 +284,7 @@ fn test_sorting() raises:
 # ── Embeddings tests ─────────────────────────────────────────────────────────
 
 
-fn test_embeddings() raises:
+def test_embeddings() raises:
     print("  Testing embeddings...")
     var passed = 0
 
@@ -429,7 +429,7 @@ fn test_embeddings() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 33 tests — Physics, Sorting, Embeddings")
     test_physics()
     test_sorting()

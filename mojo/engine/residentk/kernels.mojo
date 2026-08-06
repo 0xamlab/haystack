@@ -355,7 +355,7 @@ comptime _NEG_HUGE: Float32 = -3.0e38
 first key underflows to a clean 0.0 instead of producing `inf - inf`."""
 
 
-fn _embed_row_kernel(hidden: _FP, embed: _FP, token_id: Int, d_model: Int):
+def _embed_row_kernel(hidden: _FP, embed: _FP, token_id: Int, d_model: Int):
     """`hidden = embed[token_id]` — the one-token embedding gather that starts a decode step.
 
     Its own dispatch rather than folded into the first projection, and that costs ~180 us per token
@@ -370,7 +370,7 @@ fn _embed_row_kernel(hidden: _FP, embed: _FP, token_id: Int, d_model: Int):
         hidden[i] = embed[token_id * d_model + i]
 
 
-fn _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
+def _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
     """The fp16-weight twin of `_embed_row_kernel`. `embed` is the SAME tied embedding/lm_head
     table `_lmhead_argmax_kernel_f16` reads as `w` — resident as Float16 in the fp16 session — so
     the gather widens the one row it reads to Float32 before writing `hidden`, which stays Float32
@@ -383,7 +383,7 @@ fn _embed_row_kernel_f16(hidden: _FP, embed: _HP, token_id: Int, d_model: Int):
         hidden[i] = Float32(embed[token_id * d_model + i])
 
 
-fn _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: Int, d_model: Int):
+def _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: Int, d_model: Int):
     """The int8-weight twin of `_embed_row_kernel`. `embed` is the SAME tied embedding/lm_head
     table `_lmhead_argmax_kernel_i8` reads as `w` — resident as Int8 in the int8 session, one
     Float32 scale per VOCABULARY ROW in `embed_scale` (so `embed_scale[token_id]` is exactly the
@@ -399,7 +399,7 @@ fn _embed_row_kernel_i8(hidden: _FP, embed: _I8P, embed_scale: _FP, token_id: In
         hidden[i] = Float32(embed[token_id * d_model + i]) * s
 
 
-fn _norm_gemv_kernel(
+def _norm_gemv_kernel(
     y: _FP, x: _FP, gamma: _FP, w: _FP, k: Int, n: Int, eps: Float32
 ):
     """`y = W @ (rmsnorm(x) * gamma)`, `W` held `[n, k]` row-major. One dispatch, one normalization.
@@ -484,7 +484,7 @@ fn _norm_gemv_kernel(
         y[j] = red[sub * _LANES]
 
 
-fn _norm_gemv_kernel_f16(
+def _norm_gemv_kernel_f16(
     y: _FP, x: _FP, gamma: _FP, w: _HP, k: Int, n: Int, eps: Float32
 ):
     """The fp16-weight twin of `_norm_gemv_kernel`. Identical except `w`'s type: a resident Float16
@@ -552,7 +552,7 @@ fn _norm_gemv_kernel_f16(
         y[j] = red[sub * _LANES]
 
 
-fn _norm_gemv_kernel_i8(
+def _norm_gemv_kernel_i8(
     y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
 ):
     """The int8-weight twin of `_norm_gemv_kernel`. Identical except `w`'s type: a resident Int8
@@ -622,7 +622,7 @@ fn _norm_gemv_kernel_i8(
         y[j] = red[sub * _LANES]
 
 
-fn _norm_gemv_kernel_simd_i8(
+def _norm_gemv_kernel_simd_i8(
     y: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n: Int, eps: Float32
 ):
     """The REDUCTION-MECHANISM twin of `_norm_gemv_kernel_i8` — IDENTICAL int8-dequant GEMV math,
@@ -717,7 +717,7 @@ fn _norm_gemv_kernel_simd_i8(
         y[j] = total
 
 
-fn _norm_gemv_kernel_i4(
+def _norm_gemv_kernel_i4(
     y: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n: Int, eps: Float32
 ):
     """The int4-weight twin of `_norm_gemv_kernel_i8`. Identical except `w`'s type: a resident
@@ -802,7 +802,7 @@ fn _norm_gemv_kernel_i4(
         y[j] = red[sub * _LANES]
 
 
-fn _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
+def _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
     """`y += W @ x`, `W` held `[n, k]` row-major. The projection AND its residual add, one dispatch.
 
     `+=` rather than `=` is the whole point: `o_proj` and `down_proj` both feed a residual
@@ -850,7 +850,7 @@ fn _gemv_accum_kernel(y: _FP, x: _FP, w: _FP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-fn _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
+def _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
     """The fp16-weight twin of `_gemv_accum_kernel` — `o_proj`/`down_proj` plus the residual `+=`,
     with `w` a resident Float16 buffer widened to Float32 on load. See `_norm_gemv_kernel_f16`.
     """
@@ -895,7 +895,7 @@ fn _gemv_accum_kernel_f16(y: _FP, x: _FP, w: _HP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-fn _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """The int8-weight twin of `_gemv_accum_kernel` — `o_proj`/`down_proj` plus the residual `+=`,
     with `w` a resident Int8 buffer and `wscale` its per-output-row Float32 scale. See
     `_norm_gemv_kernel_i8`."""
@@ -942,7 +942,7 @@ fn _gemv_accum_kernel_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-fn _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: Int):
     """The REDUCTION-MECHANISM twin of `_gemv_accum_kernel_i8` — IDENTICAL `o_proj`/`down_proj` +
     residual-add math, only HOW each output column's dot product collapses to a scalar differs.
 
@@ -993,7 +993,7 @@ fn _gemv_accum_kernel_simd_i8(y: _FP, x: _FP, w: _I8P, wscale: _FP, k: Int, n: I
         y[j] = y[j] + total
 
 
-fn _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
+def _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
     """The int4-weight twin of `_gemv_accum_kernel_i8` — `o_proj`/`down_proj` plus the residual
     `+=`, with `w` a resident packed-int4 buffer and `wscale` its per-output-row Float32 scale. See
     `_norm_gemv_kernel_i4`."""
@@ -1050,7 +1050,7 @@ fn _gemv_accum_kernel_i4(y: _FP, x: _FP, w: _I4P, wscale: _FP, k: Int, n: Int):
         y[j] = y[j] + red[sub * _LANES]
 
 
-fn _norm_gemv2_swiglu_kernel(
+def _norm_gemv2_swiglu_kernel(
     act: _FP, x: _FP, gamma: _FP, w: _FP, k: Int, n_ff: Int, eps: Float32
 ):
     """`act = swish(W_gate @ xn) * (W_up @ xn)` with `xn = rmsnorm(x) * gamma`. One dispatch.
@@ -1153,7 +1153,7 @@ fn _norm_gemv2_swiglu_kernel(
         act[j] = (g / (1.0 + exp(-g))) * u
 
 
-fn _norm_gemv2_swiglu_kernel_f16(
+def _norm_gemv2_swiglu_kernel_f16(
     act: _FP, x: _FP, gamma: _FP, w: _HP, k: Int, n_ff: Int, eps: Float32
 ):
     """The fp16-weight twin of `_norm_gemv2_swiglu_kernel` — gate/up/SwiGLU, with `w` a resident
@@ -1249,7 +1249,7 @@ fn _norm_gemv2_swiglu_kernel_f16(
         act[j] = (g / (1.0 + exp(-g))) * u
 
 
-fn _norm_gemv2_swiglu_kernel_i8(
+def _norm_gemv2_swiglu_kernel_i8(
     act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
 ):
     """The int8-weight twin of `_norm_gemv2_swiglu_kernel` — gate/up/SwiGLU, with `w` a resident
@@ -1352,7 +1352,7 @@ fn _norm_gemv2_swiglu_kernel_i8(
         act[j] = (g / (1.0 + exp(-g))) * u
 
 
-fn _norm_gemv2_swiglu_kernel_simd_i8(
+def _norm_gemv2_swiglu_kernel_simd_i8(
     act: _FP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
 ):
     """The REDUCTION-MECHANISM twin of `_norm_gemv2_swiglu_kernel_i8` — IDENTICAL gate/up/SwiGLU
@@ -1460,7 +1460,7 @@ fn _norm_gemv2_swiglu_kernel_simd_i8(
         act[j] = (g / (1.0 + exp(-g))) * up_total
 
 
-fn _norm_gemv2_swiglu_kernel_i4(
+def _norm_gemv2_swiglu_kernel_i4(
     act: _FP, x: _FP, gamma: _FP, w: _I4P, wscale: _FP, k: Int, n_ff: Int, eps: Float32
 ):
     """The int4-weight twin of `_norm_gemv2_swiglu_kernel_i8` — gate/up/SwiGLU, with `w` a resident
@@ -1583,7 +1583,7 @@ fn _norm_gemv2_swiglu_kernel_i4(
         act[j] = (g / (1.0 + exp(-g))) * u
 
 
-fn _qk_rope_write_kernel(
+def _qk_rope_write_kernel(
     q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
 ):
@@ -1656,7 +1656,7 @@ fn _qk_rope_write_kernel(
         cv[(pos * h_kv + head) * d_head + e] = qkv[(h_q + h_kv + head) * d_head + e]
 
 
-fn _qk_rope_write_kernel_kvf16(
+def _qk_rope_write_kernel_kvf16(
     q_rot: _FP, ck: _HP, cv: _HP, qkv: _FP, qn_w: _FP, kn_w: _FP,
     cos_t: _FP, sin_t: _FP, pos: Int, h_q: Int, h_kv: Int, d_head: Int, eps: Float32,
 ):
@@ -1727,7 +1727,7 @@ fn _qk_rope_write_kernel_kvf16(
         cv[(pos * h_kv + head) * d_head + e] = Float16(qkv[(h_q + h_kv + head) * d_head + e])
 
 
-fn _sdpa_kernel(
+def _sdpa_kernel(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -1786,7 +1786,7 @@ fn _sdpa_kernel(
     attn_out[h * d_head + e] = o / denom
 
 
-fn _sdpa_kernel_kvf16(
+def _sdpa_kernel_kvf16(
     attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
     n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -1842,7 +1842,7 @@ fn _sdpa_kernel_kvf16(
     attn_out[h * d_head + e] = o / denom
 
 
-fn _sdpa_kernel_simd(
+def _sdpa_kernel_simd(
     attn_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -1929,7 +1929,7 @@ fn _sdpa_kernel_simd(
     attn_out[h * d_head + e] = o / denom
 
 
-fn _sdpa_kernel_simd_kvf16(
+def _sdpa_kernel_simd_kvf16(
     attn_out: _FP, q_rot: _FP, ck: _HP, cv: _HP,
     n_keys: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -1977,7 +1977,7 @@ fn _sdpa_kernel_simd_kvf16(
     attn_out[h * d_head + e] = o / denom
 
 
-fn _splitk_partial_kernel_simd(
+def _splitk_partial_kernel_simd(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -2058,7 +2058,7 @@ fn _splitk_partial_kernel_simd(
     o_out[idx * d_head + e] = o
 
 
-fn _splitk_merge_kernel_simd(
+def _splitk_merge_kernel_simd(
     attn_out: _FP, m_in: _FP, l_in: _FP, o_in: _FP, n_splits: Int, d_head: Int,
 ):
     """The MERGE half of `_splitk_partial_kernel_simd`'s two-dispatch fix — collapses that
@@ -2105,7 +2105,7 @@ fn _splitk_merge_kernel_simd(
     attn_out[h * d_head + e] = o / denom
 
 
-fn _splitk_partial_kernel_simd_batched4(
+def _splitk_partial_kernel_simd_batched4(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -2280,7 +2280,7 @@ fn _splitk_partial_kernel_simd_batched4(
     o_out[idx * d_head + e] = o
 
 
-fn _splitk_partial_kernel_simd_native(
+def _splitk_partial_kernel_simd_native(
     m_out: _FP, l_out: _FP, o_out: _FP, q_rot: _FP, ck: _FP, cv: _FP,
     n_keys: Int, n_splits: Int, h_q: Int, h_kv: Int, d_head: Int, scale: Float32,
 ):
@@ -2470,7 +2470,7 @@ fn _splitk_partial_kernel_simd_native(
         o_out[idx * d_head + lane + i * WARP_SIZE] = o[i]
 
 
-fn _lmhead_argmax_kernel(
+def _lmhead_argmax_kernel(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _FP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
 ):
@@ -2577,7 +2577,7 @@ fn _lmhead_argmax_kernel(
         blk_idx[Int(block_idx.x)] = bi
 
 
-fn _lmhead_argmax_kernel_f16(
+def _lmhead_argmax_kernel_f16(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _HP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
 ):
@@ -2671,7 +2671,7 @@ fn _lmhead_argmax_kernel_f16(
         blk_idx[Int(block_idx.x)] = bi
 
 
-fn _lmhead_argmax_kernel_i8(
+def _lmhead_argmax_kernel_i8(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
 ):
@@ -2771,7 +2771,7 @@ fn _lmhead_argmax_kernel_i8(
         blk_idx[Int(block_idx.x)] = bi
 
 
-fn _lmhead_argmax_kernel_simd_i8(
+def _lmhead_argmax_kernel_simd_i8(
     blk_val: _FP, blk_idx: _IP, x: _FP, gamma: _FP, w: _I8P, wscale: _FP,
     k: Int, n: Int, eps: Float32, n_iters: Int,
 ):
@@ -2907,7 +2907,7 @@ fn _lmhead_argmax_kernel_simd_i8(
         blk_idx[Int(block_idx.x)] = bi
 
 
-fn _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
+def _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
     """Collapse the per-threadgroup `(logit, id)` pairs to one. `grid_dim = 1`, `block_dim = 256`.
 
     Ties resolve to the LOWEST id in both stages — the grid-stride scan uses strict `>`, and the
@@ -2947,7 +2947,7 @@ fn _argmax_reduce_kernel(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP,
         out_idx[0] = si[0]
 
 
-fn _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
+def _argmax_reduce_kernel_simd(out_val: _FP, out_idx: _IP, blk_val: _FP, blk_idx: _IP, n: Int):
     """The REDUCTION-MECHANISM twin of `_argmax_reduce_kernel` — IDENTICAL per-thread grid-stride
     local-best scan over `blk_val`/`blk_idx` and IDENTICAL tie-break-to-lowest-id convention; only
     HOW the `_TG=256`-wide combine collapses every thread's local `(best, best_i)` pair to one final

@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp
 
 
-fn seawater_density(temperature: Float64, salinity: Float64) -> Float64:
+def seawater_density(temperature: Float64, salinity: Float64) -> Float64:
     """Seawater density (simplified UNESCO EOS-80 linear fit).
 
     Args:
@@ -33,7 +33,7 @@ fn seawater_density(temperature: Float64, salinity: Float64) -> Float64:
             + 0.7814 * salinity * 0.01)
 
 
-fn buoyancy_frequency(
+def buoyancy_frequency(
     rho_upper: Float64, rho_lower: Float64, layer_thickness: Float64
 ) -> Float64:
     """Brunt-Väisälä frequency: N = √(-g/ρ · ∂ρ/∂z).
@@ -56,7 +56,7 @@ fn buoyancy_frequency(
     return sqrt(n2)
 
 
-fn tidal_force(mass_moon: Float64, distance_m: Float64, radius_earth: Float64) -> Float64:
+def tidal_force(mass_moon: Float64, distance_m: Float64, radius_earth: Float64) -> Float64:
     """Differential tidal force per unit mass at Earth's surface.
 
     a_tidal ≈ 2G·M·r / d³
@@ -75,7 +75,7 @@ fn tidal_force(mass_moon: Float64, distance_m: Float64, radius_earth: Float64) -
     return 2.0 * G * mass_moon * radius_earth / (distance_m * distance_m * distance_m)
 
 
-fn geostrophic_velocity(
+def geostrophic_velocity(
     pressure_gradient: Float64, density: Float64, coriolis: Float64
 ) -> Float64:
     """Geostrophic velocity from horizontal pressure gradient.
@@ -95,7 +95,7 @@ fn geostrophic_velocity(
     return -pressure_gradient / (density * coriolis)
 
 
-fn ekman_depth(wind_stress: Float64, coriolis: Float64) -> Float64:
+def ekman_depth(wind_stress: Float64, coriolis: Float64) -> Float64:
     """Ekman layer depth from wind stress and Coriolis.
 
     D_E ≈ π * √(2 A_v / f)  (simplified, using A_v ~ τ/ρ/u*)
@@ -115,7 +115,7 @@ fn ekman_depth(wind_stress: Float64, coriolis: Float64) -> Float64:
     return pi * sqrt(2.0 * Av / abs(coriolis))
 
 
-fn mixed_layer_heat_flux(
+def mixed_layer_heat_flux(
     density: Float64, heat_capacity: Float64,
     depth: Float64, delta_temp: Float64, delta_time: Float64
 ) -> Float64:
@@ -136,7 +136,7 @@ fn mixed_layer_heat_flux(
     return density * heat_capacity * depth * delta_temp / delta_time
 
 
-fn salinity_from_chlorinity(chlorinity: Float64) -> Float64:
+def salinity_from_chlorinity(chlorinity: Float64) -> Float64:
     """Practical salinity from chlorinity (Knudsen 1901).
 
     S = 1.80655 · Cl
@@ -150,7 +150,7 @@ fn salinity_from_chlorinity(chlorinity: Float64) -> Float64:
     return 1.80655 * chlorinity
 
 
-fn wave_celerity_shallow(depth: Float64) -> Float64:
+def wave_celerity_shallow(depth: Float64) -> Float64:
     """Shallow-water wave celerity: c = √(g·h).
 
     Args:
@@ -165,7 +165,7 @@ fn wave_celerity_shallow(depth: Float64) -> Float64:
     return sqrt(g * depth)
 
 
-fn wave_celerity_deep(period: Float64) -> Float64:
+def wave_celerity_deep(period: Float64) -> Float64:
     """Deep-water wave celerity: c = g·T/(2π).
 
     Args:
@@ -181,7 +181,7 @@ fn wave_celerity_deep(period: Float64) -> Float64:
     return g * period / (2.0 * pi)
 
 
-fn freshwater_flux(
+def freshwater_flux(
     evaporation: Float64, precipitation: Float64, area: Float64
 ) -> Float64:
     """Net freshwater flux from ocean surface.

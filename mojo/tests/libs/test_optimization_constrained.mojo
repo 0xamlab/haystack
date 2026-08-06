@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from optimization_constrained import eval_objective_c, eval_constraint, is_feasible_c, penalty_value, gradient_estimate, penalty_method, barrier_method, augmented_lagrangian_step
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

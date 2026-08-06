@@ -82,7 +82,7 @@ from discrete_event.contract import DE_OK, de_heap_work
 from discrete_event.resource import resource_serve_flat, resource_work_charge
 
 
-fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
+def _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
     """The empirical growth exponent `p` in `t ~ n^p`, from the two endpoints.
 
     Reported instead of a complexity CLAIM: `p` is what was measured, and it is only two points,
@@ -93,13 +93,13 @@ fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Fl
     return log(t_last / t_first) / log(Float64(n_last) / Float64(n_first))
 
 
-fn _ratio(lo: Float64, hi: Float64) -> Float64:
+def _ratio(lo: Float64, hi: Float64) -> Float64:
     if lo <= 0.0:
         return 0.0
     return hi / lo
 
 
-fn _arrivals(n: Int) -> List[Float64]:
+def _arrivals(n: Int) -> List[Float64]:
     """Deterministic arrivals every 1.0, so the offered load is exactly one job per unit time."""
     var out = List[Float64]()
     for i in range(n):
@@ -107,7 +107,7 @@ fn _arrivals(n: Int) -> List[Float64]:
     return out^
 
 
-fn _service(n: Int) -> List[Float64]:
+def _service(n: Int) -> List[Float64]:
     """Service durations alternating 0.6 / 1.2 — mean 0.9, so a two-server pool runs at 0.45
     utilisation and the waiting queue is entered without the run diverging."""
     var out = List[Float64]()
@@ -116,7 +116,7 @@ fn _service(n: Int) -> List[Float64]:
     return out^
 
 
-fn _priorities(n: Int) -> List[Int]:
+def _priorities(n: Int) -> List[Int]:
     """Four ranks, cycling, so every tie-break key in the waiting queue is used."""
     var out = List[Int]()
     for i in range(n):
@@ -128,7 +128,7 @@ fn _priorities(n: Int) -> List[Int]:
 
 
 @no_inline
-fn _time_calendar(n: Int, distinct_times: Int, n_priorities: Int, reps: Int) -> List[Float64]:
+def _time_calendar(n: Int, distinct_times: Int, n_priorities: Int, reps: Int) -> List[Float64]:
     """The MINIMUM of `reps` timed `calendar_stress_flat` calls, after one untimed warm-up.
 
     `reps` is a PARAMETER, not a literal, and every caller passes it out of a `List` element. That
@@ -168,7 +168,7 @@ fn _time_calendar(n: Int, distinct_times: Int, n_priorities: Int, reps: Int) -> 
 
 
 @no_inline
-fn _time_resource(n: Int, capacity: Int, reps: Int) -> List[Float64]:
+def _time_resource(n: Int, capacity: Int, reps: Int) -> List[Float64]:
     """The MINIMUM of `reps` timed `resource_serve_flat` calls, after one untimed warm-up.
 
     `reps` is a runtime parameter for the reason given on `_time_calendar`. Input arrays are built
@@ -214,7 +214,7 @@ fn _time_resource(n: Int, capacity: Int, reps: Int) -> List[Float64]:
 
 
 @no_inline
-fn _bench_calendar() -> Int:
+def _bench_calendar() -> Int:
     """Section 1 — per-event calendar cost against calendar size. Gated on shape."""
     print("[1] Event calendar, 64 distinct timestamps and 8 priority ranks (ties everywhere)")
     print("     events         ms      ns/event   ordered")
@@ -255,7 +255,7 @@ fn _bench_calendar() -> Int:
 
 
 @no_inline
-fn _bench_resource(mut charge_ns: List[Float64]) -> Int:
+def _bench_resource(mut charge_ns: List[Float64]) -> Int:
     """Section 2 — per-job engine cost against job count. Fills `charge_ns` for section 4."""
     print("[2] Resource pool, two servers, mean service 0.9, four priority ranks")
     print("     jobs           ms       ns/job    served")
@@ -303,7 +303,7 @@ fn _bench_resource(mut charge_ns: List[Float64]) -> Int:
 
 
 @no_inline
-fn _bench_charge_model(charge_ns: List[Float64]) -> Int:
+def _bench_charge_model(charge_ns: List[Float64]) -> Int:
     """Section 3 — the declared work charge against measured time. The one that matters most."""
     print("[3] Declared work charge vs measured time — the charge model itself")
     print("     jobs     charged      ns/charged-unit")
@@ -346,7 +346,7 @@ fn _bench_charge_model(charge_ns: List[Float64]) -> Int:
 
 
 @no_inline
-fn _bench_run_count() -> Int:
+def _bench_run_count() -> Int:
     """Section 4 — a replication set costs its RUN COUNT, with no quadratic across runs.
 
     A replication set is `(n_reps + 1)` independent engine runs — the pilot that chooses the
@@ -399,7 +399,7 @@ fn _bench_run_count() -> Int:
     return 0
 
 
-fn main():
+def main():
     print("\n=== bench_discrete_event: calendars, resources, replications ===")
     print("Gates are on SHAPE. Absolute times are informational and are not gated.\n")
     var failures = 0

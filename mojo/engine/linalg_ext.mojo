@@ -32,7 +32,7 @@ struct QRResult(Copyable, Movable):
     var Q: Matrix
     var R: Matrix
 
-    fn __init__(out self, Q: Matrix, R: Matrix):
+    def __init__(out self, Q: Matrix, R: Matrix):
         self.Q = Q.copy()
         self.R = R.copy()
 
@@ -42,7 +42,7 @@ struct PowerIterResult(Copyable, Movable):
     var eigenvalue: Float64
     var eigenvector: List[Float64]
 
-    fn __init__(out self, eigenvalue: Float64, eigenvector: List[Float64]):
+    def __init__(out self, eigenvalue: Float64, eigenvector: List[Float64]):
         self.eigenvalue = eigenvalue
         self.eigenvector = eigenvector.copy()
 
@@ -50,7 +50,7 @@ struct PowerIterResult(Copyable, Movable):
 # ── QR Decomposition (Modified Gram-Schmidt) ─────────────────────────────────
 
 
-fn mat_qr(a: Matrix) -> QRResult:
+def mat_qr(a: Matrix) -> QRResult:
     """QR decomposition via Modified Gram-Schmidt.
     A = Q * R where Q is orthogonal and R is upper triangular.
     A is (m x n), Q is (m x n), R is (n x n). Assumes m >= n."""
@@ -112,7 +112,7 @@ fn mat_qr(a: Matrix) -> QRResult:
 # ── Frobenius Norm ────────────────────────────────────────────────────────────
 
 
-fn mat_norm_frobenius(a: Matrix) -> Float64:
+def mat_norm_frobenius(a: Matrix) -> Float64:
     """Frobenius norm: sqrt(sum of squares of all elements)."""
     var s: Float64 = 0.0
     for i in range(a.rows * a.cols):
@@ -123,7 +123,7 @@ fn mat_norm_frobenius(a: Matrix) -> Float64:
 # ── Infinity Norm ─────────────────────────────────────────────────────────────
 
 
-fn mat_norm_inf(a: Matrix) -> Float64:
+def mat_norm_inf(a: Matrix) -> Float64:
     """Infinity norm: maximum absolute row sum."""
     var max_sum: Float64 = 0.0
     for i in range(a.rows):
@@ -138,7 +138,7 @@ fn mat_norm_inf(a: Matrix) -> Float64:
 # ── Trace ─────────────────────────────────────────────────────────────────────
 
 
-fn mat_trace(a: Matrix) -> Float64:
+def mat_trace(a: Matrix) -> Float64:
     """Sum of diagonal elements."""
     var n = a.rows
     if a.cols < n:
@@ -152,7 +152,7 @@ fn mat_trace(a: Matrix) -> Float64:
 # ── Symmetry Check ────────────────────────────────────────────────────────────
 
 
-fn mat_is_symmetric(a: Matrix, tol: Float64 = 1e-10) -> Bool:
+def mat_is_symmetric(a: Matrix, tol: Float64 = 1e-10) -> Bool:
     """Check if matrix is symmetric within tolerance."""
     if a.rows != a.cols:
         return False
@@ -167,7 +167,7 @@ fn mat_is_symmetric(a: Matrix, tol: Float64 = 1e-10) -> Bool:
 # ── Positive Definite Check (via Cholesky attempt) ────────────────────────────
 
 
-fn mat_is_positive_definite(a: Matrix) -> Bool:
+def mat_is_positive_definite(a: Matrix) -> Bool:
     """Check if matrix is positive definite by attempting Cholesky decomposition.
     Matrix must be symmetric."""
     if a.rows != a.cols:
@@ -202,7 +202,7 @@ fn mat_is_positive_definite(a: Matrix) -> Bool:
 # ── Power Iteration ───────────────────────────────────────────────────────────
 
 
-fn mat_power_iteration(a: Matrix, max_iter: Int = 100) -> PowerIterResult:
+def mat_power_iteration(a: Matrix, max_iter: Int = 100) -> PowerIterResult:
     """Find dominant eigenvalue and eigenvector using power iteration.
     Returns PowerIterResult(eigenvalue, eigenvector).
     Matrix must be square."""
@@ -252,7 +252,7 @@ fn mat_power_iteration(a: Matrix, max_iter: Int = 100) -> PowerIterResult:
 # ── Approximate Condition Number ──────────────────────────────────────────────
 
 
-fn mat_condition_number(a: Matrix) -> Float64:
+def mat_condition_number(a: Matrix) -> Float64:
     """Approximate condition number using infinity norms: ||A||_inf * ||A^-1||_inf.
     Returns a large number if the matrix is singular."""
     if a.rows != a.cols:

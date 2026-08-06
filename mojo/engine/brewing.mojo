@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── original_gravity_to_plato ────────────────────────────────────────────────
 
 
-fn original_gravity_to_plato(og: Float64) -> Float64:
+def original_gravity_to_plato(og: Float64) -> Float64:
     """P ≈ (OG - 1) * 1000 / 4  (simplified conversion)."""
     return (og - 1.0) * 1000.0 / 4.0
 
@@ -33,7 +33,7 @@ fn original_gravity_to_plato(og: Float64) -> Float64:
 # ── plato_to_gravity ─────────────────────────────────────────────────────────
 
 
-fn plato_to_gravity(plato: Float64) -> Float64:
+def plato_to_gravity(plato: Float64) -> Float64:
     """SG ≈ 1 + plato * 4 / 1000  (simplified conversion)."""
     return 1.0 + plato * 4.0 / 1000.0
 
@@ -41,7 +41,7 @@ fn plato_to_gravity(plato: Float64) -> Float64:
 # ── abv_from_og_fg ───────────────────────────────────────────────────────────
 
 
-fn abv_from_og_fg(og: Float64, fg: Float64) -> Float64:
+def abv_from_og_fg(og: Float64, fg: Float64) -> Float64:
     """ABV = (OG - FG) * 131.25."""
     return (og - fg) * 131.25
 
@@ -49,7 +49,7 @@ fn abv_from_og_fg(og: Float64, fg: Float64) -> Float64:
 # ── apparent_attenuation ─────────────────────────────────────────────────────
 
 
-fn apparent_attenuation(og: Float64, fg: Float64) -> Float64:
+def apparent_attenuation(og: Float64, fg: Float64) -> Float64:
     """AA = (OG - FG) / (OG - 1.0) * 100."""
     var denom = og - 1.0
     if denom == 0.0:
@@ -60,7 +60,7 @@ fn apparent_attenuation(og: Float64, fg: Float64) -> Float64:
 # ── real_attenuation ─────────────────────────────────────────────────────────
 
 
-fn real_attenuation(apparent_att: Float64) -> Float64:
+def real_attenuation(apparent_att: Float64) -> Float64:
     """RA ≈ apparent_att * 0.8192  (Balling correction)."""
     return apparent_att * 0.8192
 
@@ -68,7 +68,7 @@ fn real_attenuation(apparent_att: Float64) -> Float64:
 # ── ibu_tinseth ──────────────────────────────────────────────────────────────
 
 
-fn ibu_tinseth(
+def ibu_tinseth(
     utilization: Float64,
     alpha_acid_pct: Float64,
     weight_oz: Float64,
@@ -83,7 +83,7 @@ fn ibu_tinseth(
 # ── utilization_tinseth ──────────────────────────────────────────────────────
 
 
-fn utilization_tinseth(gravity: Float64, time_min: Float64) -> Float64:
+def utilization_tinseth(gravity: Float64, time_min: Float64) -> Float64:
     """U = 1.65 * 0.000125^(G-1) * (1 - exp(-0.04*t)) / 4.15."""
     var bigness = 1.65 * exp((gravity - 1.0) * log(0.000125))
     var boil_factor = (1.0 - exp(-0.04 * time_min)) / 4.15
@@ -93,7 +93,7 @@ fn utilization_tinseth(gravity: Float64, time_min: Float64) -> Float64:
 # ── mash_water_volume ────────────────────────────────────────────────────────
 
 
-fn mash_water_volume(grain_weight_kg: Float64, ratio: Float64) -> Float64:
+def mash_water_volume(grain_weight_kg: Float64, ratio: Float64) -> Float64:
     """V = grain_weight * ratio  (litres, ratio in L/kg)."""
     return grain_weight_kg * ratio
 
@@ -101,7 +101,7 @@ fn mash_water_volume(grain_weight_kg: Float64, ratio: Float64) -> Float64:
 # ── strike_water_temp ────────────────────────────────────────────────────────
 
 
-fn strike_water_temp(
+def strike_water_temp(
     target_temp: Float64, grain_temp: Float64, ratio: Float64
 ) -> Float64:
     """Tw = (0.2/ratio) * (target - grain) + target.
@@ -116,7 +116,7 @@ fn strike_water_temp(
 # ── color_srm_from_mcu ──────────────────────────────────────────────────────
 
 
-fn color_srm_from_mcu(mcu: Float64) -> Float64:
+def color_srm_from_mcu(mcu: Float64) -> Float64:
     """SRM = 1.4922 * MCU^0.6859  (Morey equation)."""
     if mcu <= 0.0:
         return 0.0
@@ -126,7 +126,7 @@ fn color_srm_from_mcu(mcu: Float64) -> Float64:
 # ── calories_per_12oz ────────────────────────────────────────────────────────
 
 
-fn calories_per_12oz(og: Float64, fg: Float64) -> Float64:
+def calories_per_12oz(og: Float64, fg: Float64) -> Float64:
     """Simplified calorie estimate per 12 oz serving.
 
     Cal ≈ 3621 * fg * ((0.8114*og + 0.1886*fg - 1)*3.55 +
@@ -142,7 +142,7 @@ fn calories_per_12oz(og: Float64, fg: Float64) -> Float64:
 # ── priming_sugar_g ──────────────────────────────────────────────────────────
 
 
-fn priming_sugar_g(
+def priming_sugar_g(
     volume_co2: Float64, temp_c: Float64, volume_beer_l: Float64
 ) -> Float64:
     """Priming sugar (g) ≈ volume_beer * (volume_co2 - residual) * factor.

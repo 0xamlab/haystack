@@ -97,14 +97,14 @@ from forecasting.contract import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.contract] known-value suite")

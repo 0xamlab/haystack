@@ -31,7 +31,7 @@ comptime STEFAN_BOLTZMANN: Float64 = 5.67e-8  # W/(m²·K⁴)
 # ── ideal_gas_pressure ───────────────────────────────────────────────────────
 
 
-fn ideal_gas_pressure(n: Float64, T: Float64, V: Float64) -> Float64:
+def ideal_gas_pressure(n: Float64, T: Float64, V: Float64) -> Float64:
     """Ideal gas law: P = nRT/V.
 
     Args:
@@ -50,7 +50,7 @@ fn ideal_gas_pressure(n: Float64, T: Float64, V: Float64) -> Float64:
 # ── ideal_gas_volume ─────────────────────────────────────────────────────────
 
 
-fn ideal_gas_volume(n: Float64, T: Float64, P: Float64) -> Float64:
+def ideal_gas_volume(n: Float64, T: Float64, P: Float64) -> Float64:
     """Ideal gas law: V = nRT/P.
 
     Args:
@@ -69,7 +69,7 @@ fn ideal_gas_volume(n: Float64, T: Float64, P: Float64) -> Float64:
 # ── carnot_efficiency ────────────────────────────────────────────────────────
 
 
-fn carnot_efficiency(T_hot: Float64, T_cold: Float64) -> Float64:
+def carnot_efficiency(T_hot: Float64, T_cold: Float64) -> Float64:
     """Carnot efficiency: η = 1 - T_cold/T_hot.
 
     Args:
@@ -87,7 +87,7 @@ fn carnot_efficiency(T_hot: Float64, T_cold: Float64) -> Float64:
 # ── entropy_change ───────────────────────────────────────────────────────────
 
 
-fn entropy_change(Q: Float64, T: Float64) -> Float64:
+def entropy_change(Q: Float64, T: Float64) -> Float64:
     """Entropy change: ΔS = Q/T.
 
     Args:
@@ -105,7 +105,7 @@ fn entropy_change(Q: Float64, T: Float64) -> Float64:
 # ── heat_capacity ────────────────────────────────────────────────────────────
 
 
-fn heat_capacity(mass: Float64, specific_heat: Float64, delta_T: Float64) -> Float64:
+def heat_capacity(mass: Float64, specific_heat: Float64, delta_T: Float64) -> Float64:
     """Heat capacity: Q = mcΔT.
 
     Args:
@@ -122,7 +122,7 @@ fn heat_capacity(mass: Float64, specific_heat: Float64, delta_T: Float64) -> Flo
 # ── adiabatic_process ────────────────────────────────────────────────────────
 
 
-fn adiabatic_process(P1: Float64, V1: Float64, V2: Float64, gamma: Float64) -> Float64:
+def adiabatic_process(P1: Float64, V1: Float64, V2: Float64, gamma: Float64) -> Float64:
     """Adiabatic process: P2 = P1*(V1/V2)^γ.
 
     Args:
@@ -142,7 +142,7 @@ fn adiabatic_process(P1: Float64, V1: Float64, V2: Float64, gamma: Float64) -> F
 # ── work_isothermal ──────────────────────────────────────────────────────────
 
 
-fn work_isothermal(n: Float64, T: Float64, V1: Float64, V2: Float64) -> Float64:
+def work_isothermal(n: Float64, T: Float64, V1: Float64, V2: Float64) -> Float64:
     """Isothermal work: W = nRT*ln(V2/V1).
 
     Args:
@@ -162,7 +162,7 @@ fn work_isothermal(n: Float64, T: Float64, V1: Float64, V2: Float64) -> Float64:
 # ── stefan_boltzmann ─────────────────────────────────────────────────────────
 
 
-fn stefan_boltzmann(T: Float64, A: Float64, emissivity: Float64 = 1.0) -> Float64:
+def stefan_boltzmann(T: Float64, A: Float64, emissivity: Float64 = 1.0) -> Float64:
     """Stefan-Boltzmann law: P = εσAT⁴.
 
     Args:
@@ -179,7 +179,7 @@ fn stefan_boltzmann(T: Float64, A: Float64, emissivity: Float64 = 1.0) -> Float6
 # ── thermal_conductivity_flux ────────────────────────────────────────────────
 
 
-fn thermal_conductivity_flux(k: Float64, A: Float64, dT: Float64, dx: Float64) -> Float64:
+def thermal_conductivity_flux(k: Float64, A: Float64, dT: Float64, dx: Float64) -> Float64:
     """Fourier's law: Q/t = -kA(dT/dx).
 
     Args:
@@ -199,7 +199,7 @@ fn thermal_conductivity_flux(k: Float64, A: Float64, dT: Float64, dx: Float64) -
 # ── gibbs_free_energy ────────────────────────────────────────────────────────
 
 
-fn gibbs_free_energy(H: Float64, T: Float64, S: Float64) -> Float64:
+def gibbs_free_energy(H: Float64, T: Float64, S: Float64) -> Float64:
     """Gibbs free energy: G = H - TS.
 
     Args:
@@ -216,7 +216,7 @@ fn gibbs_free_energy(H: Float64, T: Float64, S: Float64) -> Float64:
 # ── clausius_clapeyron ───────────────────────────────────────────────────────
 
 
-fn clausius_clapeyron(P1: Float64, T1: Float64, T2: Float64, dH_vap: Float64) -> Float64:
+def clausius_clapeyron(P1: Float64, T1: Float64, T2: Float64, dH_vap: Float64) -> Float64:
     """Clausius-Clapeyron equation: ln(P2/P1) = -(ΔH/R)*(1/T2 - 1/T1).
 
     Args:

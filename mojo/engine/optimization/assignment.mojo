@@ -223,7 +223,7 @@ comptime ASSIGN_DBL_EPSILON: Float64 = 2.220446049250313e-16
 comptime ASSIGN_CERT_ULP_BUDGET: Float64 = 1024.0
 
 
-fn assign_status_name(code: Int) -> String:
+def assign_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number."""
     if code == ASSIGN_OK:
         return "ok"
@@ -387,7 +387,7 @@ struct DualCheck(Copyable, Movable):
 # on the alias only keeps the name out of the runtime contract; a predicate is not a driver.
 
 
-fn _pair_allowed(
+def _pair_allowed(
     allowed: List[Bool], masked: Bool, agent: Int, task: Int, cols: Int
 ) -> Bool:
     """Mask lookup. Safe to index because the caller has already established
@@ -398,7 +398,7 @@ fn _pair_allowed(
     return allowed[agent * cols + task]
 
 
-fn _no_assignment(status: Int, rows: Int, cols: Int) -> Assignment:
+def _no_assignment(status: Int, rows: Int, cols: Int) -> Assignment:
     """A rejection: every list empty, every number flagged absent."""
     return Assignment(
         status,
@@ -423,7 +423,7 @@ fn _no_assignment(status: Int, rows: Int, cols: Int) -> Assignment:
     )
 
 
-fn _shape_defect(
+def _shape_defect(
     cost: List[Float64], rows: Int, cols: Int, allowed: List[Bool], masked: Bool
 ) -> Int:
     """Everything that must hold before a single cell is read.
@@ -446,7 +446,7 @@ fn _shape_defect(
     return ASSIGN_OK
 
 
-fn _rounding_allowance(scale: Float64) -> Float64:
+def _rounding_allowance(scale: Float64) -> Float64:
     """`1024 * DBL_EPSILON * scale` — what floating point can explain at `scale`, no more.
 
     `scale` must be the magnitude of the terms in the ONE comparison being made. There is no
@@ -471,7 +471,7 @@ fn _rounding_allowance(scale: Float64) -> Float64:
     return slop
 
 
-fn _pair_tol(cell: Float64, potential_u: Float64, potential_v: Float64) -> Float64:
+def _pair_tol(cell: Float64, potential_u: Float64, potential_v: Float64) -> Float64:
     """Budget for judging the reduced cost `cell - potential_u - potential_v`.
 
     The quantity judged is that one pair's reduced cost, and the only magnitudes that can
@@ -485,7 +485,7 @@ fn _pair_tol(cell: Float64, potential_u: Float64, potential_v: Float64) -> Float
     )
 
 
-fn _agent_tol(
+def _agent_tol(
     cost: List[Float64], cols: Int, col_of_row: List[Int],
     u: List[Float64], v: List[Float64], agent: Int,
 ) -> Float64:
@@ -505,7 +505,7 @@ fn _agent_tol(
     return DEFAULT_FEASIBILITY_TOL + _rounding_allowance(scale)
 
 
-fn _total_tol(left: Float64, right: Float64) -> Float64:
+def _total_tol(left: Float64, right: Float64) -> Float64:
     """Budget for comparing two assignment TOTALS — the only two magnitudes in play.
 
     Both are `kahan_sum` outputs, whose error is a few ulps of the summands regardless of how
@@ -517,7 +517,7 @@ fn _total_tol(left: Float64, right: Float64) -> Float64:
 # ── the exact solve ───────────────────────────────────────────────────────────
 
 
-fn _reduced_transpose(
+def _reduced_transpose(
     cost: List[Float64], rows: Int, cols: Int, allowed: List[Bool], masked: Bool,
     task_potential: List[Float64],
 ) -> List[List[Float64]]:
@@ -540,7 +540,7 @@ fn _reduced_transpose(
     return out^
 
 
-fn _assignment_core(
+def _assignment_core(
     cost: List[Float64], rows: Int, cols: Int, allowed: List[Bool], masked: Bool
 ) -> Assignment:
     """Hungarian / Jonker-Volgenant, minimising, saturating every task.
@@ -853,7 +853,7 @@ fn _assignment_core(
     )
 
 
-fn assignment_solve(cost: List[Float64], rows: Int, cols: Int) -> Assignment:
+def assignment_solve(cost: List[Float64], rows: Int, cols: Int) -> Assignment:
     """Minimum-cost assignment of every task (column) to a distinct agent (row).
 
     `cost` is row-major with `rows * cols` cells. Optimal, not greedy: on
@@ -865,7 +865,7 @@ fn assignment_solve(cost: List[Float64], rows: Int, cols: Int) -> Assignment:
     return _assignment_core(cost, rows, cols, List[Bool](), False)
 
 
-fn assignment_solve_masked(
+def assignment_solve_masked(
     cost: List[Float64], rows: Int, cols: Int, allowed: List[Bool]
 ) -> Assignment:
     """`assignment_solve` with forbidden pairings given as a parallel `Bool` mask.
@@ -881,7 +881,7 @@ fn assignment_solve_masked(
 # ── the frozen greedy, reported honestly ──────────────────────────────────────
 
 
-fn greedy_assignment_flat(
+def greedy_assignment_flat(
     cost: List[Float64], rows: Int, cols: Int
 ) -> GreedyAssignment:
     """`combinatorial.assignment_greedy` over a flat matrix, with its cost and its gaps.
@@ -944,7 +944,7 @@ fn greedy_assignment_flat(
 # ── scoring and certifying somebody else's assignment ─────────────────────────
 
 
-fn assignment_cost_of(
+def assignment_cost_of(
     cost: List[Float64], rows: Int, cols: Int, col_of_row: List[Int]
 ) -> CostReport:
     """Total cost of the pairs in `col_of_row`, with range, distinctness and completeness.
@@ -982,7 +982,7 @@ fn assignment_cost_of(
     return CostReport(ASSIGN_OK, rows, cols, n_assigned, perfect, True, total)
 
 
-fn _dual_check_core(
+def _dual_check_core(
     cost: List[Float64], rows: Int, cols: Int, col_of_row: List[Int],
     u: List[Float64], v: List[Float64], allowed: List[Bool], masked: Bool,
 ) -> DualCheck:
@@ -1112,7 +1112,7 @@ fn _dual_check_core(
     )
 
 
-fn assignment_dual_check(
+def assignment_dual_check(
     cost: List[Float64], rows: Int, cols: Int, col_of_row: List[Int],
     u: List[Float64], v: List[Float64],
 ) -> DualCheck:
@@ -1126,7 +1126,7 @@ fn assignment_dual_check(
     return _dual_check_core(cost, rows, cols, col_of_row, u, v, List[Bool](), False)
 
 
-fn assignment_dual_check_masked(
+def assignment_dual_check_masked(
     cost: List[Float64], rows: Int, cols: Int, col_of_row: List[Int],
     u: List[Float64], v: List[Float64], allowed: List[Bool],
 ) -> DualCheck:

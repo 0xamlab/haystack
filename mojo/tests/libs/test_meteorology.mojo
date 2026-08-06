@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from meteorology import dew_point, wet_bulb_temperature, pressure_altitude, relative_humidity, absolute_humidity, wind_chill, heat_index, potential_temperature, precipitable_water, visibility_extinction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

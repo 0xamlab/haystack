@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn flash_block_max(
+def flash_block_max(
     current_max: Float64, new_score: Float64
 ) -> Float64:
     """Online softmax: update running row maximum with new block scores.
@@ -36,7 +36,7 @@ fn flash_block_max(
     return current_max
 
 
-fn flash_block_sum_exp(
+def flash_block_sum_exp(
     current_sum: Float64, old_max: Float64,
     new_max: Float64, new_score: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn flash_block_sum_exp(
     return current_sum * rescale + exp(new_score - new_max)
 
 
-fn flash_block_output(
+def flash_block_output(
     current_output: Float64, old_max: Float64, new_max: Float64,
     attention_weight: Float64, value: Float64
 ) -> Float64:
@@ -79,7 +79,7 @@ fn flash_block_output(
     return current_output * rescale + attention_weight * value
 
 
-fn flash_rescale_output(
+def flash_rescale_output(
     output: Float64, old_sum: Float64,
     old_max: Float64, new_max: Float64
 ) -> Float64:
@@ -101,7 +101,7 @@ fn flash_rescale_output(
     return output * exp(old_max - new_max)
 
 
-fn flash_final_normalize(
+def flash_final_normalize(
     output: Float64, normalizer: Float64
 ) -> Float64:
     """Final normalisation: o_final = o_accumulated / l_total.
@@ -118,7 +118,7 @@ fn flash_final_normalize(
     return output / normalizer
 
 
-fn paged_attention_block_score(
+def paged_attention_block_score(
     query_elem: Float64, key_elem: Float64,
     block_max_key: Float64, head_dim: Float64
 ) -> Float64:
@@ -140,7 +140,7 @@ fn paged_attention_block_score(
     return (query_elem * key_elem) / sqrt(head_dim)
 
 
-fn sliding_window_attention(
+def sliding_window_attention(
     query_pos: Float64, key_pos: Float64, window_size: Float64
 ) -> Float64:
     """Local sliding-window attention mask.
@@ -163,7 +163,7 @@ fn sliding_window_attention(
     return -1e9
 
 
-fn sparse_attention_block_density(
+def sparse_attention_block_density(
     n_attended: Float64, block_size: Float64
 ) -> Float64:
     """Fraction of non-zero blocks in sparse attention pattern.
@@ -183,7 +183,7 @@ fn sparse_attention_block_density(
     return n_attended / max_attended
 
 
-fn grouped_query_attention_scale(
+def grouped_query_attention_scale(
     n_query_heads: Float64, n_kv_heads: Float64
 ) -> Float64:
     """GQA key-value head reuse factor.
@@ -202,7 +202,7 @@ fn grouped_query_attention_scale(
     return n_query_heads / n_kv_heads
 
 
-fn ring_attention_chunk_size(
+def ring_attention_chunk_size(
     seq_len: Float64, n_devices: Float64
 ) -> Float64:
     """Ring attention sequence chunk per device.

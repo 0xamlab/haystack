@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from information_theory import entropy, kl_divergence, cross_entropy, binary_entropy, channel_capacity_bsc, redundancy, normalized_entropy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -12,7 +12,7 @@ Public API:
 # ── Adler-32 ──────────────────────────────────────────────────────────────────
 
 
-fn adler32(data: List[Int]) -> Int:
+def adler32(data: List[Int]) -> Int:
     """Adler-32 checksum. a=1+Σdata mod 65521, b=Σa mod 65521."""
     var a: Int = 1
     var b: Int = 0
@@ -26,7 +26,7 @@ fn adler32(data: List[Int]) -> Int:
 # ── Fletcher-16 ───────────────────────────────────────────────────────────────
 
 
-fn fletcher16(data: List[Int]) -> Int:
+def fletcher16(data: List[Int]) -> Int:
     """Fletcher-16 checksum."""
     var sum1: Int = 0
     var sum2: Int = 0
@@ -39,7 +39,7 @@ fn fletcher16(data: List[Int]) -> Int:
 # ── Luhn Check ────────────────────────────────────────────────────────────────
 
 
-fn luhn_check(digits: List[Int]) -> Bool:
+def luhn_check(digits: List[Int]) -> Bool:
     """Luhn algorithm validity check."""
     var n = len(digits)
     if n == 0:
@@ -62,7 +62,7 @@ fn luhn_check(digits: List[Int]) -> Bool:
 # ── Luhn Checksum ─────────────────────────────────────────────────────────────
 
 
-fn luhn_checksum(digits: List[Int]) -> Int:
+def luhn_checksum(digits: List[Int]) -> Int:
     """Compute Luhn check digit for given digits."""
     var n = len(digits)
     var total: Int = 0
@@ -83,7 +83,7 @@ fn luhn_checksum(digits: List[Int]) -> Int:
 # ── ISBN-10 Check ─────────────────────────────────────────────────────────────
 
 
-fn isbn10_check(digits: List[Int]) -> Bool:
+def isbn10_check(digits: List[Int]) -> Bool:
     """ISBN-10 check: 10 digits, weighted sum mod 11 == 0.
     Weights: 10, 9, 8, ..., 1."""
     if len(digits) != 10:
@@ -97,7 +97,7 @@ fn isbn10_check(digits: List[Int]) -> Bool:
 # ── ISBN-13 Check ─────────────────────────────────────────────────────────────
 
 
-fn isbn13_check(digits: List[Int]) -> Bool:
+def isbn13_check(digits: List[Int]) -> Bool:
     """ISBN-13 check: alternating 1,3 weights mod 10 == 0."""
     if len(digits) != 13:
         return False
@@ -113,7 +113,7 @@ fn isbn13_check(digits: List[Int]) -> Bool:
 # ── XOR Checksum ──────────────────────────────────────────────────────────────
 
 
-fn xor_checksum(data: List[Int]) -> Int:
+def xor_checksum(data: List[Int]) -> Int:
     """Simple XOR of all bytes."""
     var result: Int = 0
     for i in range(len(data)):
@@ -124,7 +124,7 @@ fn xor_checksum(data: List[Int]) -> Int:
 # ── Modular Sum ───────────────────────────────────────────────────────────────
 
 
-fn modular_sum(data: List[Int], modulus: Int = 256) -> Int:
+def modular_sum(data: List[Int], modulus: Int = 256) -> Int:
     """Sum mod modulus."""
     var total: Int = 0
     for i in range(len(data)):
@@ -135,7 +135,7 @@ fn modular_sum(data: List[Int], modulus: Int = 256) -> Int:
 # ── Parity Bit ────────────────────────────────────────────────────────────────
 
 
-fn parity_bit(data: List[Int]) -> Int:
+def parity_bit(data: List[Int]) -> Int:
     """Even parity: 0 if even number of 1s, 1 if odd."""
     var count: Int = 0
     for i in range(len(data)):
@@ -147,7 +147,7 @@ fn parity_bit(data: List[Int]) -> Int:
 # ── Internet Checksum ─────────────────────────────────────────────────────────
 
 
-fn internet_checksum(data: List[Int]) -> Int:
+def internet_checksum(data: List[Int]) -> Int:
     """Simplified IP checksum: 16-bit ones' complement sum."""
     var total: Int = 0
     var n = len(data)
@@ -169,7 +169,7 @@ fn internet_checksum(data: List[Int]) -> Int:
 # ── Verhoeff Check ────────────────────────────────────────────────────────────
 
 # Verhoeff multiplication table (D5 group)
-fn _verhoeff_d(i: Int, j: Int) -> Int:
+def _verhoeff_d(i: Int, j: Int) -> Int:
     # d table (10x10)
     if i == 0:
         if j == 0: return 0
@@ -283,7 +283,7 @@ fn _verhoeff_d(i: Int, j: Int) -> Int:
     return 0
 
 
-fn _verhoeff_p(i: Int, j: Int) -> Int:
+def _verhoeff_p(i: Int, j: Int) -> Int:
     # Permutation table (8x10)
     if i == 0:
         if j == 0: return 0
@@ -375,7 +375,7 @@ fn _verhoeff_p(i: Int, j: Int) -> Int:
     return 8
 
 
-fn verhoeff_check(digits: List[Int]) -> Bool:
+def verhoeff_check(digits: List[Int]) -> Bool:
     """Verhoeff algorithm check digit validation.
     Returns True if the full number (including check digit) is valid."""
     var n = len(digits)

@@ -25,21 +25,21 @@ Public API:
 # ── Birth & death rates ──────────────────────────────────────────────────────
 
 
-fn crude_birth_rate(births: Float64, population: Float64) -> Float64:
+def crude_birth_rate(births: Float64, population: Float64) -> Float64:
     """Crude birth rate: CBR = births / population * 1000."""
     if population <= 0.0:
         return 0.0
     return births / population * 1000.0
 
 
-fn crude_death_rate(deaths: Float64, population: Float64) -> Float64:
+def crude_death_rate(deaths: Float64, population: Float64) -> Float64:
     """Crude death rate: CDR = deaths / population * 1000."""
     if population <= 0.0:
         return 0.0
     return deaths / population * 1000.0
 
 
-fn natural_increase_rate(cbr: Float64, cdr: Float64) -> Float64:
+def natural_increase_rate(cbr: Float64, cdr: Float64) -> Float64:
     """Natural increase rate: NIR = CBR - CDR (per 1000)."""
     return cbr - cdr
 
@@ -47,14 +47,14 @@ fn natural_increase_rate(cbr: Float64, cdr: Float64) -> Float64:
 # ── Fertility & mortality ─────────────────────────────────────────────────────
 
 
-fn total_fertility_rate(
+def total_fertility_rate(
     age_specific_rates_sum: Float64, interval: Float64
 ) -> Float64:
     """Total fertility rate: TFR = Σ(ASFR) * interval (simplified)."""
     return age_specific_rates_sum * interval
 
 
-fn infant_mortality_rate(
+def infant_mortality_rate(
     infant_deaths: Float64, live_births: Float64
 ) -> Float64:
     """Infant mortality rate: IMR = infant_deaths / live_births * 1000."""
@@ -63,7 +63,7 @@ fn infant_mortality_rate(
     return infant_deaths / live_births * 1000.0
 
 
-fn life_expectancy_approx(
+def life_expectancy_approx(
     total_person_years: Float64, population: Float64
 ) -> Float64:
     """Life expectancy approximation: e0 ≈ PY / pop."""
@@ -75,7 +75,7 @@ fn life_expectancy_approx(
 # ── Population structure ──────────────────────────────────────────────────────
 
 
-fn dependency_ratio(
+def dependency_ratio(
     young: Float64, old: Float64, working_age: Float64
 ) -> Float64:
     """Dependency ratio: DR = (young + old) / working_age * 100."""
@@ -84,7 +84,7 @@ fn dependency_ratio(
     return (young + old) / working_age * 100.0
 
 
-fn sex_ratio(males: Float64, females: Float64) -> Float64:
+def sex_ratio(males: Float64, females: Float64) -> Float64:
     """Sex ratio: SR = males / females * 100."""
     if females <= 0.0:
         return 0.0
@@ -94,7 +94,7 @@ fn sex_ratio(males: Float64, females: Float64) -> Float64:
 # ── Growth & doubling ─────────────────────────────────────────────────────────
 
 
-fn population_growth_rate(
+def population_growth_rate(
     births: Float64,
     deaths: Float64,
     net_migration: Float64,
@@ -106,7 +106,7 @@ fn population_growth_rate(
     return (births - deaths + net_migration) / population * 100.0
 
 
-fn doubling_time(growth_rate_pct: Float64) -> Float64:
+def doubling_time(growth_rate_pct: Float64) -> Float64:
     """Doubling time (rule of 70): DT = 70 / growth_rate_pct (years)."""
     if growth_rate_pct <= 0.0:
         return 0.0
@@ -116,14 +116,14 @@ fn doubling_time(growth_rate_pct: Float64) -> Float64:
 # ── Urbanization & age ────────────────────────────────────────────────────────
 
 
-fn urbanization_rate(urban_pop: Float64, total_pop: Float64) -> Float64:
+def urbanization_rate(urban_pop: Float64, total_pop: Float64) -> Float64:
     """Urbanization rate: UR = urban_pop / total_pop * 100 (%)."""
     if total_pop <= 0.0:
         return 0.0
     return urban_pop / total_pop * 100.0
 
 
-fn median_age_estimate(
+def median_age_estimate(
     young_pct: Float64, old_pct: Float64
 ) -> Float64:
     """Simplified median age estimate.

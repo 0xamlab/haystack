@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bayesian_inference import bayes_update_log, prior_predictive, variational_elbo_term, mean_field_update_mean, mean_field_update_var, laplace_approx_log_posterior, expected_information_gain, credible_interval_half_width, kl_gaussians, jeffreys_prior_gaussian
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

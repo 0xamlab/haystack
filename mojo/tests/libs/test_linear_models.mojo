@@ -10,11 +10,11 @@ from linear_models import (
 )
 
 
-fn _is_finite(x: Float64) -> Bool:
+def _is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ linear_models::" + name)

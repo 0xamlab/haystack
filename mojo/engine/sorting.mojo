@@ -21,7 +21,7 @@ Public API:
 # ── _swap ────────────────────────────────────────────────────────────────────
 
 
-fn _swap(mut data: List[Float64], i: Int, j: Int):
+def _swap(mut data: List[Float64], i: Int, j: Int):
     """Swap elements at indices i and j."""
     var tmp = data[i]
     data[i] = data[j]
@@ -31,7 +31,7 @@ fn _swap(mut data: List[Float64], i: Int, j: Int):
 # ── quicksort ────────────────────────────────────────────────────────────────
 
 
-fn _lomuto_partition(mut data: List[Float64], lo: Int, hi: Int) -> Int:
+def _lomuto_partition(mut data: List[Float64], lo: Int, hi: Int) -> Int:
     """Lomuto partition scheme. Returns pivot index."""
     var pivot = data[hi]
     var i = lo
@@ -43,7 +43,7 @@ fn _lomuto_partition(mut data: List[Float64], lo: Int, hi: Int) -> Int:
     return i
 
 
-fn _quicksort_impl(mut data: List[Float64], lo: Int, hi: Int):
+def _quicksort_impl(mut data: List[Float64], lo: Int, hi: Int):
     """Recursive quicksort helper."""
     if lo < hi:
         var p = _lomuto_partition(data, lo, hi)
@@ -51,7 +51,7 @@ fn _quicksort_impl(mut data: List[Float64], lo: Int, hi: Int):
         _quicksort_impl(data, p + 1, hi)
 
 
-fn quicksort(data: List[Float64]) -> List[Float64]:
+def quicksort(data: List[Float64]) -> List[Float64]:
     """Quicksort with Lomuto partition. Returns sorted copy."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -64,7 +64,7 @@ fn quicksort(data: List[Float64]) -> List[Float64]:
 # ── mergesort ────────────────────────────────────────────────────────────────
 
 
-fn _merge(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def _merge(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Merge two sorted lists into one sorted list."""
     var result = List[Float64]()
     var i = 0
@@ -85,7 +85,7 @@ fn _merge(a: List[Float64], b: List[Float64]) -> List[Float64]:
     return result^
 
 
-fn _mergesort_impl(data: List[Float64]) -> List[Float64]:
+def _mergesort_impl(data: List[Float64]) -> List[Float64]:
     """Recursive merge sort."""
     if len(data) <= 1:
         var copy = List[Float64]()
@@ -104,7 +104,7 @@ fn _mergesort_impl(data: List[Float64]) -> List[Float64]:
     return _merge(sorted_left^, sorted_right^)
 
 
-fn mergesort(data: List[Float64]) -> List[Float64]:
+def mergesort(data: List[Float64]) -> List[Float64]:
     """Top-down recursive merge sort. Returns sorted copy."""
     return _mergesort_impl(data)
 
@@ -112,7 +112,7 @@ fn mergesort(data: List[Float64]) -> List[Float64]:
 # ── heapsort ─────────────────────────────────────────────────────────────────
 
 
-fn _sift_down(mut data: List[Float64], start: Int, end: Int):
+def _sift_down(mut data: List[Float64], start: Int, end: Int):
     """Sift down element at start to maintain max-heap property."""
     var root = start
     while root * 2 + 1 <= end:
@@ -128,7 +128,7 @@ fn _sift_down(mut data: List[Float64], start: Int, end: Int):
         root = swap_idx
 
 
-fn heapsort(data: List[Float64]) -> List[Float64]:
+def heapsort(data: List[Float64]) -> List[Float64]:
     """Heap sort via max-heap. Returns sorted copy."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -153,7 +153,7 @@ fn heapsort(data: List[Float64]) -> List[Float64]:
 # ── insertion_sort ───────────────────────────────────────────────────────────
 
 
-fn insertion_sort(data: List[Float64]) -> List[Float64]:
+def insertion_sort(data: List[Float64]) -> List[Float64]:
     """Insertion sort. Returns sorted copy."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -171,7 +171,7 @@ fn insertion_sort(data: List[Float64]) -> List[Float64]:
 # ── selection_sort ───────────────────────────────────────────────────────────
 
 
-fn selection_sort(data: List[Float64]) -> List[Float64]:
+def selection_sort(data: List[Float64]) -> List[Float64]:
     """Selection sort. Returns sorted copy."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -190,7 +190,7 @@ fn selection_sort(data: List[Float64]) -> List[Float64]:
 # ── bubble_sort ──────────────────────────────────────────────────────────────
 
 
-fn bubble_sort(data: List[Float64]) -> List[Float64]:
+def bubble_sort(data: List[Float64]) -> List[Float64]:
     """Bubble sort with early termination. Returns sorted copy."""
     var result = List[Float64]()
     for i in range(len(data)):
@@ -210,7 +210,7 @@ fn bubble_sort(data: List[Float64]) -> List[Float64]:
 # ── counting_sort_int ────────────────────────────────────────────────────────
 
 
-fn counting_sort_int(data: List[Int]) -> List[Int]:
+def counting_sort_int(data: List[Int]) -> List[Int]:
     """Counting sort for non-negative integers. Returns sorted copy."""
     if len(data) == 0:
         return List[Int]()
@@ -245,7 +245,7 @@ fn counting_sort_int(data: List[Int]) -> List[Int]:
 # ── is_sorted ────────────────────────────────────────────────────────────────
 
 
-fn is_sorted(data: List[Float64]) -> Bool:
+def is_sorted(data: List[Float64]) -> Bool:
     """Check if list is sorted in ascending order."""
     for i in range(1, len(data)):
         if data[i] < data[i - 1]:
@@ -256,7 +256,7 @@ fn is_sorted(data: List[Float64]) -> Bool:
 # ── reverse_list ─────────────────────────────────────────────────────────────
 
 
-fn reverse_list(data: List[Float64]) -> List[Float64]:
+def reverse_list(data: List[Float64]) -> List[Float64]:
     """Reverse a list. Returns new reversed list."""
     var result = List[Float64]()
     var i = len(data) - 1
@@ -269,7 +269,7 @@ fn reverse_list(data: List[Float64]) -> List[Float64]:
 # ── nth_smallest ─────────────────────────────────────────────────────────────
 
 
-fn nth_smallest(data: List[Float64], n: Int) -> Float64:
+def nth_smallest(data: List[Float64], n: Int) -> Float64:
     """Find the nth smallest element (0-indexed) via sorting."""
     var sorted_data = quicksort(data)
     return sorted_data[n]

@@ -34,21 +34,21 @@ struct Reduction(Copyable, Movable):
     var present: Bool
     var n: Int
 
-    fn __init__(out self, value: Float64, present: Bool, n: Int):
+    def __init__(out self, value: Float64, present: Bool, n: Int):
         self.value = value
         self.present = present
         self.n = n
 
 
-fn absent(n: Int) -> Reduction:
+def absent(n: Int) -> Reduction:
     return Reduction(0.0, False, n)
 
 
-fn is_finite_value(value: Float64) -> Bool:
+def is_finite_value(value: Float64) -> Bool:
     return not isnan(value) and not isinf(value)
 
 
-fn first_non_finite(values: List[Float64], valid: List[Bool]) -> Int:
+def first_non_finite(values: List[Float64], valid: List[Bool]) -> Int:
     """Index of the first non-finite live value, or -1.
 
     Called before reducing so the failure names a row rather than surfacing as a NaN
@@ -62,7 +62,7 @@ fn first_non_finite(values: List[Float64], valid: List[Bool]) -> Int:
     return -1
 
 
-fn count_valid(valid: List[Bool]) -> Int:
+def count_valid(valid: List[Bool]) -> Int:
     var n = 0
     for i in range(len(valid)):
         if valid[i]:
@@ -70,7 +70,7 @@ fn count_valid(valid: List[Bool]) -> Int:
     return n
 
 
-fn _is_live(valid: List[Bool], index: Int) -> Bool:
+def _is_live(valid: List[Bool], index: Int) -> Bool:
     """Whether position `index` is present, for a mask that may be shorter than the values.
 
     A position with NO mask entry is absent, not present. That is the conservative
@@ -88,7 +88,7 @@ fn _is_live(valid: List[Bool], index: Int) -> Bool:
     return valid[index]
 
 
-fn reduce_sum(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_sum(values: List[Float64], valid: List[Bool]) -> Reduction:
     var total: Float64 = 0.0
     var n = 0
     for i in range(len(values)):
@@ -100,12 +100,12 @@ fn reduce_sum(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction(total, True, n)
 
 
-fn reduce_count(valid: List[Bool]) -> Reduction:
+def reduce_count(valid: List[Bool]) -> Reduction:
     var n = count_valid(valid)
     return Reduction(Float64(n), True, n)
 
 
-fn reduce_mean(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_mean(values: List[Float64], valid: List[Bool]) -> Reduction:
     """Welford's online mean — one definition of "average", everywhere.
 
     Chosen over `sum/n` because it is numerically stable for long or wide-magnitude
@@ -124,7 +124,7 @@ fn reduce_mean(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction(mean, True, n)
 
 
-fn reduce_min(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_min(values: List[Float64], valid: List[Bool]) -> Reduction:
     var best: Float64 = 0.0
     var n = 0
     for i in range(len(values)):
@@ -138,7 +138,7 @@ fn reduce_min(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction(best, True, n)
 
 
-fn reduce_max(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_max(values: List[Float64], valid: List[Bool]) -> Reduction:
     var best: Float64 = 0.0
     var n = 0
     for i in range(len(values)):
@@ -152,7 +152,7 @@ fn reduce_max(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction(best, True, n)
 
 
-fn reduce_variance(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_variance(values: List[Float64], valid: List[Bool]) -> Reduction:
     """Sample variance (n-1) via Welford. Undefined below two observations."""
     var mean: Float64 = 0.0
     var m2: Float64 = 0.0
@@ -171,14 +171,14 @@ fn reduce_variance(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction(m2 / Float64(n - 1), True, n)
 
 
-fn reduce_stddev(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_stddev(values: List[Float64], valid: List[Bool]) -> Reduction:
     var variance = reduce_variance(values, valid)
     if not variance.present:
         return absent(variance.n)
     return Reduction(sqrt(variance.value), True, variance.n)
 
 
-fn reduce_median(values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce_median(values: List[Float64], valid: List[Bool]) -> Reduction:
     """Median of the live values; the mean of the middle pair when even.
 
     Sorts a copy — the caller's list is never reordered, since an aggregation that
@@ -206,7 +206,7 @@ fn reduce_median(values: List[Float64], valid: List[Bool]) -> Reduction:
     return Reduction((live[n // 2 - 1] + live[n // 2]) / 2.0, True, n)
 
 
-fn reduce(opcode: Int, values: List[Float64], valid: List[Bool]) -> Reduction:
+def reduce(opcode: Int, values: List[Float64], valid: List[Bool]) -> Reduction:
     """Dispatch to a reduction by opcode. Unknown opcodes yield absent."""
     if opcode == AGG_SUM:
         return reduce_sum(values, valid)
@@ -227,7 +227,7 @@ fn reduce(opcode: Int, values: List[Float64], valid: List[Bool]) -> Reduction:
     return absent(0)
 
 
-fn all_valid(n: Int) -> List[Bool]:
+def all_valid(n: Int) -> List[Bool]:
     """A mask marking every position live — for callers with no nulls."""
     var mask = List[Bool]()
     for _ in range(n):

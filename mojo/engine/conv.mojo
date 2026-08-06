@@ -23,19 +23,19 @@ Byte-level helpers (always_inline):
 
 
 @always_inline
-fn is_digit(c: UInt8) -> Bool:
+def is_digit(c: UInt8) -> Bool:
     """Check if byte is ASCII digit '0'-'9'."""
     return c >= UInt8(48) and c <= UInt8(57)  # ord('0')=48, ord('9')=57
 
 
 @always_inline
-fn is_whitespace(c: UInt8) -> Bool:
+def is_whitespace(c: UInt8) -> Bool:
     """Check if byte is ASCII whitespace (space, tab, newline, carriage return)."""
     return c == UInt8(32) or c == UInt8(9) or c == UInt8(10) or c == UInt8(13)
 
 
 @always_inline
-fn digit_value(c: UInt8) -> Int:
+def digit_value(c: UInt8) -> Int:
     """Convert ASCII digit byte to its integer value. Assumes is_digit(c)."""
     return Int(c) - 48
 
@@ -43,7 +43,7 @@ fn digit_value(c: UInt8) -> Int:
 # ── Safe substring extraction ─────────────────────────────────────────────────
 
 
-fn span_to_str(s: String, start: Int, end: Int) -> String:
+def span_to_str(s: String, start: Int, end: Int) -> String:
     """Extract substring [start, end) from s, building char-by-char.
 
     Unlike String(bytes[start:end]), this always produces the actual
@@ -57,7 +57,7 @@ fn span_to_str(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn span_to_str_end(s: String, start: Int) -> String:
+def span_to_str_end(s: String, start: Int) -> String:
     """Extract substring [start, len(s)) from s, building char-by-char."""
     return span_to_str(s, start, len(s))
 
@@ -65,7 +65,7 @@ fn span_to_str_end(s: String, start: Int) -> String:
 # ── Whitespace stripping ────────────────────────────────────────────────────────
 
 
-fn strip_whitespace(s: String) -> String:
+def strip_whitespace(s: String) -> String:
     """Remove leading and trailing ASCII whitespace from string."""
     var n = len(s)
     if n == 0:
@@ -93,7 +93,7 @@ fn strip_whitespace(s: String) -> String:
 # ── Internal: find whitespace-trimmed bounds ─────────────────────────────────
 
 
-fn _trimmed_bounds(bytes: Span[Byte, _], n: Int) -> Tuple[Int, Int]:
+def _trimmed_bounds(bytes: Span[Byte, _], n: Int) -> Tuple[Int, Int]:
     """Return (start, end_exclusive) indices skipping leading/trailing whitespace."""
     var start = 0
     while start < n and is_whitespace(bytes[start]):
@@ -107,7 +107,7 @@ fn _trimmed_bounds(bytes: Span[Byte, _], n: Int) -> Tuple[Int, Int]:
 # ── Float64 parsing from raw bytes ──────────────────────────────────────────────
 
 
-fn _pow10(exp: Int) -> Float64:
+def _pow10(exp: Int) -> Float64:
     """Compute 10.0 ** exp for integer exponents (positive or negative)."""
     var result: Float64 = 1.0
     var base: Float64 = 10.0
@@ -124,7 +124,7 @@ fn _pow10(exp: Int) -> Float64:
     return result
 
 
-fn parse_float64(s: String) -> Float64:
+def parse_float64(s: String) -> Float64:
     """Parse a decimal number string to Float64.
 
     Handles:
@@ -215,7 +215,7 @@ fn parse_float64(s: String) -> Float64:
 # ── Integer parsing from raw bytes ──────────────────────────────────────────────
 
 
-fn parse_int(s: String) -> Int:
+def parse_int(s: String) -> Int:
     """Parse an integer string to Int.
 
     Handles:
@@ -272,7 +272,7 @@ fn parse_int(s: String) -> Int:
 # ── Float64 to String ──────────────────────────────────────────────────────────
 
 
-fn float_to_string(v: Float64) -> String:
+def float_to_string(v: Float64) -> String:
     """Convert Float64 to string representation.
 
     Uses Mojo's built-in String conversion for consistent formatting.
@@ -284,14 +284,14 @@ fn float_to_string(v: Float64) -> String:
 
 
 @always_inline
-fn _nibble_to_hex(n: Int) -> String:
+def _nibble_to_hex(n: Int) -> String:
     """Convert a 4-bit nibble (0-15) to a single lowercase hex character."""
     if n < 10:
         return chr(48 + n)   # ord('0') = 48
     return chr(87 + n)       # ord('a') - 10 = 87
 
 
-fn int_to_hex(v: UInt32, width: Int = 8) -> String:
+def int_to_hex(v: UInt32, width: Int = 8) -> String:
     """Convert UInt32 to zero-padded lowercase hex string.
 
     Example: int_to_hex(255, 8) → "000000ff"

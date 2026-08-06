@@ -6,17 +6,17 @@ from genetic import Individual, GAConfig, initialize_population, tournament_sele
 from std.math import abs as fabs, sqrt
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn test_fft() raises:
+def test_fft() raises:
     print("── FFT tests ──")
     var n_pass: Int = 0
 
@@ -118,7 +118,7 @@ fn test_fft() raises:
     print("  FFT: " + String(n_pass) + " assertions passed")
 
 
-fn test_sparse() raises:
+def test_sparse() raises:
     print("── Sparse tests ──")
     var n_pass: Int = 0
 
@@ -227,7 +227,7 @@ fn test_sparse() raises:
     print("  Sparse: " + String(n_pass) + " assertions passed")
 
 
-fn test_genetic() raises:
+def test_genetic() raises:
     print("── Genetic Algorithm tests ──")
     var n_pass: Int = 0
 
@@ -360,7 +360,7 @@ fn test_genetic() raises:
     print("  Genetic: " + String(n_pass) + " assertions passed")
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 20 Tests: FFT, Sparse, Genetic ===")
     test_fft()
     test_sparse()

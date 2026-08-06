@@ -147,7 +147,7 @@ struct ColumnProfile(Copyable, Movable):
     var has_monotonic_direction: Bool
     var monotonic_direction: Int
 
-    fn __init__(out self, status: Int, n_rows: Int):
+    def __init__(out self, status: Int, n_rows: Int):
         self.status = status
         self.n_rows = n_rows
         self.n_present = 0
@@ -196,7 +196,7 @@ struct TableProfile(Copyable, Movable):
     var all_absent_columns: List[Int]
     var constant_columns: List[Int]
 
-    fn __init__(out self, status: Int, n_rows: Int, n_cols: Int):
+    def __init__(out self, status: Int, n_rows: Int, n_cols: Int):
         self.status = status
         self.n_rows = n_rows
         self.n_cols = n_cols
@@ -210,7 +210,7 @@ struct TableProfile(Copyable, Movable):
         self.constant_columns = List[Int]()
 
 
-fn profile_status_name(code: Int) -> String:
+def profile_status_name(code: Int) -> String:
     """Name for a status this module can return. One vocabulary, in `contract`.
 
     @capability profile_status_name
@@ -221,7 +221,7 @@ fn profile_status_name(code: Int) -> String:
     return dq_status_name(code)
 
 
-fn _distinct_finite(values: List[Float64], live: List[Bool]) -> Int:
+def _distinct_finite(values: List[Float64], live: List[Bool]) -> Int:
     """Distinct live-and-finite values, on the frozen normalized bit pattern.
 
     `HashIndex.get_or_assign` is handed `n` as the next slot and returns it only when the
@@ -240,7 +240,7 @@ fn _distinct_finite(values: List[Float64], live: List[Bool]) -> Int:
     return n_distinct
 
 
-fn _compact(values: List[Float64], live: List[Bool]) -> List[Float64]:
+def _compact(values: List[Float64], live: List[Bool]) -> List[Float64]:
     """The live-and-finite values, densely. `stats.median` needs a dense list."""
     var out = List[Float64]()
     var upto = len(values)
@@ -252,7 +252,7 @@ fn _compact(values: List[Float64], live: List[Bool]) -> List[Float64]:
     return out^
 
 
-fn profile_column(
+def profile_column(
     values: List[Float64], null_mask: List[Bool], n_rows: Int
 ) raises -> ColumnProfile:
     """Profile one column. `null_mask[i] == True` means row `i` is PRESENT.
@@ -357,7 +357,7 @@ fn profile_column(
     return out^
 
 
-fn profile_column_at(
+def profile_column_at(
     table: List[Float64], n_rows: Int, n_cols: Int, col: Int, null_mask: List[Bool]
 ) raises -> ColumnProfile:
     """Profile column `col` of a row-major table whose mask has the same shape.
@@ -385,7 +385,7 @@ fn profile_column_at(
     return profile_column(column, column_mask, n_rows)
 
 
-fn profile_table(
+def profile_table(
     table: List[Float64], n_rows: Int, n_cols: Int, null_mask: List[Bool]
 ) raises -> TableProfile:
     """Per-column counts for a whole table, plus the all-absent and constant columns.
@@ -430,7 +430,7 @@ fn profile_table(
     return out^
 
 
-fn profile_is_constant(
+def profile_is_constant(
     values: List[Float64], null_mask: List[Bool], n_rows: Int
 ) -> Bool:
     """True when the column has exactly ONE distinct live-and-finite value.

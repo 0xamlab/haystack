@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── lux_hours_annual ─────────────────────────────────────────────────────────
 
 
-fn lux_hours_annual(
+def lux_hours_annual(
     lux_level: Float64, hours_per_day: Float64, days_per_year: Float64
 ) -> Float64:
     """Annual lux-hours = lux * hours_per_day * days_per_year."""
@@ -35,7 +35,7 @@ fn lux_hours_annual(
 # ── uv_exposure ──────────────────────────────────────────────────────────────
 
 
-fn uv_exposure(uv_mw_per_lumen: Float64, lux: Float64) -> Float64:
+def uv_exposure(uv_mw_per_lumen: Float64, lux: Float64) -> Float64:
     """UV exposure = uv_ratio * lux (mW/m²)."""
     return uv_mw_per_lumen * lux
 
@@ -43,7 +43,7 @@ fn uv_exposure(uv_mw_per_lumen: Float64, lux: Float64) -> Float64:
 # ── relative_humidity_from_temps ─────────────────────────────────────────────
 
 
-fn relative_humidity_from_temps(
+def relative_humidity_from_temps(
     dry_bulb: Float64, wet_bulb: Float64
 ) -> Float64:
     """Simplified RH ≈ 100 - 5*(Td - Tw) (%)."""
@@ -53,7 +53,7 @@ fn relative_humidity_from_temps(
 # ── moisture_content_equilibrium ─────────────────────────────────────────────
 
 
-fn moisture_content_equilibrium(
+def moisture_content_equilibrium(
     rh: Float64, temperature: Float64
 ) -> Float64:
     """Simplified EMC ≈ rh * 0.15 + temperature * 0.01 (%)."""
@@ -63,7 +63,7 @@ fn moisture_content_equilibrium(
 # ── time_weighted_preservation_index ─────────────────────────────────────────
 
 
-fn time_weighted_preservation_index(
+def time_weighted_preservation_index(
     twpi_ref: Float64, temp: Float64, rh: Float64
 ) -> Float64:
     """Simplified TWPI ≈ ref * exp(-0.05*(temp-20) - 0.02*(rh-50))."""
@@ -73,7 +73,7 @@ fn time_weighted_preservation_index(
 # ── light_damage_reciprocity ────────────────────────────────────────────────
 
 
-fn light_damage_reciprocity(
+def light_damage_reciprocity(
     intensity: Float64, duration: Float64
 ) -> Float64:
     """Light damage proportional to intensity * duration."""
@@ -83,7 +83,7 @@ fn light_damage_reciprocity(
 # ── climate_stability_score ──────────────────────────────────────────────────
 
 
-fn climate_stability_score(
+def climate_stability_score(
     temp_variation: Float64, rh_variation: Float64
 ) -> Float64:
     """Score = 100 - 2*ΔT - ΔRH (higher = better climate stability)."""
@@ -93,7 +93,7 @@ fn climate_stability_score(
 # ── storage_density ──────────────────────────────────────────────────────────
 
 
-fn storage_density(items: Float64, floor_area: Float64) -> Float64:
+def storage_density(items: Float64, floor_area: Float64) -> Float64:
     """Storage density = items / floor_area (items/m²)."""
     if floor_area <= 0.0:
         return 0.0
@@ -103,7 +103,7 @@ fn storage_density(items: Float64, floor_area: Float64) -> Float64:
 # ── collection_growth_rate ───────────────────────────────────────────────────
 
 
-fn collection_growth_rate(
+def collection_growth_rate(
     items_added: Float64, items_deaccessioned: Float64, total: Float64
 ) -> Float64:
     """Growth rate = (added - removed) / total * 100 (%)."""
@@ -115,7 +115,7 @@ fn collection_growth_rate(
 # ── insurance_value_appreciation ─────────────────────────────────────────────
 
 
-fn insurance_value_appreciation(
+def insurance_value_appreciation(
     initial_value: Float64, annual_rate: Float64, years: Float64
 ) -> Float64:
     """V = initial_value * (1 + annual_rate)^years."""
@@ -125,7 +125,7 @@ fn insurance_value_appreciation(
 # ── visitor_density ──────────────────────────────────────────────────────────
 
 
-fn visitor_density(visitors: Float64, gallery_area: Float64) -> Float64:
+def visitor_density(visitors: Float64, gallery_area: Float64) -> Float64:
     """Visitor density = visitors / gallery_area (people/m²)."""
     if gallery_area <= 0.0:
         return 0.0
@@ -135,7 +135,7 @@ fn visitor_density(visitors: Float64, gallery_area: Float64) -> Float64:
 # ── conservation_priority_score ──────────────────────────────────────────────
 
 
-fn conservation_priority_score(
+def conservation_priority_score(
     condition: Float64, significance: Float64, risk: Float64
 ) -> Float64:
     """CPS = condition*0.4 + significance*0.3 + risk*0.3."""

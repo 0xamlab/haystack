@@ -46,7 +46,7 @@ struct TestResult(Copyable, Movable):
     var p_value: Float64     # approximate p-value
     var reject_h0: Bool      # reject null at alpha=0.05?
 
-    fn __init__(out self, statistic: Float64, p_value: Float64, reject_h0: Bool):
+    def __init__(out self, statistic: Float64, p_value: Float64, reject_h0: Bool):
         self.statistic = statistic
         self.p_value = p_value
         self.reject_h0 = reject_h0
@@ -55,7 +55,7 @@ struct TestResult(Copyable, Movable):
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _erf(x: Float64) -> Float64:
+def _erf(x: Float64) -> Float64:
     """Error function (Abramowitz & Stegun approximation)."""
     var t = 1.0 / (1.0 + 0.3275911 * fabs(x))
     var y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * exp(-x * x)
@@ -64,17 +64,17 @@ fn _erf(x: Float64) -> Float64:
     return -y
 
 
-fn _norm_cdf(x: Float64) -> Float64:
+def _norm_cdf(x: Float64) -> Float64:
     """Standard normal CDF."""
     return 0.5 * (1.0 + _erf(x / _SQRT_2))
 
 
-fn _norm_pdf(x: Float64) -> Float64:
+def _norm_pdf(x: Float64) -> Float64:
     """Standard normal PDF."""
     return exp(-0.5 * x * x) / _SQRT_2PI
 
 
-fn _log_gamma(x: Float64) -> Float64:
+def _log_gamma(x: Float64) -> Float64:
     """Log-gamma function (Lanczos approximation)."""
     if x <= 0.0:
         return 1e300
@@ -95,7 +95,7 @@ fn _log_gamma(x: Float64) -> Float64:
     return _LN_SQRT_2PI + (xx + 0.5) * log(b) - b + log(c)
 
 
-fn _betacf(a: Float64, b: Float64, x: Float64) -> Float64:
+def _betacf(a: Float64, b: Float64, x: Float64) -> Float64:
     """Continued fraction for the incomplete beta function (Numerical Recipes 6.4,
     `betacf`), evaluated by Lentz's method.
 
@@ -157,7 +157,7 @@ fn _betacf(a: Float64, b: Float64, x: Float64) -> Float64:
     return h
 
 
-fn _regularized_incomplete_beta(x: Float64, a: Float64, b: Float64) -> Float64:
+def _regularized_incomplete_beta(x: Float64, a: Float64, b: Float64) -> Float64:
     """Regularized incomplete beta function I_x(a,b), via `_betacf`'s continued
     fraction. Used for t-test and correlation p-values."""
     if x <= 0.0:
@@ -174,7 +174,7 @@ fn _regularized_incomplete_beta(x: Float64, a: Float64, b: Float64) -> Float64:
         return 1.0 - bt * _betacf(b, a, 1.0 - x) / b
 
 
-fn _t_cdf(t: Float64, df: Float64) -> Float64:
+def _t_cdf(t: Float64, df: Float64) -> Float64:
     """CDF of Student's t-distribution using incomplete beta function."""
     var x = df / (df + t * t)
     var ibeta = _regularized_incomplete_beta(x, df / 2.0, 0.5)
@@ -184,7 +184,7 @@ fn _t_cdf(t: Float64, df: Float64) -> Float64:
         return 0.5 * ibeta
 
 
-fn _regularized_gamma_lower(s: Float64, x: Float64) -> Float64:
+def _regularized_gamma_lower(s: Float64, x: Float64) -> Float64:
     """Lower regularized incomplete gamma function P(s, x) using series expansion.
     P(s, x) = gamma(s, x) / Gamma(s)
     Used for chi-squared p-values."""
@@ -208,14 +208,14 @@ fn _regularized_gamma_lower(s: Float64, x: Float64) -> Float64:
     return prefix * sum_val
 
 
-fn _chi2_cdf(x: Float64, df: Float64) -> Float64:
+def _chi2_cdf(x: Float64, df: Float64) -> Float64:
     """CDF of chi-squared distribution."""
     if x <= 0.0:
         return 0.0
     return _regularized_gamma_lower(df / 2.0, x / 2.0)
 
 
-fn _ks_asymptotic_pvalue(d: Float64, n: Float64) -> Float64:
+def _ks_asymptotic_pvalue(d: Float64, n: Float64) -> Float64:
     """Asymptotic p-value for KS statistic.
     Uses the Kolmogorov distribution: P(D_n > d) ≈ 2 * sum_{k=1}^inf (-1)^{k-1} * exp(-2k²n*d²)
     """
@@ -240,7 +240,7 @@ fn _ks_asymptotic_pvalue(d: Float64, n: Float64) -> Float64:
     return p
 
 
-fn _insertion_sort(mut a: List[Float64]):
+def _insertion_sort(mut a: List[Float64]):
     """In-place insertion sort."""
     var n = len(a)
     for i in range(1, n):
@@ -252,7 +252,7 @@ fn _insertion_sort(mut a: List[Float64]):
         a[j + 1] = k
 
 
-fn _sort_copy(data: List[Float64]) -> List[Float64]:
+def _sort_copy(data: List[Float64]) -> List[Float64]:
     """Return a sorted copy."""
     var sorted = List[Float64]()
     for i in range(len(data)):
@@ -261,7 +261,7 @@ fn _sort_copy(data: List[Float64]) -> List[Float64]:
     return sorted^
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -271,7 +271,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _stdev(data: List[Float64]) -> Float64:
+def _stdev(data: List[Float64]) -> Float64:
     var n = len(data)
     if n <= 1:
         return 0.0
@@ -283,7 +283,7 @@ fn _stdev(data: List[Float64]) -> Float64:
     return sqrt(s / Float64(n - 1))
 
 
-fn _variance(data: List[Float64]) -> Float64:
+def _variance(data: List[Float64]) -> Float64:
     var n = len(data)
     if n <= 1:
         return 0.0
@@ -298,7 +298,7 @@ fn _variance(data: List[Float64]) -> Float64:
 # ── KS tests ─────────────────────────────────────────────────────────────────
 
 
-fn ks_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult:
+def ks_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult:
     """Two-sample Kolmogorov-Smirnov test.
     Tests if two samples come from the same distribution.
     KS statistic = max |F1(x) - F2(x)| over all x."""
@@ -337,7 +337,7 @@ fn ks_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult
     return TestResult(d_max, p_val, p_val < 0.05)
 
 
-fn ks_test_normal(sample: List[Float64]) -> TestResult:
+def ks_test_normal(sample: List[Float64]) -> TestResult:
     """One-sample KS test against normal distribution.
     Tests if sample comes from N(sample_mean, sample_std)."""
     var n = len(sample)
@@ -372,7 +372,7 @@ fn ks_test_normal(sample: List[Float64]) -> TestResult:
 # ── t-tests ──────────────────────────────────────────────────────────────────
 
 
-fn t_test_1sample(sample: List[Float64], mu0: Float64) -> TestResult:
+def t_test_1sample(sample: List[Float64], mu0: Float64) -> TestResult:
     """One-sample t-test: test if sample mean equals mu0.
     t = (x̄ - μ₀) / (s / √n), df = n - 1"""
     var n = len(sample)
@@ -400,7 +400,7 @@ fn t_test_1sample(sample: List[Float64], mu0: Float64) -> TestResult:
     return TestResult(t, p_val, p_val < 0.05)
 
 
-fn t_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult:
+def t_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult:
     """Two-sample (independent) t-test: test if means are equal.
     Uses Welch's t-test (unequal variances).
     t = (x̄₁ - x̄₂) / √(s₁²/n₁ + s₂²/n₂)
@@ -445,7 +445,7 @@ fn t_test_2sample(sample1: List[Float64], sample2: List[Float64]) -> TestResult:
 # ── Chi-squared test ─────────────────────────────────────────────────────────
 
 
-fn chi_squared_test(observed: List[Float64], expected: List[Float64]) -> TestResult:
+def chi_squared_test(observed: List[Float64], expected: List[Float64]) -> TestResult:
     """Chi-squared goodness-of-fit test.
     χ² = Σ (O_i - E_i)² / E_i
     df = k - 1 where k is the number of categories."""
@@ -478,7 +478,7 @@ fn chi_squared_test(observed: List[Float64], expected: List[Float64]) -> TestRes
 # ── Anderson-Darling test for normality ───────────────────────────────────────
 
 
-fn anderson_darling_normal(sample: List[Float64]) -> TestResult:
+def anderson_darling_normal(sample: List[Float64]) -> TestResult:
     """Anderson-Darling test for normality.
     A² = -n - (1/n) * Σ (2i-1)[ln(Φ(z_i)) + ln(1-Φ(z_{n+1-i}))]
     Modified statistic: A²* = A²(1 + 0.75/n + 2.25/n²)
@@ -546,7 +546,7 @@ fn anderson_darling_normal(sample: List[Float64]) -> TestResult:
 # ── Shapiro-Wilk approximate test ────────────────────────────────────────────
 
 
-fn shapiro_wilk_approx(sample: List[Float64]) -> TestResult:
+def shapiro_wilk_approx(sample: List[Float64]) -> TestResult:
     """Approximate Shapiro-Wilk test for normality (for n <= 5000).
     Uses a simplified version based on the correlation between
     sample order statistics and expected normal order statistics.
@@ -622,7 +622,7 @@ fn shapiro_wilk_approx(sample: List[Float64]) -> TestResult:
     return TestResult(w, p_val, p_val < 0.05)
 
 
-fn _norm_ppf_approx(p: Float64) -> Float64:
+def _norm_ppf_approx(p: Float64) -> Float64:
     """Approximate inverse normal CDF (Acklam's rational approximation)."""
     if p <= 0.0:
         return -1e300
@@ -679,7 +679,7 @@ struct CorrResult(Copyable, Movable):
     var r: Float64       # correlation coefficient
     var p_value: Float64 # p-value
 
-    fn __init__(out self, r: Float64, p_value: Float64):
+    def __init__(out self, r: Float64, p_value: Float64):
         self.r = r
         self.p_value = p_value
 
@@ -687,7 +687,7 @@ struct CorrResult(Copyable, Movable):
 # ── Correlation functions ─────────────────────────────────────────────────────
 
 
-fn pearson_r(x: List[Float64], y: List[Float64]) -> CorrResult:
+def pearson_r(x: List[Float64], y: List[Float64]) -> CorrResult:
     """Pearson correlation coefficient and p-value.
     Returns CorrResult(r, p_value).
     p-value uses the t-distribution: t = r * sqrt(n-2) / sqrt(1-r²), df = n-2"""
@@ -737,7 +737,7 @@ fn pearson_r(x: List[Float64], y: List[Float64]) -> CorrResult:
     return CorrResult(r, p_val)
 
 
-fn spearman_r(x: List[Float64], y: List[Float64]) -> CorrResult:
+def spearman_r(x: List[Float64], y: List[Float64]) -> CorrResult:
     """Spearman rank correlation coefficient and p-value.
     Returns CorrResult(rho, p_value).
     Ranks ties by averaging. P-value uses the t-distribution approximation."""
@@ -759,7 +759,7 @@ fn spearman_r(x: List[Float64], y: List[Float64]) -> CorrResult:
 # ── NaN/Inf-safe siblings (additive; see the module docstring) ────────────────
 
 
-fn _first_non_finite_index(values: List[Float64], limit: Int) -> Int:
+def _first_non_finite_index(values: List[Float64], limit: Int) -> Int:
     """Index of the first NaN/±Inf in `values[0:limit]`, or -1 if none.
 
     `limit` lets a caller check exactly the range the frozen function actually reads
@@ -773,7 +773,7 @@ fn _first_non_finite_index(values: List[Float64], limit: Int) -> Int:
     return -1
 
 
-fn pearson_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
+def pearson_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
     """`pearson_r`, but NaN/±Inf in `x` or `y` raises instead of returning
     `CorrResult(NaN, NaN)`.
 
@@ -835,7 +835,7 @@ fn pearson_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
     return pearson_r(x, y)
 
 
-fn spearman_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
+def spearman_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
     """`spearman_r`, but NaN/±Inf in `x` or `y` raises instead of returning
     `CorrResult(NaN, NaN)`.
 
@@ -882,7 +882,7 @@ fn spearman_r_strict(x: List[Float64], y: List[Float64]) raises -> CorrResult:
     return spearman_r(x, y)
 
 
-fn _rank(data: List[Float64], n: Int) -> List[Float64]:
+def _rank(data: List[Float64], n: Int) -> List[Float64]:
     """Compute ranks with average tie-breaking."""
     # Create (value, index) pairs via parallel sorted lists
     var indices = List[Int]()

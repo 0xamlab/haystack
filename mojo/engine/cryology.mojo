@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn permafrost_thickness(
+def permafrost_thickness(
     mean_annual_temp_c: Float64, geothermal_gradient: Float64
 ) -> Float64:
     """Permafrost thickness from linear thermal gradient.
@@ -35,7 +35,7 @@ fn permafrost_thickness(
     return (-mean_annual_temp_c) / geothermal_gradient
 
 
-fn active_layer_depth(
+def active_layer_depth(
     thawing_index_degree_days: Float64, thermal_conductivity: Float64,
     volumetric_heat_capacity: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn active_layer_depth(
     return sqrt(numerator / volumetric_heat_capacity)
 
 
-fn ground_ice_content(
+def ground_ice_content(
     total_water: Float64, total_volume: Float64
 ) -> Float64:
     """Volumetric ground ice content.
@@ -76,7 +76,7 @@ fn ground_ice_content(
     return total_water / total_volume
 
 
-fn freeze_thaw_cycles(
+def freeze_thaw_cycles(
     daily_temp_range: Float64, season_length_days: Float64
 ) -> Float64:
     """Estimated annual freeze-thaw cycles from temperature range.
@@ -96,7 +96,7 @@ fn freeze_thaw_cycles(
     return crossings_per_day * season_length_days
 
 
-fn thermal_conductivity_frozen(
+def thermal_conductivity_frozen(
     mineral_k: Float64, ice_k: Float64, mineral_fraction: Float64
 ) -> Float64:
     """Geometric mean thermal conductivity of frozen soil.
@@ -115,7 +115,7 @@ fn thermal_conductivity_frozen(
     return (mineral_k ** mineral_fraction) * (ice_k ** ice_frac)
 
 
-fn ice_wedge_volume(
+def ice_wedge_volume(
     width_m: Float64, depth_m: Float64, length_m: Float64
 ) -> Float64:
     """Volume of a V-shaped ice wedge.
@@ -133,7 +133,7 @@ fn ice_wedge_volume(
     return 0.5 * width_m * depth_m * length_m
 
 
-fn thermokarst_subsidence(
+def thermokarst_subsidence(
     ice_content: Float64, layer_thickness_m: Float64
 ) -> Float64:
     """Ground subsidence from thaw of ice-rich permafrost.
@@ -150,7 +150,7 @@ fn thermokarst_subsidence(
     return ice_content * layer_thickness_m * 0.09
 
 
-fn permafrost_carbon_release(
+def permafrost_carbon_release(
     carbon_pool_pg: Float64, warming_c: Float64, sensitivity: Float64
 ) -> Float64:
     """Permafrost carbon release estimate from warming.
@@ -168,7 +168,7 @@ fn permafrost_carbon_release(
     return carbon_pool_pg * sensitivity * warming_c
 
 
-fn sea_ice_extent_anomaly(
+def sea_ice_extent_anomaly(
     observed_million_km2: Float64, climatology_million_km2: Float64
 ) -> Float64:
     """Sea ice extent anomaly relative to climatological mean.
@@ -185,7 +185,7 @@ fn sea_ice_extent_anomaly(
     return observed_million_km2 - climatology_million_km2
 
 
-fn snow_ice_albedo_feedback(
+def snow_ice_albedo_feedback(
     snow_area_change_million_km2: Float64, albedo_diff: Float64,
     solar_forcing_w_m2: Float64
 ) -> Float64:

@@ -21,7 +21,7 @@ Design constraints:
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
-fn _to_tokens(s: String) -> List[String]:
+def _to_tokens(s: String) -> List[String]:
     """Split on underscores (95), spaces (32), and hyphens (45)."""
     var result = List[String]()
     var current = String("")
@@ -44,7 +44,7 @@ fn _to_tokens(s: String) -> List[String]:
     return result^
 
 
-fn _count_shared_tokens(a_tokens: List[String], b_tokens: List[String]) -> Int:
+def _count_shared_tokens(a_tokens: List[String], b_tokens: List[String]) -> Int:
     """Count how many tokens from a appear in b (exact match)."""
     var count = 0
     for i in range(len(a_tokens)):
@@ -55,7 +55,7 @@ fn _count_shared_tokens(a_tokens: List[String], b_tokens: List[String]) -> Int:
     return count
 
 
-fn _ngrams(s: String, n: Int) -> List[String]:
+def _ngrams(s: String, n: Int) -> List[String]:
     """Extract all character n-grams of length n from s."""
     var result = List[String]()
     var s_len = len(s)
@@ -70,7 +70,7 @@ fn _ngrams(s: String, n: Int) -> List[String]:
     return result^
 
 
-fn _count_shared_ngrams(a_grams: List[String], b_grams: List[String]) -> Int:
+def _count_shared_ngrams(a_grams: List[String], b_grams: List[String]) -> Int:
     """Count shared n-grams (each a-gram counted at most once)."""
     var count = 0
     var b_used = List[Bool]()
@@ -89,7 +89,7 @@ fn _count_shared_ngrams(a_grams: List[String], b_grams: List[String]) -> Int:
 # ── score_token_overlap ────────────────────────────────────────────────────────
 
 
-fn score_token_overlap(hint: String, col: String) -> Float64:
+def score_token_overlap(hint: String, col: String) -> Float64:
     """
     Jaccard token overlap: |A ∩ B| / |A ∪ B|.
 
@@ -119,7 +119,7 @@ fn score_token_overlap(hint: String, col: String) -> Float64:
 # ── score_ngram_overlap ────────────────────────────────────────────────────────
 
 
-fn score_ngram_overlap(hint: String, col: String, n: Int = 2) -> Float64:
+def score_ngram_overlap(hint: String, col: String, n: Int = 2) -> Float64:
     """
     Dice coefficient on character n-grams: 2 * |A ∩ B| / (|A| + |B|).
 
@@ -144,7 +144,7 @@ fn score_ngram_overlap(hint: String, col: String, n: Int = 2) -> Float64:
 # ── score_prefix_match ─────────────────────────────────────────────────────────
 
 
-fn score_prefix_match(hint: String, col: String) -> Float64:
+def score_prefix_match(hint: String, col: String) -> Float64:
     """
     Fraction of hint covered by the longest common prefix with col.
 
@@ -180,7 +180,7 @@ fn score_prefix_match(hint: String, col: String) -> Float64:
 # ── score_column_hint ──────────────────────────────────────────────────────────
 
 
-fn score_column_hint(
+def score_column_hint(
     hint: String,
     col: String,
     token_weight: Float64 = 0.50,

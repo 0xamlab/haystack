@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pharmacokinetics import one_compartment_oral, one_compartment_iv, half_life, elimination_rate, clearance, bioavailability, loading_dose, maintenance_dose, steady_state_concentration, time_to_peak, accumulation_factor, drug_auc_trapezoidal
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

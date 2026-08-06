@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn capability_match_score(
+def capability_match_score(
     request_task_embedding: Float64, model_task_embedding: Float64,
     model_max_context: Float64, request_context_len: Float64
 ) -> Float64:
@@ -41,7 +41,7 @@ fn capability_match_score(
     return task_sim * context_ok
 
 
-fn model_load_score(
+def model_load_score(
     active_requests: Float64, max_capacity: Float64,
     queue_depth: Float64
 ) -> Float64:
@@ -62,7 +62,7 @@ fn model_load_score(
     return (active_requests + queue_depth) / max_capacity
 
 
-fn fallback_trigger_score(
+def fallback_trigger_score(
     primary_error_rate: Float64, primary_latency_p99: Float64,
     sla_latency_ms: Float64, error_threshold: Float64
 ) -> Float64:
@@ -84,7 +84,7 @@ fn fallback_trigger_score(
     return error_pressure + latency_pressure
 
 
-fn ensemble_weight(
+def ensemble_weight(
     model_accuracy: Float64, model_latency_ms: Float64,
     latency_budget_ms: Float64, total_model_accuracy: Float64
 ) -> Float64:
@@ -107,7 +107,7 @@ fn ensemble_weight(
     return (model_accuracy / total_model_accuracy) * feasible
 
 
-fn hybrid_pipeline_stage_score(
+def hybrid_pipeline_stage_score(
     retrieval_relevance: Float64, generation_confidence: Float64,
     use_retrieval_threshold: Float64
 ) -> Float64:
@@ -127,7 +127,7 @@ fn hybrid_pipeline_stage_score(
     return retrieval_benefit - use_retrieval_threshold
 
 
-fn model_selection_utility(
+def model_selection_utility(
     model_quality: Float64, model_cost: Float64,
     user_quality_weight: Float64
 ) -> Float64:
@@ -146,7 +146,7 @@ fn model_selection_utility(
     return user_quality_weight * model_quality - (1.0 - user_quality_weight) * model_cost
 
 
-fn routing_uncertainty(
+def routing_uncertainty(
     top_model_score: Float64, second_model_score: Float64
 ) -> Float64:
     """Uncertainty in routing decision (margin between top two choices).
@@ -166,7 +166,7 @@ fn routing_uncertainty(
     return (top_model_score - second_model_score) / total
 
 
-fn latency_tier_assignment(
+def latency_tier_assignment(
     request_latency_budget_ms: Float64,
     tier_interactive_ms: Float64, tier_batch_ms: Float64
 ) -> Float64:
@@ -187,7 +187,7 @@ fn latency_tier_assignment(
     return 2.0
 
 
-fn model_freshness_score(
+def model_freshness_score(
     model_training_step: Float64, current_step: Float64,
     decay_half_life_steps: Float64
 ) -> Float64:
@@ -211,7 +211,7 @@ fn model_freshness_score(
     return exp(-staleness * 0.693 / decay_half_life_steps)
 
 
-fn shadow_routing_fraction(
+def shadow_routing_fraction(
     shadow_experiment_budget: Float64, total_traffic: Float64,
     statistical_power_needed: Float64
 ) -> Float64:

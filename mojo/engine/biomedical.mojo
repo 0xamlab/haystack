@@ -23,7 +23,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── cardiac_output ───────────────────────────────────────────────────────────
 
 
-fn cardiac_output(stroke_volume_ml: Float64, heart_rate: Float64) -> Float64:
+def cardiac_output(stroke_volume_ml: Float64, heart_rate: Float64) -> Float64:
     """Cardiac output: CO = SV * HR / 1000 (L/min).
 
     Args:
@@ -39,7 +39,7 @@ fn cardiac_output(stroke_volume_ml: Float64, heart_rate: Float64) -> Float64:
 # ── mean_arterial_pressure ───────────────────────────────────────────────────
 
 
-fn mean_arterial_pressure(systolic: Float64, diastolic: Float64) -> Float64:
+def mean_arterial_pressure(systolic: Float64, diastolic: Float64) -> Float64:
     """Mean arterial pressure: MAP = DBP + (SBP - DBP) / 3.
 
     Args:
@@ -55,7 +55,7 @@ fn mean_arterial_pressure(systolic: Float64, diastolic: Float64) -> Float64:
 # ── body_surface_area_dubois ─────────────────────────────────────────────────
 
 
-fn body_surface_area_dubois(weight_kg: Float64, height_cm: Float64) -> Float64:
+def body_surface_area_dubois(weight_kg: Float64, height_cm: Float64) -> Float64:
     """Du Bois body surface area: BSA = 0.007184 * W^0.425 * H^0.725.
 
     Args:
@@ -75,7 +75,7 @@ fn body_surface_area_dubois(weight_kg: Float64, height_cm: Float64) -> Float64:
 # ── glomerular_filtration_rate ───────────────────────────────────────────────
 
 
-fn glomerular_filtration_rate(
+def glomerular_filtration_rate(
     creatinine: Float64,
     age: Float64,
     weight: Float64,
@@ -103,7 +103,7 @@ fn glomerular_filtration_rate(
 # ── oxygen_delivery ──────────────────────────────────────────────────────────
 
 
-fn oxygen_delivery(
+def oxygen_delivery(
     co: Float64, hb: Float64, sao2: Float64
 ) -> Float64:
     """Oxygen delivery: DO2 = CO * (1.34 * Hb * SaO2/100 + 0.003 * 100).
@@ -125,7 +125,7 @@ fn oxygen_delivery(
 # ── alveolar_gas_equation ────────────────────────────────────────────────────
 
 
-fn alveolar_gas_equation(
+def alveolar_gas_equation(
     fio2: Float64,
     patm: Float64,
     ph2o: Float64,
@@ -152,7 +152,7 @@ fn alveolar_gas_equation(
 # ── bmi ──────────────────────────────────────────────────────────────────────
 
 
-fn bmi(weight_kg: Float64, height_m: Float64) -> Float64:
+def bmi(weight_kg: Float64, height_m: Float64) -> Float64:
     """Body Mass Index: BMI = weight / height^2.
 
     Args:
@@ -170,7 +170,7 @@ fn bmi(weight_kg: Float64, height_m: Float64) -> Float64:
 # ── drug_clearance ───────────────────────────────────────────────────────────
 
 
-fn drug_clearance(dose: Float64, auc: Float64) -> Float64:
+def drug_clearance(dose: Float64, auc: Float64) -> Float64:
     """Drug clearance: Cl = Dose / AUC.
 
     Args:
@@ -188,7 +188,7 @@ fn drug_clearance(dose: Float64, auc: Float64) -> Float64:
 # ── anion_gap ────────────────────────────────────────────────────────────────
 
 
-fn anion_gap(na: Float64, cl: Float64, hco3: Float64) -> Float64:
+def anion_gap(na: Float64, cl: Float64, hco3: Float64) -> Float64:
     """Anion gap: AG = Na - (Cl + HCO3).
 
     Args:
@@ -205,7 +205,7 @@ fn anion_gap(na: Float64, cl: Float64, hco3: Float64) -> Float64:
 # ── corrected_qt_bazett ─────────────────────────────────────────────────────
 
 
-fn corrected_qt_bazett(qt_ms: Float64, rr_s: Float64) -> Float64:
+def corrected_qt_bazett(qt_ms: Float64, rr_s: Float64) -> Float64:
     """Bazett corrected QT: QTc = QT / sqrt(RR).
 
     Args:
@@ -223,7 +223,7 @@ fn corrected_qt_bazett(qt_ms: Float64, rr_s: Float64) -> Float64:
 # ── fick_cardiac_output ──────────────────────────────────────────────────────
 
 
-fn fick_cardiac_output(
+def fick_cardiac_output(
     vo2: Float64, cao2: Float64, cvo2: Float64
 ) -> Float64:
     """Fick cardiac output: CO = VO2 / (CaO2 - CvO2).
@@ -245,7 +245,7 @@ fn fick_cardiac_output(
 # ── pulse_pressure ───────────────────────────────────────────────────────────
 
 
-fn pulse_pressure(systolic: Float64, diastolic: Float64) -> Float64:
+def pulse_pressure(systolic: Float64, diastolic: Float64) -> Float64:
     """Pulse pressure: PP = SBP - DBP.
 
     Args:

@@ -36,13 +36,13 @@ from query.join import (
 )
 
 
-fn _batch(
+def _batch(
     var names: List[String], var cols: List[Float64Array], n: Int
 ) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _orders() -> RecordBatch:
+def _orders() -> RecordBatch:
     """customer=[1,2,3,null] amount=[10,20,30,40]. Customer 3 has no match."""
     var customer = List[Float64]()
     customer.append(1.0)
@@ -70,7 +70,7 @@ fn _orders() -> RecordBatch:
     return _batch(names^, cols^, 4)
 
 
-fn _customers() -> RecordBatch:
+def _customers() -> RecordBatch:
     """id=[1,2,2,null] tier=[100,200,201,300]. Customer 2 appears twice."""
     var ident = List[Float64]()
     ident.append(1.0)
@@ -98,7 +98,7 @@ fn _customers() -> RecordBatch:
     return _batch(names^, cols^, 4)
 
 
-fn _nan_from_finite() -> Float64:
+def _nan_from_finite() -> Float64:
     """A NaN produced the way one actually arrives: `inf - inf` over finite input.
 
     Written out rather than parsed from a literal because that is the point — the
@@ -111,7 +111,7 @@ fn _nan_from_finite() -> Float64:
     return infinite - infinite
 
 
-fn _keys(var values: List[Float64]) -> RecordBatch:
+def _keys(var values: List[Float64]) -> RecordBatch:
     """A one-column all-present batch named `k`."""
     var n = len(values)
     var names = List[String]()
@@ -121,7 +121,7 @@ fn _keys(var values: List[Float64]) -> RecordBatch:
     return _batch(names^, cols^, n)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var orders = _orders()

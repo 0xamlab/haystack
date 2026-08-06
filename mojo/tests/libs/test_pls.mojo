@@ -4,7 +4,7 @@ from std.math import sqrt, abs as fabs
 from pls import PLSResult, pls_fit, pls_predict, pls_predict_rows, pls_r2
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ pls::" + name)
@@ -13,7 +13,7 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ pls::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 

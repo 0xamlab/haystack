@@ -17,7 +17,7 @@ comptime _SQRT2_INV: Float64 = 0.7071067811865476  # 1/√2
 # ── Qubit constructors ────────────────────────────────────────────────────────
 
 
-fn qubit_zero() -> List[Float64]:
+def qubit_zero() -> List[Float64]:
     """|0⟩ state: a=1+0i, b=0+0i → [1,0,0,0]."""
     var q = List[Float64]()
     q.append(1.0)
@@ -27,7 +27,7 @@ fn qubit_zero() -> List[Float64]:
     return q^
 
 
-fn qubit_one() -> List[Float64]:
+def qubit_one() -> List[Float64]:
     """|1⟩ state: a=0+0i, b=1+0i → [0,0,1,0]."""
     var q = List[Float64]()
     q.append(0.0)
@@ -40,7 +40,7 @@ fn qubit_one() -> List[Float64]:
 # ── Single-qubit gates ───────────────────────────────────────────────────────
 
 
-fn hadamard(q: List[Float64]) -> List[Float64]:
+def hadamard(q: List[Float64]) -> List[Float64]:
     """Hadamard gate: H = (1/√2)[[1,1],[1,-1]].
     H|0⟩ = (|0⟩+|1⟩)/√2, H|1⟩ = (|0⟩-|1⟩)/√2."""
     if len(q) < 4:
@@ -57,7 +57,7 @@ fn hadamard(q: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn pauli_x(q: List[Float64]) -> List[Float64]:
+def pauli_x(q: List[Float64]) -> List[Float64]:
     """Pauli-X (NOT) gate: X = [[0,1],[1,0]]. Swaps |0⟩ and |1⟩."""
     if len(q) < 4:
         return List[Float64]()
@@ -69,7 +69,7 @@ fn pauli_x(q: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn pauli_z(q: List[Float64]) -> List[Float64]:
+def pauli_z(q: List[Float64]) -> List[Float64]:
     """Pauli-Z gate: Z = [[1,0],[0,-1]]. Phase flip on |1⟩."""
     if len(q) < 4:
         return List[Float64]()
@@ -81,7 +81,7 @@ fn pauli_z(q: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn phase_gate(q: List[Float64], theta: Float64) -> List[Float64]:
+def phase_gate(q: List[Float64], theta: Float64) -> List[Float64]:
     """Phase gate: P(θ) = [[1,0],[0,e^(iθ)]].
     Multiplies |1⟩ amplitude by e^(iθ) = cos(θ)+i·sin(θ)."""
     if len(q) < 4:
@@ -102,7 +102,7 @@ fn phase_gate(q: List[Float64], theta: Float64) -> List[Float64]:
 # ── Measurement ───────────────────────────────────────────────────────────────
 
 
-fn measure_probability(q: List[Float64]) -> List[Float64]:
+def measure_probability(q: List[Float64]) -> List[Float64]:
     """Returns [P(|0⟩), P(|1⟩)] = [|a|², |b|²]."""
     if len(q) < 4:
         return List[Float64]()
@@ -114,7 +114,7 @@ fn measure_probability(q: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn qubit_norm(q: List[Float64]) -> Float64:
+def qubit_norm(q: List[Float64]) -> Float64:
     """|a|² + |b|² — should be 1.0 for a valid quantum state."""
     if len(q) < 4:
         return 0.0
@@ -124,7 +124,7 @@ fn qubit_norm(q: List[Float64]) -> Float64:
 # ── Bell state ────────────────────────────────────────────────────────────────
 
 
-fn bell_state() -> List[Float64]:
+def bell_state() -> List[Float64]:
     """Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2 as 2-qubit state vector.
     [1/√2, 0, 0, 0, 0, 0, 1/√2, 0] — 4 basis states × (re, im)."""
     var out = List[Float64]()
@@ -142,7 +142,7 @@ fn bell_state() -> List[Float64]:
 # ── Expectation values ────────────────────────────────────────────────────────
 
 
-fn expectation_z(q: List[Float64]) -> Float64:
+def expectation_z(q: List[Float64]) -> Float64:
     """⟨Z⟩ = P(|0⟩) - P(|1⟩)."""
     if len(q) < 4:
         return 0.0
@@ -154,7 +154,7 @@ fn expectation_z(q: List[Float64]) -> Float64:
 # ── Bloch sphere ──────────────────────────────────────────────────────────────
 
 
-fn bloch_coords(q: List[Float64]) -> List[Float64]:
+def bloch_coords(q: List[Float64]) -> List[Float64]:
     """Bloch sphere coordinates [x, y, z] for a single qubit.
     For |ψ⟩ = a|0⟩ + b|1⟩:
       x = 2·Re(a*·b), y = 2·Im(a*·b), z = |a|² - |b|².

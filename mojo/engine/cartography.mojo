@@ -26,7 +26,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── scale_factor ─────────────────────────────────────────────────────────────
 
 
-fn scale_factor(map_distance: Float64, ground_distance: Float64) -> Float64:
+def scale_factor(map_distance: Float64, ground_distance: Float64) -> Float64:
     """Scale factor: SF = map_distance / ground_distance.
 
     Args:
@@ -44,7 +44,7 @@ fn scale_factor(map_distance: Float64, ground_distance: Float64) -> Float64:
 # ── representative_fraction ──────────────────────────────────────────────────
 
 
-fn representative_fraction(map_cm: Float64, ground_cm: Float64) -> Float64:
+def representative_fraction(map_cm: Float64, ground_cm: Float64) -> Float64:
     """Representative fraction denominator: RF = ground/map.
 
     Args:
@@ -62,7 +62,7 @@ fn representative_fraction(map_cm: Float64, ground_cm: Float64) -> Float64:
 # ── ground_distance_from_map ─────────────────────────────────────────────────
 
 
-fn ground_distance_from_map(map_distance: Float64, scale_denominator: Float64) -> Float64:
+def ground_distance_from_map(map_distance: Float64, scale_denominator: Float64) -> Float64:
     """Ground distance from map distance: GD = map_dist * scale_denominator.
 
     Args:
@@ -78,7 +78,7 @@ fn ground_distance_from_map(map_distance: Float64, scale_denominator: Float64) -
 # ── map_distance_from_ground ─────────────────────────────────────────────────
 
 
-fn map_distance_from_ground(ground_distance: Float64, scale_denominator: Float64) -> Float64:
+def map_distance_from_ground(ground_distance: Float64, scale_denominator: Float64) -> Float64:
     """Map distance from ground distance: MD = ground / scale_denominator.
 
     Args:
@@ -96,7 +96,7 @@ fn map_distance_from_ground(ground_distance: Float64, scale_denominator: Float64
 # ── latitude_to_utm_zone ────────────────────────────────────────────────────
 
 
-fn latitude_to_utm_zone(longitude: Float64) -> Int:
+def latitude_to_utm_zone(longitude: Float64) -> Int:
     """UTM zone from longitude: Zone = floor((longitude+180)/6) + 1.
 
     Args:
@@ -111,7 +111,7 @@ fn latitude_to_utm_zone(longitude: Float64) -> Int:
 # ── mercator_y ───────────────────────────────────────────────────────────────
 
 
-fn mercator_y(latitude_rad: Float64) -> Float64:
+def mercator_y(latitude_rad: Float64) -> Float64:
     """Mercator projection y-coordinate: y = ln(tan(π/4 + lat/2)).
 
     Args:
@@ -134,7 +134,7 @@ fn mercator_y(latitude_rad: Float64) -> Float64:
 # ── equirectangular_x ───────────────────────────────────────────────────────
 
 
-fn equirectangular_x(longitude_rad: Float64, central_meridian: Float64, cos_lat: Float64) -> Float64:
+def equirectangular_x(longitude_rad: Float64, central_meridian: Float64, cos_lat: Float64) -> Float64:
     """Equirectangular projection x: x = (lon - central_meridian) * cos(lat).
 
     Args:
@@ -151,7 +151,7 @@ fn equirectangular_x(longitude_rad: Float64, central_meridian: Float64, cos_lat:
 # ── equirectangular_y ───────────────────────────────────────────────────────
 
 
-fn equirectangular_y(latitude_rad: Float64) -> Float64:
+def equirectangular_y(latitude_rad: Float64) -> Float64:
     """Equirectangular projection y: y = latitude (identity mapping).
 
     Args:
@@ -166,7 +166,7 @@ fn equirectangular_y(latitude_rad: Float64) -> Float64:
 # ── great_circle_distance ───────────────────────────────────────────────────
 
 
-fn great_circle_distance(
+def great_circle_distance(
     lat1: Float64,
     lon1: Float64,
     lat2: Float64,
@@ -199,7 +199,7 @@ fn great_circle_distance(
 # ── map_area_at_scale ────────────────────────────────────────────────────────
 
 
-fn map_area_at_scale(real_area: Float64, scale_denominator: Float64) -> Float64:
+def map_area_at_scale(real_area: Float64, scale_denominator: Float64) -> Float64:
     """Map area at given scale: map_area = real_area / (scale²).
 
     Args:
@@ -218,7 +218,7 @@ fn map_area_at_scale(real_area: Float64, scale_denominator: Float64) -> Float64:
 # ── contour_interval_suggestion ──────────────────────────────────────────────
 
 
-fn contour_interval_suggestion(elevation_range: Float64, n_contours: Float64) -> Float64:
+def contour_interval_suggestion(elevation_range: Float64, n_contours: Float64) -> Float64:
     """Suggest contour interval: CI = elevation_range / n_contours.
 
     Args:
@@ -236,7 +236,7 @@ fn contour_interval_suggestion(elevation_range: Float64, n_contours: Float64) ->
 # ── declination_correction ───────────────────────────────────────────────────
 
 
-fn declination_correction(bearing: Float64, declination: Float64) -> Float64:
+def declination_correction(bearing: Float64, declination: Float64) -> Float64:
     """Correct magnetic bearing for declination: True = bearing + declination.
 
     Args:

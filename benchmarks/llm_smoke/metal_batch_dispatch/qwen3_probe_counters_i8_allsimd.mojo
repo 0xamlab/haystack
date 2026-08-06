@@ -109,24 +109,24 @@ comptime _R_LMHEAD_ARGMAX: Int = 6
 comptime _R_ARGMAX_REDUCE: Int = 7
 
 
-fn _mb_counters_supported() -> Int:
+def _mb_counters_supported() -> Int:
     """1 = device supports dispatch-boundary counter sampling AND has a timestamp counter set,
     0 = neither/either missing, -1 = called before session open. See `batch_shim_counters.m`."""
     return Int(external_call["algenta_counters_supported", Int64]())
 
 
-fn _mb_timestamp_frequency() -> UInt64:
+def _mb_timestamp_frequency() -> UInt64:
     """Ticks-per-second for the raw values `_mb_run_token_counters` writes; 0 if this OS predates
     `MTLDevice.queryTimestampFrequency` (macOS 26). NOT TRUSTED for the actual conversion below --
     see `_calibrate_gpu_tick_ns` and the module docstring's calibration finding."""
     return external_call["algenta_timestamp_frequency", UInt64]()
 
 
-fn _mb_sample_gpu_timestamp() -> UInt64:
+def _mb_sample_gpu_timestamp() -> UInt64:
     return external_call["algenta_sample_gpu_timestamp", UInt64]()
 
 
-fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
+def _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     """Empirically measures how many real nanoseconds one GPU counter tick is, by bracketing a
     known-length real interval (measured with `perf_counter_ns`, the same wall-clock primitive this
     whole benchmark chain already trusts) with two `algenta_sample_gpu_timestamp` calls and dividing.
@@ -154,11 +154,11 @@ fn _calibrate_gpu_tick_ns(hold_ms: Int) raises -> Float64:
     return 1.0e9 / tick_rate_hz
 
 
-fn _mb_open_counters(max_samples: Int) -> Int:
+def _mb_open_counters(max_samples: Int) -> Int:
     return Int(external_call["algenta_open_counters", Int64, Int64](Int64(max_samples)))
 
 
-fn _mb_run_token_counters(
+def _mb_run_token_counters(
     descriptors: UnsafePointer[UInt8, origin=MutAnyOrigin],
     n: Int,
     out_ticks: UnsafePointer[UInt64, origin=MutAnyOrigin],
@@ -172,7 +172,7 @@ fn _mb_run_token_counters(
     )
 
 
-fn _role_name(role: Int) -> String:
+def _role_name(role: Int) -> String:
     if role == _R_EMBED:
         return "embed_row"
     if role == _R_NORM_GEMV:
@@ -192,7 +192,7 @@ fn _role_name(role: Int) -> String:
     return "UNKNOWN"
 
 
-fn _build_role_table(n_layers: Int, n_descriptors: Int) raises -> List[Int]:
+def _build_role_table(n_layers: Int, n_descriptors: Int) raises -> List[Int]:
     """Slot -> role id for all `n_descriptors` dispatches in one token, transcribing
     `_MBQwen3I8AllSimd._build_descriptors`'s own fixed layout (unchanged, read directly from
     `metaldispatch/session.mojo` while writing this file). `o_proj` is the FIRST `_R_GEMV_ACCUM`
@@ -219,7 +219,7 @@ fn _build_role_table(n_layers: Int, n_descriptors: Int) raises -> List[Int]:
     return roles^
 
 
-fn _sublabel(slot: Int, n_layers: Int) -> String:
+def _sublabel(slot: Int, n_layers: Int) -> String:
     """Distinguishes the two `_R_GEMV_ACCUM` slots per layer for reporting. Every other role has
     exactly one slot per layer (or one total), so this only ever returns a non-default string for
     the two `gemv_accum` positions."""
@@ -243,7 +243,7 @@ fn _sublabel(slot: Int, n_layers: Int) -> String:
     return "norm_gemv2_swiglu:gate_up_proj"
 
 
-fn _verify_role_table(mut s: _MBQwen3I8AllSimd, roles: List[Int]) raises:
+def _verify_role_table(mut s: _MBQwen3I8AllSimd, roles: List[Int]) raises:
     """Reads the pipeline index actually stored in every descriptor slot (written by
     `_build_descriptors`, never guessed) and checks it against `s.pipeline_idx[roles[d]]` -- the
     session's OWN role->pipeline map, populated by the OWN `_classify_pipeline` call at session
@@ -269,7 +269,7 @@ struct _RoleAgg(Copyable, Movable):
     var max_ns: Float64
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1.0e6
 
 
@@ -534,7 +534,7 @@ def main() raises:
         print("  measured wall-clock OFF (no counters) per-token time (this run):", off_avg, "ms")
 
 
-fn _read_text_file(path: String) raises -> String:
+def _read_text_file(path: String) raises -> String:
     var f = open(path, "r")
     var raw = f.read_bytes()
     f.close()
@@ -547,7 +547,7 @@ struct TensorLoc(Copyable, Movable):
     var n_elements: Int
 
 
-fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
+def _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     var entry = json_get_object(tensors_obj, name)
     var offset = json_get_int(entry, "offset", -1)
     var n = json_get_int(entry, "n_elements", -1)
@@ -556,7 +556,7 @@ fn _tensor_loc(tensors_obj: String, name: String) raises -> TensorLoc:
     return TensorLoc(offset, n)
 
 
-fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
+def _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> List[Float64]:
     var f = open(path, "r")
     _ = f.seek(UInt64(byte_offset))
     var raw = f.read_bytes(n_elements * 8)
@@ -570,12 +570,12 @@ fn _read_f64_slice(path: String, byte_offset: Int, n_elements: Int) raises -> Li
     return out^
 
 
-fn _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
+def _load_tensor(blob_path: String, tensors_obj: String, name: String) raises -> List[Float64]:
     var loc = _tensor_loc(tensors_obj, name)
     return _read_f64_slice(blob_path, loc.offset * 8, loc.n_elements)
 
 
-fn _check_mb(status: Int) raises:
+def _check_mb(status: Int) raises:
     if status != MB_OK:
         raise Error(
             "qwen3_probe_counters_i8_allsimd: metaldispatch call failed, status=" + String(status)

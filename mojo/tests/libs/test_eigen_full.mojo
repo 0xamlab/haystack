@@ -3,7 +3,7 @@ from std.math import sqrt, abs as fabs
 from eigen_full import eigh_symmetric, svd_via_eigh
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅", name)
@@ -12,11 +12,11 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌", name)
 
 
-fn approx(a: Float64, b: Float64, tol: Float64) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _dot_col(V: List[Float64], n: Int, k: Int, q: List[Float64]) -> Float64:
+def _dot_col(V: List[Float64], n: Int, k: Int, q: List[Float64]) -> Float64:
     """Dot product of column k of flat n×n V with vector q."""
     var s: Float64 = 0.0
     for i in range(n):
@@ -24,7 +24,7 @@ fn _dot_col(V: List[Float64], n: Int, k: Int, q: List[Float64]) -> Float64:
     return s
 
 
-fn _gram_max_dev(M: List[Float64], rows: Int, cols: Int) -> Float64:
+def _gram_max_dev(M: List[Float64], rows: Int, cols: Int) -> Float64:
     """max |M^T M - I| over the cols×cols Gram matrix (column orthonormality)."""
     var worst: Float64 = 0.0
     for a in range(cols):
@@ -39,7 +39,7 @@ fn _gram_max_dev(M: List[Float64], rows: Int, cols: Int) -> Float64:
     return worst
 
 
-fn _recon_max_dev(
+def _recon_max_dev(
     A: List[Float64], evals: List[Float64], V: List[Float64], n: Int
 ) -> Float64:
     """max |A - V diag(evals) V^T| elementwise."""
@@ -55,7 +55,7 @@ fn _recon_max_dev(
     return worst
 
 
-fn _svd_recon_max_dev(
+def _svd_recon_max_dev(
     A: List[Float64],
     U: List[Float64],
     sv: List[Float64],

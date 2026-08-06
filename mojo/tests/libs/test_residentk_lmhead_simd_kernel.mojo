@@ -72,15 +72,15 @@ comptime N_ITERS: Int = 3
 comptime EPS: Float32 = 1.0e-6
 
 
-fn _abs(x: Float32) -> Float32:
+def _abs(x: Float32) -> Float32:
     return -x if x < 0.0 else x
 
 
-fn _abs64(x: Float64) -> Float64:
+def _abs64(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 
-fn _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
+def _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     """Deterministic, KNOWN small values -- same two-coprime-multiplier discipline
     `test_residentk_gemv_simd_kernel.mojo`'s own `_pseudo_f64` uses."""
     var o = List[Float64](capacity=n)
@@ -91,7 +91,7 @@ fn _pseudo_f64(n: Int, seed: Int, amp: Float64) -> List[Float64]:
     return o^
 
 
-fn _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64:
+def _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64:
     """Pure-host per-row int8 quantization -- the SAME `scale = max(|row|) / 127` convention
     `test_residentk_gemv_simd_kernel.mojo`'s own helper uses, duplicated here (not imported: this
     package has no shared test-helper module) so this file's host reference stays independent of
@@ -112,7 +112,7 @@ fn _quantize_row_i8_host(row: List[Float64], mut out_row: List[Int8]) -> Float64
     return scale
 
 
-fn _host_rmsnorm(x: List[Float64], gamma: List[Float64], k: Int, eps: Float64) -> List[Float64]:
+def _host_rmsnorm(x: List[Float64], gamma: List[Float64], k: Int, eps: Float64) -> List[Float64]:
     """Pure-host Float64 reference for the kernel's own stage 1+2: rmsnorm(x) * gamma. Both
     `_lmhead_argmax_kernel_i8` and `_lmhead_argmax_kernel_simd_i8` claim to compute the IDENTICAL
     normalized vector before either kernel's stage-3 argmax scan ever runs -- checking it here,
@@ -127,7 +127,7 @@ fn _host_rmsnorm(x: List[Float64], gamma: List[Float64], k: Int, eps: Float64) -
     return out^
 
 
-fn _host_lmhead_block_argmax(
+def _host_lmhead_block_argmax(
     xn: List[Float64], w_rows: List[List[Int8]], wscale: List[Float64],
     k: Int, n: Int, grid_dim: Int, n_iters: Int,
     mut out_val: List[Float64], mut out_idx: List[Int],

@@ -19,7 +19,7 @@ Public API:
 from std.math import sqrt, abs as fabs
 
 
-fn _same_indices(a: List[Int], b: List[Int]) -> Bool:
+def _same_indices(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -28,7 +28,7 @@ fn _same_indices(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _is_identity_indices(indices: List[Int], size: Int) -> Bool:
+def _is_identity_indices(indices: List[Int], size: Int) -> Bool:
     if len(indices) != size:
         return False
     for i in range(size):
@@ -37,7 +37,7 @@ fn _is_identity_indices(indices: List[Int], size: Int) -> Bool:
     return True
 
 
-fn _all_above_tol(values: List[Float64], tol: Float64) -> Bool:
+def _all_above_tol(values: List[Float64], tol: Float64) -> Bool:
     for i in range(len(values)):
         if fabs(values[i]) <= tol:
             return False
@@ -47,7 +47,7 @@ fn _all_above_tol(values: List[Float64], tol: Float64) -> Bool:
 # ── sv_dot ─────────────────────────────────────────────────────────────────────
 
 
-fn sv_dot(
+def sv_dot(
     idx_a: List[Int], val_a: List[Float64],
     idx_b: List[Int], val_b: List[Float64],
 ) -> Float64:
@@ -74,7 +74,7 @@ fn sv_dot(
 # ── sv_add ─────────────────────────────────────────────────────────────────────
 
 
-fn sv_add(
+def sv_add(
     idx_a: List[Int], val_a: List[Float64],
     idx_b: List[Int], val_b: List[Float64],
 ) -> List[List[Float64]]:
@@ -133,7 +133,7 @@ fn sv_add(
 # ── sv_scale ───────────────────────────────────────────────────────────────────
 
 
-fn sv_scale(values: List[Float64], scalar: Float64) -> List[Float64]:
+def sv_scale(values: List[Float64], scalar: Float64) -> List[Float64]:
     """Scale all values by a scalar."""
     var out = values.copy()
     var n = len(out)
@@ -145,7 +145,7 @@ fn sv_scale(values: List[Float64], scalar: Float64) -> List[Float64]:
 # ── sv_norm ────────────────────────────────────────────────────────────────────
 
 
-fn sv_norm(values: List[Float64]) -> Float64:
+def sv_norm(values: List[Float64]) -> Float64:
     """L2 norm of sparse vector values."""
     var s: Float64 = 0.0
     for i in range(len(values)):
@@ -156,7 +156,7 @@ fn sv_norm(values: List[Float64]) -> Float64:
 # ── sv_cosine ──────────────────────────────────────────────────────────────────
 
 
-fn sv_cosine(
+def sv_cosine(
     idx_a: List[Int], val_a: List[Float64],
     idx_b: List[Int], val_b: List[Float64],
 ) -> Float64:
@@ -174,7 +174,7 @@ fn sv_cosine(
 # ── sv_to_dense ────────────────────────────────────────────────────────────────
 
 
-fn sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Float64]:
+def sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Float64]:
     """Convert sparse representation to dense vector."""
     if size <= 0:
         return List[Float64]()
@@ -195,7 +195,7 @@ fn sv_to_dense(indices: List[Int], values: List[Float64], size: Int) -> List[Flo
 # ── dense_to_sparse ────────────────────────────────────────────────────────────
 
 
-fn dense_to_sparse(dense: List[Float64], tol: Float64 = 1e-15) -> List[List[Float64]]:
+def dense_to_sparse(dense: List[Float64], tol: Float64 = 1e-15) -> List[List[Float64]]:
     """Convert dense vector to sparse. Returns [[indices_as_float], [values]]."""
     var n = len(dense)
     if _all_above_tol(dense, tol):
@@ -221,7 +221,7 @@ fn dense_to_sparse(dense: List[Float64], tol: Float64 = 1e-15) -> List[List[Floa
 # ── sv_nnz ─────────────────────────────────────────────────────────────────────
 
 
-fn sv_nnz(values: List[Float64]) -> Int:
+def sv_nnz(values: List[Float64]) -> Int:
     """Count non-zero entries."""
     var count = 0
     for i in range(len(values)):
@@ -233,7 +233,7 @@ fn sv_nnz(values: List[Float64]) -> Int:
 # ── sv_sparsity ────────────────────────────────────────────────────────────────
 
 
-fn sv_sparsity(nnz: Int, size: Int) -> Float64:
+def sv_sparsity(nnz: Int, size: Int) -> Float64:
     """Sparsity ratio: 1 - nnz/size."""
     if size <= 0:
         return 1.0
@@ -243,7 +243,7 @@ fn sv_sparsity(nnz: Int, size: Int) -> Float64:
 # ── sv_max ─────────────────────────────────────────────────────────────────────
 
 
-fn sv_max(values: List[Float64]) -> Float64:
+def sv_max(values: List[Float64]) -> Float64:
     """Max value in sparse vector values list."""
     if len(values) == 0:
         return 0.0

@@ -26,7 +26,7 @@ from std.math import exp, abs as fabs, isnan, isinf
 # ── triangular_mf ────────────────────────────────────────────────────────────
 
 
-fn triangular_mf(x: Float64, a: Float64, b: Float64, c: Float64) -> Float64:
+def triangular_mf(x: Float64, a: Float64, b: Float64, c: Float64) -> Float64:
     """Triangular membership function. Peak at b, zero at a and c.
 
     Args:
@@ -60,7 +60,7 @@ fn triangular_mf(x: Float64, a: Float64, b: Float64, c: Float64) -> Float64:
 # ── trapezoidal_mf ───────────────────────────────────────────────────────────
 
 
-fn trapezoidal_mf(x: Float64, a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
+def trapezoidal_mf(x: Float64, a: Float64, b: Float64, c: Float64, d: Float64) -> Float64:
     """Trapezoidal membership function. Rises a→b, flat b→c, falls c→d.
 
     Args:
@@ -90,7 +90,7 @@ fn trapezoidal_mf(x: Float64, a: Float64, b: Float64, c: Float64, d: Float64) ->
 # ── gaussian_mf ──────────────────────────────────────────────────────────────
 
 
-fn gaussian_mf(x: Float64, mean: Float64, sigma: Float64) -> Float64:
+def gaussian_mf(x: Float64, mean: Float64, sigma: Float64) -> Float64:
     """Gaussian membership function: exp(-(x-mean)^2 / (2*sigma^2)).
 
     Args:
@@ -112,7 +112,7 @@ fn gaussian_mf(x: Float64, mean: Float64, sigma: Float64) -> Float64:
 # ── fuzzy_and ─────────────────────────────────────────────────────────────────
 
 
-fn fuzzy_and(a: Float64, b: Float64) -> Float64:
+def fuzzy_and(a: Float64, b: Float64) -> Float64:
     """Fuzzy AND (minimum t-norm).
 
     Args:
@@ -130,7 +130,7 @@ fn fuzzy_and(a: Float64, b: Float64) -> Float64:
 # ── fuzzy_or ──────────────────────────────────────────────────────────────────
 
 
-fn fuzzy_or(a: Float64, b: Float64) -> Float64:
+def fuzzy_or(a: Float64, b: Float64) -> Float64:
     """Fuzzy OR (maximum s-norm).
 
     Args:
@@ -148,7 +148,7 @@ fn fuzzy_or(a: Float64, b: Float64) -> Float64:
 # ── fuzzy_not ─────────────────────────────────────────────────────────────────
 
 
-fn fuzzy_not(a: Float64) -> Float64:
+def fuzzy_not(a: Float64) -> Float64:
     """Fuzzy NOT (complement).
 
     Args:
@@ -163,7 +163,7 @@ fn fuzzy_not(a: Float64) -> Float64:
 # ── defuzzify_centroid ────────────────────────────────────────────────────────
 
 
-fn defuzzify_centroid(x_values: List[Float64], memberships: List[Float64]) -> Float64:
+def defuzzify_centroid(x_values: List[Float64], memberships: List[Float64]) -> Float64:
     """Centroid defuzzification: sum(x*mu) / sum(mu).
 
     Args:
@@ -198,7 +198,7 @@ fn defuzzify_centroid(x_values: List[Float64], memberships: List[Float64]) -> Fl
 # ── defuzzify_bisector ────────────────────────────────────────────────────────
 
 
-fn defuzzify_bisector(x_values: List[Float64], memberships: List[Float64]) -> Float64:
+def defuzzify_bisector(x_values: List[Float64], memberships: List[Float64]) -> Float64:
     """Bisector defuzzification: find x where area is split in half.
 
     Args:
@@ -237,7 +237,7 @@ fn defuzzify_bisector(x_values: List[Float64], memberships: List[Float64]) -> Fl
 # ── defuzzify_mom ─────────────────────────────────────────────────────────────
 
 
-fn defuzzify_mom(x_values: List[Float64], memberships: List[Float64]) -> Float64:
+def defuzzify_mom(x_values: List[Float64], memberships: List[Float64]) -> Float64:
     """Mean of Maximum defuzzification: average of x at max membership.
 
     Args:
@@ -277,7 +277,7 @@ fn defuzzify_mom(x_values: List[Float64], memberships: List[Float64]) -> Float64
 # ── fuzzy_rule_eval ───────────────────────────────────────────────────────────
 
 
-fn fuzzy_rule_eval(inputs: List[Float64], rule_type: Int) -> Float64:
+def fuzzy_rule_eval(inputs: List[Float64], rule_type: Int) -> Float64:
     """Evaluate a fuzzy rule by combining inputs.
 
     Args:
@@ -304,7 +304,7 @@ fn fuzzy_rule_eval(inputs: List[Float64], rule_type: Int) -> Float64:
 # ── alpha_cut ─────────────────────────────────────────────────────────────────
 
 
-fn alpha_cut(x_values: List[Float64], memberships: List[Float64], alpha: Float64) -> List[Float64]:
+def alpha_cut(x_values: List[Float64], memberships: List[Float64], alpha: Float64) -> List[Float64]:
     """Alpha-cut: return x values where membership >= alpha.
 
     Args:

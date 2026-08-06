@@ -119,14 +119,14 @@ comptime IR_GT: Int = 102
 comptime IR_COL_REF: Int = 130
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn _keyed_column(n: Int, n_distinct: Int, stream: UInt64) -> List[Float64]:
+def _keyed_column(n: Int, n_distinct: Int, stream: UInt64) -> List[Float64]:
     """`n` values drawn from `n_distinct` levels through the frozen keyed generator.
 
     A deterministic function of `(MASTER_SEED, stream, i)` only, so the same column comes
@@ -140,7 +140,7 @@ fn _keyed_column(n: Int, n_distinct: Int, stream: UInt64) -> List[Float64]:
     return out^
 
 
-fn _pairwise_group_count(values: List[Float64]) -> Int:
+def _pairwise_group_count(values: List[Float64]) -> Int:
     """The O(n^2) reference: for each row, scan every earlier row for an equal key.
 
     Implemented in the BENCHMARK, never in the kernel. It uses the same equality the kernel
@@ -159,7 +159,7 @@ fn _pairwise_group_count(values: List[Float64]) -> Int:
     return groups
 
 
-fn _insertion_sort_distinct(values: List[Float64]) -> Int:
+def _insertion_sort_distinct(values: List[Float64]) -> Int:
     """The O(n^2) dedup shape that `engines/column_profiler` uses, as the reference.
 
     Reproduced here rather than called: `_count_distinct_float` is private to that frozen
@@ -183,7 +183,7 @@ fn _insertion_sort_distinct(values: List[Float64]) -> Int:
     return distinct
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
     print("=== data_quality: shape gate ===")
     print("keyed generator: determinism.counter_rng.rng_uniform, master seed fixed")

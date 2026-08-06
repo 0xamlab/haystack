@@ -26,19 +26,19 @@ from ml.clustering import (
 from std.math import abs as fabs
 
 
-fn assert_true(cond: Bool, msg: String) raises:
+def assert_true(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("ASSERTION FAILED: " + msg)
 
 
-fn _float_list2(v0: Float64, v1: Float64) -> List[Float64]:
+def _float_list2(v0: Float64, v1: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
     return l^
 
 
-fn _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
+def _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)
@@ -46,7 +46,7 @@ fn _float_list3(v0: Float64, v1: Float64, v2: Float64) -> List[Float64]:
     return l^
 
 
-fn _float_list5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
+def _float_list5(v0: Float64, v1: Float64, v2: Float64, v3: Float64, v4: Float64) -> List[Float64]:
     var l = List[Float64]()
     l.append(v0)
     l.append(v1)

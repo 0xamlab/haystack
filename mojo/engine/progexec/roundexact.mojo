@@ -7,7 +7,7 @@ single float64 multiply and rounds THAT — which is a DOUBLE rounding whenever 
 value of `x * 10^n` sits within about half an ULP of an integer-plus-one-half. Six real
 FinQA gold programs land exactly there:
 
-    fn (Mojo builtin round(_, 5))          correct (CPython round(_, 5))
+    def (Mojo builtin round(_, 5))          correct (CPython round(_, 5))
     HII/2011/page_100.pdf-3   3.26848      3.26849
     RE/2010/page_42.pdf-4     1.27688      1.27687
     CAT/2017/page_69.pdf-2   -0.77188     -0.77187
@@ -69,12 +69,12 @@ deprecation_state: active
 from exactnum.eft import eft_two_product, eft_two_sum
 
 
-fn _is_even_integer_valued(x: Float64) -> Bool:
+def _is_even_integer_valued(x: Float64) -> Bool:
     """`x` is already integer-valued (caller's job); True when that integer is even."""
     return (Int(x) % 2) == 0
 
 
-fn round_half_even_scaled(x: Float64, scale: Float64) -> Float64:
+def round_half_even_scaled(x: Float64, scale: Float64) -> Float64:
     """Round `x` to the decimal place implied by `scale` (e.g. `scale=100000.0` for five
     decimal places), round-half-to-even, decided from the exact value of `x * scale`.
 

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from flash_attention import flash_block_max, flash_block_sum_exp, flash_block_output, flash_rescale_output, flash_final_normalize, paged_attention_block_score, sliding_window_attention, sparse_attention_block_density, grouped_query_attention_scale, ring_attention_chunk_size
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from agronomy import crop_yield_potential, nitrogen_uptake_efficiency, soil_organic_matter_decay, evapotranspiration_penman, leaf_area_index, light_use_efficiency, crop_water_stress_index, irrigation_requirement, soil_cation_exchange, growing_degree_days
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

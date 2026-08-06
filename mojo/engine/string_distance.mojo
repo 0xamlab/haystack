@@ -21,7 +21,7 @@ Public API:
 # ── damerau_levenshtein ──────────────────────────────────────────────────────
 
 
-fn damerau_levenshtein(a: String, b: String) -> Int:
+def damerau_levenshtein(a: String, b: String) -> Int:
     """Damerau-Levenshtein distance allowing transpositions as a single edit.
 
     Uses the optimal string alignment (restricted edit distance) variant.
@@ -75,7 +75,7 @@ fn damerau_levenshtein(a: String, b: String) -> Int:
 # ── soundex ──────────────────────────────────────────────────────────────────
 
 
-fn _sx_code(c: UInt8) -> UInt8:
+def _sx_code(c: UInt8) -> UInt8:
     """Map character to soundex digit. 48='0' means skip."""
     var ch = c
     if ch >= 97 and ch <= 122:
@@ -101,7 +101,7 @@ fn _sx_code(c: UInt8) -> UInt8:
     return 48  # '0' for vowels, H, W, Y
 
 
-fn soundex(word: String) -> String:
+def soundex(word: String) -> String:
     """American Soundex code (4 characters).
 
     Maps letters to digits: B,F,P,V→1  C,G,J,K,Q,S,X,Z→2  D,T→3
@@ -153,7 +153,7 @@ fn soundex(word: String) -> String:
 # ── edit_similarity ──────────────────────────────────────────────────────────
 
 
-fn _levenshtein(a: String, b: String) -> Int:
+def _levenshtein(a: String, b: String) -> Int:
     """Internal Levenshtein distance."""
     var m = len(a)
     var n = len(b)
@@ -190,7 +190,7 @@ fn _levenshtein(a: String, b: String) -> Int:
     return prev[n]
 
 
-fn edit_similarity(a: String, b: String) -> Float64:
+def edit_similarity(a: String, b: String) -> Float64:
     """Edit similarity: 1.0 - levenshtein(a,b) / max(len(a), len(b)).
 
     Range [0, 1]. Returns 1.0 for identical or both-empty strings.
@@ -209,7 +209,7 @@ fn edit_similarity(a: String, b: String) -> Float64:
 # ── common_prefix_length ─────────────────────────────────────────────────────
 
 
-fn common_prefix_length(a: String, b: String) -> Int:
+def common_prefix_length(a: String, b: String) -> Int:
     """Length of the common prefix of two strings."""
     var la = len(a)
     var lb = len(b)
@@ -228,7 +228,7 @@ fn common_prefix_length(a: String, b: String) -> Int:
 # ── common_suffix_length ─────────────────────────────────────────────────────
 
 
-fn common_suffix_length(a: String, b: String) -> Int:
+def common_suffix_length(a: String, b: String) -> Int:
     """Length of the common suffix of two strings."""
     var la = len(a)
     var lb = len(b)
@@ -247,7 +247,7 @@ fn common_suffix_length(a: String, b: String) -> Int:
 # ── bigrams ──────────────────────────────────────────────────────────────────
 
 
-fn bigrams(s: String) -> List[String]:
+def bigrams(s: String) -> List[String]:
     """Extract character bigrams from string. E.g. 'abc' -> ['ab', 'bc']."""
     var result = List[String]()
     var n = len(s)
@@ -263,7 +263,7 @@ fn bigrams(s: String) -> List[String]:
 # ── dice_coefficient ─────────────────────────────────────────────────────────
 
 
-fn dice_coefficient(a: String, b: String) -> Float64:
+def dice_coefficient(a: String, b: String) -> Float64:
     """Sørensen-Dice coefficient on bigram multisets: 2*|A∩B|/(|A|+|B|).
 
     Range [0, 1]. Returns 1.0 if both strings have length < 2 and are equal.
@@ -294,7 +294,7 @@ fn dice_coefficient(a: String, b: String) -> Float64:
 # ── overlap_coefficient ──────────────────────────────────────────────────────
 
 
-fn overlap_coefficient(a: String, b: String) -> Float64:
+def overlap_coefficient(a: String, b: String) -> Float64:
     """|A∩B| / min(|A|, |B|) on bigram multisets.
 
     Range [0, 1]. Returns 1.0 if both strings have length < 2 and are equal.
@@ -324,7 +324,7 @@ fn overlap_coefficient(a: String, b: String) -> Float64:
 # ── string_reverse ───────────────────────────────────────────────────────────
 
 
-fn string_reverse(s: String) -> String:
+def string_reverse(s: String) -> String:
     """Reverse a string (byte-level reversal, ASCII safe)."""
     var n = len(s)
     if n == 0:
@@ -341,7 +341,7 @@ fn string_reverse(s: String) -> String:
 # ── is_palindrome ────────────────────────────────────────────────────────────
 
 
-fn is_palindrome(s: String) -> Bool:
+def is_palindrome(s: String) -> Bool:
     """Check if string is a palindrome (case-insensitive, ignoring spaces)."""
     # Build cleaned lowercase version
     var s_bytes = s.as_bytes()

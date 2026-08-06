@@ -23,7 +23,7 @@ from std.random import random_float64
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _probit(p: Float64) -> Float64:
+def _probit(p: Float64) -> Float64:
     """Inverse normal CDF (Abramowitz & Stegun 26.2.23 approximation)."""
     if p <= 0.0:
         return -8.0
@@ -52,7 +52,7 @@ fn _probit(p: Float64) -> Float64:
     return sign * z
 
 
-fn _box_muller() -> Float64:
+def _box_muller() -> Float64:
     """Standard normal variate via Box-Muller transform."""
     var u1 = random_float64()
     var u2 = random_float64()
@@ -63,7 +63,7 @@ fn _box_muller() -> Float64:
     # sqrt(-2*ln(u1)) * cos(2*pi*u2)
 
 
-fn _sample_gamma(shape: Float64) -> Float64:
+def _sample_gamma(shape: Float64) -> Float64:
     """Sample from Gamma(shape, 1) via Marsaglia-Tsang method."""
     if shape < 1.0:
         # Boost for shape < 1
@@ -89,7 +89,7 @@ fn _sample_gamma(shape: Float64) -> Float64:
             return d * v
 
 
-fn _sample_beta(alpha: Float64, beta: Float64) -> Float64:
+def _sample_beta(alpha: Float64, beta: Float64) -> Float64:
     """Sample from Beta(alpha, beta) using Gamma variates."""
     var x = _sample_gamma(alpha)
     var y = _sample_gamma(beta)
@@ -101,7 +101,7 @@ fn _sample_beta(alpha: Float64, beta: Float64) -> Float64:
 # ── Beta-Binomial Conjugate ──────────────────────────────────────────────────
 
 
-fn beta_posterior(prior_alpha: Float64, prior_beta: Float64,
+def beta_posterior(prior_alpha: Float64, prior_beta: Float64,
                   successes: Int, failures: Int) -> List[Float64]:
     """Beta-Binomial conjugate update. Returns [posterior_alpha, posterior_beta]."""
     var result = List[Float64]()
@@ -110,7 +110,7 @@ fn beta_posterior(prior_alpha: Float64, prior_beta: Float64,
     return result^
 
 
-fn beta_mean(alpha: Float64, beta: Float64) -> Float64:
+def beta_mean(alpha: Float64, beta: Float64) -> Float64:
     """Mean of Beta(α, β): α / (α + β)."""
     var total = alpha + beta
     if total < 1e-15:
@@ -118,7 +118,7 @@ fn beta_mean(alpha: Float64, beta: Float64) -> Float64:
     return alpha / total
 
 
-fn beta_variance(alpha: Float64, beta: Float64) -> Float64:
+def beta_variance(alpha: Float64, beta: Float64) -> Float64:
     """Variance of Beta(α, β): αβ / ((α+β)²(α+β+1))."""
     var ab = alpha + beta
     if ab < 1e-15:
@@ -126,7 +126,7 @@ fn beta_variance(alpha: Float64, beta: Float64) -> Float64:
     return (alpha * beta) / (ab * ab * (ab + 1.0))
 
 
-fn beta_credible_interval(alpha: Float64, beta: Float64,
+def beta_credible_interval(alpha: Float64, beta: Float64,
                            mass: Float64 = 0.95) -> List[Float64]:
     """Approximate credible interval [lower, upper] using normal approximation."""
     var m = beta_mean(alpha, beta)
@@ -149,7 +149,7 @@ fn beta_credible_interval(alpha: Float64, beta: Float64,
 # ── Normal-Normal Conjugate ──────────────────────────────────────────────────
 
 
-fn normal_posterior(prior_mean: Float64, prior_var: Float64,
+def normal_posterior(prior_mean: Float64, prior_var: Float64,
                     data_mean: Float64, data_var: Float64,
                     n: Int) -> List[Float64]:
     """Normal-Normal conjugate update. Returns [posterior_mean, posterior_variance].
@@ -170,7 +170,7 @@ fn normal_posterior(prior_mean: Float64, prior_var: Float64,
 # ── Gamma-Poisson Conjugate ──────────────────────────────────────────────────
 
 
-fn poisson_posterior(prior_alpha: Float64, prior_beta: Float64,
+def poisson_posterior(prior_alpha: Float64, prior_beta: Float64,
                      sum_x: Int, n: Int) -> List[Float64]:
     """Gamma-Poisson conjugate. Returns [posterior_alpha, posterior_beta].
     Posterior is Gamma(α + Σx, β + n)."""
@@ -183,7 +183,7 @@ fn poisson_posterior(prior_alpha: Float64, prior_beta: Float64,
 # ── Bayes Factor ─────────────────────────────────────────────────────────────
 
 
-fn bayes_factor(likelihood_h1: Float64, likelihood_h0: Float64) -> Float64:
+def bayes_factor(likelihood_h1: Float64, likelihood_h0: Float64) -> Float64:
     """Bayes factor: L(H1) / L(H0)."""
     if fabs(likelihood_h0) < 1e-300:
         return 0.0
@@ -193,7 +193,7 @@ fn bayes_factor(likelihood_h1: Float64, likelihood_h0: Float64) -> Float64:
 # ── Posterior Predictive ─────────────────────────────────────────────────────
 
 
-fn posterior_predictive_beta(alpha: Float64, beta: Float64) -> Float64:
+def posterior_predictive_beta(alpha: Float64, beta: Float64) -> Float64:
     """Predictive probability of next success: α / (α + β)."""
     return beta_mean(alpha, beta)
 
@@ -201,7 +201,7 @@ fn posterior_predictive_beta(alpha: Float64, beta: Float64) -> Float64:
 # ── HPD Interval for Normal ──────────────────────────────────────────────────
 
 
-fn hpd_interval_normal(mean: Float64, std: Float64,
+def hpd_interval_normal(mean: Float64, std: Float64,
                         mass: Float64 = 0.95) -> List[Float64]:
     """HPD interval for normal: [mean - z*std, mean + z*std]."""
     var z = _probit((1.0 + mass) / 2.0)
@@ -214,7 +214,7 @@ fn hpd_interval_normal(mean: Float64, std: Float64,
 # ── Bayesian A/B Test ────────────────────────────────────────────────────────
 
 
-fn bayesian_ab_test(successes_a: Int, trials_a: Int,
+def bayesian_ab_test(successes_a: Int, trials_a: Int,
                      successes_b: Int, trials_b: Int,
                      n_samples: Int = 10000) -> Float64:
     """P(B > A) using Monte Carlo sampling from Beta posteriors (flat prior).

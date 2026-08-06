@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn bfgs_hessian_update_term(
+def bfgs_hessian_update_term(
     s: Float64, y: Float64, sy_dot: Float64
 ) -> Float64:
     """BFGS inverse Hessian rank-1 update scalar.
@@ -40,7 +40,7 @@ fn bfgs_hessian_update_term(
     return 1.0 / sy_dot
 
 
-fn conjugate_gradient_beta_fr(
+def conjugate_gradient_beta_fr(
     grad_norm_sq_new: Float64, grad_norm_sq_old: Float64
 ) -> Float64:
     """Fletcher-Reeves CG β coefficient.
@@ -59,7 +59,7 @@ fn conjugate_gradient_beta_fr(
     return grad_norm_sq_new / grad_norm_sq_old
 
 
-fn conjugate_gradient_beta_pr(
+def conjugate_gradient_beta_pr(
     grad_new: Float64, grad_old: Float64, grad_norm_sq_old: Float64
 ) -> Float64:
     """Polak-Ribière CG β coefficient (one dimension contribution).
@@ -81,7 +81,7 @@ fn conjugate_gradient_beta_pr(
     return grad_new * (grad_new - grad_old) / grad_norm_sq_old
 
 
-fn armijo_condition(
+def armijo_condition(
     f_new: Float64, f_old: Float64, alpha: Float64,
     grad_dot_dir: Float64, c1: Float64
 ) -> Float64:
@@ -104,7 +104,7 @@ fn armijo_condition(
     return 0.0
 
 
-fn wolfe_curvature_condition(
+def wolfe_curvature_condition(
     grad_new_dot_dir: Float64, grad_old_dot_dir: Float64, c2: Float64
 ) -> Float64:
     """Wolfe curvature condition: |∇f_new · d| ≤ c2 |∇f_old · d|.
@@ -128,7 +128,7 @@ fn wolfe_curvature_condition(
     return 0.0
 
 
-fn golden_section_midpoint(a: Float64, b: Float64, use_left: Float64) -> Float64:
+def golden_section_midpoint(a: Float64, b: Float64, use_left: Float64) -> Float64:
     """Golden-section search: interior point.
 
     φ = (√5 - 1) / 2 ≈ 0.618
@@ -147,7 +147,7 @@ fn golden_section_midpoint(a: Float64, b: Float64, use_left: Float64) -> Float64
     return a + phi * (b - a)
 
 
-fn newton_step(f_val: Float64, f_prime: Float64) -> Float64:
+def newton_step(f_val: Float64, f_prime: Float64) -> Float64:
     """Newton-Raphson step: x_new = x - f(x) / f'(x).
 
     Returns the step size -f/f' (caller adds to x).
@@ -164,7 +164,7 @@ fn newton_step(f_val: Float64, f_prime: Float64) -> Float64:
     return -f_val / f_prime
 
 
-fn secant_step(
+def secant_step(
     x0: Float64, x1: Float64, f0: Float64, f1: Float64
 ) -> Float64:
     """Secant method step.
@@ -186,7 +186,7 @@ fn secant_step(
     return x1 - f1 * (x1 - x0) / df
 
 
-fn bisection_midpoint(a: Float64, b: Float64) -> Float64:
+def bisection_midpoint(a: Float64, b: Float64) -> Float64:
     """Bisection method midpoint.
 
     Args:
@@ -199,7 +199,7 @@ fn bisection_midpoint(a: Float64, b: Float64) -> Float64:
     return (a + b) / 2.0
 
 
-fn trust_region_step_norm(
+def trust_region_step_norm(
     grad_norm: Float64, hessian_min_eig: Float64, delta: Float64
 ) -> Float64:
     """Trust-region Cauchy point step norm estimate.

@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── round_trip_time ──────────────────────────────────────────────────────────
 
 
-fn round_trip_time(
+def round_trip_time(
     floors: Float64,
     floor_height: Float64,
     speed: Float64,
@@ -48,7 +48,7 @@ fn round_trip_time(
 # ── handling_capacity ────────────────────────────────────────────────────────
 
 
-fn handling_capacity(car_capacity: Float64, rtt_seconds: Float64) -> Float64:
+def handling_capacity(car_capacity: Float64, rtt_seconds: Float64) -> Float64:
     """Handling capacity: HC = cap * 300 / RTT (persons per 5 min)."""
     return car_capacity * 300.0 / rtt_seconds
 
@@ -56,7 +56,7 @@ fn handling_capacity(car_capacity: Float64, rtt_seconds: Float64) -> Float64:
 # ── interval_time ────────────────────────────────────────────────────────────
 
 
-fn interval_time(rtt: Float64, n_cars: Float64) -> Float64:
+def interval_time(rtt: Float64, n_cars: Float64) -> Float64:
     """Interval time: INT = RTT / n_cars (seconds)."""
     return rtt / n_cars
 
@@ -64,7 +64,7 @@ fn interval_time(rtt: Float64, n_cars: Float64) -> Float64:
 # ── probable_stops ───────────────────────────────────────────────────────────
 
 
-fn probable_stops(floors: Float64, passengers: Float64) -> Float64:
+def probable_stops(floors: Float64, passengers: Float64) -> Float64:
     """Probable number of stops: S = N * (1 - (1 - 1/N)^P).
 
     Uses exp/log for the exponentiation.
@@ -81,7 +81,7 @@ fn probable_stops(floors: Float64, passengers: Float64) -> Float64:
 # ── motor_power ──────────────────────────────────────────────────────────────
 
 
-fn motor_power(
+def motor_power(
     load_kg: Float64, speed_mps: Float64, gravity: Float64, efficiency: Float64
 ) -> Float64:
     """Motor power: P = m * g * v / η (watts)."""
@@ -91,7 +91,7 @@ fn motor_power(
 # ── counterweight_mass ───────────────────────────────────────────────────────
 
 
-fn counterweight_mass(
+def counterweight_mass(
     car_mass: Float64, rated_load: Float64, balance_factor: Float64
 ) -> Float64:
     """Counterweight: CW = car_mass + balance_factor * rated_load (kg)."""
@@ -101,7 +101,7 @@ fn counterweight_mass(
 # ── shaft_area ───────────────────────────────────────────────────────────────
 
 
-fn shaft_area(
+def shaft_area(
     car_width: Float64, car_depth: Float64, clearance: Float64
 ) -> Float64:
     """Shaft area: A = (w + clearance) * (d + clearance) (m²)."""
@@ -111,7 +111,7 @@ fn shaft_area(
 # ── annual_energy_consumption ────────────────────────────────────────────────
 
 
-fn annual_energy_consumption(
+def annual_energy_consumption(
     power_kw: Float64,
     daily_trips: Float64,
     trip_time_s: Float64,
@@ -124,7 +124,7 @@ fn annual_energy_consumption(
 # ── waiting_time_average ─────────────────────────────────────────────────────
 
 
-fn waiting_time_average(interval: Float64) -> Float64:
+def waiting_time_average(interval: Float64) -> Float64:
     """Average waiting time: WT ≈ interval / 2 (seconds)."""
     return interval / 2.0
 
@@ -132,7 +132,7 @@ fn waiting_time_average(interval: Float64) -> Float64:
 # ── traffic_intensity ────────────────────────────────────────────────────────
 
 
-fn traffic_intensity(
+def traffic_intensity(
     arrivals_per_5min: Float64, handling_cap: Float64
 ) -> Float64:
     """Traffic intensity: TI = arrivals / HC."""
@@ -142,7 +142,7 @@ fn traffic_intensity(
 # ── rope_factor_of_safety ────────────────────────────────────────────────────
 
 
-fn rope_factor_of_safety(
+def rope_factor_of_safety(
     breaking_strength: Float64, max_load: Float64
 ) -> Float64:
     """Rope factor of safety: FOS = breaking_strength / max_load."""
@@ -152,7 +152,7 @@ fn rope_factor_of_safety(
 # ── pit_depth_requirement ────────────────────────────────────────────────────
 
 
-fn pit_depth_requirement(speed_mps: Float64) -> Float64:
+def pit_depth_requirement(speed_mps: Float64) -> Float64:
     """Simplified pit depth: depth ≈ 0.5*v² / (2*g) + 0.5 (metres).
 
     Includes buffer space of 0.5 m; g = 9.81 m/s².

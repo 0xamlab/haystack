@@ -19,7 +19,7 @@ from mojo.engine.vector_kernels.semantic_micro.semantic_types import (
 
 
 @always_inline
-fn expand_tokens_topk(
+def expand_tokens_topk(
     model:       SemanticModel,
     token_ids:   UnsafePointer[UInt32],
     token_count: UInt16,
@@ -87,7 +87,7 @@ fn expand_tokens_topk(
 
 
 @always_inline
-fn expand_tokens_simple(
+def expand_tokens_simple(
     model:       SemanticModel,
     token_ids:   UnsafePointer[UInt32],
     token_count: UInt16,

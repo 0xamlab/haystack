@@ -130,7 +130,7 @@ struct WindowSeries(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         values: List[Float64],
         present: List[Bool],
@@ -168,7 +168,7 @@ struct WindowSummary(Copyable, Movable):
     var present: Bool
     var status: Int
 
-    fn __init__(
+    def __init__(
         out self,
         mean: Float64,
         variance: Float64,
@@ -187,22 +187,22 @@ struct WindowSummary(Copyable, Movable):
         self.status = status
 
 
-fn _refused(status: Int, window: Int) -> WindowSeries:
+def _refused(status: Int, window: Int) -> WindowSeries:
     """Not a series, with the reason."""
     return WindowSeries(List[Float64](), List[Bool](), window, 0, status, False)
 
 
-fn _empty_series(window: Int) -> WindowSeries:
+def _empty_series(window: Int) -> WindowSeries:
     """A valid series with no positions in it: the window does not fit the data."""
     return WindowSeries(List[Float64](), List[Bool](), window, 0, STM_OK, True)
 
 
-fn _no_summary(status: Int) -> WindowSummary:
+def _no_summary(status: Int) -> WindowSummary:
     """No summary, with the reason. Every value slot is 0.0 and means nothing."""
     return WindowSummary(0.0, 0.0, 0.0, 0.0, 0, False, status)
 
 
-fn _all_present(values: List[Float64], window: Int) -> WindowSeries:
+def _all_present(values: List[Float64], window: Int) -> WindowSeries:
     """Wrap a computed value list as a fully present series."""
     var flags = List[Bool]()
     for _ in range(len(values)):
@@ -210,7 +210,7 @@ fn _all_present(values: List[Float64], window: Int) -> WindowSeries:
     return WindowSeries(values, flags^, window, len(values), STM_OK, True)
 
 
-fn _first_non_finite(values: List[Float64]) -> Int:
+def _first_non_finite(values: List[Float64]) -> Int:
     """Index of the first non-finite element, or -1 when every element is finite."""
     for i in range(len(values)):
         if not stm_finite(values[i]):
@@ -218,7 +218,7 @@ fn _first_non_finite(values: List[Float64]) -> Int:
     return -1
 
 
-fn window_positions(n_values: Int, window: Int) -> Int:
+def window_positions(n_values: Int, window: Int) -> Int:
     """How many window positions `n_values` observations admit, or 0 when none do.
 
     `n_values - window + 1`, and 0 rather than a negative number when the window does not
@@ -238,7 +238,7 @@ fn window_positions(n_values: Int, window: Int) -> Int:
     return n_values - window + 1
 
 
-fn _window_ok(values: List[Float64], window: Int, per_position: Int) -> Int:
+def _window_ok(values: List[Float64], window: Int, per_position: Int) -> Int:
     """`STM_OK`, or the status that refuses this windowing request.
 
     `per_position` is the per-position work multiplier, so the caller's cost is charged as
@@ -255,7 +255,7 @@ fn _window_ok(values: List[Float64], window: Int, per_position: Int) -> Int:
     return STM_OK
 
 
-fn window_mean(values: List[Float64], window: Int) -> WindowSeries:
+def window_mean(values: List[Float64], window: Int) -> WindowSeries:
     """Moving average, from the frozen `timeseries_stats.rolling_mean`.
 
     O(n) regardless of `window`: the frozen implementation keeps a running sum and slides it,
@@ -276,7 +276,7 @@ fn window_mean(values: List[Float64], window: Int) -> WindowSeries:
     return _all_present(rolling_mean(values, window), window)
 
 
-fn window_std(values: List[Float64], window: Int) -> WindowSeries:
+def window_std(values: List[Float64], window: Int) -> WindowSeries:
     """Per-window population standard deviation, from the frozen `rolling_std`.
 
     **O(len(values) * window)**, and charged as that product. The frozen implementation
@@ -304,7 +304,7 @@ fn window_std(values: List[Float64], window: Int) -> WindowSeries:
     return _all_present(rolling_std(values, window), window)
 
 
-fn _monotonic(values: List[Float64], window: Int, want_max: Bool) -> List[Float64]:
+def _monotonic(values: List[Float64], window: Int, want_max: Bool) -> List[Float64]:
     """Windowed minimum or maximum in O(n) via a monotonic index deque.
 
     The deque holds indices whose values are monotone, so its head is always the extreme of
@@ -331,7 +331,7 @@ fn _monotonic(values: List[Float64], window: Int, want_max: Bool) -> List[Float6
     return out^
 
 
-fn window_max(values: List[Float64], window: Int) -> WindowSeries:
+def window_max(values: List[Float64], window: Int) -> WindowSeries:
     """Windowed maximum in O(len(values)) — no frozen kernel does this.
 
     There is no `rolling_max` in the tree, and the obvious implementation rescans each window
@@ -352,7 +352,7 @@ fn window_max(values: List[Float64], window: Int) -> WindowSeries:
     return _all_present(_monotonic(values, window, True), window)
 
 
-fn window_min(values: List[Float64], window: Int) -> WindowSeries:
+def window_min(values: List[Float64], window: Int) -> WindowSeries:
     """Windowed minimum in O(len(values)) — no frozen kernel does this.
 
     @capability window_min
@@ -369,7 +369,7 @@ fn window_min(values: List[Float64], window: Int) -> WindowSeries:
     return _all_present(_monotonic(values, window, False), window)
 
 
-fn window_range(values: List[Float64], window: Int) -> WindowSeries:
+def window_range(values: List[Float64], window: Int) -> WindowSeries:
     """Windowed maximum minus minimum, in O(len(values)) — two deques, one pass each.
 
     The difference of two finite doubles of the same window is finite, so no non-finite value
@@ -394,7 +394,7 @@ fn window_range(values: List[Float64], window: Int) -> WindowSeries:
     return _all_present(out^, window)
 
 
-fn ewma_series(values: List[Float64], alpha: Float64) -> WindowSeries:
+def ewma_series(values: List[Float64], alpha: Float64) -> WindowSeries:
     """Exponentially weighted moving average, from the frozen update, one value per input.
 
     Seeded with `values[0]` rather than 0.0: seeding at zero makes the first several outputs
@@ -428,7 +428,7 @@ fn ewma_series(values: List[Float64], alpha: Float64) -> WindowSeries:
     return _all_present(out^, 0)
 
 
-fn ewmvar_series(values: List[Float64], alpha: Float64) -> WindowSeries:
+def ewmvar_series(values: List[Float64], alpha: Float64) -> WindowSeries:
     """Exponentially weighted moving variance, from the frozen update.
 
     The frozen `exponential_moving_variance` needs the EMA from BEFORE the current
@@ -464,7 +464,7 @@ fn ewmvar_series(values: List[Float64], alpha: Float64) -> WindowSeries:
     return _all_present(out^, 0)
 
 
-fn window_summary_prefix(
+def window_summary_prefix(
     values: List[Float64], n: Int, window: Int
 ) -> WindowSummary:
     """Mean, variance, minimum and maximum of the LAST window inside `values[0..n)`.
@@ -523,7 +523,7 @@ fn window_summary_prefix(
     return WindowSummary(mean, variance, lo, hi, window, True, STM_OK)
 
 
-fn window_summary_std(summary: WindowSummary) -> Float64:
+def window_summary_std(summary: WindowSummary) -> Float64:
     """Standard deviation of a summary, or -1.0 when there is no summary to take one of.
 
     Takes the summary rather than recomputing, so a caller never pays for the window twice.

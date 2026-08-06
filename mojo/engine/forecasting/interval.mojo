@@ -190,7 +190,7 @@ struct CoverageReport(Copyable, Movable):
     var status_name: String
 
 
-fn _no_band(
+def _no_band(
     status: Int, method_id: Int, horizon: Int, n_origins: Int, level: Float64,
     required: Int, draws: Int, seed: Int, stream: Int
 ) -> IntervalBand:
@@ -202,7 +202,7 @@ fn _no_band(
     )
 
 
-fn _band_input_defect(
+def _band_input_defect(
     error: List[Float64], n_origins: Int, horizon: Int,
     point: List[Float64], level: Float64
 ) -> Int:
@@ -236,7 +236,7 @@ fn _band_input_defect(
     return FC_OK
 
 
-fn _assemble(
+def _assemble(
     center: List[Float64], lower: List[Float64], upper: List[Float64],
     has_interval: List[Bool], n_residuals: List[Int], covered: Int,
     method_id: Int, horizon: Int, n_origins: Int, level: Float64,
@@ -261,7 +261,7 @@ fn _assemble(
     )
 
 
-fn interval_empirical_flat(
+def interval_empirical_flat(
     error: List[Float64], n_origins: Int, horizon: Int,
     point: List[Float64], level: Float64
 ) -> IntervalBand:
@@ -343,7 +343,7 @@ fn interval_empirical_flat(
     )
 
 
-fn interval_bootstrap_flat(
+def interval_bootstrap_flat(
     error: List[Float64], n_origins: Int, horizon: Int, point: List[Float64],
     level: Float64, n_draws: Int, seed: Int, stream: Int
 ) -> IntervalBand:
@@ -484,7 +484,7 @@ fn interval_bootstrap_flat(
     )
 
 
-fn interval_coverage_flat(
+def interval_coverage_flat(
     actual: List[Float64], lower: List[Float64], upper: List[Float64]
 ) -> CoverageReport:
     """MEASURED coverage of a band against held-out actuals, with the misses split by side.

@@ -65,21 +65,21 @@ from sparse_numerics.factor import (
 )
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Every value compared with this helper is a small integer or a
     dyadic fraction, so a tolerance would hide a genuine mis-accumulation."""
     if len(a) != len(b):
@@ -90,14 +90,14 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -121,23 +121,23 @@ fn _all_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
 # With x = [2, 0, -1]: A x = [-1, 2, -4].
 
 
-fn _a3_indptr() -> List[Int]:
+def _a3_indptr() -> List[Int]:
     return _ints(0, 1, 3, 5)
 
 
-fn _a3_indices() -> List[Int]:
+def _a3_indices() -> List[Int]:
     return _ints(2, 0, 1, 1, 2)
 
 
-fn _a3_values() -> List[Float64]:
+def _a3_values() -> List[Float64]:
     return _floats(1.0, 1.0, 2.0, 3.0, 4.0)
 
 
-fn _a3_dense() -> List[Float64]:
+def _a3_dense() -> List[Float64]:
     return _floats(0.0, 0.0, 1.0, 1.0, 2.0, 0.0, 0.0, 3.0, 4.0)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

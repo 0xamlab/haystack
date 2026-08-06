@@ -133,7 +133,7 @@ struct DuplicateReport(Copyable, Movable):
     var duplicate_group_first_rows: List[Int]
     var duplicate_group_sizes: List[Int]
 
-    fn __init__(out self, status: Int, n_rows: Int, n_key_cols: Int, decimals: Int):
+    def __init__(out self, status: Int, n_rows: Int, n_key_cols: Int, decimals: Int):
         self.status = status
         self.n_rows = n_rows
         self.n_key_cols = n_key_cols
@@ -153,7 +153,7 @@ struct DuplicateReport(Copyable, Movable):
         self.duplicate_group_sizes = List[Int]()
 
 
-fn duplicate_status_name(code: Int) -> String:
+def duplicate_status_name(code: Int) -> String:
     """Name for a status this module can return. One vocabulary, in `contract`.
 
     @capability duplicate_status_name
@@ -164,7 +164,7 @@ fn duplicate_status_name(code: Int) -> String:
     return dq_status_name(code)
 
 
-fn duplicate_key_defect(key_cols: List[Int], n_cols: Int) -> Int:
+def duplicate_key_defect(key_cols: List[Int], n_cols: Int) -> Int:
     """`DQ_OK` when `key_cols` is a usable key for a table of `n_cols` columns.
 
     Refused: an empty key (there is no such thing as a duplicate with no key), more than
@@ -198,7 +198,7 @@ fn duplicate_key_defect(key_cols: List[Int], n_cols: Int) -> Int:
     return DQ_OK
 
 
-fn duplicate_scan_flat(
+def duplicate_scan_flat(
     table: List[Float64], n_rows: Int, n_cols: Int, null_mask: List[Bool],
     key_cols: List[Int], decimals: Int, max_reports: Int,
 ) -> DuplicateReport:
@@ -320,7 +320,7 @@ fn duplicate_scan_flat(
     return out^
 
 
-fn duplicate_rows_of_group(group_of_row: List[Int], group: Int, max_rows: Int) -> List[Int]:
+def duplicate_rows_of_group(group_of_row: List[Int], group: Int, max_rows: Int) -> List[Int]:
     """Every row assigned to `group`, in ascending order, capped at `max_rows`.
 
     The companion to `DuplicateReport.group_of_row`: the report says which group each row

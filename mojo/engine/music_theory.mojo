@@ -30,12 +30,12 @@ comptime LN2: Float64 = 0.6931471805599453
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _log2(x: Float64) -> Float64:
+def _log2(x: Float64) -> Float64:
     """Compute log base 2 via natural log."""
     return log(x) / LN2
 
 
-fn _pow2(x: Float64) -> Float64:
+def _pow2(x: Float64) -> Float64:
     """Compute 2^x using exp-like approach via repeated squaring for int part
     and log identity for fractional part."""
     # 2^x = e^(x * ln2)
@@ -52,7 +52,7 @@ fn _pow2(x: Float64) -> Float64:
 # ── frequency_from_midi ──────────────────────────────────────────────────────
 
 
-fn frequency_from_midi(midi_note: Int) -> Float64:
+def frequency_from_midi(midi_note: Int) -> Float64:
     """Convert MIDI note number to frequency in Hz.
     Formula: 440 * 2^((n - 69) / 12)."""
     var exponent = Float64(midi_note - 69) / 12.0
@@ -62,7 +62,7 @@ fn frequency_from_midi(midi_note: Int) -> Float64:
 # ── midi_from_frequency ──────────────────────────────────────────────────────
 
 
-fn midi_from_frequency(freq: Float64) -> Int:
+def midi_from_frequency(freq: Float64) -> Int:
     """Convert frequency in Hz to nearest MIDI note number.
     Formula: round(69 + 12 * log2(freq / 440))."""
     if freq <= 0.0:
@@ -78,7 +78,7 @@ fn midi_from_frequency(freq: Float64) -> Int:
 # ── cents_between ────────────────────────────────────────────────────────────
 
 
-fn cents_between(freq1: Float64, freq2: Float64) -> Float64:
+def cents_between(freq1: Float64, freq2: Float64) -> Float64:
     """Interval in cents between two frequencies.
     cents = 1200 * log2(f2 / f1)."""
     if freq1 <= 0.0 or freq2 <= 0.0:
@@ -89,7 +89,7 @@ fn cents_between(freq1: Float64, freq2: Float64) -> Float64:
 # ── semitones_between ────────────────────────────────────────────────────────
 
 
-fn semitones_between(midi1: Int, midi2: Int) -> Int:
+def semitones_between(midi1: Int, midi2: Int) -> Int:
     """Absolute semitone interval between two MIDI notes."""
     var diff = midi1 - midi2
     if diff < 0:
@@ -100,7 +100,7 @@ fn semitones_between(midi1: Int, midi2: Int) -> Int:
 # ── note_in_scale ────────────────────────────────────────────────────────────
 
 
-fn note_in_scale(note_class: Int, scale_root: Int, scale_pattern_idx: Int) -> Bool:
+def note_in_scale(note_class: Int, scale_root: Int, scale_pattern_idx: Int) -> Bool:
     """Check if note class (0-11) is in major (0) or natural minor (1) scale
     rooted at scale_root (0-11).
     Major intervals: 0,2,4,5,7,9,11
@@ -119,7 +119,7 @@ fn note_in_scale(note_class: Int, scale_root: Int, scale_pattern_idx: Int) -> Bo
 # ── interval_ratio_just ──────────────────────────────────────────────────────
 
 
-fn interval_ratio_just(semitones: Int) -> Float64:
+def interval_ratio_just(semitones: Int) -> Float64:
     """Just intonation frequency ratio for common intervals (0-12 semitones).
     Returns the ratio. For non-standard intervals, falls back to equal temp."""
     # Common just ratios
@@ -156,7 +156,7 @@ fn interval_ratio_just(semitones: Int) -> Float64:
 # ── beat_frequency ───────────────────────────────────────────────────────────
 
 
-fn beat_frequency(freq1: Float64, freq2: Float64) -> Float64:
+def beat_frequency(freq1: Float64, freq2: Float64) -> Float64:
     """Beat frequency = |f1 - f2|."""
     return fabs(freq1 - freq2)
 
@@ -164,7 +164,7 @@ fn beat_frequency(freq1: Float64, freq2: Float64) -> Float64:
 # ── tempo_to_beat_duration ───────────────────────────────────────────────────
 
 
-fn tempo_to_beat_duration(bpm: Float64) -> Float64:
+def tempo_to_beat_duration(bpm: Float64) -> Float64:
     """Duration of one beat in seconds given tempo in BPM."""
     if bpm <= 0.0:
         return 0.0
@@ -174,7 +174,7 @@ fn tempo_to_beat_duration(bpm: Float64) -> Float64:
 # ── measures_duration ────────────────────────────────────────────────────────
 
 
-fn measures_duration(bpm: Float64, beats_per_measure: Int, num_measures: Int) -> Float64:
+def measures_duration(bpm: Float64, beats_per_measure: Int, num_measures: Int) -> Float64:
     """Total duration in seconds for num_measures at given tempo and time sig."""
     if bpm <= 0.0:
         return 0.0
@@ -185,7 +185,7 @@ fn measures_duration(bpm: Float64, beats_per_measure: Int, num_measures: Int) ->
 # ── transpose_midi ───────────────────────────────────────────────────────────
 
 
-fn transpose_midi(midi_note: Int, semitones: Int) -> Int:
+def transpose_midi(midi_note: Int, semitones: Int) -> Int:
     """Transpose MIDI note by given number of semitones."""
     return midi_note + semitones
 
@@ -193,7 +193,7 @@ fn transpose_midi(midi_note: Int, semitones: Int) -> Int:
 # ── octave_from_midi ─────────────────────────────────────────────────────────
 
 
-fn octave_from_midi(midi_note: Int) -> Int:
+def octave_from_midi(midi_note: Int) -> Int:
     """MIDI octave number. MIDI note 0 = C-1, 60 = C4."""
     return (midi_note // 12) - 1
 
@@ -201,6 +201,6 @@ fn octave_from_midi(midi_note: Int) -> Int:
 # ── is_enharmonic ────────────────────────────────────────────────────────────
 
 
-fn is_enharmonic(midi1: Int, midi2: Int) -> Bool:
+def is_enharmonic(midi1: Int, midi2: Int) -> Bool:
     """Check if two MIDI notes are enharmonic (same pitch class, mod 12)."""
     return (midi1 % 12) == (midi2 % 12)

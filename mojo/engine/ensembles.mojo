@@ -25,7 +25,7 @@ from std.math import abs as fabs
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _solve_linear(a_in: List[Float64], b_in: List[Float64], m: Int) -> List[Float64]:
+def _solve_linear(a_in: List[Float64], b_in: List[Float64], m: Int) -> List[Float64]:
     """Solve A x = b for a row-major m x m system.
 
     Gaussian elimination with partial pivoting. Returns the empty list if
@@ -75,7 +75,7 @@ fn _solve_linear(a_in: List[Float64], b_in: List[Float64], m: Int) -> List[Float
     return x^
 
 
-fn _effective_weights(weights: List[Float64], n_models: Int) -> List[Float64]:
+def _effective_weights(weights: List[Float64], n_models: Int) -> List[Float64]:
     """Per-model weights: caller's list if it has n_models entries, else uniform 1.0."""
     var w = List[Float64](capacity=n_models)
     if len(weights) == n_models:
@@ -90,7 +90,7 @@ fn _effective_weights(weights: List[Float64], n_models: Int) -> List[Float64]:
 # ── voting_classify ──────────────────────────────────────────────────────────
 
 
-fn voting_classify(
+def voting_classify(
     pred_labels: List[Int],
     n_models: Int,
     n_samples: Int,
@@ -139,7 +139,7 @@ fn voting_classify(
 # ── blend_regression ─────────────────────────────────────────────────────────
 
 
-fn blend_regression(
+def blend_regression(
     preds: List[Float64],
     n_models: Int,
     n_samples: Int,
@@ -181,7 +181,7 @@ fn blend_regression(
 # ── stack_fit_ridge ──────────────────────────────────────────────────────────
 
 
-fn stack_fit_ridge(
+def stack_fit_ridge(
     oof_preds: List[Float64],
     n_samples: Int,
     n_models: Int,
@@ -232,7 +232,7 @@ fn stack_fit_ridge(
 # ── stack_predict ────────────────────────────────────────────────────────────
 
 
-fn stack_predict(
+def stack_predict(
     preds: List[Float64],
     n_samples: Int,
     n_models: Int,

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from project_management import earned_value, schedule_variance, cost_variance, schedule_performance_index, cost_performance_index, estimate_at_completion, estimate_to_complete, variance_at_completion, to_complete_performance_index, critical_path_duration, float_time, pert_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

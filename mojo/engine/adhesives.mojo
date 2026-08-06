@@ -27,7 +27,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── lap_shear_strength ───────────────────────────────────────────────────────
 
 
-fn lap_shear_strength(force: Float64, bond_area: Float64) -> Float64:
+def lap_shear_strength(force: Float64, bond_area: Float64) -> Float64:
     """Lap shear strength: τ = F / A (MPa).
 
     Args:
@@ -43,7 +43,7 @@ fn lap_shear_strength(force: Float64, bond_area: Float64) -> Float64:
 # ── peel_strength ────────────────────────────────────────────────────────────
 
 
-fn peel_strength(force: Float64, width: Float64) -> Float64:
+def peel_strength(force: Float64, width: Float64) -> Float64:
     """Peel strength: PS = F / W (N/mm).
 
     Args:
@@ -59,7 +59,7 @@ fn peel_strength(force: Float64, width: Float64) -> Float64:
 # ── bond_line_thickness ──────────────────────────────────────────────────────
 
 
-fn bond_line_thickness(gap: Float64) -> Float64:
+def bond_line_thickness(gap: Float64) -> Float64:
     """Bond line thickness — returns the gap value directly (mm).
 
     Optimal range is 0.05–0.25 mm for structural adhesives.
@@ -76,7 +76,7 @@ fn bond_line_thickness(gap: Float64) -> Float64:
 # ── coverage_rate ────────────────────────────────────────────────────────────
 
 
-fn coverage_rate(volume_ml: Float64, area_m2: Float64) -> Float64:
+def coverage_rate(volume_ml: Float64, area_m2: Float64) -> Float64:
     """Coverage rate: CR = volume / area (mL/m²).
 
     Args:
@@ -92,7 +92,7 @@ fn coverage_rate(volume_ml: Float64, area_m2: Float64) -> Float64:
 # ── pot_life_temperature_adjusted ────────────────────────────────────────────
 
 
-fn pot_life_temperature_adjusted(
+def pot_life_temperature_adjusted(
     pot_life_ref: Float64,
     temp: Float64,
     ref_temp: Float64,
@@ -118,7 +118,7 @@ fn pot_life_temperature_adjusted(
 # ── cure_time_temperature ────────────────────────────────────────────────────
 
 
-fn cure_time_temperature(
+def cure_time_temperature(
     base_time: Float64,
     temp: Float64,
     ref_temp: Float64,
@@ -143,7 +143,7 @@ fn cure_time_temperature(
 # ── joint_efficiency ─────────────────────────────────────────────────────────
 
 
-fn joint_efficiency(bond_strength: Float64, substrate_strength: Float64) -> Float64:
+def joint_efficiency(bond_strength: Float64, substrate_strength: Float64) -> Float64:
     """Joint efficiency: JE = bond / substrate * 100 (%).
 
     Args:
@@ -159,7 +159,7 @@ fn joint_efficiency(bond_strength: Float64, substrate_strength: Float64) -> Floa
 # ── thermal_cycle_life ───────────────────────────────────────────────────────
 
 
-fn thermal_cycle_life(
+def thermal_cycle_life(
     n_cycles: Float64,
     delta_t: Float64,
     cte_mismatch: Float64,
@@ -182,7 +182,7 @@ fn thermal_cycle_life(
 # ── viscosity_temperature ────────────────────────────────────────────────────
 
 
-fn viscosity_temperature(
+def viscosity_temperature(
     viscosity_ref: Float64,
     activation_energy: Float64,
     r: Float64,
@@ -207,7 +207,7 @@ fn viscosity_temperature(
 # ── surface_energy_contact_angle ─────────────────────────────────────────────
 
 
-fn surface_energy_contact_angle(gamma_l: Float64, contact_angle_deg: Float64) -> Float64:
+def surface_energy_contact_angle(gamma_l: Float64, contact_angle_deg: Float64) -> Float64:
     """Surface energy from contact angle (Young-Dupré):
     γ_s ≈ γ_l * (1 + cos θ)² / 4.
 
@@ -226,7 +226,7 @@ fn surface_energy_contact_angle(gamma_l: Float64, contact_angle_deg: Float64) ->
 # ── open_time_estimate ───────────────────────────────────────────────────────
 
 
-fn open_time_estimate(viscosity: Float64, temperature: Float64) -> Float64:
+def open_time_estimate(viscosity: Float64, temperature: Float64) -> Float64:
     """Empirical open time estimate: OT ≈ viscosity/100 * (1 + (25-temp)*0.05).
 
     Args:
@@ -242,7 +242,7 @@ fn open_time_estimate(viscosity: Float64, temperature: Float64) -> Float64:
 # ── bond_area_from_load ──────────────────────────────────────────────────────
 
 
-fn bond_area_from_load(
+def bond_area_from_load(
     design_load: Float64,
     allowable_stress: Float64,
     safety_factor: Float64,

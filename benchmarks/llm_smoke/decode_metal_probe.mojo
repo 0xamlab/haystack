@@ -35,18 +35,18 @@ from gemm.blocked import gemv_flat, sgemm_flat
 from llmk.gemv_fast import gemv_transposed_parallel_flat
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 23)) / 11.0 - 1.0)
     return o^
 
 
-fn _median_of(mut samples: List[Float64]) -> Float64:
+def _median_of(mut samples: List[Float64]) -> Float64:
     for i in range(1, len(samples)):
         var key = samples[i]
         var j = i - 1
@@ -57,7 +57,7 @@ fn _median_of(mut samples: List[Float64]) -> Float64:
     return samples[len(samples) // 2]
 
 
-fn _probe_shape(name: String, m_in: Int, n_out: Int) raises:
+def _probe_shape(name: String, m_in: Int, n_out: Int) raises:
     """One decode-shaped GEMV: `y[1, n_out] = x[1, m_in] @ W[m_in, n_out]`, exactly the reshape
     that makes `gemm_metal_flat`'s `C = A @ B` compute the same product `gemv_flat(..., trans=True)`
     and `gemv_transposed_parallel_flat` compute for this call site."""
@@ -108,7 +108,7 @@ fn _probe_shape(name: String, m_in: Int, n_out: Int) raises:
     print("      GPU/CPU-par ratio:", gpu_hot_ns / par_hot_ns, "x  (>1 means GPU is SLOWER)")
 
 
-fn _probe_batched(name: String, m_rows: Int, k_in: Int, n_out: Int) raises:
+def _probe_batched(name: String, m_rows: Int, k_in: Int, n_out: Int) raises:
     """The SAME q_proj weight shape, but with `m_rows` tokens at once -- prefill's shape, not
     decode's. Shows whether the crossover the doc predicts (bigger batch amortizes launch
     overhead) actually happens on this machine, rather than asserting it."""

@@ -30,7 +30,7 @@ struct SurvivalPoint(Copyable, Movable):
     var at_risk: Int
     var events: Int
 
-    fn __init__(out self, time: Float64, survival: Float64, at_risk: Int, events: Int):
+    def __init__(out self, time: Float64, survival: Float64, at_risk: Int, events: Int):
         self.time = time
         self.survival = survival
         self.at_risk = at_risk
@@ -40,7 +40,7 @@ struct SurvivalPoint(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _sort_indices(times: List[Float64]) -> List[Int]:
+def _sort_indices(times: List[Float64]) -> List[Int]:
     """Return indices that sort times in ascending order."""
     var n = len(times)
     var idx = List[Int]()
@@ -61,7 +61,7 @@ fn _sort_indices(times: List[Float64]) -> List[Int]:
 # ── kaplan_meier ─────────────────────────────────────────────────────────────
 
 
-fn kaplan_meier(times: List[Float64], events: List[Bool]) -> List[SurvivalPoint]:
+def kaplan_meier(times: List[Float64], events: List[Bool]) -> List[SurvivalPoint]:
     """Kaplan-Meier estimator. S(t) = Π(1 - d_i/n_i).
     Returns survival curve starting at (0, 1.0)."""
     if len(events) != len(times):
@@ -98,7 +98,7 @@ fn kaplan_meier(times: List[Float64], events: List[Bool]) -> List[SurvivalPoint]
 # ── nelson_aalen ─────────────────────────────────────────────────────────────
 
 
-fn nelson_aalen(times: List[Float64], events: List[Bool]) -> List[List[Float64]]:
+def nelson_aalen(times: List[Float64], events: List[Bool]) -> List[List[Float64]]:
     """Nelson-Aalen cumulative hazard: H(t) = Σ(d_i/n_i).
     Returns [[time, H(t)], ...]."""
     if len(events) != len(times):
@@ -138,7 +138,7 @@ fn nelson_aalen(times: List[Float64], events: List[Bool]) -> List[List[Float64]]
 # ── median_survival ──────────────────────────────────────────────────────────
 
 
-fn median_survival(km_curve: List[SurvivalPoint]) -> Float64:
+def median_survival(km_curve: List[SurvivalPoint]) -> Float64:
     """Time where S(t) first drops below 0.5. Returns -1 if never."""
     for i in range(len(km_curve)):
         if km_curve[i].survival < 0.5:
@@ -149,7 +149,7 @@ fn median_survival(km_curve: List[SurvivalPoint]) -> Float64:
 # ── log_rank_statistic ───────────────────────────────────────────────────────
 
 
-fn log_rank_statistic(
+def log_rank_statistic(
     times1: List[Float64], events1: List[Bool],
     times2: List[Float64], events2: List[Bool],
 ) -> Float64:
@@ -230,7 +230,7 @@ fn log_rank_statistic(
 # ── hazard_rate ──────────────────────────────────────────────────────────────
 
 
-fn hazard_rate(
+def hazard_rate(
     times: List[Float64], events: List[Bool], bandwidth: Float64,
 ) -> List[List[Float64]]:
     """Kernel-smoothed hazard rate estimate using Epanechnikov kernel.
@@ -276,7 +276,7 @@ fn hazard_rate(
 # ── restricted_mean ──────────────────────────────────────────────────────────
 
 
-fn restricted_mean(km_curve: List[SurvivalPoint], tau: Float64) -> Float64:
+def restricted_mean(km_curve: List[SurvivalPoint], tau: Float64) -> Float64:
     """Restricted mean survival time: area under KM curve up to tau.
     Uses trapezoidal integration."""
     var area: Float64 = 0.0
@@ -302,7 +302,7 @@ fn restricted_mean(km_curve: List[SurvivalPoint], tau: Float64) -> Float64:
 # ── life_table ───────────────────────────────────────────────────────────────
 
 
-fn life_table(
+def life_table(
     times: List[Float64], events: List[Bool], intervals: List[Float64],
 ) -> List[List[Float64]]:
     """Life table: for each interval, [start, n_risk, n_event, survival].
@@ -344,7 +344,7 @@ fn life_table(
 # ── survival_at_time ─────────────────────────────────────────────────────────
 
 
-fn survival_at_time(km_curve: List[SurvivalPoint], t: Float64) -> Float64:
+def survival_at_time(km_curve: List[SurvivalPoint], t: Float64) -> Float64:
     """Look up S(t) from KM curve. Step function: returns S at largest time <= t."""
     var s: Float64 = 1.0
     for i in range(len(km_curve)):

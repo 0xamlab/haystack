@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from behavioral_economics import prospect_theory_value, probability_weighting, hyperbolic_discount, quasi_hyperbolic_discount, anchoring_adjusted_estimate, endowment_effect_wta_wtp_ratio, loss_aversion_coefficient, mental_accounting_total, status_quo_bias, sunk_cost_ratio, fairness_ultimatum_threshold, nudge_effectiveness
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

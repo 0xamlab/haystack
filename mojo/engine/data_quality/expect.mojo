@@ -209,7 +209,7 @@ struct ExpectationReport(Copyable, Movable):
     var fail_observed_present: List[Bool]
     var fail_observed_finite: List[Bool]
 
-    fn __init__(out self, status: Int, n_rows: Int):
+    def __init__(out self, status: Int, n_rows: Int):
         self.status = status
         self.n_rows = n_rows
         self.n_rows_checked = 0
@@ -233,7 +233,7 @@ struct ExpectationReport(Copyable, Movable):
         self.fail_observed_finite = List[Bool]()
 
 
-fn expect_status_name(code: Int) -> String:
+def expect_status_name(code: Int) -> String:
     """Name for a status this module can return. One vocabulary, in `contract`.
 
     @capability expect_status_name
@@ -244,7 +244,7 @@ fn expect_status_name(code: Int) -> String:
     return dq_status_name(code)
 
 
-fn expect_op_name(op: Int) -> String:
+def expect_op_name(op: Int) -> String:
     """Name for an expectation opcode, for a message a human reads.
 
     @capability expect_op_name
@@ -275,7 +275,7 @@ fn expect_op_name(op: Int) -> String:
     return "unknown_expectation_" + String(op)
 
 
-fn expect_failure_line(
+def expect_failure_line(
     row: Int,
     column: Int,
     op: Int,
@@ -318,7 +318,7 @@ fn expect_failure_line(
     return head + ", got " + String(observed)
 
 
-fn _ir_op(op: Int) -> Int:
+def _ir_op(op: Int) -> Int:
     """The frozen `query.ir` comparison opcode for an expectation op, or -1."""
     if op == DQ_EXPECT_GT:
         return OP_GT
@@ -335,7 +335,7 @@ fn _ir_op(op: Int) -> Int:
     return -1
 
 
-fn _one_column_batch(
+def _one_column_batch(
     values: List[Float64], present: List[Bool], n_rows: Int
 ) -> RecordBatch:
     """A single-column `RecordBatch` over the first `n_rows` positions.
@@ -364,7 +364,7 @@ fn _one_column_batch(
     return RecordBatch(Schema(names^, dtypes^), columns^, upto)
 
 
-fn _comparison_plan(ir_op: Int, bound: Float64) -> List[ExprNode]:
+def _comparison_plan(ir_op: Int, bound: Float64) -> List[ExprNode]:
     """`col_ref(0) <op> literal(bound)`, built with the frozen constructors. Root is 2."""
     var nodes = List[ExprNode]()
     nodes.append(col_ref(0))
@@ -373,7 +373,7 @@ fn _comparison_plan(ir_op: Int, bound: Float64) -> List[ExprNode]:
     return nodes^
 
 
-fn _not_null_plan() -> List[ExprNode]:
+def _not_null_plan() -> List[ExprNode]:
     """`is_not_null(col_ref(0))`. Root is 1. The one plan whose answer is always known."""
     var nodes = List[ExprNode]()
     nodes.append(col_ref(0))
@@ -381,7 +381,7 @@ fn _not_null_plan() -> List[ExprNode]:
     return nodes^
 
 
-fn _record(
+def _record(
     mut report: ExpectationReport,
     row: Int,
     column: Int,
@@ -416,7 +416,7 @@ fn _record(
     report.n_reported = len(report.fail_rows)
 
 
-fn _apply_check(
+def _apply_check(
     mut report: ExpectationReport,
     mut failed_row: List[Bool],
     mut unknown_row: List[Bool],
@@ -493,7 +493,7 @@ fn _apply_check(
     return DQ_OK
 
 
-fn _finish(
+def _finish(
     mut report: ExpectationReport,
     failed_row: List[Bool],
     unknown_row: List[Bool],
@@ -517,7 +517,7 @@ fn _finish(
     report.n_passing_rows = rows - failing - unknown
 
 
-fn _plan_nodes_for(op: Int) -> Int:
+def _plan_nodes_for(op: Int) -> Int:
     """Nodes an expectation costs per row, for the work budget.
 
     BETWEEN is two comparison plans, FINITE is a direct scan (one unit), everything else
@@ -533,7 +533,7 @@ fn _plan_nodes_for(op: Int) -> Int:
     return DQ_COMPARE_PLAN_NODES
 
 
-fn expect_column_flat(
+def expect_column_flat(
     table: List[Float64], n_rows: Int, n_cols: Int, null_mask: List[Bool],
     col: Int, op: Int, bound_low: Float64, bound_high: Float64, max_reports: Int,
 ) raises -> ExpectationReport:
@@ -615,7 +615,7 @@ fn expect_column_flat(
     return report^
 
 
-fn expect_suite_flat(
+def expect_suite_flat(
     table: List[Float64], n_rows: Int, n_cols: Int, null_mask: List[Bool],
     cols: List[Int], ops: List[Int], lows: List[Float64], highs: List[Float64],
     max_reports: Int,
@@ -729,7 +729,7 @@ fn expect_suite_flat(
     return report^
 
 
-fn expect_plan_flat(
+def expect_plan_flat(
     table: List[Float64], n_rows: Int, n_cols: Int, null_mask: List[Bool],
     node_ints: List[Int], node_fvals: List[Float64], root: Int, subject_col: Int,
     max_reports: Int,

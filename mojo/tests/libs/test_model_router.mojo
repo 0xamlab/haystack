@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from model_router import capability_match_score, model_load_score, fallback_trigger_score, ensemble_weight, hybrid_pipeline_stage_score, model_selection_utility, routing_uncertainty, latency_tier_assignment, model_freshness_score, shadow_routing_fraction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -24,7 +24,7 @@ struct PRF1Result(Copyable, Movable):
     var recall: Float64
     var f1: Float64
 
-    fn __init__(out self, precision: Float64, recall: Float64, f1: Float64):
+    def __init__(out self, precision: Float64, recall: Float64, f1: Float64):
         self.precision = precision
         self.recall = recall
         self.f1 = f1
@@ -33,7 +33,7 @@ struct PRF1Result(Copyable, Movable):
 # ── Accuracy ──────────────────────────────────────────────────────────────────
 
 
-fn accuracy(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def accuracy(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Classification accuracy: fraction of correct predictions.
 
     Compares via rounding to nearest integer for float labels.
@@ -57,7 +57,7 @@ fn accuracy(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── Mean Squared Error ────────────────────────────────────────────────────────
 
 
-fn mse(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def mse(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Mean Squared Error: (1/n) Σ (pred - actual)²."""
     var n = len(predicted)
     if n == 0:
@@ -78,7 +78,7 @@ fn mse(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── Root Mean Squared Error ───────────────────────────────────────────────────
 
 
-fn rmse(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def rmse(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Root Mean Squared Error: sqrt(MSE)."""
     return sqrt(mse(predicted, actual))
 
@@ -86,7 +86,7 @@ fn rmse(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── Mean Absolute Error ───────────────────────────────────────────────────────
 
 
-fn mae(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def mae(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Mean Absolute Error: (1/n) Σ |pred - actual|."""
     var n = len(predicted)
     if n == 0:
@@ -106,7 +106,7 @@ fn mae(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── R² Score ──────────────────────────────────────────────────────────────────
 
 
-fn r2_score(predicted: List[Float64], actual: List[Float64]) -> Float64:
+def r2_score(predicted: List[Float64], actual: List[Float64]) -> Float64:
     """Coefficient of determination R².
 
     R² = 1 - SS_res / SS_tot
@@ -141,7 +141,7 @@ fn r2_score(predicted: List[Float64], actual: List[Float64]) -> Float64:
 # ── Confusion Matrix ─────────────────────────────────────────────────────────
 
 
-fn confusion_matrix(
+def confusion_matrix(
     predicted: List[Int], actual: List[Int], n_classes: Int
 ) -> List[List[Int]]:
     """Build an n_classes × n_classes confusion matrix.
@@ -172,7 +172,7 @@ fn confusion_matrix(
 # ── Precision / Recall / F1 (binary) ─────────────────────────────────────────
 
 
-fn precision_recall_f1(
+def precision_recall_f1(
     predicted: List[Int], actual: List[Int]
 ) -> PRF1Result:
     """Binary classification precision, recall, F1-score.

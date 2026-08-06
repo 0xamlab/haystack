@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from cartography import scale_factor, representative_fraction, ground_distance_from_map, map_distance_from_ground, latitude_to_utm_zone, mercator_y, equirectangular_x, equirectangular_y, great_circle_distance, map_area_at_scale, contour_interval_suggestion, declination_correction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

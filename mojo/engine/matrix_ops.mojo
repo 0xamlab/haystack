@@ -25,17 +25,17 @@ from std.math import sqrt, abs as fabs
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _mat_rows(A: List[List[Float64]]) -> Int:
+def _mat_rows(A: List[List[Float64]]) -> Int:
     return len(A)
 
 
-fn _mat_cols(A: List[List[Float64]]) -> Int:
+def _mat_cols(A: List[List[Float64]]) -> Int:
     if len(A) == 0:
         return 0
     return len(A[0])
 
 
-fn _mat_mul(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
+def _mat_mul(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
     """Multiply two matrices A (m×p) and B (p×n) -> (m×n)."""
     var m = _mat_rows(A)
     var p = _mat_cols(A)
@@ -52,7 +52,7 @@ fn _mat_mul(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64
     return C^
 
 
-fn _mat_identity(n: Int) -> List[List[Float64]]:
+def _mat_identity(n: Int) -> List[List[Float64]]:
     """Create n×n identity matrix."""
     var I = List[List[Float64]]()
     for i in range(n):
@@ -66,7 +66,7 @@ fn _mat_identity(n: Int) -> List[List[Float64]]:
     return I^
 
 
-fn _mat_add(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
+def _mat_add(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
     """Add two matrices element-wise."""
     var m = _mat_rows(A)
     var n = _mat_cols(A)
@@ -79,7 +79,7 @@ fn _mat_add(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64
     return C^
 
 
-fn _mat_sub(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
+def _mat_sub(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64]]:
     """Subtract two matrices element-wise."""
     var m = _mat_rows(A)
     var n = _mat_cols(A)
@@ -92,7 +92,7 @@ fn _mat_sub(A: List[List[Float64]], B: List[List[Float64]]) -> List[List[Float64
     return C^
 
 
-fn _mat_scale(A: List[List[Float64]], s: Float64) -> List[List[Float64]]:
+def _mat_scale(A: List[List[Float64]], s: Float64) -> List[List[Float64]]:
     """Scale matrix by scalar."""
     var m = _mat_rows(A)
     var n = _mat_cols(A)
@@ -108,7 +108,7 @@ fn _mat_scale(A: List[List[Float64]], s: Float64) -> List[List[Float64]]:
 # ── kronecker_product ─────────────────────────────────────────────────────────
 
 
-fn kronecker_product(
+def kronecker_product(
     A: List[List[Float64]], B: List[List[Float64]]
 ) -> List[List[Float64]]:
     """Kronecker/tensor product A ⊗ B.
@@ -135,7 +135,7 @@ fn kronecker_product(
 # ── hadamard_product ──────────────────────────────────────────────────────────
 
 
-fn hadamard_product(
+def hadamard_product(
     A: List[List[Float64]], B: List[List[Float64]]
 ) -> List[List[Float64]]:
     """Element-wise (Hadamard) product A ∘ B.
@@ -163,7 +163,7 @@ fn hadamard_product(
 # ── matrix_power ──────────────────────────────────────────────────────────────
 
 
-fn matrix_power(
+def matrix_power(
     A: List[List[Float64]], n: Int
 ) -> List[List[Float64]]:
     """A^n via repeated squaring (exponentiation by squaring).
@@ -200,7 +200,7 @@ fn matrix_power(
 # ── outer_product ─────────────────────────────────────────────────────────────
 
 
-fn outer_product(
+def outer_product(
     a: List[Float64], b: List[Float64]
 ) -> List[List[Float64]]:
     """Outer product a ⊗ bᵀ = n×m matrix.
@@ -226,7 +226,7 @@ fn outer_product(
 # ── matrix_exp_approx ────────────────────────────────────────────────────────
 
 
-fn matrix_exp_approx(
+def matrix_exp_approx(
     A: List[List[Float64]], terms: Int = 10
 ) -> List[List[Float64]]:
     """Matrix exponential via Taylor series: e^A ≈ Σ A^k/k!.
@@ -262,7 +262,7 @@ fn matrix_exp_approx(
 # ── vec ───────────────────────────────────────────────────────────────────────
 
 
-fn vec(A: List[List[Float64]]) -> List[Float64]:
+def vec(A: List[List[Float64]]) -> List[Float64]:
     """Vectorize matrix in column-major order.
 
     Args:
@@ -283,7 +283,7 @@ fn vec(A: List[List[Float64]]) -> List[Float64]:
 # ── unvec ─────────────────────────────────────────────────────────────────────
 
 
-fn unvec(
+def unvec(
     v: List[Float64], rows: Int, cols: Int
 ) -> List[List[Float64]]:
     """Reshape vector to matrix (column-major).
@@ -308,7 +308,7 @@ fn unvec(
 # ── matrix_norm_1 ────────────────────────────────────────────────────────────
 
 
-fn matrix_norm_1(A: List[List[Float64]]) -> Float64:
+def matrix_norm_1(A: List[List[Float64]]) -> Float64:
     """L1 norm: maximum absolute column sum.
 
     Args:
@@ -332,7 +332,7 @@ fn matrix_norm_1(A: List[List[Float64]]) -> Float64:
 # ── matrix_norm_inf ───────────────────────────────────────────────────────────
 
 
-fn matrix_norm_inf(A: List[List[Float64]]) -> Float64:
+def matrix_norm_inf(A: List[List[Float64]]) -> Float64:
     """L∞ norm: maximum absolute row sum.
 
     Args:
@@ -356,7 +356,7 @@ fn matrix_norm_inf(A: List[List[Float64]]) -> Float64:
 # ── commutator ────────────────────────────────────────────────────────────────
 
 
-fn commutator(
+def commutator(
     A: List[List[Float64]], B: List[List[Float64]]
 ) -> List[List[Float64]]:
     """Matrix commutator [A,B] = AB - BA.
@@ -384,7 +384,7 @@ fn commutator(
 # ── is_orthogonal ─────────────────────────────────────────────────────────────
 
 
-fn is_orthogonal(
+def is_orthogonal(
     A: List[List[Float64]], tol: Float64 = 1e-8
 ) -> Bool:
     """Check if AᵀA ≈ I (orthogonal matrix).
@@ -415,7 +415,7 @@ fn is_orthogonal(
 # ── gram_schmidt ──────────────────────────────────────────────────────────────
 
 
-fn gram_schmidt(
+def gram_schmidt(
     vectors: List[List[Float64]],
 ) -> List[List[Float64]]:
     """Gram-Schmidt orthogonalization.

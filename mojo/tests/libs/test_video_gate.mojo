@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from video_gate import should_use_cached_video, needs_clearer_video, quality_gate_passed_video, is_mostly_static_video, should_extract_keyframes, route_video_request
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

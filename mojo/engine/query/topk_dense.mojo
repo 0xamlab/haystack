@@ -80,7 +80,7 @@ here is narrower than `coded_dense`'s widest record (2 slots against up to 4),
 so this budget admits MORE codes at the same worker count, not fewer."""
 
 
-fn topk_status_name(status: Int) -> String:
+def topk_status_name(status: Int) -> String:
     """The vocabulary this module can return, including query.aggregate's."""
     if status == GROUP_CODED_OK:
         return "ok"
@@ -95,7 +95,7 @@ fn topk_status_name(status: Int) -> String:
     return "unknown"
 
 
-fn topk_state_bytes(cardinality: Int, workers: Int) -> Int:
+def topk_state_bytes(cardinality: Int, workers: Int) -> Int:
     """Every byte `group_top2_dense_parallel` allocates, worst case.
 
     Three arrays, rule 1c: the payload (`workers x pad64(cardinality*2)` Float64s),
@@ -111,7 +111,7 @@ fn topk_state_bytes(cardinality: Int, workers: Int) -> Int:
     return payload + order + seen
 
 
-fn topk_route_status(cardinality: Int, workers: Int) -> Int:
+def topk_route_status(cardinality: Int, workers: Int) -> Int:
     """Whether this route will accept the request, decided from shape alone —
     nothing allocated, nothing scanned. `group_top2_dense_parallel` calls
     exactly this, so a router's decision and the engine's decision cannot
@@ -125,7 +125,7 @@ fn topk_route_status(cardinality: Int, workers: Int) -> Int:
 
 
 @always_inline
-fn _fold_top2(mut top1: Float64, mut top2: Float64, value: Float64):
+def _fold_top2(mut top1: Float64, mut top2: Float64, value: Float64):
     """Fold one candidate value into a running (largest, second-largest) pair,
     IN PLACE.
 
@@ -155,7 +155,7 @@ fn _fold_top2(mut top1: Float64, mut top2: Float64, value: Float64):
         top2 = value
 
 
-fn _accumulate_top2(mut m1: Float64, mut m2: Float64, b1: Float64, b2: Float64):
+def _accumulate_top2(mut m1: Float64, mut m2: Float64, b1: Float64, b2: Float64):
     """Fold ANOTHER (b1, b2) top-2 pair into the running accumulator (m1, m2),
     in place — the union-of-partitions merge.
 
@@ -170,7 +170,7 @@ fn _accumulate_top2(mut m1: Float64, mut m2: Float64, b1: Float64, b2: Float64):
     _fold_top2(m1, m2, b2)
 
 
-fn _top2_reference(values: List[Float64], mut top1: Float64, mut top2: Float64) -> Int:
+def _top2_reference(values: List[Float64], mut top1: Float64, mut top2: Float64) -> Int:
     """The two largest ORDERED values in `values`, by a full scan — the
     reference `_fold_top2`/`_accumulate_top2` are checked against, spelled with no
     cleverness: track (top1, top2) with an explicit `seen` count rather than a
@@ -220,7 +220,7 @@ struct Top2GroupedResult(Copyable, Movable):
     var present2: List[Bool]
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var key_tuples: List[Float64],
         var top1: List[Float64],
@@ -236,11 +236,11 @@ struct Top2GroupedResult(Copyable, Movable):
         self.present2 = present2^
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         return len(self.key_tuples)
 
 
-fn _empty_top2() -> Top2GroupedResult:
+def _empty_top2() -> Top2GroupedResult:
     return Top2GroupedResult(
         List[Float64](), List[Float64](), List[Float64](), List[Bool](), List[Bool](), 0
     )
@@ -253,15 +253,15 @@ struct CodedTop2Result(Copyable, Movable):
     var status: Int
     var result: Top2GroupedResult
 
-    fn __init__(out self, status: Int, var result: Top2GroupedResult):
+    def __init__(out self, status: Int, var result: Top2GroupedResult):
         self.status = status
         self.result = result^
 
-    fn ok(self) -> Bool:
+    def ok(self) -> Bool:
         return self.status == GROUP_CODED_OK
 
 
-fn group_top2_dense(
+def group_top2_dense(
     batch: RecordBatch, key_column: Int, cardinality: Int, value_column: Int
 ) -> CodedTop2Result:
     """The two largest values of `value_column` per code in `key_column`.
@@ -272,7 +272,7 @@ fn group_top2_dense(
     )
 
 
-fn group_top2_dense_parallel(
+def group_top2_dense_parallel(
     batch: RecordBatch, key_column: Int, cardinality: Int, value_column: Int,
     n_workers: Int,
 ) -> CodedTop2Result:
@@ -326,7 +326,7 @@ fn group_top2_dense_parallel(
     var vp = value_col.values[].unsafe_ptr() + value_col.offset
 
     @parameter
-    fn topk_worker(w: Int):
+    def topk_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:

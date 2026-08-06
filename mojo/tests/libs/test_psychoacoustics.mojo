@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from psychoacoustics import loudness_phon_to_sone, loudness_sone_to_phon, critical_bandwidth, bark_scale, masking_threshold, speech_intelligibility_index, equal_loudness_correction, frequency_just_noticeable, temporal_masking_decay, binaural_masking_level_diff
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

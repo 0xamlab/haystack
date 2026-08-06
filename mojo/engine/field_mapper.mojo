@@ -63,7 +63,7 @@ struct FieldMapping(Copyable, Movable):
     var unit_hint: String             # "currency", "percentage", "count", "time", ""
     var confidence: Float64           # 0.0-1.0 how confident the mapping is
 
-    fn __init__(out self, original_name: String, canonical_name: String,
+    def __init__(out self, original_name: String, canonical_name: String,
                 polarity: Int, suggested_distribution: String,
                 distribution_params: String, unit_hint: String,
                 confidence: Float64):
@@ -79,7 +79,7 @@ struct FieldMapping(Copyable, Movable):
 # ── String helpers ────────────────────────────────────────────────────────────
 
 
-fn to_lower(s: String) -> String:
+def to_lower(s: String) -> String:
     """Convert string to lowercase ASCII."""
     var result = String("")
     var bytes = s.as_bytes()
@@ -94,7 +94,7 @@ fn to_lower(s: String) -> String:
     return result
 
 
-fn contains_keyword(text: String, keyword: String) -> Bool:
+def contains_keyword(text: String, keyword: String) -> Bool:
     """Case-insensitive substring check.
     "Total_Revenue_Q4" contains "revenue" → True
     """
@@ -117,7 +117,7 @@ fn contains_keyword(text: String, keyword: String) -> Bool:
     return False
 
 
-fn _find_keyword_position(text: String, keyword: String) -> Int:
+def _find_keyword_position(text: String, keyword: String) -> Int:
     """Find position of keyword in text (case-insensitive). Returns -1 if not found."""
     var lower_text = to_lower(text)
     var lower_kw = to_lower(keyword)
@@ -141,7 +141,7 @@ fn _find_keyword_position(text: String, keyword: String) -> Int:
 # ── Polarity detection ────────────────────────────────────────────────────────
 
 
-fn detect_polarity(field_name: String) -> Int:
+def detect_polarity(field_name: String) -> Int:
     """
     Detect whether a field name represents a positive (+1), negative (-1),
     or neutral (0) variable based on keyword matching.
@@ -219,7 +219,7 @@ fn detect_polarity(field_name: String) -> Int:
 # ── Distribution inference from range ─────────────────────────────────────────
 
 
-fn infer_distribution(low: Float64, high: Float64) -> Tuple[String, String]:
+def infer_distribution(low: Float64, high: Float64) -> Tuple[String, String]:
     """
     Infer the best distribution from a value range (low, high).
     Returns (distribution_name, params_json).
@@ -255,7 +255,7 @@ fn infer_distribution(low: Float64, high: Float64) -> Tuple[String, String]:
 # ── Distribution inference from sample values ─────────────────────────────────
 
 
-fn infer_distribution_from_values(values: List[Float64]) -> Tuple[String, String]:
+def infer_distribution_from_values(values: List[Float64]) -> Tuple[String, String]:
     """
     Infer distribution from a list of sample values.
 
@@ -328,7 +328,7 @@ fn infer_distribution_from_values(values: List[Float64]) -> Tuple[String, String
 # ── Unit hint detection ───────────────────────────────────────────────────────
 
 
-fn detect_unit_hint(field_name: String) -> String:
+def detect_unit_hint(field_name: String) -> String:
     """
     Detect likely unit type from field name keywords.
     Returns one of: "currency", "percentage", "count", "time", "rate", "weight", ""
@@ -418,7 +418,7 @@ fn detect_unit_hint(field_name: String) -> String:
 # ── Internal: JSON object key extraction ──────────────────────────────────────
 
 
-fn _json_object_keys(data: String) -> List[String]:
+def _json_object_keys(data: String) -> List[String]:
     """Extract all top-level keys from a JSON object string.
     Scans byte-by-byte using the same approach as json/parser.mojo.
     """
@@ -474,7 +474,7 @@ fn _json_object_keys(data: String) -> List[String]:
     return keys^
 
 
-fn _value_type_at(data: String, key: String) -> Int:
+def _value_type_at(data: String, key: String) -> Int:
     """Return value type at key position: 1=object, 2=array, 3=number, 0=other."""
     var pos = find_key(data, key)
     if pos < 0:
@@ -496,7 +496,7 @@ fn _value_type_at(data: String, key: String) -> Int:
 # ── Full field mapping ────────────────────────────────────────────────────────
 
 
-fn map_fields(raw_json: String) -> List[FieldMapping]:
+def map_fields(raw_json: String) -> List[FieldMapping]:
     """
     Auto-map fields from an arbitrary JSON object to simulation variables.
 
@@ -577,7 +577,7 @@ fn map_fields(raw_json: String) -> List[FieldMapping]:
 # ── Objective function construction ───────────────────────────────────────────
 
 
-fn build_objective_function(mappings: List[FieldMapping]) -> String:
+def build_objective_function(mappings: List[FieldMapping]) -> String:
     """
     Build an objective function expression from mapped fields.
 
@@ -624,7 +624,7 @@ fn build_objective_function(mappings: List[FieldMapping]) -> String:
 # ── Variables JSON construction ───────────────────────────────────────────────
 
 
-fn build_variables_json(mappings: List[FieldMapping]) -> String:
+def build_variables_json(mappings: List[FieldMapping]) -> String:
     """
     Build a JSON variables array from mapped fields, suitable for the
     engine's canonical schema.

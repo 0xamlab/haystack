@@ -30,7 +30,7 @@ comptime LN2: Float64 = 0.6931471805599453
 # ── radioactive_decay ────────────────────────────────────────────────────────
 
 
-fn radioactive_decay(n0: Float64, lambda_val: Float64, t: Float64) -> Float64:
+def radioactive_decay(n0: Float64, lambda_val: Float64, t: Float64) -> Float64:
     """Radioactive decay: N(t) = N0 * exp(-λ*t).
 
     Args:
@@ -47,7 +47,7 @@ fn radioactive_decay(n0: Float64, lambda_val: Float64, t: Float64) -> Float64:
 # ── half_life_from_lambda ────────────────────────────────────────────────────
 
 
-fn half_life_from_lambda(lambda_val: Float64) -> Float64:
+def half_life_from_lambda(lambda_val: Float64) -> Float64:
     """Half-life from decay constant: t½ = ln(2)/λ.
 
     Args:
@@ -64,7 +64,7 @@ fn half_life_from_lambda(lambda_val: Float64) -> Float64:
 # ── lambda_from_half_life ────────────────────────────────────────────────────
 
 
-fn lambda_from_half_life(half_life: Float64) -> Float64:
+def lambda_from_half_life(half_life: Float64) -> Float64:
     """Decay constant from half-life: λ = ln(2)/t½.
 
     Args:
@@ -81,7 +81,7 @@ fn lambda_from_half_life(half_life: Float64) -> Float64:
 # ── activity ─────────────────────────────────────────────────────────────────
 
 
-fn activity(lambda_val: Float64, n: Float64) -> Float64:
+def activity(lambda_val: Float64, n: Float64) -> Float64:
     """Activity: A = λ*N (disintegrations per second).
 
     Args:
@@ -97,7 +97,7 @@ fn activity(lambda_val: Float64, n: Float64) -> Float64:
 # ── decay_constant_from_activity ─────────────────────────────────────────────
 
 
-fn decay_constant_from_activity(activity_val: Float64, n: Float64) -> Float64:
+def decay_constant_from_activity(activity_val: Float64, n: Float64) -> Float64:
     """Decay constant from activity: λ = A/N.
 
     Args:
@@ -115,7 +115,7 @@ fn decay_constant_from_activity(activity_val: Float64, n: Float64) -> Float64:
 # ── binding_energy_per_nucleon ───────────────────────────────────────────────
 
 
-fn binding_energy_per_nucleon(total_be: Float64, a: Float64) -> Float64:
+def binding_energy_per_nucleon(total_be: Float64, a: Float64) -> Float64:
     """Binding energy per nucleon: BE/A.
 
     Args:
@@ -133,7 +133,7 @@ fn binding_energy_per_nucleon(total_be: Float64, a: Float64) -> Float64:
 # ── mass_defect ──────────────────────────────────────────────────────────────
 
 
-fn mass_defect(
+def mass_defect(
     z: Float64,
     n: Float64,
     atomic_mass: Float64,
@@ -158,7 +158,7 @@ fn mass_defect(
 # ── q_value ──────────────────────────────────────────────────────────────────
 
 
-fn q_value(
+def q_value(
     mass_reactants: Float64, mass_products: Float64, c2: Float64
 ) -> Float64:
     """Q-value of a nuclear reaction: Q = (m_r - m_p) * c².
@@ -177,7 +177,7 @@ fn q_value(
 # ── neutron_multiplication ───────────────────────────────────────────────────
 
 
-fn neutron_multiplication(k_eff: Float64, generation: Float64) -> Float64:
+def neutron_multiplication(k_eff: Float64, generation: Float64) -> Float64:
     """Neutron multiplication: N = k^generation.
 
     Args:
@@ -193,7 +193,7 @@ fn neutron_multiplication(k_eff: Float64, generation: Float64) -> Float64:
 # ── dose_rate_inverse_square ─────────────────────────────────────────────────
 
 
-fn dose_rate_inverse_square(
+def dose_rate_inverse_square(
     dose_ref: Float64, d_ref: Float64, d: Float64
 ) -> Float64:
     """Inverse square law for dose: D = D_ref * (d_ref/d)².
@@ -215,7 +215,7 @@ fn dose_rate_inverse_square(
 # ── shielding_attenuation ───────────────────────────────────────────────────
 
 
-fn shielding_attenuation(
+def shielding_attenuation(
     intensity0: Float64, mu: Float64, thickness: Float64
 ) -> Float64:
     """Shielding attenuation: I = I0 * exp(-μ*x).
@@ -234,7 +234,7 @@ fn shielding_attenuation(
 # ── critical_mass_estimate ───────────────────────────────────────────────────
 
 
-fn critical_mass_estimate(
+def critical_mass_estimate(
     density: Float64, sigma_f: Float64, nu: Float64
 ) -> Float64:
     """Simplified critical mass proportionality: m_c ∝ ρ*σ_f*ν.

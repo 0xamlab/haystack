@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn lake_volume_ellipsoid(
+def lake_volume_ellipsoid(
     semi_axis_a: Float64, semi_axis_b: Float64, mean_depth: Float64
 ) -> Float64:
     """Volume of an ellipsoidal lake basin.
@@ -35,7 +35,7 @@ fn lake_volume_ellipsoid(
     return (4.0 / 3.0) * pi * semi_axis_a * semi_axis_b * mean_depth
 
 
-fn hydraulic_retention_time(volume: Float64, outflow: Float64) -> Float64:
+def hydraulic_retention_time(volume: Float64, outflow: Float64) -> Float64:
     """Hydraulic retention time: HRT = V / Q.
 
     Args:
@@ -50,7 +50,7 @@ fn hydraulic_retention_time(volume: Float64, outflow: Float64) -> Float64:
     return volume / outflow
 
 
-fn thermal_stratification_index(
+def thermal_stratification_index(
     surface_temp: Float64, bottom_temp: Float64, depth: Float64
 ) -> Float64:
     """Thermal stratification index: temperature gradient per meter.
@@ -68,7 +68,7 @@ fn thermal_stratification_index(
     return (surface_temp - bottom_temp) / depth
 
 
-fn secchi_depth_estimate(chlorophyll_a: Float64) -> Float64:
+def secchi_depth_estimate(chlorophyll_a: Float64) -> Float64:
     """Secchi depth from chlorophyll-a concentration (Carlson 1977).
 
     Zs ≈ 4.6 / (0.025·chl + 0.177·√chl)
@@ -87,7 +87,7 @@ fn secchi_depth_estimate(chlorophyll_a: Float64) -> Float64:
     return 4.6 / denom
 
 
-fn trophic_state_index(secchi_depth_m: Float64) -> Float64:
+def trophic_state_index(secchi_depth_m: Float64) -> Float64:
     """Carlson Trophic State Index from Secchi depth.
 
     TSI(SD) = 60 - 14.41·ln(SD)
@@ -103,7 +103,7 @@ fn trophic_state_index(secchi_depth_m: Float64) -> Float64:
     return 60.0 - 14.41 * log(secchi_depth_m)
 
 
-fn phosphorus_loading(
+def phosphorus_loading(
     concentration: Float64, flow_rate: Float64
 ) -> Float64:
     """Annual phosphorus loading from a single input.
@@ -120,7 +120,7 @@ fn phosphorus_loading(
     return concentration * flow_rate / 1000.0  # mg/L * m³/yr → kg/yr
 
 
-fn oxygen_saturation(temperature: Float64, salinity: Float64) -> Float64:
+def oxygen_saturation(temperature: Float64, salinity: Float64) -> Float64:
     """Dissolved oxygen saturation at given temperature and salinity.
 
     Benson & Krause (1984) approximation.
@@ -144,7 +144,7 @@ fn oxygen_saturation(temperature: Float64, salinity: Float64) -> Float64:
     return exp(ln_do)
 
 
-fn attenuation_coefficient(secchi_depth_m: Float64) -> Float64:
+def attenuation_coefficient(secchi_depth_m: Float64) -> Float64:
     """Diffuse vertical attenuation coefficient Kd from Secchi depth.
 
     Kd ≈ 1.7 / Zs  (Poole & Atkins 1929 approximation)
@@ -160,7 +160,7 @@ fn attenuation_coefficient(secchi_depth_m: Float64) -> Float64:
     return 1.7 / secchi_depth_m
 
 
-fn lake_flushing_rate(volume: Float64, annual_inflow: Float64) -> Float64:
+def lake_flushing_rate(volume: Float64, annual_inflow: Float64) -> Float64:
     """Lake flushing rate (number of volume replacements per year).
 
     Args:
@@ -175,7 +175,7 @@ fn lake_flushing_rate(volume: Float64, annual_inflow: Float64) -> Float64:
     return annual_inflow / volume
 
 
-fn nitrogen_fixation_rate(temperature: Float64, light: Float64) -> Float64:
+def nitrogen_fixation_rate(temperature: Float64, light: Float64) -> Float64:
     """Modeled N-fixation rate (simplified cyanobacteria model).
 
     Args:

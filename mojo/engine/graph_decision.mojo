@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn multi_constraint_relax(
+def multi_constraint_relax(
     dist_u: Float64, edge_cost: Float64, edge_risk: Float64,
     dist_v_cost: Float64, dist_v_risk: Float64,
     alpha: Float64
@@ -41,7 +41,7 @@ fn multi_constraint_relax(
     return candidate
 
 
-fn flow_residual_capacity(
+def flow_residual_capacity(
     capacity: Float64, current_flow: Float64
 ) -> Float64:
     """Residual capacity in max-flow: c_f(u,v) = c(u,v) - f(u,v).
@@ -59,7 +59,7 @@ fn flow_residual_capacity(
     return residual
 
 
-fn flow_augment_amount(
+def flow_augment_amount(
     path_min_residual: Float64, new_edge_residual: Float64
 ) -> Float64:
     """Bottleneck residual along augmenting path.
@@ -78,7 +78,7 @@ fn flow_augment_amount(
     return path_min_residual
 
 
-fn dynamic_edge_weight_decay(
+def dynamic_edge_weight_decay(
     base_weight: Float64, time_elapsed: Float64, decay_rate: Float64
 ) -> Float64:
     """Time-decayed edge weight for dynamic graphs.
@@ -96,7 +96,7 @@ fn dynamic_edge_weight_decay(
     return base_weight * exp(-decay_rate * time_elapsed)
 
 
-fn probabilistic_route_score(
+def probabilistic_route_score(
     deterministic_cost: Float64, probability: Float64,
     risk_penalty: Float64
 ) -> Float64:
@@ -115,7 +115,7 @@ fn probabilistic_route_score(
     return deterministic_cost + risk_penalty * (1.0 - probability)
 
 
-fn resource_constrained_cost(
+def resource_constrained_cost(
     current_cost: Float64, edge_cost: Float64,
     resource_used: Float64, resource_budget: Float64,
     penalty: Float64
@@ -141,7 +141,7 @@ fn resource_constrained_cost(
     return new_cost
 
 
-fn temporal_edge_validity(
+def temporal_edge_validity(
     current_time: Float64, edge_open: Float64, edge_close: Float64
 ) -> Float64:
     """Check if edge is valid at current_time within time window.
@@ -159,7 +159,7 @@ fn temporal_edge_validity(
     return 0.0
 
 
-fn network_criticality(
+def network_criticality(
     edge_betweenness: Float64, flow: Float64, capacity: Float64
 ) -> Float64:
     """Edge criticality: betweenness × utilisation.
@@ -182,7 +182,7 @@ fn network_criticality(
     return edge_betweenness * utilisation
 
 
-fn supply_chain_slack(
+def supply_chain_slack(
     deadline: Float64, current_time: Float64, remaining_duration: Float64
 ) -> Float64:
     """Supply chain slack time: deadline - now - remaining_duration.
@@ -198,7 +198,7 @@ fn supply_chain_slack(
     return deadline - current_time - remaining_duration
 
 
-fn decision_graph_utility(
+def decision_graph_utility(
     outcome_value: Float64, probability: Float64,
     discount_factor: Float64, time_steps: Float64
 ) -> Float64:

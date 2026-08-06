@@ -64,19 +64,19 @@ from causal_inference.sensitivity import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     """Judged against the magnitude of THE TWO TERMS BEING COMPARED, and nothing else."""
     return fabs(a - b) <= ci_tolerance(fabs(a) + fabs(b), 0.0)
 
 
-fn _round_trip_ok(t: Float64, dof: Int, q: Float64) -> Bool:
+def _round_trip_ok(t: Float64, dof: Int, q: Float64) -> Bool:
     """A confounder at exactly RV_q, in both directions, must leave (1 - q) of the estimate.
 
     Two independent derivations. The tolerance is built from the magnitudes of the estimate and of
@@ -98,11 +98,11 @@ fn _round_trip_ok(t: Float64, dof: Int, q: Float64) -> Bool:
     )
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     return _floats(0.5, 0.6, 0.7, 0.4, 0.3)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

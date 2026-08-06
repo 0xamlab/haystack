@@ -17,7 +17,7 @@ Public API:
 from std.math import log, sqrt, exp
 
 
-fn runoff_curve_number(
+def runoff_curve_number(
     rainfall_mm: Float64, cn: Float64
 ) -> Float64:
     """SCS Curve Number direct runoff depth.
@@ -44,7 +44,7 @@ fn runoff_curve_number(
     return numerator / denominator
 
 
-fn rational_method_peak_flow(
+def rational_method_peak_flow(
     runoff_coeff: Float64, intensity_mm_per_h: Float64, area_ha: Float64
 ) -> Float64:
     """Peak flow from rational method: Q = C·i·A / 360.
@@ -60,7 +60,7 @@ fn rational_method_peak_flow(
     return runoff_coeff * intensity_mm_per_h * area_ha / 360.0
 
 
-fn time_of_concentration(
+def time_of_concentration(
     length_m: Float64, slope: Float64
 ) -> Float64:
     """Kirpich time of concentration.
@@ -79,7 +79,7 @@ fn time_of_concentration(
     return 0.0195 * (length_m ** 0.77) / (slope ** 0.385)
 
 
-fn green_ampt_infiltration(
+def green_ampt_infiltration(
     saturated_conductivity: Float64, suction_head: Float64,
     delta_theta: Float64, time_h: Float64
 ) -> Float64:
@@ -99,7 +99,7 @@ fn green_ampt_infiltration(
     return saturated_conductivity * time_h + suction_head * delta_theta * log(1.0 + saturated_conductivity * time_h / (suction_head * delta_theta + 1e-9))
 
 
-fn palmer_drought_index(
+def palmer_drought_index(
     precip: Float64, pet: Float64, awc: Float64
 ) -> Float64:
     """Simplified Palmer Drought Severity Index water balance component.
@@ -119,7 +119,7 @@ fn palmer_drought_index(
     return (precip - pet) / awc
 
 
-fn actual_evapotranspiration(
+def actual_evapotranspiration(
     pet: Float64, precipitation: Float64
 ) -> Float64:
     """Budyko-type actual evapotranspiration.
@@ -138,7 +138,7 @@ fn actual_evapotranspiration(
     return precipitation
 
 
-fn snow_water_equivalent(
+def snow_water_equivalent(
     snow_depth_m: Float64, snow_density_kg_m3: Float64
 ) -> Float64:
     """Snow water equivalent from depth and density.
@@ -155,7 +155,7 @@ fn snow_water_equivalent(
     return snow_depth_m * snow_density_kg_m3
 
 
-fn rain_intensity_from_depth(
+def rain_intensity_from_depth(
     depth_mm: Float64, duration_h: Float64
 ) -> Float64:
     """Average rainfall intensity from accumulation over a period.
@@ -172,7 +172,7 @@ fn rain_intensity_from_depth(
     return depth_mm / duration_h
 
 
-fn antecedent_moisture_condition(
+def antecedent_moisture_condition(
     five_day_precip_mm: Float64, is_growing_season: Float64
 ) -> Float64:
     """AMC class from 5-day antecedent precipitation.
@@ -199,7 +199,7 @@ fn antecedent_moisture_condition(
     return 3.0
 
 
-fn flood_frequency_factor(
+def flood_frequency_factor(
     return_period_yr: Float64
 ) -> Float64:
     """Gumbel (EV-I) frequency factor K for flood frequency analysis.

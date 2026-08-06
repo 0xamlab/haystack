@@ -16,25 +16,25 @@ Public API:
 from std.math import log
 
 
-fn _min_int(a: Int, b: Int) -> Int:
+def _min_int(a: Int, b: Int) -> Int:
     return a if a < b else b
 
 
-fn _is_relevant(value: Int) -> Bool:
+def _is_relevant(value: Int) -> Bool:
     return value > 0
 
 
-fn _clamp_non_negative(value: Float64) -> Float64:
+def _clamp_non_negative(value: Float64) -> Float64:
     if value < 0.0:
         return 0.0
     return value
 
 
-fn _discount(rank_index: Int) -> Float64:
+def _discount(rank_index: Int) -> Float64:
     return log(Float64(rank_index + 2))
 
 
-fn precision_at_k(relevance: List[Int], k: Int) -> Float64:
+def precision_at_k(relevance: List[Int], k: Int) -> Float64:
     if k <= 0 or len(relevance) == 0:
         return 0.0
     var limit = _min_int(k, len(relevance))
@@ -45,7 +45,7 @@ fn precision_at_k(relevance: List[Int], k: Int) -> Float64:
     return Float64(hits) / Float64(limit)
 
 
-fn recall_at_k(relevance: List[Int], total_relevant: Int, k: Int) -> Float64:
+def recall_at_k(relevance: List[Int], total_relevant: Int, k: Int) -> Float64:
     if total_relevant <= 0 or k <= 0 or len(relevance) == 0:
         return 0.0
     var limit = _min_int(k, len(relevance))
@@ -56,7 +56,7 @@ fn recall_at_k(relevance: List[Int], total_relevant: Int, k: Int) -> Float64:
     return Float64(hits) / Float64(total_relevant)
 
 
-fn hit_rate_at_k(relevance: List[Int], k: Int) -> Float64:
+def hit_rate_at_k(relevance: List[Int], k: Int) -> Float64:
     if k <= 0 or len(relevance) == 0:
         return 0.0
     var limit = _min_int(k, len(relevance))
@@ -66,7 +66,7 @@ fn hit_rate_at_k(relevance: List[Int], k: Int) -> Float64:
     return 0.0
 
 
-fn mrr_at_k(relevance: List[Int], k: Int) -> Float64:
+def mrr_at_k(relevance: List[Int], k: Int) -> Float64:
     if k <= 0 or len(relevance) == 0:
         return 0.0
     var limit = _min_int(k, len(relevance))
@@ -76,7 +76,7 @@ fn mrr_at_k(relevance: List[Int], k: Int) -> Float64:
     return 0.0
 
 
-fn map_at_k(relevance: List[Int], k: Int) -> Float64:
+def map_at_k(relevance: List[Int], k: Int) -> Float64:
     if k <= 0 or len(relevance) == 0:
         return 0.0
     var limit = _min_int(k, len(relevance))
@@ -91,7 +91,7 @@ fn map_at_k(relevance: List[Int], k: Int) -> Float64:
     return precision_sum / Float64(hits)
 
 
-fn ndcg_at_k(gains: List[Float64], ideal_gains: List[Float64], k: Int) -> Float64:
+def ndcg_at_k(gains: List[Float64], ideal_gains: List[Float64], k: Int) -> Float64:
     if k <= 0 or len(gains) == 0 or len(ideal_gains) == 0:
         return 0.0
     var limit = _min_int(k, len(gains))
@@ -109,7 +109,7 @@ fn ndcg_at_k(gains: List[Float64], ideal_gains: List[Float64], k: Int) -> Float6
     return dcg / ideal_dcg
 
 
-fn pairwise_margin_accuracy(
+def pairwise_margin_accuracy(
     positive_scores: List[Float64],
     negative_scores: List[Float64],
     margin: Float64,
@@ -124,7 +124,7 @@ fn pairwise_margin_accuracy(
     return Float64(wins) / Float64(limit)
 
 
-fn score_separation(positive_scores: List[Float64], negative_scores: List[Float64]) -> Float64:
+def score_separation(positive_scores: List[Float64], negative_scores: List[Float64]) -> Float64:
     if len(positive_scores) == 0 or len(negative_scores) == 0:
         return 0.0
     var pos_sum = 0.0
@@ -136,7 +136,7 @@ fn score_separation(positive_scores: List[Float64], negative_scores: List[Float6
     return pos_sum / Float64(len(positive_scores)) - neg_sum / Float64(len(negative_scores))
 
 
-fn latency_weighted_quality(
+def latency_weighted_quality(
     quality_score: Float64,
     latency_ms: Float64,
     target_latency_ms: Float64,

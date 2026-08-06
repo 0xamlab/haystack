@@ -216,7 +216,7 @@ struct GeoRouteMatrix(Copyable, Movable):
 # ── refusal constructors ──────────────────────────────────────────────────────
 
 
-fn _no_join(status: Int, n_left: Int, n_right: Int, seam_point: Int) -> GeoJoin:
+def _no_join(status: Int, n_left: Int, n_right: Int, seam_point: Int) -> GeoJoin:
     var l = List[Int]()
     var r = List[Int]()
     var d = List[Float64]()
@@ -225,13 +225,13 @@ fn _no_join(status: Int, n_left: Int, n_right: Int, seam_point: Int) -> GeoJoin:
     )
 
 
-fn _no_ring_join(status: Int, n_points: Int, n_rings: Int) -> GeoRingJoin:
+def _no_ring_join(status: Int, n_points: Int, n_rings: Int) -> GeoRingJoin:
     var a = List[Int]()
     var b = List[Int]()
     return GeoRingJoin(status, n_points, n_rings, 0, 0, 0, 0, 0, 0, 0, a^, b^)
 
 
-fn _no_matrix(status: Int, rows: Int, cols: Int, network: Bool) -> GeoRouteMatrix:
+def _no_matrix(status: Int, rows: Int, cols: Int, network: Bool) -> GeoRouteMatrix:
     var d = List[Float64]()
     var r = List[Bool]()
     return GeoRouteMatrix(status, rows, cols, 0, 0, network, False, 0.0, 0.0, d^, r^)
@@ -243,7 +243,7 @@ fn _no_matrix(status: Int, rows: Int, cols: Int, network: Bool) -> GeoRouteMatri
 # The parameter PACKING below is load-bearing, not style. `mojo_inventory` parses a
 # signature inside a TEN-LINE lookahead window and silently drops a function whose signature
 # closes later — no error, the function simply is not in the contract. Do not reflow.
-fn join_within_flat(
+def join_within_flat(
     lxs: List[Float64], lys: List[Float64], n_left: Int,
     rxs: List[Float64], rys: List[Float64], n_right: Int,
     radius_m: Float64, frame: Int, metric: Int, max_pairs: Int,
@@ -436,7 +436,7 @@ fn join_within_flat(
 
 
 # Packing is load-bearing — see the note above `join_within_flat`.
-fn join_point_in_rings_flat(
+def join_point_in_rings_flat(
     pxs: List[Float64], pys: List[Float64], n_points: Int,
     ring_xs: List[Float64], ring_ys: List[Float64],
     ring_offsets: List[Int], n_rings: Int, frame: Int,
@@ -631,7 +631,7 @@ fn join_point_in_rings_flat(
 
 
 # Packing is load-bearing — see the note above `join_within_flat`.
-fn route_matrix_flat(
+def route_matrix_flat(
     oxs: List[Float64], oys: List[Float64], n_origins: Int,
     dxs: List[Float64], dys: List[Float64], n_dests: Int,
     frame: Int, metric: Int,
@@ -711,7 +711,7 @@ fn route_matrix_flat(
 
 
 # Packing is load-bearing — see the note above `join_within_flat`.
-fn network_route_matrix_flat(
+def network_route_matrix_flat(
     node_xs: List[Float64], node_ys: List[Float64], n_nodes: Int,
     edge_src: List[Int], edge_dst: List[Int], n_edges: Int,
     origin_nodes: List[Int], n_origins: Int,

@@ -23,7 +23,7 @@ comptime E_CONST: Float64 = 2.718281828459045
 # ── Objective Functions ──────────────────────────────────────────────────────
 
 
-fn eval_objective(x: List[Float64], func_id: Int) -> Float64:
+def eval_objective(x: List[Float64], func_id: Int) -> Float64:
     """Evaluate objective function.
     0 = sphere (Σx²), 1 = Rastrigin, 2 = Ackley."""
     var n = len(x)
@@ -58,7 +58,7 @@ fn eval_objective(x: List[Float64], func_id: Int) -> Float64:
 # ── Acceptance Probability ───────────────────────────────────────────────────
 
 
-fn acceptance_probability(
+def acceptance_probability(
     current_cost: Float64, new_cost: Float64, temperature: Float64
 ) -> Float64:
     """SA acceptance probability. If new_cost < current_cost → 1.0,
@@ -74,7 +74,7 @@ fn acceptance_probability(
 # ── Neighbor Generation ──────────────────────────────────────────────────────
 
 
-fn neighbor(x: List[Float64], step_size: Float64) -> List[Float64]:
+def neighbor(x: List[Float64], step_size: Float64) -> List[Float64]:
     """Generate random neighbor by adding uniform noise in [-step, +step]."""
     var result = List[Float64]()
     for i in range(len(x)):
@@ -86,7 +86,7 @@ fn neighbor(x: List[Float64], step_size: Float64) -> List[Float64]:
 # ── Simulated Annealing ─────────────────────────────────────────────────────
 
 
-fn simulated_annealing(
+def simulated_annealing(
     x0: List[Float64],
     func_id: Int,
     temp: Float64,
@@ -128,7 +128,7 @@ fn simulated_annealing(
 # ── Particle Swarm Optimization ──────────────────────────────────────────────
 
 
-fn particle_swarm(
+def particle_swarm(
     n_particles: Int,
     dim: Int,
     func_id: Int,
@@ -206,7 +206,7 @@ fn particle_swarm(
 # ── Random Search ────────────────────────────────────────────────────────────
 
 
-fn random_search(
+def random_search(
     dim: Int,
     func_id: Int,
     n_samples: Int,
@@ -234,7 +234,7 @@ fn random_search(
 # ── Hill Climbing ────────────────────────────────────────────────────────────
 
 
-fn hill_climbing(
+def hill_climbing(
     x0: List[Float64],
     func_id: Int,
     step_size: Float64,

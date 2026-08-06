@@ -22,7 +22,7 @@ from std.math import sqrt, abs as fabs, exp
 # ── heat_equation_1d ───────────────────────────────────────────────────────────
 
 
-fn heat_equation_1d(
+def heat_equation_1d(
     u0: List[Float64], alpha: Float64, dx: Float64, dt: Float64, n_steps: Int,
 ) -> List[Float64]:
     """Solve 1D heat equation using explicit FTCS scheme.
@@ -53,7 +53,7 @@ fn heat_equation_1d(
 # ── wave_equation_1d ──────────────────────────────────────────────────────────
 
 
-fn wave_equation_1d(
+def wave_equation_1d(
     u0: List[Float64], v0: List[Float64], c: Float64,
     dx: Float64, dt: Float64, n_steps: Int,
 ) -> List[Float64]:
@@ -112,7 +112,7 @@ fn wave_equation_1d(
 # ── laplace_2d ─────────────────────────────────────────────────────────────────
 
 
-fn laplace_2d(u: List[List[Float64]], n_iter: Int) -> List[List[Float64]]:
+def laplace_2d(u: List[List[Float64]], n_iter: Int) -> List[List[Float64]]:
     """Solve 2D Laplace equation using Jacobi iteration.
 
     Boundary values are fixed (Dirichlet BC).
@@ -157,7 +157,7 @@ fn laplace_2d(u: List[List[Float64]], n_iter: Int) -> List[List[Float64]]:
 # ── diffusion_cfl ──────────────────────────────────────────────────────────────
 
 
-fn diffusion_cfl(alpha: Float64, dx: Float64) -> Float64:
+def diffusion_cfl(alpha: Float64, dx: Float64) -> Float64:
     """CFL stability limit for diffusion: dt_max = dx²/(2*alpha)."""
     if alpha <= 0.0:
         return 1e30
@@ -167,7 +167,7 @@ fn diffusion_cfl(alpha: Float64, dx: Float64) -> Float64:
 # ── wave_cfl ───────────────────────────────────────────────────────────────────
 
 
-fn wave_cfl(c: Float64, dx: Float64) -> Float64:
+def wave_cfl(c: Float64, dx: Float64) -> Float64:
     """CFL for wave equation: dt_max = dx/c."""
     if c <= 0.0:
         return 1e30
@@ -177,7 +177,7 @@ fn wave_cfl(c: Float64, dx: Float64) -> Float64:
 # ── is_stable_heat ─────────────────────────────────────────────────────────────
 
 
-fn is_stable_heat(alpha: Float64, dx: Float64, dt: Float64) -> Bool:
+def is_stable_heat(alpha: Float64, dx: Float64, dt: Float64) -> Bool:
     """Check if dt ≤ dx²/(2α) for heat equation stability."""
     var dt_max = diffusion_cfl(alpha, dx)
     return dt <= dt_max
@@ -186,7 +186,7 @@ fn is_stable_heat(alpha: Float64, dx: Float64, dt: Float64) -> Bool:
 # ── finite_difference_second ───────────────────────────────────────────────────
 
 
-fn finite_difference_second(u: List[Float64], dx: Float64) -> List[Float64]:
+def finite_difference_second(u: List[Float64], dx: Float64) -> List[Float64]:
     """Second derivative via central finite differences.
 
     Returns (u[i+1] - 2*u[i] + u[i-1]) / dx² for interior points.
@@ -205,7 +205,7 @@ fn finite_difference_second(u: List[Float64], dx: Float64) -> List[Float64]:
 # ── gaussian_initial ───────────────────────────────────────────────────────────
 
 
-fn gaussian_initial(n: Int, center: Float64, width: Float64) -> List[Float64]:
+def gaussian_initial(n: Int, center: Float64, width: Float64) -> List[Float64]:
     """Gaussian initial condition: exp(-(x-center)²/width²).
 
     Domain [0, 1] with n grid points.
@@ -225,7 +225,7 @@ fn gaussian_initial(n: Int, center: Float64, width: Float64) -> List[Float64]:
 # ── max_norm ───────────────────────────────────────────────────────────────────
 
 
-fn max_norm(u: List[Float64]) -> Float64:
+def max_norm(u: List[Float64]) -> Float64:
     """Maximum absolute value (L∞ norm)."""
     var m: Float64 = 0.0
     for i in range(len(u)):
@@ -238,7 +238,7 @@ fn max_norm(u: List[Float64]) -> Float64:
 # ── energy ─────────────────────────────────────────────────────────────────────
 
 
-fn energy(u: List[Float64], dx: Float64) -> Float64:
+def energy(u: List[Float64], dx: Float64) -> Float64:
     """Total energy: Σu²·dx."""
     var s: Float64 = 0.0
     for i in range(len(u)):

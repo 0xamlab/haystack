@@ -96,7 +96,7 @@ comptime REF_LAT60_DLON48_M: Float64 = 2609522.2704942976
 comptime REF_NAIVE_BOUND_M: Float64 = 2668678.23946941
 
 
-fn _codes() -> List[Int]:
+def _codes() -> List[Int]:
     """Every status code this package mints, in declaration order."""
     var c = List[Int]()
     c.append(GEO_OK)
@@ -126,7 +126,7 @@ fn _codes() -> List[Int]:
     return c^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[geospatial.contract]")

@@ -239,7 +239,7 @@ comptime EQ_SWEEP_WEIGHT: Int = 48
 comptime EQ_NASH_2X2_DENOM_FLOOR: Float64 = 1e-12
 
 
-fn eq_method_name(method: Int) -> String:
+def eq_method_name(method: Int) -> String:
     """The name of a solver tag. Deterministic, total, and never a plausible default.
 
     Returns `"unknown_method"` outside the declared tags rather than the first name, because a
@@ -260,7 +260,7 @@ fn eq_method_name(method: Int) -> String:
     return "unknown_method"
 
 
-fn eq_tiebreak_rule() -> String:
+def eq_tiebreak_rule() -> String:
     """The identifier of the tie-break rule every solver here uses. Zero-argument, deterministic.
 
     A FUNCTION rather than a comment, for the same reason `discrete_event.de_event_order()` is.
@@ -275,7 +275,7 @@ fn eq_tiebreak_rule() -> String:
 # ── shape arithmetic: every product grown by division, because `a ** p` wraps ──
 
 
-fn eq_game_shape_status(n_players: Int, n_actions: Int) -> Int:
+def eq_game_shape_status(n_players: Int, n_actions: Int) -> Int:
     """`STRAT_OK` when a game of this shape is representable AND has something to decide.
 
     Four distinct refusals, four codes:
@@ -304,7 +304,7 @@ fn eq_game_shape_status(n_players: Int, n_actions: Int) -> Int:
     return STRAT_OK
 
 
-fn eq_profile_count(n_players: Int, n_actions: Int) -> Int:
+def eq_profile_count(n_players: Int, n_actions: Int) -> Int:
     """`n_actions ** n_players` — the number of joint action profiles — or -1 if it does not fit.
 
     Grown ONE FACTOR AT A TIME through `strat_product_fits`, which decides by division. A power
@@ -329,7 +329,7 @@ fn eq_profile_count(n_players: Int, n_actions: Int) -> Int:
     return total
 
 
-fn eq_payoff_cells(n_players: Int, n_actions: Int) -> Int:
+def eq_payoff_cells(n_players: Int, n_actions: Int) -> Int:
     """`n_players * n_actions ** n_players` — the exact tensor length — or -1 if it does not fit.
 
     The JOINT check is the binding one and it is why this is a separate function: 8 players is
@@ -345,7 +345,7 @@ fn eq_payoff_cells(n_players: Int, n_actions: Int) -> Int:
     return n_players * profiles
 
 
-fn eq_profile_stride(player: Int, n_players: Int, n_actions: Int) -> Int:
+def eq_profile_stride(player: Int, n_players: Int, n_actions: Int) -> Int:
     """`n_actions ** (n_players - 1 - player)` — how far one step of `player`'s action moves.
 
     The tensor is row-major over the action tuple with PLAYER 0 MOST SIGNIFICANT, so player `i`'s
@@ -367,7 +367,7 @@ fn eq_profile_stride(player: Int, n_players: Int, n_actions: Int) -> Int:
     return s
 
 
-fn eq_profile_action(profile: Int, player: Int, n_players: Int, n_actions: Int) -> Int:
+def eq_profile_action(profile: Int, player: Int, n_players: Int, n_actions: Int) -> Int:
     """Which action `player` takes in `profile`, or -1 when the request is not addressable.
 
     `(profile // stride) % n_actions`, the exact inverse of `eq_profile_index`.
@@ -390,7 +390,7 @@ fn eq_profile_action(profile: Int, player: Int, n_players: Int, n_actions: Int) 
     return (profile // s) % n_actions
 
 
-fn eq_profile_index(actions: List[Int], n_players: Int, n_actions: Int) -> Int:
+def eq_profile_index(actions: List[Int], n_players: Int, n_actions: Int) -> Int:
     """The profile index of an action tuple, or -1 when the tuple is not a legal profile.
 
     The inverse of `eq_profile_action`, mixed-radix with player 0 most significant. `n_players`
@@ -423,7 +423,7 @@ fn eq_profile_index(actions: List[Int], n_players: Int, n_actions: Int) -> Int:
     return index
 
 
-fn eq_game_status(payoffs: List[Float64], n_players: Int, n_actions: Int) -> Int:
+def eq_game_status(payoffs: List[Float64], n_players: Int, n_actions: Int) -> Int:
     """`STRAT_OK` when `payoffs` is exactly the tensor of an `n_players` x `n_actions^n_players`
     game and holds only real numbers.
 
@@ -470,7 +470,7 @@ fn eq_game_status(payoffs: List[Float64], n_players: Int, n_actions: Int) -> Int
 # ── the work charges ──────────────────────────────────────────────────────────
 
 
-fn eq_enumeration_charge(n_players: Int, n_actions: Int) -> Int:
+def eq_enumeration_charge(n_players: Int, n_actions: Int) -> Int:
     """What an exhaustive pass over every profile costs, or -1 when it exceeds the budget.
 
         EQ_SCAN_WEIGHT * profiles * n_players * (n_actions + 1)
@@ -498,7 +498,7 @@ fn eq_enumeration_charge(n_players: Int, n_actions: Int) -> Int:
     return EQ_SCAN_WEIGHT * units
 
 
-fn eq_iteration_charge(n_players: Int, n_actions: Int, n_iters: Int) -> Int:
+def eq_iteration_charge(n_players: Int, n_actions: Int, n_iters: Int) -> Int:
     """What `n_iters` adaptive-play iterations cost, or -1 when they exceed the budget.
 
         EQ_SWEEP_WEIGHT * n_iters * (profiles * n_players + n_actions * n_players)
@@ -534,7 +534,7 @@ fn eq_iteration_charge(n_players: Int, n_actions: Int, n_iters: Int) -> Int:
     return EQ_SWEEP_WEIGHT * n_iters * per_iter
 
 
-fn eq_best_response_charge(n_players: Int, n_actions: Int, max_rounds: Int) -> Int:
+def eq_best_response_charge(n_players: Int, n_actions: Int, max_rounds: Int) -> Int:
     """What `max_rounds` sweeps of best-response dynamics cost, or -1 over the budget.
 
         EQ_SCAN_WEIGHT * max_rounds * n_players * n_actions
@@ -600,7 +600,7 @@ struct Exploitability(Copyable, Movable):
     var values: List[Float64]
 
 
-fn _exploit_refusal(code: Int, n_players: Int, n_actions: Int) -> Exploitability:
+def _exploit_refusal(code: Int, n_players: Int, n_actions: Int) -> Exploitability:
     return Exploitability(
         code, n_players, n_actions, False, strat_absent(), -1, False, False, strat_absent(),
         List[Float64](), List[Float64](),
@@ -641,7 +641,7 @@ struct PureNashReport(Copyable, Movable):
     var equilibria: List[Int]
 
 
-fn _pure_refusal(code: Int, n_players: Int, n_actions: Int) -> PureNashReport:
+def _pure_refusal(code: Int, n_players: Int, n_actions: Int) -> PureNashReport:
     return PureNashReport(
         code, STRAT_EXACT_UNKNOWN, EQ_METHOD_ENUMERATION, n_players, n_actions, 0, 0, False,
         -1, False, strat_absent(), -1, False, List[Int](),
@@ -685,7 +685,7 @@ struct MixedEquilibrium(Copyable, Movable):
     var strategy: List[Float64]
 
 
-fn _mixed_refusal(
+def _mixed_refusal(
     code: Int, method: Int, n_players: Int, n_actions: Int, abs_tol: Float64
 ) -> MixedEquilibrium:
     return MixedEquilibrium(
@@ -722,7 +722,7 @@ struct BestResponsePath(Copyable, Movable):
     var residual: Float64
 
 
-fn _path_refusal(code: Int, start_profile: Int) -> BestResponsePath:
+def _path_refusal(code: Int, start_profile: Int) -> BestResponsePath:
     return BestResponsePath(
         code, STRAT_EXACT_UNKNOWN, EQ_METHOD_BEST_RESPONSE, False, 0, 0, start_profile, -1,
         False, strat_absent(),
@@ -758,7 +758,7 @@ struct ZeroSumBounds(Copyable, Movable):
     var sum_defect: Float64
 
 
-fn _bounds_refusal(code: Int, rows: Int, cols: Int) -> ZeroSumBounds:
+def _bounds_refusal(code: Int, rows: Int, cols: Int) -> ZeroSumBounds:
     return ZeroSumBounds(
         code, rows, cols, False, strat_absent(), False, strat_absent(), False, strat_absent(),
         False, False, strat_absent(),
@@ -789,14 +789,14 @@ struct DominanceReport(Copyable, Movable):
     var dominated: List[Bool]
 
 
-fn _dominance_refusal(code: Int, player: Int, n_actions: Int) -> DominanceReport:
+def _dominance_refusal(code: Int, player: Int, n_actions: Int) -> DominanceReport:
     return DominanceReport(code, EQ_METHOD_TENSOR_DOMINANCE, player, n_actions, 0, List[Bool]())
 
 
 # ── internals: shared so the residual has exactly one implementation ──────────
 
 
-fn _sweep(
+def _sweep(
     payoffs: List[Float64],
     n_players: Int,
     n_actions: Int,
@@ -839,21 +839,21 @@ fn _sweep(
             q[i * n_actions + digits[i]] += w * payoffs[i * profiles + g]
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _int_zeros(n: Int) -> List[Int]:
+def _int_zeros(n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(0)
     return out^
 
 
-fn _action_values(
+def _action_values(
     payoffs: List[Float64], n_players: Int, n_actions: Int, profiles: Int,
     strategy: List[Float64],
 ) -> List[Float64]:
@@ -866,7 +866,7 @@ fn _action_values(
     return q^
 
 
-fn _within(best: Float64, achieved: Float64, abs_tol: Float64, additions: Int) -> Bool:
+def _within(best: Float64, achieved: Float64, abs_tol: Float64, additions: Int) -> Bool:
     """True when a best-response value does not beat the achieved value by more than tolerance.
 
     The judged quantity is `best`, a payoff, so the tolerance is scaled to ITS magnitude and
@@ -880,7 +880,7 @@ fn _within(best: Float64, achieved: Float64, abs_tol: Float64, additions: Int) -
     return strat_agrees(best, achieved, abs_tol, additions)
 
 
-fn _exploit_core(
+def _exploit_core(
     payoffs: List[Float64], n_players: Int, n_actions: Int, profiles: Int,
     strategy: List[Float64], abs_tol: Float64,
 ) -> Exploitability:
@@ -926,7 +926,7 @@ fn _exploit_core(
     )
 
 
-fn _nested(flat: List[Float64], offset: Int, rows: Int, cols: Int) -> List[List[Float64]]:
+def _nested(flat: List[Float64], offset: Int, rows: Int, cols: Int) -> List[List[Float64]]:
     """A rectangular `rows x cols` nested copy of a flat block, for the frozen kernels.
 
     `game_theory` takes `List[List[Float64]]` and reads `payoff[i][j]` with no bounds check of
@@ -942,14 +942,14 @@ fn _nested(flat: List[Float64], offset: Int, rows: Int, cols: Int) -> List[List[
     return out^
 
 
-fn _uniform_row(n_actions: Int) -> Float64:
+def _uniform_row(n_actions: Int) -> Float64:
     return 1.0 / Float64(n_actions)
 
 
 # ── pure equilibria: exhaustive, so "none" is a finding ───────────────────────
 
 
-fn eq_pure_gains_flat(
+def eq_pure_gains_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, actions: List[Int],
     abs_tol: Float64,
 ) -> Exploitability:
@@ -1022,7 +1022,7 @@ fn eq_pure_gains_flat(
     )
 
 
-fn eq_pure_nash_flat(
+def eq_pure_nash_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, abs_tol: Float64
 ) -> PureNashReport:
     """Every pure Nash equilibrium of the game, by exhaustive enumeration.
@@ -1113,7 +1113,7 @@ fn eq_pure_nash_flat(
     )
 
 
-fn eq_exploitability_flat(
+def eq_exploitability_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, strategy: List[Float64],
     abs_tol: Float64,
 ) -> Exploitability:
@@ -1161,7 +1161,7 @@ fn eq_exploitability_flat(
 # ── the frozen 2x2 closed form, with its exactness measured ───────────────────
 
 
-fn eq_nash_2x2_flat(
+def eq_nash_2x2_flat(
     payoff_a: List[Float64], payoff_b: List[Float64], abs_tol: Float64
 ) -> MixedEquilibrium:
     """The FROZEN `game_theory.nash_2x2` closed form, with its answer verified and its fallback
@@ -1246,7 +1246,7 @@ fn eq_nash_2x2_flat(
 # ── adaptive play ─────────────────────────────────────────────────────────────
 
 
-fn eq_regret_matching_flat(
+def eq_regret_matching_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, n_iters: Int, abs_tol: Float64
 ) -> MixedEquilibrium:
     """Regret matching, reporting the TIME-AVERAGE strategy and its measured exploitability.
@@ -1327,7 +1327,7 @@ fn eq_regret_matching_flat(
     )
 
 
-fn eq_fictitious_play_flat(
+def eq_fictitious_play_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, n_iters: Int, abs_tol: Float64
 ) -> MixedEquilibrium:
     """Fictitious play, reporting the EMPIRICAL frequency of play and its exploitability.
@@ -1393,7 +1393,7 @@ fn eq_fictitious_play_flat(
     )
 
 
-fn _finish_iterative(
+def _finish_iterative(
     payoffs: List[Float64], n_players: Int, n_actions: Int, profiles: Int,
     weights: List[Float64], n_iters: Int, method: Int, abs_tol: Float64,
 ) -> MixedEquilibrium:
@@ -1425,7 +1425,7 @@ fn _finish_iterative(
     )
 
 
-fn eq_best_response_flat(
+def eq_best_response_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, start_profile: Int,
     max_rounds: Int, abs_tol: Float64,
 ) -> BestResponsePath:
@@ -1525,7 +1525,7 @@ fn eq_best_response_flat(
 # ── the dispatcher: the exact answer when one exists, and it says which ───────
 
 
-fn eq_solve_flat(
+def eq_solve_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, n_iters: Int, abs_tol: Float64,
     require_exact: Bool,
 ) -> MixedEquilibrium:
@@ -1571,7 +1571,7 @@ fn eq_solve_flat(
 # ── two frozen kernels, generalised only where they have no form ──────────────
 
 
-fn eq_zero_sum_bounds_flat(
+def eq_zero_sum_bounds_flat(
     payoff_a: List[Float64], payoff_b: List[Float64], rows: Int, cols: Int, abs_tol: Float64
 ) -> ZeroSumBounds:
     """The lower and upper values of a zero-sum matrix game, from the FROZEN minimax kernel.
@@ -1647,7 +1647,7 @@ fn eq_zero_sum_bounds_flat(
     )
 
 
-fn eq_dominated_actions_flat(
+def eq_dominated_actions_flat(
     payoffs: List[Float64], n_players: Int, n_actions: Int, player: Int
 ) -> DominanceReport:
     """Which of `player`'s actions are strictly dominated, and which kernel decided it.

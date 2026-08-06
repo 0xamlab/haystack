@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from oceanography import seawater_density, buoyancy_frequency, tidal_force, geostrophic_velocity, ekman_depth, mixed_layer_heat_flux, salinity_from_chlorinity, wave_celerity_shallow, wave_celerity_deep, freshwater_flux
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

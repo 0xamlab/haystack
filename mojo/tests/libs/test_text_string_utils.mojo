@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from text.string_utils import str_split, str_replace, str_startswith, str_endswith, str_contains, str_repeat, str_pad_left, str_pad_right, str_upper, str_lower, str_trim, str_count, str_reverse, str_truncate, str_center
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

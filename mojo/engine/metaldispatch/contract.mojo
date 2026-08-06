@@ -108,7 +108,7 @@ kernels were sized for (Qwen3-0.6B-Base). This is the "no silent fallback" gate 
 shape-specialized kernel: refuse by name rather than run the wrong arithmetic on a different model."""
 
 
-fn metaldispatch_status_name(code: Int) -> String:
+def metaldispatch_status_name(code: Int) -> String:
     """Human-readable name for a `metaldispatch` status code.
 
     @capability metaldispatch_status_name
@@ -142,7 +142,7 @@ fn metaldispatch_status_name(code: Int) -> String:
     return "metaldispatch_code_out_of_range"
 
 
-fn metaldispatch_dispatch_budget(n_layers: Int) -> Int:
+def metaldispatch_dispatch_budget(n_layers: Int) -> Int:
     """GPU dispatches ONE token costs through this package's shim path.
 
     Calls `residentk_dispatch_budget` rather than restating its arithmetic (rule 3): the batched

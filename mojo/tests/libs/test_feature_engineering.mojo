@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from feature_engineering import minmax_scale, standard_scale, robust_scale, log_transform, box_cox_transform, yeo_johnson_transform, feature_cross, quantile_rank, target_encode_smooth, binning_equal_width
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

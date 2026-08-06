@@ -126,7 +126,7 @@ comptime PROGEXEC_ERR_DIVIDE_BY_ZERO: Int = 1408
 comptime PROGEXEC_ERR_NON_FINITE: Int = 1409
 
 
-fn progexec_status_name(code: Int) -> String:
+def progexec_status_name(code: Int) -> String:
     """The `progexec` status vocabulary. One integer, one meaning (rule 4e)."""
     if code == PROGEXEC_OK:
         return String("ok")

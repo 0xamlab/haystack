@@ -51,7 +51,7 @@ from query.plan import (
 )
 
 
-fn _query_error(code: String, message: String) -> String:
+def _query_error(code: String, message: String) -> String:
     return (
         '{"error":"'
         + code
@@ -65,7 +65,7 @@ fn _query_error(code: String, message: String) -> String:
     )
 
 
-fn _rows_from_resident(value: String) -> String:
+def _rows_from_resident(value: String) -> String:
     """The row array inside a resident dataset value.
 
     Accepts either a bare `[[...],[...]]` array — what `dataset_open` stores when the
@@ -86,7 +86,7 @@ fn _rows_from_resident(value: String) -> String:
     return json_get_array(value, "rows")
 
 
-fn run_query(raw: String, mut datasets: ResidentDatasets) -> String:
+def run_query(raw: String, mut datasets: ResidentDatasets) -> String:
     """Run a query plan, sourcing rows from `dataset` when present, else `rows`.
 
     `dataset` takes precedence when both are given, and that is stated rather than left

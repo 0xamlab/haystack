@@ -28,7 +28,7 @@ struct TTLCacheEntry(Copyable, Movable):
     var value: Float64
     var expires_at: Float64
 
-    fn __init__(out self, key: Int, value: Float64, expires_at: Float64):
+    def __init__(out self, key: Int, value: Float64, expires_at: Float64):
         self.key = key
         self.value = value
         self.expires_at = expires_at
@@ -46,7 +46,7 @@ struct TTLCache(Copyable, Movable):
     var hits: Int
     var misses: Int
 
-    fn __init__(
+    def __init__(
         out self,
         entries: List[TTLCacheEntry],
         max_size: Int,
@@ -64,7 +64,7 @@ struct TTLCache(Copyable, Movable):
 # ── create_ttl_cache ─────────────────────────────────────────────────────────
 
 
-fn create_ttl_cache(max_size: Int, ttl: Float64) -> TTLCache:
+def create_ttl_cache(max_size: Int, ttl: Float64) -> TTLCache:
     """Create an empty TTL cache.
 
     Args:
@@ -86,7 +86,7 @@ fn create_ttl_cache(max_size: Int, ttl: Float64) -> TTLCache:
 # ── cache_put ────────────────────────────────────────────────────────────────
 
 
-fn cache_put(
+def cache_put(
     mut cache: TTLCache, key: Int, value: Float64, current_time: Float64
 ):
     """Put value into cache. Updates existing key or inserts new entry.
@@ -121,7 +121,7 @@ fn cache_put(
 # ── cache_get ────────────────────────────────────────────────────────────────
 
 
-fn cache_get(
+def cache_get(
     mut cache: TTLCache, key: Int, current_time: Float64
 ) -> Float64:
     """Get value if present and not expired.
@@ -152,7 +152,7 @@ fn cache_get(
 # ── cache_evict_expired ──────────────────────────────────────────────────────
 
 
-fn cache_evict_expired(mut cache: TTLCache, current_time: Float64) -> Int:
+def cache_evict_expired(mut cache: TTLCache, current_time: Float64) -> Int:
     """Remove all expired entries.
 
     Args:
@@ -176,7 +176,7 @@ fn cache_evict_expired(mut cache: TTLCache, current_time: Float64) -> Int:
 # ── cache_size ───────────────────────────────────────────────────────────────
 
 
-fn cache_size(cache: TTLCache) -> Int:
+def cache_size(cache: TTLCache) -> Int:
     """Current number of entries in cache."""
     return len(cache.entries)
 
@@ -184,7 +184,7 @@ fn cache_size(cache: TTLCache) -> Int:
 # ── cache_hit_rate ───────────────────────────────────────────────────────────
 
 
-fn cache_hit_rate(cache: TTLCache) -> Float64:
+def cache_hit_rate(cache: TTLCache) -> Float64:
     """Hit rate = hits / (hits + misses). Returns 0.0 if no lookups."""
     var total = cache.hits + cache.misses
     if total == 0:
@@ -195,7 +195,7 @@ fn cache_hit_rate(cache: TTLCache) -> Float64:
 # ── cache_clear ──────────────────────────────────────────────────────────────
 
 
-fn cache_clear(mut cache: TTLCache):
+def cache_clear(mut cache: TTLCache):
     """Remove all entries and reset hit/miss counters."""
     cache.entries = List[TTLCacheEntry]()
     cache.hits = 0
@@ -205,7 +205,7 @@ fn cache_clear(mut cache: TTLCache):
 # ── cache_contains ───────────────────────────────────────────────────────────
 
 
-fn cache_contains(cache: TTLCache, key: Int, current_time: Float64) -> Bool:
+def cache_contains(cache: TTLCache, key: Int, current_time: Float64) -> Bool:
     """Check if key exists and is not expired (without updating stats).
 
     Args:

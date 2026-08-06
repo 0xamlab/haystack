@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from quantization_stack import bf16_to_fp32_round, fp16_overflow_check, absmax_calibration_scale, percentile_calibration_scale, smooth_quant_scale, gptq_hessian_update, awq_activation_scale, bnb_double_quant_scale, kv_cache_int8_scale, quant_aware_straight_through
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

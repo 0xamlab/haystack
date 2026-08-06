@@ -45,29 +45,29 @@ from json.parser import (
 
 # ── Byte-level helpers ────────────────────────────────────────────────────────
 
-fn _to_lower_byte(c: UInt8) -> UInt8:
+def _to_lower_byte(c: UInt8) -> UInt8:
     """Lowercase a single ASCII byte."""
     if c >= UInt8(65) and c <= UInt8(90):
         return c + UInt8(32)
     return c
 
-fn _is_alnum_lower(c: UInt8) -> Bool:
+def _is_alnum_lower(c: UInt8) -> Bool:
     """True for [a-z0-9]."""
     return (c >= UInt8(97) and c <= UInt8(122)) or (c >= UInt8(48) and c <= UInt8(57))
 
-fn _is_alnum_any(c: UInt8) -> Bool:
+def _is_alnum_any(c: UInt8) -> Bool:
     """True for [A-Za-z0-9]."""
     return ((c >= UInt8(65) and c <= UInt8(90)) or
             (c >= UInt8(97) and c <= UInt8(122)) or
             (c >= UInt8(48) and c <= UInt8(57)))
 
-fn _is_upper_alpha(c: UInt8) -> Bool:
+def _is_upper_alpha(c: UInt8) -> Bool:
     return c >= UInt8(65) and c <= UInt8(90)
 
-fn _is_lower_alpha(c: UInt8) -> Bool:
+def _is_lower_alpha(c: UInt8) -> Bool:
     return c >= UInt8(97) and c <= UInt8(122)
 
-fn _is_stop_word(w: String) -> Bool:
+def _is_stop_word(w: String) -> Bool:
     return (w == "of" or w == "the" or w == "a" or w == "an" or
             w == "and" or w == "or" or w == "by" or w == "in" or
             w == "at" or w == "for" or w == "per")
@@ -75,7 +75,7 @@ fn _is_stop_word(w: String) -> Bool:
 
 # ── JSON string unquote (mirrors request_parser._unquote) ────────────────────
 
-fn _unquote(s: String) -> String:
+def _unquote(s: String) -> String:
     """Strip surrounding JSON double-quotes; handle backslash escapes."""
     var n = len(s)
     if n < 2:
@@ -104,7 +104,7 @@ fn _unquote(s: String) -> String:
 
 # ── Column name preprocessing ─────────────────────────────────────────────────
 
-fn _expand_column(col: String) -> String:
+def _expand_column(col: String) -> String:
     """
     Expand column name for tokenization:
       - Symbol substitution: % → percent, $ → dollar, # → number
@@ -131,7 +131,7 @@ fn _expand_column(col: String) -> String:
     return result
 
 
-fn _tokenize(s: String) -> List[String]:
+def _tokenize(s: String) -> List[String]:
     """Extract [a-z0-9]+ tokens from an already-lowercased/expanded string."""
     var result = List[String]()
     var bytes = s.as_bytes()
@@ -152,7 +152,7 @@ fn _tokenize(s: String) -> List[String]:
     return result^
 
 
-fn _col_raw_parts(col: String) -> List[String]:
+def _col_raw_parts(col: String) -> List[String]:
     """
     Extract [A-Za-z0-9]+ tokens from original column name, preserving case.
     Used for acronym detection (need to check all-uppercase tokens).
@@ -178,7 +178,7 @@ fn _col_raw_parts(col: String) -> List[String]:
 
 # ── Similarity kernels ────────────────────────────────────────────────────────
 
-fn _fuzzy_token_sim(a: String, b: String) -> Float64:
+def _fuzzy_token_sim(a: String, b: String) -> Float64:
     """
     Compare two lowercase tokens:
       1. Exact match       → 1.0
@@ -214,7 +214,7 @@ fn _fuzzy_token_sim(a: String, b: String) -> Float64:
     return dice_coefficient(a, b)
 
 
-fn _fuzzy_name_sim(hint_toks: List[String], col_toks: List[String]) -> Float64:
+def _fuzzy_name_sim(hint_toks: List[String], col_toks: List[String]) -> Float64:
     """
     Geometric mean of per-hint-word best fuzzy token similarity.
 
@@ -238,7 +238,7 @@ fn _fuzzy_name_sim(hint_toks: List[String], col_toks: List[String]) -> Float64:
     return exp(log_sum / Float64(n_hint))
 
 
-fn _acronym_score(hint_toks: List[String], col_parts: List[String]) -> Float64:
+def _acronym_score(hint_toks: List[String], col_parts: List[String]) -> Float64:
     """
     Score based on whether any ALL-CAPS 2-6-char column token spells out
     the initials of the hint phrase.
@@ -303,7 +303,7 @@ fn _acronym_score(hint_toks: List[String], col_parts: List[String]) -> Float64:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-fn run_string_similarity(raw: String) raises -> String:
+def run_string_similarity(raw: String) raises -> String:
     """
     Score each column name against the hint_words and return all matches
     (optionally filtered by threshold) in the order they were supplied.

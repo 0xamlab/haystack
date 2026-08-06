@@ -40,12 +40,12 @@ from accounting import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -55,7 +55,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Number Theory Tests ─────────────────────────────────────────────────────
 
 
-fn test_is_prime() raises:
+def test_is_prime() raises:
     print("  is_prime...")
     _assert(is_prime(2), "2 is prime")                          # 1
     _assert(is_prime(3), "3 is prime")                          # 2
@@ -68,7 +68,7 @@ fn test_is_prime() raises:
     _assert(is_prime(104729), "104729 is prime")                # 9
 
 
-fn test_gcd_lcm() raises:
+def test_gcd_lcm() raises:
     print("  gcd / lcm...")
     _assert(gcd(12, 8) == 4, "gcd(12,8)==4")                   # 10
     _assert(gcd(100, 75) == 25, "gcd(100,75)==25")              # 11
@@ -78,7 +78,7 @@ fn test_gcd_lcm() raises:
     _assert(lcm(0, 5) == 0, "lcm(0,5)==0")                     # 15
 
 
-fn test_mod_pow() raises:
+def test_mod_pow() raises:
     print("  mod_pow...")
     _assert(mod_pow(2, 10, 1000) == 24, "2^10 mod 1000 == 24")     # 16
     _assert(mod_pow(3, 13, 100) == 23, "3^13 mod 100 == 23")   # 17
@@ -86,7 +86,7 @@ fn test_mod_pow() raises:
     _assert(mod_pow(5, 0, 7) == 1, "5^0 mod 7==1")             # 19
 
 
-fn test_euler_totient() raises:
+def test_euler_totient() raises:
     print("  euler_totient...")
     _assert(euler_totient(12) == 4, "φ(12)==4")                 # 20
     _assert(euler_totient(1) == 1, "φ(1)==1")                   # 21
@@ -94,7 +94,7 @@ fn test_euler_totient() raises:
     _assert(euler_totient(10) == 4, "φ(10)==4")                 # 23
 
 
-fn test_prime_factors() raises:
+def test_prime_factors() raises:
     print("  prime_factors...")
     var pf12 = prime_factors(12)
     _assert(len(pf12) == 3, "12 has 3 prime factors")          # 24
@@ -108,7 +108,7 @@ fn test_prime_factors() raises:
     _assert(pf30[2] == 5, "30 factor[2]==5")                   # 31
 
 
-fn test_sieve() raises:
+def test_sieve() raises:
     print("  sieve_of_eratosthenes...")
     var primes = sieve_of_eratosthenes(20)
     _assert(len(primes) == 8, "8 primes <= 20")                # 32
@@ -118,7 +118,7 @@ fn test_sieve() raises:
     _assert(primes[7] == 19, "sieve[7]==19")                   # 36
 
 
-fn test_extended_gcd() raises:
+def test_extended_gcd() raises:
     print("  extended_gcd...")
     var r = extended_gcd(35, 15)
     _assert(r[0] == 5, "gcd(35,15)==5")                        # 37
@@ -127,14 +127,14 @@ fn test_extended_gcd() raises:
     _assert(check == 5, "35*x + 15*y == 5")                    # 38
 
 
-fn test_mod_inverse() raises:
+def test_mod_inverse() raises:
     print("  mod_inverse...")
     var inv = mod_inverse(3, 7)
     _assert(inv == 5, "3^-1 mod 7 == 5")                       # 39
     _assert(mod_inverse(2, 4) == -1, "no inverse 2 mod 4")     # 40
 
 
-fn test_fibonacci() raises:
+def test_fibonacci() raises:
     print("  fibonacci...")
     _assert(fibonacci(0) == 0, "fib(0)==0")                     # 41
     _assert(fibonacci(1) == 1, "fib(1)==1")                     # 42
@@ -142,7 +142,7 @@ fn test_fibonacci() raises:
     _assert(fibonacci(20) == 6765, "fib(20)==6765")             # 44
 
 
-fn test_perfect_square() raises:
+def test_perfect_square() raises:
     print("  is_perfect_square...")
     _assert(is_perfect_square(49), "49 is perfect square")      # 45
     _assert(is_perfect_square(0), "0 is perfect square")        # 46
@@ -150,7 +150,7 @@ fn test_perfect_square() raises:
     _assert(is_perfect_square(144), "144 is perfect square")    # 48
 
 
-fn test_coprime() raises:
+def test_coprime() raises:
     print("  is_coprime...")
     _assert(is_coprime(15, 28), "15,28 coprime")               # 49
     _assert(not is_coprime(12, 8), "12,8 not coprime")         # 50
@@ -159,7 +159,7 @@ fn test_coprime() raises:
 # ── Optimization Tests ───────────────────────────────────────────────────────
 
 
-fn test_eval_objective() raises:
+def test_eval_objective() raises:
     print("  eval_objective...")
     var origin = List[Float64]()
     origin.append(0.0)
@@ -182,7 +182,7 @@ fn test_eval_objective() raises:
     )                                                           # 54
 
 
-fn test_acceptance_probability() raises:
+def test_acceptance_probability() raises:
     print("  acceptance_probability...")
     # Lower cost → accept with probability 1.0
     _assert_close(
@@ -199,7 +199,7 @@ fn test_acceptance_probability() raises:
     _assert(p < 0.01, "high cost low temp → low prob")         # 57
 
 
-fn test_neighbor_fn() raises:
+def test_neighbor_fn() raises:
     print("  neighbor...")
     var x = List[Float64]()
     x.append(5.0)
@@ -209,7 +209,7 @@ fn test_neighbor_fn() raises:
     _assert(fabs(n[0] - 5.0) <= 0.1, "neighbor within step")   # 59
 
 
-fn test_simulated_annealing() raises:
+def test_simulated_annealing() raises:
     print("  simulated_annealing...")
     var x0 = List[Float64]()
     x0.append(5.0)
@@ -219,14 +219,14 @@ fn test_simulated_annealing() raises:
     _assert(cost < 1.0, "SA sphere converges near 0")          # 60
 
 
-fn test_particle_swarm() raises:
+def test_particle_swarm() raises:
     print("  particle_swarm...")
     var best = particle_swarm(20, 2, 0, 200, -5.0, 5.0)
     var cost = eval_objective(best, 0)
     _assert(cost < 1.0, "PSO sphere near-optimal")             # 61
 
 
-fn test_random_search() raises:
+def test_random_search() raises:
     print("  random_search...")
     var best = random_search(2, 0, 500, -5.0, 5.0)
     _assert(len(best) == 2, "random_search returns dim=2")      # 62
@@ -234,7 +234,7 @@ fn test_random_search() raises:
     _assert(best[0] <= 5.0, "within upper bound")              # 64
 
 
-fn test_hill_climbing() raises:
+def test_hill_climbing() raises:
     print("  hill_climbing...")
     var x0 = List[Float64]()
     x0.append(3.0)
@@ -248,7 +248,7 @@ fn test_hill_climbing() raises:
 # ── Accounting Tests ─────────────────────────────────────────────────────────
 
 
-fn test_straight_line() raises:
+def test_straight_line() raises:
     print("  straight_line_depreciation...")
     _assert_close(
         straight_line_depreciation(10000.0, 2000.0, 5),
@@ -260,7 +260,7 @@ fn test_straight_line() raises:
     )                                                           # 67
 
 
-fn test_declining_balance() raises:
+def test_declining_balance() raises:
     print("  declining_balance...")
     _assert_close(
         declining_balance(10000.0, 0.2, 1),
@@ -272,7 +272,7 @@ fn test_declining_balance() raises:
     )                                                           # 69
 
 
-fn test_sum_of_years_digits() raises:
+def test_sum_of_years_digits() raises:
     print("  sum_of_years_digits...")
     # 5-year life, year 1: (10000-2000) * 5/15 = 2666.67
     _assert_close(
@@ -286,7 +286,7 @@ fn test_sum_of_years_digits() raises:
     )                                                           # 71
 
 
-fn test_future_present_value() raises:
+def test_future_present_value() raises:
     print("  future_value / present_value...")
     _assert_close(
         future_value(1000.0, 0.05, 10),
@@ -298,7 +298,7 @@ fn test_future_present_value() raises:
     )                                                           # 73
 
 
-fn test_profit_margins() raises:
+def test_profit_margins() raises:
     print("  profit margins...")
     _assert_close(
         gross_profit_margin(100.0, 60.0),
@@ -310,7 +310,7 @@ fn test_profit_margins() raises:
     )                                                           # 75
 
 
-fn test_ratios() raises:
+def test_ratios() raises:
     print("  ratios...")
     _assert_close(
         current_ratio(150.0, 100.0),
@@ -326,7 +326,7 @@ fn test_ratios() raises:
     )                                                           # 78
 
 
-fn test_break_even() raises:
+def test_break_even() raises:
     print("  break_even_units...")
     _assert_close(
         break_even_units(10000.0, 50.0, 30.0),
@@ -334,7 +334,7 @@ fn test_break_even() raises:
     )                                                           # 79
 
 
-fn test_cagr() raises:
+def test_cagr() raises:
     print("  compound_annual_growth...")
     _assert_close(
         compound_annual_growth(100.0, 200.0, 5),
@@ -349,7 +349,7 @@ fn test_cagr() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 52 Tests ===")
 
     # Number Theory

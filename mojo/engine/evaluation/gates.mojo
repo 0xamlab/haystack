@@ -140,7 +140,7 @@ struct GateResult(Copyable, Movable):
     var bins_used: Int
     var bin_policy: Int
 
-    fn __init__(out self, status: Int, metric_id: Int):
+    def __init__(out self, status: Int, metric_id: Int):
         self.status = status
         self.decided = False
         self.passed = False
@@ -181,7 +181,7 @@ struct DriftResult(Copyable, Movable):
     var bins_unmatched: Int
     var bin_policy: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_reference: Int, n_candidate: Int, n_bins: Int
     ):
         self.status = status
@@ -199,7 +199,7 @@ struct DriftResult(Copyable, Movable):
         self.bin_policy = EVAL_BIN_EQUAL_WIDTH
 
 
-fn metric_gate(
+def metric_gate(
     baseline: Float64, candidate: Float64, abs_tolerance: Float64,
     higher_is_better: Bool
 ) -> GateResult:
@@ -286,7 +286,7 @@ fn metric_gate(
     return out^
 
 
-fn metric_regression_gate_flat(
+def metric_regression_gate_flat(
     base_probs: List[Float64], base_labels: List[Float64], n_base: Int,
     cand_probs: List[Float64], cand_labels: List[Float64], n_cand: Int,
     metric_id: Int, n_bins: Int, policy: Int, abs_tolerance: Float64
@@ -356,7 +356,7 @@ fn metric_regression_gate_flat(
     return out^
 
 
-fn psi_drift_gate_flat(
+def psi_drift_gate_flat(
     reference: List[Float64], n_reference: Int, candidate: List[Float64],
     n_candidate: Int, n_bins: Int, threshold: Float64
 ) -> DriftResult:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from speleology import cave_passage_volume, stalactite_growth_rate, drip_water_calcite_saturation, cave_climate_temperature, turbulent_flow_cave, karst_spring_discharge, cave_radio_signal_depth, dissolution_rate_limestone, age_uranium_series, radon_in_cave_air
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

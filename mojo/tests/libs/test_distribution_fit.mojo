@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from distribution_fit import fit_normal, fit_exponential, fit_uniform, fit_weibull, log_likelihood_normal, log_likelihood_exponential, aic, bic, best_fit, qq_residuals
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

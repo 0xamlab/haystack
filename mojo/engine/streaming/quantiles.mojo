@@ -189,7 +189,7 @@ struct QuantileSketch(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         values: List[Float64],
         level_sizes: List[Int],
@@ -231,7 +231,7 @@ struct QuantileEstimate(Copyable, Movable):
     var n: Int
     var status: Int
 
-    fn __init__(
+    def __init__(
         out self,
         value: Float64,
         present: Bool,
@@ -263,7 +263,7 @@ struct QuantileSeries(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         values: List[Float64],
         present: List[Bool],
@@ -296,7 +296,7 @@ struct QuantileProfile(Copyable, Movable):
     var status: Int
     var valid: Bool
 
-    fn __init__(
+    def __init__(
         out self,
         values: List[Float64],
         cumulative: List[Int],
@@ -325,24 +325,24 @@ struct QuantileSnapshot(Copyable, Movable):
     var header: List[Int]
     var values: List[Float64]
 
-    fn __init__(out self, header: List[Int], values: List[Float64]):
+    def __init__(out self, header: List[Int], values: List[Float64]):
         self.header = header.copy()
         self.values = values.copy()
 
 
-fn _invalid(status: Int) -> QuantileSketch:
+def _invalid(status: Int) -> QuantileSketch:
     """Not a sketch, with the reason."""
     return QuantileSketch(
         List[Float64](), List[Int](), List[Int](), 0, 0, 0, 0.0, 0.0, status, False
     )
 
 
-fn _absent(status: Int, n: Int) -> QuantileEstimate:
+def _absent(status: Int, n: Int) -> QuantileEstimate:
     """No quantile, with the reason. `value` is 0.0 and means nothing."""
     return QuantileEstimate(0.0, False, 0.0, 0.0, n, status)
 
 
-fn _params_ok(k: Int, seed: Int) -> Int:
+def _params_ok(k: Int, seed: Int) -> Int:
     """`STM_OK`, or the status that refuses these parameters.
 
     `k` must be EVEN: a compaction promotes exactly half a full level, and an odd capacity
@@ -355,7 +355,7 @@ fn _params_ok(k: Int, seed: Int) -> Int:
     return STM_OK
 
 
-fn _levels_ok(sketch: QuantileSketch) -> Int:
+def _levels_ok(sketch: QuantileSketch) -> Int:
     """`STM_OK`, or the status refusing this sketch's SHAPE. O(number of levels).
 
     THE STRUCT PATH IS A CALLER PATH. `QuantileSketch` is decoded from caller JSON by the
@@ -416,7 +416,7 @@ fn _levels_ok(sketch: QuantileSketch) -> Int:
     return STM_OK
 
 
-fn _bounds_ok(sketch: QuantileSketch) -> Int:
+def _bounds_ok(sketch: QuantileSketch) -> Int:
     """`STM_OK`, or the status refusing this sketch's exact minimum and maximum. O(1).
 
     `minimum` and `maximum` are returned VERBATIM by `quantile_minimum`, `quantile_maximum` and
@@ -431,7 +431,7 @@ fn _bounds_ok(sketch: QuantileSketch) -> Int:
     return STM_OK
 
 
-fn _sketch_ok(sketch: QuantileSketch) -> Int:
+def _sketch_ok(sketch: QuantileSketch) -> Int:
     """`STM_OK`, or the status refusing this sketch. Shape, bounds, then every stored value.
 
     O(M + L). The value scan is the last step because it is the only expensive one, and every
@@ -449,7 +449,7 @@ fn _sketch_ok(sketch: QuantileSketch) -> Int:
     return STM_OK
 
 
-fn _levels_of(sketch: QuantileSketch) -> List[List[Float64]]:
+def _levels_of(sketch: QuantileSketch) -> List[List[Float64]]:
     """The sketch's levels as nested lists. Requires `_levels_ok(sketch) == STM_OK`."""
     var out = List[List[Float64]]()
     var cursor = 0
@@ -462,7 +462,7 @@ fn _levels_of(sketch: QuantileSketch) -> List[List[Float64]]:
     return out^
 
 
-fn _compact(
+def _compact(
     mut levels: List[List[Float64]], mut comps: List[Int], index: Int, k: Int, seed: Int
 ) -> Bool:
     """Compact level `index` into `index + 1`. False when a new level cannot be created.
@@ -494,7 +494,7 @@ fn _compact(
     return True
 
 
-fn _cascade(
+def _cascade(
     mut levels: List[List[Float64]], mut comps: List[Int], k: Int, seed: Int
 ) -> Bool:
     """Compact every over-full level, lowest first. False on level overflow.
@@ -511,7 +511,7 @@ fn _cascade(
     return True
 
 
-fn _pack(
+def _pack(
     levels: List[List[Float64]],
     comps: List[Int],
     k: Int,
@@ -532,7 +532,7 @@ fn _pack(
     )
 
 
-fn quantile_empty(k: Int, seed: Int) -> QuantileSketch:
+def quantile_empty(k: Int, seed: Int) -> QuantileSketch:
     """An empty sketch with level capacity `k`, keyed by `seed`.
 
     Valid, and with no quantile: `quantile_at` reports ABSENT for it. An empty sketch is the
@@ -554,7 +554,7 @@ fn quantile_empty(k: Int, seed: Int) -> QuantileSketch:
     return _pack(levels, comps, k, 0, seed, 0.0, 0.0)
 
 
-fn quantile_add(sketch: QuantileSketch, x: Float64) -> QuantileSketch:
+def quantile_add(sketch: QuantileSketch, x: Float64) -> QuantileSketch:
     """`sketch` with one more observation, as a new value.
 
     A non-finite observation is refused rather than stored. Storing one would put it into a
@@ -588,7 +588,7 @@ fn quantile_add(sketch: QuantileSketch, x: Float64) -> QuantileSketch:
     return _pack(levels, comps, sketch.k, sketch.n + 1, sketch.seed, lo, hi)
 
 
-fn quantile_ingest(values: List[Float64], k: Int, seed: Int) -> QuantileSketch:
+def quantile_ingest(values: List[Float64], k: Int, seed: Int) -> QuantileSketch:
     """A sketch of every element of `values`.
 
     The element count is `len(values)` and is never a parameter, which removes the
@@ -603,7 +603,7 @@ fn quantile_ingest(values: List[Float64], k: Int, seed: Int) -> QuantileSketch:
     return quantile_ingest_prefix(values, len(values), k, seed)
 
 
-fn quantile_ingest_prefix(
+def quantile_ingest_prefix(
     values: List[Float64], n: Int, k: Int, seed: Int
 ) -> QuantileSketch:
     """A sketch of `values[0..n)`, for replaying a prefix of a stored stream.
@@ -656,7 +656,7 @@ fn quantile_ingest_prefix(
     return _pack(levels, comps, k, n, seed, lo, hi)
 
 
-fn quantile_merge(a: QuantileSketch, b: QuantileSketch) -> QuantileSketch:
+def quantile_merge(a: QuantileSketch, b: QuantileSketch) -> QuantileSketch:
     """A sketch of `A ++ B`, within `stm_kll_rank_error(k) * (a.n + b.n)` of the exact one.
 
     Corresponding levels are concatenated and the result re-compacted where it exceeds `k`.
@@ -728,7 +728,7 @@ fn quantile_merge(a: QuantileSketch, b: QuantileSketch) -> QuantileSketch:
     return _pack(levels, comps, a.k, n, a.seed, lo, hi)
 
 
-fn quantile_profile(sketch: QuantileSketch) -> QuantileProfile:
+def quantile_profile(sketch: QuantileSketch) -> QuantileProfile:
     """The sketch's estimated CDF: ascending values with cumulative weights.
 
     Built by an L-way merge over the per-level sorted arrays, so it is produced once in
@@ -784,7 +784,7 @@ fn quantile_profile(sketch: QuantileSketch) -> QuantileProfile:
     return QuantileProfile(values^, cumulative^, sketch.n, STM_OK, True)
 
 
-fn _search_rank(profile: QuantileProfile, target: Int) -> Int:
+def _search_rank(profile: QuantileProfile, target: Int) -> Int:
     """Smallest index whose cumulative weight is at least `target`, or the last index."""
     var lo = 0
     var hi = len(profile.cumulative) - 1
@@ -797,7 +797,7 @@ fn _search_rank(profile: QuantileProfile, target: Int) -> Int:
     return lo
 
 
-fn quantile_at(sketch: QuantileSketch, q: Float64) -> QuantileEstimate:
+def quantile_at(sketch: QuantileSketch, q: Float64) -> QuantileEstimate:
     """The value at quantile `q`, or ABSENCE.
 
     `q` outside `[0, 1]` is refused rather than clamped: clamping turns a caller's unit
@@ -838,7 +838,7 @@ fn quantile_at(sketch: QuantileSketch, q: Float64) -> QuantileEstimate:
     return _from_profile(profile, q, claim.value, slack, sketch.n)
 
 
-fn _rank_of(q: Float64, n: Int) -> Int:
+def _rank_of(q: Float64, n: Int) -> Int:
     """The NEAREST-RANK target for quantile `q` of `n` items: `ceil(q * n)`, clamped to `[1, n]`.
 
     A CEILING, and not `Int(q * Float64(n))`. Truncation returns the WRONG QUANTILE, and it does
@@ -875,7 +875,7 @@ fn _rank_of(q: Float64, n: Int) -> Int:
     return target
 
 
-fn _from_profile(
+def _from_profile(
     profile: QuantileProfile, q: Float64, rank_error: Float64, slack: Float64, n: Int
 ) -> QuantileEstimate:
     """One quantile read off an already-built profile, at the nearest RANK to `q * n`.
@@ -891,7 +891,7 @@ fn _from_profile(
     )
 
 
-fn quantile_batch(sketch: QuantileSketch, qs: List[Float64]) -> QuantileSeries:
+def quantile_batch(sketch: QuantileSketch, qs: List[Float64]) -> QuantileSeries:
     """Many quantiles from ONE profile build, each with its own presence flag.
 
     This is the reason `quantile_profile` is a separate step: 100 quantiles through
@@ -943,7 +943,7 @@ fn quantile_batch(sketch: QuantileSketch, qs: List[Float64]) -> QuantileSeries:
     return QuantileSeries(values^, present^, claim.value, sketch.n, STM_OK, True)
 
 
-fn quantile_rank(sketch: QuantileSketch, x: Float64) -> QuantileEstimate:
+def quantile_rank(sketch: QuantileSketch, x: Float64) -> QuantileEstimate:
     """Estimated fraction of the stream at or below `x`, in `[0, 1]`, or ABSENCE.
 
     The inverse of `quantile_at`, and the direction the error bound is actually stated in:
@@ -981,7 +981,7 @@ fn quantile_rank(sketch: QuantileSketch, x: Float64) -> QuantileEstimate:
     )
 
 
-fn quantile_minimum(sketch: QuantileSketch) -> QuantileEstimate:
+def quantile_minimum(sketch: QuantileSketch) -> QuantileEstimate:
     """The EXACT smallest observation, or ABSENCE for an empty sketch.
 
     Exact, not estimated: it is tracked outside the levels so compaction cannot discard it.
@@ -1006,7 +1006,7 @@ fn quantile_minimum(sketch: QuantileSketch) -> QuantileEstimate:
     return QuantileEstimate(sketch.minimum, True, 0.0, 0.0, sketch.n, STM_OK)
 
 
-fn quantile_maximum(sketch: QuantileSketch) -> QuantileEstimate:
+def quantile_maximum(sketch: QuantileSketch) -> QuantileEstimate:
     """The EXACT largest observation, or ABSENCE for an empty sketch.
 
     @capability quantile_maximum
@@ -1025,7 +1025,7 @@ fn quantile_maximum(sketch: QuantileSketch) -> QuantileEstimate:
     return QuantileEstimate(sketch.maximum, True, 0.0, 0.0, sketch.n, STM_OK)
 
 
-fn quantile_total_weight(sketch: QuantileSketch) -> Int:
+def quantile_total_weight(sketch: QuantileSketch) -> Int:
     """`sum_i level_sizes[i] * 2^i`, which must equal `n`, or -1 for an unusable sketch.
 
     Compaction converts `m` items of weight `2^i` into exactly `m/2` of weight `2^(i+1)`, so
@@ -1054,7 +1054,7 @@ fn quantile_total_weight(sketch: QuantileSketch) -> Int:
     return total
 
 
-fn quantile_snapshot(sketch: QuantileSketch) -> QuantileSnapshot:
+def quantile_snapshot(sketch: QuantileSketch) -> QuantileSnapshot:
     """Flat snapshot as an integer header plus a float payload.
 
     An invalid sketch snapshots as two EMPTY lists, never as a header with no payload: a
@@ -1087,7 +1087,7 @@ fn quantile_snapshot(sketch: QuantileSketch) -> QuantileSnapshot:
     return QuantileSnapshot(header^, values^)
 
 
-fn quantile_from_snapshot(
+def quantile_from_snapshot(
     header: List[Int], values: List[Float64]
 ) -> QuantileSketch:
     """A sketch from a flat snapshot pair, or a refusal naming what was wrong with it.
@@ -1161,7 +1161,7 @@ fn quantile_from_snapshot(
     )
 
 
-fn quantile_merge_snapshots(
+def quantile_merge_snapshots(
     header_a: List[Int],
     values_a: List[Float64],
     header_b: List[Int],

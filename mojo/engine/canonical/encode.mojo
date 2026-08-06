@@ -51,12 +51,12 @@ comptime TAG_OBJECT: UInt8 = 0x07
 comptime CANONICAL_NAN_BITS: UInt64 = 0x7FF8000000000000
 
 
-fn encoding_version() -> String:
+def encoding_version() -> String:
     """Identity of this encoding. Bump only alongside a deliberate hash break."""
     return ENCODING_VERSION
 
 
-fn write_varint(mut out: List[UInt8], value: UInt64):
+def write_varint(mut out: List[UInt8], value: UInt64):
     """LEB128: 7 bits per byte, high bit continues. One encoding per value."""
     var remaining = value
     while True:
@@ -69,27 +69,27 @@ fn write_varint(mut out: List[UInt8], value: UInt64):
             return
 
 
-fn zigzag(value: Int) -> UInt64:
+def zigzag(value: Int) -> UInt64:
     """Map signed to unsigned so small magnitudes stay short: 0,-1,1,-2 -> 0,1,2,3."""
     if value < 0:
         return UInt64(-(value + 1)) * 2 + 1
     return UInt64(value) * 2
 
 
-fn write_null(mut out: List[UInt8]):
+def write_null(mut out: List[UInt8]):
     out.append(TAG_NULL)
 
 
-fn write_bool(mut out: List[UInt8], value: Bool):
+def write_bool(mut out: List[UInt8], value: Bool):
     out.append(TAG_TRUE if value else TAG_FALSE)
 
 
-fn write_int(mut out: List[UInt8], value: Int):
+def write_int(mut out: List[UInt8], value: Int):
     out.append(TAG_INT)
     write_varint(out, zigzag(value))
 
 
-fn write_float(mut out: List[UInt8], value: Float64):
+def write_float(mut out: List[UInt8], value: Float64):
     """IEEE-754 big-endian, with NaN collapsed and -0.0 normalised to +0.0."""
     out.append(TAG_FLOAT)
     var bits: UInt64
@@ -104,7 +104,7 @@ fn write_float(mut out: List[UInt8], value: Float64):
         out.append(UInt8((bits >> (shift * 8)) & 0xFF))
 
 
-fn write_string(mut out: List[UInt8], value: String):
+def write_string(mut out: List[UInt8], value: String):
     out.append(TAG_STRING)
     var bytes = value.as_bytes()
     write_varint(out, UInt64(len(value)))
@@ -112,19 +112,19 @@ fn write_string(mut out: List[UInt8], value: String):
         out.append(bytes[i])
 
 
-fn write_array_header(mut out: List[UInt8], count: Int):
+def write_array_header(mut out: List[UInt8], count: Int):
     """Open an array of `count` values; append each value after this."""
     out.append(TAG_ARRAY)
     write_varint(out, UInt64(count))
 
 
-fn write_object_header(mut out: List[UInt8], count: Int):
+def write_object_header(mut out: List[UInt8], count: Int):
     """Open an object of `count` pairs; append sorted (key, value) pairs after this."""
     out.append(TAG_OBJECT)
     write_varint(out, UInt64(count))
 
 
-fn byte_order_less(a: String, b: String) -> Bool:
+def byte_order_less(a: String, b: String) -> Bool:
     """Strict UTF-8 byte-order comparison — the object key ordering.
 
     Byte order rather than any collation: it is the only ordering that is identical
@@ -139,7 +139,7 @@ fn byte_order_less(a: String, b: String) -> Bool:
     return len(a) < len(b)
 
 
-fn sort_keys(keys: List[String]) -> List[String]:
+def sort_keys(keys: List[String]) -> List[String]:
     """Keys in canonical order. Insertion sort: key counts here are small."""
     var sorted = List[String]()
     for i in range(len(keys)):
@@ -154,26 +154,26 @@ fn sort_keys(keys: List[String]) -> List[String]:
     return sorted^
 
 
-fn write_float_list(mut out: List[UInt8], values: List[Float64]):
+def write_float_list(mut out: List[UInt8], values: List[Float64]):
     """An array of floats — the common shape for kernel arguments and results."""
     write_array_header(out, len(values))
     for i in range(len(values)):
         write_float(out, values[i])
 
 
-fn write_int_list(mut out: List[UInt8], values: List[Int]):
+def write_int_list(mut out: List[UInt8], values: List[Int]):
     write_array_header(out, len(values))
     for i in range(len(values)):
         write_int(out, values[i])
 
 
-fn write_string_list(mut out: List[UInt8], values: List[String]):
+def write_string_list(mut out: List[UInt8], values: List[String]):
     write_array_header(out, len(values))
     for i in range(len(values)):
         write_string(out, values[i])
 
 
-fn to_hex(bytes: List[UInt8]) -> String:
+def to_hex(bytes: List[UInt8]) -> String:
     """Lowercase hex, for tests and for logging an encoding without a hash."""
     comptime digits = String("0123456789abcdef")
     var out = String("")

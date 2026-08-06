@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from glaciology import glacier_mass_balance, ice_velocity_internal, basal_shear_stress, ablation_degree_day, ice_thickness_from_surface, snow_water_equivalent, equilibrium_line_altitude, calving_flux, sea_level_equivalent, albedo_feedback
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

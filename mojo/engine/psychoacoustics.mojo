@@ -16,11 +16,11 @@ Public API:
 from std.math import log, exp, pow, sqrt
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
-fn loudness_phon_to_sone(phon: Float64) -> Float64:
+def loudness_phon_to_sone(phon: Float64) -> Float64:
     """Convert loudness level in phons to sones.
 
     For phon ≥ 40: sone = 2^((phon-40)/10)
@@ -39,7 +39,7 @@ fn loudness_phon_to_sone(phon: Float64) -> Float64:
     return pow(phon / 40.0, 2.642)
 
 
-fn loudness_sone_to_phon(sone: Float64) -> Float64:
+def loudness_sone_to_phon(sone: Float64) -> Float64:
     """Convert sone to phon.
 
     For sone ≥ 1: phon = 40 + 10·log2(sone)
@@ -58,7 +58,7 @@ fn loudness_sone_to_phon(sone: Float64) -> Float64:
     return 40.0 * pow(sone, 0.378)
 
 
-fn critical_bandwidth(center_freq_hz: Float64) -> Float64:
+def critical_bandwidth(center_freq_hz: Float64) -> Float64:
     """Critical bandwidth (ERB approximation) at a center frequency.
 
     ERB ≈ 24.7·(4.37·f/1000 + 1)
@@ -72,7 +72,7 @@ fn critical_bandwidth(center_freq_hz: Float64) -> Float64:
     return 24.7 * (4.37 * center_freq_hz / 1000.0 + 1.0)
 
 
-fn bark_scale(frequency_hz: Float64) -> Float64:
+def bark_scale(frequency_hz: Float64) -> Float64:
     """Bark scale value from frequency (Traunmüller 1990).
 
     Bark = 26.81·f/(1960+f) - 0.53
@@ -86,7 +86,7 @@ fn bark_scale(frequency_hz: Float64) -> Float64:
     return 26.81 * frequency_hz / (1960.0 + frequency_hz) - 0.53
 
 
-fn masking_threshold(
+def masking_threshold(
     masker_spl: Float64, masker_freq_hz: Float64, target_freq_hz: Float64
 ) -> Float64:
     """Simultaneous masking threshold estimate (simplified excitation pattern).
@@ -111,7 +111,7 @@ fn masking_threshold(
     return masker_spl + spread - 10.0
 
 
-fn speech_intelligibility_index(
+def speech_intelligibility_index(
     speech_spl: Float64, noise_spl: Float64, band_importance: Float64
 ) -> Float64:
     """Speech intelligibility index contribution from one frequency band.
@@ -135,7 +135,7 @@ fn speech_intelligibility_index(
     return sii
 
 
-fn equal_loudness_correction(frequency_hz: Float64, spl_db: Float64) -> Float64:
+def equal_loudness_correction(frequency_hz: Float64, spl_db: Float64) -> Float64:
     """Approximate A-weighting correction at a frequency.
 
     dB(A) ≈ dB + A_weight(f)   A-weighting filter approximation.
@@ -159,7 +159,7 @@ fn equal_loudness_correction(frequency_hz: Float64, spl_db: Float64) -> Float64:
     return spl_db + a_weight
 
 
-fn frequency_just_noticeable(center_freq_hz: Float64, jnd_fraction: Float64) -> Float64:
+def frequency_just_noticeable(center_freq_hz: Float64, jnd_fraction: Float64) -> Float64:
     """Just noticeable difference in frequency.
 
     ΔFJND = f · JND_fraction
@@ -174,7 +174,7 @@ fn frequency_just_noticeable(center_freq_hz: Float64, jnd_fraction: Float64) -> 
     return center_freq_hz * jnd_fraction
 
 
-fn temporal_masking_decay(
+def temporal_masking_decay(
     time_after_offset_ms: Float64, initial_masking_db: Float64
 ) -> Float64:
     """Post-masker temporal masking decay.
@@ -193,7 +193,7 @@ fn temporal_masking_decay(
     return initial_masking_db * exp(-time_after_offset_ms / 20.0)
 
 
-fn binaural_masking_level_diff(
+def binaural_masking_level_diff(
     monaural_threshold: Float64, binaural_advantage_db: Float64
 ) -> Float64:
     """Binaural masking level difference improvement.

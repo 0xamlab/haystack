@@ -27,7 +27,7 @@ struct ClassWeights(Copyable, Movable):
     var classes: List[Int]
     var weights: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.classes = List[Int]()
         self.weights = List[Float64]()
 
@@ -35,7 +35,7 @@ struct ClassWeights(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -43,7 +43,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -59,13 +59,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1) from the top 53 bits of the state."""
     state = _xorshift64(state)
     return Float64(state >> 11) / 9007199254740992.0  # 2^53
@@ -74,7 +74,7 @@ fn _rand_unit(mut state: UInt64) -> Float64:
 # ── class bookkeeping helpers ────────────────────────────────────────────────
 
 
-fn _distinct_classes(labels: List[Int]) -> List[Int]:
+def _distinct_classes(labels: List[Int]) -> List[Int]:
     """Distinct label values in order of first appearance."""
     var classes = List[Int]()
     for i in range(len(labels)):
@@ -88,7 +88,7 @@ fn _distinct_classes(labels: List[Int]) -> List[Int]:
     return classes^
 
 
-fn _class_index_lists(
+def _class_index_lists(
     labels: List[Int], classes: List[Int]
 ) -> List[List[Int]]:
     """For each class (in `classes` order) the ascending sample indices."""
@@ -105,7 +105,7 @@ fn _class_index_lists(
 # ── k-nearest minority neighbors ─────────────────────────────────────────────
 
 
-fn _k_nearest_positions(
+def _k_nearest_positions(
     X: List[Float64],
     n_features: Int,
     min_idx: List[Int],
@@ -154,7 +154,7 @@ fn _k_nearest_positions(
 # ── smote_nd ─────────────────────────────────────────────────────────────────
 
 
-fn smote_nd(
+def smote_nd(
     X: List[Float64],
     n_features: Int,
     labels: List[Int],
@@ -227,7 +227,7 @@ fn smote_nd(
 # ── smote_1d ─────────────────────────────────────────────────────────────────
 
 
-fn smote_1d(
+def smote_1d(
     x: List[Float64],
     labels: List[Int],
     minority_label: Int,
@@ -249,7 +249,7 @@ fn smote_1d(
 # ── random_oversample_indices ────────────────────────────────────────────────
 
 
-fn random_oversample_indices(labels: List[Int], seed: Int) -> List[Int]:
+def random_oversample_indices(labels: List[Int], seed: Int) -> List[Int]:
     """Seeded random oversampling to the majority count.
 
     Returns sample indices such that every class ends with max class
@@ -284,7 +284,7 @@ fn random_oversample_indices(labels: List[Int], seed: Int) -> List[Int]:
 # ── random_undersample_indices ───────────────────────────────────────────────
 
 
-fn random_undersample_indices(labels: List[Int], seed: Int) -> List[Int]:
+def random_undersample_indices(labels: List[Int], seed: Int) -> List[Int]:
     """Seeded random undersampling to the minority count.
 
     Keeps min class count samples per class, chosen uniformly without
@@ -327,7 +327,7 @@ fn random_undersample_indices(labels: List[Int], seed: Int) -> List[Int]:
 # ── class_weights ────────────────────────────────────────────────────────────
 
 
-fn class_weights(labels: List[Int]) -> ClassWeights:
+def class_weights(labels: List[Int]) -> ClassWeights:
     """Balanced inverse-frequency class weights (sklearn 'balanced').
 
     For each distinct class c (first-appearance order):

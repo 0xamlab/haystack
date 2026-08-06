@@ -30,7 +30,7 @@ comptime EARTH_RADIUS_KM: Float64 = 6371.0
 # ── deg_to_rad ───────────────────────────────────────────────────────────────
 
 
-fn deg_to_rad(deg: Float64) -> Float64:
+def deg_to_rad(deg: Float64) -> Float64:
     """Convert degrees to radians."""
     return deg * PI / 180.0
 
@@ -38,7 +38,7 @@ fn deg_to_rad(deg: Float64) -> Float64:
 # ── rad_to_deg ───────────────────────────────────────────────────────────────
 
 
-fn rad_to_deg(rad: Float64) -> Float64:
+def rad_to_deg(rad: Float64) -> Float64:
     """Convert radians to degrees."""
     return rad * 180.0 / PI
 
@@ -46,7 +46,7 @@ fn rad_to_deg(rad: Float64) -> Float64:
 # ── is_valid_coordinate ──────────────────────────────────────────────────────
 
 
-fn is_valid_coordinate(lat: Float64, lon: Float64) -> Bool:
+def is_valid_coordinate(lat: Float64, lon: Float64) -> Bool:
     """Check if lat in [-90,90] and lon in [-180,180]."""
     return lat >= -90.0 and lat <= 90.0 and lon >= -180.0 and lon <= 180.0
 
@@ -54,7 +54,7 @@ fn is_valid_coordinate(lat: Float64, lon: Float64) -> Bool:
 # ── distance_on_unit_sphere ──────────────────────────────────────────────────
 
 
-fn distance_on_unit_sphere(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def distance_on_unit_sphere(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Haversine formula on the unit sphere. Returns angle in radians."""
     var phi1 = deg_to_rad(lat1)
     var phi2 = deg_to_rad(lat2)
@@ -70,7 +70,7 @@ fn distance_on_unit_sphere(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Fl
 # ── haversine ────────────────────────────────────────────────────────────────
 
 
-fn haversine(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def haversine(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Great-circle distance in km between two points (haversine formula)."""
     return distance_on_unit_sphere(lat1, lon1, lat2, lon2) * EARTH_RADIUS_KM
 
@@ -78,7 +78,7 @@ fn haversine(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Floa
 # ── bearing ──────────────────────────────────────────────────────────────────
 
 
-fn bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
+def bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float64:
     """Initial bearing from point 1 to point 2 in degrees (0-360)."""
     var phi1 = deg_to_rad(lat1)
     var phi2 = deg_to_rad(lat2)
@@ -98,7 +98,7 @@ fn bearing(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> Float6
 # ── midpoint ─────────────────────────────────────────────────────────────────
 
 
-fn midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[Float64]:
+def midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[Float64]:
     """Geographic midpoint [lat, lon] in degrees."""
     var phi1 = deg_to_rad(lat1)
     var phi2 = deg_to_rad(lat2)
@@ -117,7 +117,7 @@ fn midpoint(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64) -> List[
 # ── destination_point ────────────────────────────────────────────────────────
 
 
-fn destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_km: Float64) -> List[Float64]:
+def destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_km: Float64) -> List[Float64]:
     """Point at given distance (km) and bearing (deg) from start. Returns [lat, lon]."""
     var phi1 = deg_to_rad(lat)
     var lam1 = deg_to_rad(lon)
@@ -134,7 +134,7 @@ fn destination_point(lat: Float64, lon: Float64, bearing_deg: Float64, distance_
 # ── bounding_box ─────────────────────────────────────────────────────────────
 
 
-fn bounding_box(lat: Float64, lon: Float64, radius_km: Float64) -> List[Float64]:
+def bounding_box(lat: Float64, lon: Float64, radius_km: Float64) -> List[Float64]:
     """Bounding box [min_lat, min_lon, max_lat, max_lon] around a point.
     Uses simple angular distance approximation."""
     var delta_lat = rad_to_deg(radius_km / EARTH_RADIUS_KM)
@@ -156,7 +156,7 @@ fn bounding_box(lat: Float64, lon: Float64, radius_km: Float64) -> List[Float64]
 # ── cross_track_distance ────────────────────────────────────────────────────
 
 
-fn cross_track_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64, lat3: Float64, lon3: Float64) -> Float64:
+def cross_track_distance(lat1: Float64, lon1: Float64, lat2: Float64, lon2: Float64, lat3: Float64, lon3: Float64) -> Float64:
     """Cross-track distance of point 3 from great circle path 1→2, in km.
     Positive = right of path, negative = left. Returns absolute value."""
     var d13 = distance_on_unit_sphere(lat1, lon1, lat3, lon3)

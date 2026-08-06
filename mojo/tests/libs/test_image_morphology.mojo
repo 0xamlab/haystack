@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from image_morphology import binary_erode_flat, binary_dilate_flat, binary_open_flat, binary_close_flat, binary_fill_holes_flat, connected_components_4_flat, largest_component_bbox_flat, distance_transform_cityblock_flat, foreground_area_ratio_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

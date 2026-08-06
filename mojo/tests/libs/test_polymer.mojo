@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from polymer import degree_of_polymerization, number_average_mw, weight_average_mw, polydispersity_index, mark_houwink, glass_transition_fox, flory_huggins_free_energy, end_to_end_distance, radius_of_gyration, carothers_conversion, melt_flow_index_approx, tensile_modulus_rule_of_mixtures
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

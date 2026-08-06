@@ -23,7 +23,7 @@ struct HistResult(Movable):
     var bin_lo: List[Float64]
     var counts: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.bin_lo = List[Float64]()
         self.counts = List[Int]()
 
@@ -32,7 +32,7 @@ struct CdfResult(Movable):
     var x_vals: List[Float64]
     var cdf_y: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.x_vals = List[Float64]()
         self.cdf_y = List[Float64]()
 

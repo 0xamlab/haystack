@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from biomechanics import joint_torque, angular_velocity, angular_acceleration, moment_of_inertia_limb, ground_reaction_force_ratio, stride_length, cadence_from_velocity, metabolic_cost_walking, joint_power, elastic_energy_tendon, center_of_mass_two_segments, muscle_force_hill
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

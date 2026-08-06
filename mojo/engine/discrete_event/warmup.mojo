@@ -131,7 +131,7 @@ struct WarmupReport(Copyable, Movable):
     var batch_means: List[Float64]
 
 
-fn _warmup_refusal(code: Int) -> WarmupReport:
+def _warmup_refusal(code: Int) -> WarmupReport:
     return WarmupReport(
         code, 0, 0, 0, 0, 0, 0, 0, 0, 0, False, False, 0.0, False, 0.0, False, 0.0, 0,
         List[Float64](),
@@ -165,11 +165,11 @@ struct BiasAudit(Copyable, Movable):
     var relative_bias: Float64
 
 
-fn _bias_refusal(code: Int) -> BiasAudit:
+def _bias_refusal(code: Int) -> BiasAudit:
     return BiasAudit(code, 0, 0, 0, False, 0.0, False, 0.0, False, 0.0, False, 0.0)
 
 
-fn warmup_mser_flat(obs: List[Float64], n_obs: Int, batch_size: Int) -> WarmupReport:
+def warmup_mser_flat(obs: List[Float64], n_obs: Int, batch_size: Int) -> WarmupReport:
     """Find the MSER truncation point over the first `n_obs` observations.
 
     `batch_size = 5` is MSER-5, the classical setting. Larger batches smooth harder and reduce
@@ -343,7 +343,7 @@ fn warmup_mser_flat(obs: List[Float64], n_obs: Int, batch_size: Int) -> WarmupRe
     )
 
 
-fn warmup_bias_audit(obs: List[Float64], n_obs: Int, n_discard: Int) -> BiasAudit:
+def warmup_bias_audit(obs: List[Float64], n_obs: Int, n_discard: Int) -> BiasAudit:
     """Compare the full-sample mean with the mean after discarding the first `n_discard`.
 
     `n_discard` is the START of a range that then SUBSCRIPTS `obs`, which makes both directions

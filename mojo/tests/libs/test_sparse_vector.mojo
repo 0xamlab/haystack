@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sparse_vector import sv_dot, sv_add, sv_scale, sv_norm, sv_cosine, sv_to_dense, dense_to_sparse, sv_nnz, sv_sparsity, sv_max
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

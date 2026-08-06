@@ -16,7 +16,7 @@ Public API:
 from std.math import cos, sqrt
 
 
-fn biot_savart_infinite_wire(current: Float64, distance: Float64) -> Float64:
+def biot_savart_infinite_wire(current: Float64, distance: Float64) -> Float64:
     """Magnetic field from an infinite straight wire (Biot-Savart / Ampere).
 
     B = μ0·I / (2π·r)
@@ -35,7 +35,7 @@ fn biot_savart_infinite_wire(current: Float64, distance: Float64) -> Float64:
     return mu0 * current / (2.0 * pi * distance)
 
 
-fn magnetic_force_wire(
+def magnetic_force_wire(
     current: Float64, length: Float64, field: Float64, angle_rad: Float64
 ) -> Float64:
     """Force on a current-carrying wire: F = I·L·B·sin(θ).
@@ -53,7 +53,7 @@ fn magnetic_force_wire(
     return current * length * field * sin(angle_rad)
 
 
-fn solenoid_field(current: Float64, turns: Float64, length: Float64) -> Float64:
+def solenoid_field(current: Float64, turns: Float64, length: Float64) -> Float64:
     """Magnetic field inside an ideal solenoid.
 
     B = μ0·n·I  where n = N/L
@@ -72,7 +72,7 @@ fn solenoid_field(current: Float64, turns: Float64, length: Float64) -> Float64:
     return mu0 * (turns / length) * current
 
 
-fn toroid_field(current: Float64, turns: Float64, radius: Float64) -> Float64:
+def toroid_field(current: Float64, turns: Float64, radius: Float64) -> Float64:
     """Magnetic field inside a toroid at mean radius.
 
     B = μ0·N·I / (2π·R)
@@ -92,7 +92,7 @@ fn toroid_field(current: Float64, turns: Float64, radius: Float64) -> Float64:
     return mu0 * turns * current / (2.0 * pi * radius)
 
 
-fn magnetic_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
+def magnetic_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
     """Magnetic flux: Φ = B·A·cos(θ).
 
     Args:
@@ -106,7 +106,7 @@ fn magnetic_flux(field: Float64, area: Float64, angle_rad: Float64) -> Float64:
     return field * area * cos(angle_rad)
 
 
-fn inductance_solenoid(
+def inductance_solenoid(
     turns: Float64, area: Float64, length: Float64, mu_r: Float64
 ) -> Float64:
     """Inductance of a solenoid.
@@ -128,7 +128,7 @@ fn inductance_solenoid(
     return mu0 * mu_r * turns * turns * area / length
 
 
-fn magnetic_energy_density(field: Float64) -> Float64:
+def magnetic_energy_density(field: Float64) -> Float64:
     """Energy density of a magnetic field: u = B²/(2μ0).
 
     Args:
@@ -141,7 +141,7 @@ fn magnetic_energy_density(field: Float64) -> Float64:
     return field * field / (2.0 * mu0)
 
 
-fn cyclotron_radius(
+def cyclotron_radius(
     mass: Float64, velocity: Float64, charge: Float64, field: Float64
 ) -> Float64:
     """Cyclotron (Larmor) radius of a charged particle.
@@ -162,7 +162,7 @@ fn cyclotron_radius(
     return mass * velocity / (charge * field)
 
 
-fn larmor_frequency(charge: Float64, field: Float64, mass: Float64) -> Float64:
+def larmor_frequency(charge: Float64, field: Float64, mass: Float64) -> Float64:
     """Larmor (cyclotron) frequency: f = |q|B / (2π·m).
 
     Args:
@@ -179,7 +179,7 @@ fn larmor_frequency(charge: Float64, field: Float64, mass: Float64) -> Float64:
     return charge * field / (2.0 * pi * mass)
 
 
-fn hall_voltage(
+def hall_voltage(
     current: Float64, field: Float64, carrier_density: Float64, thickness: Float64
 ) -> Float64:
     """Hall voltage in a conductor.

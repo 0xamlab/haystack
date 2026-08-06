@@ -100,7 +100,7 @@ test asserts a REAL model shape instead of a toy one. It still refuses what it i
 all-ceilings product is 7.4e19 and a wrapping `2^30` cubed is 1.2e27."""
 
 
-fn loss_status_name(code: Int) -> String:
+def loss_status_name(code: Int) -> String:
     """Name a status code. Unknown codes say so rather than borrowing a neighbour's meaning."""
     if code == LOSS_OK:
         return String("ok")
@@ -123,7 +123,7 @@ fn loss_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn loss_logit_cells(chunk: Int, vocab: Int) -> Float64:
+def loss_logit_cells(chunk: Int, vocab: Int) -> Float64:
     """Cells one chunk materializes: `chunk * vocab`. Negative on a malformed request.
 
     Returned as `Float64` because the honest answer exceeds `Int` well before it exceeds anything a
@@ -144,7 +144,7 @@ fn loss_logit_cells(chunk: Int, vocab: Int) -> Float64:
     return Float64(chunk) * Float64(vocab)
 
 
-fn loss_chunk_check(chunk: Int, vocab: Int) -> Int:
+def loss_chunk_check(chunk: Int, vocab: Int) -> Int:
     """Validate that one chunk's logits fit the peak-memory budget.
 
     @capability loss_chunk_check
@@ -164,7 +164,7 @@ fn loss_chunk_check(chunk: Int, vocab: Int) -> Int:
     return LOSS_OK
 
 
-fn loss_work_fits(n_tok: Int, d_model: Int, vocab: Int, ceiling: Int) -> Bool:
+def loss_work_fits(n_tok: Int, d_model: Int, vocab: Int, ceiling: Int) -> Bool:
     """True when `n_tok * d_model * vocab` fits in `ceiling`, WITHOUT forming the product.
 
     Grown by division, one factor at a time. This is the projection's true cost and it is the largest
@@ -193,7 +193,7 @@ fn loss_work_fits(n_tok: Int, d_model: Int, vocab: Int, ceiling: Int) -> Bool:
     return vocab <= remaining
 
 
-fn loss_dims_check(n_tok: Int, d_model: Int, vocab: Int) -> Int:
+def loss_dims_check(n_tok: Int, d_model: Int, vocab: Int) -> Int:
     """Validate a fused-projection loss shape.
 
     @capability loss_dims_check
@@ -213,7 +213,7 @@ fn loss_dims_check(n_tok: Int, d_model: Int, vocab: Int) -> Int:
     return LOSS_OK
 
 
-fn loss_targets_in_range(targets: List[Int], n_tok: Int, vocab: Int) -> Bool:
+def loss_targets_in_range(targets: List[Int], n_tok: Int, vocab: Int) -> Bool:
     """True when every one of the first `n_tok` targets is a valid class index.
 
     A target is used to INDEX the logit row, so an out-of-range one reads past the end of a buffer,
@@ -239,7 +239,7 @@ fn loss_targets_in_range(targets: List[Int], n_tok: Int, vocab: Int) -> Bool:
     return True
 
 
-fn loss_scalars_ok(value: Float64) -> Bool:
+def loss_scalars_ok(value: Float64) -> Bool:
     """True when a scalar is finite. Checked before it can turn a whole objective into NaN."""
     return tx_finite(value)
 
@@ -265,7 +265,7 @@ The distinction matters when reading a tolerance in this package. A tight one me
 spellings must agree"; a loose one near this floor means "this is as close as the toolchain can get"."""
 
 
-fn loss_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
+def loss_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
     """Tolerance for comparing two spellings of a loss of size `magnitude` (rule 4b).
 
     Scales with the quantity judged and with the reduction behind it. A cross-entropy is a

@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── batting_average ──────────────────────────────────────────────────────────
 
 
-fn batting_average(hits: Float64, at_bats: Float64) -> Float64:
+def batting_average(hits: Float64, at_bats: Float64) -> Float64:
     """BA = H / AB."""
     if at_bats == 0.0:
         return 0.0
@@ -35,7 +35,7 @@ fn batting_average(hits: Float64, at_bats: Float64) -> Float64:
 # ── on_base_percentage ───────────────────────────────────────────────────────
 
 
-fn on_base_percentage(
+def on_base_percentage(
     hits: Float64,
     walks: Float64,
     hbp: Float64,
@@ -52,7 +52,7 @@ fn on_base_percentage(
 # ── slugging_percentage ──────────────────────────────────────────────────────
 
 
-fn slugging_percentage(total_bases: Float64, at_bats: Float64) -> Float64:
+def slugging_percentage(total_bases: Float64, at_bats: Float64) -> Float64:
     """SLG = TB / AB."""
     if at_bats == 0.0:
         return 0.0
@@ -62,7 +62,7 @@ fn slugging_percentage(total_bases: Float64, at_bats: Float64) -> Float64:
 # ── ops ──────────────────────────────────────────────────────────────────────
 
 
-fn ops(obp: Float64, slg: Float64) -> Float64:
+def ops(obp: Float64, slg: Float64) -> Float64:
     """OPS = OBP + SLG."""
     return obp + slg
 
@@ -70,7 +70,7 @@ fn ops(obp: Float64, slg: Float64) -> Float64:
 # ── era ──────────────────────────────────────────────────────────────────────
 
 
-fn era(earned_runs: Float64, innings_pitched: Float64) -> Float64:
+def era(earned_runs: Float64, innings_pitched: Float64) -> Float64:
     """ERA = (ER / IP) * 9."""
     if innings_pitched == 0.0:
         return 0.0
@@ -80,7 +80,7 @@ fn era(earned_runs: Float64, innings_pitched: Float64) -> Float64:
 # ── whip ─────────────────────────────────────────────────────────────────────
 
 
-fn whip(
+def whip(
     walks: Float64, hits: Float64, innings_pitched: Float64
 ) -> Float64:
     """WHIP = (BB + H) / IP."""
@@ -92,7 +92,7 @@ fn whip(
 # ── passer_rating_nfl ────────────────────────────────────────────────────────
 
 
-fn passer_rating_nfl(
+def passer_rating_nfl(
     comp: Float64,
     att: Float64,
     yards: Float64,
@@ -134,7 +134,7 @@ fn passer_rating_nfl(
 # ── pythagorean_wins ─────────────────────────────────────────────────────────
 
 
-fn pythagorean_wins(
+def pythagorean_wins(
     runs_scored: Float64, runs_allowed: Float64, exponent: Float64
 ) -> Float64:
     """W% = RS^e / (RS^e + RA^e)."""
@@ -155,7 +155,7 @@ fn pythagorean_wins(
 # ── elo_expected_score ───────────────────────────────────────────────────────
 
 
-fn elo_expected_score(rating_a: Float64, rating_b: Float64) -> Float64:
+def elo_expected_score(rating_a: Float64, rating_b: Float64) -> Float64:
     """E = 1 / (1 + 10^((Rb - Ra) / 400))."""
     var exponent = (rating_b - rating_a) / 400.0
     return 1.0 / (1.0 + exp(exponent * log(10.0)))
@@ -164,7 +164,7 @@ fn elo_expected_score(rating_a: Float64, rating_b: Float64) -> Float64:
 # ── elo_new_rating ───────────────────────────────────────────────────────────
 
 
-fn elo_new_rating(
+def elo_new_rating(
     old_rating: Float64,
     k: Float64,
     actual_score: Float64,
@@ -177,7 +177,7 @@ fn elo_new_rating(
 # ── true_shooting_percentage ─────────────────────────────────────────────────
 
 
-fn true_shooting_percentage(
+def true_shooting_percentage(
     points: Float64, fga: Float64, fta: Float64
 ) -> Float64:
     """TS% = PTS / (2 * (FGA + 0.44 * FTA))."""
@@ -190,7 +190,7 @@ fn true_shooting_percentage(
 # ── player_efficiency_rating_approx ─────────────────────────────────────────
 
 
-fn player_efficiency_rating_approx(
+def player_efficiency_rating_approx(
     points: Float64,
     rebounds: Float64,
     assists: Float64,

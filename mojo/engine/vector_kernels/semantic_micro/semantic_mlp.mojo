@@ -25,7 +25,7 @@ from mojo.engine.vector_kernels.semantic_micro.semantic_types import (
 # ── Scalar linear (used for small out_dim layers and fallback) ────────────────
 
 @always_inline
-fn linear_forward_scalar(
+def linear_forward_scalar(
     layer:  LinearLayer,
     x_in:   UnsafePointer[Float32],
     x_out:  UnsafePointer[Float32],
@@ -45,7 +45,7 @@ fn linear_forward_scalar(
 # ── SIMD linear fc1: in=EMB_DIM, out=HIDDEN_DIM ──────────────────────────────
 
 @always_inline
-fn linear_fc1(
+def linear_fc1(
     layer:  LinearLayer,
     x_in:   UnsafePointer[Float32],    # [EMB_DIM]
     x_out:  UnsafePointer[Float32],    # [HIDDEN_DIM]
@@ -68,7 +68,7 @@ fn linear_fc1(
 # ── SIMD linear fc2: in=HIDDEN_DIM, out=n_classes (small) ────────────────────
 
 @always_inline
-fn linear_fc2(
+def linear_fc2(
     layer:  LinearLayer,
     x_in:   UnsafePointer[Float32],    # [HIDDEN_DIM]
     x_out:  UnsafePointer[Float32],    # [out_dim]
@@ -90,7 +90,7 @@ fn linear_fc2(
 # ── ReLU ──────────────────────────────────────────────────────────────────────
 
 @always_inline
-fn relu_hidden(x: UnsafePointer[Float32]):
+def relu_hidden(x: UnsafePointer[Float32]):
     """In-place ReLU over HIDDEN_DIM elements (SIMD-unrolled)."""
     var z = SIMD[DType.float32, SIMD_W](Float32(0.0))
     @parameter
@@ -103,7 +103,7 @@ fn relu_hidden(x: UnsafePointer[Float32]):
 # ── Numerically-stable softmax (in-place, max-subtracted) ────────────────────
 
 @always_inline
-fn softmax_inplace(logits: UnsafePointer[Float32], n: Int):
+def softmax_inplace(logits: UnsafePointer[Float32], n: Int):
     """Numerically-stable softmax over the first n elements."""
     var max_val = logits[0]
     for i in range(1, n):
@@ -122,7 +122,7 @@ fn softmax_inplace(logits: UnsafePointer[Float32], n: Int):
 # ── Argmax with confidence ────────────────────────────────────────────────────
 
 @always_inline
-fn argmax_conf(
+def argmax_conf(
     probs: UnsafePointer[Float32],
     n:     Int,
     out_cls:  UnsafePointer[UInt8],
@@ -145,7 +145,7 @@ fn argmax_conf(
 # ── Full 2-layer head (embed → fc1 → ReLU → fc2 → softmax → argmax) ─────────
 
 @always_inline
-fn run_head(
+def run_head(
     fc1:         LinearLayer,
     fc2:         LinearLayer,
     query_vec:   UnsafePointer[Float32],   # [EMB_DIM] input (read-only)

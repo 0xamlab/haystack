@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn hnsw_layer_probability(
+def hnsw_layer_probability(
     level: Float64, m_l: Float64
 ) -> Float64:
     """HNSW probability that a node exists at given level.
@@ -36,7 +36,7 @@ fn hnsw_layer_probability(
     return exp(-level / m_l)
 
 
-fn hnsw_search_ef_scale(
+def hnsw_search_ef_scale(
     k: Float64, ef_construction: Float64
 ) -> Float64:
     """Recommended ef search parameter: max(ef_construction, k).
@@ -53,7 +53,7 @@ fn hnsw_search_ef_scale(
     return ef_construction
 
 
-fn ivf_coarse_quantizer_dist(
+def ivf_coarse_quantizer_dist(
     x: Float64, centroid: Float64
 ) -> Float64:
     """Squared distance contribution for IVF coarse quantizer assignment.
@@ -71,7 +71,7 @@ fn ivf_coarse_quantizer_dist(
     return diff * diff
 
 
-fn pq_quantization_error(
+def pq_quantization_error(
     x: Float64, pq_centroid: Float64, n_subspaces: Float64
 ) -> Float64:
     """Product quantization per-subspace distortion estimate.
@@ -94,7 +94,7 @@ fn pq_quantization_error(
     return diff * diff / n_subspaces
 
 
-fn lsh_hash_bit(
+def lsh_hash_bit(
     x_dot_random: Float64, bias: Float64, bucket_width: Float64
 ) -> Float64:
     """Random projection LSH hash bucket index.
@@ -114,7 +114,7 @@ fn lsh_hash_bit(
     return Float64(Int64((x_dot_random + bias) / bucket_width))
 
 
-fn recall_at_k(
+def recall_at_k(
     relevant_retrieved: Float64, k: Float64, total_relevant: Float64
 ) -> Float64:
     """Recall@k: relevant items in top-k / total relevant.
@@ -132,7 +132,7 @@ fn recall_at_k(
     return relevant_retrieved / total_relevant
 
 
-fn mrr_score(rank: Float64) -> Float64:
+def mrr_score(rank: Float64) -> Float64:
     """Mean Reciprocal Rank contribution: 1/rank.
 
     Args:
@@ -146,7 +146,7 @@ fn mrr_score(rank: Float64) -> Float64:
     return 1.0 / rank
 
 
-fn beam_search_score(
+def beam_search_score(
     log_prob: Float64, length: Float64, alpha: Float64
 ) -> Float64:
     """Length-normalised beam search score.
@@ -166,7 +166,7 @@ fn beam_search_score(
     return log_prob / exp(alpha * log(length))
 
 
-fn faiss_nprobe_coverage(
+def faiss_nprobe_coverage(
     nprobe: Float64, n_lists: Float64
 ) -> Float64:
     """Approximate fraction of index covered by nprobe lists.
@@ -188,7 +188,7 @@ fn faiss_nprobe_coverage(
     return cov
 
 
-fn ann_distance_bound(
+def ann_distance_bound(
     dist_query_centroid: Float64, centroid_radius: Float64
 ) -> Float64:
     """Triangle inequality lower bound on query-to-point distance.

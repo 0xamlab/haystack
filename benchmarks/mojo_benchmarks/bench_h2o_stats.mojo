@@ -36,7 +36,7 @@ comptime DATA_DIR: String = "/tmp/h2o_groupby"
 comptime PROBE_ROWS: Int = 1 << 16
 
 
-fn _load_column(name: String) raises -> Float64Array:
+def _load_column(name: String) raises -> Float64Array:
     var f = open(DATA_DIR + "/" + name + ".f64.bin", "r")
     var raw = f.read_bytes()
     f.close()
@@ -53,11 +53,11 @@ fn _load_column(name: String) raises -> Float64Array:
     return float64_from_list(values^)
 
 
-fn _ms(ns: UInt) -> Float64:
+def _ms(ns: UInt) -> Float64:
     return Float64(Int(ns)) / 1e6
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 3:
         print("usage: bench_h2o_stats dump <q6|q8|q9> <workers>")

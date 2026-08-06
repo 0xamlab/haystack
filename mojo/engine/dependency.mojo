@@ -23,7 +23,7 @@ Public API:
 # ── resolve_order ─────────────────────────────────────────────────────────────
 
 
-fn resolve_order(n_packages: Int, dependencies: List[List[Int]]) -> List[Int]:
+def resolve_order(n_packages: Int, dependencies: List[List[Int]]) -> List[Int]:
     """Topological sort (Kahn's algorithm).
 
     dependencies[i] = [package, depends_on_package].
@@ -72,7 +72,7 @@ fn resolve_order(n_packages: Int, dependencies: List[List[Int]]) -> List[Int]:
 # ── has_cycle ─────────────────────────────────────────────────────────────────
 
 
-fn has_cycle(n_packages: Int, dependencies: List[List[Int]]) -> Bool:
+def has_cycle(n_packages: Int, dependencies: List[List[Int]]) -> Bool:
     """Detect dependency cycle using topological sort."""
     var order = resolve_order(n_packages, dependencies)
     return len(order) == 0
@@ -81,7 +81,7 @@ fn has_cycle(n_packages: Int, dependencies: List[List[Int]]) -> Bool:
 # ── transitive_deps ───────────────────────────────────────────────────────────
 
 
-fn transitive_deps(package: Int, dependencies: List[List[Int]]) -> List[Int]:
+def transitive_deps(package: Int, dependencies: List[List[Int]]) -> List[Int]:
     """All transitive dependencies of a package (BFS)."""
     # Find max id
     var max_id = package + 1
@@ -138,7 +138,7 @@ fn transitive_deps(package: Int, dependencies: List[List[Int]]) -> List[Int]:
 # ── dependency_depth ──────────────────────────────────────────────────────────
 
 
-fn dependency_depth(package: Int, dependencies: List[List[Int]]) -> Int:
+def dependency_depth(package: Int, dependencies: List[List[Int]]) -> Int:
     """Maximum dependency chain depth (DFS)."""
     var max_id = package + 1
     for i in range(len(dependencies)):
@@ -182,7 +182,7 @@ fn dependency_depth(package: Int, dependencies: List[List[Int]]) -> Int:
 # ── is_compatible ─────────────────────────────────────────────────────────────
 
 
-fn is_compatible(version: Int, min_ver: Int, max_ver: Int) -> Bool:
+def is_compatible(version: Int, min_ver: Int, max_ver: Int) -> Bool:
     """Check if version is within [min_ver, max_ver]."""
     return version >= min_ver and version <= max_ver
 
@@ -190,7 +190,7 @@ fn is_compatible(version: Int, min_ver: Int, max_ver: Int) -> Bool:
 # ── find_conflicts ────────────────────────────────────────────────────────────
 
 
-fn find_conflicts(requirements: List[List[Int]]) -> List[List[Int]]:
+def find_conflicts(requirements: List[List[Int]]) -> List[List[Int]]:
     """Find conflicting requirements.
 
     Each requirement is [package, min_ver, max_ver].
@@ -222,7 +222,7 @@ fn find_conflicts(requirements: List[List[Int]]) -> List[List[Int]]:
 # ── install_plan ──────────────────────────────────────────────────────────────
 
 
-fn install_plan(
+def install_plan(
     n_packages: Int, deps: List[List[Int]], target: Int
 ) -> List[Int]:
     """Minimal install plan: packages needed to install target, in order.
@@ -258,7 +258,7 @@ fn install_plan(
 # ── reverse_deps ──────────────────────────────────────────────────────────────
 
 
-fn reverse_deps(package: Int, dependencies: List[List[Int]]) -> List[Int]:
+def reverse_deps(package: Int, dependencies: List[List[Int]]) -> List[Int]:
     """Packages that depend on the given package."""
     var result = List[Int]()
     var seen = List[Int]()

@@ -25,7 +25,7 @@ from std.math import abs as fabs, sqrt, log
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _sort_floats(mut arr: List[Float64]):
+def _sort_floats(mut arr: List[Float64]):
     """Insertion sort for float list."""
     var n = len(arr)
     for i in range(1, n):
@@ -37,7 +37,7 @@ fn _sort_floats(mut arr: List[Float64]):
         arr[j + 1] = key
 
 
-fn _mean(data: List[Float64]) -> Float64:
+def _mean(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -47,7 +47,7 @@ fn _mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn _median(data: List[Float64]) -> Float64:
+def _median(data: List[Float64]) -> Float64:
     var n = len(data)
     if n == 0:
         return 0.0
@@ -60,7 +60,7 @@ fn _median(data: List[Float64]) -> Float64:
     return (sorted_d[n // 2 - 1] + sorted_d[n // 2]) / 2.0
 
 
-fn _std(data: List[Float64]) -> Float64:
+def _std(data: List[Float64]) -> Float64:
     var n = len(data)
     if n < 2:
         return 0.0
@@ -75,7 +75,7 @@ fn _std(data: List[Float64]) -> Float64:
 # ── bootstrap_replicate ─────────────────────────────────────────────────────
 
 
-fn bootstrap_replicate(data: List[Float64]) -> List[Float64]:
+def bootstrap_replicate(data: List[Float64]) -> List[Float64]:
     """Generate one bootstrap replicate (sample with replacement, same size)."""
     var n = len(data)
     var result = List[Float64]()
@@ -90,7 +90,7 @@ fn bootstrap_replicate(data: List[Float64]) -> List[Float64]:
 # ── bootstrap_mean_ci ────────────────────────────────────────────────────────
 
 
-fn bootstrap_mean_ci(
+def bootstrap_mean_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap confidence interval for mean. Returns [lower, upper]."""
@@ -120,7 +120,7 @@ fn bootstrap_mean_ci(
 # ── bootstrap_std_ci ─────────────────────────────────────────────────────────
 
 
-fn bootstrap_std_ci(
+def bootstrap_std_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap CI for standard deviation."""
@@ -150,7 +150,7 @@ fn bootstrap_std_ci(
 # ── bootstrap_median_ci ──────────────────────────────────────────────────────
 
 
-fn bootstrap_median_ci(
+def bootstrap_median_ci(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Bootstrap CI for median."""
@@ -180,7 +180,7 @@ fn bootstrap_median_ci(
 # ── bootstrap_bias ───────────────────────────────────────────────────────────
 
 
-fn bootstrap_bias(
+def bootstrap_bias(
     data: List[Float64], n_bootstrap: Int, stat_type: Int = 0
 ) -> Float64:
     """Bootstrap bias estimate: E[θ*] - θ. stat_type: 0=mean, 1=median."""
@@ -203,7 +203,7 @@ fn bootstrap_bias(
 # ── bootstrap_se ─────────────────────────────────────────────────────────────
 
 
-fn bootstrap_se(
+def bootstrap_se(
     data: List[Float64], n_bootstrap: Int, stat_type: Int = 0
 ) -> Float64:
     """Bootstrap standard error of statistic."""
@@ -220,7 +220,7 @@ fn bootstrap_se(
 # ── bootstrap_test ───────────────────────────────────────────────────────────
 
 
-fn bootstrap_test(
+def bootstrap_test(
     data1: List[Float64], data2: List[Float64], n_bootstrap: Int
 ) -> Float64:
     """Bootstrap permutation test p-value: test if two groups have same mean."""
@@ -267,7 +267,7 @@ fn bootstrap_test(
 # ── jackknife_mean ───────────────────────────────────────────────────────────
 
 
-fn jackknife_mean(data: List[Float64]) -> List[Float64]:
+def jackknife_mean(data: List[Float64]) -> List[Float64]:
     """Jackknife leave-one-out means."""
     var n = len(data)
     var total = _mean(data) * Float64(n)
@@ -280,7 +280,7 @@ fn jackknife_mean(data: List[Float64]) -> List[Float64]:
 # ── jackknife_se ─────────────────────────────────────────────────────────────
 
 
-fn jackknife_se(data: List[Float64]) -> Float64:
+def jackknife_se(data: List[Float64]) -> Float64:
     """Jackknife standard error of the mean."""
     var n = len(data)
     if n < 2:
@@ -297,7 +297,7 @@ fn jackknife_se(data: List[Float64]) -> Float64:
 # ── bca_correction ───────────────────────────────────────────────────────────
 
 
-fn bca_correction(
+def bca_correction(
     data: List[Float64], n_bootstrap: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """BCa (bias-corrected and accelerated) CI for mean."""
@@ -370,7 +370,7 @@ fn bca_correction(
     return result^
 
 
-fn _probit(p: Float64) -> Float64:
+def _probit(p: Float64) -> Float64:
     """Approximate inverse normal CDF (probit). Abramowitz & Stegun."""
     # Clamp
     var pp = p
@@ -399,7 +399,7 @@ fn _probit(p: Float64) -> Float64:
     return -sign * z
 
 
-fn _normcdf(x: Float64) -> Float64:
+def _normcdf(x: Float64) -> Float64:
     """Approximate normal CDF using logistic approximation."""
     # Approximation: Φ(x) ≈ 1 / (1 + exp(-1.7 * x))
     # Better: use Abramowitz & Stegun
@@ -418,7 +418,7 @@ fn _normcdf(x: Float64) -> Float64:
     return p
 
 
-fn _exp_neg_half_x2(x: Float64) -> Float64:
+def _exp_neg_half_x2(x: Float64) -> Float64:
     """Compute exp(-x²/2) using log/exp from std.math."""
     from std.math import exp
 

@@ -27,7 +27,7 @@ from std.math import sqrt, abs as fabs
 # ── clamp01 ───────────────────────────────────────────────────────────────────
 
 
-fn clamp01(v: Float64) -> Float64:
+def clamp01(v: Float64) -> Float64:
     """Clamp value to [0, 1]."""
     if v < 0.0:
         return 0.0
@@ -46,7 +46,7 @@ struct RGB(Copyable, Movable):
     var g: Float64
     var b: Float64
 
-    fn __init__(out self, r: Float64, g: Float64, b: Float64):
+    def __init__(out self, r: Float64, g: Float64, b: Float64):
         self.r = r
         self.g = g
         self.b = b
@@ -62,7 +62,7 @@ struct HSL(Copyable, Movable):
     var s: Float64
     var l: Float64
 
-    fn __init__(out self, h: Float64, s: Float64, l: Float64):
+    def __init__(out self, h: Float64, s: Float64, l: Float64):
         self.h = h
         self.s = s
         self.l = l
@@ -78,7 +78,7 @@ struct HSV(Copyable, Movable):
     var s: Float64
     var v: Float64
 
-    fn __init__(out self, h: Float64, s: Float64, v: Float64):
+    def __init__(out self, h: Float64, s: Float64, v: Float64):
         self.h = h
         self.s = s
         self.v = v
@@ -87,7 +87,7 @@ struct HSV(Copyable, Movable):
 # ── rgb_to_hsl ────────────────────────────────────────────────────────────────
 
 
-fn rgb_to_hsl(c: RGB) -> HSL:
+def rgb_to_hsl(c: RGB) -> HSL:
     """RGB to HSL conversion."""
     var r = c.r
     var g = c.g
@@ -127,7 +127,7 @@ fn rgb_to_hsl(c: RGB) -> HSL:
 # ── _hue_to_rgb (helper) ─────────────────────────────────────────────────────
 
 
-fn _hue_to_rgb(p: Float64, q: Float64, t_in: Float64) -> Float64:
+def _hue_to_rgb(p: Float64, q: Float64, t_in: Float64) -> Float64:
     """Helper for HSL to RGB conversion."""
     var t = t_in
     if t < 0.0:
@@ -146,7 +146,7 @@ fn _hue_to_rgb(p: Float64, q: Float64, t_in: Float64) -> Float64:
 # ── hsl_to_rgb ────────────────────────────────────────────────────────────────
 
 
-fn hsl_to_rgb(c: HSL) -> RGB:
+def hsl_to_rgb(c: HSL) -> RGB:
     """HSL to RGB conversion."""
     if c.s == 0.0:
         return RGB(c.l, c.l, c.l)
@@ -166,7 +166,7 @@ fn hsl_to_rgb(c: HSL) -> RGB:
 # ── rgb_to_hsv ────────────────────────────────────────────────────────────────
 
 
-fn rgb_to_hsv(c: RGB) -> HSV:
+def rgb_to_hsv(c: RGB) -> HSV:
     """RGB to HSV conversion."""
     var r = c.r
     var g = c.g
@@ -204,7 +204,7 @@ fn rgb_to_hsv(c: RGB) -> HSV:
 # ── hsv_to_rgb ────────────────────────────────────────────────────────────────
 
 
-fn hsv_to_rgb(c: HSV) -> RGB:
+def hsv_to_rgb(c: HSV) -> RGB:
     """HSV to RGB conversion."""
     if c.s == 0.0:
         return RGB(c.v, c.v, c.v)
@@ -234,12 +234,12 @@ comptime _HEX_CHARS = "0123456789ABCDEF"
 
 
 @always_inline
-fn _hex_char(v: Int) -> String:
+def _hex_char(v: Int) -> String:
     """Convert 0-15 to hex char."""
     return chr(Int(_HEX_CHARS.as_bytes()[v]))
 
 
-fn _to_hex_byte(v: Int) -> String:
+def _to_hex_byte(v: Int) -> String:
     """Convert 0-255 to two hex chars."""
     var hi = v >> 4
     var lo = v & 0x0F
@@ -249,7 +249,7 @@ fn _to_hex_byte(v: Int) -> String:
 # ── rgb_to_hex ────────────────────────────────────────────────────────────────
 
 
-fn rgb_to_hex(c: RGB) -> String:
+def rgb_to_hex(c: RGB) -> String:
     """RGB to hex string '#RRGGBB'."""
     var ri = Int(clamp01(c.r) * 255.0 + 0.5)
     var gi = Int(clamp01(c.g) * 255.0 + 0.5)
@@ -260,7 +260,7 @@ fn rgb_to_hex(c: RGB) -> String:
 # ── _hex_char_val (helper) ───────────────────────────────────────────────────
 
 
-fn _hex_char_val(b: UInt8) -> Int:
+def _hex_char_val(b: UInt8) -> Int:
     """Convert single hex byte value to 0-15."""
     var o = Int(b)
     if o >= 48 and o <= 57:    # 0-9
@@ -272,7 +272,7 @@ fn _hex_char_val(b: UInt8) -> Int:
     return 0
 
 
-fn _is_hex_byte(b: UInt8) -> Bool:
+def _is_hex_byte(b: UInt8) -> Bool:
     """True when b is an ASCII hex digit."""
     var o = Int(b)
     return (o >= 48 and o <= 57) or (o >= 65 and o <= 70) or (o >= 97 and o <= 102)
@@ -281,7 +281,7 @@ fn _is_hex_byte(b: UInt8) -> Bool:
 # ── hex_to_rgb ────────────────────────────────────────────────────────────────
 
 
-fn hex_to_rgb(hex: String) -> RGB:
+def hex_to_rgb(hex: String) -> RGB:
     """Parse '#RRGGBB' or 'RRGGBB' to RGB."""
     var bspan = hex.as_bytes()
     var offset = 0
@@ -308,7 +308,7 @@ fn hex_to_rgb(hex: String) -> RGB:
 # ── rgb_lerp ──────────────────────────────────────────────────────────────────
 
 
-fn rgb_lerp(a: RGB, b: RGB, t: Float64) -> RGB:
+def rgb_lerp(a: RGB, b: RGB, t: Float64) -> RGB:
     """Linear interpolation between two colors."""
     var tt = clamp01(t)
     return RGB(
@@ -321,7 +321,7 @@ fn rgb_lerp(a: RGB, b: RGB, t: Float64) -> RGB:
 # ── color_distance ────────────────────────────────────────────────────────────
 
 
-fn color_distance(a: RGB, b: RGB) -> Float64:
+def color_distance(a: RGB, b: RGB) -> Float64:
     """Euclidean distance in RGB space."""
     var dr = a.r - b.r
     var dg = a.g - b.g
@@ -332,7 +332,7 @@ fn color_distance(a: RGB, b: RGB) -> Float64:
 # ── grayscale ─────────────────────────────────────────────────────────────────
 
 
-fn grayscale(c: RGB) -> RGB:
+def grayscale(c: RGB) -> RGB:
     """Convert to grayscale using luminance weights (0.299R + 0.587G + 0.114B)."""
     var gray = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
     return RGB(gray, gray, gray)
@@ -341,6 +341,6 @@ fn grayscale(c: RGB) -> RGB:
 # ── complement ────────────────────────────────────────────────────────────────
 
 
-fn complement(c: RGB) -> RGB:
+def complement(c: RGB) -> RGB:
     """Complementary color (1-r, 1-g, 1-b)."""
     return RGB(1.0 - c.r, 1.0 - c.g, 1.0 - c.b)

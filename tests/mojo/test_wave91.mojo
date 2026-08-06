@@ -49,7 +49,7 @@ from std.math import abs as fabs, sqrt, exp
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def _approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a - b) < eps
     return fabs(a - b) / fabs(b) < eps
@@ -58,7 +58,7 @@ fn _approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
 # ── Drone tests ──────────────────────────────────────────────────────────────
 
 
-fn test_drones() raises:
+def test_drones() raises:
     # thrust_to_weight_ratio
     assert_true(_approx(thrust_to_weight_ratio(40.0, 20.0), 2.0), "twr basic")
     assert_true(_approx(thrust_to_weight_ratio(15.0, 15.0), 1.0), "twr=1")
@@ -125,7 +125,7 @@ fn test_drones() raises:
 # ── Dentistry tests ──────────────────────────────────────────────────────────
 
 
-fn test_dentistry() raises:
+def test_dentistry() raises:
     # dmft_index
     assert_equal(dmft_index(3, 2, 5), 10, "dmft 10")
     assert_equal(dmft_index(0, 0, 0), 0, "dmft 0")
@@ -179,7 +179,7 @@ fn test_dentistry() raises:
 # ── Rubber tests ─────────────────────────────────────────────────────────────
 
 
-fn test_rubber() raises:
+def test_rubber() raises:
     # shore_a_to_youngs_modulus: E = 0.5 * exp(0.04 * shore_a)
     # shore_a=50 => 0.5*exp(2.0) ≈ 0.5*7.389056 = 3.694528
     var e50 = shore_a_to_youngs_modulus(50.0)
@@ -243,7 +243,7 @@ fn test_rubber() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 91 tests")
     test_drones()
     test_dentistry()

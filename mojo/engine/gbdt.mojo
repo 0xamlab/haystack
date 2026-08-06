@@ -47,7 +47,7 @@ struct GBDTModel(Copyable, Movable):
     var right_child: List[Int]
     var leaf_value: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.n_features = 0
         self.base_score = 0.0
         self.tree_root = List[Int]()
@@ -61,7 +61,7 @@ struct GBDTModel(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -69,7 +69,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -85,13 +85,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _shuffle_ints(mut arr: List[Int], mut state: UInt64):
+def _shuffle_ints(mut arr: List[Int], mut state: UInt64):
     """In-place Fisher-Yates shuffle driven by the caller's RNG state."""
     var n = len(arr)
     for i in range(n - 1, 0, -1):
@@ -104,7 +104,7 @@ fn _shuffle_ints(mut arr: List[Int], mut state: UInt64):
 # ── sorting helper (heapsort on parallel arrays) ─────────────────────────────
 
 
-fn _sift_down(
+def _sift_down(
     mut keys: List[Float64], mut vals: List[Float64], start: Int, end: Int
 ):
     """Max-heap sift-down over keys[start..end], vals moved in lockstep."""
@@ -127,7 +127,7 @@ fn _sift_down(
             return
 
 
-fn _heapsort_pair(mut keys: List[Float64], mut vals: List[Float64]):
+def _heapsort_pair(mut keys: List[Float64], mut vals: List[Float64]):
     """Sort keys ascending, permuting vals identically. O(m log m), no
     recursion. Not stable, but split gains only depend on sums within
     equal-key blocks, so results stay deterministic."""
@@ -150,7 +150,7 @@ fn _heapsort_pair(mut keys: List[Float64], mut vals: List[Float64]):
         _sift_down(keys, vals, 0, end)
 
 
-fn _sift_down_key_idx(
+def _sift_down_key_idx(
     mut keys: List[Float64], mut vals: List[Int], start: Int, end: Int
 ):
     """Max-heap sift-down over keys[start..end], Int payload in lockstep."""
@@ -173,7 +173,7 @@ fn _sift_down_key_idx(
             return
 
 
-fn _heapsort_key_idx(mut keys: List[Float64], mut vals: List[Int]):
+def _heapsort_key_idx(mut keys: List[Float64], mut vals: List[Int]):
     """Sort keys ascending, permuting the Int payload identically."""
     var n = len(keys)
     if n < 2:
@@ -216,7 +216,7 @@ struct _SplitCtx(Copyable, Movable):
     var stamp: Int
 
 
-fn _presort_columns(X: List[Float64], n_rows: Int, n_cols: Int) -> _SplitCtx:
+def _presort_columns(X: List[Float64], n_rows: Int, n_cols: Int) -> _SplitCtx:
     """Sort each feature column once; flag columns needing the fallback."""
     var order = List[Int](capacity=n_rows * n_cols)
     var col_fallback = List[Bool](capacity=n_cols)
@@ -252,7 +252,7 @@ struct _Split(Copyable, Movable):
     var gain: Float64
 
 
-fn _best_split(
+def _best_split(
     X: List[Float64],
     n_cols: Int,
     resid: List[Float64],
@@ -359,7 +359,7 @@ fn _best_split(
 # ── tree construction ────────────────────────────────────────────────────────
 
 
-fn _add_node(
+def _add_node(
     mut model: GBDTModel,
     feat: Int,
     val: Float64,
@@ -377,7 +377,7 @@ fn _add_node(
     return idx
 
 
-fn _grow(
+def _grow(
     mut model: GBDTModel,
     X: List[Float64],
     n_cols: Int,
@@ -442,7 +442,7 @@ fn _grow(
     return node
 
 
-fn _predict_row_flat(
+def _predict_row_flat(
     model: GBDTModel, root: Int, X: List[Float64], n_cols: Int, row: Int
 ) -> Float64:
     """Walk one tree for one row of a flat matrix; returns the leaf value."""
@@ -461,7 +461,7 @@ fn _predict_row_flat(
 # ── gbdt_fit ─────────────────────────────────────────────────────────────────
 
 
-fn gbdt_fit(
+def gbdt_fit(
     X: List[Float64],
     y: List[Float64],
     n_cols: Int,
@@ -550,7 +550,7 @@ fn gbdt_fit(
 # ── gbdt_predict ─────────────────────────────────────────────────────────────
 
 
-fn gbdt_predict(model: GBDTModel, x: List[Float64]) -> Float64:
+def gbdt_predict(model: GBDTModel, x: List[Float64]) -> Float64:
     """Predict one row: base_score + one (lr-scaled) leaf per tree.
     O(n_trees * max_depth)."""
     var out = model.base_score
@@ -571,7 +571,7 @@ fn gbdt_predict(model: GBDTModel, x: List[Float64]) -> Float64:
 # ── gbdt_predict_batch ───────────────────────────────────────────────────────
 
 
-fn gbdt_predict_batch(
+def gbdt_predict_batch(
     model: GBDTModel, X: List[Float64], n_cols: Int
 ) -> List[Float64]:
     """Predict every row of a flat row-major matrix (len(X) // n_cols rows)."""
@@ -610,6 +610,6 @@ fn gbdt_predict_batch(
 # ── gbdt_n_nodes ─────────────────────────────────────────────────────────────
 
 
-fn gbdt_n_nodes(model: GBDTModel) -> Int:
+def gbdt_n_nodes(model: GBDTModel) -> Int:
     """Total node count across all trees in the forest."""
     return len(model.split_feature)

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn multi_head_split_head(
+def multi_head_split_head(
     embedding_val: Float64, head: Float64,
     head_dim: Float64, d_model: Float64
 ) -> Float64:
@@ -40,7 +40,7 @@ fn multi_head_split_head(
     return embedding_val / sqrt(head_dim)
 
 
-fn feedforward_layer1(
+def feedforward_layer1(
     x: Float64, weight: Float64, bias: Float64
 ) -> Float64:
     """FFN first linear layer: y = x × W + b.
@@ -58,7 +58,7 @@ fn feedforward_layer1(
     return x * weight + bias
 
 
-fn feedforward_layer2(
+def feedforward_layer2(
     x: Float64, weight: Float64, bias: Float64
 ) -> Float64:
     """FFN second linear projection: y = activated × W2 + b2.
@@ -74,7 +74,7 @@ fn feedforward_layer2(
     return x * weight + bias
 
 
-fn residual_connection(x: Float64, sublayer_out: Float64) -> Float64:
+def residual_connection(x: Float64, sublayer_out: Float64) -> Float64:
     """Residual connection: y = x + sublayer(x).
 
     Args:
@@ -87,7 +87,7 @@ fn residual_connection(x: Float64, sublayer_out: Float64) -> Float64:
     return x + sublayer_out
 
 
-fn pre_norm(
+def pre_norm(
     x: Float64, norm_out: Float64, sublayer_out: Float64
 ) -> Float64:
     """Pre-norm residual: y = x + sublayer(LayerNorm(x)).
@@ -103,7 +103,7 @@ fn pre_norm(
     return x + sublayer_out
 
 
-fn post_norm(
+def post_norm(
     x: Float64, sublayer_out: Float64, norm_scale: Float64, norm_bias: Float64
 ) -> Float64:
     """Post-norm residual: y = LayerNorm(x + sublayer(x)).
@@ -122,7 +122,7 @@ fn post_norm(
     return (x + sublayer_out) * norm_scale + norm_bias
 
 
-fn causal_mask_logit(
+def causal_mask_logit(
     logit: Float64, query_pos: Float64, key_pos: Float64
 ) -> Float64:
     """Apply causal (autoregressive) mask: -inf if key > query position.
@@ -140,7 +140,7 @@ fn causal_mask_logit(
     return logit
 
 
-fn attention_head_output(
+def attention_head_output(
     value: Float64, attention_weight: Float64
 ) -> Float64:
     """Weighted value sum for one attention head: Σ α_i × v_i.
@@ -157,7 +157,7 @@ fn attention_head_output(
     return attention_weight * value
 
 
-fn gated_feedforward(
+def gated_feedforward(
     x: Float64, gate: Float64
 ) -> Float64:
     """Gated FFN (SwiGLU): output = SiLU(gate) × x.
@@ -175,7 +175,7 @@ fn gated_feedforward(
     return silu_gate * x
 
 
-fn dropout_scale(x: Float64, keep_prob: Float64) -> Float64:
+def dropout_scale(x: Float64, keep_prob: Float64) -> Float64:
     """Inverted dropout scaling (training): x / keep_prob.
 
     At inference: return x unchanged (keep_prob = 1.0).

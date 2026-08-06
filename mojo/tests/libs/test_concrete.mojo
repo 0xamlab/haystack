@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from concrete import water_cement_ratio, compressive_strength_abrams, cement_content, aggregate_volume, slump_estimate, maturity_nurse_saul, modulus_of_elasticity, splitting_tensile_strength, drying_shrinkage_estimate, carbonation_depth, rebar_development_length, concrete_density_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

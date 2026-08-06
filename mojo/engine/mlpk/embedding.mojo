@@ -93,7 +93,7 @@ struct EmbedGrad(Copyable, Movable):
     var status: Int
 
 
-fn embedding_ids_in_range(ids: List[Int], n_tok: Int, vocab: Int) -> Bool:
+def embedding_ids_in_range(ids: List[Int], n_tok: Int, vocab: Int) -> Bool:
     """True when every one of the first `n_tok` ids is a valid row index.
 
     Separate and public because a caller wants to validate a batch ONCE, before a training step, not
@@ -114,7 +114,7 @@ fn embedding_ids_in_range(ids: List[Int], n_tok: Int, vocab: Int) -> Bool:
     return True
 
 
-fn embedding_fwd_flat(
+def embedding_fwd_flat(
     weight: List[Float64], ids: List[Int], n_tok: Int, vocab: Int, d_model: Int
 ) -> EmbedOut:
     """Gather `n_tok` rows of a `[vocab][d_model]` table.
@@ -150,7 +150,7 @@ fn embedding_fwd_flat(
         workers = 1
 
     @parameter
-    fn _gather_band(tid: Int) capturing:
+    def _gather_band(tid: Int) capturing:
         var each = n // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else n
@@ -165,7 +165,7 @@ fn embedding_fwd_flat(
     return EmbedOut(y^, n_tok, d_model, MLP_OK)
 
 
-fn embedding_bwd_flat(
+def embedding_bwd_flat(
     dy: List[Float64], ids: List[Int], n_tok: Int, vocab: Int, d_model: Int
 ) -> EmbedGrad:
     """Scatter-add `dy` into a dense `[vocab][d_model]` gradient, deterministically.
@@ -203,7 +203,7 @@ fn embedding_bwd_flat(
         workers = 1
 
     @parameter
-    fn _scatter_band(tid: Int) capturing:
+    def _scatter_band(tid: Int) capturing:
         var each = d // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else d

@@ -25,14 +25,14 @@ Public API:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _swap(mut data: List[Float64], i: Int, j: Int):
+def _swap(mut data: List[Float64], i: Int, j: Int):
     """Swap two elements in list."""
     var tmp = data[i]
     data[i] = data[j]
     data[j] = tmp
 
 
-fn _sift_down_min(mut data: List[Float64], start: Int, end: Int):
+def _sift_down_min(mut data: List[Float64], start: Int, end: Int):
     """Sift element at start down to maintain min-heap property."""
     var root = start
     while True:
@@ -50,7 +50,7 @@ fn _sift_down_min(mut data: List[Float64], start: Int, end: Int):
         root = swap_idx
 
 
-fn _sift_up_min(mut data: List[Float64], pos: Int):
+def _sift_up_min(mut data: List[Float64], pos: Int):
     """Sift element at pos up to maintain min-heap property."""
     var child = pos
     while child > 0:
@@ -62,7 +62,7 @@ fn _sift_up_min(mut data: List[Float64], pos: Int):
             break
 
 
-fn _sift_down_max(mut data: List[Float64], start: Int, end: Int):
+def _sift_down_max(mut data: List[Float64], start: Int, end: Int):
     """Sift element at start down to maintain max-heap property."""
     var root = start
     while True:
@@ -80,7 +80,7 @@ fn _sift_down_max(mut data: List[Float64], start: Int, end: Int):
         root = swap_idx
 
 
-fn _sift_up_max(mut data: List[Float64], pos: Int):
+def _sift_up_max(mut data: List[Float64], pos: Int):
     """Sift element at pos up to maintain max-heap property."""
     var child = pos
     while child > 0:
@@ -95,7 +95,7 @@ fn _sift_up_max(mut data: List[Float64], pos: Int):
 # ── heapify_min ───────────────────────────────────────────────────────────────
 
 
-fn heapify_min(mut data: List[Float64]):
+def heapify_min(mut data: List[Float64]):
     """Build min-heap in place. O(n) time."""
     var n = len(data)
     var start = (n - 2) // 2
@@ -107,7 +107,7 @@ fn heapify_min(mut data: List[Float64]):
 # ── heapify_max ───────────────────────────────────────────────────────────────
 
 
-fn heapify_max(mut data: List[Float64]):
+def heapify_max(mut data: List[Float64]):
     """Build max-heap in place. O(n) time."""
     var n = len(data)
     var start = (n - 2) // 2
@@ -119,7 +119,7 @@ fn heapify_max(mut data: List[Float64]):
 # ── heap_push_min ─────────────────────────────────────────────────────────────
 
 
-fn heap_push_min(mut heap: List[Float64], value: Float64):
+def heap_push_min(mut heap: List[Float64], value: Float64):
     """Push value onto min-heap, maintaining heap property."""
     heap.append(value)
     _sift_up_min(heap, len(heap) - 1)
@@ -128,7 +128,7 @@ fn heap_push_min(mut heap: List[Float64], value: Float64):
 # ── heap_pop_min ──────────────────────────────────────────────────────────────
 
 
-fn heap_pop_min(mut heap: List[Float64]) -> Float64:
+def heap_pop_min(mut heap: List[Float64]) -> Float64:
     """Pop and return minimum from min-heap."""
     var n = len(heap)
     if n == 0:
@@ -146,7 +146,7 @@ fn heap_pop_min(mut heap: List[Float64]) -> Float64:
 # ── heap_push_max ─────────────────────────────────────────────────────────────
 
 
-fn heap_push_max(mut heap: List[Float64], value: Float64):
+def heap_push_max(mut heap: List[Float64], value: Float64):
     """Push value onto max-heap, maintaining heap property."""
     heap.append(value)
     _sift_up_max(heap, len(heap) - 1)
@@ -155,7 +155,7 @@ fn heap_push_max(mut heap: List[Float64], value: Float64):
 # ── heap_pop_max ──────────────────────────────────────────────────────────────
 
 
-fn heap_pop_max(mut heap: List[Float64]) -> Float64:
+def heap_pop_max(mut heap: List[Float64]) -> Float64:
     """Pop and return maximum from max-heap."""
     var n = len(heap)
     if n == 0:
@@ -173,7 +173,7 @@ fn heap_pop_max(mut heap: List[Float64]) -> Float64:
 # ── heap_peek_min ─────────────────────────────────────────────────────────────
 
 
-fn heap_peek_min(heap: List[Float64]) -> Float64:
+def heap_peek_min(heap: List[Float64]) -> Float64:
     """View minimum element without removing. Returns 0.0 if empty."""
     if len(heap) == 0:
         return 0.0
@@ -183,7 +183,7 @@ fn heap_peek_min(heap: List[Float64]) -> Float64:
 # ── heap_peek_max ─────────────────────────────────────────────────────────────
 
 
-fn heap_peek_max(heap: List[Float64]) -> Float64:
+def heap_peek_max(heap: List[Float64]) -> Float64:
     """View maximum element without removing. Returns 0.0 if empty."""
     if len(heap) == 0:
         return 0.0
@@ -193,7 +193,7 @@ fn heap_peek_max(heap: List[Float64]) -> Float64:
 # ── k_smallest ────────────────────────────────────────────────────────────────
 
 
-fn k_smallest(data: List[Float64], k: Int) -> List[Float64]:
+def k_smallest(data: List[Float64], k: Int) -> List[Float64]:
     """Find k smallest elements using a max-heap of size k.
 
     Returns unsorted list of k smallest values. O(n log k).
@@ -223,7 +223,7 @@ fn k_smallest(data: List[Float64], k: Int) -> List[Float64]:
 # ── k_largest ─────────────────────────────────────────────────────────────────
 
 
-fn k_largest(data: List[Float64], k: Int) -> List[Float64]:
+def k_largest(data: List[Float64], k: Int) -> List[Float64]:
     """Find k largest elements using a min-heap of size k.
 
     Returns unsorted list of k largest values. O(n log k).
@@ -250,7 +250,7 @@ fn k_largest(data: List[Float64], k: Int) -> List[Float64]:
     return heap^
 
 
-fn _simple_sort(mut data: List[Float64]):
+def _simple_sort(mut data: List[Float64]):
     """Simple insertion sort for small lists."""
     var n = len(data)
     for i in range(1, n):
@@ -265,7 +265,7 @@ fn _simple_sort(mut data: List[Float64]):
 # ── merge_sorted_lists ────────────────────────────────────────────────────────
 
 
-fn merge_sorted_lists(lists: List[List[Float64]]) -> List[Float64]:
+def merge_sorted_lists(lists: List[List[Float64]]) -> List[Float64]:
     """K-way merge of sorted lists using min-heap.
 
     Each input list must be sorted in ascending order.
@@ -304,7 +304,7 @@ fn merge_sorted_lists(lists: List[List[Float64]]) -> List[Float64]:
 # ── running_median ────────────────────────────────────────────────────────────
 
 
-fn running_median(data: List[Float64]) -> List[Float64]:
+def running_median(data: List[Float64]) -> List[Float64]:
     """Compute running median for each prefix of data.
 
     For prefix of length n: if n is odd, median is middle element;
@@ -335,7 +335,7 @@ fn running_median(data: List[Float64]) -> List[Float64]:
 # ── is_min_heap ───────────────────────────────────────────────────────────────
 
 
-fn is_min_heap(data: List[Float64]) -> Bool:
+def is_min_heap(data: List[Float64]) -> Bool:
     """Verify that data satisfies the min-heap property.
 
     For every node i, data[i] <= data[2*i+1] and data[i] <= data[2*i+2].

@@ -75,11 +75,11 @@ from math_ext import mean, stdev
 comptime TOL: Float64 = 1e-12
 
 
-fn _close(a: Float64, b: Float64) -> Bool:
+def _close(a: Float64, b: Float64) -> Bool:
     return fabs(a - b) <= 1e-9
 
 
-fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
+def _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -87,7 +87,7 @@ fn _ints3(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(a)
     out.append(b)
@@ -95,21 +95,21 @@ fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return out^
 
 
-fn _zeros(n: Int) -> List[Float64]:
+def _zeros(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(0.0)
     return out^
 
 
-fn _ones(n: Int) -> List[Float64]:
+def _ones(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(1.0)
     return out^
 
 
-fn _reversed_ints(values: List[Int]) -> List[Int]:
+def _reversed_ints(values: List[Int]) -> List[Int]:
     var out = List[Int]()
     var i = len(values) - 1
     while i >= 0:
@@ -118,7 +118,7 @@ fn _reversed_ints(values: List[Int]) -> List[Int]:
     return out^
 
 
-fn _reversed_floats(values: List[Float64]) -> List[Float64]:
+def _reversed_floats(values: List[Float64]) -> List[Float64]:
     var out = List[Float64]()
     var i = len(values) - 1
     while i >= 0:
@@ -127,7 +127,7 @@ fn _reversed_floats(values: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _frozen_edges(
+def _frozen_edges(
     src: List[Int], dst: List[Int], weight: List[Float64]
 ) -> List[WeightedEdge]:
     """The same edge set as a frozen triplet list, so the oracle sees identical input."""
@@ -151,7 +151,7 @@ fn _frozen_edges(
 #   9   0   4     1      20       arrive 4 at t=21 — the FASTEST journey, not the earliest
 
 
-fn _g5_src() -> List[Int]:
+def _g5_src() -> List[Int]:
     var out = List[Int]()
     out.append(0)
     out.append(0)
@@ -166,7 +166,7 @@ fn _g5_src() -> List[Int]:
     return out^
 
 
-fn _g5_dst() -> List[Int]:
+def _g5_dst() -> List[Int]:
     var out = List[Int]()
     out.append(1)
     out.append(2)
@@ -181,7 +181,7 @@ fn _g5_dst() -> List[Int]:
     return out^
 
 
-fn _g5_duration() -> List[Float64]:
+def _g5_duration() -> List[Float64]:
     var out = List[Float64]()
     out.append(2.0)
     out.append(1.0)
@@ -196,7 +196,7 @@ fn _g5_duration() -> List[Float64]:
     return out^
 
 
-fn _g5_time() -> List[Float64]:
+def _g5_time() -> List[Float64]:
     var out = List[Float64]()
     out.append(1.0)
     out.append(2.0)
@@ -216,7 +216,7 @@ fn _g5_time() -> List[Float64]:
 # frozen oracle's `1e18` and the temporal `reached == False` must line up.
 
 
-fn _flat_src() -> List[Int]:
+def _flat_src() -> List[Int]:
     var out = List[Int]()
     out.append(0)
     out.append(1)
@@ -227,7 +227,7 @@ fn _flat_src() -> List[Int]:
     return out^
 
 
-fn _flat_dst() -> List[Int]:
+def _flat_dst() -> List[Int]:
     var out = List[Int]()
     out.append(1)
     out.append(2)
@@ -238,7 +238,7 @@ fn _flat_dst() -> List[Int]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[graph_analytics.temporal] known-value tests")

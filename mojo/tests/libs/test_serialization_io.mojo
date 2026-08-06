@@ -25,7 +25,7 @@ from serialization_io import (
 )
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ serialization_io::" + name)
@@ -34,34 +34,34 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ serialization_io::" + name)
 
 
-fn _names1(a: String) -> List[String]:
+def _names1(a: String) -> List[String]:
     var out = List[String]()
     out.append(a)
     return out^
 
 
-fn _fold(h: UInt64) -> Float64:
+def _fold(h: UInt64) -> Float64:
     return Float64(Int((h >> 32) ^ (h & UInt64(0xFFFFFFFF))))
 
 
-fn _pos_inf() -> Float64:
+def _pos_inf() -> Float64:
     var big: Float64 = 1.0e308
     return big * 10.0
 
 
-fn _quiet_nan() -> Float64:
+def _quiet_nan() -> Float64:
     var z: Float64 = 0.0
     return z / z
 
 
-fn _is_neg_zero(v: Float64) -> Bool:
+def _is_neg_zero(v: Float64) -> Bool:
     if v != 0.0:
         return False
     var one: Float64 = 1.0
     return one / v < 0.0
 
 
-fn _make_val(m: Int, e: Int) -> Float64:
+def _make_val(m: Int, e: Int) -> Float64:
     """m * 2^e via single exact power-of-two steps (independent of kernel)."""
     var v = Float64(m)
     if e > 0:
@@ -73,7 +73,7 @@ fn _make_val(m: Int, e: Int) -> Float64:
     return v
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7

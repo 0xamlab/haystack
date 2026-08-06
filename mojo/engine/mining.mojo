@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs
 # ── ore_grade ────────────────────────────────────────────────────────────────
 
 
-fn ore_grade(metal_mass: Float64, ore_mass: Float64) -> Float64:
+def ore_grade(metal_mass: Float64, ore_mass: Float64) -> Float64:
     """Ore grade: Grade = (metal/ore) * 100 (%).
 
     Args:
@@ -41,7 +41,7 @@ fn ore_grade(metal_mass: Float64, ore_mass: Float64) -> Float64:
 # ── strip_ratio ──────────────────────────────────────────────────────────────
 
 
-fn strip_ratio(waste_volume: Float64, ore_volume: Float64) -> Float64:
+def strip_ratio(waste_volume: Float64, ore_volume: Float64) -> Float64:
     """Strip ratio: SR = waste / ore.
 
     Args:
@@ -59,7 +59,7 @@ fn strip_ratio(waste_volume: Float64, ore_volume: Float64) -> Float64:
 # ── recovery_rate ────────────────────────────────────────────────────────────
 
 
-fn recovery_rate(metal_recovered: Float64, metal_in_feed: Float64) -> Float64:
+def recovery_rate(metal_recovered: Float64, metal_in_feed: Float64) -> Float64:
     """Recovery rate: R = (recovered/feed) * 100 (%).
 
     Args:
@@ -77,7 +77,7 @@ fn recovery_rate(metal_recovered: Float64, metal_in_feed: Float64) -> Float64:
 # ── mill_throughput ──────────────────────────────────────────────────────────
 
 
-fn mill_throughput(feed_rate: Float64, hours: Float64) -> Float64:
+def mill_throughput(feed_rate: Float64, hours: Float64) -> Float64:
     """Mill throughput: T = rate * hours (tonnes).
 
     Args:
@@ -93,7 +93,7 @@ fn mill_throughput(feed_rate: Float64, hours: Float64) -> Float64:
 # ── bond_work_index_energy ───────────────────────────────────────────────────
 
 
-fn bond_work_index_energy(
+def bond_work_index_energy(
     wi: Float64, p80: Float64, f80: Float64
 ) -> Float64:
     """Bond work index energy: E = 10 * Wi * (1/√P80 - 1/√F80) (kWh/t).
@@ -114,7 +114,7 @@ fn bond_work_index_energy(
 # ── cut_off_grade ────────────────────────────────────────────────────────────
 
 
-fn cut_off_grade(
+def cut_off_grade(
     mining_cost: Float64,
     processing_cost: Float64,
     metal_price: Float64,
@@ -140,7 +140,7 @@ fn cut_off_grade(
 # ── dilution_factor ──────────────────────────────────────────────────────────
 
 
-fn dilution_factor(
+def dilution_factor(
     tonnes_waste_in_ore: Float64, tonnes_ore: Float64
 ) -> Float64:
     """Dilution factor: D = waste / (waste + ore) * 100 (%).
@@ -161,7 +161,7 @@ fn dilution_factor(
 # ── net_smelter_return ───────────────────────────────────────────────────────
 
 
-fn net_smelter_return(
+def net_smelter_return(
     metal_price: Float64,
     grade: Float64,
     recovery: Float64,
@@ -184,7 +184,7 @@ fn net_smelter_return(
 # ── reserve_life ─────────────────────────────────────────────────────────────
 
 
-fn reserve_life(
+def reserve_life(
     tonnes_reserve: Float64, annual_production: Float64
 ) -> Float64:
     """Reserve life: Life = reserve / production (years).
@@ -204,7 +204,7 @@ fn reserve_life(
 # ── powder_factor ────────────────────────────────────────────────────────────
 
 
-fn powder_factor(
+def powder_factor(
     explosive_kg: Float64, rock_tonnes: Float64
 ) -> Float64:
     """Powder factor: PF = explosive / rock (kg/t).
@@ -224,7 +224,7 @@ fn powder_factor(
 # ── ventilation_quantity ─────────────────────────────────────────────────────
 
 
-fn ventilation_quantity(
+def ventilation_quantity(
     workers: Float64, airflow_per_worker: Float64
 ) -> Float64:
     """Ventilation quantity: Q = n * q (m³/s).
@@ -242,7 +242,7 @@ fn ventilation_quantity(
 # ── subsidence_factor ────────────────────────────────────────────────────────
 
 
-fn subsidence_factor(
+def subsidence_factor(
     extraction_height: Float64, depth: Float64
 ) -> Float64:
     """Subsidence factor: SF = extraction_height / depth.

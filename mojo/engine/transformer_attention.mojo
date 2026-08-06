@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn scaled_dot_product_attention(
+def scaled_dot_product_attention(
     q_dot_k: Float64, d_k: Float64
 ) -> Float64:
     """Scaled dot-product attention score: score = QK^T / sqrt(d_k).
@@ -33,7 +33,7 @@ fn scaled_dot_product_attention(
     return q_dot_k / sqrt(d_k)
 
 
-fn attention_softmax_stable(
+def attention_softmax_stable(
     score: Float64, max_score: Float64, sum_exp: Float64
 ) -> Float64:
     """Numerically stable softmax for a single attention weight.
@@ -53,7 +53,7 @@ fn attention_softmax_stable(
     return exp(score - max_score) / sum_exp
 
 
-fn multi_head_split(d_model: Float64, n_heads: Float64) -> Float64:
+def multi_head_split(d_model: Float64, n_heads: Float64) -> Float64:
     """Per-head dimension: d_k = d_model / n_heads.
 
     Args:
@@ -68,7 +68,7 @@ fn multi_head_split(d_model: Float64, n_heads: Float64) -> Float64:
     return d_model / n_heads
 
 
-fn causal_mask_value(query_pos: Float64, key_pos: Float64) -> Float64:
+def causal_mask_value(query_pos: Float64, key_pos: Float64) -> Float64:
     """Causal (autoregressive) mask: -inf if key > query position.
 
     Args:
@@ -83,7 +83,7 @@ fn causal_mask_value(query_pos: Float64, key_pos: Float64) -> Float64:
     return 0.0
 
 
-fn attention_entropy(
+def attention_entropy(
     attention_weight: Float64, n_keys: Float64
 ) -> Float64:
     """Per-token attention entropy contribution: -w * log(w).
@@ -100,7 +100,7 @@ fn attention_entropy(
     return -attention_weight * log(attention_weight)
 
 
-fn kv_cache_memory_bytes(
+def kv_cache_memory_bytes(
     n_layers: Float64, n_heads: Float64,
     d_head: Float64, seq_len: Float64, batch_size: Float64
 ) -> Float64:
@@ -121,7 +121,7 @@ fn kv_cache_memory_bytes(
     return 2.0 * n_layers * n_heads * d_head * seq_len * batch_size * 2.0
 
 
-fn flash_attention_block_score(
+def flash_attention_block_score(
     q_dot_k_sum: Float64, block_size: Float64, d_k: Float64
 ) -> Float64:
     """Flash attention block-level score approximation.
@@ -142,7 +142,7 @@ fn flash_attention_block_score(
     return q_dot_k_sum / denom
 
 
-fn rope_rotation_angle(
+def rope_rotation_angle(
     position: Float64, dimension_idx: Float64, d_model: Float64, base: Float64
 ) -> Float64:
     """RoPE rotation angle: θ = position × base^(-2i/d).
@@ -162,11 +162,11 @@ fn rope_rotation_angle(
     return position * theta
 
 
-fn pow_approx(base: Float64, exponent: Float64) -> Float64:
+def pow_approx(base: Float64, exponent: Float64) -> Float64:
     return exp(exponent * log(base))
 
 
-fn relative_position_bias(
+def relative_position_bias(
     query_pos: Float64, key_pos: Float64, num_buckets: Float64, max_distance: Float64
 ) -> Float64:
     """T5-style relative position bias bucket index.
@@ -195,7 +195,7 @@ fn relative_position_bias(
     return log_bucket
 
 
-fn cross_attention_score(
+def cross_attention_score(
     decoder_q: Float64, encoder_k: Float64, d_k: Float64
 ) -> Float64:
     """Encoder-decoder cross-attention scaled score.

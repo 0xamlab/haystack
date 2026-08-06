@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from online_learning import exponential_moving_average, exponential_moving_variance, river_sgd_update, perceptron_update, passive_aggressive_step, adagrad_online_update, ftrl_step, streaming_mean_update, streaming_variance_update, concept_drift_ddm_error
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -35,17 +35,17 @@ from units import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn test_anomaly() raises:
+def test_anomaly() raises:
     print("── Anomaly Detection tests ──")
     var n_pass: Int = 0
 
@@ -157,7 +157,7 @@ fn test_anomaly() raises:
     print("  Anomaly: " + String(n_pass) + " assertions passed")
 
 
-fn test_regression() raises:
+def test_regression() raises:
     print("── Regression tests ──")
     var n_pass: Int = 0
 
@@ -282,7 +282,7 @@ fn test_regression() raises:
     print("  Regression: " + String(n_pass) + " assertions passed")
 
 
-fn test_units() raises:
+def test_units() raises:
     print("── Unit Conversion tests ──")
     var n_pass: Int = 0
 
@@ -375,7 +375,7 @@ fn test_units() raises:
     print("  Units: " + String(n_pass) + " assertions passed")
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 22 Tests: Anomaly, Regression, Units ===")
     test_anomaly()
     test_regression()

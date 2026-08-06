@@ -119,28 +119,28 @@ from optimization.robust import (
 )
 
 
-fn _lf(*values: Float64) -> List[Float64]:
+def _lf(*values: Float64) -> List[Float64]:
     var out = List[Float64]()
     for v in values:
         out.append(v)
     return out^
 
 
-fn _li(*values: Int) -> List[Int]:
+def _li(*values: Int) -> List[Int]:
     var out = List[Int]()
     for v in values:
         out.append(v)
     return out^
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn _blocks_equal(a: List[Float64], b: List[Float64]) -> Bool:
+def _blocks_equal(a: List[Float64], b: List[Float64]) -> Bool:
     """Bit-identical, element for element. `==` on Float64, deliberately no tolerance."""
     if len(a) != len(b):
         return False
@@ -150,7 +150,7 @@ fn _blocks_equal(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _blocks_differ(a: List[Float64], b: List[Float64]) -> Bool:
+def _blocks_differ(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return True
     for i in range(len(a)):
@@ -159,7 +159,7 @@ fn _blocks_differ(a: List[Float64], b: List[Float64]) -> Bool:
     return False
 
 
-fn _no_numbers(r: RobustScenarioResult) -> Bool:
+def _no_numbers(r: RobustScenarioResult) -> Bool:
     """An absent answer: no aggregate, no per-scenario objective, no bound direction."""
     return (
         not r.has_value
@@ -171,7 +171,7 @@ fn _no_numbers(r: RobustScenarioResult) -> Bool:
     )
 
 
-fn _mm_self_consistent(r: RobustMinMaxResult) -> Bool:
+def _mm_self_consistent(r: RobustMinMaxResult) -> Bool:
     """Every claim a min-max result makes must agree with every other claim it makes.
 
     Two mutually exclusive fields in one returned value leave a caller able to use neither, so
@@ -195,7 +195,7 @@ fn _mm_self_consistent(r: RobustMinMaxResult) -> Bool:
     return True
 
 
-fn _mm_absent(r: RobustMinMaxResult) -> Bool:
+def _mm_absent(r: RobustMinMaxResult) -> Bool:
     """An absent min-max answer: no objective, no x, no direction, no certificate."""
     return (
         not r.has_objective
@@ -206,7 +206,7 @@ fn _mm_absent(r: RobustMinMaxResult) -> Bool:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

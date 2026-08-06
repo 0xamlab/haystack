@@ -33,15 +33,15 @@ struct PostingSlice(Copyable, Movable):
     var start: UInt32   # index of first posting
     var count: UInt16   # number of postings for this token
 
-    fn __init__(out self):
+    def __init__(out self):
         self.start = 0
         self.count = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.start = copy.start
         self.count = copy.count
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.start = take.start
         self.count = take.count
 
@@ -68,14 +68,14 @@ struct TokenPostingIndex(Movable):
     var column_ids: List[UInt32]         # [total_posts] flat column index buffer
     var weights:    List[Float32]        # [total_posts] per-posting weight
 
-    fn __init__(out self):
+    def __init__(out self):
         self.vocab_size  = 0
         self.total_posts = 0
         self.slices      = List[PostingSlice]()
         self.column_ids  = List[UInt32]()
         self.weights     = List[Float32]()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.vocab_size  = take.vocab_size
         self.total_posts = take.total_posts
         self.slices      = take.slices.copy()      # ^ disallowed; use copy
@@ -83,7 +83,7 @@ struct TokenPostingIndex(Movable):
         self.weights     = take.weights.copy()
 
     @always_inline
-    fn get_postings(self, token_id: UInt32) -> PostingSlice:
+    def get_postings(self, token_id: UInt32) -> PostingSlice:
         """
         Return PostingSlice (start, count) for a token id.
         Returns empty slice if token_id >= vocab_size (unknown token — no hits).
@@ -93,12 +93,12 @@ struct TokenPostingIndex(Movable):
         return self.slices[Int(token_id)].copy()
 
     @always_inline
-    fn get_column_id(self, posting_ix: Int) -> UInt32:
+    def get_column_id(self, posting_ix: Int) -> UInt32:
         """Return column index at flat posting position posting_ix."""
         return self.column_ids[posting_ix]
 
     @always_inline
-    fn get_weight(self, posting_ix: Int) -> Float32:
+    def get_weight(self, posting_ix: Int) -> Float32:
         return self.weights[posting_ix]
 
 
@@ -110,17 +110,17 @@ struct _PostingEntry(Copyable, Movable):
     var col_idx:  UInt32
     var weight:   Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.token_id = 0
         self.col_idx  = 0
         self.weight   = Float32(1.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.token_id = copy.token_id
         self.col_idx  = copy.col_idx
         self.weight   = copy.weight
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.token_id = take.token_id
         self.col_idx  = take.col_idx
         self.weight   = take.weight
@@ -140,15 +140,15 @@ struct TokenIndexBuilder(Movable):
     var vocab_size: Int
     var entries:    List[_PostingEntry]   # unsorted (token_id, col_idx, weight)
 
-    fn __init__(out self, vocab_size: Int):
+    def __init__(out self, vocab_size: Int):
         self.vocab_size = vocab_size
         self.entries    = List[_PostingEntry]()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.vocab_size = take.vocab_size
         self.entries    = take.entries.copy()   # ^ disallowed; use copy
 
-    fn add_column(mut self, col_idx: Int, token_ids: List[UInt32], weight: Float32 = 1.0):
+    def add_column(mut self, col_idx: Int, token_ids: List[UInt32], weight: Float32 = 1.0):
         """Register all token_ids for one column. Duplicates are allowed (will be deduped)."""
         for i in range(len(token_ids)):
             var e = _PostingEntry()
@@ -157,7 +157,7 @@ struct TokenIndexBuilder(Movable):
             e.weight   = weight
             self.entries.append(e^)
 
-    fn add_column_weighted(
+    def add_column_weighted(
         mut self,
         col_idx:  Int,
         token_ids: List[UInt32],
@@ -172,7 +172,7 @@ struct TokenIndexBuilder(Movable):
             e.weight   = weights[i]
             self.entries.append(e^)
 
-    fn finalize(self) -> TokenPostingIndex:
+    def finalize(self) -> TokenPostingIndex:
         """
         Build a sorted, compacted TokenPostingIndex.
 
@@ -249,20 +249,20 @@ struct ColumnTokenTable(Movable):
     var token_counts: List[UInt16]   # [n_columns]
     var token_ids:    List[UInt32]   # flat token id buffer
 
-    fn __init__(out self):
+    def __init__(out self):
         self.n_columns    = 0
         self.token_starts = List[UInt32]()
         self.token_counts = List[UInt16]()
         self.token_ids    = List[UInt32]()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.n_columns    = take.n_columns
         self.token_starts = take.token_starts.copy()   # ^ disallowed; use copy
         self.token_counts = take.token_counts.copy()
         self.token_ids    = take.token_ids.copy()
 
     @always_inline
-    fn get_token_ids(self, col_idx: Int) -> PostingSlice:
+    def get_token_ids(self, col_idx: Int) -> PostingSlice:
         """Return PostingSlice (start, count) for column col_idx."""
         if col_idx >= self.n_columns:
             return PostingSlice()
@@ -271,7 +271,7 @@ struct ColumnTokenTable(Movable):
         sl.count = self.token_counts[col_idx]
         return sl^
 
-    fn count_overlap(self, col_idx: Int, query_ids: List[UInt32]) -> Int:
+    def count_overlap(self, col_idx: Int, query_ids: List[UInt32]) -> Int:
         """
         Count how many query token IDs appear in this column's token list.
         Used as a cheap lexical overlap signal in rank_shortlist().
@@ -289,5 +289,5 @@ struct ColumnTokenTable(Movable):
         return hits
 
 
-fn main():
+def main():
     pass

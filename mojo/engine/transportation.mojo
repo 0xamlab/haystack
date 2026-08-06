@@ -30,7 +30,7 @@ comptime GRAVITY: Float64 = 9.81  # m/s²
 # ── level_of_service_density ─────────────────────────────────────────────────
 
 
-fn level_of_service_density(flow: Float64, speed: Float64) -> Float64:
+def level_of_service_density(flow: Float64, speed: Float64) -> Float64:
     """Traffic density: D = flow / speed (veh/km/lane).
 
     Args:
@@ -48,7 +48,7 @@ fn level_of_service_density(flow: Float64, speed: Float64) -> Float64:
 # ── highway_capacity ─────────────────────────────────────────────────────────
 
 
-fn highway_capacity(lanes: Float64, capacity_per_lane: Float64) -> Float64:
+def highway_capacity(lanes: Float64, capacity_per_lane: Float64) -> Float64:
     """Highway capacity: C = lanes * capacity_per_lane.
 
     Args:
@@ -64,7 +64,7 @@ fn highway_capacity(lanes: Float64, capacity_per_lane: Float64) -> Float64:
 # ── travel_time ──────────────────────────────────────────────────────────────
 
 
-fn travel_time(distance: Float64, speed: Float64) -> Float64:
+def travel_time(distance: Float64, speed: Float64) -> Float64:
     """Travel time: t = d / s.
 
     Args:
@@ -82,7 +82,7 @@ fn travel_time(distance: Float64, speed: Float64) -> Float64:
 # ── delay_at_signal ──────────────────────────────────────────────────────────
 
 
-fn delay_at_signal(
+def delay_at_signal(
     cycle_length: Float64,
     green_ratio: Float64,
     arrival_rate: Float64,
@@ -114,7 +114,7 @@ fn delay_at_signal(
 # ── headway ──────────────────────────────────────────────────────────────────
 
 
-fn headway(
+def headway(
     speed: Float64, reaction_time: Float64, deceleration: Float64
 ) -> Float64:
     """Safe following headway: h = reaction_time + speed / (2 * decel).
@@ -135,7 +135,7 @@ fn headway(
 # ── stopping_distance ────────────────────────────────────────────────────────
 
 
-fn stopping_distance(
+def stopping_distance(
     speed: Float64,
     reaction_time: Float64,
     friction: Float64,
@@ -161,7 +161,7 @@ fn stopping_distance(
 # ── fuel_consumption_rate ────────────────────────────────────────────────────
 
 
-fn fuel_consumption_rate(
+def fuel_consumption_rate(
     base_rate: Float64, speed: Float64, optimal_speed: Float64
 ) -> Float64:
     """Speed-dependent fuel consumption rate.
@@ -183,7 +183,7 @@ fn fuel_consumption_rate(
 # ── passenger_car_equivalent ─────────────────────────────────────────────────
 
 
-fn passenger_car_equivalent(
+def passenger_car_equivalent(
     trucks_pct: Float64, terrain_factor: Float64
 ) -> Float64:
     """Passenger car equivalent: PCE = 1 + trucks_pct * (terrain_factor - 1).
@@ -201,7 +201,7 @@ fn passenger_car_equivalent(
 # ── intersection_capacity ────────────────────────────────────────────────────
 
 
-fn intersection_capacity(
+def intersection_capacity(
     saturation_flow: Float64, green_ratio: Float64
 ) -> Float64:
     """Intersection capacity: c = s * g/C.
@@ -219,7 +219,7 @@ fn intersection_capacity(
 # ── queue_length_estimate ────────────────────────────────────────────────────
 
 
-fn queue_length_estimate(
+def queue_length_estimate(
     arrival_rate: Float64, service_rate: Float64, time_period: Float64
 ) -> Float64:
     """Deterministic queue length: Q = max(0, (λ - μ) * T).
@@ -241,7 +241,7 @@ fn queue_length_estimate(
 # ── vehicle_operating_cost ───────────────────────────────────────────────────
 
 
-fn vehicle_operating_cost(
+def vehicle_operating_cost(
     fuel_cost: Float64, distance: Float64, fuel_efficiency: Float64
 ) -> Float64:
     """Vehicle operating cost: VOC = fuel_cost * distance / efficiency.
@@ -262,7 +262,7 @@ fn vehicle_operating_cost(
 # ── crash_rate ───────────────────────────────────────────────────────────────
 
 
-fn crash_rate(crashes: Float64, vmt_millions: Float64) -> Float64:
+def crash_rate(crashes: Float64, vmt_millions: Float64) -> Float64:
     """Crash rate: Rate = crashes / VMT (millions).
 
     Args:

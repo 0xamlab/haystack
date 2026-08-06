@@ -49,14 +49,14 @@ from std.math import abs as fabs, sqrt, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < tol
 
 
 # ── Food Science Tests ───────────────────────────────────────────────────────
 
 
-fn test_food_science() raises:
+def test_food_science() raises:
     print("== Food Science Tests ==")
 
     # water_activity
@@ -123,7 +123,7 @@ fn test_food_science() raises:
 # ── Cryogenics Tests ─────────────────────────────────────────────────────────
 
 
-fn test_cryogenics() raises:
+def test_cryogenics() raises:
     print("== Cryogenics Tests ==")
 
     # ideal_gas_density: P=101325, M=0.028, R=8.314, T=300 => 101325*0.028/(8.314*300)
@@ -178,7 +178,7 @@ fn test_cryogenics() raises:
 # ── Urban Planning Tests ─────────────────────────────────────────────────────
 
 
-fn test_urban_planning() raises:
+def test_urban_planning() raises:
     print("== Urban Planning Tests ==")
 
     # population_density: 50000 people / 25 sq km = 2000
@@ -229,7 +229,7 @@ fn test_urban_planning() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     test_food_science()
     test_cryogenics()
     test_urban_planning()

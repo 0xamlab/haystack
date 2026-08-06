@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, sqrt
 
 
-fn nernst_cell_potential(
+def nernst_cell_potential(
     e0: Float64, n_electrons: Float64, temperature: Float64, reaction_quotient: Float64
 ) -> Float64:
     """Nernst equation for cell potential.
@@ -39,7 +39,7 @@ fn nernst_cell_potential(
     return e0 - (R * temperature / (n_electrons * F)) * log(reaction_quotient)
 
 
-fn faraday_mass_deposited(
+def faraday_mass_deposited(
     molar_mass: Float64, current: Float64, time_s: Float64, n_electrons: Float64
 ) -> Float64:
     """Mass deposited by electrolysis: m = M·I·t / (n·F).
@@ -59,7 +59,7 @@ fn faraday_mass_deposited(
     return molar_mass * current * time_s / (n_electrons * F)
 
 
-fn battery_capacity(current: Float64, time_hours: Float64) -> Float64:
+def battery_capacity(current: Float64, time_hours: Float64) -> Float64:
     """Battery capacity: C = I·t.
 
     Args:
@@ -72,7 +72,7 @@ fn battery_capacity(current: Float64, time_hours: Float64) -> Float64:
     return current * time_hours
 
 
-fn energy_density(
+def energy_density(
     voltage: Float64, capacity_ah: Float64, mass_kg: Float64
 ) -> Float64:
     """Gravimetric energy density of a battery.
@@ -92,7 +92,7 @@ fn energy_density(
     return voltage * capacity_ah / mass_kg
 
 
-fn corrosion_rate(
+def corrosion_rate(
     current_density: Float64, molar_mass: Float64,
     density: Float64, n_electrons: Float64
 ) -> Float64:
@@ -116,7 +116,7 @@ fn corrosion_rate(
     return (current_density * molar_mass / (n_electrons * F * density)) * 1.288e5
 
 
-fn tafel_slope(
+def tafel_slope(
     alpha: Float64, n_electrons: Float64, temperature: Float64
 ) -> Float64:
     """Tafel slope: b = 2.303·RT/(α·F).
@@ -136,7 +136,7 @@ fn tafel_slope(
     return 2.303 * R * temperature / (alpha * n_electrons * F)
 
 
-fn exchange_current_density(
+def exchange_current_density(
     k0: Float64, c_ox: Float64, c_red: Float64, alpha: Float64
 ) -> Float64:
     """Exchange current density from Butler-Volmer.
@@ -159,7 +159,7 @@ fn exchange_current_density(
     return F * k0 * pow(c_ox, alpha) * pow(c_red, 1.0 - alpha)
 
 
-fn charge_transfer_resistance(
+def charge_transfer_resistance(
     exchange_current: Float64, n_electrons: Float64, temperature: Float64
 ) -> Float64:
     """Charge transfer resistance: Rct = RT/(n·F·i0).
@@ -179,7 +179,7 @@ fn charge_transfer_resistance(
     return R * temperature / (n_electrons * F * exchange_current)
 
 
-fn diffusion_limiting_current(
+def diffusion_limiting_current(
     n_electrons: Float64, diffusivity: Float64,
     concentration: Float64, layer_thickness: Float64
 ) -> Float64:
@@ -200,7 +200,7 @@ fn diffusion_limiting_current(
     return n_electrons * F * diffusivity * concentration / layer_thickness
 
 
-fn coulombic_efficiency(
+def coulombic_efficiency(
     charge_out: Float64, charge_in: Float64
 ) -> Float64:
     """Coulombic efficiency of a charge/discharge cycle.

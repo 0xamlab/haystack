@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from adhesives import lap_shear_strength, peel_strength, bond_line_thickness, coverage_rate, pot_life_temperature_adjusted, cure_time_temperature, joint_efficiency, thermal_cycle_life, viscosity_temperature, surface_energy_contact_angle, open_time_estimate, bond_area_from_load
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

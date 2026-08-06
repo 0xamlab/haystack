@@ -25,7 +25,7 @@ from llmk.contract import LLMK_ERR_EMPTY_DIM, LLMK_ERR_GEMV_A_LENGTH, LLMK_ERR_G
 from llmk.gemv_fast import gemv_transposed_parallel_flat
 
 
-fn _abs(x: Float64) -> Float64:
+def _abs(x: Float64) -> Float64:
     return -x if x < 0.0 else x
 
 

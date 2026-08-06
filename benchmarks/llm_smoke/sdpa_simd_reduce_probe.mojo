@@ -66,7 +66,7 @@ alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _IP = UnsafePointer[Int32, origin=MutAnyOrigin]
 
 
-fn _lane_width_probe(out_lane: _IP, out_warp: _IP):
+def _lane_width_probe(out_lane: _IP, out_warp: _IP):
     """Writes `lane_id()` and `warp_id()` for every thread of a single `_D_HEAD`-wide threadgroup,
     so the host can confirm — not assume — that Apple's real SIMD-group width on THIS hardware is
     32, and that `_D_HEAD / 32 = 4` distinct SIMD-groups appear inside one `_sdpa_kernel` launch."""
@@ -75,7 +75,7 @@ fn _lane_width_probe(out_lane: _IP, out_warp: _IP):
     out_warp[e] = Int32(warp_id())
 
 
-fn _dot_reduce_barrier_tree(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int):
+def _dot_reduce_barrier_tree(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int):
     """The EXISTING mechanism, copied verbatim in structure from `residentk.kernels._sdpa_kernel`'s
     inner loop (barrier-synchronized shared-memory tree, `log2(d_head)` levels plus the trailing
     safety barrier) but isolated to just the reduction + online-softmax update, over a HOST-supplied
@@ -117,12 +117,12 @@ fn _dot_reduce_barrier_tree(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int
     attn_out[h * _D_HEAD + e] = o / denom
 
 
-fn _exp(x: Float32) -> Float32:
+def _exp(x: Float32) -> Float32:
     from std.math import exp
     return exp(x)
 
 
-fn _dot_reduce_simd_shuffle(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int):
+def _dot_reduce_simd_shuffle(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int):
     """The CANDIDATE replacement: two-level reduction. Level 1 is `warp.sum` inside each 32-lane
     SIMD-group — pure register shuffle, no `barrier()`. Level 2 combines the `_D_HEAD // 32 = 4`
     per-group partial sums through ONE shared array and exactly ONE `barrier()` per key (down from
@@ -161,14 +161,14 @@ fn _dot_reduce_simd_shuffle(attn_out: _FP, qv_buf: _FP, kv_buf: _FP, n_keys: Int
     attn_out[h * _D_HEAD + e] = o / denom
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     var o = List[Float64](capacity=n)
     for i in range(n):
         o.append(Float64(((i * 61 + seed * 17) % 47)) / 19.0 - 1.2)
     return o^
 
 
-fn _host_reference(qv: List[Float64], kv: List[Float64], n_keys: Int, d_head: Int) -> List[Float64]:
+def _host_reference(qv: List[Float64], kv: List[Float64], n_keys: Int, d_head: Int) -> List[Float64]:
     """Pure-host, independent online-softmax reference: no shuffle, no shared-memory tree, just
     float64 arithmetic in the obvious order, per query element `e`. Used to hand-verify BOTH device
     kernels before comparing them to each other."""
@@ -192,12 +192,12 @@ fn _host_reference(qv: List[Float64], kv: List[Float64], n_keys: Int, d_head: In
     return out^
 
 
-fn _exp64(x: Float64) -> Float64:
+def _exp64(x: Float64) -> Float64:
     from std.math import exp
     return exp(x)
 
 
-fn _worst_delta(buf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
+def _worst_delta(buf: DeviceBuffer[DType.float32], refv: List[Float64], n: Int) raises -> Float64:
     var worst = 0.0
     with buf.map_to_host() as h:
         for i in range(n):
@@ -347,7 +347,7 @@ def main() raises:
         _time_case(ctx, n_keys_case, 500)
 
 
-fn _median(mut s: List[Float64]) -> Float64:
+def _median(mut s: List[Float64]) -> Float64:
     for i in range(1, len(s)):
         var key = s[i]
         var j = i - 1
@@ -358,7 +358,7 @@ fn _median(mut s: List[Float64]) -> Float64:
     return s[len(s) // 2]
 
 
-fn _time_case(ctx: DeviceContext, n_keys: Int, reps: Int) raises:
+def _time_case(ctx: DeviceContext, n_keys: Int, reps: Int) raises:
     comptime _N_HEADS: Int = 16
     var q64 = _pseudo(_N_HEADS * _D_HEAD, 3)
     var kv64 = _pseudo(n_keys * _D_HEAD, 11)

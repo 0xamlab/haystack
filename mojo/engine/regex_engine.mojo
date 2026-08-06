@@ -20,7 +20,7 @@ Public API:
 
 # ── Byte helpers ──────────────────────────────────────────────────────────────
 
-fn _byte_at(s: String, i: Int) -> Int:
+def _byte_at(s: String, i: Int) -> Int:
     """Get byte value at index i."""
     return Int(s.as_bytes()[i])
 
@@ -28,7 +28,7 @@ fn _byte_at(s: String, i: Int) -> Int:
 # ── match_literal ─────────────────────────────────────────────────────────────
 
 
-fn match_literal(pattern: String, text: String) -> Bool:
+def match_literal(pattern: String, text: String) -> Bool:
     """Exact literal string match. Returns True if pattern == text."""
     if len(pattern) != len(text):
         return False
@@ -43,7 +43,7 @@ fn match_literal(pattern: String, text: String) -> Bool:
 # ── match_dot_star ────────────────────────────────────────────────────────────
 
 
-fn match_dot_star(text: String, start: Int, end: Int) -> Bool:
+def match_dot_star(text: String, start: Int, end: Int) -> Bool:
     """Match .* — always true if start and end are within bounds."""
     return start >= 0 and end >= start and end <= len(text)
 
@@ -51,7 +51,7 @@ fn match_dot_star(text: String, start: Int, end: Int) -> Bool:
 # ── match_char_class ──────────────────────────────────────────────────────────
 
 
-fn match_char_class(char_class: String, ch: Int) -> Bool:
+def match_char_class(char_class: String, ch: Int) -> Bool:
     """Check if byte ch matches character class string.
 
     char_class is the content inside brackets, e.g. "abc" or "a-z" or "0-9A-F".
@@ -77,7 +77,7 @@ fn match_char_class(char_class: String, ch: Int) -> Bool:
 # ── Internal: _match_here ─────────────────────────────────────────────────────
 
 
-fn _parse_class(pattern: String, start: Int) -> Tuple[String, Int]:
+def _parse_class(pattern: String, start: Int) -> Tuple[String, Int]:
     """Parse character class starting after '['. Returns (class_content, end_pos)."""
     var pb = pattern.as_bytes()
     var n = len(pattern)
@@ -91,7 +91,7 @@ fn _parse_class(pattern: String, start: Int) -> Tuple[String, Int]:
     return (content, i)
 
 
-fn _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, Int]:
+def _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, Int]:
     """Match one pattern element at pp against text at tp.
     Returns (matched, new_pattern_pos)."""
     if tp >= len(text):
@@ -124,7 +124,7 @@ fn _match_one(pattern: String, pp: Int, text: String, tp: Int) -> Tuple[Bool, In
         return (False, pp + 1)
 
 
-fn _skip_one(pattern: String, pp: Int) -> Int:
+def _skip_one(pattern: String, pp: Int) -> Int:
     """Skip one pattern element (char, class, or escape)."""
     if pp >= len(pattern):
         return pp
@@ -139,7 +139,7 @@ fn _skip_one(pattern: String, pp: Int) -> Int:
         return pp + 1
 
 
-fn _match_here(pattern: String, pp: Int, text: String, tp: Int, plen: Int, tlen: Int) -> Bool:
+def _match_here(pattern: String, pp: Int, text: String, tp: Int, plen: Int, tlen: Int) -> Bool:
     """Recursive matching of pattern[pp:] against text[tp:]."""
     if pp >= plen:
         return True
@@ -212,7 +212,7 @@ fn _match_here(pattern: String, pp: Int, text: String, tp: Int, plen: Int, tlen:
 # ── regex_match ───────────────────────────────────────────────────────────────
 
 
-fn regex_match(pattern: String, text: String) -> Bool:
+def regex_match(pattern: String, text: String) -> Bool:
     """Full match: does pattern match entire text?
 
     Supports: literal, ., *, +, ?, ^, $, [abc], [a-z].
@@ -242,7 +242,7 @@ fn regex_match(pattern: String, text: String) -> Bool:
 # ── regex_search ──────────────────────────────────────────────────────────────
 
 
-fn regex_search(pattern: String, text: String) -> Bool:
+def regex_search(pattern: String, text: String) -> Bool:
     """Partial match: does pattern appear anywhere in text?"""
     var plen = len(pattern)
     var tlen = len(text)
@@ -263,7 +263,7 @@ fn regex_search(pattern: String, text: String) -> Bool:
 # ── regex_find_first ──────────────────────────────────────────────────────────
 
 
-fn regex_find_first(pattern: String, text: String) -> List[Int]:
+def regex_find_first(pattern: String, text: String) -> List[Int]:
     """Find first match of pattern in text, return [start, end] or empty list."""
     var plen = len(pattern)
     var tlen = len(text)
@@ -291,7 +291,7 @@ fn regex_find_first(pattern: String, text: String) -> List[Int]:
 # ── count_matches ─────────────────────────────────────────────────────────────
 
 
-fn count_matches(pattern: String, text: String) -> Int:
+def count_matches(pattern: String, text: String) -> Int:
     """Count non-overlapping matches of literal pattern in text."""
     var plen = len(pattern)
     var tlen = len(text)
@@ -318,7 +318,7 @@ fn count_matches(pattern: String, text: String) -> Int:
 # ── split_by_literal ──────────────────────────────────────────────────────────
 
 
-fn split_by_literal(text: String, delimiter: String) -> List[String]:
+def split_by_literal(text: String, delimiter: String) -> List[String]:
     """Split text by literal delimiter pattern."""
     var result = List[String]()
     var dlen = len(delimiter)
@@ -357,7 +357,7 @@ fn split_by_literal(text: String, delimiter: String) -> List[String]:
 # ── is_valid_pattern ──────────────────────────────────────────────────────────
 
 
-fn is_valid_pattern(pattern: String) -> Bool:
+def is_valid_pattern(pattern: String) -> Bool:
     """Basic pattern validation: balanced brackets, valid quantifier placement."""
     var pb = pattern.as_bytes()
     var n = len(pattern)

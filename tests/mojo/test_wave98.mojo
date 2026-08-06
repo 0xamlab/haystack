@@ -52,13 +52,13 @@ from pest_control import (
 )
 
 
-fn _close(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def _close(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     if b == 0.0:
         return abs(a) < eps
     return abs(a - b) / abs(b) < eps
 
 
-fn main() raises:
+def main() raises:
     print("== Wave 98 tests ==")
     var passed: Int = 0
     var failed: Int = 0

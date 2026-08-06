@@ -21,7 +21,7 @@ from std.random import random_float64
 # ── reservoir_sample ─────────────────────────────────────────────────────────
 
 
-fn reservoir_sample(stream: List[Float64], k: Int) -> List[Float64]:
+def reservoir_sample(stream: List[Float64], k: Int) -> List[Float64]:
     """Select k items uniformly at random from a stream (Vitter's Algorithm R).
 
     Args:
@@ -54,7 +54,7 @@ fn reservoir_sample(stream: List[Float64], k: Int) -> List[Float64]:
 # ── weighted_reservoir_sample ────────────────────────────────────────────────
 
 
-fn weighted_reservoir_sample(
+def weighted_reservoir_sample(
     stream: List[Float64], weights: List[Float64], k: Int
 ) -> List[Float64]:
     """Efraimidis-Spirakis weighted reservoir sampling.
@@ -128,7 +128,7 @@ fn weighted_reservoir_sample(
 # ── reservoir_sample_indices ─────────────────────────────────────────────────
 
 
-fn reservoir_sample_indices(n: Int, k: Int) -> List[Int]:
+def reservoir_sample_indices(n: Int, k: Int) -> List[Int]:
     """Return k random indices from [0, n) without replacement.
 
     Uses Fisher-Yates partial shuffle on a virtual array.
@@ -170,7 +170,7 @@ fn reservoir_sample_indices(n: Int, k: Int) -> List[Int]:
 # ── bootstrap_sample ─────────────────────────────────────────────────────────
 
 
-fn bootstrap_sample(data: List[Float64]) -> List[Float64]:
+def bootstrap_sample(data: List[Float64]) -> List[Float64]:
     """Bootstrap: sample n items with replacement from data of size n.
 
     Args:
@@ -194,7 +194,7 @@ fn bootstrap_sample(data: List[Float64]) -> List[Float64]:
 # ── systematic_sample ────────────────────────────────────────────────────────
 
 
-fn systematic_sample(data: List[Float64], k: Int) -> List[Float64]:
+def systematic_sample(data: List[Float64], k: Int) -> List[Float64]:
     """Systematic sampling: every n/k-th element with random start.
 
     Args:
@@ -226,7 +226,7 @@ fn systematic_sample(data: List[Float64], k: Int) -> List[Float64]:
 # ── sample_with_replacement ──────────────────────────────────────────────────
 
 
-fn sample_with_replacement(data: List[Float64], k: Int) -> List[Float64]:
+def sample_with_replacement(data: List[Float64], k: Int) -> List[Float64]:
     """Draw k items with replacement from data.
 
     Args:
@@ -254,7 +254,7 @@ fn sample_with_replacement(data: List[Float64], k: Int) -> List[Float64]:
 # ── sample_without_replacement ───────────────────────────────────────────────
 
 
-fn sample_without_replacement(data: List[Float64], k: Int) -> List[Float64]:
+def sample_without_replacement(data: List[Float64], k: Int) -> List[Float64]:
     """Draw k items without replacement (Fisher-Yates partial shuffle).
 
     Args:

@@ -32,7 +32,7 @@ comptime W_TOKEN:   Float32 = Float32(0.4)
 
 # ── SIMD kernels (mirror vector_kernels.dot / ranker) ──────────────────────────
 
-fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
+def _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -46,7 +46,7 @@ fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     return ((a0 + a1) + (a2 + a3) + (a4 + a5) + (a6 + a7)).reduce_add()
 
 
-fn _norm_inv(v: List[Float32]) -> Float32:
+def _norm_inv(v: List[Float32]) -> Float32:
     var p = v.unsafe_ptr()
     var s0 = (p +  0).load[width=SIMD_W]()
     var s1 = (p +  8).load[width=SIMD_W]()
@@ -65,7 +65,7 @@ fn _norm_inv(v: List[Float32]) -> Float32:
     return Float32(1.0) / sqrt(mag)
 
 
-fn _cosine(a: List[Float32], b: List[Float32], ni_a: Float32, ni_b: Float32) -> Float32:
+def _cosine(a: List[Float32], b: List[Float32], ni_a: Float32, ni_b: Float32) -> Float32:
     if ni_a == 0.0 or ni_b == 0.0:
         return Float32(0.0)
     var raw = _dot64(a, b) * ni_a * ni_b
@@ -79,7 +79,7 @@ fn _cosine(a: List[Float32], b: List[Float32], ni_a: Float32, ni_b: Float32) -> 
 # ── String utilities ──────────────────────────────────────────────────────────
 
 @always_inline
-fn _norm_byte(c: UInt8) -> UInt8:
+def _norm_byte(c: UInt8) -> UInt8:
     """Lowercase A-Z; keep a-z/0-9; map everything else (punctuation, JSON syntax,
     path separators) to space so bigrams are robust to formatting."""
     if c >= 65 and c <= 90:
@@ -89,7 +89,7 @@ fn _norm_byte(c: UInt8) -> UInt8:
     return 32
 
 
-fn _build_vec(s: String, mut buf: List[Float32]) -> Float32:
+def _build_vec(s: String, mut buf: List[Float32]) -> Float32:
     """Zero buf, fill with normalised bigram counts, return norm_inv."""
     for i in range(VEC_DIM):
         buf[i] = Float32(0.0)
@@ -106,7 +106,7 @@ fn _build_vec(s: String, mut buf: List[Float32]) -> Float32:
     return _norm_inv(buf)
 
 
-fn _split_tokens(s: String) -> List[String]:
+def _split_tokens(s: String) -> List[String]:
     """Lowercase alphanumeric tokens; any non-alnum byte is a separator (so a raw
     JSON array substring like '["fix","auth"]' tokenises to [fix, auth])."""
     var tokens = List[String]()
@@ -127,7 +127,7 @@ fn _split_tokens(s: String) -> List[String]:
     return tokens^
 
 
-fn _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float32:
+def _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float32:
     if len(a_toks) == 0 or len(b_toks) == 0:
         return Float32(0.0)
     var intersect = 0
@@ -148,20 +148,20 @@ struct _Score(Copyable, Movable):
     var path:  String
     var score: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.path  = ""
         self.score = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.path  = copy.path
         self.score = copy.score
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.path  = take.path
         self.score = take.score
 
 
-fn _insertion_sort(mut results: List[_Score]):
+def _insertion_sort(mut results: List[_Score]):
     """Descending by score (stable enough for triage; n is the candidate count)."""
     var n = len(results)
     for i in range(1, n):
@@ -182,11 +182,11 @@ fn _insertion_sort(mut results: List[_Score]):
 
 # ── JSON helpers (mirror ranker) ────────────────────────────────────────────────
 
-fn _json_str(key: String, val: String) -> String:
+def _json_str(key: String, val: String) -> String:
     return '"' + key + '":"' + val + '"'
 
 
-fn _json_f32(key: String, val: Float32) -> String:
+def _json_f32(key: String, val: Float32) -> String:
     var vi = Int(val * Float32(10000.0) + Float32(0.5))
     var whole = vi // 10000
     var frac  = vi  % 10000
@@ -196,7 +196,7 @@ fn _json_f32(key: String, val: Float32) -> String:
     return '"' + key + '":' + String(whole) + "." + fs
 
 
-fn _json_get(raw: String, key: String) -> String:
+def _json_get(raw: String, key: String) -> String:
     var needle = '"' + key + '"'
     var ki = raw.find(needle)
     if ki == -1:
@@ -222,7 +222,7 @@ fn _json_get(raw: String, key: String) -> String:
     return String(raw[byte=start : end2])
 
 
-fn _build_output(sorted: List[_Score], top_k: Int) -> String:
+def _build_output(sorted: List[_Score], top_k: Int) -> String:
     var n = len(sorted)
     var out_n = n if n < top_k else top_k
     var out = String('{"matches":[')
@@ -238,7 +238,7 @@ fn _build_output(sorted: List[_Score], top_k: Int) -> String:
 
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
-fn run_repo_rank(raw: String) -> String:
+def run_repo_rank(raw: String) -> String:
     # top_k
     var top_k = 25
     var top_k_s = _json_get(raw, "top_k")

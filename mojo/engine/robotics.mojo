@@ -31,7 +31,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── forward_kinematics_2dof ──────────────────────────────────────────────────
 
 
-fn forward_kinematics_2dof(
+def forward_kinematics_2dof(
     l1: Float64, l2: Float64, theta1: Float64, theta2: Float64
 ) -> Float64:
     """End-effector X for 2-DOF planar arm: x = l1*cos(θ1) + l2*cos(θ1+θ2)."""
@@ -41,7 +41,7 @@ fn forward_kinematics_2dof(
 # ── forward_kinematics_2dof_y ────────────────────────────────────────────────
 
 
-fn forward_kinematics_2dof_y(
+def forward_kinematics_2dof_y(
     l1: Float64, l2: Float64, theta1: Float64, theta2: Float64
 ) -> Float64:
     """End-effector Y for 2-DOF planar arm: y = l1*sin(θ1) + l2*sin(θ1+θ2)."""
@@ -51,7 +51,7 @@ fn forward_kinematics_2dof_y(
 # ── inverse_kinematics_2dof_theta2 ──────────────────────────────────────────
 
 
-fn inverse_kinematics_2dof_theta2(
+def inverse_kinematics_2dof_theta2(
     l1: Float64, l2: Float64, x: Float64, y: Float64
 ) -> Float64:
     """Elbow angle: cos(θ2) = (x²+y²-l1²-l2²)/(2*l1*l2), return acos."""
@@ -67,7 +67,7 @@ fn inverse_kinematics_2dof_theta2(
 # ── jacobian_2dof_j11 ───────────────────────────────────────────────────────
 
 
-fn jacobian_2dof_j11(
+def jacobian_2dof_j11(
     l1: Float64, l2: Float64, theta1: Float64, theta2: Float64
 ) -> Float64:
     """Jacobian J[0,0] = -l1*sin(θ1) - l2*sin(θ1+θ2)."""
@@ -77,7 +77,7 @@ fn jacobian_2dof_j11(
 # ── pid_control ──────────────────────────────────────────────────────────────
 
 
-fn pid_control(
+def pid_control(
     kp: Float64,
     ki: Float64,
     kd: Float64,
@@ -92,7 +92,7 @@ fn pid_control(
 # ── dead_reckoning_x ────────────────────────────────────────────────────────
 
 
-fn dead_reckoning_x(
+def dead_reckoning_x(
     x0: Float64, v: Float64, theta: Float64, dt: Float64
 ) -> Float64:
     """Dead reckoning X: x = x0 + v*cos(θ)*dt."""
@@ -102,7 +102,7 @@ fn dead_reckoning_x(
 # ── dead_reckoning_y ────────────────────────────────────────────────────────
 
 
-fn dead_reckoning_y(
+def dead_reckoning_y(
     y0: Float64, v: Float64, theta: Float64, dt: Float64
 ) -> Float64:
     """Dead reckoning Y: y = y0 + v*sin(θ)*dt."""
@@ -112,7 +112,7 @@ fn dead_reckoning_y(
 # ── wheel_odometry_distance ─────────────────────────────────────────────────
 
 
-fn wheel_odometry_distance(
+def wheel_odometry_distance(
     wheel_radius: Float64, encoder_ticks: Float64, ticks_per_rev: Float64
 ) -> Float64:
     """Distance = 2π*r * ticks/tpr."""
@@ -122,7 +122,7 @@ fn wheel_odometry_distance(
 # ── differential_drive_omega ─────────────────────────────────────────────────
 
 
-fn differential_drive_omega(
+def differential_drive_omega(
     v_left: Float64, v_right: Float64, wheel_base: Float64
 ) -> Float64:
     """Angular velocity ω = (v_right - v_left) / wheel_base."""
@@ -132,7 +132,7 @@ fn differential_drive_omega(
 # ── differential_drive_velocity ──────────────────────────────────────────────
 
 
-fn differential_drive_velocity(v_left: Float64, v_right: Float64) -> Float64:
+def differential_drive_velocity(v_left: Float64, v_right: Float64) -> Float64:
     """Linear velocity v = (v_left + v_right) / 2."""
     return (v_left + v_right) / 2.0
 
@@ -140,7 +140,7 @@ fn differential_drive_velocity(v_left: Float64, v_right: Float64) -> Float64:
 # ── workspace_radius ────────────────────────────────────────────────────────
 
 
-fn workspace_radius(l1: Float64, l2: Float64) -> Float64:
+def workspace_radius(l1: Float64, l2: Float64) -> Float64:
     """Maximum reach of 2-link arm = l1 + l2."""
     return l1 + l2
 
@@ -148,6 +148,6 @@ fn workspace_radius(l1: Float64, l2: Float64) -> Float64:
 # ── manipulability_index ─────────────────────────────────────────────────────
 
 
-fn manipulability_index(det_jacobian: Float64) -> Float64:
+def manipulability_index(det_jacobian: Float64) -> Float64:
     """Yoshikawa manipulability = |det(J)|."""
     return _abs(det_jacobian)

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sorting import quicksort, mergesort, heapsort, insertion_sort, selection_sort, bubble_sort, counting_sort_int, is_sorted, reverse_list, nth_smallest
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

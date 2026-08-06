@@ -40,34 +40,34 @@ from std.math import abs as fabs, sqrt
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _assert_eq(a: Int, b: Int, msg: String) raises:
+def _assert_eq(a: Int, b: Int, msg: String) raises:
     if a != b:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
 
-fn _lf(a: Float64, b: Float64) -> List[Float64]:
+def _lf(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b)
     return r^
 
 
-fn _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
+def _lf4(a: Float64, b: Float64, c: Float64, d: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d)
     return r^
 
 
-fn _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
+def _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
         e: Float64, f: Float64, g: Float64, h: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a); r.append(b); r.append(c); r.append(d)
@@ -75,14 +75,14 @@ fn _lf8(a: Float64, b: Float64, c: Float64, d: Float64,
     return r^
 
 
-fn _li(values: List[Int]) -> List[Int]:
+def _li(values: List[Int]) -> List[Int]:
     return values.copy()
 
 
 # ── Clustering Metrics Tests ─────────────────────────────────────────────────
 
 
-fn test_cluster_sizes() raises:
+def test_cluster_sizes() raises:
     print("  test_cluster_sizes")
     var labels = List[Int]()
     labels.append(0); labels.append(0); labels.append(1)
@@ -94,7 +94,7 @@ fn test_cluster_sizes() raises:
     _assert_eq(len(sizes), 3, "sizes length")       # 4
 
 
-fn test_cluster_centroids() raises:
+def test_cluster_centroids() raises:
     print("  test_cluster_centroids")
     # 2D data, 2 clusters: cluster 0 = {(0,0), (2,2)}, cluster 1 = {(10,10)}
     var data = List[List[Float64]]()
@@ -110,7 +110,7 @@ fn test_cluster_centroids() raises:
     _assert_close(cents[1][1], 10.0, 1e-9, "centroid 1 y")  # 8
 
 
-fn test_inertia_perfect() raises:
+def test_inertia_perfect() raises:
     print("  test_inertia_perfect")
     # Each point is its own centroid → inertia = 0
     var data = List[List[Float64]]()
@@ -125,7 +125,7 @@ fn test_inertia_perfect() raises:
     _assert_close(val, 0.0, 1e-9, "inertia perfect = 0")    # 9
 
 
-fn test_inertia_nonzero() raises:
+def test_inertia_nonzero() raises:
     print("  test_inertia_nonzero")
     var data = List[List[Float64]]()
     data.append(_lf(0.0, 0.0))
@@ -138,7 +138,7 @@ fn test_inertia_nonzero() raises:
     _assert_close(val, 2.0, 1e-9, "inertia = 2.0")          # 10
 
 
-fn test_davies_bouldin_separation() raises:
+def test_davies_bouldin_separation() raises:
     print("  test_davies_bouldin_separation")
     # Well separated clusters
     var data_good = List[List[Float64]]()
@@ -162,7 +162,7 @@ fn test_davies_bouldin_separation() raises:
     _assert(db_good >= 0.0, "DB >= 0")                                  # 12
 
 
-fn test_calinski_harabasz_separation() raises:
+def test_calinski_harabasz_separation() raises:
     print("  test_calinski_harabasz_separation")
     # Well separated clusters
     var data_good = List[List[Float64]]()
@@ -186,7 +186,7 @@ fn test_calinski_harabasz_separation() raises:
     _assert(ch_good > 0.0, "CH > 0")                                    # 14
 
 
-fn test_purity_perfect() raises:
+def test_purity_perfect() raises:
     print("  test_purity_perfect")
     var lt = List[Int]()
     lt.append(0); lt.append(0); lt.append(1); lt.append(1)
@@ -196,7 +196,7 @@ fn test_purity_perfect() raises:
     _assert_close(p, 1.0, 1e-9, "purity perfect = 1.0")     # 15
 
 
-fn test_purity_imperfect() raises:
+def test_purity_imperfect() raises:
     print("  test_purity_imperfect")
     var lt = List[Int]()
     lt.append(0); lt.append(0); lt.append(1); lt.append(1)
@@ -207,7 +207,7 @@ fn test_purity_imperfect() raises:
     _assert(p <= 1.0, "purity <= 1")                         # 17
 
 
-fn test_contingency_matrix_dims() raises:
+def test_contingency_matrix_dims() raises:
     print("  test_contingency_matrix_dims")
     var lt = List[Int]()
     lt.append(0); lt.append(1); lt.append(2)
@@ -224,7 +224,7 @@ fn test_contingency_matrix_dims() raises:
     _assert_eq(total, 3, "contingency sum = n")              # 20
 
 
-fn test_ari_identical() raises:
+def test_ari_identical() raises:
     print("  test_ari_identical")
     var labels = List[Int]()
     labels.append(0); labels.append(0); labels.append(1)
@@ -233,7 +233,7 @@ fn test_ari_identical() raises:
     _assert_close(ari, 1.0, 1e-9, "ARI identical = 1.0")    # 21
 
 
-fn test_ari_different() raises:
+def test_ari_different() raises:
     print("  test_ari_different")
     var lt = List[Int]()
     lt.append(0); lt.append(0); lt.append(0)
@@ -247,7 +247,7 @@ fn test_ari_different() raises:
     _assert_close(ari, 1.0, 1e-9, "ARI swapped = 1.0")      # 22
 
 
-fn test_ari_random_low() raises:
+def test_ari_random_low() raises:
     print("  test_ari_random_low")
     # Random-ish labels → ARI should be near 0 or at least < 0.5
     var lt = List[Int]()
@@ -263,7 +263,7 @@ fn test_ari_random_low() raises:
 # ── Wavelet Tests ────────────────────────────────────────────────────────────
 
 
-fn test_haar_roundtrip() raises:
+def test_haar_roundtrip() raises:
     print("  test_haar_roundtrip")
     var data = _lf4(1.0, 2.0, 3.0, 4.0)
     var coeffs = haar_forward(data)
@@ -275,7 +275,7 @@ fn test_haar_roundtrip() raises:
     _assert_close(recon[3], 4.0, 1e-9, "roundtrip [3]")     # 28
 
 
-fn test_haar_constant() raises:
+def test_haar_constant() raises:
     print("  test_haar_constant")
     var data = _lf4(1.0, 1.0, 1.0, 1.0)
     var coeffs = haar_forward(data)
@@ -286,7 +286,7 @@ fn test_haar_constant() raises:
     _assert_close(coeffs[0], coeffs[1], 1e-9, "approx equal") # 31
 
 
-fn test_haar_multilevel_roundtrip() raises:
+def test_haar_multilevel_roundtrip() raises:
     print("  test_haar_multilevel_roundtrip")
     var data = _lf8(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
     var coeffs = haar_multilevel(data, 3)
@@ -297,7 +297,7 @@ fn test_haar_multilevel_roundtrip() raises:
             "multilevel roundtrip [" + String(i) + "]")      # 33-40
 
 
-fn test_threshold_hard_zeros() raises:
+def test_threshold_hard_zeros() raises:
     print("  test_threshold_hard_zeros")
     var coeffs = _lf4(0.1, -0.05, 2.0, -3.0)
     var th = threshold_hard(coeffs, 0.5)
@@ -307,7 +307,7 @@ fn test_threshold_hard_zeros() raises:
     _assert_close(th[3], -3.0, 1e-9, "hard: large neg kept") # 44
 
 
-fn test_threshold_soft_shrinks() raises:
+def test_threshold_soft_shrinks() raises:
     print("  test_threshold_soft_shrinks")
     var coeffs = _lf4(0.1, -0.05, 2.0, -3.0)
     var th = threshold_soft(coeffs, 0.5)
@@ -317,7 +317,7 @@ fn test_threshold_soft_shrinks() raises:
     _assert_close(th[3], -2.5, 1e-9, "soft: -3.0 → -2.5")  # 48
 
 
-fn test_denoise_haar_smoother() raises:
+def test_denoise_haar_smoother() raises:
     print("  test_denoise_haar_smoother")
     # Noisy signal: constant 5 + some noise
     var data = _lf8(5.0, 5.1, 4.9, 5.2, 4.8, 5.0, 5.1, 4.9)
@@ -341,7 +341,7 @@ fn test_denoise_haar_smoother() raises:
     _assert(var_den <= var_orig + 1e-9, "denoised variance <= original") # 50
 
 
-fn test_energy_ratio_bounds() raises:
+def test_energy_ratio_bounds() raises:
     print("  test_energy_ratio_bounds")
     var coeffs = _lf4(3.0, 4.0, 0.5, 0.1)
     var er = energy_ratio(coeffs)
@@ -349,7 +349,7 @@ fn test_energy_ratio_bounds() raises:
     _assert(er <= 1.0, "energy ratio <= 1")                  # 52
 
 
-fn test_energy_ratio_constant() raises:
+def test_energy_ratio_constant() raises:
     print("  test_energy_ratio_constant")
     # Constant signal → detail = 0 → ratio = 0
     var data = _lf4(1.0, 1.0, 1.0, 1.0)
@@ -358,21 +358,21 @@ fn test_energy_ratio_constant() raises:
     _assert_close(er, 0.0, 1e-9, "energy ratio constant = 0") # 53
 
 
-fn test_detail_coefficients_length() raises:
+def test_detail_coefficients_length() raises:
     print("  test_detail_coefficients_length")
     var coeffs = _lf8(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
     var det = detail_coefficients(coeffs)
     _assert_eq(len(det), 4, "detail length = half")          # 54
 
 
-fn test_approx_coefficients_length() raises:
+def test_approx_coefficients_length() raises:
     print("  test_approx_coefficients_length")
     var coeffs = _lf8(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
     var apx = approx_coefficients(coeffs)
     _assert_eq(len(apx), 4, "approx length = half")          # 55
 
 
-fn test_detail_approx_content() raises:
+def test_detail_approx_content() raises:
     print("  test_detail_approx_content")
     var data = _lf4(1.0, 3.0, 5.0, 7.0)
     var coeffs = haar_forward(data)
@@ -385,7 +385,7 @@ fn test_detail_approx_content() raises:
 # ── Regression Tree Tests ────────────────────────────────────────────────────
 
 
-fn _make_linear_X() -> List[List[Float64]]:
+def _make_linear_X() -> List[List[Float64]]:
     """Create X for simple linear data: x in [0..7]."""
     var X = List[List[Float64]]()
     for i in range(8):
@@ -395,7 +395,7 @@ fn _make_linear_X() -> List[List[Float64]]:
     return X^
 
 
-fn _make_linear_y() -> List[Float64]:
+def _make_linear_y() -> List[Float64]:
     """Create y for simple linear data: y = 2*x for x in [0..7]."""
     var y = List[Float64]()
     for i in range(8):
@@ -403,7 +403,7 @@ fn _make_linear_y() -> List[Float64]:
     return y^
 
 
-fn test_build_tree_basic() raises:
+def test_build_tree_basic() raises:
     print("  test_build_tree_basic")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -412,7 +412,7 @@ fn test_build_tree_basic() raises:
     _assert(tree.n_nodes >= 1, "tree at least 1 node")       # 59
 
 
-fn test_predict_single_reasonable() raises:
+def test_predict_single_reasonable() raises:
     print("  test_predict_single_reasonable")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -426,7 +426,7 @@ fn test_predict_single_reasonable() raises:
     _assert_close(pred, 6.0, 3.0, "pred near 6")            # 62
 
 
-fn test_predict_batch_length() raises:
+def test_predict_batch_length() raises:
     print("  test_predict_batch_length")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -435,7 +435,7 @@ fn test_predict_batch_length() raises:
     _assert_eq(len(preds), 8, "batch pred length = 8")      # 63
 
 
-fn test_tree_depth_limit() raises:
+def test_tree_depth_limit() raises:
     print("  test_tree_depth_limit")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -445,7 +445,7 @@ fn test_tree_depth_limit() raises:
     _assert(d >= 1, "tree depth >= 1")                       # 65
 
 
-fn test_tree_n_leaves_positive() raises:
+def test_tree_n_leaves_positive() raises:
     print("  test_tree_n_leaves_positive")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -455,7 +455,7 @@ fn test_tree_n_leaves_positive() raises:
     _assert(nl <= tree.n_nodes, "n_leaves <= n_nodes")       # 67
 
 
-fn test_tree_mse_low() raises:
+def test_tree_mse_low() raises:
     print("  test_tree_mse_low")
     var X = _make_linear_X()
     var y = _make_linear_y()
@@ -472,7 +472,7 @@ fn test_tree_mse_low() raises:
     _assert(mse_val >= 0.0, "MSE >= 0")                     # 69
 
 
-fn test_mse_reduction_informative() raises:
+def test_mse_reduction_informative() raises:
     print("  test_mse_reduction_informative")
     var y = List[Float64]()
     y.append(1.0); y.append(1.0); y.append(10.0); y.append(10.0)
@@ -484,7 +484,7 @@ fn test_mse_reduction_informative() raises:
     _assert(red > 0.0, "MSE reduction > 0 for informative") # 70
 
 
-fn test_mse_reduction_uninformative() raises:
+def test_mse_reduction_uninformative() raises:
     print("  test_mse_reduction_uninformative")
     var y = List[Float64]()
     y.append(5.0); y.append(5.0); y.append(5.0); y.append(5.0)
@@ -496,7 +496,7 @@ fn test_mse_reduction_uninformative() raises:
     _assert_close(red, 0.0, 1e-9, "MSE reduction = 0 for constant") # 71
 
 
-fn test_best_split_valid() raises:
+def test_best_split_valid() raises:
     print("  test_best_split_valid")
     var X = List[List[Float64]]()
     var y = List[Float64]()
@@ -515,7 +515,7 @@ fn test_best_split_valid() raises:
     _assert(result[2] > 0.0, "best_split reduction > 0")    # 74
 
 
-fn test_tree_constant_y() raises:
+def test_tree_constant_y() raises:
     print("  test_tree_constant_y")
     var X = List[List[Float64]]()
     var y = List[Float64]()
@@ -531,7 +531,7 @@ fn test_tree_constant_y() raises:
     _assert_close(pred, 5.0, 1e-9, "constant y pred = 5.0") # 76
 
 
-fn test_tree_two_groups() raises:
+def test_tree_two_groups() raises:
     print("  test_tree_two_groups")
     # Two distinct groups: x<5 → y=0, x>=5 → y=10
     var X = List[List[Float64]]()
@@ -559,7 +559,7 @@ fn test_tree_two_groups() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 47 Tests ===")
 
     # Clustering metrics

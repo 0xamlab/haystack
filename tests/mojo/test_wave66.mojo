@@ -45,19 +45,19 @@ from power_systems import (
 from std.math import abs as fabs, cos, sin, sqrt, acos
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _near(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def _near(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < tol
 
 
 # ── Robotics tests ───────────────────────────────────────────────────────────
 
 
-fn test_forward_kinematics_2dof_x() raises:
+def test_forward_kinematics_2dof_x() raises:
     # Both links length 1, both angles 0 => x = 2.0
     var x = forward_kinematics_2dof(1.0, 1.0, 0.0, 0.0)
     _assert(_near(x, 2.0), "fk 2dof x at zero angles")
@@ -72,7 +72,7 @@ fn test_forward_kinematics_2dof_x() raises:
     _assert(_near(x3, 2.0, 1e-6), "fk 2dof x with elbow bent")
 
 
-fn test_forward_kinematics_2dof_y() raises:
+def test_forward_kinematics_2dof_y() raises:
     var y = forward_kinematics_2dof_y(1.0, 1.0, 0.0, 0.0)
     _assert(_near(y, 0.0), "fk 2dof y at zero angles")
 
@@ -85,7 +85,7 @@ fn test_forward_kinematics_2dof_y() raises:
     _assert(_near(y3, 1.0, 1e-6), "fk 2dof y with elbow bent")
 
 
-fn test_inverse_kinematics_2dof_theta2() raises:
+def test_inverse_kinematics_2dof_theta2() raises:
     # Target at (2, 0) with l1=l2=1 => theta2 = 0
     var th2 = inverse_kinematics_2dof_theta2(1.0, 1.0, 2.0, 0.0)
     _assert(_near(th2, 0.0, 1e-6), "ik theta2 fully extended")
@@ -95,7 +95,7 @@ fn test_inverse_kinematics_2dof_theta2() raises:
     _assert(_near(th2b, 3.141592653589793, 1e-6), "ik theta2 folded")
 
 
-fn test_jacobian_2dof_j11() raises:
+def test_jacobian_2dof_j11() raises:
     # At theta1=0, theta2=0: J11 = -l1*sin(0) - l2*sin(0) = 0
     var j = jacobian_2dof_j11(1.0, 1.0, 0.0, 0.0)
     _assert(_near(j, 0.0), "jacobian j11 at zero angles")
@@ -106,7 +106,7 @@ fn test_jacobian_2dof_j11() raises:
     _assert(_near(j2, -2.0, 1e-6), "jacobian j11 at pi/2")
 
 
-fn test_pid_control() raises:
+def test_pid_control() raises:
     var out = pid_control(1.0, 0.5, 0.1, 10.0, 5.0, 2.0)
     # 1*10 + 0.5*5 + 0.1*2 = 10 + 2.5 + 0.2 = 12.7
     _assert(_near(out, 12.7), "pid control output")
@@ -115,7 +115,7 @@ fn test_pid_control() raises:
     _assert(_near(out2, 10.0), "pid proportional only")
 
 
-fn test_dead_reckoning() raises:
+def test_dead_reckoning() raises:
     # Moving along x-axis: theta=0, v=1, dt=1
     var x = dead_reckoning_x(0.0, 1.0, 0.0, 1.0)
     _assert(_near(x, 1.0), "dead reckoning x forward")
@@ -132,7 +132,7 @@ fn test_dead_reckoning() raises:
     _assert(_near(y2, 2.0, 1e-6), "dead reckoning y perpendicular")
 
 
-fn test_wheel_odometry() raises:
+def test_wheel_odometry() raises:
     # r=0.05, ticks=100, tpr=100 => d = 2*pi*0.05 * 1 ≈ 0.31416
     var d = wheel_odometry_distance(0.05, 100.0, 100.0)
     _assert(_near(d, 0.31415926535, 1e-6), "wheel odometry one rev")
@@ -142,7 +142,7 @@ fn test_wheel_odometry() raises:
     _assert(_near(d2, 1.2566370614, 1e-6), "wheel odometry two revs")
 
 
-fn test_differential_drive() raises:
+def test_differential_drive() raises:
     var omega = differential_drive_omega(1.0, 3.0, 0.5)
     # (3-1)/0.5 = 4.0
     _assert(_near(omega, 4.0), "diff drive omega")
@@ -154,7 +154,7 @@ fn test_differential_drive() raises:
     _assert(_near(omega2, 0.0), "diff drive omega straight")
 
 
-fn test_workspace_and_manipulability() raises:
+def test_workspace_and_manipulability() raises:
     var r = workspace_radius(1.0, 0.5)
     _assert(_near(r, 1.5), "workspace radius")
 
@@ -168,7 +168,7 @@ fn test_workspace_and_manipulability() raises:
 # ── Psychometrics tests ──────────────────────────────────────────────────────
 
 
-fn test_item_difficulty() raises:
+def test_item_difficulty() raises:
     var p = item_difficulty(70.0, 100.0)
     _assert(_near(p, 0.7), "item difficulty")
 
@@ -176,25 +176,25 @@ fn test_item_difficulty() raises:
     _assert(_near(p2, 0.0), "item difficulty zero total")
 
 
-fn test_item_discrimination() raises:
+def test_item_discrimination() raises:
     # upper: 80/100=0.8, lower: 40/100=0.4 => D=0.4
     var d = item_discrimination(80.0, 100.0, 40.0, 100.0)
     _assert(_near(d, 0.4), "item discrimination")
 
 
-fn test_point_biserial() raises:
+def test_point_biserial() raises:
     # rpb = (75 - 70) / 10 * sqrt(0.6 * 0.4) = 0.5 * 0.4899 = 0.2449
     var rpb = point_biserial(75.0, 70.0, 10.0, 0.6)
     _assert(_near(rpb, 0.244949, 1e-4), "point biserial")
 
 
-fn test_kuder_richardson_20() raises:
+def test_kuder_richardson_20() raises:
     # n=10, var=25, sum_pq=5 => KR20 = (10/9)*(1-5/25) = 1.1111*0.8 = 0.8889
     var kr = kuder_richardson_20(10.0, 25.0, 5.0)
     _assert(_near(kr, 0.888889, 1e-4), "KR-20")
 
 
-fn test_cronbach_alpha() raises:
+def test_cronbach_alpha() raises:
     # n=5, sum_item_var=10, total_var=50 => α = (5/4)*(1-10/50) = 1.25*0.8 = 1.0
     var a = cronbach_alpha(5.0, 10.0, 50.0)
     _assert(_near(a, 1.0), "cronbach alpha")
@@ -204,7 +204,7 @@ fn test_cronbach_alpha() raises:
     _assert(_near(a2, 0.888889, 1e-4), "cronbach alpha 2")
 
 
-fn test_spearman_brown() raises:
+def test_spearman_brown() raises:
     # r=0.6, n=2 => 2*0.6/(1+0.6) = 1.2/1.6 = 0.75
     var sb = spearman_brown_prophecy(0.6, 2.0)
     _assert(_near(sb, 0.75), "spearman brown double length")
@@ -214,13 +214,13 @@ fn test_spearman_brown() raises:
     _assert(_near(sb2, 0.923077, 1e-4), "spearman brown triple")
 
 
-fn test_sem() raises:
+def test_sem() raises:
     # SD=15, rel=0.91 => SEM = 15*sqrt(0.09) = 15*0.3 = 4.5
     var s = standard_error_of_measurement(15.0, 0.91)
     _assert(_near(s, 4.5, 1e-4), "SEM")
 
 
-fn test_z_and_t_scores() raises:
+def test_z_and_t_scores() raises:
     var z = z_score(85.0, 70.0, 10.0)
     _assert(_near(z, 1.5), "z score")
 
@@ -234,7 +234,7 @@ fn test_z_and_t_scores() raises:
     _assert(_near(t3, 30.0), "t score negative z")
 
 
-fn test_stanine() raises:
+def test_stanine() raises:
     _assert(stanine(-2.0) == 1, "stanine 1")
     _assert(stanine(-1.5) == 2, "stanine 2")
     _assert(stanine(-1.0) == 3, "stanine 3")
@@ -246,7 +246,7 @@ fn test_stanine() raises:
     _assert(stanine(2.0) == 9, "stanine 9")
 
 
-fn test_irt_models() raises:
+def test_irt_models() raises:
     # 1PL: theta=b => P=0.5
     var p1 = irt_1pl_probability(1.0, 1.0)
     _assert(_near(p1, 0.5), "1PL at theta=b")
@@ -268,34 +268,34 @@ fn test_irt_models() raises:
 # ── Power Systems tests ──────────────────────────────────────────────────────
 
 
-fn test_active_power() raises:
+def test_active_power() raises:
     var p = active_power(230.0, 10.0, 0.8)
     _assert(_near(p, 1840.0), "active power")
 
 
-fn test_reactive_power() raises:
+def test_reactive_power() raises:
     # PF=0.8 => sin=0.6 => Q=230*10*0.6=1380
     var q = reactive_power(230.0, 10.0, 0.8)
     _assert(_near(q, 1380.0, 0.1), "reactive power")
 
 
-fn test_apparent_power() raises:
+def test_apparent_power() raises:
     var s = apparent_power(230.0, 10.0)
     _assert(_near(s, 2300.0), "apparent power")
 
 
-fn test_power_factor_from_pq() raises:
+def test_power_factor_from_pq() raises:
     var pf = power_factor_from_pq(1840.0, 2300.0)
     _assert(_near(pf, 0.8), "power factor from P and S")
 
 
-fn test_three_phase_power() raises:
+def test_three_phase_power() raises:
     # P = sqrt(3) * 400 * 50 * 0.9 ≈ 31176.91
     var p = three_phase_power(400.0, 50.0, 0.9)
     _assert(_near(p, 31176.914, 1.0), "three phase power")
 
 
-fn test_transformer() raises:
+def test_transformer() raises:
     var a = transformer_turns_ratio(4800.0, 240.0)
     _assert(_near(a, 20.0), "transformer turns ratio")
 
@@ -303,19 +303,19 @@ fn test_transformer() raises:
     _assert(_near(vs, 240.0), "transformer secondary voltage")
 
 
-fn test_line_loss() raises:
+def test_line_loss() raises:
     # I=100, R=0.5 => P=100^2*0.5=5000
     var p = line_loss(100.0, 0.5)
     _assert(_near(p, 5000.0), "line loss")
 
 
-fn test_voltage_drop() raises:
+def test_voltage_drop() raises:
     # I=20, R=0.1, L=100 => V=2*20*0.1*100=400
     var v = voltage_drop(20.0, 0.1, 100.0)
     _assert(_near(v, 400.0), "voltage drop round trip")
 
 
-fn test_power_efficiency() raises:
+def test_power_efficiency() raises:
     var eff = power_efficiency(900.0, 1000.0)
     _assert(_near(eff, 0.9), "power efficiency")
 
@@ -323,14 +323,14 @@ fn test_power_efficiency() raises:
     _assert(_near(eff2, 0.0), "power efficiency zero input")
 
 
-fn test_capacitor_reactive_power() raises:
+def test_capacitor_reactive_power() raises:
     # Qc = V^2 * 2*pi*f*C = 230^2 * 2*pi*60*0.0001
     # = 52900 * 0.037699 = 1994.29
     var qc = capacitor_reactive_power(230.0, 0.0001, 60.0)
     _assert(_near(qc, 1994.29, 1.0), "capacitor reactive power")
 
 
-fn test_load_factor() raises:
+def test_load_factor() raises:
     var lf = load_factor(500.0, 1000.0)
     _assert(_near(lf, 0.5), "load factor")
 
@@ -341,7 +341,7 @@ fn test_load_factor() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     # Robotics
     test_forward_kinematics_2dof_x()
     test_forward_kinematics_2dof_y()

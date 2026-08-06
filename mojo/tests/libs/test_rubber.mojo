@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from rubber import shore_a_to_youngs_modulus, mooney_viscosity_index, tensile_set, compression_set, elongation_at_break, tear_strength, resilience_rebound, hardness_change_aging, swelling_percentage, crosslink_density_estimate, abrasion_loss_volume, heat_buildup
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

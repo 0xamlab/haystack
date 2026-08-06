@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from compression.delta import delta_encode, delta_decode, delta_encode_float, delta_decode_float, xor_delta_encode, xor_delta_decode, zigzag_delta_encode, zigzag_delta_decode, double_delta_encode, double_delta_decode, compression_savings
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

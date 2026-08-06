@@ -23,11 +23,11 @@ struct ExprNode(Copyable, Movable):
     var right:   Int
     var extra:   Int  # third child for clip/if
 
-    fn __init__(out self, op: Int, value: Float64, var_idx: Int, left: Int, right: Int):
+    def __init__(out self, op: Int, value: Float64, var_idx: Int, left: Int, right: Int):
         self.op = op; self.fval = value; self.var_idx = var_idx
         self.left = left; self.right = right; self.extra = -1
 
-    fn __init__(out self, op: Int, value: Float64, var_idx: Int, left: Int, right: Int, extra: Int):
+    def __init__(out self, op: Int, value: Float64, var_idx: Int, left: Int, right: Int, extra: Int):
         self.op = op; self.fval = value; self.var_idx = var_idx
         self.left = left; self.right = right; self.extra = extra
 
@@ -50,7 +50,7 @@ struct VarSpec(Copyable, Movable):
     # -1 means not a discrete type
     var disc_idx:  Int
 
-    fn __init__(out self, name: String, dist_type: Int,
+    def __init__(out self, name: String, dist_type: Int,
                 p0: Float64, p1: Float64, p2: Float64, p3: Float64,
                 disc_idx: Int = -1):
         self.name = name; self.dist_type = dist_type
@@ -65,7 +65,7 @@ struct CorrSpec(Copyable, Movable):
     var var2_idx:    Int
     var coefficient: Float64
 
-    fn __init__(out self, var1_idx: Int, var2_idx: Int, coefficient: Float64):
+    def __init__(out self, var1_idx: Int, var2_idx: Int, coefficient: Float64):
         self.var1_idx = var1_idx; self.var2_idx = var2_idx
         self.coefficient = coefficient
 
@@ -76,7 +76,7 @@ struct ScoringSpec(Copyable, Movable):
     var w_ev: Float64   # weight for expected value component (default 0.6)
     var w_dr: Float64   # weight for downside risk component (default 0.4)
 
-    fn __init__(out self, w_ev: Float64 = 0.6, w_dr: Float64 = 0.4):
+    def __init__(out self, w_ev: Float64 = 0.6, w_dr: Float64 = 0.4):
         self.w_ev = w_ev; self.w_dr = w_dr
 
 
@@ -95,7 +95,7 @@ struct TimeSeriesCfg(Copyable, Movable):
     var horizons:      List[Int]
     var pct_levels:    List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.model = "gbm"; self.initial_value = 100.0
         self.drift = 0.0; self.volatility = 0.20
         self.dt = 1.0 / 12.0; self.ou_theta = 0.5; self.ou_mu = 100.0
@@ -109,7 +109,7 @@ struct DecisionTreeCfg(Copyable, Movable):
     # without a variable-length struct-of-structs.
     var raw_config: String
 
-    fn __init__(out self, raw: String = ""):
+    def __init__(out self, raw: String = ""):
         self.raw_config = raw
 
 
@@ -119,7 +119,7 @@ struct ISCfg(Copyable, Movable):
     var tilt_var_name:    String
     var tilt_override:    Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.target_threshold = -1e30; self.tail_direction = "lower"
         self.tilt_var_name = ""; self.tilt_override = 0.0
 
@@ -129,7 +129,7 @@ struct ScenarioCfg(Copyable, Movable):
     # because each scenario has per-scenario variable overrides.
     var raw_config: String
 
-    fn __init__(out self, raw: String = ""):
+    def __init__(out self, raw: String = ""):
         self.raw_config = raw
 
 
@@ -138,7 +138,7 @@ struct BootstrapCfg(Copyable, Movable):
     var historical_data: List[Float64]
     var n_data:          Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.statistic = "mean"; self.historical_data = List[Float64](); self.n_data = 0
 
 
@@ -149,7 +149,7 @@ struct MCMCCfg(Copyable, Movable):
     var n_chains:      Int
     var likelihood:    String   # "normal" | "lognormal"
 
-    fn __init__(out self):
+    def __init__(out self):
         self.observed_data = List[Float64](); self.n_data = 0
         self.burn_in = 1000; self.n_chains = 4; self.likelihood = "normal"
 
@@ -209,7 +209,7 @@ struct SimRequest(Copyable, Movable):
     var bootstrap_cfg:     BootstrapCfg
     var mcmc_cfg:          MCMCCfg
 
-    fn __init__(out self):
+    def __init__(out self):
         self.engine_type = "monte_carlo"; self.runs = 10000
         self.seed = -1; self.workers = 0
         self.stream_mode = False; self.checkpoint_every = 1000
@@ -242,7 +242,7 @@ struct SummaryStats(Copyable, Movable):
     var std:      Float64
     var variance: Float64
 
-    fn __init__(out self, mean: Float64 = 0.0, median: Float64 = 0.0,
+    def __init__(out self, mean: Float64 = 0.0, median: Float64 = 0.0,
                 std: Float64 = 0.0, variance: Float64 = 0.0):
         self.mean = mean; self.median = median
         self.std = std; self.variance = variance
@@ -258,7 +258,7 @@ struct PercentileSet(Copyable, Movable):
     var p95: Float64
     var p99: Float64
 
-    fn __init__(out self):
+    def __init__(out self):
         self.p5 = 0.0; self.p10 = 0.0; self.p25 = 0.0; self.p50 = 0.0
         self.p75 = 0.0; self.p90 = 0.0; self.p95 = 0.0; self.p99 = 0.0
 
@@ -268,7 +268,7 @@ struct RiskMetrics(Copyable, Movable):
     var var_95:              Float64
     var cvar_95:             Float64
 
-    fn __init__(out self, pol: Float64 = 0.0, var95: Float64 = 0.0, cvar95: Float64 = 0.0):
+    def __init__(out self, pol: Float64 = 0.0, var95: Float64 = 0.0, cvar95: Float64 = 0.0):
         self.probability_of_loss = pol; self.var_95 = var95; self.cvar_95 = cvar95
 
 
@@ -299,7 +299,7 @@ struct DecisionEnvelopeMojo(Copyable, Movable):
     # SHA-256 hex string (64 chars) — computed by compute_result_hash()
     var result_hash:  String
 
-    fn __init__(out self):
+    def __init__(out self):
         self.engine_version = ""; self.engine_type = ""; self.simulation_model = ""
         self.scenarios_run = 0
         self.summary = SummaryStats()

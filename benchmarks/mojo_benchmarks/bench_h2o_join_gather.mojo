@@ -38,7 +38,7 @@ comptime N_OUTPUT: Int = 9_000_000
 comptime REPS: Int = 5
 
 
-fn _xorshift_next(state: UInt64) -> UInt64:
+def _xorshift_next(state: UInt64) -> UInt64:
     var s = state
     s = s ^ (s << 13)
     s = s ^ (s >> 7)
@@ -46,7 +46,7 @@ fn _xorshift_next(state: UInt64) -> UInt64:
     return s
 
 
-fn _build_source(n: Int, null_every: Int, seed: Int) -> Float64Array:
+def _build_source(n: Int, null_every: Int, seed: Int) -> Float64Array:
     var values = List[Float64](capacity=n)
     var mask = List[Bool](capacity=n)
     for i in range(n):
@@ -60,7 +60,7 @@ fn _build_source(n: Int, null_every: Int, seed: Int) -> Float64Array:
     return float64_with_nulls(values^, mask)
 
 
-fn _build_indices(n_output: Int, n_source: Int, unmatched_every: Int, seed: Int) -> List[Int]:
+def _build_indices(n_output: Int, n_source: Int, unmatched_every: Int, seed: Int) -> List[Int]:
     """A realistic gather index list: mostly valid, permuted (not sequential -- a
     join's output order tracks the LEFT side, not the right side's storage order),
     with a periodic NO_ROW (-1) standing in for an unmatched row, exactly the shape
@@ -76,7 +76,7 @@ fn _build_indices(n_output: Int, n_source: Int, unmatched_every: Int, seed: Int)
     return out^
 
 
-fn _take_column_branchless(source: Float64Array, indices: List[Int]) -> Float64Array:
+def _take_column_branchless(source: Float64Array, indices: List[Int]) -> Float64Array:
     """Same contract as `take_column`, branchless per row: compute validity via
     arithmetic (no `if`), always perform a clamped read (never an out-of-bounds one),
     and mask the value to 0.0 when invalid AFTER the read rather than skipping the
@@ -101,7 +101,7 @@ fn _take_column_branchless(source: Float64Array, indices: List[Int]) -> Float64A
     return float64_with_nulls(values^, mask)
 
 
-fn _take_column_branchless_parallel(source: Float64Array, indices: List[Int], workers: Int) -> Float64Array:
+def _take_column_branchless_parallel(source: Float64Array, indices: List[Int], workers: Int) -> Float64Array:
     """`_take_column_join`'s exact row-band parallel shape, branchless body -- the
     real comparison that matters, since H2O join-track output sizes (9-10M rows) run
     the PARALLEL gather in production, never the plain serial one."""
@@ -115,7 +115,7 @@ fn _take_column_branchless_parallel(source: Float64Array, indices: List[Int], wo
     var src_len = source.length
 
     @parameter
-    fn gather_worker(w: Int):
+    def gather_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n:
@@ -133,7 +133,7 @@ fn _take_column_branchless_parallel(source: Float64Array, indices: List[Int], wo
     return float64_with_nulls(values^, mask)
 
 
-fn main() raises:
+def main() raises:
     print("=== H2O join materialize gather, isolated (no build/probe/hash) ===")
 
     var source = _build_source(N_SOURCE, 97, 11)

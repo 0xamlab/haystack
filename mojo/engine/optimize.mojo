@@ -26,7 +26,7 @@ struct OptResult(Copyable, Movable):
     var iterations: Int     # iterations used
     var converged: Bool     # whether convergence was achieved
 
-    fn __init__(out self, x: Float64, fun: Float64, iterations: Int, converged: Bool):
+    def __init__(out self, x: Float64, fun: Float64, iterations: Int, converged: Bool):
         self.x = x
         self.fun = fun
         self.iterations = iterations
@@ -36,7 +36,7 @@ struct OptResult(Copyable, Movable):
 # ── Polynomial evaluation ─────────────────────────────────────────────────────
 
 
-fn eval_poly(coeffs: List[Float64], x: Float64) -> Float64:
+def eval_poly(coeffs: List[Float64], x: Float64) -> Float64:
     """Evaluate polynomial: coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + ...
     Uses Horner's method for numerical stability."""
     var n = len(coeffs)
@@ -50,7 +50,7 @@ fn eval_poly(coeffs: List[Float64], x: Float64) -> Float64:
     return result
 
 
-fn eval_poly_deriv(coeffs: List[Float64], x: Float64) -> Float64:
+def eval_poly_deriv(coeffs: List[Float64], x: Float64) -> Float64:
     """Evaluate polynomial derivative: coeffs[1] + 2*coeffs[2]*x + 3*coeffs[3]*x^2 + ...
     Uses Horner's method."""
     var n = len(coeffs)
@@ -66,7 +66,7 @@ fn eval_poly_deriv(coeffs: List[Float64], x: Float64) -> Float64:
     return result
 
 
-fn _eval_poly_deriv2(coeffs: List[Float64], x: Float64) -> Float64:
+def _eval_poly_deriv2(coeffs: List[Float64], x: Float64) -> Float64:
     """Evaluate second derivative of polynomial."""
     var n = len(coeffs)
     if n <= 2:
@@ -82,7 +82,7 @@ fn _eval_poly_deriv2(coeffs: List[Float64], x: Float64) -> Float64:
 # ── Golden section search ─────────────────────────────────────────────────────
 
 
-fn minimize_scalar_golden(f_coeffs: List[Float64], a: Float64, b: Float64,
+def minimize_scalar_golden(f_coeffs: List[Float64], a: Float64, b: Float64,
                           tol: Float64 = 1e-8, max_iter: Int = 1000) -> OptResult:
     """Golden section search for minimum of f(x) on [a,b].
     f_coeffs: polynomial coefficients [a0, a1, a2, ...] for f(x) = a0 + a1*x + a2*x^2 + ...
@@ -122,7 +122,7 @@ fn minimize_scalar_golden(f_coeffs: List[Float64], a: Float64, b: Float64,
 # ── Brent's method for minimization ──────────────────────────────────────────
 
 
-fn minimize_brent(f_coeffs: List[Float64], a: Float64, b: Float64,
+def minimize_brent(f_coeffs: List[Float64], a: Float64, b: Float64,
                   tol: Float64 = 1e-8, max_iter: Int = 200) -> OptResult:
     """Brent's method for function minimization on [a,b].
     Combines golden section with parabolic interpolation."""
@@ -225,7 +225,7 @@ fn minimize_brent(f_coeffs: List[Float64], a: Float64, b: Float64,
 # ── Bisection root finding ────────────────────────────────────────────────────
 
 
-fn root_bisection(f_coeffs: List[Float64], a: Float64, b: Float64,
+def root_bisection(f_coeffs: List[Float64], a: Float64, b: Float64,
                   tol: Float64 = 1e-10, max_iter: Int = 100) -> OptResult:
     """Bisection method for root finding: find x where f(x)=0.
     Requires f(a) and f(b) to have opposite signs."""
@@ -267,7 +267,7 @@ fn root_bisection(f_coeffs: List[Float64], a: Float64, b: Float64,
 # ── Newton-Raphson root finding ───────────────────────────────────────────────
 
 
-fn root_newton(x0: Float64, f_coeffs: List[Float64],
+def root_newton(x0: Float64, f_coeffs: List[Float64],
                tol: Float64 = 1e-10, max_iter: Int = 50) -> OptResult:
     """Newton-Raphson root finding using polynomial derivative.
     Finds x where f(x)=0 starting from initial guess x0."""
@@ -298,7 +298,7 @@ fn root_newton(x0: Float64, f_coeffs: List[Float64],
 
 # Divergent iterates overflow eval_poly to ±inf (or NaN); non-finite values cannot cross
 # the JSON result wire, so a result value is replaced with 0.0 when it is not finite.
-fn _wire_finite(v: Float64) -> Float64:
+def _wire_finite(v: Float64) -> Float64:
     if v - v != 0.0:
         return 0.0
     if v > 1e300 or v < -1e300:
@@ -306,7 +306,7 @@ fn _wire_finite(v: Float64) -> Float64:
     return v
 
 
-fn gradient_descent_1d(f_coeffs: List[Float64], x0: Float64,
+def gradient_descent_1d(f_coeffs: List[Float64], x0: Float64,
                        lr: Float64 = 0.01, tol: Float64 = 1e-8,
                        max_iter: Int = 1000) -> OptResult:
     """1D gradient descent using polynomial derivative.
@@ -349,13 +349,13 @@ struct LinRegResult(Copyable, Movable):
     var intercept: Float64
     var r_squared: Float64
 
-    fn __init__(out self, slope: Float64, intercept: Float64, r_squared: Float64):
+    def __init__(out self, slope: Float64, intercept: Float64, r_squared: Float64):
         self.slope = slope
         self.intercept = intercept
         self.r_squared = r_squared
 
 
-fn linear_regression(x: List[Float64], y: List[Float64]) -> LinRegResult:
+def linear_regression(x: List[Float64], y: List[Float64]) -> LinRegResult:
     """Simple linear regression. Returns LinRegResult(slope, intercept, r_squared).
     Uses the least-squares formula:
       slope = Σ(xi - x̄)(yi - ȳ) / Σ(xi - x̄)²

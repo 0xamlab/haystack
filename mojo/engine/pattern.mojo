@@ -25,14 +25,14 @@ Public API:
 
 
 @always_inline
-fn _is_ws(c: UInt8) -> Bool:
+def _is_ws(c: UInt8) -> Bool:
     return c == 32 or c == 9 or c == 10 or c == 13
 
 
 # ── glob_match ───────────────────────────────────────────────────────────────
 
 
-fn glob_match(pattern: String, text: String) -> Bool:
+def glob_match(pattern: String, text: String) -> Bool:
     """Simple glob matching: * matches any sequence, ? matches single char."""
     var pbs = pattern.as_bytes()
     var tbs = text.as_bytes()
@@ -64,7 +64,7 @@ fn glob_match(pattern: String, text: String) -> Bool:
 # ── starts_with ──────────────────────────────────────────────────────────────
 
 
-fn starts_with(text: String, prefix: String) -> Bool:
+def starts_with(text: String, prefix: String) -> Bool:
     """Check if text starts with prefix."""
     var plen = len(prefix)
     if plen > len(text):
@@ -80,7 +80,7 @@ fn starts_with(text: String, prefix: String) -> Bool:
 # ── ends_with ────────────────────────────────────────────────────────────────
 
 
-fn ends_with(text: String, suffix: String) -> Bool:
+def ends_with(text: String, suffix: String) -> Bool:
     """Check if text ends with suffix."""
     var slen = len(suffix)
     var tlen = len(text)
@@ -98,7 +98,7 @@ fn ends_with(text: String, suffix: String) -> Bool:
 # ── contains ─────────────────────────────────────────────────────────────────
 
 
-fn contains(text: String, sub: String) -> Bool:
+def contains(text: String, sub: String) -> Bool:
     """Check if text contains substring."""
     var tlen = len(text)
     var slen = len(sub)
@@ -122,7 +122,7 @@ fn contains(text: String, sub: String) -> Bool:
 # ── count_occurrences ────────────────────────────────────────────────────────
 
 
-fn count_occurrences(text: String, sub: String) -> Int:
+def count_occurrences(text: String, sub: String) -> Int:
     """Count non-overlapping occurrences of sub in text."""
     var tlen = len(text)
     var slen = len(sub)
@@ -149,7 +149,7 @@ fn count_occurrences(text: String, sub: String) -> Int:
 # ── replace_all ──────────────────────────────────────────────────────────────
 
 
-fn replace_all(text: String, old: String, new: String) -> String:
+def replace_all(text: String, old: String, new: String) -> String:
     """Replace all non-overlapping occurrences of old with new."""
     var tlen = len(text)
     var olen = len(old)
@@ -178,7 +178,7 @@ fn replace_all(text: String, old: String, new: String) -> String:
 # ── template_substitute ──────────────────────────────────────────────────────
 
 
-fn template_substitute(
+def template_substitute(
     template: String, keys: List[String], values: List[String]
 ) -> String:
     """Replace {{key}} placeholders with corresponding values."""
@@ -197,7 +197,7 @@ fn template_substitute(
 # ── split_string ─────────────────────────────────────────────────────────────
 
 
-fn split_string(text: String, delimiter: String) -> List[String]:
+def split_string(text: String, delimiter: String) -> List[String]:
     """Split text by delimiter. Returns list of parts."""
     var parts = List[String]()
     var tlen = len(text)
@@ -234,7 +234,7 @@ fn split_string(text: String, delimiter: String) -> List[String]:
 # ── join_strings ─────────────────────────────────────────────────────────────
 
 
-fn join_strings(parts: List[String], delimiter: String) -> String:
+def join_strings(parts: List[String], delimiter: String) -> String:
     """Join strings with delimiter."""
     var n = len(parts)
     if n == 0:
@@ -249,7 +249,7 @@ fn join_strings(parts: List[String], delimiter: String) -> String:
 # ── pad_left ─────────────────────────────────────────────────────────────────
 
 
-fn pad_left(text: String, width: Int, fill_char: Int = 32) -> String:
+def pad_left(text: String, width: Int, fill_char: Int = 32) -> String:
     """Left-pad text to width with fill character (default space=32)."""
     var tlen = len(text)
     if tlen >= width:
@@ -266,7 +266,7 @@ fn pad_left(text: String, width: Int, fill_char: Int = 32) -> String:
 # ── pad_right ────────────────────────────────────────────────────────────────
 
 
-fn pad_right(text: String, width: Int, fill_char: Int = 32) -> String:
+def pad_right(text: String, width: Int, fill_char: Int = 32) -> String:
     """Right-pad text to width with fill character (default space=32)."""
     var tlen = len(text)
     if tlen >= width:
@@ -282,7 +282,7 @@ fn pad_right(text: String, width: Int, fill_char: Int = 32) -> String:
 # ── trim ─────────────────────────────────────────────────────────────────────
 
 
-fn trim(text: String) -> String:
+def trim(text: String) -> String:
     """Remove leading and trailing whitespace (space, tab, newline, cr)."""
     var tlen = len(text)
     if tlen == 0:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crypto.base64 import b64_encode, b64_decode, b64_url_encode, b64_url_decode
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

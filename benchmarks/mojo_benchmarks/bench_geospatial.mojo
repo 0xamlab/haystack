@@ -133,14 +133,14 @@ comptime REPEATS: Int = 5
 comptime PIP_EDGE_TESTS: Int = 524288
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn _keyed_points(n: Int, stream: UInt64) -> List[Float64]:
+def _keyed_points(n: Int, stream: UInt64) -> List[Float64]:
     """`n` coordinates uniform on [0, EXTENT_M), from the frozen keyed generator."""
     var out = List[Float64]()
     for i in range(n):
@@ -148,14 +148,14 @@ fn _keyed_points(n: Int, stream: UInt64) -> List[Float64]:
     return out^
 
 
-fn _ratio_ok(hi: Float64, lo: Float64, factor: Float64) -> Bool:
+def _ratio_ok(hi: Float64, lo: Float64, factor: Float64) -> Bool:
     """`hi <= factor * lo`, with a zero `lo` treated as unmeasurable rather than as a pass."""
     if lo <= 0.0:
         return False
     return hi <= factor * lo
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
     print("bench_geospatial — spatial index selectivity and per-unit cost")
     print("seed = 0x6765_6F73_7061_7469, extent = 1000 x 1000 m, window = 10 x 10 m")

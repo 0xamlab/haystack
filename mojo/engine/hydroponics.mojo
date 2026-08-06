@@ -23,7 +23,7 @@ from std.math import exp, abs as fabs
 # ── ec_from_tds ──────────────────────────────────────────────────────────────
 
 
-fn ec_from_tds(tds_ppm: Float64, conversion_factor: Float64) -> Float64:
+def ec_from_tds(tds_ppm: Float64, conversion_factor: Float64) -> Float64:
     """Convert TDS (ppm) to EC (mS/cm): EC = TDS * factor / 1000.
 
     Args:
@@ -39,7 +39,7 @@ fn ec_from_tds(tds_ppm: Float64, conversion_factor: Float64) -> Float64:
 # ── tds_from_ec ──────────────────────────────────────────────────────────────
 
 
-fn tds_from_ec(ec_ms: Float64, conversion_factor: Float64) -> Float64:
+def tds_from_ec(ec_ms: Float64, conversion_factor: Float64) -> Float64:
     """Convert EC (mS/cm) to TDS (ppm): TDS = EC / factor * 1000.
 
     Args:
@@ -57,7 +57,7 @@ fn tds_from_ec(ec_ms: Float64, conversion_factor: Float64) -> Float64:
 # ── nutrient_concentration ───────────────────────────────────────────────────
 
 
-fn nutrient_concentration(
+def nutrient_concentration(
     stock_ml: Float64, dilution_volume_l: Float64
 ) -> Float64:
     """Nutrient concentration: C = stock_ml / (volume_L * 1000) * 1000 (ppm).
@@ -79,7 +79,7 @@ fn nutrient_concentration(
 # ── ph_adjustment_acid ───────────────────────────────────────────────────────
 
 
-fn ph_adjustment_acid(
+def ph_adjustment_acid(
     current_ph: Float64, target_ph: Float64, buffer_capacity: Float64
 ) -> Float64:
     """Acid needed to lower pH: acid_ml = (current - target) * buffer.
@@ -101,7 +101,7 @@ fn ph_adjustment_acid(
 # ── light_daily_integral ─────────────────────────────────────────────────────
 
 
-fn light_daily_integral(ppfd: Float64, hours: Float64) -> Float64:
+def light_daily_integral(ppfd: Float64, hours: Float64) -> Float64:
     """Daily light integral: DLI = PPFD * hours * 3600 / 1e6 (mol/m²/day).
 
     Args:
@@ -117,7 +117,7 @@ fn light_daily_integral(ppfd: Float64, hours: Float64) -> Float64:
 # ── vpd ──────────────────────────────────────────────────────────────────────
 
 
-fn vpd(temperature: Float64, humidity: Float64) -> Float64:
+def vpd(temperature: Float64, humidity: Float64) -> Float64:
     """Vapour pressure deficit: VPD = (1 - RH/100) * SVP.
 
     SVP = 0.6108 * exp(17.27 * T / (T + 237.3)) (kPa).
@@ -136,7 +136,7 @@ fn vpd(temperature: Float64, humidity: Float64) -> Float64:
 # ── water_consumption_rate ───────────────────────────────────────────────────
 
 
-fn water_consumption_rate(
+def water_consumption_rate(
     transpiration: Float64, area: Float64
 ) -> Float64:
     """Water consumption rate: Rate = transpiration * area (L/day).
@@ -154,7 +154,7 @@ fn water_consumption_rate(
 # ── nutrient_uptake_rate ─────────────────────────────────────────────────────
 
 
-fn nutrient_uptake_rate(
+def nutrient_uptake_rate(
     conc_start: Float64,
     conc_end: Float64,
     volume: Float64,
@@ -179,7 +179,7 @@ fn nutrient_uptake_rate(
 # ── grow_light_efficiency ────────────────────────────────────────────────────
 
 
-fn grow_light_efficiency(ppf: Float64, watts: Float64) -> Float64:
+def grow_light_efficiency(ppf: Float64, watts: Float64) -> Float64:
     """Grow light efficacy: Eff = PPF / W (µmol/J).
 
     Args:
@@ -197,7 +197,7 @@ fn grow_light_efficiency(ppf: Float64, watts: Float64) -> Float64:
 # ── reservoir_dilution ───────────────────────────────────────────────────────
 
 
-fn reservoir_dilution(
+def reservoir_dilution(
     current_ec: Float64, target_ec: Float64, volume: Float64
 ) -> Float64:
     """Water to add for dilution: water_add = volume * (current/target - 1).
@@ -221,7 +221,7 @@ fn reservoir_dilution(
 # ── yield_per_area ───────────────────────────────────────────────────────────
 
 
-fn yield_per_area(harvest_kg: Float64, grow_area_m2: Float64) -> Float64:
+def yield_per_area(harvest_kg: Float64, grow_area_m2: Float64) -> Float64:
     """Yield per area: Y = harvest_kg / grow_area_m² (kg/m²).
 
     Args:
@@ -239,7 +239,7 @@ fn yield_per_area(harvest_kg: Float64, grow_area_m2: Float64) -> Float64:
 # ── crop_cycle_roi ───────────────────────────────────────────────────────────
 
 
-fn crop_cycle_roi(revenue: Float64, costs: Float64) -> Float64:
+def crop_cycle_roi(revenue: Float64, costs: Float64) -> Float64:
     """Crop cycle ROI: ROI = (revenue - costs) / costs * 100 (%).
 
     Args:

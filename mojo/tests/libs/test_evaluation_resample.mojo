@@ -79,11 +79,11 @@ from evaluation.resample import (
 from evaluation.scores import metric_value_flat
 
 
-fn close(got: Float64, want: Float64) -> Bool:
+def close(got: Float64, want: Float64) -> Bool:
     return fabs(got - want) <= 8.0 * EVAL_DBL_EPSILON * fabs(want)
 
 
-fn probs_a() -> List[Float64]:
+def probs_a() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.1)
     out.append(0.3)
@@ -93,7 +93,7 @@ fn probs_a() -> List[Float64]:
     return out^
 
 
-fn labels_a() -> List[Float64]:
+def labels_a() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(0.0)
@@ -103,7 +103,7 @@ fn labels_a() -> List[Float64]:
     return out^
 
 
-fn replicate_brier(
+def replicate_brier(
     probs: List[Float64], labels: List[Float64], n: Int, replicate: Int, seed: Int
 ) -> Float64:
     """Rebuild replicate `replicate`'s Brier score from the FROZEN kernels alone.
@@ -121,7 +121,7 @@ fn replicate_brier(
     return total / Float64(n)
 
 
-fn independent_interval(
+def independent_interval(
     probs: List[Float64], labels: List[Float64], n: Int, n_boot: Int,
     alpha: Float64, seed: Int
 ) -> List[Float64]:

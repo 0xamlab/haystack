@@ -17,12 +17,12 @@ Reproduce:
 """
 from sys import argv
 
-from memory import bitcast
+from std.memory import bitcast
 
 from progexec.exec import progexec_run_flat
 
 
-fn hex_to_f64(s: StringSlice) raises -> Float64:
+def hex_to_f64(s: StringSlice) raises -> Float64:
     var acc: UInt64 = 0
     var raw = s.as_bytes()
     if len(raw) != 16:
@@ -42,7 +42,7 @@ fn hex_to_f64(s: StringSlice) raises -> Float64:
     return bitcast[DType.float64, 1](acc)
 
 
-fn f64_to_hex(v: Float64) -> String:
+def f64_to_hex(v: Float64) -> String:
     var u = v.to_bits()
     var out = String("")
     for i in range(16):
@@ -52,14 +52,14 @@ fn f64_to_hex(v: Float64) -> String:
     return out
 
 
-fn read_all(path: String) raises -> String:
+def read_all(path: String) raises -> String:
     var f = open(path, "r")
     var s = f.read()
     f.close()
     return s^
 
 
-fn main() raises:
+def main() raises:
     var args = argv()
     if len(args) < 2:
         print("usage: measure_progexec_finqa <spec_file>")

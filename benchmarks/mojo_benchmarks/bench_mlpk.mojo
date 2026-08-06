@@ -30,11 +30,11 @@ from mlpk.activation import gated_ffn_bwd_flat, gated_ffn_fwd_flat, mlp_gelu_agr
 from mlpk.embedding import embedding_bwd_flat, embedding_fwd_flat
 
 
-fn _ns_since(t0: UInt) -> Float64:
+def _ns_since(t0: UInt) -> Float64:
     return Float64(Int(perf_counter_ns() - t0))
 
 
-fn _pseudo(n: Int, seed: Int) -> List[Float64]:
+def _pseudo(n: Int, seed: Int) -> List[Float64]:
     """Deterministic values in roughly [-1, 1], so runs are comparable across machines."""
     var o = List[Float64](capacity=n)
     for i in range(n):

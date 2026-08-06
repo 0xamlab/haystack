@@ -41,12 +41,12 @@ from crypto.hash_chain import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -56,7 +56,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Logic Circuit Tests ──────────────────────────────────────────────────────
 
 
-fn test_basic_gates() raises:
+def test_basic_gates() raises:
     print("  basic gates...")
     _assert(gate_and(1, 1) == 1, "AND(1,1)==1")                              # 1
     _assert(gate_and(1, 0) == 0, "AND(1,0)==0")                              # 2
@@ -74,7 +74,7 @@ fn test_basic_gates() raises:
     _assert(gate_xor(0, 0) == 0, "XOR(0,0)==0")                              # 14
 
 
-fn test_compound_gates() raises:
+def test_compound_gates() raises:
     print("  compound gates...")
     _assert(gate_nand(1, 1) == 0, "NAND(1,1)==0")                            # 15
     _assert(gate_nand(1, 0) == 1, "NAND(1,0)==1")                            # 16
@@ -84,7 +84,7 @@ fn test_compound_gates() raises:
     _assert(gate_nor(0, 1) == 0, "NOR(0,1)==0")                              # 20
 
 
-fn test_half_adder() raises:
+def test_half_adder() raises:
     print("  half_adder...")
     var ha = half_adder(1, 1)
     _assert(ha[0] == 0, "HA(1,1) sum=0")                                     # 21
@@ -94,7 +94,7 @@ fn test_half_adder() raises:
     _assert(ha2[1] == 0, "HA(1,0) carry=0")                                  # 24
 
 
-fn test_full_adder() raises:
+def test_full_adder() raises:
     print("  full_adder...")
     var fa = full_adder(1, 1, 1)
     _assert(fa[0] == 1, "FA(1,1,1) sum=1")                                   # 25
@@ -104,7 +104,7 @@ fn test_full_adder() raises:
     _assert(fa2[1] == 0, "FA(1,0,0) carry=0")                                # 28
 
 
-fn test_ripple_carry_adder() raises:
+def test_ripple_carry_adder() raises:
     print("  ripple_carry_adder...")
     # 2 (10) + 2 (10) = 4 (100). LSB first: [0,1] + [0,1] = [0,0,1]
     var a = List[Int]()
@@ -126,7 +126,7 @@ fn test_ripple_carry_adder() raises:
     _assert(bits_to_int(sum_bits) == 4, "2+2=4 via RCA")                     # 33
 
 
-fn test_bit_conversion() raises:
+def test_bit_conversion() raises:
     print("  bits_to_int / int_to_bits...")
     var bits = List[Int]()
     bits.append(1)
@@ -141,7 +141,7 @@ fn test_bit_conversion() raises:
     _assert(bits_to_int(int_to_bits(13, 4)) == 13, "round-trip 13")          # 38
 
 
-fn test_mux_decoder() raises:
+def test_mux_decoder() raises:
     print("  multiplexer / decoder...")
     _assert(multiplexer_2to1(0, 1, 1) == 1, "MUX sel=1 → b=1")              # 39
     _assert(multiplexer_2to1(0, 1, 0) == 0, "MUX sel=0 → a=0")              # 40
@@ -158,13 +158,13 @@ fn test_mux_decoder() raises:
 # ── Population Tests ─────────────────────────────────────────────────────────
 
 
-fn test_exponential_growth() raises:
+def test_exponential_growth() raises:
     print("  exponential_growth...")
     var result = exponential_growth(100.0, 0.1, 10.0)
     _assert_close(result, 271.828, 0.2, "100*e^1 ≈ 271.8")                   # 47
 
 
-fn test_logistic_growth() raises:
+def test_logistic_growth() raises:
     print("  logistic_growth / simulate...")
     var next_N = logistic_growth(50.0, 0.1, 100.0)
     _assert(next_N > 50.0 and next_N < 100.0, "logistic between N and K")    # 48
@@ -174,7 +174,7 @@ fn test_logistic_growth() raises:
     _assert(final_val > 90.0 and final_val < 110.0, "converges near K")      # 50
 
 
-fn test_lotka_volterra() raises:
+def test_lotka_volterra() raises:
     print("  lotka_volterra_step / simulate...")
     # alpha=1.1, beta=0.4, delta=0.1, gamma=0.4
     var step = lotka_volterra_step(40.0, 9.0, 1.1, 0.4, 0.1, 0.4, 0.01)
@@ -186,7 +186,7 @@ fn test_lotka_volterra() raises:
     _assert(len(sim) == 11, "LV simulate returns n_steps+1 rows")            # 53
 
 
-fn test_population_utils() raises:
+def test_population_utils() raises:
     print("  doubling_time / extinction_risk / competition...")
     _assert_close(
         population_doubling_time(0.693147), 1.0, 0.01, "ln2/0.693≈1"
@@ -200,7 +200,7 @@ fn test_population_utils() raises:
     _assert(comp[1] > 0.0, "competition N2 > 0")                             # 58
 
 
-fn test_carrying_capacity_estimate() raises:
+def test_carrying_capacity_estimate() raises:
     print("  carrying_capacity_estimate / growth_rate_estimate...")
     var pops = List[Float64]()
     pops.append(10.0)
@@ -216,7 +216,7 @@ fn test_carrying_capacity_estimate() raises:
 # ── Hash Chain Tests ─────────────────────────────────────────────────────────
 
 
-fn test_simple_hash() raises:
+def test_simple_hash() raises:
     print("  simple_hash / hash_single...")
     var data1 = List[Int]()
     data1.append(1)
@@ -241,7 +241,7 @@ fn test_simple_hash() raises:
     _assert(hash_single(0) != hash_single(1), "diff ints diff hashes")        # 64
 
 
-fn test_int_to_bytes() raises:
+def test_int_to_bytes() raises:
     print("  int_to_bytes...")
     var b = int_to_bytes(256)
     _assert(len(b) == 4, "4 bytes")                                           # 65
@@ -251,7 +251,7 @@ fn test_int_to_bytes() raises:
     _assert(b[3] == 0, "byte3 = 0")                                          # 69
 
 
-fn test_combine_hashes() raises:
+def test_combine_hashes() raises:
     print("  combine_hashes...")
     var ca = combine_hashes(100, 200)
     var cb = combine_hashes(200, 100)
@@ -260,7 +260,7 @@ fn test_combine_hashes() raises:
     _assert(ca == cc, "combine deterministic")                                # 71
 
 
-fn test_hash_chain() raises:
+def test_hash_chain() raises:
     print("  hash_chain_build / verify...")
     var items = List[List[Int]]()
     var i1 = List[Int]()
@@ -288,7 +288,7 @@ fn test_hash_chain() raises:
     )                                                                          # 74
 
 
-fn test_merkle_tree() raises:
+def test_merkle_tree() raises:
     print("  merkle_root / proof / verify...")
     var leaves = List[Int]()
     leaves.append(hash_single(1))
@@ -338,7 +338,7 @@ fn test_merkle_tree() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 54 Tests ===")
 
     # Logic Circuits

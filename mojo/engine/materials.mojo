@@ -25,7 +25,7 @@ from std.math import pow, abs as fabs
 # ── youngs_modulus ───────────────────────────────────────────────────────────
 
 
-fn youngs_modulus(stress: Float64, strain: Float64) -> Float64:
+def youngs_modulus(stress: Float64, strain: Float64) -> Float64:
     """Young's modulus: E = σ/ε.
 
     Args:
@@ -43,7 +43,7 @@ fn youngs_modulus(stress: Float64, strain: Float64) -> Float64:
 # ── shear_modulus ────────────────────────────────────────────────────────────
 
 
-fn shear_modulus(E: Float64, poisson: Float64) -> Float64:
+def shear_modulus(E: Float64, poisson: Float64) -> Float64:
     """Shear modulus: G = E / (2*(1+ν)).
 
     Args:
@@ -62,7 +62,7 @@ fn shear_modulus(E: Float64, poisson: Float64) -> Float64:
 # ── bulk_modulus ─────────────────────────────────────────────────────────────
 
 
-fn bulk_modulus(E: Float64, poisson: Float64) -> Float64:
+def bulk_modulus(E: Float64, poisson: Float64) -> Float64:
     """Bulk modulus: K = E / (3*(1-2ν)).
 
     Args:
@@ -81,7 +81,7 @@ fn bulk_modulus(E: Float64, poisson: Float64) -> Float64:
 # ── stress_from_force ────────────────────────────────────────────────────────
 
 
-fn stress_from_force(force: Float64, area: Float64) -> Float64:
+def stress_from_force(force: Float64, area: Float64) -> Float64:
     """Stress from force and area: σ = F/A.
 
     Args:
@@ -99,7 +99,7 @@ fn stress_from_force(force: Float64, area: Float64) -> Float64:
 # ── strain_from_deformation ─────────────────────────────────────────────────
 
 
-fn strain_from_deformation(delta_l: Float64, original_l: Float64) -> Float64:
+def strain_from_deformation(delta_l: Float64, original_l: Float64) -> Float64:
     """Engineering strain: ε = ΔL/L₀.
 
     Args:
@@ -117,7 +117,7 @@ fn strain_from_deformation(delta_l: Float64, original_l: Float64) -> Float64:
 # ── thermal_expansion ───────────────────────────────────────────────────────
 
 
-fn thermal_expansion(original_l: Float64, alpha: Float64, delta_t: Float64) -> Float64:
+def thermal_expansion(original_l: Float64, alpha: Float64, delta_t: Float64) -> Float64:
     """Thermal expansion: ΔL = L₀·α·ΔT.
 
     Args:
@@ -134,7 +134,7 @@ fn thermal_expansion(original_l: Float64, alpha: Float64, delta_t: Float64) -> F
 # ── safety_factor ────────────────────────────────────────────────────────────
 
 
-fn safety_factor(ultimate_stress: Float64, working_stress: Float64) -> Float64:
+def safety_factor(ultimate_stress: Float64, working_stress: Float64) -> Float64:
     """Safety factor: SF = σ_ult / σ_work.
 
     Args:
@@ -152,7 +152,7 @@ fn safety_factor(ultimate_stress: Float64, working_stress: Float64) -> Float64:
 # ── stress_concentration ────────────────────────────────────────────────────
 
 
-fn stress_concentration(nominal_stress: Float64, kt: Float64) -> Float64:
+def stress_concentration(nominal_stress: Float64, kt: Float64) -> Float64:
     """Stress concentration: σ_max = Kt·σ_nom.
 
     Args:
@@ -168,7 +168,7 @@ fn stress_concentration(nominal_stress: Float64, kt: Float64) -> Float64:
 # ── fatigue_life ─────────────────────────────────────────────────────────────
 
 
-fn fatigue_life(sigma_a: Float64, sigma_f: Float64, b: Float64) -> Float64:
+def fatigue_life(sigma_a: Float64, sigma_f: Float64, b: Float64) -> Float64:
     """Basquin's law fatigue life: N = (σ_a/σ_f)^(1/b).
 
     Args:
@@ -187,7 +187,7 @@ fn fatigue_life(sigma_a: Float64, sigma_f: Float64, b: Float64) -> Float64:
 # ── beam_deflection_cantilever ──────────────────────────────────────────────
 
 
-fn beam_deflection_cantilever(force: Float64, length: Float64, E: Float64, I: Float64) -> Float64:
+def beam_deflection_cantilever(force: Float64, length: Float64, E: Float64, I: Float64) -> Float64:
     """Cantilever beam deflection: δ = PL³/(3EI).
 
     Args:
@@ -208,7 +208,7 @@ fn beam_deflection_cantilever(force: Float64, length: Float64, E: Float64, I: Fl
 # ── moment_of_inertia_rect ─────────────────────────────────────────────────
 
 
-fn moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
+def moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
     """Second moment of area for a rectangular cross-section: I = bh³/12.
 
     Args:
@@ -224,7 +224,7 @@ fn moment_of_inertia_rect(width: Float64, height: Float64) -> Float64:
 # ── poisson_ratio_from_moduli ───────────────────────────────────────────────
 
 
-fn poisson_ratio_from_moduli(E: Float64, G: Float64) -> Float64:
+def poisson_ratio_from_moduli(E: Float64, G: Float64) -> Float64:
     """Poisson's ratio from elastic moduli: ν = E/(2G) - 1.
 
     Args:

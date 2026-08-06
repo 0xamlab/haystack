@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from graph_algorithms import dijkstra_relax, bellman_ford_relax, pagerank_update, betweenness_centrality_norm, clustering_coefficient, degree_centrality, closeness_centrality, eigenvector_centrality_update, modularity_contribution, graph_density
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from option_pricing import norm_cdf, black_scholes_call, black_scholes_put, delta_call, gamma, vega, theta_call, put_call_parity, binomial_tree_call, implied_volatility
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

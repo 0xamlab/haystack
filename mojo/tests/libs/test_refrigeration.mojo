@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from refrigeration import cop_refrigeration, cop_heat_pump, carnot_cop_refrigeration, carnot_cop_heat_pump, refrigeration_capacity_tons, superheat, subcooling, mass_flow_rate, compressor_work, energy_efficiency_ratio, seer_to_cop, refrigerant_charge_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

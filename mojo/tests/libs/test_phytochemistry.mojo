@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from phytochemistry import phenolic_content_folin, flavonoid_content, anthocyanin_concentration, tannin_content, essential_oil_yield, alkaloid_gravimetric, chlorophyll_a, chlorophyll_b, carotenoid_content, dpph_radical_scavenging
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

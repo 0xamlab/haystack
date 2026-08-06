@@ -24,7 +24,7 @@ from std.math import exp
 # ── economic_threshold ───────────────────────────────────────────────────────
 
 
-fn economic_threshold(
+def economic_threshold(
     control_cost: Float64, crop_value: Float64, damage_per_pest: Float64
 ) -> Float64:
     """Economic threshold: ET = cost / (value * damage_per_pest).
@@ -43,7 +43,7 @@ fn economic_threshold(
 # ── economic_injury_level ────────────────────────────────────────────────────
 
 
-fn economic_injury_level(et: Float64, gain_threshold: Float64) -> Float64:
+def economic_injury_level(et: Float64, gain_threshold: Float64) -> Float64:
     """Economic injury level (simplified): EIL = ET * gain.
 
     Args:
@@ -59,7 +59,7 @@ fn economic_injury_level(et: Float64, gain_threshold: Float64) -> Float64:
 # ── pest_density ─────────────────────────────────────────────────────────────
 
 
-fn pest_density(count: Float64, sample_area: Float64) -> Float64:
+def pest_density(count: Float64, sample_area: Float64) -> Float64:
     """Pest density: PD = count / area.
 
     Args:
@@ -75,7 +75,7 @@ fn pest_density(count: Float64, sample_area: Float64) -> Float64:
 # ── trap_catch_rate ──────────────────────────────────────────────────────────
 
 
-fn trap_catch_rate(caught: Float64, traps: Float64, days: Float64) -> Float64:
+def trap_catch_rate(caught: Float64, traps: Float64, days: Float64) -> Float64:
     """Trap catch rate: TCR = caught / (traps * days).
 
     Args:
@@ -92,7 +92,7 @@ fn trap_catch_rate(caught: Float64, traps: Float64, days: Float64) -> Float64:
 # ── spray_coverage ───────────────────────────────────────────────────────────
 
 
-fn spray_coverage(volume_applied: Float64, area: Float64) -> Float64:
+def spray_coverage(volume_applied: Float64, area: Float64) -> Float64:
     """Spray coverage: Coverage = volume / area (L/ha).
 
     Args:
@@ -108,7 +108,7 @@ fn spray_coverage(volume_applied: Float64, area: Float64) -> Float64:
 # ── dilution_rate ────────────────────────────────────────────────────────────
 
 
-fn dilution_rate(concentrate_ml: Float64, water_ml: Float64) -> Float64:
+def dilution_rate(concentrate_ml: Float64, water_ml: Float64) -> Float64:
     """Dilution rate: Rate = concentrate / (concentrate + water).
 
     Args:
@@ -124,7 +124,7 @@ fn dilution_rate(concentrate_ml: Float64, water_ml: Float64) -> Float64:
 # ── residual_effectiveness ───────────────────────────────────────────────────
 
 
-fn residual_effectiveness(
+def residual_effectiveness(
     initial_kill_pct: Float64, half_life_days: Float64, days_elapsed: Float64
 ) -> Float64:
     """Residual effectiveness with exponential decay.
@@ -145,7 +145,7 @@ fn residual_effectiveness(
 # ── resistance_ratio ─────────────────────────────────────────────────────────
 
 
-fn resistance_ratio(ld50_resistant: Float64, ld50_susceptible: Float64) -> Float64:
+def resistance_ratio(ld50_resistant: Float64, ld50_susceptible: Float64) -> Float64:
     """Resistance ratio: RR = LD50_R / LD50_S.
 
     Args:
@@ -161,7 +161,7 @@ fn resistance_ratio(ld50_resistant: Float64, ld50_susceptible: Float64) -> Float
 # ── biocontrol_release_rate ──────────────────────────────────────────────────
 
 
-fn biocontrol_release_rate(
+def biocontrol_release_rate(
     target_density: Float64, predator_prey_ratio: Float64, area: Float64
 ) -> Float64:
     """Biocontrol agent release rate.
@@ -182,7 +182,7 @@ fn biocontrol_release_rate(
 # ── fumigation_ct ────────────────────────────────────────────────────────────
 
 
-fn fumigation_ct(concentration: Float64, time_hours: Float64) -> Float64:
+def fumigation_ct(concentration: Float64, time_hours: Float64) -> Float64:
     """Fumigation CT product: CT = C * T (g·h/m³).
 
     Args:
@@ -198,7 +198,7 @@ fn fumigation_ct(concentration: Float64, time_hours: Float64) -> Float64:
 # ── bait_station_density ─────────────────────────────────────────────────────
 
 
-fn bait_station_density(stations: Float64, area_m2: Float64) -> Float64:
+def bait_station_density(stations: Float64, area_m2: Float64) -> Float64:
     """Bait station density: BSD = stations / area * 10000 (per hectare).
 
     Args:
@@ -214,7 +214,7 @@ fn bait_station_density(stations: Float64, area_m2: Float64) -> Float64:
 # ── population_reduction ─────────────────────────────────────────────────────
 
 
-fn population_reduction(before: Float64, after: Float64) -> Float64:
+def population_reduction(before: Float64, after: Float64) -> Float64:
     """Population reduction percentage: (before - after) / before * 100.
 
     Args:

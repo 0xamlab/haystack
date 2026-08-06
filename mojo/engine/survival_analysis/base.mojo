@@ -177,7 +177,7 @@ comptime SA_MAX_WORK: Int = 1 << 30
 comptime SA_DBL_EPSILON: Float64 = 2.220446049250313e-16
 
 
-fn sa_status_name(code: Int) -> String:
+def sa_status_name(code: Int) -> String:
     """Human-readable name for a `survival_analysis` status code.
 
     @capability sa_status_name
@@ -256,7 +256,7 @@ fn sa_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn sa_is_finite(x: Float64) -> Bool:
+def sa_is_finite(x: Float64) -> Bool:
     """True when `x` is neither NaN nor an infinity.
 
     Delegates to the frozen `numeric.reduce.is_finite_value` so the whole tree has ONE
@@ -274,7 +274,7 @@ fn sa_is_finite(x: Float64) -> Bool:
     return is_finite_value(x)
 
 
-fn sa_work_fits(factors: List[Int], budget: Int) -> Bool:
+def sa_work_fits(factors: List[Int], budget: Int) -> Bool:
     """True when the product of `factors` is >= 0 and <= `budget`, computed by DIVISION.
 
     `rows * cols` is a wrapping 64-bit multiply -- `3 * 6148914691236517206 == 2` -- so a
@@ -306,7 +306,7 @@ fn sa_work_fits(factors: List[Int], budget: Int) -> Bool:
     return product <= budget
 
 
-fn sa_validate_observations(times: List[Float64], event: List[Int]) -> Int:
+def sa_validate_observations(times: List[Float64], event: List[Int]) -> Int:
     """The single door into this package. Returns `SA_OK` or the first defect found.
 
     Checks, in the order that makes the message most useful:
@@ -357,7 +357,7 @@ fn sa_validate_observations(times: List[Float64], event: List[Int]) -> Int:
     return SA_OK
 
 
-fn sa_validate_confidence(conf_level: Float64) -> Int:
+def sa_validate_confidence(conf_level: Float64) -> Int:
     """Accept a two-sided confidence level in [0.5, 0.999999]; otherwise refuse.
 
     The band is bounded on BOTH sides on purpose. The frozen `math_ext.norm_ppf` returns
@@ -379,7 +379,7 @@ fn sa_validate_confidence(conf_level: Float64) -> Int:
     return SA_OK
 
 
-fn sa_z_for_confidence(conf_level: Float64) -> Float64:
+def sa_z_for_confidence(conf_level: Float64) -> Float64:
     """Two-sided normal critical value for `conf_level`, or 0.0 if the level is refused.
 
     0.0 rather than a sentinel: a caller must call `sa_validate_confidence` first, and
@@ -417,7 +417,7 @@ struct SortedObs(Copyable, Movable):
     var time: List[Float64]
     var is_event: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -427,7 +427,7 @@ struct SortedObs(Copyable, Movable):
         self.is_event = List[Bool]()
 
 
-fn sa_sort_observations(times: List[Float64], event: List[Int]) -> SortedObs:
+def sa_sort_observations(times: List[Float64], event: List[Int]) -> SortedObs:
     """Canonical ascending order by time, events before censorings inside a tie group.
 
     The ordering comes from the frozen `causal_inference.base.ci_argsort_asc`, a stable
@@ -518,7 +518,7 @@ struct RiskTable(Copyable, Movable):
     var survival: List[Float64]
     var monotone: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -531,7 +531,7 @@ struct RiskTable(Copyable, Movable):
         self.monotone = False
 
 
-fn sa_risk_table(times: List[Float64], event: List[Int]) -> RiskTable:
+def sa_risk_table(times: List[Float64], event: List[Int]) -> RiskTable:
     """Risk sets, event counts and the frozen Kaplan-Meier product, one row per event time.
 
     The survival column is NOT recomputed here: `survival.kaplan_meier` is called on the
@@ -598,7 +598,7 @@ fn sa_risk_table(times: List[Float64], event: List[Int]) -> RiskTable:
     return out^
 
 
-fn sa_greenwood_terms(at_risk: List[Int], events: List[Int]) -> List[Float64]:
+def sa_greenwood_terms(at_risk: List[Int], events: List[Int]) -> List[Float64]:
     """Per-event-time Greenwood terms `d_j / (n_j * (n_j - d_j))`, or -1.0 where undefined.
 
     -1.0 is the ABSENT marker, and it is safe to use as one because every defined term is

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from veterinary import dose_mg, fluid_rate_ml_hr, fluid_deficit, maintenance_fluid_dog, caloric_requirement_dog, body_condition_score_ideal, anesthesia_mac, gestation_period_days, heart_rate_normal_range_low, heart_rate_normal_range_high, packed_cell_volume_normal, blood_volume_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

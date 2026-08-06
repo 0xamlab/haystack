@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from mining import ore_grade, strip_ratio, recovery_rate, mill_throughput, bond_work_index_energy, cut_off_grade, dilution_factor, net_smelter_return, reserve_life, powder_factor, ventilation_quantity, subsidence_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

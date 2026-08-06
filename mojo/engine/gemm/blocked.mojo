@@ -129,7 +129,7 @@ struct RefDelta(Copyable, Movable):
     var status: Int
 
 
-fn gemm_tile_plan(m: Int, n: Int, k: Int, cache_bytes: Int) -> TilePlan:
+def gemm_tile_plan(m: Int, n: Int, k: Int, cache_bytes: Int) -> TilePlan:
     """Derive blocking factors for a cache of `cache_bytes`, via the frozen tile-size model.
 
     `gpu_kernels.tile_size_for_smem` and `arithmetic_intensity` are the analytical model the tree
@@ -159,7 +159,7 @@ fn gemm_tile_plan(m: Int, n: Int, k: Int, cache_bytes: Int) -> TilePlan:
     return TilePlan(tm, tn, tk, ai, GEMM_OK)
 
 
-fn sgemm_flat(
+def sgemm_flat(
     a: List[Float64], b: List[Float64], m: Int, n: Int, k: Int,
     alpha: Float64, beta: Float64, trans_a: Bool, trans_b: Bool
 ) -> GemmResult:
@@ -226,7 +226,7 @@ fn sgemm_flat(
     var pnw = n_workers
 
     @parameter
-    fn band(tid: Int) capturing:
+    def band(tid: Int) capturing:
         var rows_each = pm // pnw
         var lo = tid * rows_each
         var hi = lo + rows_each if tid < pnw - 1 else pm
@@ -287,7 +287,7 @@ fn sgemm_flat(
     return GemmResult(c^, m, n, GEMM_BACKEND_CPU_SIMD, flops, GEMM_OK)
 
 
-fn gemv_flat(
+def gemv_flat(
     a: List[Float64], x: List[Float64], m: Int, n: Int, trans: Bool
 ) -> GemmResult:
     """y = op(A) @ x for a row-major m-by-n A. The decode-shaped case: one vector, memory-bound.
@@ -346,7 +346,7 @@ fn gemv_flat(
     var gn = n
 
     @parameter
-    fn gemv_band(tid: Int) capturing:
+    def gemv_band(tid: Int) capturing:
         var rows_each = gm // gnw
         var lo = tid * rows_each
         var hi = lo + rows_each if tid < gnw - 1 else gm
@@ -379,7 +379,7 @@ fn gemv_flat(
     return GemmResult(y^, rows, 1, GEMM_BACKEND_CPU_SIMD, flops, GEMM_OK)
 
 
-fn gemm_reference_delta_flat(
+def gemm_reference_delta_flat(
     a: List[Float64], b: List[Float64], m: Int, n: Int, k: Int
 ) -> RefDelta:
     """Compare `sgemm_flat` against the frozen `linalg.mat_mul`, element by element.

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn checkpoint_interval_optimal(
+def checkpoint_interval_optimal(
     checkpoint_cost_steps: Float64, failure_rate_per_step: Float64
 ) -> Float64:
     """Optimal checkpoint interval minimising expected wasted work.
@@ -36,7 +36,7 @@ fn checkpoint_interval_optimal(
     return sqrt(2.0 * checkpoint_cost_steps / failure_rate_per_step)
 
 
-fn recovery_cost_estimate(
+def recovery_cost_estimate(
     steps_since_checkpoint: Float64, step_compute_cost: Float64,
     checkpoint_load_cost: Float64
 ) -> Float64:
@@ -55,7 +55,7 @@ fn recovery_cost_estimate(
     return checkpoint_load_cost + steps_since_checkpoint * step_compute_cost
 
 
-fn deterministic_seed(
+def deterministic_seed(
     base_seed: Float64, step: Float64, rank: Float64
 ) -> Float64:
     """Deterministic seed for reproducible training replay.
@@ -73,7 +73,7 @@ fn deterministic_seed(
     return base_seed + step * 1000003.0 + rank
 
 
-fn partial_batch_replay_loss(
+def partial_batch_replay_loss(
     full_batch_loss: Float64, processed_samples: Float64,
     batch_size: Float64
 ) -> Float64:
@@ -94,7 +94,7 @@ fn partial_batch_replay_loss(
     return full_batch_loss * processed_samples / batch_size
 
 
-fn node_failure_probability(
+def node_failure_probability(
     n_nodes: Float64, mtbf_hours: Float64,
     job_duration_hours: Float64
 ) -> Float64:
@@ -115,7 +115,7 @@ fn node_failure_probability(
     return 1.0 - exp(-n_nodes * job_duration_hours / mtbf_hours)
 
 
-fn mtbf_checkpoint_frequency(
+def mtbf_checkpoint_frequency(
     mtbf_hours: Float64, steps_per_hour: Float64
 ) -> Float64:
     """MTBF-based checkpoint frequency recommendation.
@@ -133,7 +133,7 @@ fn mtbf_checkpoint_frequency(
     return sqrt(mtbf_steps)
 
 
-fn gradient_staleness_factor(
+def gradient_staleness_factor(
     staleness: Float64, decay_rate: Float64
 ) -> Float64:
     """Staleness penalty for delayed gradient updates (async training).
@@ -150,7 +150,7 @@ fn gradient_staleness_factor(
     return exp(-decay_rate * staleness)
 
 
-fn elastic_training_scale(
+def elastic_training_scale(
     current_workers: Float64, target_workers: Float64,
     lr: Float64
 ) -> Float64:
@@ -171,7 +171,7 @@ fn elastic_training_scale(
     return lr * target_workers / current_workers
 
 
-fn failure_detection_latency(
+def failure_detection_latency(
     heartbeat_interval_ms: Float64, missed_heartbeats: Float64
 ) -> Float64:
     """Time to detect node failure from missed heartbeats.
@@ -188,7 +188,7 @@ fn failure_detection_latency(
     return heartbeat_interval_ms * missed_heartbeats
 
 
-fn replication_overhead(
+def replication_overhead(
     checkpoint_bytes: Float64, replication_factor: Float64,
     total_storage_bytes: Float64
 ) -> Float64:

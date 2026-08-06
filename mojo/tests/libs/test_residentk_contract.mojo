@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from residentk.contract import residentk_status_name, residentk_dims_check, residentk_context_check, residentk_cache_elements, residentk_dispatch_budget, residentk_dispatch_budget_deep, residentk_weight_elems, residentk_scalars_ok, residentk_splitk_should_split, residentk_splitk_max_n_splits, residentk_splitk_policy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

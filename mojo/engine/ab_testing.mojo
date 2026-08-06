@@ -24,7 +24,7 @@ from std.random import random_float64
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-fn _norm_cdf(x: Float64) -> Float64:
+def _norm_cdf(x: Float64) -> Float64:
     """Approximation of standard normal CDF using Abramowitz & Stegun."""
     var t = 1.0 / (1.0 + 0.2316419 * fabs(x))
     var d = 0.3989422804014327  # 1/sqrt(2*pi)
@@ -36,7 +36,7 @@ fn _norm_cdf(x: Float64) -> Float64:
     return p
 
 
-fn _norm_ppf(p: Float64) -> Float64:
+def _norm_ppf(p: Float64) -> Float64:
     """Approximation of standard normal inverse CDF (quantile function).
 
     Uses rational approximation (Beasley-Springer-Moro).
@@ -72,7 +72,7 @@ fn _norm_ppf(p: Float64) -> Float64:
 # ── sample_size_proportion ────────────────────────────────────────────────────
 
 
-fn sample_size_proportion(
+def sample_size_proportion(
     p1: Float64, p2: Float64, alpha: Float64 = 0.05, power: Float64 = 0.8
 ) -> Int:
     """Required sample size per group for a two-proportion test.
@@ -103,7 +103,7 @@ fn sample_size_proportion(
 # ── z_test_proportions ───────────────────────────────────────────────────────
 
 
-fn z_test_proportions(
+def z_test_proportions(
     successes_a: Int, n_a: Int, successes_b: Int, n_b: Int
 ) -> List[Float64]:
     """Two-proportion z-test.
@@ -134,7 +134,7 @@ fn z_test_proportions(
 # ── confidence_interval_proportion ────────────────────────────────────────────
 
 
-fn confidence_interval_proportion(
+def confidence_interval_proportion(
     successes: Int, n: Int, confidence: Float64 = 0.95
 ) -> List[Float64]:
     """Wilson score confidence interval for a proportion.
@@ -163,7 +163,7 @@ fn confidence_interval_proportion(
 # ── relative_uplift ──────────────────────────────────────────────────────────
 
 
-fn relative_uplift(control_rate: Float64, treatment_rate: Float64) -> Float64:
+def relative_uplift(control_rate: Float64, treatment_rate: Float64) -> Float64:
     """Relative uplift: (treatment - control) / control.
 
     Args:
@@ -181,7 +181,7 @@ fn relative_uplift(control_rate: Float64, treatment_rate: Float64) -> Float64:
 # ── is_significant ───────────────────────────────────────────────────────────
 
 
-fn is_significant(p_value: Float64, alpha: Float64 = 0.05) -> Bool:
+def is_significant(p_value: Float64, alpha: Float64 = 0.05) -> Bool:
     """Check if result is statistically significant.
 
     Args:
@@ -197,7 +197,7 @@ fn is_significant(p_value: Float64, alpha: Float64 = 0.05) -> Bool:
 # ── power_analysis ───────────────────────────────────────────────────────────
 
 
-fn power_analysis(
+def power_analysis(
     effect_size: Float64, n: Int, alpha: Float64 = 0.05
 ) -> Float64:
     """Statistical power for given effect size and sample size.
@@ -225,7 +225,7 @@ fn power_analysis(
 # ── mde ──────────────────────────────────────────────────────────────────────
 
 
-fn mde(
+def mde(
     n: Int, baseline_rate: Float64, alpha: Float64 = 0.05, power: Float64 = 0.8
 ) -> Float64:
     """Minimum detectable effect size.
@@ -248,7 +248,7 @@ fn mde(
 # ── sequential_test ──────────────────────────────────────────────────────────
 
 
-fn sequential_test(
+def sequential_test(
     successes_a: Int, n_a: Int, successes_b: Int, n_b: Int, alpha: Float64 = 0.05
 ) -> Int:
     """Sequential test with spending function boundary.
@@ -286,7 +286,7 @@ fn sequential_test(
 # ── epsilon_greedy_select ────────────────────────────────────────────────────
 
 
-fn epsilon_greedy_select(
+def epsilon_greedy_select(
     rewards: List[Float64], counts: List[Int], epsilon: Float64
 ) -> Int:
     """Epsilon-greedy multi-arm bandit arm selection.
@@ -335,7 +335,7 @@ fn epsilon_greedy_select(
 # ── ucb1_select ──────────────────────────────────────────────────────────────
 
 
-fn ucb1_select(
+def ucb1_select(
     rewards: List[Float64], counts: List[Int], total: Int
 ) -> Int:
     """UCB1 arm selection: argmax(mean_reward + sqrt(2*ln(total)/count)).

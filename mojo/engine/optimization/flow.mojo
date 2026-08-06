@@ -246,7 +246,7 @@ comptime _NO_LEVEL: Int = -1
 comptime _NO_ARC: Int = -1
 
 
-fn flow_status_name(code: Int) -> String:
+def flow_status_name(code: Int) -> String:
     """Name for a status code, so a rejection surfaces the defect and not a bare number.
     """
     if code == FLOW_OK:
@@ -322,10 +322,10 @@ struct FlowNetwork(Copyable, Movable):
     var arc_ptr: List[Int]
     var arc_at: List[Int]
 
-    fn n_arcs(self) -> Int:
+    def n_arcs(self) -> Int:
         return len(self.arc_head)
 
-    fn residual(self, a: Int) -> Float64:
+    def residual(self, a: Int) -> Float64:
         """Residual capacity of arc `a` via the frozen scalar. 0.0 for an arc we lack.
 
         The range test is not redundant with the callers' loops: an arc id reaching here
@@ -336,7 +336,7 @@ struct FlowNetwork(Copyable, Movable):
             return 0.0
         return flow_residual_capacity(self.arc_cap[a], self.arc_flow[a])
 
-    fn tail(self, a: Int) -> Int:
+    def tail(self, a: Int) -> Int:
         """Tail of arc `a`, which is the head of its twin. -1 for an arc we lack."""
         var t = _twin(a)
         if t < 0 or t >= len(self.arc_head):
@@ -344,7 +344,7 @@ struct FlowNetwork(Copyable, Movable):
         return self.arc_head[t]
 
 
-fn _twin(a: Int) -> Int:
+def _twin(a: Int) -> Int:
     """The paired arc. Written as arithmetic rather than `a ^ 1` because `^` is also the
     ownership-transfer sigil in this dialect and the intent should not depend on parsing.
     """
@@ -518,7 +518,7 @@ struct FlowScalar(Copyable, Movable):
 # contract; the dependency runs the right way round because `model` imports nothing from here.
 
 
-fn _tolerance(scale: Float64) -> Float64:
+def _tolerance(scale: Float64) -> Float64:
     """Slack for ONE identity, where `scale` is that identity's OWN magnitude.
 
     `FLOW_TOL` is the absolute part — the module's "how close to zero is zero" — and the
@@ -537,7 +537,7 @@ fn _tolerance(scale: Float64) -> Float64:
     return FLOW_TOL + FLOW_ULP_BUDGET * FLOW_DBL_EPSILON * s
 
 
-fn _pair_tolerance(a: Float64, b: Float64) -> Float64:
+def _pair_tolerance(a: Float64, b: Float64) -> Float64:
     """`_tolerance` for a comparison BETWEEN two quantities, at the larger magnitude.
 
     `a - b` cannot be represented to better than an ulp of the larger of the two, so the
@@ -549,7 +549,7 @@ fn _pair_tolerance(a: Float64, b: Float64) -> Float64:
     return _tolerance(x) if x > y else _tolerance(y)
 
 
-fn _augment_limit(n_nodes: Int, n_edges: Int) -> Int:
+def _augment_limit(n_nodes: Int, n_edges: Int) -> Int:
     """Generous bound on augmentations: at most one saturated arc each, at most n phases.
 
     Computed with a division guard rather than `(n_edges + 1) * (n_nodes + 1)`, because
@@ -564,7 +564,7 @@ fn _augment_limit(n_nodes: Int, n_edges: Int) -> Int:
     return a * b + 16
 
 
-fn _network_defect(
+def _network_defect(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64], n_nodes: Int
 ) -> Int:
     """`FLOW_OK`, or the first reason this edge list is not a network on `n_nodes` nodes.
@@ -594,7 +594,7 @@ fn _network_defect(
     return FLOW_OK
 
 
-fn _cost_defect(cost: List[Float64], n_edges: Int) -> Int:
+def _cost_defect(cost: List[Float64], n_edges: Int) -> Int:
     """`FLOW_OK` for a cost array successive shortest paths can price with."""
     if len(cost) != n_edges:
         return FLOW_ERR_LENGTH_MISMATCH
@@ -606,7 +606,7 @@ fn _cost_defect(cost: List[Float64], n_edges: Int) -> Int:
     return FLOW_OK
 
 
-fn _terminal_defect(n_nodes: Int, source: Int, sink: Int) -> Int:
+def _terminal_defect(n_nodes: Int, source: Int, sink: Int) -> Int:
     if n_nodes == 0:
         return FLOW_ERR_EMPTY_NETWORK
     if source < 0 or source >= n_nodes or sink < 0 or sink >= n_nodes:
@@ -618,7 +618,7 @@ fn _terminal_defect(n_nodes: Int, source: Int, sink: Int) -> Int:
     return FLOW_OK
 
 
-fn _build_network(
+def _build_network(
     edge_src: List[Int],
     edge_dst: List[Int],
     capacity: List[Float64],
@@ -686,7 +686,7 @@ fn _build_network(
     )
 
 
-fn _edge_flows(net: FlowNetwork) -> List[Float64]:
+def _edge_flows(net: FlowNetwork) -> List[Float64]:
     """Flow per INPUT edge, in input order. The twin arcs stay inside."""
     var out = List[Float64]()
     for k in range(net.n_edges):
@@ -697,7 +697,7 @@ fn _edge_flows(net: FlowNetwork) -> List[Float64]:
 # ── Dinic ─────────────────────────────────────────────────────────────────────
 
 
-fn _level_graph(
+def _level_graph(
     net: FlowNetwork, source: Int, sink: Int, mut level: List[Int]
 ) -> Bool:
     """BFS over arcs with residual capacity. True when the sink is still reachable.
@@ -724,7 +724,7 @@ fn _level_graph(
     return level[sink] != _NO_LEVEL
 
 
-fn _blocking_flow(
+def _blocking_flow(
     mut net: FlowNetwork,
     source: Int,
     sink: Int,
@@ -810,7 +810,7 @@ fn _blocking_flow(
         iter_at[u] = iter_at[u] + 1
 
 
-fn _dinic(
+def _dinic(
     mut net: FlowNetwork,
     source: Int,
     sink: Int,
@@ -841,7 +841,7 @@ fn _dinic(
             return status
 
 
-fn _residual_reachable(net: FlowNetwork, source: Int) -> List[Bool]:
+def _residual_reachable(net: FlowNetwork, source: Int) -> List[Bool]:
     """The source side of the min cut: nodes reachable over arcs with residual capacity.
 
     This is the second, independent computation of the same quantity the augmentations
@@ -867,7 +867,7 @@ fn _residual_reachable(net: FlowNetwork, source: Int) -> List[Bool]:
     return side^
 
 
-fn _cut_edges(
+def _cut_edges(
     edge_src: List[Int],
     edge_dst: List[Int],
     capacity: List[Float64],
@@ -892,7 +892,7 @@ fn _cut_edges(
     return total
 
 
-fn _no_max_flow(status: Int, n_nodes: Int, n_edges: Int, s: Int, t: Int) -> MaxFlow:
+def _no_max_flow(status: Int, n_nodes: Int, n_edges: Int, s: Int, t: Int) -> MaxFlow:
     """No answer: empty lists, zero counts, `has_value` False.
 
     Not "value 0.0 with a status nobody read": a rejected request and a network whose max
@@ -905,7 +905,7 @@ fn _no_max_flow(status: Int, n_nodes: Int, n_edges: Int, s: Int, t: Int) -> MaxF
     )
 
 
-fn max_flow_dinic(
+def max_flow_dinic(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     n_nodes: Int, source: Int, sink: Int,
 ) -> MaxFlow:
@@ -984,7 +984,7 @@ fn max_flow_dinic(
 # ── successive shortest paths with potentials ─────────────────────────────────
 
 
-fn _reduced_dijkstra(
+def _reduced_dijkstra(
     net: FlowNetwork,
     source: Int,
     pi: List[Float64],
@@ -1072,7 +1072,7 @@ fn _reduced_dijkstra(
     return FLOW_OK
 
 
-fn _ssp(
+def _ssp(
     mut net: FlowNetwork,
     source: Int,
     sink: Int,
@@ -1159,7 +1159,7 @@ fn _ssp(
             return FLOW_ERR_ITERATION_LIMIT
 
 
-fn _no_min_cost(
+def _no_min_cost(
     status: Int, n_nodes: Int, n_edges: Int, s: Int, t: Int, target: Float64
 ) -> MinCostFlow:
     return MinCostFlow(
@@ -1168,7 +1168,7 @@ fn _no_min_cost(
     )
 
 
-fn _min_cost_run(
+def _min_cost_run(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     cost: List[Float64], n_nodes: Int, source: Int, sink: Int,
     target: Float64, limited: Bool,
@@ -1234,7 +1234,7 @@ fn _min_cost_run(
     )
 
 
-fn min_cost_flow(
+def min_cost_flow(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     cost: List[Float64], n_nodes: Int, source: Int, sink: Int,
     target_flow: Float64,
@@ -1255,7 +1255,7 @@ fn min_cost_flow(
     )
 
 
-fn min_cost_max_flow(
+def min_cost_max_flow(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     cost: List[Float64], n_nodes: Int, source: Int, sink: Int,
 ) -> MinCostFlow:
@@ -1274,7 +1274,7 @@ fn min_cost_max_flow(
 # ── verification and per-step exposure ────────────────────────────────────────
 
 
-fn flow_audit_flat(
+def flow_audit_flat(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     cost: List[Float64], n_nodes: Int, source: Int, sink: Int,
     edge_flow: List[Float64],
@@ -1420,7 +1420,7 @@ fn flow_audit_flat(
     )
 
 
-fn flow_network_check(
+def flow_network_check(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64], n_nodes: Int
 ) -> FlowReport:
     """Census an edge list before solving on it: what it has, and what it cannot be.
@@ -1464,7 +1464,7 @@ fn flow_network_check(
     )
 
 
-fn edge_residuals(
+def edge_residuals(
     capacity: List[Float64], edge_flow: List[Float64]
 ) -> FlowVector:
     """Residual capacity per edge, each one from `graph_decision.flow_residual_capacity`.
@@ -1482,7 +1482,7 @@ fn edge_residuals(
     return FlowVector(FLOW_OK, length, out^)
 
 
-fn path_bottleneck(
+def path_bottleneck(
     capacity: List[Float64], edge_flow: List[Float64], path_edges: List[Int]
 ) -> FlowScalar:
     """How much more can be pushed along `path_edges`, and which edge binds.
@@ -1519,7 +1519,7 @@ fn path_bottleneck(
     return FlowScalar(FLOW_OK, True, best, binding)
 
 
-fn cut_capacity_of(
+def cut_capacity_of(
     edge_src: List[Int], edge_dst: List[Int], capacity: List[Float64],
     n_nodes: Int, source_side: List[Bool],
 ) -> FlowScalar:
@@ -1542,7 +1542,7 @@ fn cut_capacity_of(
     return FlowScalar(FLOW_OK, True, total, crossing)
 
 
-fn is_saturated(capacity: Float64, flow: Float64, tol: Float64) -> Bool:
+def is_saturated(capacity: Float64, flow: Float64, tol: Float64) -> Bool:
     """True when no more can be pushed on an edge, by the frozen residual rule.
 
     A predicate rather than a comparison at the call site, because `flow >= capacity` and

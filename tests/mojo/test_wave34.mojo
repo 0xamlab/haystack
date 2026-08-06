@@ -45,12 +45,12 @@ from queue_ds import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -58,7 +58,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Matrix decomposition tests ───────────────────────────────────────────────
 
 
-fn test_matrix_decomp() raises:
+def test_matrix_decomp() raises:
     print("  Testing matrix_decomp...")
     var passed = 0
 
@@ -304,7 +304,7 @@ fn test_matrix_decomp() raises:
 # ── Sentiment tests ──────────────────────────────────────────────────────────
 
 
-fn test_sentiment() raises:
+def test_sentiment() raises:
     print("  Testing sentiment...")
     var passed = 0
 
@@ -395,7 +395,7 @@ fn test_sentiment() raises:
 # ── Queue tests ──────────────────────────────────────────────────────────────
 
 
-fn test_queue_ds() raises:
+def test_queue_ds() raises:
     print("  Testing queue_ds...")
     var passed = 0
 
@@ -502,7 +502,7 @@ fn test_queue_ds() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 34 tests — Matrix Decompositions, Sentiment Analysis, Queue DS")
     test_matrix_decomp()
     test_sentiment()

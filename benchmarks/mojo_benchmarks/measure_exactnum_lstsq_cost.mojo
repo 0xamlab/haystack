@@ -37,7 +37,7 @@ from std.time import perf_counter_ns
 from exactnum.lstsq import LSTSQ_OK, dd_lstsq_flat, f64_lstsq_flat
 
 
-fn build_design(rows: Int, cols: Int) -> List[Float64]:
+def build_design(rows: Int, cols: Int) -> List[Float64]:
     """A Vandermonde-flavoured design whose columns are not exactly representable.
 
     `x_i` is a non-dyadic rational so the powers carry rounding, which is the regime the
@@ -53,7 +53,7 @@ fn build_design(rows: Int, cols: Int) -> List[Float64]:
     return a^
 
 
-fn build_rhs(rows: Int) -> List[Float64]:
+def build_rhs(rows: Int) -> List[Float64]:
     var b = List[Float64]()
     for i in range(rows):
         var xv = -6.8 + Float64(i) * 0.13
@@ -61,7 +61,7 @@ fn build_rhs(rows: Int) -> List[Float64]:
     return b^
 
 
-fn main() raises:
+def main() raises:
     print("shape        reps   dd_ns/solve   f64_ns/solve   dd/f64")
     var shapes_r = List[Int]()
     var shapes_c = List[Int]()

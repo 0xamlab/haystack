@@ -173,7 +173,7 @@ crossover (`PARALLEL_MIN_ROWS`) is the same number for the same reason."""
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn _isqrt(n: Int) -> Int:
+def _isqrt(n: Int) -> Int:
     """Integer square root by Newton iteration. Called once per call, not per
     row, and integer-only so the capacity is a deterministic function of the
     shape rather than of a floating-point library."""
@@ -187,7 +187,7 @@ fn _isqrt(n: Int) -> Int:
     return x
 
 
-fn fused_segment_capacity(n_rows: Int, workers: Int) -> Int:
+def fused_segment_capacity(n_rows: Int, workers: Int) -> Int:
     """Rows one (worker, partition) segment can hold.
 
     A worker's band holds `band` rows and the top `RADIX_BITS` of an FNV hash
@@ -215,7 +215,7 @@ fn fused_segment_capacity(n_rows: Int, workers: Int) -> Int:
     return mean + 8 * _isqrt(mean) + 64
 
 
-fn fused_partition_peak(batch: RecordBatch, key_column: Int, probe_rows: Int) -> Int:
+def fused_partition_peak(batch: RecordBatch, key_column: Int, probe_rows: Int) -> Int:
     """Rows the most-loaded radix partition takes over the first `probe_rows`
     rows, under the SAME hash and the SAME top-`RADIX_BITS` routing the scatter
     uses.
@@ -254,7 +254,7 @@ fn fused_partition_peak(batch: RecordBatch, key_column: Int, probe_rows: Int) ->
     return peak
 
 
-fn fused_segment_capacity_for(
+def fused_segment_capacity_for(
     n_rows: Int, workers: Int, peak: Int, probe_rows: Int
 ) -> Int:
     """Segment capacity for a batch whose probed partition peak is `peak` over
@@ -286,7 +286,7 @@ fn fused_segment_capacity_for(
     return skewed if skewed > uniform else uniform
 
 
-fn fused_scratch_bytes(n_rows: Int, n_aggs: Int, workers: Int) -> Int:
+def fused_scratch_bytes(n_rows: Int, n_aggs: Int, workers: Int) -> Int:
     """Bytes this engine's segment arena needs for a UNIFORM batch.
 
     One record per row is `2 + n_aggs` eight-byte words: the hash (which is
@@ -298,7 +298,7 @@ fn fused_scratch_bytes(n_rows: Int, n_aggs: Int, workers: Int) -> Int:
     return fused_scratch_bytes_for(n_rows, n_aggs, workers, 0, 0)
 
 
-fn fused_scratch_bytes_for(
+def fused_scratch_bytes_for(
     n_rows: Int, n_aggs: Int, workers: Int, peak: Int, probe_rows: Int
 ) -> Int:
     """`fused_scratch_bytes` at the skew-aware capacity."""
@@ -309,7 +309,7 @@ fn fused_scratch_bytes_for(
     return workers * RADIX_PARTITIONS * cap * rec * 8
 
 
-fn shipped_scratch_bytes(n_rows: Int, width: Int, n_aggs: Int) -> Int:
+def shipped_scratch_bytes(n_rows: Int, width: Int, n_aggs: Int) -> Int:
     """Bytes `group_by_many_radix` allocates for the same call, from its own
     declarations: `hrow` (8/row), `pf` ((width + n_aggs) * 8 per surviving
     row), `pm` (16), `ph` (8). With no key nulls every row survives."""
@@ -318,7 +318,7 @@ fn shipped_scratch_bytes(n_rows: Int, width: Int, n_aggs: Int) -> Int:
     return n_rows * (8 + (width + n_aggs) * 8 + 16 + 8)
 
 
-fn fused_late_applicable(
+def fused_late_applicable(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -406,7 +406,7 @@ struct _FusedIndex(Copyable, Movable):
     var count: Int
     var limit: Int
 
-    fn __init__(out self, initial_capacity: Int):
+    def __init__(out self, initial_capacity: Int):
         var cap = FUSED_INDEX_MIN_CAPACITY
         while cap < initial_capacity:
             cap = cap << 1
@@ -418,12 +418,12 @@ struct _FusedIndex(Copyable, Movable):
         self.count = 0
         self.limit = (cap * 7) // 10
 
-    fn free_all(self):
+    def free_all(self):
         self.keys.free()
         self.slots.free()
 
     @always_inline
-    fn get_or_assign(mut self, identity: UInt64, next_slot: Int) -> Int:
+    def get_or_assign(mut self, identity: UInt64, next_slot: Int) -> Int:
         """The slot already holding `identity`, or `next_slot` after taking it.
 
         The caller supplies the slot number for the same reason
@@ -443,7 +443,7 @@ struct _FusedIndex(Copyable, Movable):
             self._grow()
         return next_slot
 
-    fn _grow(mut self):
+    def _grow(mut self):
         """Double and rehash. Positions come from the identity's low bits, the
         same function the probe uses, so no entry can be reinserted onto a
         chain the probe would not walk."""
@@ -474,7 +474,7 @@ struct _FusedIndex(Copyable, Movable):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-fn group_by_many_radix_fused(
+def group_by_many_radix_fused(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],
@@ -546,7 +546,7 @@ fn group_by_many_radix_fused(
     var kp = key_col.values[].unsafe_ptr() + key_col.offset
 
     @parameter
-    fn fused_worker(w: Int):
+    def fused_worker(w: Int):
         var lo = w * band
         var hi = lo + band
         if hi > n_rows:
@@ -609,7 +609,7 @@ fn group_by_many_radix_fused(
     var pfp = p_first.unsafe_ptr()
 
     @parameter
-    fn partition_worker(p: Int):
+    def partition_worker(p: Int):
         var index = _FusedIndex(FUSED_INDEX_MIN_CAPACITY)
         var group_count = 0
         # Task-LOCAL lists behind a cached raw pointer. The accumulator store
@@ -685,7 +685,7 @@ fn group_by_many_radix_fused(
     return _finish_many(key_tuples, 1, stripes, n_aggs, opcodes, 0)
 
 
-fn group_by_many_late(
+def group_by_many_late(
     batch: RecordBatch,
     key_columns: List[Int],
     value_columns: List[Int],

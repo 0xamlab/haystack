@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn bf16_to_fp32_round(x: Float64) -> Float64:
+def bf16_to_fp32_round(x: Float64) -> Float64:
     """BF16 precision: truncate FP32 mantissa to 7 bits.
 
     BF16 keeps the upper 16 bits of FP32; loses 16 mantissa bits.
@@ -37,7 +37,7 @@ fn bf16_to_fp32_round(x: Float64) -> Float64:
     return quantised * scale
 
 
-fn fp16_overflow_check(x: Float64) -> Float64:
+def fp16_overflow_check(x: Float64) -> Float64:
     """Check if value overflows FP16 range (max ≈ 65504).
 
     Returns 1.0 if overflow, 0.0 if representable.
@@ -54,7 +54,7 @@ fn fp16_overflow_check(x: Float64) -> Float64:
     return 0.0
 
 
-fn absmax_calibration_scale(
+def absmax_calibration_scale(
     abs_max: Float64, n_bits: Float64
 ) -> Float64:
     """Absmax calibration: scale = abs_max / (2^(n_bits-1) - 1).
@@ -72,7 +72,7 @@ fn absmax_calibration_scale(
     return abs_max / qmax
 
 
-fn percentile_calibration_scale(
+def percentile_calibration_scale(
     percentile_value: Float64, n_bits: Float64
 ) -> Float64:
     """Percentile calibration: clip outliers before scaling.
@@ -92,7 +92,7 @@ fn percentile_calibration_scale(
     return percentile_value / qmax
 
 
-fn smooth_quant_scale(
+def smooth_quant_scale(
     activation_max: Float64, weight_max: Float64, alpha: Float64
 ) -> Float64:
     """SmoothQuant per-channel migration scale.
@@ -114,7 +114,7 @@ fn smooth_quant_scale(
     return exp(alpha * log(activation_max + 1e-8)) / exp((1.0 - alpha) * log(weight_max + 1e-8))
 
 
-fn gptq_hessian_update(
+def gptq_hessian_update(
     h_diag: Float64, activation: Float64, n_samples: Float64
 ) -> Float64:
     """GPTQ Hessian diagonal update: H += 2/n × x × xᵀ (diagonal).
@@ -132,7 +132,7 @@ fn gptq_hessian_update(
     return h_diag + 2.0 * activation * activation / n_samples
 
 
-fn awq_activation_scale(
+def awq_activation_scale(
     activation_abs_mean: Float64, weight_abs_mean: Float64
 ) -> Float64:
     """AWQ (Activation-aware Weight Quantization) per-channel scale.
@@ -153,7 +153,7 @@ fn awq_activation_scale(
     return sqrt(activation_abs_mean / weight_abs_mean)
 
 
-fn bnb_double_quant_scale(
+def bnb_double_quant_scale(
     block_scale: Float64, super_block_scale: Float64
 ) -> Float64:
     """bitsandbytes double quantization: quantize the scale factors.
@@ -172,7 +172,7 @@ fn bnb_double_quant_scale(
     return block_scale * super_block_scale
 
 
-fn kv_cache_int8_scale(
+def kv_cache_int8_scale(
     kv_tensor_max: Float64
 ) -> Float64:
     """Dynamic per-tensor INT8 scale for KV cache quantization.
@@ -190,7 +190,7 @@ fn kv_cache_int8_scale(
     return kv_tensor_max / 127.0
 
 
-fn quant_aware_straight_through(
+def quant_aware_straight_through(
     upstream_grad: Float64, x: Float64,
     x_min: Float64, x_max: Float64
 ) -> Float64:

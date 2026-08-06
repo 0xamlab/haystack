@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, pow
 
 
-fn tree_height_from_hypsometer(
+def tree_height_from_hypsometer(
     distance_m: Float64, angle_top_deg: Float64, angle_base_deg: Float64
 ) -> Float64:
     """Tree height by trigonometry using clinometer readings.
@@ -39,17 +39,17 @@ fn tree_height_from_hypsometer(
     return distance_m * (tan_top + tan_base)
 
 
-fn sin_approx(x: Float64) -> Float64:
+def sin_approx(x: Float64) -> Float64:
     var x2 = x * x
     return x * (1.0 - x2 / 6.0 + x2 * x2 / 120.0)
 
 
-fn cos_approx(x: Float64) -> Float64:
+def cos_approx(x: Float64) -> Float64:
     var x2 = x * x
     return 1.0 - x2 / 2.0 + x2 * x2 / 24.0
 
 
-fn crown_area(
+def crown_area(
     crown_radius_ns_m: Float64, crown_radius_ew_m: Float64
 ) -> Float64:
     """Crown projection area assuming elliptical shape.
@@ -67,7 +67,7 @@ fn crown_area(
     return pi * crown_radius_ns_m * crown_radius_ew_m
 
 
-fn crown_competition_factor(
+def crown_competition_factor(
     dbh_cm: Float64, n_trees_per_ha: Float64
 ) -> Float64:
     """Crown competition factor: CCF = sum(crown_area%) per ha.
@@ -84,7 +84,7 @@ fn crown_competition_factor(
     return n_trees_per_ha * 0.001257 * pow(dbh_cm, 1.7)
 
 
-fn stem_taper_percentage(
+def stem_taper_percentage(
     dbh_cm: Float64, diameter_half_height_cm: Float64
 ) -> Float64:
     """Form quotient: ratio of mid-stem diameter to DBH.
@@ -103,7 +103,7 @@ fn stem_taper_percentage(
     return diameter_half_height_cm / dbh_cm
 
 
-fn heartwood_ratio(
+def heartwood_ratio(
     heartwood_radius_cm: Float64, total_radius_cm: Float64
 ) -> Float64:
     """Heartwood area ratio.
@@ -123,7 +123,7 @@ fn heartwood_ratio(
     return ratio * ratio
 
 
-fn sapwood_area_from_dbh(dbh_cm: Float64, species_factor: Float64) -> Float64:
+def sapwood_area_from_dbh(dbh_cm: Float64, species_factor: Float64) -> Float64:
     """Sapwood area allometric estimate.
 
     SA = k × DBH^1.8  (species-specific k)
@@ -138,7 +138,7 @@ fn sapwood_area_from_dbh(dbh_cm: Float64, species_factor: Float64) -> Float64:
     return species_factor * pow(dbh_cm, 1.8)
 
 
-fn root_biomass_allometric(dbh_cm: Float64) -> Float64:
+def root_biomass_allometric(dbh_cm: Float64) -> Float64:
     """Coarse root biomass from DBH (global allometric, Cairns 1997).
 
     root_biomass = exp(-1.0587 + 0.8836 × ln(above_ground_biomass))
@@ -154,7 +154,7 @@ fn root_biomass_allometric(dbh_cm: Float64) -> Float64:
     return 0.26 * agb
 
 
-fn leaf_biomass_allometric(dbh_cm: Float64, height_m: Float64) -> Float64:
+def leaf_biomass_allometric(dbh_cm: Float64, height_m: Float64) -> Float64:
     """Leaf biomass from DBH and height.
 
     leaf_mass = 0.11 × DBH^1.6 × H^0.5
@@ -169,7 +169,7 @@ fn leaf_biomass_allometric(dbh_cm: Float64, height_m: Float64) -> Float64:
     return 0.11 * pow(dbh_cm, 1.6) * sqrt(height_m)
 
 
-fn tree_age_from_rings(
+def tree_age_from_rings(
     ring_count: Float64, pith_offset_rings: Float64
 ) -> Float64:
     """Estimated tree age from increment core ring count.
@@ -186,7 +186,7 @@ fn tree_age_from_rings(
     return ring_count + pith_offset_rings
 
 
-fn foliar_nitrogen_content(
+def foliar_nitrogen_content(
     leaf_n_mg_g: Float64, specific_leaf_area_m2_kg: Float64
 ) -> Float64:
     """Area-based foliar nitrogen from mass-based content and SLA.

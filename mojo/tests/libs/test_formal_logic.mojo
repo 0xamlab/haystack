@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from formal_logic import truth_and, truth_or, truth_not, truth_implies, truth_iff, truth_xor, truth_nand, truth_nor, modus_ponens, modus_tollens, hypothetical_syllogism, disjunctive_syllogism, is_tautology_2var, is_contradiction_2var
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

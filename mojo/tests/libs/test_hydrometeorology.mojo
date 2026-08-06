@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from hydrometeorology import runoff_curve_number, rational_method_peak_flow, time_of_concentration, green_ampt_infiltration, palmer_drought_index, actual_evapotranspiration, snow_water_equivalent, rain_intensity_from_depth, antecedent_moisture_condition, flood_frequency_factor
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

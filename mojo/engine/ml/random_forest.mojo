@@ -27,7 +27,7 @@ comptime MAX_RF_FEATURES: Int = 1000000
 # ── Bootstrap / Subsample ────────────────────────────────────────────────────
 
 
-fn bootstrap_indices(n: Int, sample_size: Int) -> List[Int]:
+def bootstrap_indices(n: Int, sample_size: Int) -> List[Int]:
     """Random sample of sample_size indices in [0, n) with replacement."""
     # sample_size drives the allocation; clamp the wire-supplied count.
     var count = sample_size
@@ -44,7 +44,7 @@ fn bootstrap_indices(n: Int, sample_size: Int) -> List[Int]:
     return result^
 
 
-fn feature_subsample(n_features: Int, max_features: Int) -> List[Int]:
+def feature_subsample(n_features: Int, max_features: Int) -> List[Int]:
     """Random subset of feature indices (no duplicates).
     Uses Fisher-Yates partial shuffle."""
     # n_features drives the allocation; clamp the wire-supplied count.
@@ -77,7 +77,7 @@ fn feature_subsample(n_features: Int, max_features: Int) -> List[Int]:
 # ── Simple Stump Predictor ───────────────────────────────────────────────────
 
 
-fn _mean(vals: List[Float64]) -> Float64:
+def _mean(vals: List[Float64]) -> Float64:
     """Mean of a list."""
     if len(vals) == 0:
         return 0.0
@@ -87,7 +87,7 @@ fn _mean(vals: List[Float64]) -> Float64:
     return s / Float64(len(vals))
 
 
-fn _variance(vals: List[Float64]) -> Float64:
+def _variance(vals: List[Float64]) -> Float64:
     """Variance of a list."""
     if len(vals) <= 1:
         return 0.0
@@ -99,7 +99,7 @@ fn _variance(vals: List[Float64]) -> Float64:
     return s / Float64(len(vals))
 
 
-fn _sse(vals: List[Float64]) -> Float64:
+def _sse(vals: List[Float64]) -> Float64:
     """Sum of squared errors from mean."""
     if len(vals) == 0:
         return 0.0
@@ -111,7 +111,7 @@ fn _sse(vals: List[Float64]) -> Float64:
     return s
 
 
-fn tree_predict_simple(
+def tree_predict_simple(
     X_train: List[List[Float64]],
     y_train: List[Float64],
     x_test: List[Float64],
@@ -190,7 +190,7 @@ fn tree_predict_simple(
 # ── Random Forest Predict ────────────────────────────────────────────────────
 
 
-fn random_forest_predict(
+def random_forest_predict(
     X_train: List[List[Float64]],
     y_train: List[Float64],
     x_test: List[Float64],
@@ -222,7 +222,7 @@ fn random_forest_predict(
     return total / Float64(trees)
 
 
-fn random_forest_predict_batch(
+def random_forest_predict_batch(
     X_train: List[List[Float64]],
     y_train: List[Float64],
     X_test: List[List[Float64]],
@@ -241,7 +241,7 @@ fn random_forest_predict_batch(
 # ── Out-of-Bag Score ─────────────────────────────────────────────────────────
 
 
-fn oob_score(
+def oob_score(
     X: List[List[Float64]],
     y: List[Float64],
     n_trees: Int,
@@ -306,7 +306,7 @@ fn oob_score(
 # ── Feature Importance ───────────────────────────────────────────────────────
 
 
-fn feature_importance_rf(
+def feature_importance_rf(
     X: List[List[Float64]],
     y: List[Float64],
     n_trees: Int,
@@ -358,7 +358,7 @@ fn feature_importance_rf(
 # ── Bagging Variance ─────────────────────────────────────────────────────────
 
 
-fn bagging_variance(predictions: List[List[Float64]]) -> List[Float64]:
+def bagging_variance(predictions: List[List[Float64]]) -> List[Float64]:
     """Variance across tree predictions for each sample.
     predictions[t][i] = prediction of tree t for sample i."""
     if len(predictions) == 0:

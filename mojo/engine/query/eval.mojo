@@ -84,11 +84,11 @@ comptime TRUE_VALUE: Float64 = 1.0
 comptime FALSE_VALUE: Float64 = 0.0
 
 
-fn _truthy(value: Float64) -> Bool:
+def _truthy(value: Float64) -> Bool:
     return value != 0.0
 
 
-fn evaluate(
+def evaluate(
     nodes: List[ExprNode],
     root: Int,
     batch: RecordBatch,
@@ -310,7 +310,7 @@ fn evaluate(
     return float64_with_nulls(final_values^, final_mask)
 
 
-fn evaluate_predicate(
+def evaluate_predicate(
     nodes: List[ExprNode],
     root: Int,
     batch: RecordBatch,
@@ -329,7 +329,7 @@ fn evaluate_predicate(
     return mask^
 
 
-fn unknown_rows(
+def unknown_rows(
     nodes: List[ExprNode],
     root: Int,
     batch: RecordBatch,

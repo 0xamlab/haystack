@@ -49,7 +49,7 @@ from hostio.socket_native import (
 )
 
 
-fn _bytes_equal(a: List[UInt8], b: List[UInt8]) -> Bool:
+def _bytes_equal(a: List[UInt8], b: List[UInt8]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):

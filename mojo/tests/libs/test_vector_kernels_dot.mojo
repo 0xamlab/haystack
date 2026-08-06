@@ -7,10 +7,10 @@ the degenerate short/empty shapes from the audit battery (defined 0.0, no abort)
 from std.math import isnan, isinf
 from vector_kernels.dot import dot64_f32, l2_norm_inv_f32, cosine64_f32, build_vec64_f32
 
-fn is_finite32(x: Float32) -> Bool:
+def is_finite32(x: Float32) -> Bool:
     return not isnan(Float64(x)) and not isinf(Float64(x))
 
-fn approx(a: Float32, b: Float32, tol: Float32) -> Bool:
+def approx(a: Float32, b: Float32, tol: Float32) -> Bool:
     var d = a - b
     if d < Float32(0.0):
         d = -d

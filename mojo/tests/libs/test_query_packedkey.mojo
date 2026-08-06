@@ -74,17 +74,17 @@ comptime GROUP_CODED_KEY_NOT_A_CODE: Int = 332
 comptime GROUP_CODED_BAD_REQUEST: Int = 333
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     """Fixed-seed LCG so a failure reproduces exactly."""
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _bits(x: Float64) -> UInt64:
+def _bits(x: Float64) -> UInt64:
     return bitcast[DType.uint64](x)
 
 
-fn _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> String:
+def _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> String:
     """Empty when a and b are the same result DOWN TO THE BITS, else the first
     difference. Bit comparison, not `==`: `==` calls +0.0 and -0.0 equal and
     calls every NaN unequal, and both are answers this module can produce."""
@@ -120,11 +120,11 @@ fn _identical(a: ManyGroupedResult, b: ManyGroupedResult) -> String:
     return String("")
 
 
-fn _col(vals: List[Float64]) -> Float64Array:
+def _col(vals: List[Float64]) -> Float64Array:
     return float64_from_list(vals.copy())
 
 
-fn _b3(a: List[Float64], b: List[Float64], v: List[Float64], n: Int) -> RecordBatch:
+def _b3(a: List[Float64], b: List[Float64], v: List[Float64], n: Int) -> RecordBatch:
     var names = List[String]()
     names.append("a")
     names.append("b")
@@ -136,20 +136,20 @@ fn _b3(a: List[Float64], b: List[Float64], v: List[Float64], n: Int) -> RecordBa
     return RecordBatch(schema_of(names^), cols^, n)
 
 
-fn _i1(a: Int) -> List[Int]:
+def _i1(a: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     return out^
 
 
-fn _i2(a: Int, b: Int) -> List[Int]:
+def _i2(a: Int, b: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
     return out^
 
 
-fn _i3(a: Int, b: Int, c: Int) -> List[Int]:
+def _i3(a: Int, b: Int, c: Int) -> List[Int]:
     var out = List[Int]()
     out.append(a)
     out.append(b)
@@ -157,7 +157,7 @@ fn _i3(a: Int, b: Int, c: Int) -> List[Int]:
     return out^
 
 
-fn _opcodes() -> List[Int]:
+def _opcodes() -> List[Int]:
     var out = List[Int]()
     out.append(AGG_SUM)
     out.append(AGG_AVG)
@@ -167,7 +167,7 @@ fn _opcodes() -> List[Int]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var nan_v = Float64("nan")

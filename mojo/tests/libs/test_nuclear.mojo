@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from nuclear import radioactive_decay, half_life_from_lambda, lambda_from_half_life, activity, decay_constant_from_activity, binding_energy_per_nucleon, mass_defect, q_value, neutron_multiplication, dose_rate_inverse_square, shielding_attenuation, critical_mass_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

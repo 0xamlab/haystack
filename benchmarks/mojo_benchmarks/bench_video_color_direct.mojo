@@ -28,7 +28,7 @@ comptime WARM_MIN_SATURATION: Float64 = 0.25
 comptime ITERATIONS: Int = 24
 
 
-fn _scene(frame_index: Int) -> Int:
+def _scene(frame_index: Int) -> Int:
     if frame_index < 3:
         return 0
     if frame_index < 8:
@@ -65,7 +65,7 @@ def build_clip() -> List[Float64]:
     return clip^
 
 
-fn _sum_list_float(values: List[Float64]) -> Float64:
+def _sum_list_float(values: List[Float64]) -> Float64:
     var total: Float64 = 0.0
     for index in range(len(values)):
         total += values[index]

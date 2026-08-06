@@ -24,7 +24,7 @@ struct SplitResult(Movable):
     var train_labels: List[Float64]
     var test_labels: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.train_data = List[Float64]()
         self.test_data = List[Float64]()
         self.train_labels = List[Float64]()
@@ -34,7 +34,7 @@ struct SplitResult(Movable):
 # ── Min-Max normalisation ────────────────────────────────────────────────────
 
 
-fn normalize_minmax(data: List[Float64]) -> List[Float64]:
+def normalize_minmax(data: List[Float64]) -> List[Float64]:
     """Scale values to [0, 1] range.
 
     formula: (x - min) / (max - min)
@@ -65,7 +65,7 @@ fn normalize_minmax(data: List[Float64]) -> List[Float64]:
 # ── Z-score normalisation ────────────────────────────────────────────────────
 
 
-fn normalize_zscore(data: List[Float64]) -> List[Float64]:
+def normalize_zscore(data: List[Float64]) -> List[Float64]:
     """Standard score: (x - mean) / std.
 
     If std is zero, returns list of zeros.
@@ -89,7 +89,7 @@ fn normalize_zscore(data: List[Float64]) -> List[Float64]:
 # ── Robust normalisation ─────────────────────────────────────────────────────
 
 
-fn normalize_robust(data: List[Float64]) -> List[Float64]:
+def normalize_robust(data: List[Float64]) -> List[Float64]:
     """Median-IQR scaling: (x - median) / IQR.
 
     Robust to outliers. If IQR is zero, returns list of zeros.
@@ -113,7 +113,7 @@ fn normalize_robust(data: List[Float64]) -> List[Float64]:
 # ── One-hot encoding ─────────────────────────────────────────────────────────
 
 
-fn one_hot_encode(categories: List[Int], n_classes: Int) -> List[List[Float64]]:
+def one_hot_encode(categories: List[Int], n_classes: Int) -> List[List[Float64]]:
     """One-hot encode integer category labels.
 
     Each category value maps to a row of length n_classes with a 1.0
@@ -134,7 +134,7 @@ fn one_hot_encode(categories: List[Int], n_classes: Int) -> List[List[Float64]]:
 # ── Polynomial features ──────────────────────────────────────────────────────
 
 
-fn polynomial_features(x: List[Float64], degree: Int) -> List[List[Float64]]:
+def polynomial_features(x: List[Float64], degree: Int) -> List[List[Float64]]:
     """Generate polynomial features [x, x², …, x^degree] for each input value.
 
     Returns a list of rows, one per data point.
@@ -154,7 +154,7 @@ fn polynomial_features(x: List[Float64], degree: Int) -> List[List[Float64]]:
 # ── Train/test split ─────────────────────────────────────────────────────────
 
 
-fn train_test_split(
+def train_test_split(
     data: List[Float64],
     labels: List[Float64],
     test_ratio: Float64,

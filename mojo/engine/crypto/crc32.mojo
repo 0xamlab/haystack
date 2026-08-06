@@ -5,9 +5,9 @@ Replaces Python's zlib.crc32. Table-driven implementation using the
 CRC-32 polynomial 0xEDB88320 (reflected form of 0x04C11DB7).
 
 Public API:
-  fn crc32(data: String) -> UInt32
-  fn crc32_hex(data: String) -> String
-  fn crc32_combine(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32
+  def crc32(data: String) -> UInt32
+  def crc32_hex(data: String) -> String
+  def crc32_combine(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32
 """
 
 
@@ -15,7 +15,7 @@ Public API:
 # Pre-computed 256-entry table for the polynomial 0xEDB88320.
 
 
-fn _make_crc_table() -> List[UInt32]:
+def _make_crc_table() -> List[UInt32]:
     """Build the 256-entry CRC-32 lookup table."""
     var table = List[UInt32]()
     for i in range(256):
@@ -32,7 +32,7 @@ fn _make_crc_table() -> List[UInt32]:
 # ── crc32 ────────────────────────────────────────────────────────────────────
 
 
-fn crc32(data: String) -> UInt32:
+def crc32(data: String) -> UInt32:
     """Compute the CRC-32 checksum of a string.
 
     Args:
@@ -56,14 +56,14 @@ fn crc32(data: String) -> UInt32:
 # ── crc32_hex ────────────────────────────────────────────────────────────────
 
 
-fn _nibble_to_hex(n: Int) -> String:
+def _nibble_to_hex(n: Int) -> String:
     """Convert a nibble (0-15) to a hex character."""
     if n < 10:
         return chr(ord("0") + n)
     return chr(ord("a") + n - 10)
 
 
-fn crc32_hex(data: String) -> String:
+def crc32_hex(data: String) -> String:
     """Compute the CRC-32 checksum and return it as an 8-character hex string.
 
     Args:
@@ -86,7 +86,7 @@ fn crc32_hex(data: String) -> String:
 # ── crc32_combine ────────────────────────────────────────────────────────────
 
 
-fn crc32_combine(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32:
+def crc32_combine(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32:
     """Combine two CRC-32 checksums.
 
     Given crc1 = crc32(A) and crc2 = crc32(B) with len2 = len(B),
@@ -147,7 +147,7 @@ fn crc32_combine(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32:
     return result ^ crc2
 
 
-fn _gf2_matrix_times(mat: List[UInt32], vec: UInt32) -> UInt32:
+def _gf2_matrix_times(mat: List[UInt32], vec: UInt32) -> UInt32:
     """Multiply a GF(2) matrix by a vector (CRC value)."""
     var result = UInt32(0)
     var v = vec
@@ -160,7 +160,7 @@ fn _gf2_matrix_times(mat: List[UInt32], vec: UInt32) -> UInt32:
     return result
 
 
-fn _gf2_matrix_square(mut square: List[UInt32], mat: List[UInt32]):
+def _gf2_matrix_square(mut square: List[UInt32], mat: List[UInt32]):
     """Square a GF(2) matrix into the output."""
     for n in range(32):
         square[n] = _gf2_matrix_times(mat, mat[n])

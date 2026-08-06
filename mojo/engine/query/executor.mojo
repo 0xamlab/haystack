@@ -52,7 +52,7 @@ comptime NO_ROW: Int = -1
 # ── selection ─────────────────────────────────────────────────────────────────
 
 
-fn filter_indices(
+def filter_indices(
     batch: RecordBatch,
     nodes: List[ExprNode],
     root: Int,
@@ -66,7 +66,7 @@ fn filter_indices(
     return indices_where(evaluate_predicate(nodes, root, batch, strict))
 
 
-fn filter_rows(
+def filter_rows(
     batch: RecordBatch,
     nodes: List[ExprNode],
     root: Int,
@@ -78,7 +78,7 @@ fn filter_rows(
 # ── projection ────────────────────────────────────────────────────────────────
 
 
-fn project(
+def project(
     batch: RecordBatch,
     expressions: List[ExprNode],
     roots: List[Int],
@@ -107,7 +107,7 @@ fn project(
     return RecordBatch(schema_of(out_names^), out_columns^, n_rows)
 
 
-fn select_columns(batch: RecordBatch, columns: List[Int]) -> RecordBatch:
+def select_columns(batch: RecordBatch, columns: List[Int]) -> RecordBatch:
     """Keep the named columns, in the given order. The cheap form of projection.
 
     No expression evaluation and no row copy: the columns are the same buffers. An
@@ -134,7 +134,7 @@ fn select_columns(batch: RecordBatch, columns: List[Int]) -> RecordBatch:
     return RecordBatch(schema_of(out_names^), out_columns^, n_rows)
 
 
-fn required_columns(nodes: List[ExprNode]) -> List[Int]:
+def required_columns(nodes: List[ExprNode]) -> List[Int]:
     """Columns a plan actually reads — the pushdown set. Sorted, deduplicated."""
     return referenced_columns(nodes)
 
@@ -142,7 +142,7 @@ fn required_columns(nodes: List[ExprNode]) -> List[Int]:
 # ── ordering ──────────────────────────────────────────────────────────────────
 
 
-fn _key_precedes(
+def _key_precedes(
     left_value: Float64,
     left_present: Bool,
     right_value: Float64,
@@ -177,7 +177,7 @@ fn _key_precedes(
     return left_value < right_value
 
 
-fn _sort_pass(
+def _sort_pass(
     mut order: List[Int],
     key: Float64Array,
     descending: Bool,
@@ -212,7 +212,7 @@ fn _sort_pass(
         order[j + 1] = row
 
 
-fn sort_indices(
+def sort_indices(
     batch: RecordBatch,
     key_column: Int,
     descending: Bool,
@@ -231,7 +231,7 @@ fn sort_indices(
     return order^
 
 
-fn sort_rows(
+def sort_rows(
     batch: RecordBatch,
     key_column: Int,
     descending: Bool,
@@ -240,7 +240,7 @@ fn sort_rows(
     return take(batch, sort_indices(batch, key_column, descending, nulls_last))
 
 
-fn sort_indices_multi(
+def sort_indices_multi(
     batch: RecordBatch,
     key_columns: List[Int],
     descending: List[Bool],
@@ -265,7 +265,7 @@ fn sort_indices_multi(
     return order^
 
 
-fn sort_rows_multi(
+def sort_rows_multi(
     batch: RecordBatch,
     key_columns: List[Int],
     descending: List[Bool],
@@ -277,7 +277,7 @@ fn sort_rows_multi(
 # ── top-k ─────────────────────────────────────────────────────────────────────
 
 
-fn top_k_indices(
+def top_k_indices(
     batch: RecordBatch,
     key_column: Int,
     k: Int,
@@ -333,7 +333,7 @@ fn top_k_indices(
     return out^
 
 
-fn top_k_rows(
+def top_k_rows(
     batch: RecordBatch,
     key_column: Int,
     k: Int,
@@ -346,7 +346,7 @@ fn top_k_rows(
 # ── distinct ──────────────────────────────────────────────────────────────────
 
 
-fn distinct_indices(batch: RecordBatch, key_columns: List[Int]) -> List[Int]:
+def distinct_indices(batch: RecordBatch, key_columns: List[Int]) -> List[Int]:
     """The first row of each distinct key combination, in first-seen order.
 
     Two rows that are both null in the same key column are the SAME key here. That is
@@ -387,14 +387,14 @@ fn distinct_indices(batch: RecordBatch, key_columns: List[Int]) -> List[Int]:
     return out^
 
 
-fn distinct_rows(batch: RecordBatch, key_columns: List[Int]) -> RecordBatch:
+def distinct_rows(batch: RecordBatch, key_columns: List[Int]) -> RecordBatch:
     return take(batch, distinct_indices(batch, key_columns))
 
 
 # ── limit / offset ────────────────────────────────────────────────────────────
 
 
-fn limit_rows(batch: RecordBatch, offset: Int, count: Int) -> RecordBatch:
+def limit_rows(batch: RecordBatch, offset: Int, count: Int) -> RecordBatch:
     """A row window. Clamps rather than raising; a window past the end is empty.
 
     Delegates to `RecordBatch.slice`, so the columns are shared buffers — a LIMIT is
@@ -406,7 +406,7 @@ fn limit_rows(batch: RecordBatch, offset: Int, count: Int) -> RecordBatch:
 # ── plan validation ───────────────────────────────────────────────────────────
 
 
-fn plan_problem(
+def plan_problem(
     batch_width: Int,
     nodes: List[ExprNode],
     root: Int,
@@ -433,7 +433,7 @@ fn plan_problem(
     return ""
 
 
-fn describe_batch_shape(batch: RecordBatch) -> String:
+def describe_batch_shape(batch: RecordBatch) -> String:
     """Row and column counts plus per-column null counts, for lineage."""
     var out = String(batch.n_rows) + " rows x " + String(batch.width()) + " cols"
     var total_nulls = 0

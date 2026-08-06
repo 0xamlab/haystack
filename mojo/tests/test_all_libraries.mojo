@@ -250,7 +250,7 @@ from welding import heat_input, heat_input_kj, preheat_carbon_equivalent, coolin
 from wind_energy import wind_power_available, betz_limit, power_coefficient, tip_speed_ratio, swept_area, annual_energy_production, capacity_factor, wind_shear_power_law, weibull_mean_wind_speed, energy_density as wind_energy_energy_density, rotor_thrust, wake_velocity
 
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 

@@ -56,17 +56,17 @@ from data_quality.contract import (
 )
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var zero: Float64 = 0.0
     return zero / zero
 
 
-fn _inf() -> Float64:
+def _inf() -> Float64:
     var zero: Float64 = 0.0
     return 1.0 / zero
 
 
-fn _table6() -> List[Float64]:
+def _table6() -> List[Float64]:
     """A 2x3 row-major table: [[10, 11, 12], [20, 21, 22]]."""
     var t = List[Float64]()
     t.append(10.0)
@@ -78,7 +78,7 @@ fn _table6() -> List[Float64]:
     return t^
 
 
-fn check():
+def check():
     var passed = 0
     var failed = 0
 
@@ -493,5 +493,5 @@ fn check():
     print("  [data_quality.contract] Passed:", passed, "Failed:", failed)
 
 
-fn main():
+def main():
     check()

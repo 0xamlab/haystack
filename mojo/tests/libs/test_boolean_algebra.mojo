@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from boolean_algebra import bool_and, bool_or, bool_not, bool_xor, bool_implies, bool_iff, truth_table_2, is_tautology_2var, count_satisfying_2var, majority_vote, parity
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

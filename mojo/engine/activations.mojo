@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt, tanh
 
 
-fn gelu(x: Float64) -> Float64:
+def gelu(x: Float64) -> Float64:
     """Gaussian Error Linear Unit (exact): x × Φ(x).
 
     GELU(x) = x × 0.5 × (1 + erf(x/√2))
@@ -31,7 +31,7 @@ fn gelu(x: Float64) -> Float64:
     return x * 0.5 * (1.0 + tanh(0.7978845608 * (x + 0.044715 * x * x * x)))
 
 
-fn gelu_fast(x: Float64) -> Float64:
+def gelu_fast(x: Float64) -> Float64:
     """Fast tanh-approximated GELU.
 
     GELU_fast(x) = 0.5x × (1 + tanh(√(2/π) × (x + 0.044715x³)))
@@ -46,7 +46,7 @@ fn gelu_fast(x: Float64) -> Float64:
     return 0.5 * x * (1.0 + tanh(inner))
 
 
-fn swish(x: Float64) -> Float64:
+def swish(x: Float64) -> Float64:
     """Swish / SiLU activation: x × sigmoid(x).
 
     Args:
@@ -58,7 +58,7 @@ fn swish(x: Float64) -> Float64:
     return x / (1.0 + exp(-x))
 
 
-fn swiglu(x: Float64, gate: Float64) -> Float64:
+def swiglu(x: Float64, gate: Float64) -> Float64:
     """SwiGLU gated activation (Shazeer 2020).
 
     SwiGLU(x, gate) = Swish(gate) × x
@@ -73,7 +73,7 @@ fn swiglu(x: Float64, gate: Float64) -> Float64:
     return swish(gate) * x
 
 
-fn mish(x: Float64) -> Float64:
+def mish(x: Float64) -> Float64:
     """Mish activation: x × tanh(softplus(x)).
 
     softplus(x) = log(1 + exp(x))
@@ -88,7 +88,7 @@ fn mish(x: Float64) -> Float64:
     return x * tanh(sp)
 
 
-fn elu(x: Float64, alpha: Float64) -> Float64:
+def elu(x: Float64, alpha: Float64) -> Float64:
     """Exponential Linear Unit: x if x>0, alpha×(exp(x)-1) otherwise.
 
     Args:
@@ -103,7 +103,7 @@ fn elu(x: Float64, alpha: Float64) -> Float64:
     return alpha * (exp(x) - 1.0)
 
 
-fn selu(x: Float64) -> Float64:
+def selu(x: Float64) -> Float64:
     """Scaled ELU (self-normalising networks, Klambauer 2017).
 
     SELU(x) = λ × (x if x>0 else α(exp(x)-1))
@@ -122,7 +122,7 @@ fn selu(x: Float64) -> Float64:
     return scale * alpha * (exp(x) - 1.0)
 
 
-fn hard_swish(x: Float64) -> Float64:
+def hard_swish(x: Float64) -> Float64:
     """Hard Swish (MobileNetV3): x × ReLU6(x+3) / 6.
 
     Args:
@@ -139,7 +139,7 @@ fn hard_swish(x: Float64) -> Float64:
     return x * relu6_xp3 / 6.0
 
 
-fn gelu_new(x: Float64) -> Float64:
+def gelu_new(x: Float64) -> Float64:
     """GPT-2 / BERT exact GELU approximation.
 
     Same as gelu_fast but named separately for the GPT-2 variant.
@@ -154,7 +154,7 @@ fn gelu_new(x: Float64) -> Float64:
     return x * cdf
 
 
-fn relu6(x: Float64) -> Float64:
+def relu6(x: Float64) -> Float64:
     """ReLU6: min(max(0, x), 6).
 
     Args:

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from stratigraphy import sedimentation_rate, age_from_depth, radiometric_age, radiocarbon_age, stratigraphic_column_depth, isotope_fractionation, unconformity_gap, thermal_maturity_vitrinite, compaction_correction, sea_level_proxy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

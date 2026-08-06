@@ -86,7 +86,7 @@ comptime PATH_COUNTS_1: Int = 40000
 comptime PATH_COUNTS_2: Int = 160000
 
 
-fn _f(x: Float64, dp: Int) -> String:
+def _f(x: Float64, dp: Int) -> String:
     if x != x:
         return String("nan")
     if x > 1.0e300:
@@ -109,7 +109,7 @@ fn _f(x: Float64, dp: Int) -> String:
     return ("-" + s) if neg else s
 
 
-fn _europ(n_paths: Int, closed_form: Float64, workers: Int) raises -> Int:
+def _europ(n_paths: Int, closed_form: Float64, workers: Int) raises -> Int:
     """Returns 1 on a gate failure (refused status or a negative-variance step), else 0."""
     var p = HestonParams(SPOT, V0, KAPPA, THETA, XI, RHO, DIVY)
     var t0 = perf_counter_ns()
@@ -134,7 +134,7 @@ fn _europ(n_paths: Int, closed_form: Float64, workers: Int) raises -> Int:
     return 0
 
 
-fn _amer(n_paths: Int, binomial_ref: Float64, workers: Int) raises -> Int:
+def _amer(n_paths: Int, binomial_ref: Float64, workers: Int) raises -> Int:
     """Returns 1 on a gate failure (refused status or a negative variance — a real correctness
     invariant). A NEGATIVE early-exercise premium here is NOT gated: this contract is the
     no-dividend degenerate corner where the true American value equals the European value

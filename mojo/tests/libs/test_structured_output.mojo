@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from structured_output import json_next_token_valid, schema_field_confidence, sql_clause_transition, xml_nesting_depth_valid, output_repair_edit_distance, regex_constraint_match, type_coercion_score, field_extraction_recall, output_diversity_score, format_compliance_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

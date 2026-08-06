@@ -22,7 +22,7 @@ from std.math import sqrt, abs as fabs
 # ── autocorrelation ──────────────────────────────────────────────────────────
 
 
-fn autocorrelation(data: List[Float64], lag: Int) -> Float64:
+def autocorrelation(data: List[Float64], lag: Int) -> Float64:
     """Sample autocorrelation at the given lag.
 
     r(k) = Σ(xₜ - x̄)(xₜ₊ₖ - x̄) / Σ(xₜ - x̄)²
@@ -64,7 +64,7 @@ fn autocorrelation(data: List[Float64], lag: Int) -> Float64:
 # ── autocorrelation_function ─────────────────────────────────────────────────
 
 
-fn autocorrelation_function(data: List[Float64], max_lag: Int) -> List[Float64]:
+def autocorrelation_function(data: List[Float64], max_lag: Int) -> List[Float64]:
     """Autocorrelation function for lags 0..max_lag.
 
     Args:
@@ -83,7 +83,7 @@ fn autocorrelation_function(data: List[Float64], max_lag: Int) -> List[Float64]:
 # ── partial_autocorrelation ──────────────────────────────────────────────────
 
 
-fn partial_autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
+def partial_autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
     """Partial autocorrelation function via Durbin-Levinson recursion.
 
     Args:
@@ -159,7 +159,7 @@ fn partial_autocorrelation(data: List[Float64], max_lag: Int) -> List[Float64]:
 # ── rolling_mean ─────────────────────────────────────────────────────────────
 
 
-fn rolling_mean(data: List[Float64], window: Int) -> List[Float64]:
+def rolling_mean(data: List[Float64], window: Int) -> List[Float64]:
     """Simple moving average with given window size.
 
     Args:
@@ -191,7 +191,7 @@ fn rolling_mean(data: List[Float64], window: Int) -> List[Float64]:
 # ── rolling_std ──────────────────────────────────────────────────────────────
 
 
-fn rolling_std(data: List[Float64], window: Int) -> List[Float64]:
+def rolling_std(data: List[Float64], window: Int) -> List[Float64]:
     """Rolling standard deviation with given window size.
 
     Uses population standard deviation (ddof=0) within each window.
@@ -226,7 +226,7 @@ fn rolling_std(data: List[Float64], window: Int) -> List[Float64]:
 # ── exponential_smoothing ────────────────────────────────────────────────────
 
 
-fn exponential_smoothing(data: List[Float64], alpha: Float64) -> List[Float64]:
+def exponential_smoothing(data: List[Float64], alpha: Float64) -> List[Float64]:
     """Single exponential smoothing (SES).
 
     s_0 = x_0
@@ -255,7 +255,7 @@ fn exponential_smoothing(data: List[Float64], alpha: Float64) -> List[Float64]:
 # ── difference ───────────────────────────────────────────────────────────────
 
 
-fn difference(data: List[Float64], order: Int = 1) -> List[Float64]:
+def difference(data: List[Float64], order: Int = 1) -> List[Float64]:
     """First or higher-order differencing.
 
     For order=1: diff[i] = data[i+1] - data[i]
@@ -284,7 +284,7 @@ fn difference(data: List[Float64], order: Int = 1) -> List[Float64]:
 # ── adf_test_statistic ───────────────────────────────────────────────────────
 
 
-fn adf_test_statistic(data: List[Float64]) -> Float64:
+def adf_test_statistic(data: List[Float64]) -> Float64:
     """Simplified Augmented Dickey-Fuller test statistic.
 
     Performs OLS regression of diff(y) on y_{t-1} (no additional lags).
@@ -346,7 +346,7 @@ fn adf_test_statistic(data: List[Float64]) -> Float64:
 # ── holt_linear ──────────────────────────────────────────────────────────────
 
 
-fn holt_linear(
+def holt_linear(
     data: List[Float64], alpha: Float64, beta: Float64
 ) -> List[Float64]:
     """Holt's linear trend method (double exponential smoothing).

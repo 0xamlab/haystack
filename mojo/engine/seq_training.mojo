@@ -31,7 +31,7 @@ struct WindowedDataset(Copyable, Movable):
     var n_windows: Int
     var window_len: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.x = List[Float64]()
         self.y = List[Float64]()
         self.n_windows = 0
@@ -44,7 +44,7 @@ struct TrainResult(Copyable, Movable):
     var weights: List[Float64]
     var loss_history: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.weights = List[Float64]()
         self.loss_history = List[Float64]()
 
@@ -52,7 +52,7 @@ struct TrainResult(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -60,7 +60,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -76,7 +76,7 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     """Uniform Float64 in [0, 1) from the caller's RNG state."""
     state = _xorshift64(state)
     return Float64(state >> 11) / 9007199254740992.0
@@ -85,7 +85,7 @@ fn _rand_unit(mut state: UInt64) -> Float64:
 # ── math helpers ─────────────────────────────────────────────────────────────
 
 
-fn _sigmoid(x: Float64) -> Float64:
+def _sigmoid(x: Float64) -> Float64:
     if x >= 0.0:
         return 1.0 / (1.0 + exp(-x))
     var e = exp(x)
@@ -95,7 +95,7 @@ fn _sigmoid(x: Float64) -> Float64:
 # ── make_windows ─────────────────────────────────────────────────────────────
 
 
-fn make_windows(
+def make_windows(
     series: List[Float64], lookback: Int, forward: Int
 ) -> WindowedDataset:
     """Slide a lookback window over `series` with a forward-step target.
@@ -130,21 +130,21 @@ fn make_windows(
 #   [gate i block][gate f block][gate g block][gate o block][w_y (H)][b_y (1)]
 
 
-fn lstm_weight_count(input_dim: Int, hidden: Int) -> Int:
+def lstm_weight_count(input_dim: Int, hidden: Int) -> Int:
     """Length of the flat weight vector for a 1-layer LSTM + linear head."""
     if input_dim <= 0 or hidden <= 0:
         return 0
     return 4 * (hidden * input_dim + hidden * hidden + hidden) + hidden + 1
 
 
-fn _gate_block(input_dim: Int, hidden: Int) -> Int:
+def _gate_block(input_dim: Int, hidden: Int) -> Int:
     return hidden * input_dim + hidden * hidden + hidden
 
 
 # ── forward + backward over one window ───────────────────────────────────────
 
 
-fn _lstm_forward(
+def _lstm_forward(
     w: List[Float64],
     x_flat: List[Float64],
     x_off: Int,
@@ -199,7 +199,7 @@ fn _lstm_forward(
     return y_hat
 
 
-fn _lstm_backward(
+def _lstm_backward(
     w: List[Float64],
     x_flat: List[Float64],
     x_off: Int,
@@ -276,7 +276,7 @@ fn _lstm_backward(
 # ── bptt_train_lstm ──────────────────────────────────────────────────────────
 
 
-fn bptt_train_lstm(
+def bptt_train_lstm(
     x_flat: List[Float64],
     y: List[Float64],
     input_dim: Int,
@@ -404,7 +404,7 @@ fn bptt_train_lstm(
 # ── lstm_predict ─────────────────────────────────────────────────────────────
 
 
-fn lstm_predict(
+def lstm_predict(
     weights: List[Float64], window: List[Float64], input_dim: Int, hidden: Int
 ) -> Float64:
     """Run flat LSTM weights over one window; return the head's scalar output.

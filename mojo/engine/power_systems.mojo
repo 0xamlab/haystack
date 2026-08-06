@@ -32,7 +32,7 @@ comptime SQRT3: Float64 = 1.7320508075688772
 # ── active_power ─────────────────────────────────────────────────────────────
 
 
-fn active_power(
+def active_power(
     voltage: Float64, current: Float64, power_factor: Float64
 ) -> Float64:
     """Active power: P = V * I * PF."""
@@ -42,7 +42,7 @@ fn active_power(
 # ── reactive_power ───────────────────────────────────────────────────────────
 
 
-fn reactive_power(
+def reactive_power(
     voltage: Float64, current: Float64, power_factor: Float64
 ) -> Float64:
     """Reactive power: Q = V*I*sin(φ), sin = sqrt(1 - PF²)."""
@@ -54,7 +54,7 @@ fn reactive_power(
 # ── apparent_power ───────────────────────────────────────────────────────────
 
 
-fn apparent_power(voltage: Float64, current: Float64) -> Float64:
+def apparent_power(voltage: Float64, current: Float64) -> Float64:
     """Apparent power: S = V * I."""
     return voltage * current
 
@@ -62,7 +62,7 @@ fn apparent_power(voltage: Float64, current: Float64) -> Float64:
 # ── power_factor_from_pq ────────────────────────────────────────────────────
 
 
-fn power_factor_from_pq(p: Float64, s: Float64) -> Float64:
+def power_factor_from_pq(p: Float64, s: Float64) -> Float64:
     """Power factor: PF = P / S."""
     if s == 0.0:
         return 0.0
@@ -72,7 +72,7 @@ fn power_factor_from_pq(p: Float64, s: Float64) -> Float64:
 # ── three_phase_power ───────────────────────────────────────────────────────
 
 
-fn three_phase_power(
+def three_phase_power(
     v_line: Float64, i_line: Float64, pf: Float64
 ) -> Float64:
     """Three-phase power: P = √3 * V * I * PF."""
@@ -82,7 +82,7 @@ fn three_phase_power(
 # ── transformer_turns_ratio ─────────────────────────────────────────────────
 
 
-fn transformer_turns_ratio(
+def transformer_turns_ratio(
     v_primary: Float64, v_secondary: Float64
 ) -> Float64:
     """Turns ratio: a = Vp / Vs."""
@@ -94,7 +94,7 @@ fn transformer_turns_ratio(
 # ── transformer_secondary_voltage ────────────────────────────────────────────
 
 
-fn transformer_secondary_voltage(
+def transformer_secondary_voltage(
     v_primary: Float64, turns_ratio: Float64
 ) -> Float64:
     """Secondary voltage: Vs = Vp / a."""
@@ -106,7 +106,7 @@ fn transformer_secondary_voltage(
 # ── line_loss ────────────────────────────────────────────────────────────────
 
 
-fn line_loss(current: Float64, resistance: Float64) -> Float64:
+def line_loss(current: Float64, resistance: Float64) -> Float64:
     """Line power loss: P_loss = I² * R."""
     return current * current * resistance
 
@@ -114,7 +114,7 @@ fn line_loss(current: Float64, resistance: Float64) -> Float64:
 # ── voltage_drop ─────────────────────────────────────────────────────────────
 
 
-fn voltage_drop(
+def voltage_drop(
     current: Float64, resistance: Float64, length: Float64
 ) -> Float64:
     """Voltage drop (round trip): V_drop = 2 * I * R * L."""
@@ -124,7 +124,7 @@ fn voltage_drop(
 # ── power_efficiency ────────────────────────────────────────────────────────
 
 
-fn power_efficiency(output_power: Float64, input_power: Float64) -> Float64:
+def power_efficiency(output_power: Float64, input_power: Float64) -> Float64:
     """Efficiency: η = Pout / Pin."""
     if input_power == 0.0:
         return 0.0
@@ -134,7 +134,7 @@ fn power_efficiency(output_power: Float64, input_power: Float64) -> Float64:
 # ── capacitor_reactive_power ─────────────────────────────────────────────────
 
 
-fn capacitor_reactive_power(
+def capacitor_reactive_power(
     voltage: Float64, capacitance: Float64, frequency: Float64
 ) -> Float64:
     """Capacitor reactive power: Qc = V² * 2πfC."""
@@ -144,7 +144,7 @@ fn capacitor_reactive_power(
 # ── load_factor ──────────────────────────────────────────────────────────────
 
 
-fn load_factor(avg_demand: Float64, peak_demand: Float64) -> Float64:
+def load_factor(avg_demand: Float64, peak_demand: Float64) -> Float64:
     """Load factor: LF = avg_demand / peak_demand."""
     if peak_demand == 0.0:
         return 0.0

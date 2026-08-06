@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from palynology import pollen_concentration, pollen_accumulation_rate, taxa_diversity_index, relative_pollen_percentage, r_value_correction, arboreal_non_arboreal_ratio, pollen_influx, spore_germination_index, pollen_productivity_estimate, pollen_transport_distance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

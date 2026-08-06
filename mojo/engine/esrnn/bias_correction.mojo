@@ -75,7 +75,7 @@ deprecation_state: active
 from forecasting.contract import fc_finite
 
 
-fn esrnn_bias_mean(residuals: List[Float64]) -> Float64:
+def esrnn_bias_mean(residuals: List[Float64]) -> Float64:
     """The mean of a caller-pooled residual list — the entire "training" step of a
     bias-only corrector. `0.0` (a neutral, correction-is-a-no-op value) on an empty list
     or on ANY non-finite element, rather than propagating an average that a single bad
@@ -98,7 +98,7 @@ fn esrnn_bias_mean(residuals: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn esrnn_apply_bias(backbone: List[Float64], bias: Float64) -> List[Float64]:
+def esrnn_apply_bias(backbone: List[Float64], bias: Float64) -> List[Float64]:
     """`backbone[i] + bias` for every `i` — the shipped, bias-corrected forecast.
     Refuses (empty) when `bias` is non-finite or any `backbone` element is non-finite,
     the same discipline `esrnn_apply_correction` uses for its per-element correction: a

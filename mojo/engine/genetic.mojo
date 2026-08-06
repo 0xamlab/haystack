@@ -29,7 +29,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── Box-Muller normal RNG ────────────────────────────────────────────────────
 
 
-fn _randn() -> Float64:
+def _randn() -> Float64:
     """Standard normal variate via Box-Muller."""
     var u1 = random_float64()
     var u2 = random_float64()
@@ -61,7 +61,7 @@ struct Individual(Copyable, Movable):
     var genes: List[Float64]
     var fitness: Float64
 
-    fn __init__(out self, genes: List[Float64], fitness: Float64):
+    def __init__(out self, genes: List[Float64], fitness: Float64):
         self.genes = genes.copy()
         self.fitness = fitness
 
@@ -80,7 +80,7 @@ struct GAConfig(Copyable, Movable):
     var gene_min: Float64
     var gene_max: Float64
 
-    fn __init__(out self, population_size: Int, n_genes: Int,
+    def __init__(out self, population_size: Int, n_genes: Int,
                 mutation_rate: Float64, crossover_rate: Float64,
                 elitism: Int, gene_min: Float64, gene_max: Float64):
         self.population_size = population_size
@@ -95,7 +95,7 @@ struct GAConfig(Copyable, Movable):
 # ── Evaluation functions ─────────────────────────────────────────────────────
 
 
-fn _evaluate(ind: Individual, eval_fn_id: Int) -> Float64:
+def _evaluate(ind: Individual, eval_fn_id: Int) -> Float64:
     """Built-in evaluation. id==0: fitness = -sum((gene_i - i)^2)."""
     if eval_fn_id == 0:
         var s: Float64 = 0.0
@@ -109,7 +109,7 @@ fn _evaluate(ind: Individual, eval_fn_id: Int) -> Float64:
 # ── initialize_population ───────────────────────────────────────────────────
 
 
-fn initialize_population(config: GAConfig) -> List[Individual]:
+def initialize_population(config: GAConfig) -> List[Individual]:
     """Create random population within [gene_min, gene_max]."""
     var pop = List[Individual]()
     var rng = config.gene_max - config.gene_min
@@ -124,7 +124,7 @@ fn initialize_population(config: GAConfig) -> List[Individual]:
 # ── tournament_select ────────────────────────────────────────────────────────
 
 
-fn tournament_select(population: List[Individual], tournament_size: Int) -> Individual:
+def tournament_select(population: List[Individual], tournament_size: Int) -> Individual:
     """Tournament selection: pick best from random subset."""
     var n = len(population)
     if n == 0:
@@ -149,7 +149,7 @@ fn tournament_select(population: List[Individual], tournament_size: Int) -> Indi
 # ── crossover_uniform ────────────────────────────────────────────────────────
 
 
-fn crossover_uniform(parent1: Individual, parent2: Individual, rate: Float64) -> Individual:
+def crossover_uniform(parent1: Individual, parent2: Individual, rate: Float64) -> Individual:
     """Uniform crossover: each gene randomly from either parent."""
     var genes = List[Float64]()
     for i in range(len(parent1.genes)):
@@ -163,7 +163,7 @@ fn crossover_uniform(parent1: Individual, parent2: Individual, rate: Float64) ->
 # ── crossover_single_point ──────────────────────────────────────────────────
 
 
-fn crossover_single_point(parent1: Individual, parent2: Individual) -> Individual:
+def crossover_single_point(parent1: Individual, parent2: Individual) -> Individual:
     """Single-point crossover at random split."""
     var n = len(parent1.genes)
     var point = Int(random_float64() * Float64(n))
@@ -182,7 +182,7 @@ fn crossover_single_point(parent1: Individual, parent2: Individual) -> Individua
 # ── mutate_gaussian ──────────────────────────────────────────────────────────
 
 
-fn mutate_gaussian(mut ind: Individual, rate: Float64, sigma: Float64,
+def mutate_gaussian(mut ind: Individual, rate: Float64, sigma: Float64,
                    gene_min: Float64, gene_max: Float64):
     """Gaussian mutation: each gene has `rate` probability of adding N(0, sigma)."""
     for i in range(len(ind.genes)):
@@ -198,7 +198,7 @@ fn mutate_gaussian(mut ind: Individual, rate: Float64, sigma: Float64,
 # ── best_individual ──────────────────────────────────────────────────────────
 
 
-fn best_individual(population: List[Individual]) -> Individual:
+def best_individual(population: List[Individual]) -> Individual:
     """Return individual with highest fitness."""
     if len(population) == 0:
         return Individual(List[Float64](), 0.0)
@@ -217,7 +217,7 @@ fn best_individual(population: List[Individual]) -> Individual:
 # ── _sort_by_fitness (descending) ────────────────────────────────────────────
 
 
-fn _sort_by_fitness(mut pop: List[Individual]):
+def _sort_by_fitness(mut pop: List[Individual]):
     """Insertion sort population by fitness descending."""
     var n = len(pop)
     for i in range(1, n):
@@ -239,7 +239,7 @@ fn _sort_by_fitness(mut pop: List[Individual]):
 # ── evolve_one_generation ────────────────────────────────────────────────────
 
 
-fn evolve_one_generation(population: List[Individual], config: GAConfig,
+def evolve_one_generation(population: List[Individual], config: GAConfig,
                          eval_fn_id: Int) -> List[Individual]:
     """One generation: evaluate, sort, elitism, fill via selection+crossover+mutation."""
     # An empty population would crash tournament selection below.
@@ -290,7 +290,7 @@ fn evolve_one_generation(population: List[Individual], config: GAConfig,
 # ── run_ga ───────────────────────────────────────────────────────────────────
 
 
-fn run_ga(config: GAConfig, n_generations: Int, eval_fn_id: Int = 0) -> Individual:
+def run_ga(config: GAConfig, n_generations: Int, eval_fn_id: Int = 0) -> Individual:
     """Run full GA for n_generations, return best individual."""
     var pop = initialize_population(config)
     # Initial evaluation

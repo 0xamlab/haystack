@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs, exp, log, pow
 # ── celsius_to_fahrenheit ──────────────────────────────────────────────────────
 
 
-fn celsius_to_fahrenheit(c: Float64) -> Float64:
+def celsius_to_fahrenheit(c: Float64) -> Float64:
     """Convert degrees Celsius to Fahrenheit."""
     return c * 9.0 / 5.0 + 32.0
 
@@ -31,7 +31,7 @@ fn celsius_to_fahrenheit(c: Float64) -> Float64:
 # ── fahrenheit_to_celsius ──────────────────────────────────────────────────────
 
 
-fn fahrenheit_to_celsius(f: Float64) -> Float64:
+def fahrenheit_to_celsius(f: Float64) -> Float64:
     """Convert degrees Fahrenheit to Celsius."""
     return (f - 32.0) * 5.0 / 9.0
 
@@ -39,7 +39,7 @@ fn fahrenheit_to_celsius(f: Float64) -> Float64:
 # ── heat_index ─────────────────────────────────────────────────────────────────
 
 
-fn heat_index(temp_f: Float64, humidity: Float64) -> Float64:
+def heat_index(temp_f: Float64, humidity: Float64) -> Float64:
     """Heat index in °F using the Rothfusz regression.
 
     Valid for T >= 80 °F and RH >= 40%. For lower values the simple
@@ -77,7 +77,7 @@ fn heat_index(temp_f: Float64, humidity: Float64) -> Float64:
 # ── wind_chill ─────────────────────────────────────────────────────────────────
 
 
-fn wind_chill(temp_f: Float64, wind_mph: Float64) -> Float64:
+def wind_chill(temp_f: Float64, wind_mph: Float64) -> Float64:
     """Wind chill in °F using the NWS formula.
 
     Valid for T <= 50 °F and wind >= 3 mph.
@@ -96,7 +96,7 @@ fn wind_chill(temp_f: Float64, wind_mph: Float64) -> Float64:
 # ── saturation_vapor_pressure ──────────────────────────────────────────────────
 
 
-fn saturation_vapor_pressure(temp_c: Float64) -> Float64:
+def saturation_vapor_pressure(temp_c: Float64) -> Float64:
     """Saturation vapor pressure in hPa using the Tetens formula."""
     return 6.1078 * exp((17.27 * temp_c) / (temp_c + 237.3))
 
@@ -104,7 +104,7 @@ fn saturation_vapor_pressure(temp_c: Float64) -> Float64:
 # ── dew_point ──────────────────────────────────────────────────────────────────
 
 
-fn dew_point(temp_c: Float64, humidity: Float64) -> Float64:
+def dew_point(temp_c: Float64, humidity: Float64) -> Float64:
     """Dew point in °C using the Magnus formula.
 
     humidity is relative humidity as a percentage (0-100).
@@ -118,7 +118,7 @@ fn dew_point(temp_c: Float64, humidity: Float64) -> Float64:
 # ── wet_bulb_approx ───────────────────────────────────────────────────────────
 
 
-fn wet_bulb_approx(temp_c: Float64, humidity: Float64) -> Float64:
+def wet_bulb_approx(temp_c: Float64, humidity: Float64) -> Float64:
     """Approximate wet bulb temperature in °C.
 
     Uses the Stull (2011) empirical formula.
@@ -138,7 +138,7 @@ fn wet_bulb_approx(temp_c: Float64, humidity: Float64) -> Float64:
 # ── relative_humidity ──────────────────────────────────────────────────────────
 
 
-fn relative_humidity(temp_c: Float64, dew_c: Float64) -> Float64:
+def relative_humidity(temp_c: Float64, dew_c: Float64) -> Float64:
     """Relative humidity (%) from temperature and dew point."""
     var svp_t = saturation_vapor_pressure(temp_c)
     var svp_d = saturation_vapor_pressure(dew_c)
@@ -150,7 +150,7 @@ fn relative_humidity(temp_c: Float64, dew_c: Float64) -> Float64:
 # ── apparent_temperature ───────────────────────────────────────────────────────
 
 
-fn apparent_temperature(temp_c: Float64, humidity: Float64, wind_ms: Float64) -> Float64:
+def apparent_temperature(temp_c: Float64, humidity: Float64, wind_ms: Float64) -> Float64:
     """Australian Bureau of Meteorology apparent temperature.
 
     AT = Ta + 0.33 * e - 0.70 * ws - 4.00
@@ -163,7 +163,7 @@ fn apparent_temperature(temp_c: Float64, humidity: Float64, wind_ms: Float64) ->
 # ── cloud_base_height ─────────────────────────────────────────────────────────
 
 
-fn cloud_base_height(temp_c: Float64, dew_c: Float64) -> Float64:
+def cloud_base_height(temp_c: Float64, dew_c: Float64) -> Float64:
     """Estimated cloud base height in meters.
 
     Uses the formula: (temp - dew) / 2.5 * 304.8
@@ -174,7 +174,7 @@ fn cloud_base_height(temp_c: Float64, dew_c: Float64) -> Float64:
 # ── pressure_altitude ─────────────────────────────────────────────────────────
 
 
-fn pressure_altitude(station_pressure_hpa: Float64) -> Float64:
+def pressure_altitude(station_pressure_hpa: Float64) -> Float64:
     """Pressure altitude in meters.
 
     (1 - (P/1013.25)^0.190284) * 44307.694

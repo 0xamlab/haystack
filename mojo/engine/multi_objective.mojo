@@ -17,7 +17,7 @@ from std.math import sqrt, abs as fabs
 # ── Dominance Check ───────────────────────────────────────────────────────────
 
 
-fn is_dominated(
+def is_dominated(
     a: List[Float64], b: List[Float64], maximize: List[Bool]
 ) -> Bool:
     """Check if solution b dominates solution a.
@@ -67,7 +67,7 @@ fn is_dominated(
 # ── Pareto Front ──────────────────────────────────────────────────────────────
 
 
-fn pareto_front(
+def pareto_front(
     objectives: List[List[Float64]], maximize: List[Bool]
 ) -> List[Int]:
     """Find indices of Pareto-optimal solutions using pairwise dominance.
@@ -114,7 +114,7 @@ fn pareto_front(
 # ── Weighted Score ────────────────────────────────────────────────────────────
 
 
-fn weighted_score(values: List[Float64], weights: List[Float64]) -> Float64:
+def weighted_score(values: List[Float64], weights: List[Float64]) -> Float64:
     """Weighted sum: Σ values[i] * weights[i].
 
     Args:
@@ -136,7 +136,7 @@ fn weighted_score(values: List[Float64], weights: List[Float64]) -> Float64:
 # ── Normalize Objectives ──────────────────────────────────────────────────────
 
 
-fn normalize_objectives(
+def normalize_objectives(
     objectives: List[List[Float64]],
 ) -> List[List[Float64]]:
     """Min-max normalize each column (objective) to [0, 1].
@@ -195,7 +195,7 @@ fn normalize_objectives(
 # ── Ideal Point ───────────────────────────────────────────────────────────────
 
 
-fn ideal_point(
+def ideal_point(
     objectives: List[List[Float64]], maximize: List[Bool]
 ) -> List[Float64]:
     """Compute the ideal point (best value per objective).
@@ -235,7 +235,7 @@ fn ideal_point(
 # ── Nadir Point ───────────────────────────────────────────────────────────────
 
 
-fn nadir_point(
+def nadir_point(
     objectives: List[List[Float64]], maximize: List[Bool]
 ) -> List[Float64]:
     """Compute the nadir point (worst value per objective).
@@ -277,7 +277,7 @@ fn nadir_point(
 # ── TOPSIS Rank ───────────────────────────────────────────────────────────────
 
 
-fn topsis_rank(
+def topsis_rank(
     alternatives: List[List[Float64]],
     weights: List[Float64],
     maximize: List[Bool],

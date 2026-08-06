@@ -45,7 +45,7 @@ from query.ir import (
 from types import ExprNode
 
 
-fn _batch() -> RecordBatch:
+def _batch() -> RecordBatch:
     """amount = [10, 20, 30, 40]; qty = [1, 2, null, 4]."""
     var amount = List[Float64]()
     amount.append(10.0)
@@ -73,7 +73,7 @@ fn _batch() -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, 4)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     var batch = _batch()

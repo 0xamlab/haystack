@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from normalization_layers import layer_norm, rms_norm, batch_norm_inference, group_norm_scale, instance_norm, weight_norm_magnitude, spectral_norm_estimate, adaptive_layer_norm, deep_norm_alpha, pre_norm_residual
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

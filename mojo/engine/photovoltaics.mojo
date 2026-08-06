@@ -16,7 +16,7 @@ Public API:
 from std.math import cos, exp
 
 
-fn cell_efficiency(p_max: Float64, irradiance: Float64, area: Float64) -> Float64:
+def cell_efficiency(p_max: Float64, irradiance: Float64, area: Float64) -> Float64:
     """PV cell efficiency: η = P_max / (G·A).
 
     Args:
@@ -32,7 +32,7 @@ fn cell_efficiency(p_max: Float64, irradiance: Float64, area: Float64) -> Float6
     return p_max / (irradiance * area)
 
 
-fn fill_factor(p_max: Float64, voc: Float64, isc: Float64) -> Float64:
+def fill_factor(p_max: Float64, voc: Float64, isc: Float64) -> Float64:
     """Fill factor of a solar cell.
 
     FF = P_max / (Voc · Isc)
@@ -50,7 +50,7 @@ fn fill_factor(p_max: Float64, voc: Float64, isc: Float64) -> Float64:
     return p_max / (voc * isc)
 
 
-fn power_output(
+def power_output(
     efficiency: Float64, irradiance: Float64, area: Float64
 ) -> Float64:
     """PV system power output: P = η·G·A.
@@ -66,7 +66,7 @@ fn power_output(
     return efficiency * irradiance * area
 
 
-fn temperature_coefficient(
+def temperature_coefficient(
     p_stc: Float64, gamma: Float64, cell_temp: Float64
 ) -> Float64:
     """Temperature-corrected power output.
@@ -84,7 +84,7 @@ fn temperature_coefficient(
     return p_stc * (1.0 + gamma * (cell_temp - 25.0))
 
 
-fn energy_yield(peak_power_kw: Float64, peak_sun_hours: Float64, pr: Float64) -> Float64:
+def energy_yield(peak_power_kw: Float64, peak_sun_hours: Float64, pr: Float64) -> Float64:
     """Annual energy yield.
 
     E = P_peak · PSH · PR · 365
@@ -100,7 +100,7 @@ fn energy_yield(peak_power_kw: Float64, peak_sun_hours: Float64, pr: Float64) ->
     return peak_power_kw * peak_sun_hours * pr * 365.0
 
 
-fn irradiance_on_tilted_plane(
+def irradiance_on_tilted_plane(
     g_horizontal: Float64, tilt_rad: Float64, sun_zenith_rad: Float64
 ) -> Float64:
     """Global irradiance on a tilted surface (simplified).
@@ -121,7 +121,7 @@ fn irradiance_on_tilted_plane(
     return g_horizontal * cos_incidence / (cos(sun_zenith_rad) + 1e-10)
 
 
-fn lcoe_solar(
+def lcoe_solar(
     capex: Float64, opex_annual: Float64, energy_annual: Float64,
     lifetime_years: Float64, discount_rate: Float64
 ) -> Float64:
@@ -152,7 +152,7 @@ fn lcoe_solar(
     return total_cost / energy_annual
 
 
-fn capacity_factor(
+def capacity_factor(
     actual_energy: Float64, installed_kw: Float64, hours: Float64
 ) -> Float64:
     """Capacity factor of a solar installation.
@@ -173,7 +173,7 @@ fn capacity_factor(
     return actual_energy / theoretical
 
 
-fn peak_sun_hours(daily_irradiation: Float64) -> Float64:
+def peak_sun_hours(daily_irradiation: Float64) -> Float64:
     """Peak sun hours from daily irradiation.
 
     PSH = H / 1000 W/m²
@@ -187,7 +187,7 @@ fn peak_sun_hours(daily_irradiation: Float64) -> Float64:
     return daily_irradiation / 1000.0
 
 
-fn system_pr(
+def system_pr(
     actual_yield: Float64, reference_yield: Float64
 ) -> Float64:
     """Performance ratio of a PV system.

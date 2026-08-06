@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fire_safety import fire_load_density, heat_release_rate, flashover_mfo, sprinkler_activation_time, smoke_layer_height, evacuation_time, safe_egress_time, fire_resistance_rating, ventilation_factor, fire_severity, co_concentration_danger, occupant_load
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

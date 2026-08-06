@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, pow
 
 
-fn debye_length(temperature_ev: Float64, electron_density: Float64) -> Float64:
+def debye_length(temperature_ev: Float64, electron_density: Float64) -> Float64:
     """Debye shielding length in a plasma.
 
     λD = sqrt(ε0·kT / n·e²)
@@ -36,7 +36,7 @@ fn debye_length(temperature_ev: Float64, electron_density: Float64) -> Float64:
     return sqrt(epsilon0 * kT / (electron_density * e * e))
 
 
-fn plasma_frequency(electron_density: Float64) -> Float64:
+def plasma_frequency(electron_density: Float64) -> Float64:
     """Electron plasma frequency ωp = sqrt(n·e²/(ε0·me)).
 
     Args:
@@ -53,7 +53,7 @@ fn plasma_frequency(electron_density: Float64) -> Float64:
     return sqrt(electron_density * e * e / (epsilon0 * me))
 
 
-fn thermal_velocity(temperature_ev: Float64, mass_kg: Float64) -> Float64:
+def thermal_velocity(temperature_ev: Float64, mass_kg: Float64) -> Float64:
     """Thermal velocity: vth = sqrt(kT/m).
 
     Args:
@@ -69,7 +69,7 @@ fn thermal_velocity(temperature_ev: Float64, mass_kg: Float64) -> Float64:
     return sqrt(kT / mass_kg)
 
 
-fn larmor_radius(
+def larmor_radius(
     mass_kg: Float64, velocity_perp: Float64, charge: Float64, b_field: Float64
 ) -> Float64:
     """Larmor (gyro) radius of a particle in a magnetic field.
@@ -90,7 +90,7 @@ fn larmor_radius(
     return mass_kg * velocity_perp / (charge * b_field)
 
 
-fn coulomb_logarithm(temperature_ev: Float64, electron_density: Float64) -> Float64:
+def coulomb_logarithm(temperature_ev: Float64, electron_density: Float64) -> Float64:
     """Coulomb logarithm ln(Λ) for electron-ion collisions.
 
     Simplified: ln(Λ) ≈ 24 - ln(sqrt(n) / T) for T > 10 eV
@@ -107,7 +107,7 @@ fn coulomb_logarithm(temperature_ev: Float64, electron_density: Float64) -> Floa
     return 24.0 - log(sqrt(electron_density / 1e6) / temperature_ev)
 
 
-fn spitzer_resistivity(temperature_ev: Float64, z_eff: Float64) -> Float64:
+def spitzer_resistivity(temperature_ev: Float64, z_eff: Float64) -> Float64:
     """Spitzer resistivity of a plasma.
 
     η ∝ Z_eff / T^1.5  (in Ω·m, simplified proportionality)
@@ -126,7 +126,7 @@ fn spitzer_resistivity(temperature_ev: Float64, z_eff: Float64) -> Float64:
     return 5.2e-5 * z_eff * ln_lambda / pow(temperature_ev, 1.5)
 
 
-fn alfven_speed(b_field: Float64, mass_density: Float64) -> Float64:
+def alfven_speed(b_field: Float64, mass_density: Float64) -> Float64:
     """Alfvén speed: vA = B / sqrt(μ0·ρ).
 
     Args:
@@ -142,7 +142,7 @@ fn alfven_speed(b_field: Float64, mass_density: Float64) -> Float64:
     return b_field / sqrt(mu0 * mass_density)
 
 
-fn mhd_beta(
+def mhd_beta(
     electron_density: Float64, temperature_ev: Float64, b_field: Float64
 ) -> Float64:
     """MHD β: ratio of plasma pressure to magnetic pressure.
@@ -164,7 +164,7 @@ fn mhd_beta(
     return 2.0 * mu0 * electron_density * kT / (b_field * b_field)
 
 
-fn fusion_lawson_criterion(
+def fusion_lawson_criterion(
     electron_density: Float64, confinement_time: Float64
 ) -> Float64:
     """Lawson parameter nτ for DT fusion ignition.
@@ -181,7 +181,7 @@ fn fusion_lawson_criterion(
     return electron_density * confinement_time
 
 
-fn bremsstrahlung_power(
+def bremsstrahlung_power(
     electron_density: Float64, ion_density: Float64, temperature_ev: Float64, z: Float64
 ) -> Float64:
     """Bremsstrahlung radiation power density from thermal plasma.

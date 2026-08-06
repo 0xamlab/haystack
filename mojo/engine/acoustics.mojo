@@ -23,7 +23,7 @@ from std.math import log, pow, abs as fabs
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     """log base 10 via natural log."""
     return log(x) / log(10.0)
 
@@ -31,7 +31,7 @@ fn _log10(x: Float64) -> Float64:
 # ── sound_pressure_level ─────────────────────────────────────────────────────
 
 
-fn sound_pressure_level(p: Float64, p_ref: Float64) -> Float64:
+def sound_pressure_level(p: Float64, p_ref: Float64) -> Float64:
     """Sound pressure level: SPL = 20*log10(p/p_ref).
 
     Args:
@@ -49,7 +49,7 @@ fn sound_pressure_level(p: Float64, p_ref: Float64) -> Float64:
 # ── sound_intensity_level ────────────────────────────────────────────────────
 
 
-fn sound_intensity_level(i: Float64, i_ref: Float64) -> Float64:
+def sound_intensity_level(i: Float64, i_ref: Float64) -> Float64:
     """Sound intensity level: SIL = 10*log10(I/I_ref).
 
     Args:
@@ -67,7 +67,7 @@ fn sound_intensity_level(i: Float64, i_ref: Float64) -> Float64:
 # ── sound_power_level ────────────────────────────────────────────────────────
 
 
-fn sound_power_level(w: Float64, w_ref: Float64) -> Float64:
+def sound_power_level(w: Float64, w_ref: Float64) -> Float64:
     """Sound power level: SWL = 10*log10(W/W_ref).
 
     Args:
@@ -85,7 +85,7 @@ fn sound_power_level(w: Float64, w_ref: Float64) -> Float64:
 # ── inverse_square_law_pressure ──────────────────────────────────────────────
 
 
-fn inverse_square_law_pressure(
+def inverse_square_law_pressure(
     spl_ref: Float64, d_ref: Float64, d: Float64
 ) -> Float64:
     """SPL at distance d using inverse square law.
@@ -108,7 +108,7 @@ fn inverse_square_law_pressure(
 # ── wavelength ───────────────────────────────────────────────────────────────
 
 
-fn wavelength(speed_of_sound: Float64, frequency: Float64) -> Float64:
+def wavelength(speed_of_sound: Float64, frequency: Float64) -> Float64:
     """Wavelength: λ = c/f.
 
     Args:
@@ -126,7 +126,7 @@ fn wavelength(speed_of_sound: Float64, frequency: Float64) -> Float64:
 # ── resonant_frequency_pipe_open ─────────────────────────────────────────────
 
 
-fn resonant_frequency_pipe_open(
+def resonant_frequency_pipe_open(
     speed_of_sound: Float64, length: Float64
 ) -> Float64:
     """Fundamental resonant frequency of an open pipe: f = c/(2*L).
@@ -146,7 +146,7 @@ fn resonant_frequency_pipe_open(
 # ── resonant_frequency_pipe_closed ───────────────────────────────────────────
 
 
-fn resonant_frequency_pipe_closed(
+def resonant_frequency_pipe_closed(
     speed_of_sound: Float64, length: Float64
 ) -> Float64:
     """Fundamental resonant frequency of a closed pipe: f = c/(4*L).
@@ -166,7 +166,7 @@ fn resonant_frequency_pipe_closed(
 # ── doppler_frequency ────────────────────────────────────────────────────────
 
 
-fn doppler_frequency(
+def doppler_frequency(
     f0: Float64, v_sound: Float64, v_source: Float64, v_observer: Float64
 ) -> Float64:
     """Doppler effect: f' = f0 * (c + v_observer) / (c + v_source).
@@ -192,7 +192,7 @@ fn doppler_frequency(
 # ── reverberation_time_sabine ────────────────────────────────────────────────
 
 
-fn reverberation_time_sabine(
+def reverberation_time_sabine(
     volume: Float64, absorption: Float64
 ) -> Float64:
     """Sabine reverberation time: T60 = 0.161 * V / A.
@@ -212,7 +212,7 @@ fn reverberation_time_sabine(
 # ── noise_reduction_coefficient ──────────────────────────────────────────────
 
 
-fn noise_reduction_coefficient(
+def noise_reduction_coefficient(
     alpha_250: Float64,
     alpha_500: Float64,
     alpha_1000: Float64,
@@ -235,7 +235,7 @@ fn noise_reduction_coefficient(
 # ── decibel_sum_2 ────────────────────────────────────────────────────────────
 
 
-fn decibel_sum_2(db1: Float64, db2: Float64) -> Float64:
+def decibel_sum_2(db1: Float64, db2: Float64) -> Float64:
     """Sum of two decibel levels: L = 10*log10(10^(L1/10) + 10^(L2/10)).
 
     Args:
@@ -253,7 +253,7 @@ fn decibel_sum_2(db1: Float64, db2: Float64) -> Float64:
 # ── distance_doubling_attenuation ────────────────────────────────────────────
 
 
-fn distance_doubling_attenuation() -> Float64:
+def distance_doubling_attenuation() -> Float64:
     """Attenuation when distance doubles (spherical spreading).
 
     Always returns 6.0 dB.

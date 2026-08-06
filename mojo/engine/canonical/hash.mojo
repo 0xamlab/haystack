@@ -14,7 +14,7 @@ from sha256 import sha256_hex
 from canonical.encode import ENCODING_VERSION, to_hex
 
 
-fn hash_canonical_bytes(bytes: List[UInt8]) -> String:
+def hash_canonical_bytes(bytes: List[UInt8]) -> String:
     """SHA-256 of canonical bytes, as 64 lowercase hex characters.
 
     Goes through hex rather than raw bytes because the frozen `sha256_hex` kernel
@@ -24,7 +24,7 @@ fn hash_canonical_bytes(bytes: List[UInt8]) -> String:
     return sha256_hex(to_hex(bytes))
 
 
-fn versioned_digest(bytes: List[UInt8]) -> String:
+def versioned_digest(bytes: List[UInt8]) -> String:
     """`<encoding-version>:<digest>` — the form to persist.
 
     Carrying the version means a digest written under a future encoding is visibly
@@ -34,7 +34,7 @@ fn versioned_digest(bytes: List[UInt8]) -> String:
     return ENCODING_VERSION + ":" + hash_canonical_bytes(bytes)
 
 
-fn digest_encoding_version(digest: String) -> String:
+def digest_encoding_version(digest: String) -> String:
     """The encoding version recorded in a versioned digest, or "" if unversioned."""
     var index = digest.find(":")
     if index <= 0:
@@ -46,6 +46,6 @@ fn digest_encoding_version(digest: String) -> String:
     return out
 
 
-fn digest_matches_encoding(digest: String) -> Bool:
+def digest_matches_encoding(digest: String) -> Bool:
     """True when `digest` was produced by the encoding this build implements."""
     return digest_encoding_version(digest) == ENCODING_VERSION

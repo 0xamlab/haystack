@@ -54,7 +54,7 @@ from mlpk.gated_ffn import (
 comptime GATE_DISPERSION_MAX: Float64 = 1.25
 
 
-fn _sorted_copy(xs: List[Float64]) -> List[Float64]:
+def _sorted_copy(xs: List[Float64]) -> List[Float64]:
     """Insertion sort of a copy. The sample is `reps` long (tens), so an O(r^2) sort is free."""
     var out = List[Float64](capacity=len(xs))
     for i in range(len(xs)):
@@ -69,7 +69,7 @@ fn _sorted_copy(xs: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _quantile(sorted_xs: List[Float64], q: Float64) -> Float64:
+def _quantile(sorted_xs: List[Float64], q: Float64) -> Float64:
     if len(sorted_xs) == 0:
         return 0.0
     var idx = Int(q * Float64(len(sorted_xs) - 1) + 0.5)
@@ -80,7 +80,7 @@ fn _quantile(sorted_xs: List[Float64], q: Float64) -> Float64:
     return sorted_xs[idx]
 
 
-fn _read_f64(path: String) raises -> List[Float64]:
+def _read_f64(path: String) raises -> List[Float64]:
     var raw: List[UInt8]
     with open(path, "r") as f:
         raw = f.read_bytes()
@@ -93,7 +93,7 @@ fn _read_f64(path: String) raises -> List[Float64]:
     return out^
 
 
-fn _write_f64_strided(path: String, xs: List[Float64], n: Int, stride: Int) raises:
+def _write_f64_strided(path: String, xs: List[Float64], n: Int, stride: Int) raises:
     """Dump every `stride`-th element for the correctness cross-check.
 
     Full dumps at n = 16.7M are 134 MB a piece; a fixed stride keeps the exchange bounded while still
@@ -113,7 +113,7 @@ fn _write_f64_strided(path: String, xs: List[Float64], n: Int, stride: Int) rais
         f.write_bytes(Span[Byte, origin_of(buf)](ptr=raw, length=count * 8))
 
 
-fn _gate_line(name: String, hot_min: Float64, warm: Float64, p50: Float64, p90: Float64) -> Bool:
+def _gate_line(name: String, hot_min: Float64, warm: Float64, p50: Float64, p90: Float64) -> Bool:
     var ok = True
     if hot_min > warm:
         ok = False
@@ -127,7 +127,7 @@ fn _gate_line(name: String, hot_min: Float64, warm: Float64, p50: Float64, p90: 
     return ok
 
 
-fn _emit(
+def _emit(
     variant: String,
     n: Int,
     workers_req: Int,
@@ -171,7 +171,7 @@ fn _emit(
     return ok
 
 
-fn _checksum(xs: List[Float64], n: Int) -> Float64:
+def _checksum(xs: List[Float64], n: Int) -> Float64:
     """Cheap whole-array fingerprint, so a dump-free run still detects a silently wrong kernel."""
     var acc = 0.0
     for i in range(n):

@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, sqrt
 
 
-fn reaction_rate_first_order(rate_constant: Float64, concentration: Float64) -> Float64:
+def reaction_rate_first_order(rate_constant: Float64, concentration: Float64) -> Float64:
     """First-order reaction rate: r = k·[A].
 
     Args:
@@ -31,7 +31,7 @@ fn reaction_rate_first_order(rate_constant: Float64, concentration: Float64) -> 
     return rate_constant * concentration
 
 
-fn reaction_rate_second_order(
+def reaction_rate_second_order(
     rate_constant: Float64, conc_a: Float64, conc_b: Float64
 ) -> Float64:
     """Second-order reaction rate: r = k·[A]·[B].
@@ -49,7 +49,7 @@ fn reaction_rate_second_order(
     return rate_constant * conc_a * conc_b
 
 
-fn arrhenius_rate_constant(
+def arrhenius_rate_constant(
     pre_exponential: Float64, activation_energy: Float64, temperature: Float64
 ) -> Float64:
     """Arrhenius equation: k = A·exp(-Ea/RT).
@@ -68,7 +68,7 @@ fn arrhenius_rate_constant(
     return pre_exponential * exp(-activation_energy / (R * temperature))
 
 
-fn half_life_first_order(rate_constant: Float64) -> Float64:
+def half_life_first_order(rate_constant: Float64) -> Float64:
     """Half-life for a first-order reaction: t½ = ln2/k.
 
     Args:
@@ -82,7 +82,7 @@ fn half_life_first_order(rate_constant: Float64) -> Float64:
     return log(2.0) / rate_constant
 
 
-fn half_life_second_order(
+def half_life_second_order(
     rate_constant: Float64, initial_concentration: Float64
 ) -> Float64:
     """Half-life for a second-order reaction: t½ = 1/(k·[A]₀).
@@ -99,7 +99,7 @@ fn half_life_second_order(
     return 1.0 / (rate_constant * initial_concentration)
 
 
-fn concentration_first_order(
+def concentration_first_order(
     c0: Float64, rate_constant: Float64, time: Float64
 ) -> Float64:
     """Concentration remaining for first-order reaction.
@@ -119,7 +119,7 @@ fn concentration_first_order(
     return c0 * exp(-rate_constant * time)
 
 
-fn activation_energy(
+def activation_energy(
     k1: Float64, k2: Float64, t1_k: Float64, t2_k: Float64
 ) -> Float64:
     """Activation energy from two rate constants at two temperatures.
@@ -144,7 +144,7 @@ fn activation_energy(
     return R * log(k2 / k1) / denom
 
 
-fn collision_frequency(
+def collision_frequency(
     n_density: Float64, diameter: Float64, temperature: Float64, mass: Float64
 ) -> Float64:
     """Bimolecular collision frequency from kinetic theory.
@@ -168,7 +168,7 @@ fn collision_frequency(
     return n_density * n_density * pi * diameter * diameter * v_rel
 
 
-fn michaelis_menten_rate(
+def michaelis_menten_rate(
     vmax: Float64, substrate: Float64, km: Float64
 ) -> Float64:
     """Michaelis-Menten enzyme kinetics: v = Vmax·[S] / (Km + [S]).
@@ -187,7 +187,7 @@ fn michaelis_menten_rate(
     return vmax * substrate / denom
 
 
-fn turnover_number(vmax: Float64, enzyme_total: Float64) -> Float64:
+def turnover_number(vmax: Float64, enzyme_total: Float64) -> Float64:
     """Enzyme turnover number: kcat = Vmax / [E]T.
 
     Args:

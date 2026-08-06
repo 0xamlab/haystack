@@ -59,7 +59,7 @@ from streaming.distinct import (
 comptime SIGMA_MULTIPLE: Float64 = 4.0
 
 
-fn _ids(count: Int, stride: Int, offset: Int) -> List[Int]:
+def _ids(count: Int, stride: Int, offset: Int) -> List[Int]:
     """`count` identifiers `offset, offset+stride, ...`. All distinct when stride != 0."""
     var out = List[Int]()
     for i in range(count):
@@ -67,7 +67,7 @@ fn _ids(count: Int, stride: Int, offset: Int) -> List[Int]:
     return out^
 
 
-fn _exact_distinct(items: List[Int]) -> Int:
+def _exact_distinct(items: List[Int]) -> Int:
     """The exact number of distinct values, by scan. The oracle, and deliberately O(n^2)."""
     var seen = List[Int]()
     for i in range(len(items)):
@@ -80,7 +80,7 @@ fn _exact_distinct(items: List[Int]) -> Int:
     return len(seen)
 
 
-fn _concat(a: List[Int], b: List[Int]) -> List[Int]:
+def _concat(a: List[Int], b: List[Int]) -> List[Int]:
     var out = List[Int]()
     for i in range(len(a)):
         out.append(a[i])
@@ -89,7 +89,7 @@ fn _concat(a: List[Int], b: List[Int]) -> List[Int]:
     return out^
 
 
-fn _registers_equal(a: List[Int], b: List[Int]) -> Int:
+def _registers_equal(a: List[Int], b: List[Int]) -> Int:
     """Count of DIFFERING registers. Zero is the assertion."""
     if len(a) != len(b):
         return -1
@@ -100,7 +100,7 @@ fn _registers_equal(a: List[Int], b: List[Int]) -> Int:
     return diffs
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

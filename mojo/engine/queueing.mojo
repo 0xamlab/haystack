@@ -22,7 +22,7 @@ Public API:
 # ── Factorial ────────────────────────────────────────────────────────────────
 
 
-fn factorial(n: Int) -> Float64:
+def factorial(n: Int) -> Float64:
     """Factorial of n as Float64 for large values."""
     if n <= 0:
         return 1.0
@@ -35,14 +35,14 @@ fn factorial(n: Int) -> Float64:
 # ── M/M/1 formulas ──────────────────────────────────────────────────────────
 
 
-fn mm1_utilization(arrival_rate: Float64, service_rate: Float64) -> Float64:
+def mm1_utilization(arrival_rate: Float64, service_rate: Float64) -> Float64:
     """Server utilization: ρ = λ/μ."""
     if service_rate <= 0.0:
         return 0.0
     return arrival_rate / service_rate
 
 
-fn mm1_avg_queue_length(arrival_rate: Float64, service_rate: Float64) -> Float64:
+def mm1_avg_queue_length(arrival_rate: Float64, service_rate: Float64) -> Float64:
     """Average queue length (excluding being served): Lq = ρ²/(1-ρ)."""
     var rho = mm1_utilization(arrival_rate, service_rate)
     if rho >= 1.0:
@@ -50,7 +50,7 @@ fn mm1_avg_queue_length(arrival_rate: Float64, service_rate: Float64) -> Float64
     return (rho * rho) / (1.0 - rho)
 
 
-fn mm1_avg_system_size(arrival_rate: Float64, service_rate: Float64) -> Float64:
+def mm1_avg_system_size(arrival_rate: Float64, service_rate: Float64) -> Float64:
     """Average number in system (queue + service): L = ρ/(1-ρ)."""
     var rho = mm1_utilization(arrival_rate, service_rate)
     if rho >= 1.0:
@@ -58,7 +58,7 @@ fn mm1_avg_system_size(arrival_rate: Float64, service_rate: Float64) -> Float64:
     return rho / (1.0 - rho)
 
 
-fn mm1_avg_wait_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
+def mm1_avg_wait_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
     """Average wait time in queue: Wq = ρ/(μ-λ)."""
     var diff = service_rate - arrival_rate
     if diff <= 0.0:
@@ -67,7 +67,7 @@ fn mm1_avg_wait_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
     return rho / diff
 
 
-fn mm1_avg_system_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
+def mm1_avg_system_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
     """Average time in system (wait + service): W = 1/(μ-λ)."""
     var diff = service_rate - arrival_rate
     if diff <= 0.0:
@@ -78,7 +78,7 @@ fn mm1_avg_system_time(arrival_rate: Float64, service_rate: Float64) -> Float64:
 # ── M/M/c formulas ──────────────────────────────────────────────────────────
 
 
-fn _power(base: Float64, exp: Int) -> Float64:
+def _power(base: Float64, exp: Int) -> Float64:
     """Compute base^exp for non-negative integer exponent."""
     if exp == 0:
         return 1.0
@@ -88,7 +88,7 @@ fn _power(base: Float64, exp: Int) -> Float64:
     return result
 
 
-fn mmc_erlang_c(arrival_rate: Float64, service_rate: Float64, servers: Int) -> Float64:
+def mmc_erlang_c(arrival_rate: Float64, service_rate: Float64, servers: Int) -> Float64:
     """Erlang C formula: probability a customer waits in M/M/c queue.
 
     C(c, A) where A = λ/μ (total offered traffic).
@@ -111,7 +111,7 @@ fn mmc_erlang_c(arrival_rate: Float64, service_rate: Float64, servers: Int) -> F
     return numerator / (sum_terms + numerator)
 
 
-fn mmc_avg_wait_time(arrival_rate: Float64, service_rate: Float64, servers: Int) -> Float64:
+def mmc_avg_wait_time(arrival_rate: Float64, service_rate: Float64, servers: Int) -> Float64:
     """Average wait time in M/M/c queue: Wq = C(c,A) / (c*μ - λ)."""
     var ec = mmc_erlang_c(arrival_rate, service_rate, servers)
     var denom = Float64(servers) * service_rate - arrival_rate
@@ -123,7 +123,7 @@ fn mmc_avg_wait_time(arrival_rate: Float64, service_rate: Float64, servers: Int)
 # ── Erlang B ─────────────────────────────────────────────────────────────────
 
 
-fn erlang_b(traffic_intensity: Float64, servers: Int) -> Float64:
+def erlang_b(traffic_intensity: Float64, servers: Int) -> Float64:
     """Erlang B formula: blocking probability (recursive).
 
     B(A, 0) = 1
@@ -138,12 +138,12 @@ fn erlang_b(traffic_intensity: Float64, servers: Int) -> Float64:
 # ── Little's Law ─────────────────────────────────────────────────────────────
 
 
-fn littles_law_L(arrival_rate: Float64, avg_time: Float64) -> Float64:
+def littles_law_L(arrival_rate: Float64, avg_time: Float64) -> Float64:
     """Little's Law: L = λ * W."""
     return arrival_rate * avg_time
 
 
-fn littles_law_W(arrival_rate: Float64, avg_number: Float64) -> Float64:
+def littles_law_W(arrival_rate: Float64, avg_number: Float64) -> Float64:
     """Little's Law: W = L / λ."""
     if arrival_rate <= 0.0:
         return 0.0

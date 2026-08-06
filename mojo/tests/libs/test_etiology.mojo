@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from etiology import relative_risk, odds_ratio, attributable_risk, population_attributable_risk, number_needed_to_treat, sensitivity_test, specificity_test, positive_predictive_value, negative_predictive_value, likelihood_ratio_positive
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

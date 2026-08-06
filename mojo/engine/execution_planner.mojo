@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn fusion_opportunity_score(
+def fusion_opportunity_score(
     op_a_flops: Float64, op_b_flops: Float64,
     memory_traffic_saved: Float64
 ) -> Float64:
@@ -39,7 +39,7 @@ fn fusion_opportunity_score(
     return memory_traffic_saved / total_flops
 
 
-fn device_placement_score(
+def device_placement_score(
     op_arithmetic_intensity: Float64, device_ridge_point: Float64,
     device_peak_flops: Float64
 ) -> Float64:
@@ -63,7 +63,7 @@ fn device_placement_score(
     return utilization * device_peak_flops
 
 
-fn kv_policy_eviction_priority(
+def kv_policy_eviction_priority(
     last_access_step: Float64, current_step: Float64,
     attention_score: Float64, seq_remaining: Float64
 ) -> Float64:
@@ -84,7 +84,7 @@ fn kv_policy_eviction_priority(
     return attention_score * seq_remaining / staleness
 
 
-fn batching_strategy_score(
+def batching_strategy_score(
     request_latency_budget_ms: Float64, current_batch_size: Float64,
     throughput_gain_per_request: Float64, latency_cost_per_request: Float64
 ) -> Float64:
@@ -106,7 +106,7 @@ fn batching_strategy_score(
     return throughput_gain_per_request - latency_cost_per_request / request_latency_budget_ms
 
 
-fn scheduling_priority_score(
+def scheduling_priority_score(
     queue_wait_ms: Float64, sla_budget_ms: Float64,
     request_value: Float64, estimated_compute_ms: Float64
 ) -> Float64:
@@ -127,7 +127,7 @@ fn scheduling_priority_score(
     return urgency * request_value / estimated_compute_ms
 
 
-fn prefetch_benefit_estimate(
+def prefetch_benefit_estimate(
     weight_bytes: Float64, bandwidth_bytes_per_ms: Float64,
     compute_ms_until_needed: Float64
 ) -> Float64:
@@ -154,7 +154,7 @@ fn prefetch_benefit_estimate(
     return benefit
 
 
-fn graph_rewrite_gain(
+def graph_rewrite_gain(
     original_flops: Float64, rewritten_flops: Float64,
     original_memory: Float64, rewritten_memory: Float64,
     flop_weight: Float64
@@ -183,7 +183,7 @@ fn graph_rewrite_gain(
     return flop_weight * flop_gain + (1.0 - flop_weight) * mem_gain
 
 
-fn memory_placement_affinity(
+def memory_placement_affinity(
     access_frequency: Float64, tensor_bytes: Float64,
     tier_bandwidth: Float64, tier_capacity: Float64
 ) -> Float64:
@@ -205,7 +205,7 @@ fn memory_placement_affinity(
     return access_frequency * tier_bandwidth / (tensor_bytes * tier_capacity)
 
 
-fn pipeline_depth_optimal(
+def pipeline_depth_optimal(
     stage_latency_ms: Float64, bubble_fraction: Float64,
     n_microbatches: Float64
 ) -> Float64:
@@ -229,7 +229,7 @@ fn pipeline_depth_optimal(
     return useful * n_microbatches / stage_latency_ms
 
 
-fn adaptive_batch_size(
+def adaptive_batch_size(
     current_batch: Float64, gpu_utilization: Float64,
     target_utilization: Float64, max_batch: Float64,
     adjust_rate: Float64

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pharmacology import hill_equation, therapeutic_index, drug_bioavailability, receptor_occupancy, drug_protein_binding, volume_of_distribution, clearance_from_halflife, steady_state_concentration, loading_dose, drug_interaction_index
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

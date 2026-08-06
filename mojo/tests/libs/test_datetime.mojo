@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from datetime import now_epoch, is_leap_year, year, month, day, hour, minute, second, epoch_to_iso, iso_to_epoch, format_duration_ms, days_between, add_days, day_of_week
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

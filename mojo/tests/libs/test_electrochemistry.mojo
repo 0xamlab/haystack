@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from electrochemistry import nernst_cell_potential, faraday_mass_deposited, battery_capacity, energy_density, corrosion_rate, tafel_slope, exchange_current_density, charge_transfer_resistance, diffusion_limiting_current, coulombic_efficiency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

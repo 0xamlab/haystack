@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from tensor_ops import matmul_element, broadcast_index, stride_from_shape, flatten_index, unflatten_index_dim, transpose_index, outer_product_element, tensor_norm_contribution, softmax_stable_element, tensor_dot_contribution
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

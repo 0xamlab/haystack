@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from linalg import mat_zeros, mat_identity, mat_from_list, vec_dot, vec_norm, vec_cross
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

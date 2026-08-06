@@ -26,7 +26,7 @@ from std.math import exp, log, abs as fabs
 # ── cap_rate ─────────────────────────────────────────────────────────────────
 
 
-fn cap_rate(noi: Float64, property_value: Float64) -> Float64:
+def cap_rate(noi: Float64, property_value: Float64) -> Float64:
     """Capitalisation rate: Cap = NOI / Value * 100.
 
     Args:
@@ -44,7 +44,7 @@ fn cap_rate(noi: Float64, property_value: Float64) -> Float64:
 # ── gross_rent_multiplier ────────────────────────────────────────────────────
 
 
-fn gross_rent_multiplier(price: Float64, annual_rent: Float64) -> Float64:
+def gross_rent_multiplier(price: Float64, annual_rent: Float64) -> Float64:
     """Gross rent multiplier: GRM = Price / Annual Rent.
 
     Args:
@@ -62,7 +62,7 @@ fn gross_rent_multiplier(price: Float64, annual_rent: Float64) -> Float64:
 # ── cash_on_cash_return ──────────────────────────────────────────────────────
 
 
-fn cash_on_cash_return(
+def cash_on_cash_return(
     annual_cashflow: Float64, total_invested: Float64,
 ) -> Float64:
     """Cash-on-cash return: CoC = CF / Invested * 100.
@@ -82,7 +82,7 @@ fn cash_on_cash_return(
 # ── debt_service_coverage ────────────────────────────────────────────────────
 
 
-fn debt_service_coverage(
+def debt_service_coverage(
     noi: Float64, annual_debt_service: Float64,
 ) -> Float64:
     """Debt service coverage ratio: DSCR = NOI / ADS.
@@ -102,7 +102,7 @@ fn debt_service_coverage(
 # ── loan_to_value ────────────────────────────────────────────────────────────
 
 
-fn loan_to_value(loan_amount: Float64, property_value: Float64) -> Float64:
+def loan_to_value(loan_amount: Float64, property_value: Float64) -> Float64:
     """Loan-to-value ratio: LTV = Loan / Value * 100.
 
     Args:
@@ -120,7 +120,7 @@ fn loan_to_value(loan_amount: Float64, property_value: Float64) -> Float64:
 # ── net_operating_income ─────────────────────────────────────────────────────
 
 
-fn net_operating_income(
+def net_operating_income(
     gross_income: Float64, vacancy_rate: Float64,
     operating_expenses: Float64,
 ) -> Float64:
@@ -140,7 +140,7 @@ fn net_operating_income(
 # ── mortgage_payment ─────────────────────────────────────────────────────────
 
 
-fn mortgage_payment(
+def mortgage_payment(
     principal: Float64, monthly_rate: Float64, n_months: Int,
 ) -> Float64:
     """Fixed-rate mortgage payment: PMT = P*r*(1+r)^n / ((1+r)^n - 1).
@@ -164,7 +164,7 @@ fn mortgage_payment(
 # ── price_per_sqft ───────────────────────────────────────────────────────────
 
 
-fn price_per_sqft(price: Float64, sqft: Float64) -> Float64:
+def price_per_sqft(price: Float64, sqft: Float64) -> Float64:
     """Price per square foot: PPSF = Price / SqFt.
 
     Args:
@@ -182,7 +182,7 @@ fn price_per_sqft(price: Float64, sqft: Float64) -> Float64:
 # ── break_even_ratio ─────────────────────────────────────────────────────────
 
 
-fn break_even_ratio(
+def break_even_ratio(
     operating_expenses: Float64, debt_service: Float64,
     gross_income: Float64,
 ) -> Float64:
@@ -204,7 +204,7 @@ fn break_even_ratio(
 # ── internal_rate_of_return_approx ───────────────────────────────────────────
 
 
-fn internal_rate_of_return_approx(
+def internal_rate_of_return_approx(
     initial: Float64, cashflow: Float64, years: Int,
 ) -> Float64:
     """Simplified IRR: IRR ≈ (cashflow/initial)^(1/years) - 1.
@@ -228,7 +228,7 @@ fn internal_rate_of_return_approx(
 # ── equity_buildup ───────────────────────────────────────────────────────────
 
 
-fn equity_buildup(
+def equity_buildup(
     original_loan: Float64, remaining_loan: Float64,
 ) -> Float64:
     """Equity build-up from amortisation: Equity = Original - Remaining.
@@ -246,7 +246,7 @@ fn equity_buildup(
 # ── appreciation_value ───────────────────────────────────────────────────────
 
 
-fn appreciation_value(
+def appreciation_value(
     initial_value: Float64, annual_rate: Float64, years: Int,
 ) -> Float64:
     """Future value via appreciation: FV = PV * (1+r)^n.

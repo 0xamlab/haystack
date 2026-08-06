@@ -30,7 +30,7 @@ struct RegressionResult(Copyable, Movable):
     var r_squared: Float64
     var residuals: List[Float64]
 
-    fn __init__(
+    def __init__(
         out self,
         coefficients: List[Float64],
         intercept: Float64,
@@ -46,7 +46,7 @@ struct RegressionResult(Copyable, Movable):
 # ── Error metrics ─────────────────────────────────────────────────────────────
 
 
-fn r_squared(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
+def r_squared(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     """R² = 1 - SS_res / SS_tot."""
     var n = len(y_actual)
     if n == 0 or len(y_predicted) != n:
@@ -68,7 +68,7 @@ fn r_squared(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     return 1.0 - ss_res / ss_tot
 
 
-fn mse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
+def mse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     """Mean Squared Error."""
     var n = len(y_actual)
     if n == 0 or len(y_predicted) != n:
@@ -80,7 +80,7 @@ fn mse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     return total / Float64(n)
 
 
-fn rmse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
+def rmse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
     """Root Mean Squared Error."""
     return sqrt(mse(y_actual, y_predicted))
 
@@ -88,7 +88,7 @@ fn rmse(y_actual: List[Float64], y_predicted: List[Float64]) -> Float64:
 # ── predict ───────────────────────────────────────────────────────────────────
 
 
-fn predict(
+def predict(
     X: List[List[Float64]], coefficients: List[Float64], intercept: Float64
 ) -> List[Float64]:
     """Predict y = X * β + intercept."""
@@ -110,7 +110,7 @@ fn predict(
 # ── Gaussian elimination solver ───────────────────────────────────────────────
 
 
-fn _solve_normal_equations(
+def _solve_normal_equations(
     XtX: List[List[Float64]], Xty: List[Float64]
 ) -> List[Float64]:
     """Solve XtX * β = Xty via Gaussian elimination with partial pivoting."""
@@ -166,7 +166,7 @@ fn _solve_normal_equations(
 # ── ols_simple ────────────────────────────────────────────────────────────────
 
 
-fn ols_simple(x: List[Float64], y: List[Float64]) -> RegressionResult:
+def ols_simple(x: List[Float64], y: List[Float64]) -> RegressionResult:
     """Simple OLS regression (1 predictor). slope, intercept, R², residuals."""
     var n = len(x)
     if n == 0 or len(y) != n:
@@ -210,7 +210,7 @@ fn ols_simple(x: List[Float64], y: List[Float64]) -> RegressionResult:
 # ── ols_multiple ──────────────────────────────────────────────────────────────
 
 
-fn ols_multiple(X: List[List[Float64]], y: List[Float64]) -> RegressionResult:
+def ols_multiple(X: List[List[Float64]], y: List[Float64]) -> RegressionResult:
     """Multiple OLS via normal equations: β = (X^T X)^-1 X^T y.
 
     X is n×p (each row = one observation). Intercept added internally.
@@ -271,7 +271,7 @@ fn ols_multiple(X: List[List[Float64]], y: List[Float64]) -> RegressionResult:
 # ── ridge_regression ──────────────────────────────────────────────────────────
 
 
-fn ridge_regression(
+def ridge_regression(
     X: List[List[Float64]], y: List[Float64], alpha: Float64 = 1.0
 ) -> RegressionResult:
     """Ridge: β = (X^T X + αI)^-1 X^T y. Intercept column not penalized."""
@@ -331,7 +331,7 @@ fn ridge_regression(
 # ── polynomial_features ───────────────────────────────────────────────────────
 
 
-fn polynomial_features(x: List[Float64], degree: Int) -> List[List[Float64]]:
+def polynomial_features(x: List[Float64], degree: Int) -> List[List[Float64]]:
     """Generate polynomial features [x, x², ..., x^degree]. Returns n×degree."""
     var n = len(x)
     var result = List[List[Float64]]()

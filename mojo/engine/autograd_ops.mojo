@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn grad_add(upstream: Float64) -> Float64:
+def grad_add(upstream: Float64) -> Float64:
     """Gradient of addition w.r.t. either input: ∂(x+y)/∂x = 1.
 
     Args:
@@ -29,7 +29,7 @@ fn grad_add(upstream: Float64) -> Float64:
     return upstream
 
 
-fn grad_mul(other: Float64, upstream: Float64) -> Float64:
+def grad_mul(other: Float64, upstream: Float64) -> Float64:
     """Gradient of multiplication w.r.t. x: ∂(x×y)/∂x = y.
 
     Args:
@@ -42,7 +42,7 @@ fn grad_mul(other: Float64, upstream: Float64) -> Float64:
     return other * upstream
 
 
-fn grad_exp(x: Float64, upstream: Float64) -> Float64:
+def grad_exp(x: Float64, upstream: Float64) -> Float64:
     """Gradient of exp: ∂exp(x)/∂x = exp(x).
 
     Args:
@@ -55,7 +55,7 @@ fn grad_exp(x: Float64, upstream: Float64) -> Float64:
     return exp(x) * upstream
 
 
-fn grad_log(x: Float64, upstream: Float64) -> Float64:
+def grad_log(x: Float64, upstream: Float64) -> Float64:
     """Gradient of log: ∂log(x)/∂x = 1/x.
 
     Args:
@@ -70,7 +70,7 @@ fn grad_log(x: Float64, upstream: Float64) -> Float64:
     return upstream / x
 
 
-fn grad_relu(x: Float64, upstream: Float64) -> Float64:
+def grad_relu(x: Float64, upstream: Float64) -> Float64:
     """Gradient of ReLU: ∂ReLU(x)/∂x = 1 if x > 0 else 0.
 
     Args:
@@ -85,7 +85,7 @@ fn grad_relu(x: Float64, upstream: Float64) -> Float64:
     return 0.0
 
 
-fn grad_sigmoid(sigmoid_out: Float64, upstream: Float64) -> Float64:
+def grad_sigmoid(sigmoid_out: Float64, upstream: Float64) -> Float64:
     """Gradient of sigmoid: ∂σ(x)/∂x = σ(x)(1 - σ(x)).
 
     Args:
@@ -98,7 +98,7 @@ fn grad_sigmoid(sigmoid_out: Float64, upstream: Float64) -> Float64:
     return sigmoid_out * (1.0 - sigmoid_out) * upstream
 
 
-fn grad_tanh(tanh_out: Float64, upstream: Float64) -> Float64:
+def grad_tanh(tanh_out: Float64, upstream: Float64) -> Float64:
     """Gradient of tanh: ∂tanh(x)/∂x = 1 - tanh²(x).
 
     Args:
@@ -111,7 +111,7 @@ fn grad_tanh(tanh_out: Float64, upstream: Float64) -> Float64:
     return (1.0 - tanh_out * tanh_out) * upstream
 
 
-fn grad_pow(x: Float64, n: Float64, upstream: Float64) -> Float64:
+def grad_pow(x: Float64, n: Float64, upstream: Float64) -> Float64:
     """Gradient of x^n: ∂x^n/∂x = n × x^(n-1).
 
     Args:
@@ -127,7 +127,7 @@ fn grad_pow(x: Float64, n: Float64, upstream: Float64) -> Float64:
     return n * exp((n - 1.0) * log(x if x > 0.0 else 1e-300)) * upstream
 
 
-fn chain_rule(upstream: Float64, local_grad: Float64) -> Float64:
+def chain_rule(upstream: Float64, local_grad: Float64) -> Float64:
     """Chain rule: ∂L/∂x = ∂L/∂y × ∂y/∂x.
 
     Args:
@@ -140,7 +140,7 @@ fn chain_rule(upstream: Float64, local_grad: Float64) -> Float64:
     return upstream * local_grad
 
 
-fn grad_softmax_diag(softmax_i: Float64, upstream: Float64) -> Float64:
+def grad_softmax_diag(softmax_i: Float64, upstream: Float64) -> Float64:
     """Diagonal of softmax Jacobian: ∂s_i/∂z_i = s_i(1 - s_i).
 
     For the diagonal contribution in a softmax backward pass.

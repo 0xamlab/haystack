@@ -25,24 +25,24 @@ from output         import build_output
 # ── Per-thread xorshift64 RNG (thread-safe) ────────────────────────────────────
 
 @always_inline
-fn xorshift64(state: UInt64) -> UInt64:
+def xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13; s ^= s >> 7; s ^= s << 17
     return s
 
 @always_inline
-fn xr_f64(state: UInt64) -> Float64:
+def xr_f64(state: UInt64) -> Float64:
     return Float64(state >> 11) * (1.0 / 9007199254740992.0)
 
 @always_inline
-fn xr_normal(mut s: UInt64) -> Float64:
+def xr_normal(mut s: UInt64) -> Float64:
     s = xorshift64(s)
     var u1 = xr_f64(s) + 1e-300
     s = xorshift64(s)
     var u2 = xr_f64(s)
     return sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2)
 
-fn thread_seed(tid: Int, base: UInt64) -> UInt64:
+def thread_seed(tid: Int, base: UInt64) -> UInt64:
     var s = base + UInt64(tid) * UInt64(6364136223846793005)
     s = xorshift64(s); s = xorshift64(s); s = xorshift64(s)
     return s
@@ -51,11 +51,11 @@ fn thread_seed(tid: Int, base: UInt64) -> UInt64:
 # ── Parallel-safe helpers (all use xorshift64 RNG via inout state) ─────────────
 
 @always_inline
-fn _round(x: Float64) -> Float64:
+def _round(x: Float64) -> Float64:
     """Round to nearest integer (positive values only, used for Poisson)."""
     return Float64(Int(x + 0.5))
 
-fn _par_gamma(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
+def _par_gamma(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
     """Marsaglia-Tsang gamma sampler using xorshift64 RNG for parallel path.
     Takes mut s (mutable copy) — internal state advances don't propagate to caller."""
     var shape_adj = shape
@@ -85,7 +85,7 @@ fn _par_gamma(mut s: UInt64, shape: Float64, scale: Float64) -> Float64:
     return boost * scale * d  # fallback (should not reach with 1000 iters)
 
 @always_inline
-fn _par_acos_approx(x: Float64) -> Float64:
+def _par_acos_approx(x: Float64) -> Float64:
     """Fast acos approximation for von Mises sampler."""
     var cx = max(-1.0, min(1.0, x))
     return pi / 2.0 - (cx + cx * cx * cx / 6.0 + 3.0 * cx * cx * cx * cx * cx / 40.0)
@@ -93,7 +93,7 @@ fn _par_acos_approx(x: Float64) -> Float64:
 
 # ── Universal parallel-safe scalar sampler (all 27 distributions) ──────────────
 
-fn xr_sample(dt: Int, p0: Float64, p1: Float64, p2: Float64, p3: Float64, mut s: UInt64) -> Float64:
+def xr_sample(dt: Int, p0: Float64, p1: Float64, p2: Float64, p3: Float64, mut s: UInt64) -> Float64:
     """Sample one value from any distribution type using xorshift64 RNG.
     Handles all 27 distribution types for the parallel MC path.
     Takes mut s (mutable copy) — caller advances s independently after each call."""
@@ -264,7 +264,7 @@ fn xr_sample(dt: Int, p0: Float64, p1: Float64, p2: Float64, p3: Float64, mut s:
 
 # ── SIMD-accelerated sampling (Phase 7) ───────────────────────────────────────
 
-fn sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType.float64, 4]:
+def sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 normal values using Box-Muller pairs via xorshift64."""
     s = xorshift64(s); var u1a = xr_f64(s) + 1e-300
     s = xorshift64(s); var u2a = xr_f64(s)
@@ -281,7 +281,7 @@ fn sample_normal_simd4(mut s: UInt64, mean: Float64, std: Float64) -> SIMD[DType
         mean + std * z2, mean + std * z3
     )
 
-fn sample_uniform_simd4(mut s: UInt64, low: Float64, high: Float64) -> SIMD[DType.float64, 4]:
+def sample_uniform_simd4(mut s: UInt64, low: Float64, high: Float64) -> SIMD[DType.float64, 4]:
     """Sample 4 uniform values using xorshift64."""
     s = xorshift64(s); var u0 = xr_f64(s)
     s = xorshift64(s); var u1 = xr_f64(s)
@@ -392,7 +392,7 @@ def run_monte_carlo(req: SimRequest) raises -> String:
         var base_seed  = UInt64(0xA341316C_AABB3D29)
 
         @parameter
-        fn worker(tid: Int) capturing:
+        def worker(tid: Int) capturing:
             var s     = thread_seed(tid, base_seed)
             var chunk = par_runs // par_nw
             var lo    = tid * chunk

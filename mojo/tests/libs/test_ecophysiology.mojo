@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ecophysiology import metabolic_rate_kleiber, thermal_conductance, q10_temperature_coefficient, evaporative_water_loss, aerobic_scope, hypoxia_tolerance, osmoregulation_cost, heart_rate_fick, oxygen_consumption_rate, field_metabolic_rate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

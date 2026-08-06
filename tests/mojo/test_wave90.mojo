@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt, log, exp
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < eps
 
 
-fn approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
+def approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a) < eps
     return fabs((a - b) / b) < eps
@@ -62,7 +62,7 @@ fn approx_rel(a: Float64, b: Float64, eps: Float64 = 1e-4) -> Bool:
 # ── Hydroponics Tests ────────────────────────────────────────────────────────
 
 
-fn test_hydroponics() raises:
+def test_hydroponics() raises:
     print("Testing hydroponics...")
 
     # 1. ec_from_tds: 500ppm * 0.5 / 1000 = 0.25 mS/cm
@@ -134,7 +134,7 @@ fn test_hydroponics() raises:
 # ── Concrete Tests ───────────────────────────────────────────────────────────
 
 
-fn test_concrete() raises:
+def test_concrete() raises:
     print("Testing concrete...")
 
     # 25. water_cement_ratio: 180/400 = 0.45
@@ -202,7 +202,7 @@ fn test_concrete() raises:
 # ── Lottery Tests ────────────────────────────────────────────────────────────
 
 
-fn test_lottery() raises:
+def test_lottery() raises:
     print("Testing lottery...")
 
     # 48. combinations: C(6,2) = 15
@@ -281,7 +281,7 @@ fn test_lottery() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 90 Tests — Hydroponics, Concrete, Lottery")
     print("=" * 60)

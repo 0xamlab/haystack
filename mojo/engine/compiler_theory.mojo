@@ -24,7 +24,7 @@ Public API:
 # ── is_terminal ───────────────────────────────────────────────────────────────
 
 
-fn is_terminal(symbol_type: Int) -> Bool:
+def is_terminal(symbol_type: Int) -> Bool:
     """Check if symbol is terminal (type == 0)."""
     return symbol_type == 0
 
@@ -32,7 +32,7 @@ fn is_terminal(symbol_type: Int) -> Bool:
 # ── is_nonterminal ────────────────────────────────────────────────────────────
 
 
-fn is_nonterminal(symbol_type: Int) -> Bool:
+def is_nonterminal(symbol_type: Int) -> Bool:
     """Check if symbol is nonterminal (type == 1)."""
     return symbol_type == 1
 
@@ -40,7 +40,7 @@ fn is_nonterminal(symbol_type: Int) -> Bool:
 # ── first_follow_conflict ─────────────────────────────────────────────────────
 
 
-fn first_follow_conflict(first_has_epsilon: Bool, follow_overlap: Bool) -> Bool:
+def first_follow_conflict(first_has_epsilon: Bool, follow_overlap: Bool) -> Bool:
     """LL(1) conflict: FIRST contains ε AND FOLLOW overlaps with FIRST."""
     return first_has_epsilon and follow_overlap
 
@@ -48,7 +48,7 @@ fn first_follow_conflict(first_has_epsilon: Bool, follow_overlap: Bool) -> Bool:
 # ── lr_shift_reduce_conflict ──────────────────────────────────────────────────
 
 
-fn lr_shift_reduce_conflict(can_shift: Bool, can_reduce: Bool) -> Bool:
+def lr_shift_reduce_conflict(can_shift: Bool, can_reduce: Bool) -> Bool:
     """Shift/reduce conflict: both shift and reduce are possible."""
     return can_shift and can_reduce
 
@@ -56,7 +56,7 @@ fn lr_shift_reduce_conflict(can_shift: Bool, can_reduce: Bool) -> Bool:
 # ── reduce_reduce_conflict ────────────────────────────────────────────────────
 
 
-fn reduce_reduce_conflict(reduce1: Bool, reduce2: Bool) -> Bool:
+def reduce_reduce_conflict(reduce1: Bool, reduce2: Bool) -> Bool:
     """Reduce/reduce conflict: two different reductions possible."""
     return reduce1 and reduce2
 
@@ -64,7 +64,7 @@ fn reduce_reduce_conflict(reduce1: Bool, reduce2: Bool) -> Bool:
 # ── grammar_is_ambiguous ──────────────────────────────────────────────────────
 
 
-fn grammar_is_ambiguous(has_sr_conflict: Bool, has_rr_conflict: Bool) -> Bool:
+def grammar_is_ambiguous(has_sr_conflict: Bool, has_rr_conflict: Bool) -> Bool:
     """Grammar is ambiguous if it has S/R or R/R conflicts."""
     return has_sr_conflict or has_rr_conflict
 
@@ -72,7 +72,7 @@ fn grammar_is_ambiguous(has_sr_conflict: Bool, has_rr_conflict: Bool) -> Bool:
 # ── ast_depth ─────────────────────────────────────────────────────────────────
 
 
-fn ast_depth(left_depth: Int, right_depth: Int) -> Int:
+def ast_depth(left_depth: Int, right_depth: Int) -> Int:
     """Depth of binary AST node = 1 + max(left, right)."""
     var mx = left_depth
     if right_depth > mx:
@@ -83,7 +83,7 @@ fn ast_depth(left_depth: Int, right_depth: Int) -> Int:
 # ── ast_node_count ────────────────────────────────────────────────────────────
 
 
-fn ast_node_count(left_count: Int, right_count: Int) -> Int:
+def ast_node_count(left_count: Int, right_count: Int) -> Int:
     """Total nodes = left + right + 1."""
     return left_count + right_count + 1
 
@@ -91,7 +91,7 @@ fn ast_node_count(left_count: Int, right_count: Int) -> Int:
 # ── register_pressure ─────────────────────────────────────────────────────────
 
 
-fn register_pressure(live_in: Int, defined: Int, used: Int) -> Int:
+def register_pressure(live_in: Int, defined: Int, used: Int) -> Int:
     """Live registers after instruction = live_in - used + defined."""
     return live_in - used + defined
 
@@ -99,7 +99,7 @@ fn register_pressure(live_in: Int, defined: Int, used: Int) -> Int:
 # ── instruction_latency_sum ───────────────────────────────────────────────────
 
 
-fn instruction_latency_sum(latencies: List[Int], n: Int) -> Int:
+def instruction_latency_sum(latencies: List[Int], n: Int) -> Int:
     """Sum of instruction latencies (critical path estimate)."""
     var total = 0
     for i in range(n):
@@ -110,7 +110,7 @@ fn instruction_latency_sum(latencies: List[Int], n: Int) -> Int:
 # ── basic_block_throughput ────────────────────────────────────────────────────
 
 
-fn basic_block_throughput(n_instructions: Int, cycles: Int) -> Float64:
+def basic_block_throughput(n_instructions: Int, cycles: Int) -> Float64:
     """IPC = instructions / cycles."""
     return Float64(n_instructions) / Float64(cycles)
 
@@ -118,7 +118,7 @@ fn basic_block_throughput(n_instructions: Int, cycles: Int) -> Float64:
 # ── loop_unroll_benefit ───────────────────────────────────────────────────────
 
 
-fn loop_unroll_benefit(
+def loop_unroll_benefit(
     iterations: Int, overhead_per_iter: Int, unroll_factor: Int,
 ) -> Int:
     """Reduced overhead from unrolling.

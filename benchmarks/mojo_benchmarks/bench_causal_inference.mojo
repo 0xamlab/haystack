@@ -44,18 +44,18 @@ from causal_inference.panel import did_panel, synthetic_control
 from causal_inference.propensity import ipw_ate, match_nearest, match_optimal, overlap_report
 
 
-fn _ms(elapsed: UInt) -> Float64:
+def _ms(elapsed: UInt) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     return Float64(Int(elapsed)) / 1.0e6
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
+def _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
     """The empirical growth exponent `p` in `t ~ n^p`, from the two endpoints.
 
     Reported instead of a complexity claim: `p` is what was measured, and it is only two points,
@@ -69,7 +69,7 @@ fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Fl
 # ── input generators: closed form, no RNG ─────────────────────────────────────
 
 
-fn _chain_edges(n: Int) -> List[Int]:
+def _chain_edges(n: Int) -> List[Int]:
     """`0 -> 1 -> ... -> n-1`: the worst case for a path-enumerating d-separation and the
     cheapest for a state BFS, which is exactly the contrast worth measuring."""
     var out = List[Int]()
@@ -78,20 +78,20 @@ fn _chain_edges(n: Int) -> List[Int]:
     return out^
 
 
-fn _chain_targets(n: Int) -> List[Int]:
+def _chain_targets(n: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n - 1):
         out.append(i + 1)
     return out^
 
 
-fn _one(v: Int) -> List[Int]:
+def _one(v: Int) -> List[Int]:
     var out = List[Int]()
     out.append(v)
     return out^
 
 
-fn _scores(n: Int) -> List[Float64]:
+def _scores(n: Int) -> List[Float64]:
     """Deterministic scores spread over (0.05, 0.95) by a sine, so neither arm is degenerate
     and the propensities never touch a boundary."""
     var out = List[Float64]()
@@ -101,7 +101,7 @@ fn _scores(n: Int) -> List[Float64]:
     return out^
 
 
-fn _treatment(n: Int) -> List[Int]:
+def _treatment(n: Int) -> List[Int]:
     """Alternating assignment: exactly balanced arms, so the matcher's rectangular case is the
     square one and the two matchers are comparable."""
     var out = List[Int]()
@@ -110,7 +110,7 @@ fn _treatment(n: Int) -> List[Int]:
     return out^
 
 
-fn _outcomes(n: Int, scores: List[Float64], treatment: List[Int]) -> List[Float64]:
+def _outcomes(n: Int, scores: List[Float64], treatment: List[Int]) -> List[Float64]:
     """Y = 2 + 3 e_i + 5 T_i: an exactly linear model with a true effect of 5, so the numbers
     the benchmark prints are also a smoke check that the estimators are still right."""
     var out = List[Float64]()
@@ -119,14 +119,14 @@ fn _outcomes(n: Int, scores: List[Float64], treatment: List[Int]) -> List[Float6
     return out^
 
 
-fn _mu(n: Int, scores: List[Float64], shift: Float64) -> List[Float64]:
+def _mu(n: Int, scores: List[Float64], shift: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         out.append(2.0 + 3.0 * scores[i] + shift)
     return out^
 
 
-fn _panel(n_units: Int, n_periods: Int) -> List[Float64]:
+def _panel(n_units: Int, n_periods: Int) -> List[Float64]:
     """A flat row-major panel with a unit-specific level, a common trend, and a jump for unit 0
     in the second half — so `did_panel` and `synthetic_control` both have something to find."""
     var out = List[Float64]()
@@ -140,7 +140,7 @@ fn _panel(n_units: Int, n_periods: Int) -> List[Float64]:
     return out^
 
 
-fn _bench_dsep() raises -> Int:
+def _bench_dsep() raises -> Int:
     # ── 1. d-separation over a chain: the exponent should be ~1 ───────────────
     print("-- d_separated over a chain (Bayes-Ball, 2n states) --")
     var failures = 0
@@ -212,7 +212,7 @@ fn _bench_dsep() raises -> Int:
     )
     return failures
 
-fn _bench_weighting() raises -> Int:
+def _bench_weighting() raises -> Int:
     # ── 2. IPW and the naive contrast: one pass each ──────────────────────────
     print("-- ipw_ate / naive_ate / overlap_report (one pass) --")
     var failures = 0
@@ -264,7 +264,7 @@ fn _bench_weighting() raises -> Int:
         )
     return failures
 
-fn _bench_matching() raises -> Int:
+def _bench_matching() raises -> Int:
     # ── 3. matching: the price of optimality, measured ────────────────────────
     print("-- match_nearest (greedy, O(n_t n_c)) vs match_optimal (Hungarian) --")
     var failures = 0
@@ -332,7 +332,7 @@ fn _bench_matching() raises -> Int:
     return failures
 
 # `main` is a dispatcher; the module docstring says why there are only three sections here.
-fn main() raises:
+def main() raises:
     print("== causal_inference: identification, weighting, matching ==")
     var failures = 0
     failures += _bench_dsep()

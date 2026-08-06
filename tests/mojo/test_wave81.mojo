@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Antenna Tests ────────────────────────────────────────────────────────────
 
 
-fn test_antenna() raises:
+def test_antenna() raises:
     print("== Antenna Tests ==")
 
     # dipole_length: L = λ/2
@@ -124,7 +124,7 @@ fn test_antenna() raises:
 # ── Toxicology Tests ─────────────────────────────────────────────────────────
 
 
-fn test_toxicology() raises:
+def test_toxicology() raises:
     print("== Toxicology Tests ==")
 
     # ld50_dose: LD50 * BW
@@ -185,7 +185,7 @@ fn test_toxicology() raises:
 # ── Elevator Tests ───────────────────────────────────────────────────────────
 
 
-fn test_elevator() raises:
+def test_elevator() raises:
     print("== Elevator Tests ==")
 
     # round_trip_time: 2*H/v + floors*door + passengers*2
@@ -250,7 +250,7 @@ fn test_elevator() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 81 Tests ===")
     test_antenna()
     test_toxicology()

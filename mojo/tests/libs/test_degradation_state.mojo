@@ -28,7 +28,7 @@ from degradation_state import (
 )
 
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 

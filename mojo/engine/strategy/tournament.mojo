@@ -244,7 +244,7 @@ comptime TOURNEY_STAT_WEIGHT: Int = 16
 comptime TOURNEY_MIN_STRATEGIES: Int = 2
 
 
-fn tourney_method_name(method: Int) -> String:
+def tourney_method_name(method: Int) -> String:
     """The multiplicity procedure's name, from `inference.multiplicity`, for a method tag.
 
     The strings are the frozen `METHOD_*` constants of the module that implements the
@@ -267,7 +267,7 @@ fn tourney_method_name(method: Int) -> String:
     return String("unknown_method")
 
 
-fn tourney_pair_count(n_strategies: Int) -> Int:
+def tourney_pair_count(n_strategies: Int) -> Int:
     """`n(n-1)/2` — the number of unordered pairs — or -1 when that is not representable.
 
     Formed as `(n // 2) * (n - 1)` when `n` is even and `n * ((n - 1) // 2)` when it is odd, so
@@ -300,7 +300,7 @@ fn tourney_pair_count(n_strategies: Int) -> Int:
     return pairs
 
 
-fn tourney_outcome_cell(strategy: Int, replication: Int, n_replications: Int) -> Int:
+def tourney_outcome_cell(strategy: Int, replication: Int, n_replications: Int) -> Int:
     """The row-major offset of outcome `(strategy, replication)`, or -1 if not addressable.
 
     `strategy * n_replications + replication`. -1 for a negative index, for a replication at or
@@ -330,7 +330,7 @@ fn tourney_outcome_cell(strategy: Int, replication: Int, n_replications: Int) ->
     return base + replication
 
 
-fn tourney_outcome_status(
+def tourney_outcome_status(
     outcomes: List[Float64], n_strategies: Int, n_replications: Int
 ) -> Int:
     """`STRAT_OK` when `outcomes` is exactly an `n_strategies x n_replications` finite block.
@@ -383,7 +383,7 @@ fn tourney_outcome_status(
     return STRAT_OK
 
 
-fn tourney_work_charge(n_strategies: Int, n_replications: Int) -> Int:
+def tourney_work_charge(n_strategies: Int, n_replications: Int) -> Int:
     """What ranking this shape costs in contract work units, or -1 when it does not fit.
 
         n_strategies * (TOURNEY_CI_WEIGHT + n_replications * TOURNEY_STAT_WEIGHT)
@@ -435,7 +435,7 @@ fn tourney_work_charge(n_strategies: Int, n_replications: Int) -> Int:
     return strategy_charge + pair_charge
 
 
-fn _de_to_strat(code: Int) -> Int:
+def _de_to_strat(code: Int) -> Int:
     """Translate a `discrete_event` status into this package's vocabulary.
 
     `replicate_ci_flat` is the frozen-for-our-purposes interval builder and it answers in
@@ -463,7 +463,7 @@ fn _de_to_strat(code: Int) -> Int:
     return STRAT_ERR_NO_ESTIMATE
 
 
-fn _inf_to_strat(code: Int) -> Int:
+def _inf_to_strat(code: Int) -> Int:
     """Translate an `inference` status into this package's vocabulary. Same rule as `_de_to_strat`.
 
     A p-value family this module BUILT and `inference.multiplicity` then refuses means the
@@ -482,7 +482,7 @@ fn _inf_to_strat(code: Int) -> Int:
     return STRAT_ERR_NO_ESTIMATE
 
 
-fn _row_copy(outcomes: List[Float64], start: Int, n: Int) -> List[Float64]:
+def _row_copy(outcomes: List[Float64], start: Int, n: Int) -> List[Float64]:
     """Copy `n` values from `start`. The caller has ALREADY validated the range.
 
     Private, and the two validations that make it safe are `tourney_outcome_status` (the block is
@@ -528,7 +528,7 @@ struct _PairStat(Copyable, Movable):
     var deterministic: Bool
     var diffs: List[Float64]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.diffs = List[Float64]()
         self.has_stats = False
@@ -547,7 +547,7 @@ struct _PairStat(Copyable, Movable):
         self.deterministic = False
 
 
-fn _pair_stats(
+def _pair_stats(
     row_a: List[Float64], row_b: List[Float64], mean_a: Float64, mean_b: Float64,
     var_a: Float64, var_b: Float64, n_replications: Int, abs_tol: Float64,
 ) -> _PairStat:
@@ -649,7 +649,7 @@ fn _pair_stats(
     return out^
 
 
-fn _verdict_from(
+def _verdict_from(
     rejected: Bool, has_p: Bool, mean_diff: Float64, higher_is_better: Bool
 ) -> Int:
     """The three-outcome verdict for one comparison. `UNDECIDED` when the test was not MADE.
@@ -690,7 +690,7 @@ struct _Correction(Copyable, Movable):
     var rejected: List[Bool]
 
 
-fn _correct(
+def _correct(
     p_values: List[Float64], n_pairs: Int, alpha: Float64, method: Int
 ) -> _Correction:
     """Apply the selected multiplicity procedure to the WHOLE pair family at once.
@@ -768,7 +768,7 @@ struct PairedDiff(Copyable, Movable):
     var ci_excludes_zero: Bool
     var work_charge: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, index_a: Int, index_b: Int, n_replications: Int,
         level: Float64, alpha: Float64, higher_is_better: Bool,
     ):
@@ -813,7 +813,7 @@ struct PairedDiff(Copyable, Movable):
         self.work_charge = -1
 
 
-fn _ratio_of(paired: Float64, unpaired: Float64) -> Float64:
+def _ratio_of(paired: Float64, unpaired: Float64) -> Float64:
     """`unpaired / paired`, or -1.0 when that ratio does not exist.
 
     A paired variance of exactly zero is not an error — it is the deterministic case, which is
@@ -832,7 +832,7 @@ fn _ratio_of(paired: Float64, unpaired: Float64) -> Float64:
     return r
 
 
-fn tourney_paired_diff_flat(
+def tourney_paired_diff_flat(
     outcomes: List[Float64], n_strategies: Int, n_replications: Int,
     index_a: Int, index_b: Int, level: Float64, alpha: Float64,
     higher_is_better: Bool, abs_tol: Float64,
@@ -1015,7 +1015,7 @@ struct PairedBootstrap(Copyable, Movable):
     var n_draws: Int
     var rng_version: String
 
-    fn __init__(
+    def __init__(
         out self, status: Int, index_a: Int, index_b: Int, n_replications: Int,
         n_boot: Int, seed: Int, alpha: Float64,
     ):
@@ -1036,7 +1036,7 @@ struct PairedBootstrap(Copyable, Movable):
         self.rng_version = rng_version()
 
 
-fn tourney_paired_bootstrap_flat(
+def tourney_paired_bootstrap_flat(
     outcomes: List[Float64], n_strategies: Int, n_replications: Int,
     index_a: Int, index_b: Int, alpha: Float64, n_boot: Int, seed: Int,
 ) -> PairedBootstrap:
@@ -1234,7 +1234,7 @@ struct Tournament(Copyable, Movable):
     var multiplicity_corrected: Bool
     var work_charge: Int
 
-    fn __init__(
+    def __init__(
         out self, status: Int, n_strategies: Int, n_replications: Int, level: Float64,
         alpha: Float64, abs_tolerance: Float64, higher_is_better: Bool, method: Int,
     ):
@@ -1283,7 +1283,7 @@ struct Tournament(Copyable, Movable):
         self.work_charge = -1
 
 
-fn tourney_rank_flat(
+def tourney_rank_flat(
     outcomes: List[Float64], n_strategies: Int, n_replications: Int,
     level: Float64, alpha: Float64, method: Int, higher_is_better: Bool, abs_tol: Float64,
 ) -> Tournament:

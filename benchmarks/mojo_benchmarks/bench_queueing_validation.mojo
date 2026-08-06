@@ -228,7 +228,7 @@ comptime QV_MAX_MISSES: Int = 6
 # ── shared helpers ────────────────────────────────────────────────────────────
 
 
-fn _covers(lo: Float64, hi: Float64, target: Float64) -> Bool:
+def _covers(lo: Float64, hi: Float64, target: Float64) -> Bool:
     """Interval membership, with no tolerance. An epsilon here would report coverage for a value
     the replications excluded, which is the one thing this file must never do."""
     if not de_finite(lo) or not de_finite(hi) or not de_finite(target):
@@ -236,7 +236,7 @@ fn _covers(lo: Float64, hi: Float64, target: Float64) -> Bool:
     return target >= lo and target <= hi
 
 
-fn _ones(n: Int) -> List[Int]:
+def _ones(n: Int) -> List[Int]:
     """FIFO priorities — every customer at rank 0, so the discipline is first-come-first-served
     and the closed forms apply."""
     var out = List[Int]()
@@ -245,7 +245,7 @@ fn _ones(n: Int) -> List[Int]:
     return out^
 
 
-fn _pct(a: Float64, b: Float64) -> Float64:
+def _pct(a: Float64, b: Float64) -> Float64:
     if b == 0.0:
         return 0.0
     return 100.0 * (a - b) / b
@@ -284,11 +284,11 @@ struct LossRun(Copyable, Movable):
     var mean_busy_servers: Float64
 
 
-fn _loss_refusal(code: Int) -> LossRun:
+def _loss_refusal(code: Int) -> LossRun:
     return LossRun(code, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, False, 0.0, False, 0.0)
 
 
-fn _loss_work_charge(n_jobs: Int, capacity: Int) -> Int:
+def _loss_work_charge(n_jobs: Int, capacity: Int) -> Int:
     """Charged operations, or -1 when the charge does not fit `DE_MAX_WORK`.
 
     The calendar holds all `n` arrivals plus at most `capacity` in-service departures, and at
@@ -309,7 +309,7 @@ fn _loss_work_charge(n_jobs: Int, capacity: Int) -> Int:
     return 4 * n_jobs * levels
 
 
-fn _loss_serve(
+def _loss_serve(
     arrival: List[Float64], service: List[Float64], n_jobs: Int, capacity: Int,
     warmup_jobs: Int,
 ) -> LossRun:
@@ -433,7 +433,7 @@ fn _loss_serve(
 
 
 @no_inline
-fn _mmc_config(
+def _mmc_config(
     lam: Float64, mu: Float64, n: Int, cap: Int, reps: Int, mut misses: List[Int]
 ) -> Int:
     """One `replicate_mm1_flat` configuration: four exact values against four intervals.
@@ -488,7 +488,7 @@ fn _mmc_config(
 
 
 @no_inline
-fn _bench_mm1(mut misses: List[Int]) -> Int:
+def _bench_mm1(mut misses: List[Int]) -> Int:
     """Section 1 — M/M/1 at three utilisations. `L = rho/(1-rho)`, `W = 1/(mu-lambda)`."""
     print("[1] M/M/1 — exact steady state against the replication intervals")
     print("    Wq = rho/(mu-lambda)   W = 1/(mu-lambda)   L = rho/(1-rho)   util = rho")
@@ -503,7 +503,7 @@ fn _bench_mm1(mut misses: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_mmc(mut misses: List[Int]) -> Int:
+def _bench_mmc(mut misses: List[Int]) -> Int:
     """Section 2 — M/M/c at c = 3 and c = 5, both at rho = 0.8."""
     print("[2] M/M/c — exact Erlang-C steady state against the replication intervals")
     print("    Wq = C(c,A)/(c*mu-lambda)   W = Wq + 1/mu   L = lambda*W")
@@ -520,7 +520,7 @@ fn _bench_mmc(mut misses: List[Int]) -> Int:
 
 
 @no_inline
-fn _erlang_b_config(
+def _erlang_b_config(
     lam: Float64, mu: Float64, cap: Int, n: Int, reps: Int, mut misses: List[Int]
 ) -> Int:
     """One M/M/c/c configuration: blocking probability and carried traffic against Erlang B."""
@@ -589,7 +589,7 @@ fn _erlang_b_config(
 
 
 @no_inline
-fn _bench_erlang_b(mut misses: List[Int]) -> Int:
+def _bench_erlang_b(mut misses: List[Int]) -> Int:
     """Section 3 — Erlang B on the M/M/c/c loss system, plus the two-kernel cross-check."""
     print("[3] Erlang B — M/M/c/c loss system (no waiting room), exact recursion")
     print("    B(A,n) = A*B(A,n-1) / (n + A*B(A,n-1))   carried traffic = A*(1-B)")
@@ -642,7 +642,7 @@ fn _bench_erlang_b(mut misses: List[Int]) -> Int:
 
 
 @no_inline
-fn _erlang_c_config(
+def _erlang_c_config(
     lam: Float64, mu: Float64, cap: Int, n: Int, reps: Int, mut misses: List[Int],
     mut little: List[Int], mut little_gap: List[Float64],
 ) -> Int:
@@ -695,7 +695,7 @@ fn _erlang_c_config(
 
 
 @no_inline
-fn _bench_erlang_c(
+def _bench_erlang_c(
     mut misses: List[Int], mut little: List[Int], mut little_gap: List[Float64]
 ) -> Int:
     """Section 4 — Erlang C measured as the fraction of arrivals with a strictly positive wait."""
@@ -716,7 +716,7 @@ fn _bench_erlang_c(
 
 
 @no_inline
-fn _lindley_config(lam: Float64, mu: Float64, n: Int, rep: Int) -> Int:
+def _lindley_config(lam: Float64, mu: Float64, n: Int, rep: Int) -> Int:
     """The waiting-time recursion against the engine's own per-customer waits.
 
     Absolute-time form gated BIT-EXACT on every customer; the canonical gap form gated against a
@@ -809,7 +809,7 @@ fn _lindley_config(lam: Float64, mu: Float64, n: Int, rep: Int) -> Int:
 
 
 @no_inline
-fn _bench_lindley() -> Int:
+def _bench_lindley() -> Int:
     """Section 5 — the exact waiting-time recursion, per customer, including where rho >= 1."""
     print("[5] Lindley recursion — W_{n+1} = max(0, W_n + S_n - A_{n+1}), PER CUSTOMER")
     print("    Not statistical: a pathwise identity, so it holds at rho >= 1 where no steady")
@@ -833,7 +833,7 @@ fn _bench_lindley() -> Int:
 
 
 @no_inline
-fn _bench_little(little: List[Int], little_gap: List[Float64]) -> Int:
+def _bench_little(little: List[Int], little_gap: List[Float64]) -> Int:
     """Section 6 — `L = lambda * W` on the simulated numbers, with no theory involved.
 
     Harvested from every run section 4 drove (all at `warmup_jobs = 0`, which is the only window
@@ -867,7 +867,7 @@ fn _bench_little(little: List[Int], little_gap: List[Float64]) -> Int:
 
 
 @no_inline
-fn _warmup_pair(lam: Float64, mu: Float64, n: Int, reps: Int) -> Int:
+def _warmup_pair(lam: Float64, mu: Float64, n: Int, reps: Int) -> Int:
     """The SAME replications estimated twice: retaining everything, and discarding the transient.
 
     The truncated arm is `replicate_mm1_flat` itself — the shipped driver, with the truncation
@@ -942,7 +942,7 @@ fn _warmup_pair(lam: Float64, mu: Float64, n: Int, reps: Int) -> Int:
 
 
 @no_inline
-fn _warmup_sweep(lam: Float64, mu: Float64, reps: Int, mut zero_d: List[Int]) -> Int:
+def _warmup_sweep(lam: Float64, mu: Float64, reps: Int, mut zero_d: List[Int]) -> Int:
     """The bias-versus-run-length table, and where MSER-5 stops truncating.
 
     Reported rather than gated: this is the FINDING in this file, and the numbers are what make
@@ -993,7 +993,7 @@ fn _warmup_sweep(lam: Float64, mu: Float64, reps: Int, mut zero_d: List[Int]) ->
 
 
 @no_inline
-fn _bench_warmup(mut findings: List[Int]) -> Int:
+def _bench_warmup(mut findings: List[Int]) -> Int:
     """Section 7 — does warm-up detection earn its place?"""
     print("[7] Warm-up: the same replications, estimated with and without the transient")
     print("    A simulation starts empty, so the first customers wait less than steady-state ones")
@@ -1040,7 +1040,7 @@ fn _bench_warmup(mut findings: List[Int]) -> Int:
 
 
 @no_inline
-fn _bench_t_quantile() -> Int:
+def _bench_t_quantile() -> Int:
     """Section 8 — the Student-t quantile against published two-sided 95% table values.
 
     Every interval in this file is `mean +/- t * se`, so a wrong `t` would make all 29 coverage
@@ -1094,7 +1094,7 @@ fn _bench_t_quantile() -> Int:
 
 
 @no_inline
-fn _bench_negative_controls() -> Int:
+def _bench_negative_controls() -> Int:
     """Section 9 — six deliberately wrong inputs that the gates above MUST reject.
 
     A gate that cannot fail is not a gate. Every check in this file is exercised here against an
@@ -1206,7 +1206,7 @@ fn _bench_negative_controls() -> Int:
     return 0
 
 
-fn main() raises:
+def main() raises:
     var t0 = perf_counter_ns()
     print("\n=== bench_queueing_validation: the simulator against closed-form queueing theory ===")
     print("Seed", QV_SEED, " level", QV_LEVEL, " MSER batch", QV_BATCH,

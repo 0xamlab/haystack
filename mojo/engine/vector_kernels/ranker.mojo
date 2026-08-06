@@ -34,7 +34,7 @@ comptime W_TOKEN:    Float32 = Float32(0.25)
 
 # ── SIMD kernels ──────────────────────────────────────────────────────────────
 
-fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
+def _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -48,7 +48,7 @@ fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     return ((a0 + a1) + (a2 + a3) + (a4 + a5) + (a6 + a7)).reduce_add()
 
 
-fn _norm_inv(v: List[Float32]) -> Float32:
+def _norm_inv(v: List[Float32]) -> Float32:
     var p = v.unsafe_ptr()
     var s0 = (p +  0).load[width=SIMD_W]()
     var s1 = (p +  8).load[width=SIMD_W]()
@@ -67,7 +67,7 @@ fn _norm_inv(v: List[Float32]) -> Float32:
     return Float32(1.0) / sqrt(mag)
 
 
-fn _cosine(
+def _cosine(
     a: List[Float32], b: List[Float32],
     ni_a: Float32, ni_b: Float32,
 ) -> Float32:
@@ -83,7 +83,7 @@ fn _cosine(
 
 # ── String utilities ──────────────────────────────────────────────────────────
 
-fn _contains_lower(s: String, sub: String) -> Bool:
+def _contains_lower(s: String, sub: String) -> Bool:
     """Case-insensitive substring check via byte scan (avoids allocating _to_lower)."""
     var sb = s.as_bytes()
     var pb = sub.as_bytes()
@@ -109,7 +109,7 @@ fn _contains_lower(s: String, sub: String) -> Bool:
     return False
 
 
-fn _split_tokens(s: String) -> List[String]:
+def _split_tokens(s: String) -> List[String]:
     """Split on _, -, ., space into lowercase tokens."""
     var tokens = List[String]()
     var cur = String("")
@@ -130,7 +130,7 @@ fn _split_tokens(s: String) -> List[String]:
 
 
 @always_inline
-fn _norm_byte(c: UInt8) -> UInt8:
+def _norm_byte(c: UInt8) -> UInt8:
     """Normalise a single byte: separators → 32 (space), uppercase → lowercase."""
     if c == 95 or c == 45 or c == 46:   # _ - .
         return 32
@@ -139,7 +139,7 @@ fn _norm_byte(c: UInt8) -> UInt8:
     return c
 
 
-fn _build_vec(s: String, mut buf: List[Float32]) -> Float32:
+def _build_vec(s: String, mut buf: List[Float32]) -> Float32:
     """
     Zero buf, fill with bigram counts (direct byte processing), return norm_inv.
 
@@ -163,7 +163,7 @@ fn _build_vec(s: String, mut buf: List[Float32]) -> Float32:
 
 # ── Token Jaccard ─────────────────────────────────────────────────────────────
 
-fn _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float32:
+def _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float32:
     if len(a_toks) == 0 or len(b_toks) == 0:
         return Float32(0.0)
     var intersect = 0
@@ -180,7 +180,7 @@ fn _token_jaccard(a_toks: List[String], b_toks: List[String]) -> Float32:
 
 # ── Role boost ────────────────────────────────────────────────────────────────
 
-fn _role_boost(role: String, hint_toks: List[String]) -> Float32:
+def _role_boost(role: String, hint_toks: List[String]) -> Float32:
     """
     +0.12 if column role matches hint tokens, -0.08 on clear mismatch.
     role: "unit_measure" | "derived_measure" | ""
@@ -210,7 +210,7 @@ fn _role_boost(role: String, hint_toks: List[String]) -> Float32:
 
 # ── Source-type prior boost ───────────────────────────────────────────────────
 
-fn _prior_boost(source_type: String, col_raw: String) -> Float32:
+def _prior_boost(source_type: String, col_raw: String) -> Float32:
     """Context priors based on document type and column name pattern (case-insensitive)."""
     if source_type == "POS":
         if _contains_lower(col_raw, "unit") and (
@@ -239,7 +239,7 @@ struct _Score(Copyable, Movable):
     var type_boost:  Float32
     var prior_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.source      = ""
         self.column      = ""
         self.score       = Float32(0.0)
@@ -248,7 +248,7 @@ struct _Score(Copyable, Movable):
         self.type_boost  = Float32(0.0)
         self.prior_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.source      = copy.source
         self.column      = copy.column
         self.score       = copy.score
@@ -257,7 +257,7 @@ struct _Score(Copyable, Movable):
         self.type_boost  = copy.type_boost
         self.prior_boost = copy.prior_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.source      = take.source
         self.column      = take.column
         self.score       = take.score
@@ -267,7 +267,7 @@ struct _Score(Copyable, Movable):
         self.prior_boost = take.prior_boost
 
 
-fn _insertion_sort(mut results: List[_Score]):
+def _insertion_sort(mut results: List[_Score]):
     """Sort descending by score (in-place insertion sort)."""
     var n = len(results)
     for i in range(1, n):
@@ -305,10 +305,10 @@ fn _insertion_sort(mut results: List[_Score]):
 
 # ── JSON helpers ──────────────────────────────────────────────────────────────
 
-fn _json_str(key: String, val: String) -> String:
+def _json_str(key: String, val: String) -> String:
     return '"' + key + '":"' + val + '"'
 
-fn _json_f32(key: String, val: Float32) -> String:
+def _json_f32(key: String, val: Float32) -> String:
     var vi = Int(val * Float32(10000.0) + Float32(0.5))
     var whole = vi // 10000
     var frac  = vi  % 10000
@@ -317,7 +317,7 @@ fn _json_f32(key: String, val: Float32) -> String:
         fs = "0" + fs
     return '"' + key + '":' + String(whole) + "." + fs
 
-fn _json_bool(key: String, val: Bool) -> String:
+def _json_bool(key: String, val: Bool) -> String:
     if val:
         return '"' + key + '":true'
     return '"' + key + '":false'
@@ -325,7 +325,7 @@ fn _json_bool(key: String, val: Bool) -> String:
 
 # ── JSON parser ───────────────────────────────────────────────────────────────
 
-fn _json_get(raw: String, key: String) -> String:
+def _json_get(raw: String, key: String) -> String:
     """Minimal JSON string/bare-value extractor (byte-integer character tests)."""
     var needle = '"' + key + '"'
     var ki = raw.find(needle)
@@ -356,7 +356,7 @@ fn _json_get(raw: String, key: String) -> String:
 
 # ── Build output JSON ─────────────────────────────────────────────────────────
 
-fn _build_output(sorted: List[_Score], top_k: Int) -> String:
+def _build_output(sorted: List[_Score], top_k: Int) -> String:
     var n = len(sorted)
     var out_n = n if n < top_k else top_k
     var gap = Float32(0.0)
@@ -394,7 +394,7 @@ fn _build_output(sorted: List[_Score], top_k: Int) -> String:
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
-fn run_column_rank_v2(raw: String) -> String:
+def run_column_rank_v2(raw: String) -> String:
     """
     Rank candidate columns against a query column using SIMD Float32 kernels.
 

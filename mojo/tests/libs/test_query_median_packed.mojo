@@ -38,17 +38,17 @@ struct Tally(Copyable, Movable):
     var checks: Int
     var failures: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.checks = 0
         self.failures = 0
 
-    fn ok(mut self, name: String, condition: Bool):
+    def ok(mut self, name: String, condition: Bool):
         self.checks += 1
         if not condition:
             self.failures += 1
             print("  FAIL " + name)
 
-    fn close(mut self, name: String, a: Float64, b: Float64, tol: Float64):
+    def close(mut self, name: String, a: Float64, b: Float64, tol: Float64):
         self.checks += 1
         var d = a - b
         if d < 0.0:
@@ -58,16 +58,16 @@ struct Tally(Copyable, Movable):
             print("  FAIL " + name + " a=" + String(a) + " b=" + String(b))
 
 
-fn _lcg(mut state: UInt64) -> UInt64:
+def _lcg(mut state: UInt64) -> UInt64:
     state = state * 6364136223846793005 + 1442695040888963407
     return state
 
 
-fn _rand01(mut state: UInt64) -> Float64:
+def _rand01(mut state: UInt64) -> Float64:
     return Float64(Int(_lcg(state) >> 11)) / Float64(Int(UInt64(1) << 53))
 
 
-fn _batch2(k0: List[Float64], k1: List[Float64], v: List[Float64]) -> RecordBatch:
+def _batch2(k0: List[Float64], k1: List[Float64], v: List[Float64]) -> RecordBatch:
     var names = List[String]()
     names.append("k0")
     names.append("k1")
@@ -79,7 +79,7 @@ fn _batch2(k0: List[Float64], k1: List[Float64], v: List[Float64]) -> RecordBatc
     return RecordBatch(schema_of(names^), cols^, len(k0))
 
 
-fn _reference_median(values: List[Float64]) -> Float64:
+def _reference_median(values: List[Float64]) -> Float64:
     """The frozen, unmodified `sorting.quicksort` plus the exact
     `_median_of_sorted` formula — an independent path from the engine's own
     (which also calls `quicksort` + `_median_of_sorted`, so this reference
@@ -89,7 +89,7 @@ fn _reference_median(values: List[Float64]) -> Float64:
     return _median_of_sorted(sorted_vals)
 
 
-fn _reference_sd_val(values: List[Float64]) -> Float64:
+def _reference_sd_val(values: List[Float64]) -> Float64:
     """A from-scratch two-pass sample sd — deliberately NOT Welford, so this
     and the engine's Welford fold cannot share a bug. Returns 0.0 for
     fewer-than-2 rows; callers gate on `present_sd` separately."""
@@ -114,7 +114,7 @@ fn _reference_sd_val(values: List[Float64]) -> Float64:
     return g
 
 
-fn block1_hand_edge_cases(mut t: Tally):
+def block1_hand_edge_cases(mut t: Tally):
     var kc = List[Int]()
     kc.append(0)
     kc.append(1)
@@ -206,7 +206,7 @@ fn block1_hand_edge_cases(mut t: Tally):
     t.close("block1.neg.median", r5.result.median[0], -1.0, 1e-12)
 
 
-fn block2_random_crosscheck(mut t: Tally):
+def block2_random_crosscheck(mut t: Tally):
     var state: UInt64 = 0x9E3779B9
     var n = 6000
     var k = 12
@@ -278,7 +278,7 @@ fn block2_random_crosscheck(mut t: Tally):
                 )
 
 
-fn block3_nulls(mut t: Tally):
+def block3_nulls(mut t: Tally):
     var names = List[String]()
     names.append("k0")
     names.append("k1")
@@ -320,7 +320,7 @@ fn block3_nulls(mut t: Tally):
     t.ok("block3.group0_median_is_1", res.result.median[0] == 1.0)
 
 
-fn block4_refusals(mut t: Tally):
+def block4_refusals(mut t: Tally):
     var kc = List[Int]()
     kc.append(0)
     kc.append(1)
@@ -336,7 +336,7 @@ fn block4_refusals(mut t: Tally):
     t.ok("block4.status_vocab", GROUP_CODED_KEY_NOT_A_CODE != 0)
 
 
-fn main():
+def main():
     print("=== test_query_median_packed ===")
     var t = Tally()
     block1_hand_edge_cases(t)

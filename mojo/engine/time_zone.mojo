@@ -12,7 +12,7 @@ from std.math import abs as fabs
 # ── Zone Offset Lookup ────────────────────────────────────────────────────────
 
 
-fn utc_offset(zone_name: String) -> Float64:
+def utc_offset(zone_name: String) -> Float64:
     """Return UTC offset in hours for named zone."""
     if zone_name == "UTC" or zone_name == "GMT":
         return 0.0
@@ -40,7 +40,7 @@ fn utc_offset(zone_name: String) -> Float64:
 # ── Valid Zone Check ──────────────────────────────────────────────────────────
 
 
-fn is_valid_zone(name: String) -> Bool:
+def is_valid_zone(name: String) -> Bool:
     """Check if zone name is supported."""
     if name == "UTC":
         return True
@@ -70,7 +70,7 @@ fn is_valid_zone(name: String) -> Bool:
 # ── DST Check ─────────────────────────────────────────────────────────────────
 
 
-fn is_dst(month: Int, zone_name: String) -> Bool:
+def is_dst(month: Int, zone_name: String) -> Bool:
     """Simplified DST: US zones (EST/CST/MST/PST) observe Mar-Nov.
     European CET/EET observe Mar-Oct. Others: no DST."""
     if zone_name == "EST" or zone_name == "CST" or zone_name == "MST" or zone_name == "PST":
@@ -83,7 +83,7 @@ fn is_dst(month: Int, zone_name: String) -> Bool:
 # ── Effective Offset ──────────────────────────────────────────────────────────
 
 
-fn effective_offset(zone_name: String, month: Int) -> Float64:
+def effective_offset(zone_name: String, month: Int) -> Float64:
     """utc_offset + 1 if DST is active."""
     var base = utc_offset(zone_name)
     if is_dst(month, zone_name):
@@ -94,7 +94,7 @@ fn effective_offset(zone_name: String, month: Int) -> Float64:
 # ── Time Difference ───────────────────────────────────────────────────────────
 
 
-fn time_difference(zone1: String, zone2: String) -> Float64:
+def time_difference(zone1: String, zone2: String) -> Float64:
     """Difference in hours between two zones (zone2 - zone1)."""
     return utc_offset(zone2) - utc_offset(zone1)
 
@@ -102,7 +102,7 @@ fn time_difference(zone1: String, zone2: String) -> Float64:
 # ── Format Offset ─────────────────────────────────────────────────────────────
 
 
-fn format_offset(offset_hours: Float64) -> String:
+def format_offset(offset_hours: Float64) -> String:
     """Format as '+05:30' or '-08:00'."""
     var sign: String = "+"
     var h = offset_hours
@@ -131,7 +131,7 @@ fn format_offset(offset_hours: Float64) -> String:
 # ── Normalize Hours ───────────────────────────────────────────────────────────
 
 
-fn _normalize_time(total_minutes: Int) -> List[Int]:
+def _normalize_time(total_minutes: Int) -> List[Int]:
     """Normalize total minutes from midnight to [hour, minute] in 0-23."""
     var m = total_minutes % 1440
     if m < 0:
@@ -145,7 +145,7 @@ fn _normalize_time(total_minutes: Int) -> List[Int]:
 # ── Convert Time ──────────────────────────────────────────────────────────────
 
 
-fn convert_time(
+def convert_time(
     hour: Int, minute: Int, from_zone: String, to_zone: String,
 ) -> List[Int]:
     """Convert time between zones. Returns [hour, minute] (0-23)."""
@@ -159,7 +159,7 @@ fn convert_time(
 # ── Local to UTC ──────────────────────────────────────────────────────────────
 
 
-fn local_to_utc(hour: Int, minute: Int, zone: String) -> List[Int]:
+def local_to_utc(hour: Int, minute: Int, zone: String) -> List[Int]:
     """Convert local time to UTC."""
     return convert_time(hour, minute, zone, "UTC")
 
@@ -167,7 +167,7 @@ fn local_to_utc(hour: Int, minute: Int, zone: String) -> List[Int]:
 # ── UTC to Local ──────────────────────────────────────────────────────────────
 
 
-fn utc_to_local(hour: Int, minute: Int, zone: String) -> List[Int]:
+def utc_to_local(hour: Int, minute: Int, zone: String) -> List[Int]:
     """Convert UTC to local time."""
     return convert_time(hour, minute, "UTC", zone)
 
@@ -175,7 +175,7 @@ fn utc_to_local(hour: Int, minute: Int, zone: String) -> List[Int]:
 # ── Overlap Hours ─────────────────────────────────────────────────────────────
 
 
-fn overlap_hours(
+def overlap_hours(
     zone1: String,
     zone2: String,
     work_start: Int = 9,

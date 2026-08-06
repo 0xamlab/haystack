@@ -183,12 +183,12 @@ comptime INSTANCE_SEED: Int = 20260731
 # ── measurement and comparison helpers ────────────────────────────────────────
 
 
-fn _ms(elapsed: UInt) -> Float64:
+def _ms(elapsed: UInt) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     return Float64(Int(elapsed)) / 1.0e6
 
 
-fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
+def _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Float64:
     """The empirical growth exponent `p` in `t ~ n^p`, from the two endpoints.
 
     Reported instead of a complexity claim: `p` is what was measured, and it is only two
@@ -199,7 +199,7 @@ fn _exponent(t_first: Float64, t_last: Float64, n_first: Int, n_last: Int) -> Fl
     return log(t_last / t_first) / log(Float64(n_last) / Float64(n_first))
 
 
-fn _rel_close(a: Float64, b: Float64, ulps: Float64, abs_tol: Float64) -> Bool:
+def _rel_close(a: Float64, b: Float64, ulps: Float64, abs_tol: Float64) -> Bool:
     """`a` equals `b` to `ulps` of THEIR OWN magnitude, plus an explicit absolute allowance.
 
     Rule 4b, all four spellings avoided deliberately, because a benchmark's comparison code is
@@ -225,7 +225,7 @@ fn _rel_close(a: Float64, b: Float64, ulps: Float64, abs_tol: Float64) -> Bool:
     return d <= abs_tol + ulps * DBL_EPSILON * m
 
 
-fn _vec_rel_close(
+def _vec_rel_close(
     a: List[Float64], b: List[Float64], ulps: Float64, abs_tol: Float64
 ) -> Bool:
     """Element by element, each element against its OWN magnitude. Never a vector norm."""
@@ -237,7 +237,7 @@ fn _vec_rel_close(
     return True
 
 
-fn _vec_exact(a: List[Float64], b: List[Float64]) -> Bool:
+def _vec_exact(a: List[Float64], b: List[Float64]) -> Bool:
     """Bit-for-bit. Used for determinism, where a tolerance would defeat the point."""
     if len(a) != len(b):
         return False
@@ -247,7 +247,7 @@ fn _vec_exact(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _ints_exact(a: List[Int], b: List[Int]) -> Bool:
+def _ints_exact(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -256,7 +256,7 @@ fn _ints_exact(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _worst_le_violation(
+def _worst_le_violation(
     a: List[Float64], rows: Int, cols: Int, b: List[Float64], x: List[Float64]
 ) -> Float64:
     """The worst RELATIVE violation of `A x <= b` and `x >= 0`, measured here, not asked for.
@@ -298,14 +298,14 @@ fn _worst_le_violation(
     return worst
 
 
-fn _dot(c: List[Float64], x: List[Float64]) -> Float64:
+def _dot(c: List[Float64], x: List[Float64]) -> Float64:
     var total = 0.0
     for j in range(len(c)):
         total += c[j] * x[j]
     return total
 
 
-fn _lcg_next(s: Int) -> Int:
+def _lcg_next(s: Int) -> Int:
     """The one pseudo-random source for INSTANCES in this file, seeded by `INSTANCE_SEED`.
 
     Instance data only. Every algorithmic draw inside the modules goes through
@@ -315,35 +315,35 @@ fn _lcg_next(s: Int) -> Int:
     return (s * 1103515245 + 12345) % 2147483648
 
 
-fn _senses(code: Int, n: Int) -> List[Int]:
+def _senses(code: Int, n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(code)
     return out^
 
 
-fn _fill(value: Float64, n: Int) -> List[Float64]:
+def _fill(value: Float64, n: Int) -> List[Float64]:
     var out = List[Float64]()
     for _ in range(n):
         out.append(value)
     return out^
 
 
-fn _ifill(value: Int, n: Int) -> List[Int]:
+def _ifill(value: Int, n: Int) -> List[Int]:
     var out = List[Int]()
     for _ in range(n):
         out.append(value)
     return out^
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _int_list(*vals: Int) -> List[Int]:
+def _int_list(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
@@ -353,7 +353,7 @@ fn _int_list(*vals: Int) -> List[Int]:
 # ── routing instances, each with a stated reason its optimum is known ─────────
 
 
-fn _euclidean_matrix(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
+def _euclidean_matrix(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
     """Flat row-major `n x n` Euclidean distances.
 
     Symmetric to the bit — `(xi - xj)` and `(xj - xi)` square to the same double, negation
@@ -370,7 +370,7 @@ fn _euclidean_matrix(xs: List[Float64], ys: List[Float64]) -> List[Float64]:
     return out^
 
 
-fn _grid_points(
+def _grid_points(
     rows: Int, cols: Int, stride: Int, mut xs: List[Float64], mut ys: List[Float64]
 ):
     """`rows x cols` unit lattice, city indices SCRAMBLED against the lattice order.
@@ -393,7 +393,7 @@ fn _grid_points(
         ys.append(Float64(cell // cols))
 
 
-fn _circle_points(
+def _circle_points(
     n: Int, radius: Float64, stride: Int, mut xs: List[Float64], mut ys: List[Float64]
 ):
     """`n` cities equally spaced on a circle, indices scrambled against the hull order.
@@ -409,7 +409,7 @@ fn _circle_points(
         ys.append(radius * sin(theta))
 
 
-fn _random_points(
+def _random_points(
     n: Int, seed: Int, mut xs: List[Float64], mut ys: List[Float64]
 ):
     """A deterministic pseudo-random point cloud. No known optimum, and none is claimed."""
@@ -424,7 +424,7 @@ fn _random_points(
 # ── scheduling instances ──────────────────────────────────────────────────────
 
 
-fn _jssp_durations(n_jobs: Int, n_ops: Int, seed: Int) -> List[Float64]:
+def _jssp_durations(n_jobs: Int, n_ops: Int, seed: Int) -> List[Float64]:
     var out = List[Float64]()
     var s = seed
     for _ in range(n_jobs * n_ops):
@@ -433,7 +433,7 @@ fn _jssp_durations(n_jobs: Int, n_ops: Int, seed: Int) -> List[Float64]:
     return out^
 
 
-fn _jssp_latin(n_jobs: Int, n_ops: Int, n_machines: Int) -> List[Int]:
+def _jssp_latin(n_jobs: Int, n_ops: Int, n_machines: Int) -> List[Int]:
     """`machine_of[j][k] = (j + k) mod n_machines`: every job visits every machine once.
 
     A Latin square is the standard hard shape — it forces every machine to be contended by
@@ -446,7 +446,7 @@ fn _jssp_latin(n_jobs: Int, n_ops: Int, n_machines: Int) -> List[Int]:
     return out^
 
 
-fn _chain_edges(n_acts: Int, mut pred_from: List[Int], mut pred_to: List[Int]):
+def _chain_edges(n_acts: Int, mut pred_from: List[Int], mut pred_to: List[Int]):
     for i in range(n_acts - 1):
         pred_from.append(i)
         pred_to.append(i + 1)
@@ -455,7 +455,7 @@ fn _chain_edges(n_acts: Int, mut pred_from: List[Int], mut pred_to: List[Int]):
 # ── multiobjective instances ──────────────────────────────────────────────────
 
 
-fn _mo_points(n_points: Int, n_obj: Int, seed: Int) -> List[Float64]:
+def _mo_points(n_points: Int, n_obj: Int, seed: Int) -> List[Float64]:
     """Flat `n_points x n_obj` pseudo-random objective vectors, every objective minimised."""
     var out = List[Float64]()
     var s = seed
@@ -465,7 +465,7 @@ fn _mo_points(n_points: Int, n_obj: Int, seed: Int) -> List[Float64]:
     return out^
 
 
-fn _nested(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float64]]:
+def _nested(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float64]]:
     """The nested form the frozen `pareto_front` takes.
 
     Built OUTSIDE both timed regions, so neither arm pays for the other's input layout: the
@@ -488,19 +488,19 @@ fn _nested(f: List[Float64], n_points: Int, n_obj: Int) -> List[List[Float64]]:
 # quadratic suite uses as its differential oracle.
 
 
-fn _lp_c() -> List[Float64]:
+def _lp_c() -> List[Float64]:
     return _floats(-5.0, -8.0)
 
 
-fn _lp_a() -> List[Float64]:
+def _lp_a() -> List[Float64]:
     return _floats(1.0, 1.0, 5.0, 9.0)
 
 
-fn _lp_b() -> List[Float64]:
+def _lp_b() -> List[Float64]:
     return _floats(6.0, 45.0)
 
 
-fn _dense_lp_a(n: Int) -> List[Float64]:
+def _dense_lp_a(n: Int) -> List[Float64]:
     """Diagonally dominant, so the basis really fills instead of loading one variable."""
     var out = List[Float64]()
     for i in range(n):
@@ -512,21 +512,21 @@ fn _dense_lp_a(n: Int) -> List[Float64]:
     return out^
 
 
-fn _dense_lp_b(n: Int) -> List[Float64]:
+def _dense_lp_b(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         out.append(100.0 + Float64(i))
     return out^
 
 
-fn _dense_lp_c(n: Int) -> List[Float64]:
+def _dense_lp_c(n: Int) -> List[Float64]:
     var out = List[Float64]()
     for j in range(n):
         out.append(-1.0 - 0.5 * Float64(j % 3))
     return out^
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
 
     # ══ 1. routing: tour QUALITY against the frozen greedy seed ═══════════════

@@ -31,7 +31,7 @@ struct PriorityQueueEntry(Copyable, Movable):
     var priority: Float64
     var value: Int
 
-    fn __init__(out self, priority: Float64, value: Int):
+    def __init__(out self, priority: Float64, value: Int):
         self.priority = priority
         self.value = value
 
@@ -45,7 +45,7 @@ struct PriorityQueue(Copyable, Movable):
     var priorities: List[Float64]
     var values: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.priorities = List[Float64]()
         self.values = List[Int]()
 
@@ -53,7 +53,7 @@ struct PriorityQueue(Copyable, Movable):
 # ── pq_create ────────────────────────────────────────────────────────────────
 
 
-fn pq_create() -> PriorityQueue:
+def pq_create() -> PriorityQueue:
     """Create empty priority queue."""
     return PriorityQueue()
 
@@ -61,7 +61,7 @@ fn pq_create() -> PriorityQueue:
 # ── pq_size ──────────────────────────────────────────────────────────────────
 
 
-fn pq_size(pq: PriorityQueue) -> Int:
+def pq_size(pq: PriorityQueue) -> Int:
     """Current size of priority queue."""
     return len(pq.priorities)
 
@@ -69,7 +69,7 @@ fn pq_size(pq: PriorityQueue) -> Int:
 # ── pq_is_empty ──────────────────────────────────────────────────────────────
 
 
-fn pq_is_empty(pq: PriorityQueue) -> Bool:
+def pq_is_empty(pq: PriorityQueue) -> Bool:
     """Check if priority queue is empty."""
     return len(pq.priorities) == 0
 
@@ -77,7 +77,7 @@ fn pq_is_empty(pq: PriorityQueue) -> Bool:
 # ── pq_push ──────────────────────────────────────────────────────────────────
 
 
-fn pq_push(mut pq: PriorityQueue, priority: Float64, value: Int):
+def pq_push(mut pq: PriorityQueue, priority: Float64, value: Int):
     """Insert with priority (lower = higher priority). Bubble up."""
     pq.priorities.append(priority)
     pq.values.append(value)
@@ -102,7 +102,7 @@ fn pq_push(mut pq: PriorityQueue, priority: Float64, value: Int):
 # ── pq_peek ──────────────────────────────────────────────────────────────────
 
 
-fn pq_peek(pq: PriorityQueue) -> PriorityQueueEntry:
+def pq_peek(pq: PriorityQueue) -> PriorityQueueEntry:
     """View minimum priority entry without removing. Returns sentinel if empty."""
     if len(pq.priorities) == 0:
         return PriorityQueueEntry(-999999.0, -1)
@@ -112,7 +112,7 @@ fn pq_peek(pq: PriorityQueue) -> PriorityQueueEntry:
 # ── pq_pop ───────────────────────────────────────────────────────────────────
 
 
-fn pq_pop(mut pq: PriorityQueue) -> PriorityQueueEntry:
+def pq_pop(mut pq: PriorityQueue) -> PriorityQueueEntry:
     """Remove and return minimum priority entry. Bubble down."""
     if len(pq.priorities) == 0:
         return PriorityQueueEntry(-999999.0, -1)
@@ -164,7 +164,7 @@ struct CircularBuffer(Copyable, Movable):
     var head: Int   # index of oldest element
     var count: Int  # number of elements currently stored
 
-    fn __init__(out self, capacity: Int):
+    def __init__(out self, capacity: Int):
         self.capacity = capacity
         self.head = 0
         self.count = 0
@@ -176,7 +176,7 @@ struct CircularBuffer(Copyable, Movable):
 # ── cb_create ────────────────────────────────────────────────────────────────
 
 
-fn cb_create(capacity: Int) -> CircularBuffer:
+def cb_create(capacity: Int) -> CircularBuffer:
     """Create circular buffer with given capacity."""
     return CircularBuffer(capacity)
 
@@ -184,7 +184,7 @@ fn cb_create(capacity: Int) -> CircularBuffer:
 # ── cb_size ──────────────────────────────────────────────────────────────────
 
 
-fn cb_size(buf: CircularBuffer) -> Int:
+def cb_size(buf: CircularBuffer) -> Int:
     """Current number of elements in circular buffer."""
     return buf.count
 
@@ -192,7 +192,7 @@ fn cb_size(buf: CircularBuffer) -> Int:
 # ── cb_is_full ───────────────────────────────────────────────────────────────
 
 
-fn cb_is_full(buf: CircularBuffer) -> Bool:
+def cb_is_full(buf: CircularBuffer) -> Bool:
     """Check if circular buffer is at capacity."""
     return buf.count == buf.capacity
 
@@ -200,7 +200,7 @@ fn cb_is_full(buf: CircularBuffer) -> Bool:
 # ── cb_push ──────────────────────────────────────────────────────────────────
 
 
-fn cb_push(mut buf: CircularBuffer, value: Float64):
+def cb_push(mut buf: CircularBuffer, value: Float64):
     """Push value. Overwrites oldest if full."""
     var tail = (buf.head + buf.count) % buf.capacity
     if buf.count == buf.capacity:
@@ -215,7 +215,7 @@ fn cb_push(mut buf: CircularBuffer, value: Float64):
 # ── cb_pop ───────────────────────────────────────────────────────────────────
 
 
-fn cb_pop(mut buf: CircularBuffer) -> Float64:
+def cb_pop(mut buf: CircularBuffer) -> Float64:
     """Pop oldest value. Returns -999999 sentinel if empty."""
     if buf.count == 0:
         return -999999.0
@@ -228,7 +228,7 @@ fn cb_pop(mut buf: CircularBuffer) -> Float64:
 # ── cb_peek ──────────────────────────────────────────────────────────────────
 
 
-fn cb_peek(buf: CircularBuffer) -> Float64:
+def cb_peek(buf: CircularBuffer) -> Float64:
     """View oldest value without removing. Returns -999999 sentinel if empty."""
     if buf.count == 0:
         return -999999.0

@@ -44,12 +44,12 @@ from color import (
 from std.math import sqrt, abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -57,7 +57,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Helper: build adjacency list ─────────────────────────────────────────────
 
 
-fn _make_triangle() -> List[List[Int]]:
+def _make_triangle() -> List[List[Int]]:
     """3 nodes fully connected: 0-1, 0-2, 1-2."""
     var adj = List[List[Int]]()
     var n0 = List[Int]()
@@ -75,7 +75,7 @@ fn _make_triangle() -> List[List[Int]]:
     return adj^
 
 
-fn _make_cycle4() -> List[List[Int]]:
+def _make_cycle4() -> List[List[Int]]:
     """4-node cycle: 0-1-2-3-0."""
     var adj = List[List[Int]]()
     # node 0: [1, 3]
@@ -101,7 +101,7 @@ fn _make_cycle4() -> List[List[Int]]:
     return adj^
 
 
-fn _make_star4() -> List[List[Int]]:
+def _make_star4() -> List[List[Int]]:
     """Star graph with center=0 and leaves 1,2,3."""
     var adj = List[List[Int]]()
     # node 0 (center): [1, 2, 3]
@@ -125,7 +125,7 @@ fn _make_star4() -> List[List[Int]]:
     return adj^
 
 
-fn _make_disconnected() -> List[List[Int]]:
+def _make_disconnected() -> List[List[Int]]:
     """Two disconnected components: {0,1} and {2,3}."""
     var adj = List[List[Int]]()
     var n0 = List[Int]()
@@ -146,7 +146,7 @@ fn _make_disconnected() -> List[List[Int]]:
 # ── Network Analysis tests ───────────────────────────────────────────────────
 
 
-fn test_network() raises:
+def test_network() raises:
     print("── Network Analysis tests ──")
     var n_pass: Int = 0
 
@@ -234,7 +234,7 @@ fn test_network() raises:
 # ── Simulation tests ─────────────────────────────────────────────────────────
 
 
-fn test_simulation() raises:
+def test_simulation() raises:
     print("── Simulation tests ──")
     var n_pass: Int = 0
 
@@ -326,7 +326,7 @@ fn test_simulation() raises:
 # ── Color tests ───────────────────────────────────────────────────────────────
 
 
-fn test_color() raises:
+def test_color() raises:
     print("── Color tests ──")
     var n_pass: Int = 0
 
@@ -432,7 +432,7 @@ fn test_color() raises:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     test_network()
     test_simulation()
     test_color()

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from training_stability import loss_scale_adjust, is_finite_check, gradient_accumulation_step, warmup_lr_schedule, cosine_warmup_schedule, ema_weight_update, overflow_skip_step, grad_norm_finite, loss_spike_detector, training_step_budget
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

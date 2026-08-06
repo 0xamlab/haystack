@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from lottery import combinations, permutations, lottery_odds, expected_value, expected_value_net, house_edge, probability_at_least_one_win, annuity_vs_lump_sum, tax_after_winnings, odds_to_probability, probability_to_odds, jackpot_ev_threshold
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp, cos
 
 
-fn linear_beta_schedule(
+def linear_beta_schedule(
     t: Float64, t_max: Float64,
     beta_start: Float64, beta_end: Float64
 ) -> Float64:
@@ -37,7 +37,7 @@ fn linear_beta_schedule(
     return beta_start + (beta_end - beta_start) * t / t_max
 
 
-fn cosine_beta_schedule(
+def cosine_beta_schedule(
     t: Float64, t_max: Float64, s: Float64
 ) -> Float64:
     """Cosine beta schedule (Improved DDPM, Nichol & Dhariwal 2021).
@@ -63,7 +63,7 @@ fn cosine_beta_schedule(
     return alpha_bar
 
 
-fn alpha_from_beta(beta: Float64, prev_alpha_bar: Float64) -> Float64:
+def alpha_from_beta(beta: Float64, prev_alpha_bar: Float64) -> Float64:
     """Cumulative alpha: ᾱ_t = ᾱ_{t-1} × (1 - β_t).
 
     Args:
@@ -76,7 +76,7 @@ fn alpha_from_beta(beta: Float64, prev_alpha_bar: Float64) -> Float64:
     return prev_alpha_bar * (1.0 - beta)
 
 
-fn forward_diffusion_sample(
+def forward_diffusion_sample(
     x0: Float64, noise: Float64, alpha_bar: Float64
 ) -> Float64:
     """Forward diffusion: q(x_t | x_0) = sqrt(ᾱ_t)×x0 + sqrt(1-ᾱ_t)×ε.
@@ -92,7 +92,7 @@ fn forward_diffusion_sample(
     return sqrt(alpha_bar) * x0 + sqrt(1.0 - alpha_bar) * noise
 
 
-fn ddpm_reverse_mean(
+def ddpm_reverse_mean(
     x_t: Float64, predicted_noise: Float64,
     alpha_t: Float64, alpha_bar_t: Float64, beta_t: Float64
 ) -> Float64:
@@ -117,7 +117,7 @@ fn ddpm_reverse_mean(
     return (1.0 / sqrt(alpha_t)) * (x_t - coeff * predicted_noise)
 
 
-fn ddpm_posterior_variance(
+def ddpm_posterior_variance(
     beta_t: Float64, alpha_bar_t: Float64, alpha_bar_prev: Float64
 ) -> Float64:
     """DDPM posterior variance: β̃_t = (1-ᾱ_{t-1})/(1-ᾱ_t) × β_t.
@@ -136,7 +136,7 @@ fn ddpm_posterior_variance(
     return (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t) * beta_t
 
 
-fn ddim_step(
+def ddim_step(
     x_t: Float64, predicted_noise: Float64,
     alpha_bar_t: Float64, alpha_bar_prev: Float64, eta: Float64
 ) -> Float64:
@@ -164,7 +164,7 @@ fn ddim_step(
     return sqrt(alpha_bar_prev) * x0_pred + dir_xt
 
 
-fn snr(alpha_bar: Float64) -> Float64:
+def snr(alpha_bar: Float64) -> Float64:
     """Signal-to-noise ratio at timestep: SNR = ᾱ / (1 - ᾱ).
 
     Args:
@@ -179,7 +179,7 @@ fn snr(alpha_bar: Float64) -> Float64:
     return alpha_bar / denom
 
 
-fn noise_prediction_to_x0(
+def noise_prediction_to_x0(
     x_t: Float64, predicted_noise: Float64, alpha_bar: Float64
 ) -> Float64:
     """Convert epsilon prediction to x0 estimate.
@@ -199,7 +199,7 @@ fn noise_prediction_to_x0(
     return (x_t - sqrt(1.0 - alpha_bar) * predicted_noise) / sqrt(alpha_bar)
 
 
-fn edm_preconditioning(
+def edm_preconditioning(
     sigma: Float64, sigma_data: Float64
 ) -> Float64:
     """EDM c_skip skip connection scaling (Karras et al. 2022).

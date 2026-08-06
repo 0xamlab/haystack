@@ -31,19 +31,19 @@ from canonical.hash import (
 )
 
 
-fn _hex_of_float(value: Float64) -> String:
+def _hex_of_float(value: Float64) -> String:
     var out = List[UInt8]()
     write_float(out, value)
     return to_hex(out)
 
 
-fn _hex_of_int(value: Int) -> String:
+def _hex_of_int(value: Int) -> String:
     var out = List[UInt8]()
     write_int(out, value)
     return to_hex(out)
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 
@@ -442,7 +442,7 @@ fn main() raises:
     print("  [canonical.encode] Passed:", passed, "Failed:", failed)
 
 
-fn _nan_bytes() -> List[UInt8]:
+def _nan_bytes() -> List[UInt8]:
     """The canonical NaN pattern as 8 big-endian bytes."""
     var out = List[UInt8]()
     for shift in range(7, -1, -1):

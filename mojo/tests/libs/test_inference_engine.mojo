@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from inference_engine import batch_padding_mask, dynamic_batching_priority, kv_cache_hit_ratio, latency_percentile_estimate, throughput_tokens_per_sec, speculative_decode_accept_rate, continuous_batching_capacity, quantized_inference_speedup, prefill_time_estimate, decode_time_per_token
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

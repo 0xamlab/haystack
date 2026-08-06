@@ -109,7 +109,7 @@ comptime SEL_EXACT_MAE: Float64 = 1.0e-300
 
 # The three candidate method ids, in tie-break order. ONE definition, used by both
 # drivers, so the reported `method_ids` and the tie order cannot drift apart.
-fn _sel_method_ids() -> List[Int]:
+def _sel_method_ids() -> List[Int]:
     var out = List[Int]()
     out.append(FC_METHOD_ETS_ANN)
     out.append(FC_METHOD_ETS_AAN)
@@ -144,7 +144,7 @@ struct SelectedForecast(Copyable, Movable):
     var status_name: String
 
 
-fn _no_selection(status: Int, horizon: Int, n_train: Int) -> SelectedForecast:
+def _no_selection(status: Int, horizon: Int, n_train: Int) -> SelectedForecast:
     """A refusal: no path, no winner, every candidate marked absent."""
     var maes = List[Float64]()
     var weights = List[Float64]()
@@ -159,7 +159,7 @@ fn _no_selection(status: Int, horizon: Int, n_train: Int) -> SelectedForecast:
     )
 
 
-fn _ses_sse_mae(y: List[Float64], alpha: Float64) -> List[Float64]:
+def _ses_sse_mae(y: List[Float64], alpha: Float64) -> List[Float64]:
     """`[sse, mae]` of one-step errors under the engine SES recursion, `s_0 = y[0]`.
 
     The recursion is `series.exponential_forecast`'s own (`s = a*y + (1-a)*s`), replayed
@@ -182,7 +182,7 @@ fn _ses_sse_mae(y: List[Float64], alpha: Float64) -> List[Float64]:
     return out^
 
 
-fn _golden_ses_alpha(y: List[Float64]) -> Float64:
+def _golden_ses_alpha(y: List[Float64]) -> Float64:
     """Golden-section argmin of the SES one-step SSE over [SEL_ALPHA_LO, SEL_ALPHA_HI].
 
     28 iterations, deterministic, no derivative. A non-finite SSE at a probe (magnitudes
@@ -206,7 +206,7 @@ fn _golden_ses_alpha(y: List[Float64]) -> Float64:
     return 0.5 * (lo + hi)
 
 
-fn _theta_line(y: List[Float64]) -> List[Float64]:
+def _theta_line(y: List[Float64]) -> List[Float64]:
     """The theta-2 line `Z_t = 2*y_t - (a + b*t)` over the frozen OLS fit, or empty."""
     var out = List[Float64]()
     var fit = _ols_fit(y)
@@ -229,7 +229,7 @@ struct _Candidates(Copyable, Movable):
     var paths: List[List[Float64]]
 
 
-fn _fit_candidates(y: List[Float64], horizon: Int) -> _Candidates:
+def _fit_candidates(y: List[Float64], horizon: Int) -> _Candidates:
     """Fit SES, Damped and Theta; a refusal is carried per-candidate, never invented.
 
     Every forecast path comes out of this package's existing drivers
@@ -288,7 +288,7 @@ fn _fit_candidates(y: List[Float64], horizon: Int) -> _Candidates:
     return _Candidates(status^, maes^, paths^)
 
 
-fn _selection_weights(maes: List[Float64], status: List[Int]) -> List[Float64]:
+def _selection_weights(maes: List[Float64], status: List[Int]) -> List[Float64]:
     """Inverse-MAE weights over the fitted candidates, normalised to sum 1.
 
     An exact fit (mae <= SEL_EXACT_MAE) takes the whole weight — split equally when
@@ -327,7 +327,7 @@ fn _selection_weights(maes: List[Float64], status: List[Int]) -> List[Float64]:
     return out^
 
 
-fn select_best_fitted(y: List[Float64], horizon: Int) -> SelectedForecast:
+def select_best_fitted(y: List[Float64], horizon: Int) -> SelectedForecast:
     """The single candidate with the smallest in-sample one-step MAE, per series.
 
     Ties break to the FIRST of (SES, Damped, Theta) — deterministic, and biased
@@ -371,7 +371,7 @@ fn select_best_fitted(y: List[Float64], horizon: Int) -> SelectedForecast:
     )
 
 
-fn combine_inverse_mae_fitted(y: List[Float64], horizon: Int) -> SelectedForecast:
+def combine_inverse_mae_fitted(y: List[Float64], horizon: Int) -> SelectedForecast:
     """The inverse-MAE weighted combination of every candidate that fitted.
 
     `f_h = sum_i w_i * f_i,h` with `w_i = (1/mae_i) / sum_j (1/mae_j)` over the fitted

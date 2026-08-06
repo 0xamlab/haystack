@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from nutrition import bmi, bmi_category, bmr_mifflin, tdee, caloric_deficit, macro_split, ideal_body_weight, body_fat_estimate, water_intake, heart_rate_max, target_heart_rate, vo2max_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

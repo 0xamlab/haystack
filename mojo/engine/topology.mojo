@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs
 # ── distance_matrix ─────────────────────────────────────────────────────────
 
 
-fn distance_matrix(points: List[List[Float64]]) -> List[List[Float64]]:
+def distance_matrix(points: List[List[Float64]]) -> List[List[Float64]]:
     """Compute pairwise Euclidean distance matrix.
 
     Args:
@@ -55,7 +55,7 @@ fn distance_matrix(points: List[List[Float64]]) -> List[List[Float64]]:
 # ── vietoris_rips_edges ─────────────────────────────────────────────────────
 
 
-fn vietoris_rips_edges(distances: List[List[Float64]], epsilon: Float64) -> List[List[Int]]:
+def vietoris_rips_edges(distances: List[List[Float64]], epsilon: Float64) -> List[List[Int]]:
     """Edges in the Vietoris-Rips complex at scale ε.
 
     Args:
@@ -80,7 +80,7 @@ fn vietoris_rips_edges(distances: List[List[Float64]], epsilon: Float64) -> List
 # ── _union_find helpers ─────────────────────────────────────────────────────
 
 
-fn _uf_find(parent: List[Int], x: Int) -> Int:
+def _uf_find(parent: List[Int], x: Int) -> Int:
     """Find root with path compression (iterative)."""
     var cur = x
     while parent[cur] != cur:
@@ -88,7 +88,7 @@ fn _uf_find(parent: List[Int], x: Int) -> Int:
     return cur
 
 
-fn _uf_union(mut parent: List[Int], mut rank: List[Int], a: Int, b: Int) -> Bool:
+def _uf_union(mut parent: List[Int], mut rank: List[Int], a: Int, b: Int) -> Bool:
     """Union by rank. Returns True if a merge happened."""
     var ra = _uf_find(parent, a)
     var rb = _uf_find(parent, b)
@@ -107,7 +107,7 @@ fn _uf_union(mut parent: List[Int], mut rank: List[Int], a: Int, b: Int) -> Bool
 # ── connected_components_from_edges ─────────────────────────────────────────
 
 
-fn connected_components_from_edges(n: Int, edges: List[List[Int]]) -> Int:
+def connected_components_from_edges(n: Int, edges: List[List[Int]]) -> Int:
     """Count connected components via union-find.
 
     Args:
@@ -155,7 +155,7 @@ fn connected_components_from_edges(n: Int, edges: List[List[Int]]) -> Int:
 # ── betti_0 ─────────────────────────────────────────────────────────────────
 
 
-fn betti_0(n: Int, edges: List[List[Int]]) -> Int:
+def betti_0(n: Int, edges: List[List[Int]]) -> Int:
     """Betti number β₀: number of connected components.
 
     Args:
@@ -171,7 +171,7 @@ fn betti_0(n: Int, edges: List[List[Int]]) -> Int:
 # ── filtration_values ───────────────────────────────────────────────────────
 
 
-fn filtration_values(distances: List[List[Float64]]) -> List[Float64]:
+def filtration_values(distances: List[List[Float64]]) -> List[Float64]:
     """Sorted unique edge weights (filtration steps).
 
     Args:
@@ -207,7 +207,7 @@ fn filtration_values(distances: List[List[Float64]]) -> List[Float64]:
 # ── persistence_diagram_0 ──────────────────────────────────────────────────
 
 
-fn persistence_diagram_0(distances: List[List[Float64]]) -> List[List[Float64]]:
+def persistence_diagram_0(distances: List[List[Float64]]) -> List[List[Float64]]:
     """β₀ persistence diagram: [[birth, death], ...] for connected components.
 
     All components are born at 0. Each merge event kills one component
@@ -269,7 +269,7 @@ fn persistence_diagram_0(distances: List[List[Float64]]) -> List[List[Float64]]:
 # ── total_persistence ───────────────────────────────────────────────────────
 
 
-fn total_persistence(diagram: List[List[Float64]]) -> Float64:
+def total_persistence(diagram: List[List[Float64]]) -> Float64:
     """Total persistence: Σ(death - birth).
 
     Args:
@@ -288,7 +288,7 @@ fn total_persistence(diagram: List[List[Float64]]) -> Float64:
 # ── bottleneck_distance ─────────────────────────────────────────────────────
 
 
-fn bottleneck_distance(d1: List[List[Float64]], d2: List[List[Float64]]) -> Float64:
+def bottleneck_distance(d1: List[List[Float64]], d2: List[List[Float64]]) -> Float64:
     """Simplified bottleneck distance between two persistence diagrams.
 
     For each point in d1, find the nearest point in d2 (L∞ distance),
@@ -334,7 +334,7 @@ fn bottleneck_distance(d1: List[List[Float64]], d2: List[List[Float64]]) -> Floa
 # ── euler_characteristic ────────────────────────────────────────────────────
 
 
-fn euler_characteristic(n_vertices: Int, n_edges: Int, n_triangles: Int) -> Int:
+def euler_characteristic(n_vertices: Int, n_edges: Int, n_triangles: Int) -> Int:
     """Euler characteristic: χ = V - E + F.
 
     Args:
@@ -351,7 +351,7 @@ fn euler_characteristic(n_vertices: Int, n_edges: Int, n_triangles: Int) -> Int:
 # ── rips_triangle_count ─────────────────────────────────────────────────────
 
 
-fn rips_triangle_count(n: Int, edges: List[List[Int]]) -> Int:
+def rips_triangle_count(n: Int, edges: List[List[Int]]) -> Int:
     """Count triangles in the edge set.
 
     A triangle exists when vertices i, j, k are all pairwise connected.

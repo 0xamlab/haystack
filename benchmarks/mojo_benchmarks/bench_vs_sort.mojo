@@ -132,7 +132,7 @@ comptime MAX_SPREAD: Float64 = 2.0
 comptime LEGACY_HOT_REPS: Int = 2
 
 
-fn _fmt(value: Float64, places: Int) -> String:
+def _fmt(value: Float64, places: Int) -> String:
     """Fixed-point, because `String(Float64)` prints 17 digits and a table becomes unreadable."""
     if value != value:
         return String("nan")
@@ -144,14 +144,14 @@ fn _fmt(value: Float64, places: Int) -> String:
     return String(rounded)
 
 
-fn _pad(text: String, width: Int) -> String:
+def _pad(text: String, width: Int) -> String:
     var out = text
     while len(out.as_bytes()) < width:
         out += " "
     return out
 
 
-fn _dots(label: String, width: Int) -> String:
+def _dots(label: String, width: Int) -> String:
     """`label ......` padding, the shape `cold_start_harness.py`'s triple parser expects."""
     var out = label + " "
     while len(out.as_bytes()) < width:
@@ -168,14 +168,14 @@ struct Tier(Copyable, Movable):
     var hot_worst: Float64
     var reps: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.cold = 0.0
         self.warm = 0.0
         self.hot = 0.0
         self.hot_worst = 0.0
         self.reps = 0
 
-    fn record(mut self, ns: Float64):
+    def record(mut self, ns: Float64):
         if self.reps == 0:
             self.cold = ns
         elif self.reps == 1:
@@ -187,18 +187,18 @@ struct Tier(Copyable, Movable):
                 self.hot_worst = ns
         self.reps += 1
 
-    fn spread(self) -> Float64:
+    def spread(self) -> Float64:
         if self.hot <= 0.0:
             return 0.0
         return self.hot_worst / self.hot
 
-    fn ordered(self) -> Bool:
+    def ordered(self) -> Bool:
         return self.hot <= self.warm
 
-    fn valid(self) -> Bool:
+    def valid(self) -> Bool:
         return self.hot > 0.0 and self.ordered() and self.spread() <= MAX_SPREAD
 
-    fn why_invalid(self) -> String:
+    def why_invalid(self) -> String:
         """Names only the conditions that FAILED. See the gate note in the module docstring."""
         var reasons = String("")
         if self.hot <= 0.0:
@@ -224,7 +224,7 @@ struct Tier(Copyable, Movable):
         return reasons
 
 
-fn _per_elem(t: Tier, n: Int) -> Tier:
+def _per_elem(t: Tier, n: Int) -> Tier:
     var out = Tier()
     out.cold = t.cold / Float64(n)
     out.warm = t.warm / Float64(n)
@@ -234,7 +234,7 @@ fn _per_elem(t: Tier, n: Int) -> Tier:
     return out^
 
 
-fn _triple_line(label: String, t: Tier, n: Int) -> String:
+def _triple_line(label: String, t: Tier, n: Int) -> String:
     var pe = _per_elem(t, n)
     return (
         "  "
@@ -248,7 +248,7 @@ fn _triple_line(label: String, t: Tier, n: Int) -> String:
     )
 
 
-fn _machine_line(label: String, t: Tier, n: Int) -> String:
+def _machine_line(label: String, t: Tier, n: Int) -> String:
     var pe = _per_elem(t, n)
     return (
         "COLD_WARM_HOT "
@@ -263,7 +263,7 @@ fn _machine_line(label: String, t: Tier, n: Int) -> String:
     )
 
 
-fn _ratio(value: Float64) -> String:
+def _ratio(value: Float64) -> String:
     """A speed ratio with enough digits to survive being a catastrophic loss.
 
     Two decimal places is fine for 0.5x to 100x and useless outside it: the frozen quicksort's
@@ -286,7 +286,7 @@ fn _ratio(value: Float64) -> String:
     return "1/" + _fmt(1.0 / value, 0)
 
 
-fn _advantage_line(label: String, base: Tier, mine: Tier) -> String:
+def _advantage_line(label: String, base: Tier, mine: Tier) -> String:
     """`label: cold Nx warm Nx hot Nx` — the shape the cold-start harness parses as a ratio."""
     return (
         "  "
@@ -301,14 +301,14 @@ fn _advantage_line(label: String, base: Tier, mine: Tier) -> String:
     )
 
 
-fn _melem_per_s(ns_total: Float64, n: Int) -> Float64:
+def _melem_per_s(ns_total: Float64, n: Int) -> Float64:
     if ns_total <= 0.0:
         return 0.0
     return Float64(n) / ns_total * 1000.0
 
 
 # ── input generation ─────────────────────────────────────────────────────────
-fn _fill_random(mut buf: List[Float64], n: Int, seed: UInt64):
+def _fill_random(mut buf: List[Float64], n: Int, seed: UInt64):
     """Uniform doubles in [-1, 1) with a full 52-bit mantissa and both signs.
 
     xorshift64 rather than anything fancier: the point is a reproducible bit pattern with high
@@ -329,7 +329,7 @@ fn _fill_random(mut buf: List[Float64], n: Int, seed: UInt64):
     _ = len(buf)
 
 
-fn _key_bits(x: Float64) -> UInt64:
+def _key_bits(x: Float64) -> UInt64:
     return x.to_bits[DType.uint64]()
 
 
@@ -341,7 +341,7 @@ struct Fingerprint(Copyable, Movable):
     var wrapping_sum: UInt64
 
 
-fn _multiset_fingerprint(data: List[Float64], n: Int) -> Fingerprint:
+def _multiset_fingerprint(data: List[Float64], n: Int) -> Fingerprint:
     """(xor, wrapping sum) of the raw bit patterns — two permutation invariants.
 
     Independent of the reference implementation, which is the point: it detects a dropped or
@@ -360,7 +360,7 @@ fn _multiset_fingerprint(data: List[Float64], n: Int) -> Fingerprint:
     return Fingerprint(x, s)
 
 
-fn _is_sorted_list(data: List[Float64], n: Int) -> Bool:
+def _is_sorted_list(data: List[Float64], n: Int) -> Bool:
     var p = data.unsafe_ptr()
     for i in range(1, n):
         if p[i] < p[i - 1]:
@@ -370,7 +370,7 @@ fn _is_sorted_list(data: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn main() raises:
+def main() raises:
     var np = Python.import_module("numpy")
     var ct = Python.import_module("ctypes")
     var os = Python.import_module("os")

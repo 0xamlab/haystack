@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn safetensors_tensor_offset(
+def safetensors_tensor_offset(
     prev_tensor_bytes: Float64, alignment: Float64
 ) -> Float64:
     """Byte offset for next tensor in safetensors file.
@@ -39,7 +39,7 @@ fn safetensors_tensor_offset(
     return prev_tensor_bytes + (alignment - remainder)
 
 
-fn gguf_kv_metadata_size(
+def gguf_kv_metadata_size(
     key_len: Float64, value_type: Float64, value_count: Float64
 ) -> Float64:
     """GGUF key-value metadata entry size estimate.
@@ -64,7 +64,7 @@ fn gguf_kv_metadata_size(
     return base + 4.0 * value_count  # int32/float32: 4B each
 
 
-fn onnx_node_flops(
+def onnx_node_flops(
     op_type: Float64, batch: Float64, m: Float64, n: Float64, k: Float64
 ) -> Float64:
     """ONNX operator FLOPs estimate.
@@ -92,7 +92,7 @@ fn onnx_node_flops(
     return batch * m * n
 
 
-fn hf_config_head_dim(
+def hf_config_head_dim(
     hidden_size: Float64, num_attention_heads: Float64
 ) -> Float64:
     """Head dimension from HuggingFace model config.
@@ -111,7 +111,7 @@ fn hf_config_head_dim(
     return hidden_size / num_attention_heads
 
 
-fn hf_rope_theta_scale(
+def hf_rope_theta_scale(
     base_theta: Float64, rope_scaling_factor: Float64
 ) -> Float64:
     """Scaled RoPE theta for extended context (HF rope_scaling config).
@@ -128,7 +128,7 @@ fn hf_rope_theta_scale(
     return base_theta * rope_scaling_factor
 
 
-fn dtype_convert_scale(
+def dtype_convert_scale(
     src_max: Float64, dst_max: Float64
 ) -> Float64:
     """Scale factor for dtype conversion (e.g. FP32 → FP16).
@@ -147,7 +147,7 @@ fn dtype_convert_scale(
     return dst_max / src_max
 
 
-fn checkpoint_version_compat(
+def checkpoint_version_compat(
     model_version: Float64, checkpoint_version: Float64
 ) -> Float64:
     """Checkpoint version compatibility score.
@@ -169,7 +169,7 @@ fn checkpoint_version_compat(
     return 1.0 / (1.0 + diff)
 
 
-fn weight_remap_cost(
+def weight_remap_cost(
     n_tensors_to_remap: Float64, avg_tensor_elements: Float64,
     remap_overhead_factor: Float64
 ) -> Float64:
@@ -188,7 +188,7 @@ fn weight_remap_cost(
     return n_tensors_to_remap * avg_tensor_elements * remap_overhead_factor
 
 
-fn tokenizer_vocab_overlap(
+def tokenizer_vocab_overlap(
     vocab_a_size: Float64, vocab_b_size: Float64, shared_tokens: Float64
 ) -> Float64:
     """Vocabulary overlap between two tokenizers (Jaccard).
@@ -209,7 +209,7 @@ fn tokenizer_vocab_overlap(
     return shared_tokens / union_size
 
 
-fn model_card_perplexity(
+def model_card_perplexity(
     log_likelihood_sum: Float64, n_tokens: Float64
 ) -> Float64:
     """Perplexity from sum of log likelihoods.

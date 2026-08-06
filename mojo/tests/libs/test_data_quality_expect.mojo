@@ -67,12 +67,12 @@ comptime IR_COL_REF: Int = 130
 comptime IR_FROZEN_SQRT: Int = 12
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var zero: Float64 = 0.0
     return zero / zero
 
 
-fn _demo_table() -> List[Float64]:
+def _demo_table() -> List[Float64]:
     """3 rows x 2 cols: (price, qty) = (10, 1), (-12, 2), (absent, 3)."""
     var t = List[Float64]()
     t.append(10.0)
@@ -84,13 +84,13 @@ fn _demo_table() -> List[Float64]:
     return t^
 
 
-fn _demo_mask() -> List[Bool]:
+def _demo_mask() -> List[Bool]:
     var m = dq_mask_all_valid(6)
     m[4] = False
     return m^
 
 
-fn _node(mut ints: List[Int], mut fvals: List[Float64], op: Int, var_idx: Int, left: Int, right: Int, fval: Float64):
+def _node(mut ints: List[Int], mut fvals: List[Float64], op: Int, var_idx: Int, left: Int, right: Int, fval: Float64):
     ints.append(op)
     ints.append(var_idx)
     ints.append(left)
@@ -99,12 +99,12 @@ fn _node(mut ints: List[Int], mut fvals: List[Float64], op: Int, var_idx: Int, l
     fvals.append(fval)
 
 
-fn _partition_holds(r: ExpectationReport) -> Bool:
+def _partition_holds(r: ExpectationReport) -> Bool:
     """The three row populations must partition the checked prefix."""
     return r.n_failing_rows + r.n_unknown_rows + r.n_passing_rows == r.n_rows_checked
 
 
-fn _slots_finite(r: ExpectationReport) -> Bool:
+def _slots_finite(r: ExpectationReport) -> Bool:
     for k in range(len(r.fail_observed)):
         if not dq_is_finite(r.fail_observed[k]):
             return False
@@ -114,7 +114,7 @@ fn _slots_finite(r: ExpectationReport) -> Bool:
     return True
 
 
-fn check() raises:
+def check() raises:
     var passed = 0
     var failed = 0
     var t = _demo_table()
@@ -680,5 +680,5 @@ fn check() raises:
     print("  [data_quality.expect] Passed:", passed, "Failed:", failed)
 
 
-fn main() raises:
+def main() raises:
     check()

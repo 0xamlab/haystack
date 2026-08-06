@@ -15,7 +15,7 @@ from arima import (
 from std.math import abs as fabs
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ arima::" + name)
@@ -24,11 +24,11 @@ fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
         print("  ❌ arima::" + name)
 
 
-fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
+def _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
+def _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -40,7 +40,7 @@ fn _lists_close(a: List[Float64], b: List[Float64], tol: Float64) -> Bool:
 # ── deterministic seeded RNG for synthetic series (test-local) ───────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -48,12 +48,12 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _rand_unit(mut state: UInt64) -> Float64:
+def _rand_unit(mut state: UInt64) -> Float64:
     state = _xorshift64(state)
     return Float64(state >> 11) / 9007199254740992.0  # 2^53
 
 
-fn _rand_normal(mut state: UInt64) -> Float64:
+def _rand_normal(mut state: UInt64) -> Float64:
     """Irwin-Hall approximate N(0,1): sum of 12 uniforms minus 6."""
     var s: Float64 = 0.0
     for _ in range(12):
@@ -61,7 +61,7 @@ fn _rand_normal(mut state: UInt64) -> Float64:
     return s - 6.0
 
 
-fn _gen_ar1(phi: Float64, n: Int, seed: UInt64) -> List[Float64]:
+def _gen_ar1(phi: Float64, n: Int, seed: UInt64) -> List[Float64]:
     """Seeded synthetic AR(1): x_t = phi*x_{t-1} + e_t, 200-sample burn-in."""
     var state = seed ^ UInt64(0x9E3779B97F4A7C15)
     state = _xorshift64(state)
@@ -76,7 +76,7 @@ fn _gen_ar1(phi: Float64, n: Int, seed: UInt64) -> List[Float64]:
     return out^
 
 
-fn _gen_ma1(theta: Float64, n: Int, seed: UInt64) -> List[Float64]:
+def _gen_ma1(theta: Float64, n: Int, seed: UInt64) -> List[Float64]:
     """Seeded synthetic MA(1): x_t = e_t + theta*e_{t-1}."""
     var state = seed ^ UInt64(0x9E3779B97F4A7C15)
     state = _xorshift64(state)

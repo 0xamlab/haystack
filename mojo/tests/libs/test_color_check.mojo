@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from color_check import wcag_relative_luminance_rgb255, wcag_relative_luminance_hex, wcag_aa_required_contrast, wcag_contrast_ratio_rgb255, wcag_contrast_ratio_hex, wcag_text_pass_rgb255, wcag_text_pass_hex, preferred_text_color_rgb255, preferred_text_color_hex, dominant_background_rgb255, dominant_background_hex, dominant_background_contrast_ratio_hex, dominant_background_wcag_pass_hex, preferred_text_color_for_image, preferred_text_contrast_for_image, preferred_text_pass_for_image
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

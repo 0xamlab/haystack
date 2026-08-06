@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from quantization import quantize_symmetric, dequantize_symmetric, quantize_asymmetric, dequantize_asymmetric, quantization_error, scale_from_range, zero_point_from_range, clamp_to_int8, fp16_to_fp32_scale, int4_pack_error
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

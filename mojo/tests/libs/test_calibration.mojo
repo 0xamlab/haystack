@@ -9,15 +9,15 @@ from calibration import (
 )
 
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 
-fn approx(a: Float64, b: Float64, tol: Float64 = 1e-9) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64 = 1e-9) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
+def check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
         print("  ✅ calibration::" + name)

@@ -31,7 +31,7 @@ struct CountMinSketch(Copyable, Movable):
     var depth: Int
     var hash_seeds: List[Int]
 
-    fn __init__(
+    def __init__(
         out self,
         table: List[List[Int]],
         width: Int,
@@ -44,7 +44,7 @@ struct CountMinSketch(Copyable, Movable):
         self.hash_seeds = hash_seeds.copy()
 
 
-fn create_cms(width: Int, depth: Int) -> CountMinSketch:
+def create_cms(width: Int, depth: Int) -> CountMinSketch:
     """Create an empty Count-Min Sketch with given dimensions.
 
     Args:
@@ -65,7 +65,7 @@ fn create_cms(width: Int, depth: Int) -> CountMinSketch:
     return CountMinSketch(table^, width, depth, seeds^)
 
 
-fn cms_hash(item: Int, seed: Int, width: Int) -> Int:
+def cms_hash(item: Int, seed: Int, width: Int) -> Int:
     """Hash function for Count-Min Sketch.
 
     Computes ((item * seed + 17) % 1000003) % width.
@@ -86,7 +86,7 @@ fn cms_hash(item: Int, seed: Int, width: Int) -> Int:
     return val % width
 
 
-fn cms_add(mut sketch: CountMinSketch, item: Int, count: Int = 1):
+def cms_add(mut sketch: CountMinSketch, item: Int, count: Int = 1):
     """Add item to Count-Min Sketch.
 
     Increments all hash-indexed counters by count.
@@ -101,7 +101,7 @@ fn cms_add(mut sketch: CountMinSketch, item: Int, count: Int = 1):
         sketch.table[d][h] += count
 
 
-fn cms_query(sketch: CountMinSketch, item: Int) -> Int:
+def cms_query(sketch: CountMinSketch, item: Int) -> Int:
     """Query estimated count of an item (minimum across all hash functions).
 
     The CMS never underestimates; it may overestimate due to collisions.
@@ -132,13 +132,13 @@ struct HyperLogLog(Copyable, Movable):
     var m: Int
     var p: Int
 
-    fn __init__(out self, registers: List[Int], m: Int, p: Int):
+    def __init__(out self, registers: List[Int], m: Int, p: Int):
         self.registers = registers.copy()
         self.m = m
         self.p = p
 
 
-fn create_hll(precision: Int = 10) -> HyperLogLog:
+def create_hll(precision: Int = 10) -> HyperLogLog:
     """Create HyperLogLog with 2^precision registers.
 
     Args:
@@ -154,7 +154,7 @@ fn create_hll(precision: Int = 10) -> HyperLogLog:
     return HyperLogLog(regs^, m, precision)
 
 
-fn hll_hash(item: Int) -> Int:
+def hll_hash(item: Int) -> Int:
     """Hash for HLL using murmur-style bit mixing (32-bit).
 
     Produces well-distributed 31-bit hash values.
@@ -172,7 +172,7 @@ fn hll_hash(item: Int) -> Int:
     return h
 
 
-fn leading_zeros(value: Int, max_bits: Int = 32) -> Int:
+def leading_zeros(value: Int, max_bits: Int = 32) -> Int:
     """Count leading zeros in binary representation.
 
     Args:
@@ -198,7 +198,7 @@ fn leading_zeros(value: Int, max_bits: Int = 32) -> Int:
     return count
 
 
-fn hll_add(mut hll: HyperLogLog, item: Int):
+def hll_add(mut hll: HyperLogLog, item: Int):
     """Add item to HyperLogLog.
 
     Hashes item, extracts register index from top p bits,
@@ -219,7 +219,7 @@ fn hll_add(mut hll: HyperLogLog, item: Int):
         hll.registers[idx] = zeros
 
 
-fn hll_count(hll: HyperLogLog) -> Float64:
+def hll_count(hll: HyperLogLog) -> Float64:
     """Estimate cardinality using harmonic mean of registers.
 
     Uses the standard HLL formula:

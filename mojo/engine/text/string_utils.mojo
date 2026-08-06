@@ -27,14 +27,14 @@ Public API:
 
 
 @always_inline
-fn _is_whitespace(c: UInt8) -> Bool:
+def _is_whitespace(c: UInt8) -> Bool:
     return c == 32 or c == 9 or c == 10 or c == 13 or c == 12
 
 
 # ── str_split ────────────────────────────────────────────────────────────────
 
 
-fn str_split(s: String, delimiter: String) -> List[String]:
+def str_split(s: String, delimiter: String) -> List[String]:
     """Split string by delimiter. Returns list of parts.
     If delimiter is empty, returns the whole string as a single element.
     """
@@ -81,7 +81,7 @@ fn str_split(s: String, delimiter: String) -> List[String]:
 # ── str_join ─────────────────────────────────────────────────────────────────
 
 
-fn str_join(parts: List[String], delimiter: String) -> String:
+def str_join(parts: List[String], delimiter: String) -> String:
     """Join list of strings with delimiter."""
     var n = len(parts)
     if n == 0:
@@ -96,7 +96,7 @@ fn str_join(parts: List[String], delimiter: String) -> String:
 # ── str_replace ──────────────────────────────────────────────────────────────
 
 
-fn str_replace(s: String, old: String, new: String) -> String:
+def str_replace(s: String, old: String, new: String) -> String:
     """Replace all non-overlapping occurrences of old with new."""
     var s_len = len(s)
     var old_len = len(old)
@@ -133,7 +133,7 @@ fn str_replace(s: String, old: String, new: String) -> String:
 # ── str_startswith ───────────────────────────────────────────────────────────
 
 
-fn str_startswith(s: String, prefix: String) -> Bool:
+def str_startswith(s: String, prefix: String) -> Bool:
     """Return True if s starts with prefix."""
     var s_len = len(s)
     var p_len = len(prefix)
@@ -150,7 +150,7 @@ fn str_startswith(s: String, prefix: String) -> Bool:
 # ── str_endswith ─────────────────────────────────────────────────────────────
 
 
-fn str_endswith(s: String, suffix: String) -> Bool:
+def str_endswith(s: String, suffix: String) -> Bool:
     """Return True if s ends with suffix."""
     var s_len = len(s)
     var suf_len = len(suffix)
@@ -168,7 +168,7 @@ fn str_endswith(s: String, suffix: String) -> Bool:
 # ── str_contains ─────────────────────────────────────────────────────────────
 
 
-fn str_contains(s: String, substr: String) -> Bool:
+def str_contains(s: String, substr: String) -> Bool:
     """Return True if s contains substr."""
     var s_len = len(s)
     var sub_len = len(substr)
@@ -192,7 +192,7 @@ fn str_contains(s: String, substr: String) -> Bool:
 # ── str_repeat ───────────────────────────────────────────────────────────────
 
 
-fn str_repeat(s: String, n: Int) -> String:
+def str_repeat(s: String, n: Int) -> String:
     """Repeat string n times."""
     var result = String("")
     for _ in range(n):
@@ -203,7 +203,7 @@ fn str_repeat(s: String, n: Int) -> String:
 # ── str_pad_left ─────────────────────────────────────────────────────────────
 
 
-fn str_pad_left(s: String, width: Int, ch: String) -> String:
+def str_pad_left(s: String, width: Int, ch: String) -> String:
     """Left-pad s to given width with ch (uses first character of ch).
     If s is already >= width, returns s unchanged.
     """
@@ -224,7 +224,7 @@ fn str_pad_left(s: String, width: Int, ch: String) -> String:
 # ── str_pad_right ────────────────────────────────────────────────────────────
 
 
-fn str_pad_right(s: String, width: Int, ch: String) -> String:
+def str_pad_right(s: String, width: Int, ch: String) -> String:
     """Right-pad s to given width with ch (uses first character of ch).
     If s is already >= width, returns s unchanged.
     """
@@ -244,7 +244,7 @@ fn str_pad_right(s: String, width: Int, ch: String) -> String:
 # ── str_upper ────────────────────────────────────────────────────────────────
 
 
-fn str_upper(s: String) -> String:
+def str_upper(s: String) -> String:
     """Convert all lowercase ASCII letters to uppercase."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -261,7 +261,7 @@ fn str_upper(s: String) -> String:
 # ── str_lower ────────────────────────────────────────────────────────────────
 
 
-fn str_lower(s: String) -> String:
+def str_lower(s: String) -> String:
     """Convert all uppercase ASCII letters to lowercase."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -278,7 +278,7 @@ fn str_lower(s: String) -> String:
 # ── str_trim ─────────────────────────────────────────────────────────────────
 
 
-fn str_trim(s: String) -> String:
+def str_trim(s: String) -> String:
     """Strip leading and trailing ASCII whitespace (space, tab, newline, etc.)."""
     var n = len(s)
     if n == 0:
@@ -301,7 +301,7 @@ fn str_trim(s: String) -> String:
 # ── str_count ────────────────────────────────────────────────────────────────
 
 
-fn str_count(s: String, substr: String) -> Int:
+def str_count(s: String, substr: String) -> Int:
     """Count non-overlapping occurrences of substr in s."""
     var s_len = len(s)
     var sub_len = len(substr)
@@ -328,7 +328,7 @@ fn str_count(s: String, substr: String) -> Int:
 # ── str_reverse ──────────────────────────────────────────────────────────────
 
 
-fn str_reverse(s: String) -> String:
+def str_reverse(s: String) -> String:
     """Reverse a string (byte-level, ASCII-safe)."""
     var n = len(s)
     if n == 0:
@@ -343,7 +343,7 @@ fn str_reverse(s: String) -> String:
 # ── str_truncate ─────────────────────────────────────────────────────────────
 
 
-fn str_truncate(s: String, max_len: Int, suffix: String) -> String:
+def str_truncate(s: String, max_len: Int, suffix: String) -> String:
     """Truncate s to max_len characters, appending suffix if truncated.
     The total returned length including suffix will be <= max_len.
     """
@@ -365,7 +365,7 @@ fn str_truncate(s: String, max_len: Int, suffix: String) -> String:
 # ── str_center ───────────────────────────────────────────────────────────────
 
 
-fn str_center(s: String, width: Int, fill: String) -> String:
+def str_center(s: String, width: Int, fill: String) -> String:
     """Center s within a field of given width, padding with fill character."""
     var s_len = len(s)
     if s_len >= width:

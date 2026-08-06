@@ -47,7 +47,7 @@ from exactnum.lstsq import (
 )
 
 
-fn wampler_x() -> List[Float64]:
+def wampler_x() -> List[Float64]:
     """x = 0..20, integers, exactly representable in float64."""
     var x = List[Float64]()
     for i in range(21):
@@ -55,7 +55,7 @@ fn wampler_x() -> List[Float64]:
     return x^
 
 
-fn wampler_y() -> List[Float64]:
+def wampler_y() -> List[Float64]:
     """y_i = sum_{k=0..5} x_i^k. Every value is an integer inside the 2^53 exact grid, so the
     exact least-squares solution is provably the vector of ones."""
     var y = List[Float64]()

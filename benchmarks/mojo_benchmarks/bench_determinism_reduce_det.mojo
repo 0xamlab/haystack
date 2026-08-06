@@ -84,14 +84,14 @@ from determinism.reduce_det import (
 comptime WARMUP: Int = 2
 
 
-fn _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
+def _ns_per(elapsed: UInt, work: Int, reps: Int) -> Float64:
     """`perf_counter_ns` yields UInt, so the delta stays unsigned until here."""
     if work <= 0 or reps <= 0:
         return 0.0
     return Float64(Int(elapsed)) / Float64(work * reps)
 
 
-fn big_then_ones(n_ones: Int) -> List[Float64]:
+def big_then_ones(n_ones: Int) -> List[Float64]:
     """`[1e16] + n_ones x 1.0`. 1e16 has an ulp of 2.0, so `1e16 + 1.0` rounds back to 1e16
     and a sequential sum discards every term after the first."""
     var out = List[Float64]()
@@ -101,7 +101,7 @@ fn big_then_ones(n_ones: Int) -> List[Float64]:
     return out^
 
 
-fn ragged(m: Int) -> List[Float64]:
+def ragged(m: Int) -> List[Float64]:
     """Mixed magnitudes and alternating signs, so association order changes the answer for
     reasons unrelated to the one big value above."""
     var out = List[Float64]()
@@ -113,7 +113,7 @@ fn ragged(m: Int) -> List[Float64]:
     return out^
 
 
-fn chunk_grid(n: Int) -> List[Int]:
+def chunk_grid(n: Int) -> List[Int]:
     var cs = List[Int]()
     cs.append(1)
     cs.append(2)

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from convex import eval_function, compute_gradient, l2_norm, vector_sub, proximal_l1, line_search_backtrack, gradient_descent, projected_gradient_descent, adam_optimizer
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

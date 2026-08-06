@@ -46,12 +46,12 @@ from data_quality.duplicates import (
 )
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var zero: Float64 = 0.0
     return zero / zero
 
 
-fn _demo_table() -> List[Float64]:
+def _demo_table() -> List[Float64]:
     var t = List[Float64]()
     t.append(1.0)
     t.append(10.0)
@@ -66,27 +66,27 @@ fn _demo_table() -> List[Float64]:
     return t^
 
 
-fn _demo_mask() -> List[Bool]:
+def _demo_mask() -> List[Bool]:
     """Row 4's id (cell 8) is absent."""
     var m = dq_mask_all_valid(10)
     m[8] = False
     return m^
 
 
-fn _ints(a: Int) -> List[Int]:
+def _ints(a: Int) -> List[Int]:
     var o = List[Int]()
     o.append(a)
     return o^
 
 
-fn _ints2(a: Int, b: Int) -> List[Int]:
+def _ints2(a: Int, b: Int) -> List[Int]:
     var o = List[Int]()
     o.append(a)
     o.append(b)
     return o^
 
 
-fn _invariants(r: DuplicateReport) -> Bool:
+def _invariants(r: DuplicateReport) -> Bool:
     if r.n_rows != r.n_comparable_rows + r.n_null_key_rows:
         return False
     if r.n_comparable_rows != r.n_groups + r.n_duplicate_rows:
@@ -96,7 +96,7 @@ fn _invariants(r: DuplicateReport) -> Bool:
     return len(r.group_of_row) == r.n_rows
 
 
-fn check():
+def check():
     var passed = 0
     var failed = 0
     var t = _demo_table()
@@ -435,5 +435,5 @@ fn check():
     print("  [data_quality.duplicates] Passed:", passed, "Failed:", failed)
 
 
-fn main():
+def main():
     check()

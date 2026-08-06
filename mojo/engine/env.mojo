@@ -19,7 +19,7 @@ from conv import parse_float64, parse_int
 # ── Core env access ──────────────────────────────────────────────────────────
 
 
-fn _env_get_raw(key: String) raises -> String:
+def _env_get_raw(key: String) raises -> String:
     """Get raw env var value using Python os.environ.get().
 
     Returns empty string if not set. Raises only on Python init failure.
@@ -29,7 +29,7 @@ fn _env_get_raw(key: String) raises -> String:
     return String(result)
 
 
-fn _env_has(key: String) raises -> Bool:
+def _env_has(key: String) raises -> Bool:
     """Check if env var exists using Python os.environ."""
     var os = Python.import_module("os")
     var result = os.environ.get(key)
@@ -39,7 +39,7 @@ fn _env_has(key: String) raises -> Bool:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-fn env_get(key: String, default: String = "") raises -> String:
+def env_get(key: String, default: String = "") raises -> String:
     """Get environment variable value, returning default if not set.
 
     Args:
@@ -57,7 +57,7 @@ fn env_get(key: String, default: String = "") raises -> String:
     return val
 
 
-fn env_get_int(key: String, default: Int = 0) raises -> Int:
+def env_get_int(key: String, default: Int = 0) raises -> Int:
     """Get environment variable as integer.
 
     Args:
@@ -75,7 +75,7 @@ fn env_get_int(key: String, default: Int = 0) raises -> Int:
     return parse_int(val)
 
 
-fn env_get_float(key: String, default: Float64 = 0.0) raises -> Float64:
+def env_get_float(key: String, default: Float64 = 0.0) raises -> Float64:
     """Get environment variable as Float64.
 
     Args:
@@ -93,7 +93,7 @@ fn env_get_float(key: String, default: Float64 = 0.0) raises -> Float64:
     return parse_float64(val)
 
 
-fn env_get_bool(key: String, default: Bool = False) raises -> Bool:
+def env_get_bool(key: String, default: Bool = False) raises -> Bool:
     """Get environment variable as Bool.
 
     Truthy values (case-insensitive): "true", "1", "yes"
@@ -121,7 +121,7 @@ fn env_get_bool(key: String, default: Bool = False) raises -> Bool:
     return default
 
 
-fn env_is_set(key: String) raises -> Bool:
+def env_is_set(key: String) raises -> Bool:
     """Check if an environment variable is set (exists in environment).
 
     Args:
@@ -136,7 +136,7 @@ fn env_is_set(key: String) raises -> Bool:
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
 
-fn _to_lower(s: String) -> String:
+def _to_lower(s: String) -> String:
     """Convert ASCII string to lowercase."""
     var result = String("")
     var bytes = s.as_bytes()

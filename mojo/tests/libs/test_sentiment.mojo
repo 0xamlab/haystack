@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sentiment import tokenize_lower, word_sentiment, sentiment_score, polarity, sentiment_label, subjectivity, count_positive_words, count_negative_words, most_positive_word, most_negative_word
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

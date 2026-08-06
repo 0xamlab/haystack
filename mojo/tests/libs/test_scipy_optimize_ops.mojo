@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from scipy_optimize_ops import bfgs_hessian_update_term, conjugate_gradient_beta_fr, conjugate_gradient_beta_pr, armijo_condition, wolfe_curvature_condition, golden_section_midpoint, newton_step, secant_step, bisection_midpoint, trust_region_step_norm
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

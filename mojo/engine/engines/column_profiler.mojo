@@ -57,7 +57,7 @@ from conv import parse_float64
 
 # ── String helper ─────────────────────────────────────────────────────────────
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     """Build substring s[start:end] using byte-by-byte copy."""
     var result = String("")
     var bytes = s.as_bytes()
@@ -76,7 +76,7 @@ fn _substr(s: String, start: Int, end: Int) -> String:
 
 # ── djb2 hash (O(n) deduplication without List[String] scans) ────────────────
 
-fn _djb2_str(s: String) -> Int:
+def _djb2_str(s: String) -> Int:
     var h: Int = 5381
     var bytes = s.as_bytes()
     for i in range(len(s)):
@@ -88,7 +88,7 @@ fn _djb2_str(s: String) -> Int:
 
 # ── Entropy (Shannon, base 2) ─────────────────────────────────────────────────
 
-fn _approx_entropy(values: List[Float64]) -> Float64:
+def _approx_entropy(values: List[Float64]) -> Float64:
     """Approximate Shannon entropy using 32-bin histogram."""
     var n = len(values)
     if n <= 1:
@@ -125,7 +125,7 @@ fn _approx_entropy(values: List[Float64]) -> Float64:
 
 # ── String pattern detection ──────────────────────────────────────────────────
 
-fn _is_date_string(s: String) -> Bool:
+def _is_date_string(s: String) -> Bool:
     """Check if string looks like a date (contains digit + separator)."""
     var n = len(s)
     if n < 6 or n > 32:
@@ -142,7 +142,7 @@ fn _is_date_string(s: String) -> Bool:
     return has_sep and has_digit
 
 
-fn _is_alphanumeric_id(s: String) -> Bool:
+def _is_alphanumeric_id(s: String) -> Bool:
     """Check if string looks like an ID (alphanum, possibly with dashes)."""
     var n = len(s)
     if n < 2 or n > 30:
@@ -165,7 +165,7 @@ fn _is_alphanumeric_id(s: String) -> Bool:
     return all_valid and has_digit and has_alpha
 
 
-fn _count_distinct_float(values: List[Float64]) -> Int:
+def _count_distinct_float(values: List[Float64]) -> Int:
     """Count distinct values via insertion sort."""
     var n = len(values)
     if n == 0:
@@ -187,7 +187,7 @@ fn _count_distinct_float(values: List[Float64]) -> Int:
 
 # ── Semantic type classification ──────────────────────────────────────────────
 
-fn _classify_semantic_type(
+def _classify_semantic_type(
     field_name: String,
     values: List[Float64],
     strings: List[String],
@@ -293,7 +293,7 @@ fn _classify_semantic_type(
 
 # ── JSON array parsers ────────────────────────────────────────────────────────
 
-fn _extract_float_array(arr_json: String) -> List[Float64]:
+def _extract_float_array(arr_json: String) -> List[Float64]:
     """Parse JSON array of numbers or quoted numeric strings → List[Float64].
 
     Handles both raw numbers [100.0, 200.0] and quoted numbers ["100.0", "200.0"].
@@ -367,7 +367,7 @@ fn _extract_float_array(arr_json: String) -> List[Float64]:
     return result^
 
 
-fn _extract_string_array(arr_json: String) -> List[String]:
+def _extract_string_array(arr_json: String) -> List[String]:
     """Parse JSON array of strings → List[String]."""
     var result = List[String]()
     var n = len(arr_json)
@@ -396,7 +396,7 @@ fn _extract_string_array(arr_json: String) -> List[String]:
 
 # ── Column JSON object walker ────────────────────────────────────────────────
 
-fn _find_bracket_value(s: String, key: String) -> String:
+def _find_bracket_value(s: String, key: String) -> String:
     """Find the array value for a key in a JSON object. Returns the array string."""
     var key_quoted = '"' + key + '"'
     var pos = s.find(key_quoted)
@@ -411,7 +411,7 @@ fn _find_bracket_value(s: String, key: String) -> String:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-fn run_column_profile(raw: String) raises -> String:
+def run_column_profile(raw: String) raises -> String:
     """
     Profile all columns and return semantic type classifications.
     Input: {"engine_type":"column_profile","columns":{col: {values:[...], strings:[...]}}}

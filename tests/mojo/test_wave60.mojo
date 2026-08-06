@@ -47,12 +47,12 @@ from nutrition import (
 from std.math import abs as fabs
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
@@ -62,7 +62,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Optics Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_optics() raises:
+def test_optics() raises:
     print("  ▶ optics …")
     var passed = 0
 
@@ -158,7 +158,7 @@ fn test_optics() raises:
 # ── Electrical Tests ─────────────────────────────────────────────────────────
 
 
-fn test_electrical() raises:
+def test_electrical() raises:
     print("  ▶ electrical …")
     var passed = 0
 
@@ -267,7 +267,7 @@ fn test_electrical() raises:
 # ── Nutrition Tests ──────────────────────────────────────────────────────────
 
 
-fn test_nutrition() raises:
+def test_nutrition() raises:
     print("  ▶ nutrition …")
     var passed = 0
 
@@ -371,7 +371,7 @@ fn test_nutrition() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("")
     print("╔══════════════════════════════════════════════════════════════╗")
     print("║          🎯  250 LIBRARY MILESTONE REACHED!  🎯            ║")

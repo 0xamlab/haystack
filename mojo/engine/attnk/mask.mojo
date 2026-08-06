@@ -106,7 +106,7 @@ struct MaskConvention(Copyable, Movable):
     var same_shape: Bool
 
 
-fn mask_convention_agreement(
+def mask_convention_agreement(
     query_pos: Float64, key_pos: Float64, logit: Float64
 ) -> MaskConvention:
     """Both frozen causal kernels on the same pair, so the difference is a number not a surprise.
@@ -121,7 +121,7 @@ fn mask_convention_agreement(
     return MaskConvention(bias, masked, logit, bias == masked)
 
 
-fn _alloc_bias(s_q: Int, s_k: Int) -> Int:
+def _alloc_bias(s_q: Int, s_k: Int) -> Int:
     """Validate a mask shape. Returns a status; callers allocate only after `ATTN_OK`."""
     if s_q <= 0 or s_k <= 0:
         return ATTN_ERR_EMPTY_DIM
@@ -133,7 +133,7 @@ fn _alloc_bias(s_q: Int, s_k: Int) -> Int:
     return ATTN_OK
 
 
-fn mask_causal_flat(s_q: Int, s_k: Int, offset: Int) -> MaskSpec:
+def mask_causal_flat(s_q: Int, s_k: Int, offset: Int) -> MaskSpec:
     """Causal bias. `offset` is how many cached keys precede the first query — the decode case.
 
     Without the offset a decode step is wrong in the most confusing possible way: with one query and
@@ -169,7 +169,7 @@ fn mask_causal_flat(s_q: Int, s_k: Int, offset: Int) -> MaskSpec:
     return MaskSpec(bias^, s_q, s_k, n_masked, ATTN_OK)
 
 
-fn mask_sliding_window_flat(
+def mask_sliding_window_flat(
     s_q: Int, s_k: Int, window: Int, offset: Int
 ) -> MaskSpec:
     """Causal bias restricted to the last `window` keys. `window <= 0` means unbounded.
@@ -209,7 +209,7 @@ fn mask_sliding_window_flat(
     return MaskSpec(bias^, s_q, s_k, n_masked, ATTN_OK)
 
 
-fn mask_padding_flat(valid_len: Int, s_q: Int, s_k: Int) -> MaskSpec:
+def mask_padding_flat(valid_len: Int, s_q: Int, s_k: Int) -> MaskSpec:
     """Mask keys at or beyond `valid_len` — right-padding in a ragged batch.
 
     Keys only. A padded *query* row produces garbage output that the caller discards anyway, whereas
@@ -241,7 +241,7 @@ fn mask_padding_flat(valid_len: Int, s_q: Int, s_k: Int) -> MaskSpec:
     return MaskSpec(bias^, s_q, s_k, n_masked, ATTN_OK)
 
 
-fn mask_block_diagonal_flat(
+def mask_block_diagonal_flat(
     cu_seqlens: List[Int], n_seq: Int, total: Int, causal: Bool
 ) -> MaskSpec:
     """Block-diagonal bias for packed sequences: a token may only see its own document.
@@ -295,7 +295,7 @@ fn mask_block_diagonal_flat(
     return MaskSpec(bias^, total, total, n_masked, ATTN_OK)
 
 
-fn mask_combine_flat(a: List[Float64], b: List[Float64], n: Int) -> MaskSpec:
+def mask_combine_flat(a: List[Float64], b: List[Float64], n: Int) -> MaskSpec:
     """Sum two bias matrices. Two masked entries give `-2e9`, which is still finite and still zero
     after softmax — so composition needs no special case.
 
@@ -319,7 +319,7 @@ fn mask_combine_flat(a: List[Float64], b: List[Float64], n: Int) -> MaskSpec:
     return MaskSpec(out^, n, 1, n_masked, ATTN_OK)
 
 
-fn mask_row_fully_masked(bias: List[Float64], s_q: Int, s_k: Int) -> Int:
+def mask_row_fully_masked(bias: List[Float64], s_q: Int, s_k: Int) -> Int:
     """Count query rows with no visible key. `-1` on a shape disagreement.
 
     Worth exporting rather than leaving implicit: a fully-masked row is exactly the case that turns

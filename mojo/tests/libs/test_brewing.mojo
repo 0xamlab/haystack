@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from brewing import original_gravity_to_plato, plato_to_gravity, abv_from_og_fg, apparent_attenuation, real_attenuation, ibu_tinseth, utilization_tinseth, mash_water_volume, strike_water_temp, color_srm_from_mcu, calories_per_12oz, priming_sugar_g
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

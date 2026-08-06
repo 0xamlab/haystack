@@ -22,23 +22,23 @@ comptime _DASH = UInt8(45)
 
 
 @always_inline
-fn _is_digit(c: UInt8) -> Bool:
+def _is_digit(c: UInt8) -> Bool:
     return c >= UInt8(48) and c <= UInt8(57)
 
 @always_inline
-fn _is_alpha(c: UInt8) -> Bool:
+def _is_alpha(c: UInt8) -> Bool:
     return (c >= UInt8(65) and c <= UInt8(90)) or (c >= UInt8(97) and c <= UInt8(122))
 
 @always_inline
-fn _is_word(c: UInt8) -> Bool:
+def _is_word(c: UInt8) -> Bool:
     return _is_alpha(c) or _is_digit(c) or c == UInt8(95)
 
 @always_inline
-fn _is_space(c: UInt8) -> Bool:
+def _is_space(c: UInt8) -> Bool:
     return c == UInt8(32) or c == UInt8(9) or c == UInt8(10) or c == UInt8(13) or c == UInt8(12)
 
 
-fn _span(s: String, start: Int, end: Int) -> String:
+def _span(s: String, start: Int, end: Int) -> String:
     var bs = s.as_bytes()
     var e = min(end, len(s))
     var result = String("")
@@ -72,21 +72,21 @@ struct _Atom(Copyable, Movable):
     var class_chars: String
     var class_negated: Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.kind = _AT_LITERAL
         self.literal = UInt8(0)
         self.quantifier = _QT_NONE
         self.class_chars = String("")
         self.class_negated = False
 
-    fn __init__(out self, kind: Int, literal: UInt8 = UInt8(0)):
+    def __init__(out self, kind: Int, literal: UInt8 = UInt8(0)):
         self.kind = kind
         self.literal = literal
         self.quantifier = _QT_NONE
         self.class_chars = String("")
         self.class_negated = False
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.kind = copy.kind
         self.literal = copy.literal
         self.quantifier = copy.quantifier
@@ -102,20 +102,20 @@ struct _PBounds(Copyable, Movable):
     var anchor_start: Bool
     var anchor_end: Bool
 
-    fn __init__(out self, start: Int, end: Int, anchor_start: Bool, anchor_end: Bool):
+    def __init__(out self, start: Int, end: Int, anchor_start: Bool, anchor_end: Bool):
         self.start = start
         self.end = end
         self.anchor_start = anchor_start
         self.anchor_end = anchor_end
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.start = copy.start
         self.end = copy.end
         self.anchor_start = copy.anchor_start
         self.anchor_end = copy.anchor_end
 
 
-fn _atom_matches(atom: _Atom, c: UInt8) -> Bool:
+def _atom_matches(atom: _Atom, c: UInt8) -> Bool:
     if atom.kind == _AT_LITERAL:
         return c == atom.literal
     if atom.kind == _AT_DOT:
@@ -137,7 +137,7 @@ fn _atom_matches(atom: _Atom, c: UInt8) -> Bool:
     return False
 
 
-fn _class_contains(class_chars: String, negated: Bool, c: UInt8) -> Bool:
+def _class_contains(class_chars: String, negated: Bool, c: UInt8) -> Bool:
     var bs = class_chars.as_bytes()
     var n = len(class_chars)
     var found = False
@@ -161,7 +161,7 @@ fn _class_contains(class_chars: String, negated: Bool, c: UInt8) -> Bool:
 # ── Pattern compiler ──────────────────────────────────────────────────────────
 
 
-fn _compile_branch(pattern: String, start: Int, end: Int) -> List[_Atom]:
+def _compile_branch(pattern: String, start: Int, end: Int) -> List[_Atom]:
     var atoms = List[_Atom]()
     var bs = pattern.as_bytes()
     var i = start
@@ -268,7 +268,7 @@ fn _compile_branch(pattern: String, start: Int, end: Int) -> List[_Atom]:
 # ── Matching engine ───────────────────────────────────────────────────────────
 
 
-fn _match_atoms(atoms: List[_Atom], atom_idx: Int, text: String, text_pos: Int) -> Int:
+def _match_atoms(atoms: List[_Atom], atom_idx: Int, text: String, text_pos: Int) -> Int:
     var ai = atom_idx
     var tp = text_pos
     var n_atoms = len(atoms)
@@ -327,7 +327,7 @@ fn _match_atoms(atoms: List[_Atom], atom_idx: Int, text: String, text_pos: Int) 
     return tp
 
 
-fn _split_alternations(pattern: String, start: Int, end: Int) -> List[Int]:
+def _split_alternations(pattern: String, start: Int, end: Int) -> List[Int]:
     var positions = List[Int]()
     var bs = pattern.as_bytes()
     var in_class = False
@@ -347,13 +347,13 @@ fn _split_alternations(pattern: String, start: Int, end: Int) -> List[Int]:
     return positions^
 
 
-fn _has_start_anchor(pattern: String) -> Bool:
+def _has_start_anchor(pattern: String) -> Bool:
     if len(pattern) == 0:
         return False
     return pattern.as_bytes()[0] == _CARET
 
 
-fn _has_end_anchor(pattern: String) -> Bool:
+def _has_end_anchor(pattern: String) -> Bool:
     if len(pattern) == 0:
         return False
     var bs = pattern.as_bytes()
@@ -365,7 +365,7 @@ fn _has_end_anchor(pattern: String) -> Bool:
     return True
 
 
-fn _pattern_bounds(pattern: String) -> _PBounds:
+def _pattern_bounds(pattern: String) -> _PBounds:
     var start = 0
     var end = len(pattern)
     var sa = _has_start_anchor(pattern)
@@ -380,7 +380,7 @@ fn _pattern_bounds(pattern: String) -> _PBounds:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-fn regex_match(pattern: String, text: String) -> Bool:
+def regex_match(pattern: String, text: String) -> Bool:
     """Check if the entire text matches the pattern."""
     var pb = _pattern_bounds(pattern)
 
@@ -403,7 +403,7 @@ fn regex_match(pattern: String, text: String) -> Bool:
         return result == len(text)
 
 
-fn regex_search(pattern: String, text: String) -> Int:
+def regex_search(pattern: String, text: String) -> Int:
     """Find first occurrence of pattern in text. Returns start index or -1."""
     var pb = _pattern_bounds(pattern)
     var n = len(text)
@@ -442,7 +442,7 @@ fn regex_search(pattern: String, text: String) -> Int:
     return -1
 
 
-fn _match_at(pattern: String, p_start: Int, p_end: Int, text: String, pos: Int) -> Int:
+def _match_at(pattern: String, p_start: Int, p_end: Int, text: String, pos: Int) -> Int:
     var alts = _split_alternations(pattern, p_start, p_end)
 
     if len(alts) == 0:
@@ -460,7 +460,7 @@ fn _match_at(pattern: String, p_start: Int, p_end: Int, text: String, pos: Int) 
         return _match_atoms(atoms, 0, text, pos)
 
 
-fn regex_find_all(pattern: String, text: String) -> List[String]:
+def regex_find_all(pattern: String, text: String) -> List[String]:
     """Find all non-overlapping matches of pattern in text."""
     var results = List[String]()
     var pb = _pattern_bounds(pattern)
@@ -481,7 +481,7 @@ fn regex_find_all(pattern: String, text: String) -> List[String]:
     return results^
 
 
-fn regex_replace(pattern: String, text: String, replacement: String) -> String:
+def regex_replace(pattern: String, text: String, replacement: String) -> String:
     """Replace all occurrences of pattern in text with replacement."""
     var pb = _pattern_bounds(pattern)
     var n = len(text)
@@ -507,7 +507,7 @@ fn regex_replace(pattern: String, text: String, replacement: String) -> String:
     return result
 
 
-fn regex_split(pattern: String, text: String) -> List[String]:
+def regex_split(pattern: String, text: String) -> List[String]:
     """Split text by pattern matches."""
     var parts = List[String]()
     var pb = _pattern_bounds(pattern)
@@ -528,12 +528,12 @@ fn regex_split(pattern: String, text: String) -> List[String]:
     return parts^
 
 
-fn is_match_literal(pattern: String, text: String) -> Bool:
+def is_match_literal(pattern: String, text: String) -> Bool:
     """Fast path: literal string matching (no regex metacharacters)."""
     return pattern == text
 
 
-fn is_match_simple(pattern: String, text: String) -> Bool:
+def is_match_simple(pattern: String, text: String) -> Bool:
     """Match with only . * + ? support (no character classes)."""
     var atoms = _compile_branch(pattern, 0, len(pattern))
     var result = _match_atoms(atoms, 0, text, 0)

@@ -88,12 +88,12 @@ from data_quality.leakage import (
 )
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var zero: Float64 = 0.0
     return zero / zero
 
 
-fn _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
+def _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a)
     o.append(b)
@@ -103,7 +103,7 @@ fn _f5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float
     return o^
 
 
-fn _b5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
+def _b5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
     var o = List[Bool]()
     o.append(a)
     o.append(b)
@@ -113,7 +113,7 @@ fn _b5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
     return o^
 
 
-fn _slots_finite(r: LeakageReport) -> Bool:
+def _slots_finite(r: LeakageReport) -> Bool:
     return (
         dq_is_finite(r.affine_slope)
         and dq_is_finite(r.affine_intercept)
@@ -123,7 +123,7 @@ fn _slots_finite(r: LeakageReport) -> Bool:
     )
 
 
-fn check():
+def check():
     var passed = 0
     var failed = 0
     var m5 = dq_mask_all_valid(5)
@@ -628,5 +628,5 @@ fn check():
     print("  [data_quality.leakage] Passed:", passed, "Failed:", failed)
 
 
-fn main():
+def main():
     check()

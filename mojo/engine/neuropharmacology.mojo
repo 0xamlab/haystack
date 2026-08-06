@@ -16,7 +16,7 @@ Public API:
 from std.math import log, exp, pow
 
 
-fn receptor_occupancy_brain(
+def receptor_occupancy_brain(
     free_plasma_conc: Float64, kp_uu: Float64, kd: Float64
 ) -> Float64:
     """Brain receptor occupancy from plasma concentration and Kp,uu.
@@ -38,7 +38,7 @@ fn receptor_occupancy_brain(
     return c_brain / denom
 
 
-fn blood_brain_barrier_efflux(
+def blood_brain_barrier_efflux(
     a_to_b_papp: Float64, b_to_a_papp: Float64
 ) -> Float64:
     """P-glycoprotein efflux ratio from bidirectional transport.
@@ -57,7 +57,7 @@ fn blood_brain_barrier_efflux(
     return b_to_a_papp / a_to_b_papp
 
 
-fn receptor_binding_ki(
+def receptor_binding_ki(
     ic50: Float64, radioligand_conc: Float64, radioligand_kd: Float64
 ) -> Float64:
     """Ki from competition binding (Cheng-Prusoff equation).
@@ -75,7 +75,7 @@ fn receptor_binding_ki(
     return ic50 / (1.0 + radioligand_conc / radioligand_kd)
 
 
-fn synapse_neurotransmitter_level(
+def synapse_neurotransmitter_level(
     release_rate: Float64, reuptake_rate: Float64, degradation_rate: Float64
 ) -> Float64:
     """Steady-state synaptic neurotransmitter: SS = release / (reuptake + degradation).
@@ -94,7 +94,7 @@ fn synapse_neurotransmitter_level(
     return release_rate / clearance
 
 
-fn bbb_penetration_ratio(
+def bbb_penetration_ratio(
     brain_conc: Float64, plasma_conc: Float64
 ) -> Float64:
     """Brain-to-plasma concentration ratio Kp.
@@ -111,7 +111,7 @@ fn bbb_penetration_ratio(
     return brain_conc / plasma_conc
 
 
-fn cns_drug_exposure(
+def cns_drug_exposure(
     kp: Float64, free_fraction_brain: Float64, free_fraction_plasma: Float64
 ) -> Float64:
     """Unbound CNS drug exposure ratio Kp,uu.
@@ -131,7 +131,7 @@ fn cns_drug_exposure(
     return kp * free_fraction_brain / free_fraction_plasma
 
 
-fn d2_receptor_occupancy(
+def d2_receptor_occupancy(
     plasma_conc: Float64, ec50: Float64
 ) -> Float64:
     """Antipsychotic D2 receptor occupancy (Emax model).
@@ -151,7 +151,7 @@ fn d2_receptor_occupancy(
     return 100.0 * plasma_conc / denom
 
 
-fn minimal_effective_dose_cns(
+def minimal_effective_dose_cns(
     ec20_nM: Float64, fu_plasma: Float64,
     kp_uu: Float64, clearance_l_per_h: Float64
 ) -> Float64:
@@ -175,7 +175,7 @@ fn minimal_effective_dose_cns(
     return c_plasma_total * clearance_l_per_h
 
 
-fn cns_side_effect_threshold(
+def cns_side_effect_threshold(
     therapeutic_occupancy: Float64, selectivity_ratio: Float64
 ) -> Float64:
     """Estimated off-target receptor occupancy causing side effects.
@@ -194,7 +194,7 @@ fn cns_side_effect_threshold(
     return therapeutic_occupancy / selectivity_ratio
 
 
-fn neuronal_firing_modulation(
+def neuronal_firing_modulation(
     baseline_hz: Float64, drug_effect: Float64, receptor_occupancy: Float64
 ) -> Float64:
     """Modulated neuronal firing rate from drug action.

@@ -49,11 +49,11 @@ from std.math import abs as fabs, sqrt, pow
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, eps: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < eps
 
 
-fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
+def approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
     if fabs(b) < 1e-12:
         return fabs(a) < 1e-12
     return fabs((a - b) / b) < rel
@@ -62,7 +62,7 @@ fn approx_rel(a: Float64, b: Float64, rel: Float64 = 1e-4) -> Bool:
 # ── Laundry tests ────────────────────────────────────────────────────────────
 
 
-fn test_laundry() raises:
+def test_laundry() raises:
     # water_usage_liters: 5 kg * 10 L/kg = 50 L
     assert_true(approx(water_usage_liters(5.0, 10.0), 50.0), "water_usage 5*10")
     assert_true(approx(water_usage_liters(3.0, 12.0), 36.0), "water_usage 3*12")
@@ -111,7 +111,7 @@ fn test_laundry() raises:
 # ── Volcanology tests ────────────────────────────────────────────────────────
 
 
-fn test_volcanology() raises:
+def test_volcanology() raises:
     # vei_energy_estimate: VEI 5 => 10^12
     assert_true(approx(vei_energy_estimate(5.0), 1e12), "VEI 5 energy")
     assert_true(approx(vei_energy_estimate(0.0), 1e7), "VEI 0 energy")
@@ -162,7 +162,7 @@ fn test_volcanology() raises:
 # ── Biomechanics tests ───────────────────────────────────────────────────────
 
 
-fn test_biomechanics() raises:
+def test_biomechanics() raises:
     # joint_torque: 100 N * 0.3 m = 30 N·m
     assert_true(approx(joint_torque(100.0, 0.3), 30.0), "joint torque")
 
@@ -239,7 +239,7 @@ fn test_biomechanics() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 92 tests — Laundry, Volcanology, Biomechanics")
     test_laundry()
     test_volcanology()

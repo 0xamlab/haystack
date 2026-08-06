@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from distillation import relative_volatility, min_reflux_underwood, actual_reflux, fenske_min_stages, gilliland_stages, mccabe_thiele_operating_line_enriching, mccabe_thiele_operating_line_stripping, boiling_point_elevation, raoults_law_partial_pressure, daltons_law_total_pressure, stage_efficiency, heat_duty_condenser
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

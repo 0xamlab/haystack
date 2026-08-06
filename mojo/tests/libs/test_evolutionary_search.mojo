@@ -17,14 +17,14 @@ from evolutionary_search import (
 )
 
 
-fn approx(a: Float64, b: Float64, tol: Float64) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64) -> Bool:
     var d = a - b
     if d < 0.0:
         d = -d
     return d <= tol
 
 
-fn filled(n_dim: Int, v: Float64) -> List[Float64]:
+def filled(n_dim: Int, v: Float64) -> List[Float64]:
     """A flat bound vector. Nested lists would need an explicit copy at every use site."""
     var out = List[Float64]()
     for _ in range(n_dim):

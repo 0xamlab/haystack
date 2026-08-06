@@ -52,7 +52,7 @@ def _assert_eq_int(got: Int, expected: Int, label: String) raises:
         raise Error("assertion failed: " + label)
 
 
-fn _stripes(n: Int) -> List[List[Float64]]:
+def _stripes(n: Int) -> List[List[Float64]]:
     """Width-2 vertical stripes (0/255). Unlike a 1-px checker (which the
     symmetric Sobel kernel nulls out), every interior column borders a
     transition → strong, dense gradient response."""
@@ -65,7 +65,7 @@ fn _stripes(n: Int) -> List[List[Float64]]:
     return g^
 
 
-fn _constant(n: Int, v: Float64) -> List[List[Float64]]:
+def _constant(n: Int, v: Float64) -> List[List[Float64]]:
     var g = List[List[Float64]]()
     for _ in range(n):
         var row = List[Float64]()
@@ -75,7 +75,7 @@ fn _constant(n: Int, v: Float64) -> List[List[Float64]]:
     return g^
 
 
-fn _bottom_right_texture(n: Int) -> List[List[Float64]]:
+def _bottom_right_texture(n: Int) -> List[List[Float64]]:
     """Flat (64) everywhere except a checker in the bottom-right quadrant."""
     var g = List[List[Float64]]()
     var half = n // 2
@@ -90,7 +90,7 @@ fn _bottom_right_texture(n: Int) -> List[List[Float64]]:
     return g^
 
 
-fn _solid_rgb(npx: Int, r: Float64, g: Float64, b: Float64) -> List[Float64]:
+def _solid_rgb(npx: Int, r: Float64, g: Float64, b: Float64) -> List[Float64]:
     var f = List[Float64]()
     for _ in range(npx):
         f.append(r)

@@ -47,13 +47,13 @@ from hydraulics import (
 )
 
 
-fn approx(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     if abs(b) < 1e-12:
         return abs(a - b) < tol
     return abs(a - b) / abs(b) < tol
 
 
-fn test_semiconductors() raises:
+def test_semiconductors() raises:
     print("Testing semiconductors...")
 
     # intrinsic_carrier_concentration: ni0*exp(-Eg/(2kT))
@@ -140,7 +140,7 @@ fn test_semiconductors() raises:
     print("  semiconductors: all passed ✓")
 
 
-fn test_viticulture() raises:
+def test_viticulture() raises:
     print("Testing viticulture...")
 
     # brix_to_potential_alcohol
@@ -219,7 +219,7 @@ fn test_viticulture() raises:
     print("  viticulture: all passed ✓")
 
 
-fn test_hydraulics() raises:
+def test_hydraulics() raises:
     print("Testing hydraulics...")
 
     # pascals_law_force
@@ -299,7 +299,7 @@ fn test_hydraulics() raises:
     print("  hydraulics: all passed ✓")
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 95 Tests ===")
     test_semiconductors()
     test_viticulture()

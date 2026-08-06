@@ -24,7 +24,7 @@ from std.random import random_float64
 # ── Box-Muller normal approximation ──────────────────────────────────────────
 
 
-fn _normal_random() -> Float64:
+def _normal_random() -> Float64:
     """Generate a standard normal random variable using Box-Muller transform."""
     # Use Box-Muller: Z = sqrt(-2 ln U1) * cos(2π U2)
     # Since we don't have cos/sin easily, use the polar method
@@ -45,7 +45,7 @@ fn _normal_random() -> Float64:
 # ── random_walk_1d ────────────────────────────────────────────────────────────
 
 
-fn random_walk_1d(n_steps: Int) -> List[Float64]:
+def random_walk_1d(n_steps: Int) -> List[Float64]:
     """1D random walk: +1 or -1 each step with equal probability.
 
     Returns list of length n_steps+1 (including start at 0).
@@ -65,7 +65,7 @@ fn random_walk_1d(n_steps: Int) -> List[Float64]:
 # ── random_walk_2d ────────────────────────────────────────────────────────────
 
 
-fn random_walk_2d(n_steps: Int) -> List[List[Float64]]:
+def random_walk_2d(n_steps: Int) -> List[List[Float64]]:
     """2D random walk: returns [[x0,y0], [x1,y1], ...].
 
     At each step, move in one of 4 cardinal directions with equal probability.
@@ -100,7 +100,7 @@ fn random_walk_2d(n_steps: Int) -> List[List[Float64]]:
 # ── brownian_motion ───────────────────────────────────────────────────────────
 
 
-fn brownian_motion(n_steps: Int, dt: Float64 = 0.01) -> List[Float64]:
+def brownian_motion(n_steps: Int, dt: Float64 = 0.01) -> List[Float64]:
     """Wiener process: cumulative sum of N(0, sqrt(dt)).
 
     Returns list of length n_steps+1 starting at 0.
@@ -118,7 +118,7 @@ fn brownian_motion(n_steps: Int, dt: Float64 = 0.01) -> List[Float64]:
 # ── geometric_brownian_motion ─────────────────────────────────────────────────
 
 
-fn geometric_brownian_motion(
+def geometric_brownian_motion(
     s0: Float64,
     mu: Float64,
     sigma: Float64,
@@ -145,7 +145,7 @@ fn geometric_brownian_motion(
 # ── poisson_process ───────────────────────────────────────────────────────────
 
 
-fn poisson_process(rate: Float64, duration: Float64) -> List[Float64]:
+def poisson_process(rate: Float64, duration: Float64) -> List[Float64]:
     """Generate event times from a Poisson process.
 
     Events arrive at given rate (events per time unit).
@@ -174,7 +174,7 @@ fn poisson_process(rate: Float64, duration: Float64) -> List[Float64]:
 # ── ornstein_uhlenbeck ────────────────────────────────────────────────────────
 
 
-fn ornstein_uhlenbeck(
+def ornstein_uhlenbeck(
     x0: Float64,
     theta: Float64,
     mu: Float64,
@@ -202,7 +202,7 @@ fn ornstein_uhlenbeck(
 # ── birth_death_process ───────────────────────────────────────────────────────
 
 
-fn birth_death_process(
+def birth_death_process(
     birth_rate: Float64,
     death_rate: Float64,
     initial: Int,
@@ -242,7 +242,7 @@ fn birth_death_process(
 # ── monte_carlo_pi ────────────────────────────────────────────────────────────
 
 
-fn monte_carlo_pi(n_samples: Int) -> Float64:
+def monte_carlo_pi(n_samples: Int) -> Float64:
     """Estimate π using random points in unit square.
 
     Count fraction of points falling inside quarter circle.
@@ -262,7 +262,7 @@ fn monte_carlo_pi(n_samples: Int) -> Float64:
 # ── expected_hitting_time ─────────────────────────────────────────────────────
 
 
-fn expected_hitting_time(p: Float64, target: Int) -> Float64:
+def expected_hitting_time(p: Float64, target: Int) -> Float64:
     """Expected steps for biased random walk to reach target from 0.
 
     p: probability of +1 step, (1-p): probability of -1 step.
@@ -288,7 +288,7 @@ fn expected_hitting_time(p: Float64, target: Int) -> Float64:
 # ── first_passage_time ────────────────────────────────────────────────────────
 
 
-fn first_passage_time(n_simulations: Int, target: Float64) -> Float64:
+def first_passage_time(n_simulations: Int, target: Float64) -> Float64:
     """Average first passage time for standard random walk to reach target.
 
     Simulates n_simulations walks, each starting at 0, stepping +1/-1

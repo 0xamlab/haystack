@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from reservoir import reservoir_sample, weighted_reservoir_sample, reservoir_sample_indices, bootstrap_sample, systematic_sample, sample_with_replacement, sample_without_replacement
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

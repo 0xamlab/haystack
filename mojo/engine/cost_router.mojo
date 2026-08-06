@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn request_cost_estimate(
+def request_cost_estimate(
     input_tokens: Float64, output_tokens: Float64,
     cost_per_input_token: Float64, cost_per_output_token: Float64
 ) -> Float64:
@@ -35,7 +35,7 @@ fn request_cost_estimate(
     return input_tokens * cost_per_input_token + output_tokens * cost_per_output_token
 
 
-fn latency_cost_tradeoff(
+def latency_cost_tradeoff(
     predicted_latency_ms: Float64, latency_budget_ms: Float64,
     predicted_cost: Float64, cost_budget: Float64
 ) -> Float64:
@@ -57,7 +57,7 @@ fn latency_cost_tradeoff(
     return 1.0 - 0.5 * (lat_ratio + cost_ratio)
 
 
-fn gpu_vs_cpu_routing_score(
+def gpu_vs_cpu_routing_score(
     model_flops: Float64, gpu_flops: Float64,
     cpu_flops: Float64, gpu_cost_per_ms: Float64,
     cpu_cost_per_ms: Float64
@@ -83,7 +83,7 @@ fn gpu_vs_cpu_routing_score(
     return cpu_time * cpu_cost_per_ms - gpu_time * gpu_cost_per_ms
 
 
-fn batch_vs_single_decision(
+def batch_vs_single_decision(
     wait_time_ms: Float64, batch_throughput_gain: Float64,
     latency_budget_ms: Float64, queue_depth: Float64
 ) -> Float64:
@@ -106,7 +106,7 @@ fn batch_vs_single_decision(
     return batch_throughput_gain * time_slack / latency_budget_ms * log(queue_depth + 2.0)
 
 
-fn quantized_vs_full_routing(
+def quantized_vs_full_routing(
     request_quality_requirement: Float64, quantization_quality_loss: Float64,
     speedup_factor: Float64, cost_reduction: Float64
 ) -> Float64:
@@ -129,7 +129,7 @@ fn quantized_vs_full_routing(
     return (speedup_factor - 1.0) + cost_reduction
 
 
-fn moe_vs_dense_routing(
+def moe_vs_dense_routing(
     sequence_length: Float64, active_expert_fraction: Float64,
     moe_communication_overhead: Float64, dense_flop_ratio: Float64
 ) -> Float64:
@@ -151,7 +151,7 @@ fn moe_vs_dense_routing(
     return (moe_advantage - 1.0) * log(sequence_length + 1.0)
 
 
-fn cascade_model_routing(
+def cascade_model_routing(
     small_model_confidence: Float64, confidence_threshold: Float64,
     small_model_cost: Float64, large_model_cost: Float64
 ) -> Float64:
@@ -173,7 +173,7 @@ fn cascade_model_routing(
     return large_model_cost - cascade_cost
 
 
-fn budget_remaining_fraction(
+def budget_remaining_fraction(
     total_budget: Float64, spent_budget: Float64
 ) -> Float64:
     """Fraction of compute/cost budget remaining.
@@ -195,7 +195,7 @@ fn budget_remaining_fraction(
     return remaining
 
 
-fn sla_headroom_score(
+def sla_headroom_score(
     predicted_latency_ms: Float64, sla_latency_ms: Float64
 ) -> Float64:
     """Margin between predicted latency and SLA deadline.
@@ -214,7 +214,7 @@ fn sla_headroom_score(
     return (sla_latency_ms - predicted_latency_ms) / sla_latency_ms
 
 
-fn cost_per_output_token(
+def cost_per_output_token(
     total_cost: Float64, n_output_tokens: Float64
 ) -> Float64:
     """Cost normalised per generated output token.

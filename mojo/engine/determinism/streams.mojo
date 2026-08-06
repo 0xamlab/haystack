@@ -39,7 +39,7 @@ comptime DERIVED_STREAM_MIN: UInt64 = 8
 comptime DERIVED_STREAM_SPAN: UInt64 = 0xFFFF - 8  # exclusive of the sentinel
 
 
-fn stream_id(name: String) -> UInt64:
+def stream_id(name: String) -> UInt64:
     """Stable 16-bit stream id for `name`, outside the reserved range.
 
     Same name -> same id, on any machine, in any language that implements FNV-1a
@@ -54,16 +54,16 @@ fn stream_id(name: String) -> UInt64:
     return DERIVED_STREAM_MIN + UInt64(bucket)
 
 
-fn is_reserved_stream(id: UInt64) -> Bool:
+def is_reserved_stream(id: UInt64) -> Bool:
     """True for the ids the first consumer already assigned, plus 0."""
     return id <= RESERVED_STREAM_MAX
 
 
-fn is_global_stream(id: UInt64) -> Bool:
+def is_global_stream(id: UInt64) -> Bool:
     return id == GLOBAL_SENTINEL
 
 
-fn pack_coordinates(dim0: UInt64, dim1: UInt64, id: UInt64) -> UInt64:
+def pack_coordinates(dim0: UInt64, dim1: UInt64, id: UInt64) -> UInt64:
     """The `c1` counter word: (dim0 << 32) | (dim1 << 16) | stream_id.
 
     Exposed so a caller can assert the packing rather than infer it, and so a test

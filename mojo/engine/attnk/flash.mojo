@@ -124,7 +124,7 @@ struct FlashAgreement(Copyable, Movable):
     var status: Int
 
 
-fn flash_block_plan(s_k: Int, d: Int, cache_bytes: Int) -> FlashPlan:
+def flash_block_plan(s_k: Int, d: Int, cache_bytes: Int) -> FlashPlan:
     """Pick a key-block size, and report what the materialized form would have cost.
 
     `materialized_bytes` is returned as Float64 because at long context it exceeds `Int` — which is
@@ -150,7 +150,7 @@ fn flash_block_plan(s_k: Int, d: Int, cache_bytes: Int) -> FlashPlan:
     return FlashPlan(block, n_blocks, block * per_key, materialized, ATTN_OK)
 
 
-fn flash_forward_flat(
+def flash_forward_flat(
     q: List[Float64], k: List[Float64], v: List[Float64], bias: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int,
     scale: Float64, use_bias: Bool, block_k: Int
@@ -247,7 +247,7 @@ fn flash_forward_flat(
     return FlashOut(out^, lse^, n_tok_q, h_q, d, blocks_walked, ATTN_OK)
 
 
-fn flash_agrees_with_sdpa(
+def flash_agrees_with_sdpa(
     q: List[Float64], k: List[Float64], v: List[Float64], bias: List[Float64],
     n_tok_q: Int, n_tok_k: Int, h_q: Int, h_kv: Int, d: Int,
     scale: Float64, use_bias: Bool, block_k: Int

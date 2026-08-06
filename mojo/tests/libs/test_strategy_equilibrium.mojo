@@ -147,7 +147,7 @@ from strategy.equilibrium import (
 )
 
 
-fn _pd_tensor() -> List[Float64]:
+def _pd_tensor() -> List[Float64]:
     """The 2x2 Prisoner's Dilemma, from the FROZEN payoff kernel. Action 0 = cooperate.
 
     Player-major, profile = a0 * 2 + a1, so this is `[3, 0, 5, 1 | 3, 5, 0, 1]`.
@@ -161,7 +161,7 @@ fn _pd_tensor() -> List[Float64]:
     return out^
 
 
-fn _pennies_tensor() -> List[Float64]:
+def _pennies_tensor() -> List[Float64]:
     """Matching pennies: +1 to player 0 on a match, -1 otherwise; player 1 is the negation."""
     var out = List[Float64]()
     for i in range(2):
@@ -174,7 +174,7 @@ fn _pennies_tensor() -> List[Float64]:
     return out^
 
 
-fn _coord_tensor() -> List[Float64]:
+def _coord_tensor() -> List[Float64]:
     """A pure coordination game: both players get 1 on a match and 0 otherwise."""
     var out = List[Float64]()
     for _ in range(2):
@@ -184,7 +184,7 @@ fn _coord_tensor() -> List[Float64]:
     return out^
 
 
-fn _dominance3_tensor() -> List[Float64]:
+def _dominance3_tensor() -> List[Float64]:
     """Three players, two actions, `u_i = own action index`. Unique pure equilibrium at (1,1,1).
 
     Action 1 strictly dominates action 0 for every player, so the equilibrium is profile
@@ -200,7 +200,7 @@ fn _dominance3_tensor() -> List[Float64]:
     return out^
 
 
-fn _pd3_tensor() -> List[Float64]:
+def _pd3_tensor() -> List[Float64]:
     """The 2x2 Prisoner's Dilemma embedded in three players, the third a dummy.
 
     `u_0` and `u_1` ignore player 2 entirely and `u_2` is constant 0. Player 0's dominance
@@ -220,7 +220,7 @@ fn _pd3_tensor() -> List[Float64]:
     return out^
 
 
-fn _onehot(n_players: Int, n_actions: Int, actions: List[Int]) -> List[Float64]:
+def _onehot(n_players: Int, n_actions: Int, actions: List[Int]) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n_players):
         for a in range(n_actions):
@@ -228,14 +228,14 @@ fn _onehot(n_players: Int, n_actions: Int, actions: List[Int]) -> List[Float64]:
     return out^
 
 
-fn _pair(first: Int, second: Int) -> List[Int]:
+def _pair(first: Int, second: Int) -> List[Int]:
     var out = List[Int]()
     out.append(first)
     out.append(second)
     return out^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[strategy.equilibrium] known-value suite")

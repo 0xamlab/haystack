@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from fisheries import catch_per_unit_effort, maximum_sustainable_yield, biomass_at_msy, schaefer_surplus_production, fishing_mortality, total_mortality, exploitation_rate, survival_rate, von_bertalanffy_length, condition_factor, gonadosomatic_index, stock_recruitment_bevholt
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

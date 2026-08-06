@@ -34,14 +34,14 @@ from forecasting.select import (
 )
 
 
-fn _line() -> List[Float64]:
+def _line() -> List[Float64]:
     var y = List[Float64]()
     for t in range(12):
         y.append(2.0 + 3.0 * Float64(t))
     return y^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.select] hand-written known-value suite")

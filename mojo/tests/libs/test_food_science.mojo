@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from food_science import water_activity, ph_from_h_concentration, shelf_life_q10, thermal_death_time, d_value_from_z, pasteurization_units, brix_to_sugar_g_per_l, caloric_density, moisture_content_wet_basis, moisture_content_dry_basis, freezing_point_depression, blanching_time_estimate
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -50,7 +50,7 @@ Data is deterministic and RNG-free
 Every input is a closed-form arithmetic pattern. Nothing samples, so there is no seed to record
 and two runs on one binary see bit-identical inputs.
 """
-from time import perf_counter_ns
+from std.time import perf_counter_ns
 
 from survival_analysis.base import SA_OK
 from survival_analysis.competing import cif_fit
@@ -60,7 +60,7 @@ from survival_analysis.km import km_fit, km_survival_at
 from survival_analysis.parametric import lognormal_mle, weibull_mle
 
 
-fn _times(n: Int, step: Float64, tie_mod: Int) -> List[Float64]:
+def _times(n: Int, step: Float64, tie_mod: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n):
         var group = i // tie_mod if tie_mod > 1 else i
@@ -68,14 +68,14 @@ fn _times(n: Int, step: Float64, tie_mod: Int) -> List[Float64]:
     return out^
 
 
-fn _events(n: Int, censor_every: Int) -> List[Int]:
+def _events(n: Int, censor_every: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         out.append(0 if (censor_every > 0 and i % censor_every == 0) else 1)
     return out^
 
 
-fn _causes(n: Int, n_causes: Int) -> List[Int]:
+def _causes(n: Int, n_causes: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(n):
         if i % 5 == 0:
@@ -85,32 +85,32 @@ fn _causes(n: Int, n_causes: Int) -> List[Int]:
     return out^
 
 
-fn _covariates(n: Int, p: Int) -> List[Float64]:
+def _covariates(n: Int, p: Int) -> List[Float64]:
     var out = List[Float64]()
     for i in range(n * p):
         out.append(Float64((i * 37) % 19) / 19.0 - 0.5)
     return out^
 
 
-fn _ratio(a: Float64, b: Float64) -> Float64:
+def _ratio(a: Float64, b: Float64) -> Float64:
     if b == 0.0:
         return 0.0
     return a / b
 
 
-fn _min2(a: Float64, b: Float64) -> Float64:
+def _min2(a: Float64, b: Float64) -> Float64:
     return a if a < b else b
 
 
-fn _say(label: String, value: Float64):
+def _say(label: String, value: Float64):
     print("   " + label + " " + String(value) + " (ungated)")
 
 
-fn _say_int(label: String, value: Int):
+def _say_int(label: String, value: Int):
     print("   " + label + " " + String(value) + " (ungated)")
 
 
-fn _gate(label: String, growth: Float64, ceiling: Float64) -> Int:
+def _gate(label: String, growth: Float64, ceiling: Float64) -> Int:
     if growth <= 0.0 or growth > ceiling:
         print("   FAIL " + label + " grew " + String(growth) + "x")
         return 1
@@ -121,89 +121,89 @@ fn _gate(label: String, growth: Float64, ceiling: Float64) -> Int:
 # ── one kernel call per helper; nothing that returns a struct enters a loop ────
 
 
-fn _once_km(t: List[Float64], e: List[Int]) -> Float64:
+def _once_km(t: List[Float64], e: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = km_fit(t, e, 0.95)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _once_na(t: List[Float64], e: List[Int]) -> Float64:
+def _once_na(t: List[Float64], e: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = na_fit(t, e, 0.95)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _once_smoothed(t: List[Float64], e: List[Int], b: Float64) -> Float64:
+def _once_smoothed(t: List[Float64], e: List[Int], b: Float64) -> Float64:
     var t0 = perf_counter_ns()
     var f = na_smoothed_hazard(t, e, b)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _pairs(t: List[Float64], e: List[Int], b: Float64) -> Int:
+def _pairs(t: List[Float64], e: List[Int], b: Float64) -> Int:
     var f = na_smoothed_hazard(t, e, b)
     return f.kernel_pairs if f.status == SA_OK else -1
 
 
-fn _once_lookup(t: List[Float64], e: List[Int], q: List[Float64]) -> Float64:
+def _once_lookup(t: List[Float64], e: List[Int], q: List[Float64]) -> Float64:
     var t0 = perf_counter_ns()
     var f = km_survival_at(t, e, q)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _once_cox(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Float64:
+def _once_cox(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = cox_fit(x, n, 2, t, e, 100, 1e-9)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _cox_iters(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Int:
+def _cox_iters(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Int:
     var f = cox_fit(x, n, 2, t, e, 100, 1e-9)
     return f.iterations if f.status == SA_OK else -1
 
 
-fn _once_weibull(t: List[Float64], e: List[Int]) -> Float64:
+def _once_weibull(t: List[Float64], e: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = weibull_mle(t, e, 200, 1e-12)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _weibull_iters(t: List[Float64], e: List[Int]) -> Int:
+def _weibull_iters(t: List[Float64], e: List[Int]) -> Int:
     var f = weibull_mle(t, e, 200, 1e-12)
     return f.iterations if f.status == SA_OK else -1
 
 
-fn _once_lognormal(t: List[Float64], e: List[Int]) -> Float64:
+def _once_lognormal(t: List[Float64], e: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = lognormal_mle(t, e, 200, 1e-9)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _lognormal_iters(t: List[Float64], e: List[Int]) -> Int:
+def _lognormal_iters(t: List[Float64], e: List[Int]) -> Int:
     var f = lognormal_mle(t, e, 200, 1e-9)
     return f.iterations if f.status == SA_OK else -1
 
 
-fn _once_cif(t: List[Float64], c: List[Int]) -> Float64:
+def _once_cif(t: List[Float64], c: List[Int]) -> Float64:
     var t0 = perf_counter_ns()
     var f = cif_fit(t, c, 3)
     var t1 = perf_counter_ns()
     return Float64(t1 - t0) if f.status == SA_OK else -1.0
 
 
-fn _cif_cells(t: List[Float64], c: List[Int]) -> Int:
+def _cif_cells(t: List[Float64], c: List[Int]) -> Int:
     var f = cif_fit(t, c, 3)
     return f.n_causes * f.n_event_times if f.status == SA_OK else -1
 
 
 
-fn _t_km(t: List[Float64], e: List[Int]) -> Float64:
+def _t_km(t: List[Float64], e: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -215,7 +215,7 @@ fn _t_km(t: List[Float64], e: List[Int]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_na(t: List[Float64], e: List[Int]) -> Float64:
+def _t_na(t: List[Float64], e: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -227,7 +227,7 @@ fn _t_na(t: List[Float64], e: List[Int]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_smoothed(t: List[Float64], e: List[Int], b: Float64) -> Float64:
+def _t_smoothed(t: List[Float64], e: List[Int], b: Float64) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -239,7 +239,7 @@ fn _t_smoothed(t: List[Float64], e: List[Int], b: Float64) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_lookup(t: List[Float64], e: List[Int], q: List[Float64]) -> Float64:
+def _t_lookup(t: List[Float64], e: List[Int], q: List[Float64]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -251,7 +251,7 @@ fn _t_lookup(t: List[Float64], e: List[Int], q: List[Float64]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_cox(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Float64:
+def _t_cox(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -263,7 +263,7 @@ fn _t_cox(x: List[Float64], n: Int, t: List[Float64], e: List[Int]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_weibull(t: List[Float64], e: List[Int]) -> Float64:
+def _t_weibull(t: List[Float64], e: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -275,7 +275,7 @@ fn _t_weibull(t: List[Float64], e: List[Int]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_lognormal(t: List[Float64], e: List[Int]) -> Float64:
+def _t_lognormal(t: List[Float64], e: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -287,7 +287,7 @@ fn _t_lognormal(t: List[Float64], e: List[Int]) -> Float64:
         return -1.0
     return _min2(_min2(d1, d2), _min2(d3, d4))
 
-fn _t_cif(t: List[Float64], c: List[Int]) -> Float64:
+def _t_cif(t: List[Float64], c: List[Int]) -> Float64:
     """Fastest of four straight-line calls. See the docstring: a MINIMUM is the right
     statistic on a contended machine (contention only ever inflates a measurement), and the
     repeats are unrolled because a struct constructed in a loop costs minutes of compile."""
@@ -302,7 +302,7 @@ fn _t_cif(t: List[Float64], c: List[Int]) -> Float64:
 # ── sections ──────────────────────────────────────────────────────────────────
 
 
-fn _bench_curves() -> Int:
+def _bench_curves() -> Int:
     print("-- km_fit / na_fit: ns per observation, O(n log n) claimed --")
     var failures = 0
     var sizes = List[Int]()
@@ -332,7 +332,7 @@ fn _bench_curves() -> Int:
     return failures
 
 
-fn _bench_smoothed() -> Int:
+def _bench_smoothed() -> Int:
     print("-- na_smoothed_hazard: ns per CHARGED kernel pair --")
     var failures = 0
 
@@ -414,7 +414,7 @@ fn _bench_smoothed() -> Int:
     return failures
 
 
-fn _bench_lookup() -> Int:
+def _bench_lookup() -> Int:
     print("-- km_survival_at: ns per (query x curve point) --")
     var failures = 0
     var sizes = List[Int]()
@@ -438,7 +438,7 @@ fn _bench_lookup() -> Int:
     return failures
 
 
-fn _bench_fits() -> Int:
+def _bench_fits() -> Int:
     print("-- cox_fit / weibull_mle / lognormal_mle: per-iteration unit cost --")
     var failures = 0
     var sizes = List[Int]()
@@ -478,7 +478,7 @@ fn _bench_fits() -> Int:
     return failures
 
 
-fn _bench_cif() -> Int:
+def _bench_cif() -> Int:
     print("-- cif_fit: ns per (cause x event time) cell --")
     var failures = 0
     var sizes = List[Int]()
@@ -505,7 +505,7 @@ fn _bench_cif() -> Int:
     return failures
 
 
-fn main() raises:
+def main() raises:
     print("== survival_analysis: shape gates, no absolute time is gated ==")
     var failures = 0
     failures += _bench_curves()

@@ -71,24 +71,24 @@ comptime OP_CAST_BOOL: Int = 141
 comptime OP_CASE_WHEN: Int = 150
 
 
-fn is_frozen_op(op: Int) -> Bool:
+def is_frozen_op(op: Int) -> Bool:
     """True for an opcode owned by `expr.mojo`."""
     return op >= 0 and op <= FROZEN_OP_MAX
 
 
-fn is_v2_op(op: Int) -> Bool:
+def is_v2_op(op: Int) -> Bool:
     return op >= V2_OP_MIN
 
 
-fn is_comparison(op: Int) -> Bool:
+def is_comparison(op: Int) -> Bool:
     return op >= OP_LT and op <= OP_NE
 
 
-fn is_logical(op: Int) -> Bool:
+def is_logical(op: Int) -> Bool:
     return op == OP_AND or op == OP_OR or op == OP_NOT
 
 
-fn is_predicate_op(op: Int) -> Bool:
+def is_predicate_op(op: Int) -> Bool:
     """True for ops yielding a boolean — what a filter root must be."""
     return (
         is_comparison(op)
@@ -99,7 +99,7 @@ fn is_predicate_op(op: Int) -> Bool:
     )
 
 
-fn op_arity(op: Int) -> Int:
+def op_arity(op: Int) -> Int:
     """Children an opcode consumes: 0, 1, 2 or 3. -1 for an unknown opcode.
 
     Checked during validation so a node with the wrong number of children is
@@ -127,7 +127,7 @@ fn op_arity(op: Int) -> Int:
     return -1
 
 
-fn op_name(op: Int) -> String:
+def op_name(op: Int) -> String:
     if op == OP_LITERAL:
         return "literal"
     if op == OP_VAR_REF:
@@ -182,24 +182,24 @@ fn op_name(op: Int) -> String:
 # ── node constructors ─────────────────────────────────────────────────────────
 
 
-fn literal(value: Float64) -> ExprNode:
+def literal(value: Float64) -> ExprNode:
     return ExprNode(OP_LITERAL, value, -1, -1, -1)
 
 
-fn col_ref(column_index: Int) -> ExprNode:
+def col_ref(column_index: Int) -> ExprNode:
     """A reference to batch column `column_index`, resolved against its schema."""
     return ExprNode(OP_COL_REF, 0.0, column_index, -1, -1)
 
 
-fn unary(op: Int, child: Int) -> ExprNode:
+def unary(op: Int, child: Int) -> ExprNode:
     return ExprNode(op, 0.0, -1, child, -1)
 
 
-fn binary(op: Int, left: Int, right: Int) -> ExprNode:
+def binary(op: Int, left: Int, right: Int) -> ExprNode:
     return ExprNode(op, 0.0, -1, left, right)
 
 
-fn ternary(op: Int, left: Int, right: Int, extra: Int) -> ExprNode:
+def ternary(op: Int, left: Int, right: Int, extra: Int) -> ExprNode:
     """A three-child node: `left`=condition, `right`=then, `extra`=else.
 
     Uses the 6-arg `ExprNode` constructor, the same one `expr.mojo`'s own arity-3
@@ -212,7 +212,7 @@ fn ternary(op: Int, left: Int, right: Int, extra: Int) -> ExprNode:
 # ── validation ────────────────────────────────────────────────────────────────
 
 
-fn validation_error(nodes: List[ExprNode], root: Int, n_columns: Int) -> String:
+def validation_error(nodes: List[ExprNode], root: Int, n_columns: Int) -> String:
     """"" when the plan is well formed, else a message naming the offending node.
 
     Enforced:
@@ -301,11 +301,11 @@ fn validation_error(nodes: List[ExprNode], root: Int, n_columns: Int) -> String:
     return ""
 
 
-fn is_valid(nodes: List[ExprNode], root: Int, n_columns: Int) -> Bool:
+def is_valid(nodes: List[ExprNode], root: Int, n_columns: Int) -> Bool:
     return len(validation_error(nodes, root, n_columns)) == 0
 
 
-fn referenced_columns(nodes: List[ExprNode]) -> List[Int]:
+def referenced_columns(nodes: List[ExprNode]) -> List[Int]:
     """Column indices a plan reads — for projection pushdown.
 
     Lets a scan fetch two columns instead of forty. Returned sorted and deduplicated
@@ -332,7 +332,7 @@ fn referenced_columns(nodes: List[ExprNode]) -> List[Int]:
     return found^
 
 
-fn is_evaluable_op(op: Int) -> Bool:
+def is_evaluable_op(op: Int) -> Bool:
     """True when the columnar evaluator implements this opcode.
 
     A handful of frozen opcodes are shared rather than masked — literal (0),
@@ -355,7 +355,7 @@ fn is_evaluable_op(op: Int) -> Bool:
     return False
 
 
-fn first_unsupported_op(nodes: List[ExprNode]) -> Int:
+def first_unsupported_op(nodes: List[ExprNode]) -> Int:
     """Index of the first node the columnar evaluator cannot run, or -1.
 
     Lets a plan be rejected up front instead of raising partway through a scan.
@@ -368,7 +368,7 @@ fn first_unsupported_op(nodes: List[ExprNode]) -> Int:
     return -1
 
 
-fn describe(nodes: List[ExprNode], root: Int) -> String:
+def describe(nodes: List[ExprNode], root: Int) -> String:
     """A readable rendering of the plan, for lineage and error messages."""
     if root < 0 or root >= len(nodes):
         return "<invalid root>"

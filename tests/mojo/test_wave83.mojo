@@ -49,11 +49,11 @@ from std.math import abs as fabs, exp
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-4) -> Bool:
     return fabs(a - b) < tol
 
 
-fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
+def rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
     if fabs(b) < 1e-15:
         return fabs(a) < tol
     return fabs(a - b) / fabs(b) < tol
@@ -62,7 +62,7 @@ fn rel_eq(a: Float64, b: Float64, tol: Float64 = 1e-3) -> Bool:
 # ── Battery Technology Tests ─────────────────────────────────────────────────
 
 
-fn test_battery() raises:
+def test_battery() raises:
     # state_of_charge: 75/100 = 75%
     assert_true(approx_eq(state_of_charge(75.0, 100.0), 75.0), "soc 75/100")
     assert_true(approx_eq(state_of_charge(50.0, 200.0), 25.0), "soc 50/200")
@@ -122,7 +122,7 @@ fn test_battery() raises:
 # ── Fisheries Science Tests ──────────────────────────────────────────────────
 
 
-fn test_fisheries() raises:
+def test_fisheries() raises:
     # catch_per_unit_effort: 500/100 = 5.0
     assert_true(approx_eq(catch_per_unit_effort(500.0, 100.0), 5.0), "cpue 500/100")
     assert_true(approx_eq(catch_per_unit_effort(100.0, 0.0), 0.0), "cpue zero E")
@@ -177,7 +177,7 @@ fn test_fisheries() raises:
 # ── Museum Science Tests ─────────────────────────────────────────────────────
 
 
-fn test_museum() raises:
+def test_museum() raises:
     # lux_hours_annual: 50 lux * 8 hours * 365 days = 146000
     assert_true(approx_eq(lux_hours_annual(50.0, 8.0, 365.0), 146000.0), "lux hours")
     assert_true(approx_eq(lux_hours_annual(0.0, 8.0, 365.0), 0.0), "lux hours zero")
@@ -234,7 +234,7 @@ fn test_museum() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 83 tests: Battery, Fisheries, Museum")
     test_battery()
     test_fisheries()

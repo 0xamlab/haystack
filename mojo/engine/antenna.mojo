@@ -27,14 +27,14 @@ comptime PI: Float64 = 3.141592653589793
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     return log(x) / log(10.0)
 
 
 # ── dipole_length ────────────────────────────────────────────────────────────
 
 
-fn dipole_length(wavelength: Float64) -> Float64:
+def dipole_length(wavelength: Float64) -> Float64:
     """Half-wave dipole length: L = λ / 2 (metres)."""
     return wavelength / 2.0
 
@@ -42,7 +42,7 @@ fn dipole_length(wavelength: Float64) -> Float64:
 # ── wavelength_from_freq ─────────────────────────────────────────────────────
 
 
-fn wavelength_from_freq(frequency: Float64, c: Float64 = 3.0e8) -> Float64:
+def wavelength_from_freq(frequency: Float64, c: Float64 = 3.0e8) -> Float64:
     """Wavelength from frequency: λ = c / f (metres)."""
     return c / frequency
 
@@ -50,7 +50,7 @@ fn wavelength_from_freq(frequency: Float64, c: Float64 = 3.0e8) -> Float64:
 # ── friis_path_loss ──────────────────────────────────────────────────────────
 
 
-fn friis_path_loss(distance: Float64, wavelength: Float64) -> Float64:
+def friis_path_loss(distance: Float64, wavelength: Float64) -> Float64:
     """Friis free-space path loss in dB: 20*log10(4π*d / λ)."""
     var ratio = 4.0 * PI * distance / wavelength
     return 20.0 * _log10(ratio)
@@ -59,7 +59,7 @@ fn friis_path_loss(distance: Float64, wavelength: Float64) -> Float64:
 # ── eirp ─────────────────────────────────────────────────────────────────────
 
 
-fn eirp(tx_power_dbm: Float64, antenna_gain_dbi: Float64) -> Float64:
+def eirp(tx_power_dbm: Float64, antenna_gain_dbi: Float64) -> Float64:
     """EIRP = Ptx + Gant (dBm)."""
     return tx_power_dbm + antenna_gain_dbi
 
@@ -67,7 +67,7 @@ fn eirp(tx_power_dbm: Float64, antenna_gain_dbi: Float64) -> Float64:
 # ── received_power ───────────────────────────────────────────────────────────
 
 
-fn received_power(eirp_dbm: Float64, path_loss_db: Float64, rx_gain_dbi: Float64) -> Float64:
+def received_power(eirp_dbm: Float64, path_loss_db: Float64, rx_gain_dbi: Float64) -> Float64:
     """Prx = EIRP - PL + Grx (dBm)."""
     return eirp_dbm - path_loss_db + rx_gain_dbi
 
@@ -75,7 +75,7 @@ fn received_power(eirp_dbm: Float64, path_loss_db: Float64, rx_gain_dbi: Float64
 # ── directivity_from_beamwidths ─────────────────────────────────────────────
 
 
-fn directivity_from_beamwidths(theta_e: Float64, phi_e: Float64) -> Float64:
+def directivity_from_beamwidths(theta_e: Float64, phi_e: Float64) -> Float64:
     """Directivity ≈ 41253 / (θ_E * φ_E) where angles are in degrees."""
     return 41253.0 / (theta_e * phi_e)
 
@@ -83,7 +83,7 @@ fn directivity_from_beamwidths(theta_e: Float64, phi_e: Float64) -> Float64:
 # ── antenna_efficiency ───────────────────────────────────────────────────────
 
 
-fn antenna_efficiency(gain: Float64, directivity: Float64) -> Float64:
+def antenna_efficiency(gain: Float64, directivity: Float64) -> Float64:
     """Antenna efficiency η = G / D (linear scale)."""
     return gain / directivity
 
@@ -91,7 +91,7 @@ fn antenna_efficiency(gain: Float64, directivity: Float64) -> Float64:
 # ── effective_aperture ───────────────────────────────────────────────────────
 
 
-fn effective_aperture(gain: Float64, wavelength: Float64) -> Float64:
+def effective_aperture(gain: Float64, wavelength: Float64) -> Float64:
     """Effective aperture: Ae = G * λ² / (4π) (m²)."""
     return gain * wavelength * wavelength / (4.0 * PI)
 
@@ -99,7 +99,7 @@ fn effective_aperture(gain: Float64, wavelength: Float64) -> Float64:
 # ── link_budget_margin ───────────────────────────────────────────────────────
 
 
-fn link_budget_margin(rx_power: Float64, rx_sensitivity: Float64) -> Float64:
+def link_budget_margin(rx_power: Float64, rx_sensitivity: Float64) -> Float64:
     """Link budget margin = Prx - sensitivity (dB)."""
     return rx_power - rx_sensitivity
 
@@ -107,7 +107,7 @@ fn link_budget_margin(rx_power: Float64, rx_sensitivity: Float64) -> Float64:
 # ── noise_figure_to_noise_temp ───────────────────────────────────────────────
 
 
-fn noise_figure_to_noise_temp(nf_db: Float64, t0: Float64 = 290.0) -> Float64:
+def noise_figure_to_noise_temp(nf_db: Float64, t0: Float64 = 290.0) -> Float64:
     """Equivalent noise temperature: Te = T0 * (10^(NF/10) - 1) (Kelvin)."""
     var factor = exp(nf_db / 10.0 * log(10.0))
     return t0 * (factor - 1.0)
@@ -116,7 +116,7 @@ fn noise_figure_to_noise_temp(nf_db: Float64, t0: Float64 = 290.0) -> Float64:
 # ── free_space_loss_db ───────────────────────────────────────────────────────
 
 
-fn free_space_loss_db(distance_km: Float64, freq_mhz: Float64) -> Float64:
+def free_space_loss_db(distance_km: Float64, freq_mhz: Float64) -> Float64:
     """Free-space loss: FSL = 32.45 + 20*log10(d_km) + 20*log10(f_MHz) (dB)."""
     return 32.45 + 20.0 * _log10(distance_km) + 20.0 * _log10(freq_mhz)
 
@@ -124,6 +124,6 @@ fn free_space_loss_db(distance_km: Float64, freq_mhz: Float64) -> Float64:
 # ── beamwidth_from_aperture ─────────────────────────────────────────────────
 
 
-fn beamwidth_from_aperture(wavelength: Float64, aperture_dim: Float64) -> Float64:
+def beamwidth_from_aperture(wavelength: Float64, aperture_dim: Float64) -> Float64:
     """Approximate half-power beamwidth: θ ≈ 70 * λ / D (degrees)."""
     return 70.0 * wavelength / aperture_dim

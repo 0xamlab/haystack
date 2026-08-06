@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from scheduler_ops import priority_fair_score, weighted_fair_queue_credit, backpressure_load_factor, token_bucket_tokens, rate_limiter_wait_time, work_stealing_threshold, request_timeout_score, pipeline_stage_utilization, latency_sla_headroom, exponential_backoff_delay
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

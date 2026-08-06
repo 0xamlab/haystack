@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from mixture_of_experts import topk_gate_score, expert_load_fraction, load_balance_loss, router_z_loss, expert_capacity, token_dispatch_weight, sparse_gate_entropy, soft_moe_slot_score, expert_utilization, moe_ffn_output
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

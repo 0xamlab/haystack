@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from accounting import straight_line_depreciation, declining_balance, sum_of_years_digits, future_value, present_value_single, gross_profit_margin, net_profit_margin, current_ratio, debt_to_equity, return_on_equity, break_even_units, compound_annual_growth
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

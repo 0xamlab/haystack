@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from video_regions import frame_diff_mask_flat, motion_boxes_between_frames, largest_motion_box_between_frames, temporal_motion_area_series, peak_motion_box_flat, temporal_union_motion_box_flat, motion_coverage_ratio_flat
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

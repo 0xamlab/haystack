@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from bayesian import beta_posterior, beta_mean, beta_variance, beta_credible_interval, normal_posterior, poisson_posterior, bayes_factor, posterior_predictive_beta, hpd_interval_normal, bayesian_ab_test
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

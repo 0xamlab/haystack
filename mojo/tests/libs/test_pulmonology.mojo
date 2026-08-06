@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pulmonology import tidal_volume_predicted, minute_ventilation, alveolar_ventilation, fev1_fvc_ratio, peak_expiratory_flow, alveolar_oxygen, a_a_gradient, respiratory_quotient, compliance_static, airway_resistance
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

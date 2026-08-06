@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp, log
 
 
-fn layer_norm(
+def layer_norm(
     x: Float64, mean: Float64, variance: Float64,
     gamma: Float64, beta: Float64, eps: Float64
 ) -> Float64:
@@ -36,7 +36,7 @@ fn layer_norm(
     return (x - mean) / sqrt(variance + eps) * gamma + beta
 
 
-fn rms_norm(
+def rms_norm(
     x: Float64, rms: Float64, gamma: Float64, eps: Float64
 ) -> Float64:
     """RMSNorm (Zhang & Sennrich 2019): y = x / RMS(x) × γ.
@@ -55,7 +55,7 @@ fn rms_norm(
     return x / sqrt(rms * rms + eps) * gamma
 
 
-fn batch_norm_inference(
+def batch_norm_inference(
     x: Float64, running_mean: Float64, running_var: Float64,
     gamma: Float64, beta: Float64, eps: Float64
 ) -> Float64:
@@ -77,7 +77,7 @@ fn batch_norm_inference(
     return (x - running_mean) / sqrt(running_var + eps) * gamma + beta
 
 
-fn group_norm_scale(
+def group_norm_scale(
     x: Float64, group_mean: Float64, group_var: Float64,
     gamma: Float64, beta: Float64, eps: Float64
 ) -> Float64:
@@ -97,7 +97,7 @@ fn group_norm_scale(
     return (x - group_mean) / sqrt(group_var + eps) * gamma + beta
 
 
-fn instance_norm(
+def instance_norm(
     x: Float64, instance_mean: Float64, instance_var: Float64,
     gamma: Float64, beta: Float64, eps: Float64
 ) -> Float64:
@@ -117,7 +117,7 @@ fn instance_norm(
     return (x - instance_mean) / sqrt(instance_var + eps) * gamma + beta
 
 
-fn weight_norm_magnitude(
+def weight_norm_magnitude(
     weight_vector_norm: Float64, g_param: Float64
 ) -> Float64:
     """Weight normalisation magnitude: w = g × v / ||v||.
@@ -134,7 +134,7 @@ fn weight_norm_magnitude(
     return g_param / weight_vector_norm
 
 
-fn spectral_norm_estimate(
+def spectral_norm_estimate(
     sigma_prev: Float64, u_dot_w_v: Float64
 ) -> Float64:
     """One power-iteration step for spectral norm estimation.
@@ -151,7 +151,7 @@ fn spectral_norm_estimate(
     return u_dot_w_v
 
 
-fn adaptive_layer_norm(
+def adaptive_layer_norm(
     x: Float64, mean: Float64, variance: Float64,
     gamma_cond: Float64, beta_cond: Float64, eps: Float64
 ) -> Float64:
@@ -174,7 +174,7 @@ fn adaptive_layer_norm(
     return ln * (1.0 + gamma_cond) + beta_cond
 
 
-fn deep_norm_alpha(n_layers: Float64) -> Float64:
+def deep_norm_alpha(n_layers: Float64) -> Float64:
     """DeepNorm residual scaling factor alpha.
 
     alpha = (2N)^(1/4)  for encoder, (8N)^(1/4) for decoder
@@ -188,7 +188,7 @@ fn deep_norm_alpha(n_layers: Float64) -> Float64:
     return exp(log(2.0 * n_layers) / 4.0)
 
 
-fn pre_norm_residual(
+def pre_norm_residual(
     x: Float64, sublayer_out: Float64
 ) -> Float64:
     """Pre-LN residual connection: output = x + sublayer(LN(x)).

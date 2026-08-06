@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, cos, exp, log
 
 
-fn sgd_update(
+def sgd_update(
     param: Float64, gradient: Float64, lr: Float64
 ) -> Float64:
     """Vanilla SGD parameter update: θ -= lr × ∇.
@@ -32,7 +32,7 @@ fn sgd_update(
     return param - lr * gradient
 
 
-fn sgd_momentum_update(
+def sgd_momentum_update(
     param: Float64, velocity: Float64,
     gradient: Float64, lr: Float64, momentum: Float64
 ) -> Float64:
@@ -52,7 +52,7 @@ fn sgd_momentum_update(
     return param - lr * new_v
 
 
-fn adam_update(
+def adam_update(
     param: Float64, m_hat: Float64, v_hat: Float64,
     lr: Float64, eps: Float64
 ) -> Float64:
@@ -73,7 +73,7 @@ fn adam_update(
     return param - lr * m_hat / (sqrt(v_hat) + eps)
 
 
-fn adamw_update(
+def adamw_update(
     param: Float64, m_hat: Float64, v_hat: Float64,
     lr: Float64, weight_decay: Float64, eps: Float64
 ) -> Float64:
@@ -95,7 +95,7 @@ fn adamw_update(
     return param - lr * (m_hat / (sqrt(v_hat) + eps) + weight_decay * param)
 
 
-fn rmsprop_update(
+def rmsprop_update(
     param: Float64, gradient: Float64,
     running_avg_sq: Float64, lr: Float64,
     decay: Float64, eps: Float64
@@ -120,7 +120,7 @@ fn rmsprop_update(
     return param - lr * gradient / sqrt(new_avg + eps)
 
 
-fn adagrad_update(
+def adagrad_update(
     param: Float64, gradient: Float64,
     accumulated_sq: Float64, lr: Float64, eps: Float64
 ) -> Float64:
@@ -142,7 +142,7 @@ fn adagrad_update(
     return param - lr * gradient / sqrt(new_acc + eps)
 
 
-fn lars_update(
+def lars_update(
     param: Float64, gradient: Float64, param_norm: Float64,
     grad_norm: Float64, lr: Float64,
     trust_coeff: Float64, weight_decay: Float64
@@ -171,7 +171,7 @@ fn lars_update(
     return param - lr * local_lr * (gradient + weight_decay * param)
 
 
-fn lion_update(
+def lion_update(
     param: Float64, m: Float64, gradient: Float64,
     lr: Float64, beta1: Float64, beta2: Float64, weight_decay: Float64
 ) -> Float64:
@@ -201,7 +201,7 @@ fn lion_update(
     return param - lr * (sign_c + weight_decay * param)
 
 
-fn gradient_clipping(
+def gradient_clipping(
     gradient: Float64, grad_norm: Float64, max_norm: Float64
 ) -> Float64:
     """Gradient clipping by global norm.
@@ -221,7 +221,7 @@ fn gradient_clipping(
     return gradient * max_norm / grad_norm
 
 
-fn lr_cosine_schedule(
+def lr_cosine_schedule(
     step: Float64, total_steps: Float64,
     lr_max: Float64, lr_min: Float64
 ) -> Float64:

@@ -140,7 +140,7 @@ struct DagReport(Copyable, Movable):
     var in_degree: List[Int]
     var out_degree: List[Int]
 
-    fn __init__(out self, status: Int, n_nodes: Int, n_edges: Int):
+    def __init__(out self, status: Int, n_nodes: Int, n_edges: Int):
         self.status = status
         self.n_nodes = n_nodes
         self.n_edges = n_edges
@@ -171,7 +171,7 @@ struct DSepReport(Copyable, Movable):
     var path_nodes: List[Int]
     var reachable_mask: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.separated = False
         self.has_answer = False
@@ -212,7 +212,7 @@ struct BackdoorReport(Copyable, Movable):
     var n_open_backdoor_paths_found: Int
     var unblocked_path: List[Int]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.identified = False
         self.has_verdict = False
@@ -255,7 +255,7 @@ struct AdjustmentSet(Copyable, Movable):
     var minimality_measured: Bool
     var n_checks: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.identified = False
         self.has_set = False
@@ -280,7 +280,7 @@ struct _Adj(Copyable, Movable):
     var parent_ptr: List[Int]
     var parent_idx: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.n = 0
         self.child_ptr = List[Int]()
         self.child_idx = List[Int]()
@@ -288,7 +288,7 @@ struct _Adj(Copyable, Movable):
         self.parent_idx = List[Int]()
 
 
-fn _edge_defect(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Int:
+def _edge_defect(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Int:
     """`CI_OK` or the code naming why this edge list cannot be walked.
 
     Runs BEFORE anything is allocated from `n_nodes` and before any endpoint is used as an
@@ -312,7 +312,7 @@ fn _edge_defect(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Int:
     return CI_OK
 
 
-fn _build_adj(edge_from: List[Int], edge_to: List[Int], n_nodes: Int, skip_out_of: Int) -> _Adj:
+def _build_adj(edge_from: List[Int], edge_to: List[Int], n_nodes: Int, skip_out_of: Int) -> _Adj:
     """Parent/child CSR. Callers MUST have run `_edge_defect` first.
 
     `skip_out_of` deletes every edge leaving that node (`DAG_NO_NODE` deletes nothing), which
@@ -372,7 +372,7 @@ fn _build_adj(edge_from: List[Int], edge_to: List[Int], n_nodes: Int, skip_out_o
     return a^
 
 
-fn _mask_defect(nodes: List[Int], n_nodes: Int, mut mask: List[Bool]) -> Int:
+def _mask_defect(nodes: List[Int], n_nodes: Int, mut mask: List[Bool]) -> Int:
     """Set `mask[v]` for every `v` in `nodes`; `CI_ERR_INDEX` out of range,
     `CI_ERR_DUPLICATE` on a repeat. `mask` must already be `n_nodes` long."""
     for i in range(len(nodes)):
@@ -385,7 +385,7 @@ fn _mask_defect(nodes: List[Int], n_nodes: Int, mut mask: List[Bool]) -> Int:
     return CI_OK
 
 
-fn _descendant_mask(a: _Adj, root: Int) -> List[Bool]:
+def _descendant_mask(a: _Adj, root: Int) -> List[Bool]:
     """Nodes reachable from `root` by following arrows forward, INCLUDING `root`.
 
     Explicit stack, never recursion — matching `stats.fast_sort` and `graph/algorithms.mojo`,
@@ -410,7 +410,7 @@ fn _descendant_mask(a: _Adj, root: Int) -> List[Bool]:
     return seen^
 
 
-fn _ancestor_of_z_mask(a: _Adj, z: List[Bool]) -> List[Bool]:
+def _ancestor_of_z_mask(a: _Adj, z: List[Bool]) -> List[Bool]:
     """Nodes with a descendant in Z, Z itself included — Phase I of Bayes-Ball.
 
     This is the mask that makes a COLLIDER transmit. `A -> C <- B` blocks unless C or a
@@ -438,11 +438,11 @@ fn _ancestor_of_z_mask(a: _Adj, z: List[Bool]) -> List[Bool]:
     return anc^
 
 
-fn _state(node: Int, direction: Int) -> Int:
+def _state(node: Int, direction: Int) -> Int:
     return 2 * node + direction
 
 
-fn _reachable_with(
+def _reachable_with(
     a: _Adj, x: List[Bool], z: List[Bool], anc: List[Bool], y: List[Bool]
 ) -> DSepReport:
     """Bayes-Ball Phase II: d-connection from X to Y given Z, plus a witness path.
@@ -560,7 +560,7 @@ fn _reachable_with(
 # ── dag_validate ─────────────────────────────────────────────────────────────
 
 
-fn dag_validate(
+def dag_validate(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int
 ) -> DagReport:
     """Is the declared graph a DAG? If not, name an edge on the cycle.
@@ -712,7 +712,7 @@ fn dag_validate(
     return out^
 
 
-fn _sorted_int_copy(a: _Adj, lo: Int, hi: Int) -> List[Int]:
+def _sorted_int_copy(a: _Adj, lo: Int, hi: Int) -> List[Int]:
     """Ascending copy of `a.child_idx[lo:hi]` by insertion sort. Internal; spans here are one
     node's out-degree, so the quadratic term is per node and not per graph."""
     var out = List[Int](capacity=hi - lo if hi > lo else 1)
@@ -731,7 +731,7 @@ fn _sorted_int_copy(a: _Adj, lo: Int, hi: Int) -> List[Int]:
 # ── d_separated ──────────────────────────────────────────────────────────────
 
 
-fn d_separated(
+def d_separated(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int,
     x_nodes: List[Int], y_nodes: List[Int], z_nodes: List[Int],
 ) -> DSepReport:
@@ -791,14 +791,14 @@ fn d_separated(
     return _reachable_with(a, xm, zm, anc, ym)
 
 
-fn _empty_mask(n: Int) -> List[Bool]:
+def _empty_mask(n: Int) -> List[Bool]:
     var m = List[Bool](capacity=n if n > 0 else 1)
     for _ in range(n):
         m.append(False)
     return m^
 
 
-fn _acyclic(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Bool:
+def _acyclic(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Bool:
     """Acyclicity via the frozen `graph.algorithms.topological_sort`. Endpoints must already
     be validated — `graph_add_edge` range-checks nothing."""
     var g = graph_new(n_nodes)
@@ -810,7 +810,7 @@ fn _acyclic(edge_from: List[Int], edge_to: List[Int], n_nodes: Int) -> Bool:
 # ── backdoor_check ───────────────────────────────────────────────────────────
 
 
-fn backdoor_check(
+def backdoor_check(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int,
     treatment: Int, outcome: Int, adjustment: List[Int],
 ) -> BackdoorReport:
@@ -892,7 +892,7 @@ fn backdoor_check(
 # ── backdoor_minimal_set ─────────────────────────────────────────────────────
 
 
-fn backdoor_minimal_set(
+def backdoor_minimal_set(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int,
     treatment: Int, outcome: Int, candidates: List[Int],
 ) -> AdjustmentSet:
@@ -1011,7 +1011,7 @@ fn backdoor_minimal_set(
     return out^
 
 
-fn _blocks(
+def _blocks(
     pruned: _Adj, tm: List[Bool], ym: List[Bool],
     keep: List[Int], active: List[Bool], n_nodes: Int,
 ) -> DSepReport:
@@ -1032,7 +1032,7 @@ fn _blocks(
 # ── reachability helpers a caller will want ──────────────────────────────────
 
 
-fn dag_descendants(
+def dag_descendants(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int, root: Int
 ) -> List[Int]:
     """Ascending node ids reachable from `root` along the arrows, INCLUDING `root`.
@@ -1062,7 +1062,7 @@ fn dag_descendants(
     return out^
 
 
-fn dag_ancestors(
+def dag_ancestors(
     edge_from: List[Int], edge_to: List[Int], n_nodes: Int, root: Int
 ) -> List[Int]:
     """Ascending node ids that reach `root` along the arrows, INCLUDING `root`.

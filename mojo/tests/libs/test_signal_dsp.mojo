@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from signal.dsp import moving_average, exponential_moving_average, diff, cumsum, convolve, autocorrelation, detrend_linear, normalize_signal, zero_crossings, peak_detect
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

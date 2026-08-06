@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ode import euler_step, euler_solve, rk4_step, rk4_solve, exponential_decay, logistic_growth, rk4_step_system, rk4_solve_system
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -32,7 +32,7 @@ from mojo.engine.vector_kernels.semantic_micro.semantic_mlp import run_head
 from mojo.engine.vector_kernels.semantic_micro.semantic_expand import expand_tokens_topk
 
 
-fn infer_semantic_hints(
+def infer_semantic_hints(
     model:          SemanticModel,
     query:          SemanticQuery,
     query_vec_buf:  UnsafePointer[Float32],   # caller scratch [EMB_DIM]
@@ -105,7 +105,7 @@ fn infer_semantic_hints(
     return hints
 
 
-fn semantic_expand_query(
+def semantic_expand_query(
     model:       SemanticModel,
     query:       SemanticQuery,
     min_score:   Float32,

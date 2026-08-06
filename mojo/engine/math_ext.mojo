@@ -18,7 +18,7 @@ from std.math import sqrt, exp, log, abs as fabs, pow, sin
 # ── Internal sort (copy from stats.mojo to avoid circular deps) ──────────────
 
 
-fn _ins_sort(mut a: List[Float64], lo: Int, hi: Int):
+def _ins_sort(mut a: List[Float64], lo: Int, hi: Int):
     for i in range(lo + 1, hi + 1):
         var k = a[i]
         var j = i - 1
@@ -28,7 +28,7 @@ fn _ins_sort(mut a: List[Float64], lo: Int, hi: Int):
         a[j + 1] = k
 
 
-fn _sort_copy(data: List[Float64]) -> List[Float64]:
+def _sort_copy(data: List[Float64]) -> List[Float64]:
     """Return a sorted copy of data."""
     var sorted = List[Float64]()
     for i in range(len(data)):
@@ -51,7 +51,7 @@ comptime _LN_SQRT_2PI = 0.9189385332046727
 # ── Descriptive statistics ────────────────────────────────────────────────────
 
 
-fn mean(data: List[Float64]) -> Float64:
+def mean(data: List[Float64]) -> Float64:
     """Arithmetic mean."""
     var n = len(data)
     if n == 0:
@@ -62,7 +62,7 @@ fn mean(data: List[Float64]) -> Float64:
     return s / Float64(n)
 
 
-fn median(data: List[Float64]) -> Float64:
+def median(data: List[Float64]) -> Float64:
     """Median (middle value). Copies and sorts."""
     var n = len(data)
     if n == 0:
@@ -73,7 +73,7 @@ fn median(data: List[Float64]) -> Float64:
     return (sorted[n // 2 - 1] + sorted[n // 2]) / 2.0
 
 
-fn mode_approx(data: List[Float64], bins: Int = 100) -> Float64:
+def mode_approx(data: List[Float64], bins: Int = 100) -> Float64:
     """Approximate mode using histogram binning."""
     var n = len(data)
     if n == 0:
@@ -115,12 +115,12 @@ fn mode_approx(data: List[Float64], bins: Int = 100) -> Float64:
     return lo + (Float64(max_bin) + 0.5) * width
 
 
-fn stdev(data: List[Float64]) -> Float64:
+def stdev(data: List[Float64]) -> Float64:
     """Sample standard deviation (ddof=1)."""
     return sqrt(variance(data))
 
 
-fn variance(data: List[Float64]) -> Float64:
+def variance(data: List[Float64]) -> Float64:
     """Sample variance (ddof=1)."""
     var n = len(data)
     if n <= 1:
@@ -133,7 +133,7 @@ fn variance(data: List[Float64]) -> Float64:
     return s / Float64(n - 1)
 
 
-fn skewness(data: List[Float64]) -> Float64:
+def skewness(data: List[Float64]) -> Float64:
     """Sample skewness (Fisher's definition)."""
     var n = len(data)
     if n < 3:
@@ -150,7 +150,7 @@ fn skewness(data: List[Float64]) -> Float64:
     return (nf / ((nf - 1.0) * (nf - 2.0))) * s
 
 
-fn kurtosis(data: List[Float64]) -> Float64:
+def kurtosis(data: List[Float64]) -> Float64:
     """Sample excess kurtosis (Fisher's definition)."""
     var n = len(data)
     if n < 4:
@@ -170,7 +170,7 @@ fn kurtosis(data: List[Float64]) -> Float64:
     return num / den - correction
 
 
-fn covariance(x: List[Float64], y: List[Float64]) -> Float64:
+def covariance(x: List[Float64], y: List[Float64]) -> Float64:
     """Sample covariance between two lists."""
     var n = len(x)
     if len(y) < n:
@@ -185,7 +185,7 @@ fn covariance(x: List[Float64], y: List[Float64]) -> Float64:
     return s / Float64(n - 1)
 
 
-fn correlation(x: List[Float64], y: List[Float64]) -> Float64:
+def correlation(x: List[Float64], y: List[Float64]) -> Float64:
     """Pearson correlation coefficient."""
     var n = len(x)
     if len(y) < n:
@@ -212,12 +212,12 @@ fn correlation(x: List[Float64], y: List[Float64]) -> Float64:
 # ── Percentiles and quantiles ─────────────────────────────────────────────────
 
 
-fn percentile(data: List[Float64], p: Float64) -> Float64:
+def percentile(data: List[Float64], p: Float64) -> Float64:
     """p-th percentile (0-100). Linear interpolation."""
     return quantile(data, p / 100.0)
 
 
-fn quantile(data: List[Float64], q: Float64) -> Float64:
+def quantile(data: List[Float64], q: Float64) -> Float64:
     """q-th quantile (0-1). Linear interpolation."""
     var n = len(data)
     if n == 0:
@@ -244,7 +244,7 @@ fn quantile(data: List[Float64], q: Float64) -> Float64:
     return sorted[lo_idx] * (1.0 - frac) + sorted[lo_idx + 1] * frac
 
 
-fn iqr(data: List[Float64]) -> Float64:
+def iqr(data: List[Float64]) -> Float64:
     """Interquartile range (Q3 - Q1)."""
     return quantile(data, 0.75) - quantile(data, 0.25)
 
@@ -252,21 +252,21 @@ fn iqr(data: List[Float64]) -> Float64:
 # ── Statistical tests ──────────────────────────────────────────────────────────
 
 
-fn z_score(value: Float64, mu: Float64, sigma: Float64) -> Float64:
+def z_score(value: Float64, mu: Float64, sigma: Float64) -> Float64:
     """Standard score (z-score)."""
     if sigma == 0.0:
         return 0.0
     return (value - mu) / sigma
 
 
-fn t_statistic(sample_mean: Float64, pop_mean: Float64, sample_std: Float64, n: Int) -> Float64:
+def t_statistic(sample_mean: Float64, pop_mean: Float64, sample_std: Float64, n: Int) -> Float64:
     """One-sample t-statistic."""
     if n <= 0 or sample_std == 0.0:
         return 0.0
     return (sample_mean - pop_mean) / (sample_std / sqrt(Float64(n)))
 
 
-fn chi_squared(observed: List[Float64], expected: List[Float64]) -> Float64:
+def chi_squared(observed: List[Float64], expected: List[Float64]) -> Float64:
     """Chi-squared test statistic."""
     var n = len(observed)
     if len(expected) < n:
@@ -282,7 +282,7 @@ fn chi_squared(observed: List[Float64], expected: List[Float64]) -> Float64:
 # ── Special functions ──────────────────────────────────────────────────────────
 
 
-fn erf(x: Float64) -> Float64:
+def erf(x: Float64) -> Float64:
     """Error function (Abramowitz & Stegun approximation, max error ~1.5e-7)."""
     var t = 1.0 / (1.0 + 0.3275911 * fabs(x))
     var y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * exp(-x * x)
@@ -291,17 +291,17 @@ fn erf(x: Float64) -> Float64:
     return -y
 
 
-fn norm_cdf(x: Float64) -> Float64:
+def norm_cdf(x: Float64) -> Float64:
     """Standard normal CDF via erf approximation."""
     return 0.5 * (1.0 + erf(x / _SQRT_2))
 
 
-fn norm_pdf(x: Float64) -> Float64:
+def norm_pdf(x: Float64) -> Float64:
     """Standard normal PDF."""
     return exp(-0.5 * x * x) / _SQRT_2PI
 
 
-fn norm_ppf(p: Float64) -> Float64:
+def norm_ppf(p: Float64) -> Float64:
     """Standard normal quantile function (inverse CDF / probit).
 
     Uses rational approximation by Peter Acklam.
@@ -355,7 +355,7 @@ fn norm_ppf(p: Float64) -> Float64:
         return -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1.0)
 
 
-fn log_gamma(x: Float64) -> Float64:
+def log_gamma(x: Float64) -> Float64:
     """Log-gamma function (Lanczos approximation)."""
     if x <= 0.0:
         return 1e300
@@ -379,7 +379,7 @@ fn log_gamma(x: Float64) -> Float64:
     return _LN_SQRT_2PI + (xx + 0.5) * log(b) - b + log(c)
 
 
-fn gamma_fn(x: Float64) -> Float64:
+def gamma_fn(x: Float64) -> Float64:
     """Gamma function (Lanczos approximation)."""
     if x < 0.5:
         return _PI / (sin(_PI * x) * gamma_fn(1.0 - x))
@@ -397,6 +397,6 @@ fn gamma_fn(x: Float64) -> Float64:
     return sqrt(2.0 * _PI) * pow(b, xx + 0.5) * exp(-b) * c
 
 
-fn beta_fn(a: Float64, b: Float64) -> Float64:
+def beta_fn(a: Float64, b: Float64) -> Float64:
     """Beta function = Gamma(a)*Gamma(b)/Gamma(a+b)."""
     return exp(log_gamma(a) + log_gamma(b) - log_gamma(a + b))

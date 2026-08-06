@@ -22,7 +22,7 @@ comptime SIMD_W:  Int = 8    # 8 × Float32 = 256-bit (AVX / NEON)
 
 # ── SIMD dot product ──────────────────────────────────────────────────────────
 
-fn dot64_f32(a: List[Float32], b: List[Float32]) -> Float32:
+def dot64_f32(a: List[Float32], b: List[Float32]) -> Float32:
     """
     Dot product of two 64-element Float32 vectors.
 
@@ -47,7 +47,7 @@ fn dot64_f32(a: List[Float32], b: List[Float32]) -> Float32:
 
 # ── L2 norm inverse ───────────────────────────────────────────────────────────
 
-fn l2_norm_inv_f32(v: List[Float32]) -> Float32:
+def l2_norm_inv_f32(v: List[Float32]) -> Float32:
     """
     Compute 1/||v||₂ for a 64-element Float32 vector.
     Returns 0.0 if the vector is the zero vector.
@@ -78,7 +78,7 @@ fn l2_norm_inv_f32(v: List[Float32]) -> Float32:
 
 # ── Cosine similarity ─────────────────────────────────────────────────────────
 
-fn cosine64_f32(
+def cosine64_f32(
     a:          List[Float32],
     b:          List[Float32],
     a_norm_inv: Float32,
@@ -105,7 +105,7 @@ fn cosine64_f32(
 # ── String → 64-bucket bigram vector ─────────────────────────────────────────
 
 @always_inline
-fn _norm_byte64(c: UInt8) -> UInt8:
+def _norm_byte64(c: UInt8) -> UInt8:
     """Normalise byte: separators → 32, uppercase → lowercase."""
     if c == 95 or c == 45 or c == 46:
         return 32
@@ -114,7 +114,7 @@ fn _norm_byte64(c: UInt8) -> UInt8:
     return c
 
 
-fn build_vec64_f32(s: String, mut out_vec: List[Float32]) -> Float32:
+def build_vec64_f32(s: String, mut out_vec: List[Float32]) -> Float32:
     """
     Encode a string as a 64-bucket bigram frequency vector.
 

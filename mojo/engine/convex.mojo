@@ -23,7 +23,7 @@ from std.math import sqrt, abs as fabs
 # ── eval_function ────────────────────────────────────────────────────────────
 
 
-fn eval_function(x: List[Float64], func_id: Int) -> Float64:
+def eval_function(x: List[Float64], func_id: Int) -> Float64:
     """Evaluate objective function.
     func_id 0: quadratic Σx_i²
     func_id 1: Rosenbrock Σ[100(x_{i+1}-x_i²)² + (1-x_i)²]
@@ -49,7 +49,7 @@ fn eval_function(x: List[Float64], func_id: Int) -> Float64:
 # ── compute_gradient ─────────────────────────────────────────────────────────
 
 
-fn compute_gradient(x: List[Float64], func_id: Int) -> List[Float64]:
+def compute_gradient(x: List[Float64], func_id: Int) -> List[Float64]:
     """Compute gradient for built-in functions.
     func_id 0: grad = 2*x_i
     func_id 1: Rosenbrock gradient
@@ -77,7 +77,7 @@ fn compute_gradient(x: List[Float64], func_id: Int) -> List[Float64]:
 # ── l2_norm ──────────────────────────────────────────────────────────────────
 
 
-fn l2_norm(x: List[Float64]) -> Float64:
+def l2_norm(x: List[Float64]) -> Float64:
     """Euclidean norm: sqrt(Σx_i²)."""
     var s: Float64 = 0.0
     for i in range(len(x)):
@@ -88,7 +88,7 @@ fn l2_norm(x: List[Float64]) -> Float64:
 # ── vector_sub ───────────────────────────────────────────────────────────────
 
 
-fn vector_sub(a: List[Float64], b: List[Float64]) -> List[Float64]:
+def vector_sub(a: List[Float64], b: List[Float64]) -> List[Float64]:
     """Element-wise subtraction: a - b."""
     # Mismatched lengths have no element-wise answer; reading past the shorter list
     # aborts the worker, so refuse with an empty result.
@@ -104,7 +104,7 @@ fn vector_sub(a: List[Float64], b: List[Float64]) -> List[Float64]:
 # ── proximal_l1 ──────────────────────────────────────────────────────────────
 
 
-fn proximal_l1(x: List[Float64], lambda_val: Float64) -> List[Float64]:
+def proximal_l1(x: List[Float64], lambda_val: Float64) -> List[Float64]:
     """Soft-thresholding (proximal operator for L1):
     sign(x_i) * max(|x_i| - λ, 0)."""
     var n = len(x)
@@ -126,7 +126,7 @@ fn proximal_l1(x: List[Float64], lambda_val: Float64) -> List[Float64]:
 # ── line_search_backtrack ────────────────────────────────────────────────────
 
 
-fn line_search_backtrack(
+def line_search_backtrack(
     x: List[Float64],
     grad: List[Float64],
     func_id: Int,
@@ -161,7 +161,7 @@ fn line_search_backtrack(
 # ── gradient_descent ─────────────────────────────────────────────────────────
 
 
-fn gradient_descent(
+def gradient_descent(
     x0: List[Float64],
     learning_rate: Float64,
     max_iter: Int,
@@ -187,7 +187,7 @@ fn gradient_descent(
 # ── projected_gradient_descent ───────────────────────────────────────────────
 
 
-fn projected_gradient_descent(
+def projected_gradient_descent(
     x0: List[Float64],
     lr: Float64,
     max_iter: Int,
@@ -216,7 +216,7 @@ fn projected_gradient_descent(
 # ── adam_optimizer ───────────────────────────────────────────────────────────
 
 
-fn adam_optimizer(
+def adam_optimizer(
     x0: List[Float64],
     lr: Float64,
     max_iter: Int,

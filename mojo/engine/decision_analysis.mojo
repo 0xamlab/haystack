@@ -23,7 +23,7 @@ from std.math import log, abs as fabs
 # ── expected_value ────────────────────────────────────────────────────────────
 
 
-fn expected_value(outcomes: List[Float64], probabilities: List[Float64]) -> Float64:
+def expected_value(outcomes: List[Float64], probabilities: List[Float64]) -> Float64:
     """Weighted expected value: Σ(outcome_i * prob_i)."""
     var n = len(outcomes)
     if len(probabilities) != n:
@@ -37,7 +37,7 @@ fn expected_value(outcomes: List[Float64], probabilities: List[Float64]) -> Floa
 # ── expected_utility ──────────────────────────────────────────────────────────
 
 
-fn expected_utility(
+def expected_utility(
     outcomes: List[Float64],
     probabilities: List[Float64],
     risk_aversion: Float64,
@@ -71,7 +71,7 @@ fn expected_utility(
     return result
 
 
-fn _pow_pos(base: Float64, exp: Float64) -> Float64:
+def _pow_pos(base: Float64, exp: Float64) -> Float64:
     """Positive base raised to real exponent: base^exp = e^(exp*ln(base))."""
     if base <= 0.0:
         return 0.0
@@ -79,7 +79,7 @@ fn _pow_pos(base: Float64, exp: Float64) -> Float64:
     return _exp_approx(exp * ln_base)
 
 
-fn _exp_approx(x: Float64) -> Float64:
+def _exp_approx(x: Float64) -> Float64:
     """Fast exp via Taylor series (30 terms)."""
     var clamped = x
     if clamped > 20.0:
@@ -97,7 +97,7 @@ fn _exp_approx(x: Float64) -> Float64:
 # ── _row_ev (helper) ──────────────────────────────────────────────────────────
 
 
-fn _row_ev(payoffs: List[List[Float64]], row: Int, probs: List[Float64]) -> Float64:
+def _row_ev(payoffs: List[List[Float64]], row: Int, probs: List[Float64]) -> Float64:
     """Expected value of a single alternative (row)."""
     var n_states = len(probs)
     var ev: Float64 = 0.0
@@ -109,7 +109,7 @@ fn _row_ev(payoffs: List[List[Float64]], row: Int, probs: List[Float64]) -> Floa
 # ── decision_matrix_best ──────────────────────────────────────────────────────
 
 
-fn decision_matrix_best(
+def decision_matrix_best(
     payoffs: List[List[Float64]], probabilities: List[Float64]
 ) -> Int:
     """Best alternative by maximum expected payoff."""
@@ -133,7 +133,7 @@ fn decision_matrix_best(
 # ── minimax_regret ────────────────────────────────────────────────────────────
 
 
-fn minimax_regret(payoffs: List[List[Float64]]) -> Int:
+def minimax_regret(payoffs: List[List[Float64]]) -> Int:
     """Minimax regret: minimize the maximum regret across states."""
     var n_alts = len(payoffs)
     if n_alts == 0:
@@ -168,7 +168,7 @@ fn minimax_regret(payoffs: List[List[Float64]]) -> Int:
 # ── hurwicz_criterion ─────────────────────────────────────────────────────────
 
 
-fn hurwicz_criterion(payoffs: List[List[Float64]], alpha: Float64) -> Int:
+def hurwicz_criterion(payoffs: List[List[Float64]], alpha: Float64) -> Int:
     """Hurwicz: α*max + (1-α)*min for each alternative. Returns best index."""
     var n_alts = len(payoffs)
     var best_idx = 0
@@ -192,7 +192,7 @@ fn hurwicz_criterion(payoffs: List[List[Float64]], alpha: Float64) -> Int:
 # ── value_of_perfect_info ─────────────────────────────────────────────────────
 
 
-fn value_of_perfect_info(
+def value_of_perfect_info(
     payoffs: List[List[Float64]], probabilities: List[Float64]
 ) -> Float64:
     """EVPI = EV with perfect info - EV of best alternative."""
@@ -223,7 +223,7 @@ fn value_of_perfect_info(
 # ── sensitivity_range ─────────────────────────────────────────────────────────
 
 
-fn sensitivity_range(
+def sensitivity_range(
     payoffs: List[List[Float64]], state_idx: Int, n_steps: Int = 100
 ) -> List[List[Float64]]:
     """Vary probability of one state from 0→1, distribute rest equally.
@@ -260,7 +260,7 @@ fn sensitivity_range(
 # ── maximin ───────────────────────────────────────────────────────────────────
 
 
-fn maximin(payoffs: List[List[Float64]]) -> Int:
+def maximin(payoffs: List[List[Float64]]) -> Int:
     """Maximin (pessimistic): maximize the minimum payoff."""
     var n_alts = len(payoffs)
     var best_idx = 0
@@ -280,7 +280,7 @@ fn maximin(payoffs: List[List[Float64]]) -> Int:
 # ── maximax ───────────────────────────────────────────────────────────────────
 
 
-fn maximax(payoffs: List[List[Float64]]) -> Int:
+def maximax(payoffs: List[List[Float64]]) -> Int:
     """Maximax (optimistic): maximize the maximum payoff."""
     var n_alts = len(payoffs)
     var best_idx = 0
@@ -300,7 +300,7 @@ fn maximax(payoffs: List[List[Float64]]) -> Int:
 # ── laplace_criterion ─────────────────────────────────────────────────────────
 
 
-fn laplace_criterion(payoffs: List[List[Float64]]) -> Int:
+def laplace_criterion(payoffs: List[List[Float64]]) -> Int:
     """Laplace (equal probability): best average payoff."""
     var n_alts = len(payoffs)
     var best_idx = 0

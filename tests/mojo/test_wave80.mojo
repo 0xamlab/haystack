@@ -49,14 +49,14 @@ from std.math import abs as fabs, sqrt, exp, log
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < tol
 
 
 # ── Soil Science Tests ───────────────────────────────────────────────────────
 
 
-fn test_soil_science() raises:
+def test_soil_science() raises:
     print("== Soil Science Tests ==")
 
     # soil_texture_sand_silt_clay — valid textures
@@ -123,7 +123,7 @@ fn test_soil_science() raises:
 # ── Autonomous Vehicles Tests ────────────────────────────────────────────────
 
 
-fn test_autonomous_vehicles() raises:
+def test_autonomous_vehicles() raises:
     print("== Autonomous Vehicles Tests ==")
 
     # safe_following_distance: v=30, t=1.5, a=5 => 30*1.5 + 900/10 = 45+90=135
@@ -186,7 +186,7 @@ fn test_autonomous_vehicles() raises:
 # ── Insurance Tests ──────────────────────────────────────────────────────────
 
 
-fn test_insurance() raises:
+def test_insurance() raises:
     print("== Insurance Tests ==")
 
     # pure_premium: 500000/1000 = 500
@@ -245,7 +245,7 @@ fn test_insurance() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     test_soil_science()
     test_autonomous_vehicles()
     test_insurance()

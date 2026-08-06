@@ -26,7 +26,7 @@ from std.math import sqrt, abs as fabs
 # ── lead_time_demand ─────────────────────────────────────────────────────────
 
 
-fn lead_time_demand(demand_rate: Float64, lead_time: Float64) -> Float64:
+def lead_time_demand(demand_rate: Float64, lead_time: Float64) -> Float64:
     """Expected demand during lead time = demand_rate * lead_time."""
     return demand_rate * lead_time
 
@@ -34,7 +34,7 @@ fn lead_time_demand(demand_rate: Float64, lead_time: Float64) -> Float64:
 # ── bullwhip_effect ──────────────────────────────────────────────────────────
 
 
-fn bullwhip_effect(demand_variance: Float64, order_variance: Float64) -> Float64:
+def bullwhip_effect(demand_variance: Float64, order_variance: Float64) -> Float64:
     """Bullwhip ratio: order_variance / demand_variance.
     Ratio > 1 indicates amplification of demand signal."""
     if demand_variance < 1e-30:
@@ -45,7 +45,7 @@ fn bullwhip_effect(demand_variance: Float64, order_variance: Float64) -> Float64
 # ── forecast_error_mae ───────────────────────────────────────────────────────
 
 
-fn forecast_error_mae(actual: List[Float64], forecast: List[Float64]) -> Float64:
+def forecast_error_mae(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean Absolute Error between actual and forecast."""
     if len(forecast) != len(actual):
         return 0.0
@@ -61,7 +61,7 @@ fn forecast_error_mae(actual: List[Float64], forecast: List[Float64]) -> Float64
 # ── forecast_error_mape ──────────────────────────────────────────────────────
 
 
-fn forecast_error_mape(actual: List[Float64], forecast: List[Float64]) -> Float64:
+def forecast_error_mape(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean Absolute Percentage Error. Skips zero actuals."""
     if len(forecast) != len(actual):
         return 0.0
@@ -82,7 +82,7 @@ fn forecast_error_mape(actual: List[Float64], forecast: List[Float64]) -> Float6
 # ── forecast_bias ────────────────────────────────────────────────────────────
 
 
-fn forecast_bias(actual: List[Float64], forecast: List[Float64]) -> Float64:
+def forecast_bias(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Mean(forecast - actual). Positive = over-forecasting."""
     if len(forecast) != len(actual):
         return 0.0
@@ -98,7 +98,7 @@ fn forecast_bias(actual: List[Float64], forecast: List[Float64]) -> Float64:
 # ── tracking_signal ──────────────────────────────────────────────────────────
 
 
-fn tracking_signal(actual: List[Float64], forecast: List[Float64]) -> Float64:
+def tracking_signal(actual: List[Float64], forecast: List[Float64]) -> Float64:
     """Tracking signal = cumulative error / MAD.
     MAD = Mean Absolute Deviation of errors."""
     if len(forecast) != len(actual):
@@ -121,7 +121,7 @@ fn tracking_signal(actual: List[Float64], forecast: List[Float64]) -> Float64:
 # ── economic_production_qty ──────────────────────────────────────────────────
 
 
-fn economic_production_qty(demand: Float64, setup_cost: Float64, holding_cost: Float64, production_rate: Float64) -> Float64:
+def economic_production_qty(demand: Float64, setup_cost: Float64, holding_cost: Float64, production_rate: Float64) -> Float64:
     """EPQ = sqrt(2*D*S / (H*(1 - D/P))).
     demand=D, setup_cost=S, holding_cost=H, production_rate=P."""
     if production_rate <= demand:
@@ -137,7 +137,7 @@ fn economic_production_qty(demand: Float64, setup_cost: Float64, holding_cost: F
 # ── total_cost_of_ownership ──────────────────────────────────────────────────
 
 
-fn total_cost_of_ownership(purchase: Float64, ordering: Float64, holding: Float64, shortage: Float64) -> Float64:
+def total_cost_of_ownership(purchase: Float64, ordering: Float64, holding: Float64, shortage: Float64) -> Float64:
     """TCO = sum of all cost components."""
     return purchase + ordering + holding + shortage
 
@@ -145,7 +145,7 @@ fn total_cost_of_ownership(purchase: Float64, ordering: Float64, holding: Float6
 # ── service_level_type1 ──────────────────────────────────────────────────────
 
 
-fn service_level_type1(stockout_probability: Float64) -> Float64:
+def service_level_type1(stockout_probability: Float64) -> Float64:
     """Cycle service level = 1 - P(stockout)."""
     return 1.0 - stockout_probability
 
@@ -153,7 +153,7 @@ fn service_level_type1(stockout_probability: Float64) -> Float64:
 # ── fill_rate_type2 ──────────────────────────────────────────────────────────
 
 
-fn fill_rate_type2(expected_shortage: Float64, demand: Float64) -> Float64:
+def fill_rate_type2(expected_shortage: Float64, demand: Float64) -> Float64:
     """Type 2 fill rate = 1 - E[shortage] / demand."""
     if demand < 1e-30:
         return 0.0
@@ -163,7 +163,7 @@ fn fill_rate_type2(expected_shortage: Float64, demand: Float64) -> Float64:
 # ── moving_average_forecast ──────────────────────────────────────────────────
 
 
-fn moving_average_forecast(data: List[Float64], periods: Int) -> Float64:
+def moving_average_forecast(data: List[Float64], periods: Int) -> Float64:
     """Forecast next period = average of last N periods."""
     var n = len(data)
     if n == 0 or periods <= 0:
@@ -180,7 +180,7 @@ fn moving_average_forecast(data: List[Float64], periods: Int) -> Float64:
 # ── exponential_smoothing_forecast ───────────────────────────────────────────
 
 
-fn exponential_smoothing_forecast(data: List[Float64], alpha: Float64) -> Float64:
+def exponential_smoothing_forecast(data: List[Float64], alpha: Float64) -> Float64:
     """Next period forecast using Simple Exponential Smoothing (SES).
     F(t+1) = alpha * Y(t) + (1-alpha) * F(t), with F(1) = Y(0)."""
     var n = len(data)

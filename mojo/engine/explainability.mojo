@@ -27,7 +27,7 @@ struct PermutationImportance(Copyable, Movable):
     var means: List[Float64]  # mean over repeats of (permuted - base) metric
     var stds: List[Float64]   # population std of the permuted metric per feature
 
-    fn __init__(out self):
+    def __init__(out self):
         self.means = List[Float64]()
         self.stds = List[Float64]()
 
@@ -37,7 +37,7 @@ struct PartialDependence(Copyable, Movable):
     var mean: List[Float64]  # PD curve: mean prediction per grid point
     var std: List[Float64]   # population std over samples per grid point
 
-    fn __init__(out self):
+    def __init__(out self):
         self.mean = List[Float64]()
         self.std = List[Float64]()
 
@@ -49,7 +49,7 @@ struct ShapleySamples(Copyable, Movable):
     var n_samples: Int
     var n_features: Int
 
-    fn __init__(out self):
+    def __init__(out self):
         self.coalitions = List[Int]()
         self.weights = List[Float64]()
         self.n_samples = 0
@@ -59,7 +59,7 @@ struct ShapleySamples(Copyable, Movable):
 # ── seeded RNG helpers (deterministic xorshift64) ────────────────────────────
 
 
-fn _xorshift64(state: UInt64) -> UInt64:
+def _xorshift64(state: UInt64) -> UInt64:
     var s = state
     s ^= s << 13
     s ^= s >> 7
@@ -67,7 +67,7 @@ fn _xorshift64(state: UInt64) -> UInt64:
     return s
 
 
-fn _seed_state(seed: Int) -> UInt64:
+def _seed_state(seed: Int) -> UInt64:
     """Expand an Int seed into a warmed-up nonzero xorshift64 state."""
     var base: UInt64
     if seed < 0:
@@ -83,13 +83,13 @@ fn _seed_state(seed: Int) -> UInt64:
     return s
 
 
-fn _rand_below(mut state: UInt64, bound: Int) -> Int:
+def _rand_below(mut state: UInt64, bound: Int) -> Int:
     """Uniform-ish integer in [0, bound). bound must be >= 1."""
     state = _xorshift64(state)
     return Int(state % UInt64(bound))
 
 
-fn _rand_bit(mut state: UInt64) -> Int:
+def _rand_bit(mut state: UInt64) -> Int:
     """One fair-ish random bit (top bit of the xorshift64 state)."""
     state = _xorshift64(state)
     return Int(state >> 63)
@@ -98,7 +98,7 @@ fn _rand_bit(mut state: UInt64) -> Int:
 # ── permutation_importance_from_preds ────────────────────────────────────────
 
 
-fn permutation_importance_from_preds(
+def permutation_importance_from_preds(
     base_metric: Float64,
     permuted_metrics: List[Float64],
     n_features: Int,
@@ -142,7 +142,7 @@ fn permutation_importance_from_preds(
 # ── partial_dependence_grid ──────────────────────────────────────────────────
 
 
-fn partial_dependence_grid(
+def partial_dependence_grid(
     preds_at_gridpoints: List[Float64], n_grid: Int, n_samples: Int
 ) -> PartialDependence:
     """Aggregate ICE evaluations into a partial-dependence curve.
@@ -179,7 +179,7 @@ fn partial_dependence_grid(
 # ── kernel_shap_weight ───────────────────────────────────────────────────────
 
 
-fn _binom(m: Int, k: Int) -> Float64:
+def _binom(m: Int, k: Int) -> Float64:
     """C(m, k) as Float64 via the multiplicative formula (no overflow)."""
     var kk = k
     if m - k < kk:
@@ -190,7 +190,7 @@ fn _binom(m: Int, k: Int) -> Float64:
     return out
 
 
-fn kernel_shap_weight(n_features: Int, coalition_size: Int) -> Float64:
+def kernel_shap_weight(n_features: Int, coalition_size: Int) -> Float64:
     """KernelSHAP kernel weight pi(z) = (M-1) / (C(M,|z|) * |z| * (M-|z|)).
 
     M = n_features, |z| = coalition_size. Returns 0.0 for the degenerate
@@ -208,7 +208,7 @@ fn kernel_shap_weight(n_features: Int, coalition_size: Int) -> Float64:
 # ── shapley_sampling_weights ─────────────────────────────────────────────────
 
 
-fn _sample_coalition(mut state: UInt64, m: Int) -> List[Int]:
+def _sample_coalition(mut state: UInt64, m: Int) -> List[Int]:
     """One 0/1 coalition of size in [1, m-1], uniform over such coalitions.
 
     Bernoulli(1/2) per feature with rejection of empty/full rows (bounded
@@ -231,7 +231,7 @@ fn _sample_coalition(mut state: UInt64, m: Int) -> List[Int]:
     return fallback^
 
 
-fn shapley_sampling_weights(
+def shapley_sampling_weights(
     n_features: Int, n_samples: Int, seed: Int
 ) -> ShapleySamples:
     """Seeded coalition sample matrix + KernelSHAP weights.

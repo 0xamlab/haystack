@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ml_metrics_extended import auc_trapezoid, average_precision_term, ndcg_gain, ndcg_discount, map_term, f_beta_score, matthews_corr_coeff, cohen_kappa, calibration_ece_term, brier_score_term
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

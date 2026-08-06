@@ -49,14 +49,14 @@ from std.math import abs as fabs, sqrt, exp, log, sin, cos
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-fn approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
+def approx_eq(a: Float64, b: Float64, tol: Float64 = 1e-6) -> Bool:
     return fabs(a - b) < tol
 
 
 # ── Solar Energy Tests ───────────────────────────────────────────────────────
 
 
-fn test_solar_energy() raises:
+def test_solar_energy() raises:
     print("== Solar Energy ==")
 
     # solar_irradiance_on_surface: I = 1000 * 0.866 = 866
@@ -142,7 +142,7 @@ fn test_solar_energy() raises:
 # ── Mining Tests ─────────────────────────────────────────────────────────────
 
 
-fn test_mining() raises:
+def test_mining() raises:
     print("== Mining ==")
 
     # ore_grade: Grade = 5/1000 * 100 = 0.5%
@@ -219,7 +219,7 @@ fn test_mining() raises:
 # ── Behavioral Economics Tests ───────────────────────────────────────────────
 
 
-fn test_behavioral_economics() raises:
+def test_behavioral_economics() raises:
     print("== Behavioral Economics ==")
 
     # prospect_theory_value: gain x=100, α=0.88 → 100^0.88
@@ -312,7 +312,7 @@ fn test_behavioral_economics() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("Wave 78 Tests: Solar Energy, Mining, Behavioral Economics")
     test_solar_energy()
     test_mining()

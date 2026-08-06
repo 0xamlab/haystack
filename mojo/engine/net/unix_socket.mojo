@@ -28,7 +28,7 @@ Public API:
     recv_exact(fd: Int, n: Int) -> List[UInt8]
 """
 
-from memory import UnsafePointer, memset
+from std.memory import UnsafePointer, memset
 from std.python import Python, PythonObject
 from python_bridge import py_str
 
@@ -42,7 +42,7 @@ comptime SOCK_STREAM: Int = 1
 # ── Length-prefixed frame helpers (pure byte manipulation) ─────────────────────
 
 
-fn encode_u32_be(value: Int) -> List[UInt8]:
+def encode_u32_be(value: Int) -> List[UInt8]:
     """Encode an Int as 4 big-endian bytes. Used for frame headers.
 
     Compatible with Python's struct.pack('>I', value).
@@ -55,7 +55,7 @@ fn encode_u32_be(value: Int) -> List[UInt8]:
     return result^
 
 
-fn decode_u32_be(data: List[UInt8]) -> Int:
+def decode_u32_be(data: List[UInt8]) -> Int:
     """Decode 4 big-endian bytes to Int.
 
     Compatible with Python's struct.unpack('>I', data)[0].
@@ -68,7 +68,7 @@ fn decode_u32_be(data: List[UInt8]) -> Int:
     )
 
 
-fn encode_frame(payload: String) -> List[UInt8]:
+def encode_frame(payload: String) -> List[UInt8]:
     """Encode a string into a length-prefixed frame.
 
     Returns: [4-byte big-endian length] + [UTF-8 payload bytes].
@@ -88,7 +88,7 @@ fn encode_frame(payload: String) -> List[UInt8]:
     return frame^
 
 
-fn decode_frame_length(header: List[UInt8]) -> Int:
+def decode_frame_length(header: List[UInt8]) -> Int:
     """Decode 4 big-endian bytes into a payload length integer."""
     return decode_u32_be(header)
 

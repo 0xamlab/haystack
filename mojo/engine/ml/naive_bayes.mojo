@@ -22,7 +22,7 @@ comptime MIN_STD: Float64 = 1e-9
 # ── Priors ────────────────────────────────────────────────────────────────────
 
 
-fn compute_priors(y: List[Int], n_classes: Int) -> List[Float64]:
+def compute_priors(y: List[Int], n_classes: Int) -> List[Float64]:
     """Compute prior probabilities from integer labels.
 
     Returns a list of length n_classes with P(class=c) = count(c)/n.
@@ -44,7 +44,7 @@ fn compute_priors(y: List[Int], n_classes: Int) -> List[Float64]:
 # ── Gaussian Log-Likelihood ───────────────────────────────────────────────────
 
 
-fn gaussian_log_likelihood(x: Float64, mean: Float64, std: Float64) -> Float64:
+def gaussian_log_likelihood(x: Float64, mean: Float64, std: Float64) -> Float64:
     """Log-likelihood of x under Gaussian(mean, std).
 
     log(1/(sqrt(2π)σ)) - (x-μ)²/(2σ²)
@@ -59,7 +59,7 @@ fn gaussian_log_likelihood(x: Float64, mean: Float64, std: Float64) -> Float64:
 # ── Fit ───────────────────────────────────────────────────────────────────────
 
 
-fn gaussian_nb_fit(
+def gaussian_nb_fit(
     X: List[List[Float64]], y: List[Int], n_classes: Int
 ) -> List[List[Float64]]:
     """Fit Gaussian Naive Bayes.
@@ -131,7 +131,7 @@ fn gaussian_nb_fit(
 # ── Predict Single ────────────────────────────────────────────────────────────
 
 
-fn gaussian_nb_predict(
+def gaussian_nb_predict(
     params: List[List[Float64]],
     priors: List[Float64],
     x: List[Float64],
@@ -176,7 +176,7 @@ fn gaussian_nb_predict(
 # ── Predict Batch ─────────────────────────────────────────────────────────────
 
 
-fn gaussian_nb_predict_batch(
+def gaussian_nb_predict_batch(
     params: List[List[Float64]],
     priors: List[Float64],
     X: List[List[Float64]],
@@ -191,7 +191,7 @@ fn gaussian_nb_predict_batch(
 # ── Accuracy ──────────────────────────────────────────────────────────────────
 
 
-fn accuracy(predicted: List[Int], actual: List[Int]) -> Float64:
+def accuracy(predicted: List[Int], actual: List[Int]) -> Float64:
     """Classification accuracy: fraction of correct predictions."""
     var n = len(predicted)
     if len(actual) < n:
@@ -208,7 +208,7 @@ fn accuracy(predicted: List[Int], actual: List[Int]) -> Float64:
 # ── Confusion Matrix ─────────────────────────────────────────────────────────
 
 
-fn confusion_matrix(
+def confusion_matrix(
     predicted: List[Int], actual: List[Int], n_classes: Int
 ) -> List[List[Int]]:
     """Build an n_classes × n_classes confusion matrix.
@@ -238,7 +238,7 @@ fn confusion_matrix(
 # ── Precision / Recall / F1 ──────────────────────────────────────────────────
 
 
-fn precision_recall(
+def precision_recall(
     predicted: List[Int], actual: List[Int], target_class: Int
 ) -> List[Float64]:
     """Compute [precision, recall, f1] for a target class.

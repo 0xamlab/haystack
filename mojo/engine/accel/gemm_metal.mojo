@@ -159,7 +159,7 @@ struct MetalGemmAgreement(Copyable, Movable):
     var status: Int
 
 
-fn gemm_metal_available() -> Bool:
+def gemm_metal_available() -> Bool:
     """True when this binary can actually run a GPU GEMM.
 
     Two independent conditions, and both are necessary: the binary must have been BUILT with GPU
@@ -178,7 +178,7 @@ fn gemm_metal_available() -> Bool:
     return has_accelerator()
 
 
-fn _tiled_gemm_kernel(
+def _tiled_gemm_kernel(
     c_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     a_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
     b_ptr: UnsafePointer[Float32, origin=MutAnyOrigin],
@@ -260,7 +260,7 @@ fn _tiled_gemm_kernel(
                 c_ptr[r * n + c] = acc[i * TN + j]
 
 
-fn gemm_metal_flat(
+def gemm_metal_flat(
     a: List[Float64], b: List[Float64], m: Int, n: Int, k: Int
 ) -> MetalGemmResult:
     """`C = A @ B` on the accelerator, over flat row-major Float64 buffers.
@@ -307,7 +307,7 @@ fn gemm_metal_flat(
             return MetalGemmResult(empty^, 0, 0, ACCEL_BACKEND_CPU, ACCEL_ERR_NO_DEVICE)
 
 
-fn _run_metal_gemm(
+def _run_metal_gemm(
     a: List[Float64], b: List[Float64], m: Int, n: Int, k: Int
 ) raises -> MetalGemmResult:
     """The launch itself. Private, and only ever called from inside the compile-time gate."""
@@ -369,7 +369,7 @@ fn _run_metal_gemm(
     return MetalGemmResult(c^, m, n, ACCEL_BACKEND_METAL, ACCEL_OK)
 
 
-fn gemm_metal_agreement(
+def gemm_metal_agreement(
     a: List[Float64], b: List[Float64], m: Int, n: Int, k: Int
 ) -> MetalGemmAgreement:
     """Measure the Float32 GPU result against the Float64 CPU kernel, worst element.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from autograd_graph import node_output_count, grad_accumulate, checkpointing_cost, topological_sort_key, grad_scale_loss, memory_efficient_backward_step, jacobian_vector_product, vector_jacobian_product, dead_node_prune_score, gradient_norm_clip_scale
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

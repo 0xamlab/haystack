@@ -81,21 +81,21 @@ from retrieval.score import (
 from sparse_numerics.csr import MAX_CSR_DIM
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -104,7 +104,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality — every comparison in this suite is against a value produced by the
     same frozen kernel, so a tolerance would hide a real mis-accumulation."""
     if len(a) != len(b):
@@ -115,7 +115,7 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _near(a: Float64, b: Float64) -> Bool:
+def _near(a: Float64, b: Float64) -> Bool:
     """Relative closeness against THIS pair's own magnitude, never a global scale."""
     var scale = 1.0 if (a == 0.0 and b == 0.0) else (
         (a if a > 0.0 else -a) + (b if b > 0.0 else -b)
@@ -126,15 +126,15 @@ fn _near(a: Float64, b: Float64) -> Bool:
     return gap <= 1.0e-12 * scale
 
 
-fn _lf5() -> List[Float64]:
+def _lf5() -> List[Float64]:
     return _floats(0.5, 0.6, 0.7, 0.4, 0.3)
 
 
-fn _li5() -> List[Int]:
+def _li5() -> List[Int]:
     return _ints(1, 2, 3, 4, 5)
 
 
-fn _fusion_rejected(f: Fusion) -> Bool:
+def _fusion_rejected(f: Fusion) -> Bool:
     """A rejection carries no ranking at all: no partial answer, no padded counts."""
     return (
         f.status != RETR_OK
@@ -149,7 +149,7 @@ fn _fusion_rejected(f: Fusion) -> Bool:
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("\n[retrieval.score / retrieval.fuse] known-value suite")

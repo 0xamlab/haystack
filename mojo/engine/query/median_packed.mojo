@@ -111,7 +111,7 @@ comptime MEDIAN_MAX_ROW_SCRATCH_BYTES: Int = 256 << 20
 comfortably past the H2O 0.5 GB tier's 1e7."""
 
 
-fn median_status_name(status: Int) -> String:
+def median_status_name(status: Int) -> String:
     if status == GROUP_CODED_OK:
         return "ok"
     if status == GROUP_CODED_BAD_REQUEST:
@@ -125,7 +125,7 @@ fn median_status_name(status: Int) -> String:
     return packed_status_name(status)
 
 
-fn median_state_bytes(slots: Int, workers: Int) -> Int:
+def median_state_bytes(slots: Int, workers: Int) -> Int:
     """`workers x slots` `GroupAccumulator`s, plus the per-band first-appearance
     order list and `seen` bitmap this module needs to reconstruct group order
     — the slot-scaled scratch `MEDIAN_MAX_STATE_BYTES` bounds."""
@@ -138,7 +138,7 @@ fn median_state_bytes(slots: Int, workers: Int) -> Int:
     return payload + order + seen
 
 
-fn median_row_scratch_bytes(n_rows: Int) -> Int:
+def median_row_scratch_bytes(n_rows: Int) -> Int:
     """`row_slot` (8 B/row) plus the value-scatter buffer (<= 8 B/row) — the
     row-scaled scratch `MEDIAN_MAX_ROW_SCRATCH_BYTES` bounds."""
     if n_rows <= 0:
@@ -146,7 +146,7 @@ fn median_row_scratch_bytes(n_rows: Int) -> Int:
     return n_rows * 8 + n_rows * 8
 
 
-fn median_route_ok(
+def median_route_ok(
     batch: RecordBatch, key_columns: List[Int], n_workers: Int
 ) -> PackedDomain:
     """`probe_packed_domain` plus BOTH this module's byte ceilings — slot-scaled
@@ -178,7 +178,7 @@ struct MedianGroupedResult(Copyable, Movable):
     var present_sd: List[Bool]
     var null_key_rows: Int
 
-    fn __init__(
+    def __init__(
         out self,
         var key_tuples: List[Float64],
         key_width: Int,
@@ -198,13 +198,13 @@ struct MedianGroupedResult(Copyable, Movable):
         self.present_sd = present_sd^
         self.null_key_rows = null_key_rows
 
-    fn n_groups(self) -> Int:
+    def n_groups(self) -> Int:
         if self.key_width <= 0:
             return 0
         return len(self.key_tuples) // self.key_width
 
 
-fn _empty_median(width: Int) -> MedianGroupedResult:
+def _empty_median(width: Int) -> MedianGroupedResult:
     return MedianGroupedResult(
         List[Float64](), width, List[Float64](), List[Float64](), List[Bool](),
         List[Float64](), List[Bool](), 0,
@@ -215,15 +215,15 @@ struct CodedMedianResult(Copyable, Movable):
     var status: Int
     var result: MedianGroupedResult
 
-    fn __init__(out self, status: Int, var result: MedianGroupedResult):
+    def __init__(out self, status: Int, var result: MedianGroupedResult):
         self.status = status
         self.result = result^
 
-    fn ok(self) -> Bool:
+    def ok(self) -> Bool:
         return self.status == GROUP_CODED_OK
 
 
-fn _median_of_sorted(sorted_vals: List[Float64]) -> Float64:
+def _median_of_sorted(sorted_vals: List[Float64]) -> Float64:
     """`anomaly.median`'s formula, over an ALREADY-sorted list — the one place
     this module states the selection rule, so pass C and the hand-suite's
     naive reference cannot each spell it slightly differently."""
@@ -235,7 +235,7 @@ fn _median_of_sorted(sorted_vals: List[Float64]) -> Float64:
     return (sorted_vals[n // 2 - 1] + sorted_vals[n // 2]) / 2.0
 
 
-fn group_median_sd_packed(
+def group_median_sd_packed(
     batch: RecordBatch, key_columns: List[Int], domain: PackedDomain, value_column: Int,
 ) -> CodedMedianResult:
     """`group_median_sd_packed_parallel`'s drop-in, at `planned_workers`'s
@@ -246,7 +246,7 @@ fn group_median_sd_packed(
     )
 
 
-fn group_median_sd_packed_parallel(
+def group_median_sd_packed_parallel(
     batch: RecordBatch, key_columns: List[Int], domain: PackedDomain,
     value_column: Int, n_workers: Int,
 ) -> CodedMedianResult:
@@ -317,7 +317,7 @@ fn group_median_sd_packed_parallel(
     var vp = value_col.values[].unsafe_ptr() + value_col.offset
 
     @parameter
-    fn pass_a_worker(w: Int):
+    def pass_a_worker(w: Int):
         var lo_row = w * band_rows
         var hi_row = lo_row + band_rows
         if hi_row > n_rows:
@@ -336,7 +336,7 @@ fn group_median_sd_packed_parallel(
 
         @parameter
         @always_inline
-        fn commit(r: Int, slot: Int):
+        def commit(r: Int, slot: Int):
             rsp[r] = slot
             if seenp[ebase_w + slot] == 0:
                 seenp[ebase_w + slot] = 1
@@ -435,7 +435,7 @@ fn group_median_sd_packed_parallel(
     var curp = cursor.unsafe_ptr()
 
     @parameter
-    fn pass_b_worker(w: Int):
+    def pass_b_worker(w: Int):
         var lo_row = w * band_rows
         var hi_row = lo_row + band_rows
         if hi_row > n_rows:
@@ -481,7 +481,7 @@ fn group_median_sd_packed_parallel(
     var gband = (n_groups + mw - 1) // mw
 
     @parameter
-    fn median_worker(m: Int):
+    def median_worker(m: Int):
         var g_lo = m * gband
         var g_hi = g_lo + gband
         if g_hi > n_groups:

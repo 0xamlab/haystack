@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from activations import gelu, gelu_fast, swish, swiglu, mish, elu, selu, hard_swish, gelu_new, relu6
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

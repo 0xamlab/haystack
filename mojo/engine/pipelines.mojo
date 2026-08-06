@@ -61,7 +61,7 @@ struct PipelineState(Copyable, Movable):
     var learned: List[Float64]
     var offsets: List[Int]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.steps = List[Int]()
         self.cols = 0
@@ -74,7 +74,7 @@ struct InverseResult(Copyable, Movable):
     var ok: Bool
     var data: List[Float64]
 
-    fn __init__(out self):
+    def __init__(out self):
         self.ok = False
         self.data = List[Float64]()
 
@@ -82,11 +82,11 @@ struct InverseResult(Copyable, Movable):
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     return Float64(0.0) / Float64(0.0)
 
 
-fn _sift_down(mut arr: List[Float64], start: Int, size: Int):
+def _sift_down(mut arr: List[Float64], start: Int, size: Int):
     """Restore the max-heap property for the subtree rooted at start."""
     var root = start
     while True:
@@ -103,7 +103,7 @@ fn _sift_down(mut arr: List[Float64], start: Int, size: Int):
         root = child
 
 
-fn _sort_floats(mut arr: List[Float64]):
+def _sort_floats(mut arr: List[Float64]):
     """In-place ascending heapsort. O(n log n) worst case, deterministic."""
     var n = len(arr)
     if n < 2:
@@ -121,7 +121,7 @@ fn _sort_floats(mut arr: List[Float64]):
         end -= 1
 
 
-fn _column_median(buf: List[Float64], rows: Int, cols: Int, j: Int) -> Float64:
+def _column_median(buf: List[Float64], rows: Int, cols: Int, j: Int) -> Float64:
     """Median of non-NaN values in column j; 0.0 if the column is all NaN."""
     var vals = List[Float64]()
     for r in range(rows):
@@ -137,7 +137,7 @@ fn _column_median(buf: List[Float64], rows: Int, cols: Int, j: Int) -> Float64:
     return (vals[m // 2 - 1] + vals[m // 2]) / 2.0
 
 
-fn _apply_step(
+def _apply_step(
     t: Int,
     learned: List[Float64],
     off: Int,
@@ -200,7 +200,7 @@ fn _apply_step(
 # ── step_param_count ─────────────────────────────────────────────────────────
 
 
-fn step_param_count(t: Int, cols: Int) -> Int:
+def step_param_count(t: Int, cols: Int) -> Int:
     """Length of the learned-param block one step contributes; -1 if t unknown.
 
     standardize/minmax: 2*cols; log1p: 0; clip: 2; impute_median: cols.
@@ -219,7 +219,7 @@ fn step_param_count(t: Int, cols: Int) -> Int:
 # ── pipeline_fit ─────────────────────────────────────────────────────────────
 
 
-fn pipeline_fit(
+def pipeline_fit(
     x: List[Float64],
     rows: Int,
     cols: Int,
@@ -338,7 +338,7 @@ fn pipeline_fit(
 # ── pipeline_transform ───────────────────────────────────────────────────────
 
 
-fn pipeline_transform(
+def pipeline_transform(
     state: PipelineState, x: List[Float64], rows: Int
 ) -> List[Float64]:
     """Apply the fitted steps in order to row-major X (len == rows*state.cols).
@@ -361,7 +361,7 @@ fn pipeline_transform(
 # ── pipeline_is_invertible ───────────────────────────────────────────────────
 
 
-fn pipeline_is_invertible(state: PipelineState) -> Bool:
+def pipeline_is_invertible(state: PipelineState) -> Bool:
     """True iff state.ok and every step has an exact inverse (ids 0, 1, 2).
 
     clip (3) and impute_median (4) destroy information and are not
@@ -379,7 +379,7 @@ fn pipeline_is_invertible(state: PipelineState) -> Bool:
 # ── pipeline_inverse ─────────────────────────────────────────────────────────
 
 
-fn pipeline_inverse(
+def pipeline_inverse(
     state: PipelineState, y: List[Float64], rows: Int
 ) -> InverseResult:
     """Invert the pipeline: apply step inverses in reverse order.

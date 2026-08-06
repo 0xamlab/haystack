@@ -28,7 +28,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── Trig helpers ─────────────────────────────────────────────────────────────
 
 
-fn _sin(x: Float64) -> Float64:
+def _sin(x: Float64) -> Float64:
     """Sin via range reduction + Taylor series."""
     var v = x
     while v > PI:
@@ -44,7 +44,7 @@ fn _sin(x: Float64) -> Float64:
     return v - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0
 
 
-fn _cos(x: Float64) -> Float64:
+def _cos(x: Float64) -> Float64:
     """Cos via sin(x + pi/2)."""
     return _sin(x + PI / 2.0)
 
@@ -52,7 +52,7 @@ fn _cos(x: Float64) -> Float64:
 # ── DFT helper ───────────────────────────────────────────────────────────────
 
 
-fn _dft_real(signal: List[Float64]) -> List[Float64]:
+def _dft_real(signal: List[Float64]) -> List[Float64]:
     """Compute |DFT[k]|^2 for k=0..N/2. Returns N/2+1 power values."""
     var n = len(signal)
     var half = n // 2 + 1
@@ -68,7 +68,7 @@ fn _dft_real(signal: List[Float64]) -> List[Float64]:
     return result^
 
 
-fn _dft_complex(signal: List[Float64]) -> List[Float64]:
+def _dft_complex(signal: List[Float64]) -> List[Float64]:
     """Return interleaved [re0, im0, re1, im1, ...] for k=0..N/2."""
     var n = len(signal)
     var half = n // 2 + 1
@@ -88,7 +88,7 @@ fn _dft_complex(signal: List[Float64]) -> List[Float64]:
 # ── power_spectral_density ───────────────────────────────────────────────────
 
 
-fn power_spectral_density(signal: List[Float64], fs: Float64) -> List[Float64]:
+def power_spectral_density(signal: List[Float64], fs: Float64) -> List[Float64]:
     """Estimate PSD using periodogram: |DFT|^2 / (N * fs)."""
     var n = len(signal)
     if n == 0:
@@ -104,7 +104,7 @@ fn power_spectral_density(signal: List[Float64], fs: Float64) -> List[Float64]:
 # ── cross_spectral_density ───────────────────────────────────────────────────
 
 
-fn cross_spectral_density(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
+def cross_spectral_density(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
     """Cross-PSD: Re(X* Y) / (N * fs). Returns magnitude of cross-spectrum."""
     var n = len(x)
     if n == 0 or len(y) != n:
@@ -129,7 +129,7 @@ fn cross_spectral_density(x: List[Float64], y: List[Float64], fs: Float64) -> Li
 # ── coherence ────────────────────────────────────────────────────────────────
 
 
-fn coherence(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
+def coherence(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
     """Magnitude-squared coherence: |Sxy|^2 / (Sxx * Syy)."""
     var csd = cross_spectral_density(x, y, fs)
     var pxx = power_spectral_density(x, fs)
@@ -150,7 +150,7 @@ fn coherence(x: List[Float64], y: List[Float64], fs: Float64) -> List[Float64]:
 # ── spectral_centroid ────────────────────────────────────────────────────────
 
 
-fn spectral_centroid(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
+def spectral_centroid(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
     """Weighted mean frequency: sum(f*m) / sum(m)."""
     if len(magnitudes) != len(frequencies):
         return 0.0
@@ -167,7 +167,7 @@ fn spectral_centroid(magnitudes: List[Float64], frequencies: List[Float64]) -> F
 # ── spectral_bandwidth ──────────────────────────────────────────────────────
 
 
-fn spectral_bandwidth(magnitudes: List[Float64], frequencies: List[Float64], centroid: Float64) -> Float64:
+def spectral_bandwidth(magnitudes: List[Float64], frequencies: List[Float64], centroid: Float64) -> Float64:
     """Spectral spread: sqrt(sum(m*(f-c)^2) / sum(m))."""
     if len(magnitudes) != len(frequencies):
         return 0.0
@@ -185,7 +185,7 @@ fn spectral_bandwidth(magnitudes: List[Float64], frequencies: List[Float64], cen
 # ── spectral_rolloff ────────────────────────────────────────────────────────
 
 
-fn spectral_rolloff(magnitudes: List[Float64], frequencies: List[Float64], threshold: Float64) -> Float64:
+def spectral_rolloff(magnitudes: List[Float64], frequencies: List[Float64], threshold: Float64) -> Float64:
     """Frequency below which threshold fraction of total energy lies."""
     if len(magnitudes) != len(frequencies):
         return 0.0
@@ -206,7 +206,7 @@ fn spectral_rolloff(magnitudes: List[Float64], frequencies: List[Float64], thres
 # ── spectral_flatness ───────────────────────────────────────────────────────
 
 
-fn spectral_flatness(magnitudes: List[Float64]) -> Float64:
+def spectral_flatness(magnitudes: List[Float64]) -> Float64:
     """Geometric mean / arithmetic mean of spectrum. 1=white noise, 0=tonal."""
     var n = len(magnitudes)
     if n == 0:
@@ -231,7 +231,7 @@ fn spectral_flatness(magnitudes: List[Float64]) -> Float64:
 # ── spectral_entropy ─────────────────────────────────────────────────────────
 
 
-fn spectral_entropy(magnitudes: List[Float64]) -> Float64:
+def spectral_entropy(magnitudes: List[Float64]) -> Float64:
     """Shannon entropy of normalized spectrum. Higher = more uniform."""
     var n = len(magnitudes)
     if n == 0:
@@ -252,7 +252,7 @@ fn spectral_entropy(magnitudes: List[Float64]) -> Float64:
 # ── band_energy ──────────────────────────────────────────────────────────────
 
 
-fn band_energy(magnitudes: List[Float64], frequencies: List[Float64], low: Float64, high: Float64) -> Float64:
+def band_energy(magnitudes: List[Float64], frequencies: List[Float64], low: Float64, high: Float64) -> Float64:
     """Energy in frequency band [low, high]."""
     if len(magnitudes) != len(frequencies):
         return 0.0
@@ -266,7 +266,7 @@ fn band_energy(magnitudes: List[Float64], frequencies: List[Float64], low: Float
 # ── peak_frequency ───────────────────────────────────────────────────────────
 
 
-fn peak_frequency(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
+def peak_frequency(magnitudes: List[Float64], frequencies: List[Float64]) -> Float64:
     """Frequency with highest magnitude."""
     if len(magnitudes) == 0 or len(magnitudes) != len(frequencies):
         return 0.0

@@ -55,7 +55,7 @@ comptime FLAG_AMBIGUOUS:     UInt8 = 4   # bit 2: gap < AMBIG_GAP (needs clarifi
 # ── SIMD kernels (inline — same as table.mojo) ────────────────────────────────
 
 @always_inline
-fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
+def _dot64(a: List[Float32], b: List[Float32]) -> Float32:
     var pa = a.unsafe_ptr()
     var pb = b.unsafe_ptr()
     var a0 = (pa +  0).load[width=SIMD_W]() * (pb +  0).load[width=SIMD_W]()
@@ -70,7 +70,7 @@ fn _dot64(a: List[Float32], b: List[Float32]) -> Float32:
 
 
 @always_inline
-fn _cosine(qv: List[Float32], cv: List[Float32], q_ni: Float32, c_ni: Float32) -> Float32:
+def _cosine(qv: List[Float32], cv: List[Float32], q_ni: Float32, c_ni: Float32) -> Float32:
     if q_ni == 0.0 or c_ni == 0.0:
         return Float32(0.0)
     var raw = _dot64(qv, cv) * q_ni * c_ni
@@ -80,7 +80,7 @@ fn _cosine(qv: List[Float32], cv: List[Float32], q_ni: Float32, c_ni: Float32) -
 
 
 @always_inline
-fn _type_boost(query_role: UInt8, cand_role: UInt8) -> Float32:
+def _type_boost(query_role: UInt8, cand_role: UInt8) -> Float32:
     if query_role == ROLE_OTHER: return Float32(0.0)
     if cand_role == query_role:  return Float32(0.15)
     if cand_role != ROLE_OTHER:  return Float32(-0.08)
@@ -88,7 +88,7 @@ fn _type_boost(query_role: UInt8, cand_role: UInt8) -> Float32:
 
 
 @always_inline
-fn _prior_boost(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float32:
+def _prior_boost(query_src: UInt16, cand_src: UInt16, cand_role: UInt8) -> Float32:
     if query_src == SOURCE_UNKNOWN: return Float32(0.0)
     if cand_src != SOURCE_UNKNOWN and cand_src != query_src: return Float32(0.0)
     if query_src == SOURCE_POS     and cand_role == ROLE_UNIT:    return Float32(0.10)
@@ -107,7 +107,7 @@ struct _Slot(Copyable, Movable):
     var type_boost: Float32
     var tok_hits:   UInt16
 
-    fn __init__(out self):
+    def __init__(out self):
         self.col_idx    = 0
         self.column_id  = 0
         self.score      = Float32(0.0)
@@ -115,7 +115,7 @@ struct _Slot(Copyable, Movable):
         self.type_boost = Float32(0.0)
         self.tok_hits   = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.col_idx    = copy.col_idx
         self.column_id  = copy.column_id
         self.score      = copy.score
@@ -123,7 +123,7 @@ struct _Slot(Copyable, Movable):
         self.type_boost = copy.type_boost
         self.tok_hits   = copy.tok_hits
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.col_idx    = take.col_idx
         self.column_id  = take.column_id
         self.score      = take.score
@@ -132,7 +132,7 @@ struct _Slot(Copyable, Movable):
         self.tok_hits   = take.tok_hits
 
 
-fn _sort_slots(mut slots: List[_Slot]):
+def _sort_slots(mut slots: List[_Slot]):
     var n = len(slots)
     for i in range(1, n):
         var ks  = slots[i].score
@@ -169,12 +169,12 @@ fn _sort_slots(mut slots: List[_Slot]):
 
 struct _Vec64(Copyable, Movable):
     var data: List[Float32]
-    fn __init__(out self):
+    def __init__(out self):
         self.data = List[Float32](capacity=VEC_DIM)
         for _ in range(VEC_DIM): self.data.append(Float32(0.0))
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.data = copy.data.copy()
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.data = take.data.copy()
 
 
@@ -184,14 +184,14 @@ struct CandidateEntry(Copyable, Movable):
     var role_id:   UInt8
     var norm_inv:  Float32
     var vec:       _Vec64
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id = 0; self.source_id = SOURCE_UNKNOWN
         self.role_id   = ROLE_OTHER; self.norm_inv = Float32(0.0); self.vec = _Vec64()
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id = copy.column_id; self.source_id = copy.source_id
         self.role_id   = copy.role_id;   self.norm_inv  = copy.norm_inv
         self.vec       = copy.vec.copy()
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id = take.column_id; self.source_id = take.source_id
         self.role_id   = take.role_id;   self.norm_inv  = take.norm_inv
         self.vec       = take.vec.copy()
@@ -206,15 +206,15 @@ struct TopKEntry(Copyable, Movable):
     var name_sim:   Float32
     var type_boost: Float32
 
-    fn __init__(out self):
+    def __init__(out self):
         self.column_id  = 0;         self.score      = Float32(0.0)
         self.name_sim   = Float32(0.0); self.type_boost = Float32(0.0)
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.column_id = copy.column_id; self.score      = copy.score
         self.name_sim  = copy.name_sim;  self.type_boost = copy.type_boost
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.column_id = take.column_id; self.score      = take.score
         self.name_sim  = take.name_sim;  self.type_boost = take.type_boost
 
@@ -237,7 +237,7 @@ struct RankResult(Copyable, Movable):
     var planner_flags:  UInt8   # bit flags: confident / fallback / ambiguous
     var token_overlap:  UInt8   # shared token hits for top result
 
-    fn __init__(out self):
+    def __init__(out self):
         self.count          = 0
         self.ambiguous      = False
         self.confidence_gap = Float32(0.0)
@@ -247,7 +247,7 @@ struct RankResult(Copyable, Movable):
         self.planner_flags  = 0
         self.token_overlap  = 0
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.count          = copy.count
         self.ambiguous      = copy.ambiguous
         self.confidence_gap = copy.confidence_gap
@@ -255,7 +255,7 @@ struct RankResult(Copyable, Movable):
         self.planner_flags  = copy.planner_flags
         self.token_overlap  = copy.token_overlap
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.count          = take.count
         self.ambiguous      = take.ambiguous
         self.confidence_gap = take.confidence_gap
@@ -263,7 +263,7 @@ struct RankResult(Copyable, Movable):
         self.planner_flags  = take.planner_flags
         self.token_overlap  = take.token_overlap
 
-    fn is_confident(self) -> Bool:
+    def is_confident(self) -> Bool:
         return (self.planner_flags & FLAG_CONFIDENT) != 0
 
 
@@ -293,7 +293,7 @@ struct QueryForRank(Copyable, Movable):
     var token_count:    UInt8
     var token_ids:      List[UInt32]   # up to ~8 query tokens
 
-    fn __init__(out self):
+    def __init__(out self):
         self.source_id      = SOURCE_UNKNOWN
         self.role_id        = ROLE_OTHER
         self.top_k          = 5
@@ -304,7 +304,7 @@ struct QueryForRank(Copyable, Movable):
         for _ in range(8):
             self.token_ids.append(UInt32(0))
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.source_id      = copy.source_id
         self.role_id        = copy.role_id
         self.top_k          = copy.top_k
@@ -313,7 +313,7 @@ struct QueryForRank(Copyable, Movable):
         self.token_count    = copy.token_count
         self.token_ids      = copy.token_ids.copy()
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.source_id      = take.source_id
         self.role_id        = take.role_id
         self.top_k          = take.top_k
@@ -322,7 +322,7 @@ struct QueryForRank(Copyable, Movable):
         self.token_count    = take.token_count
         self.token_ids      = take.token_ids.copy()
 
-    fn set_token_ids(mut self, ids: List[UInt32]):
+    def set_token_ids(mut self, ids: List[UInt32]):
         """Copy token IDs from a Python-provided list (max 8)."""
         var n = len(ids) if len(ids) <= 8 else 8
         self.token_count = UInt8(n)
@@ -344,7 +344,7 @@ struct _Scratch:
 
 # ── rank_shortlist: SIMD score over pre-filtered candidates ────────────────────
 
-fn rank_shortlist(
+def rank_shortlist(
     entries:       List[CandidateEntry],  # from CandidateTable
     req:           QueryForRank,
     candidate_ids: List[UInt32],          # from CandidateScratch
@@ -441,7 +441,7 @@ fn rank_shortlist(
 
 # ── rank_batch: process multiple queries sharing one scratch buffer ────────────
 
-fn rank_batch(
+def rank_batch(
     entries:     List[CandidateEntry],  # CandidateTable.entries
     source_ids:  List[UInt16],          # flat parallel arrays for fast prefilter
     role_ids:    List[UInt8],
@@ -577,7 +577,7 @@ struct PlannerResolution(Copyable, Movable):
     var ambiguous:          Bool
     var fallback_used:      Bool
 
-    fn __init__(out self):
+    def __init__(out self):
         self.resolved_column_id = 0
         self.score              = Float32(0.0)
         self.confidence_gap     = Float32(0.0)
@@ -585,7 +585,7 @@ struct PlannerResolution(Copyable, Movable):
         self.ambiguous          = True
         self.fallback_used      = False
 
-    fn __copyinit__(out self, copy: Self):
+    def __copyinit__(out self, copy: Self):
         self.resolved_column_id = copy.resolved_column_id
         self.score              = copy.score
         self.confidence_gap     = copy.confidence_gap
@@ -593,7 +593,7 @@ struct PlannerResolution(Copyable, Movable):
         self.ambiguous          = copy.ambiguous
         self.fallback_used      = copy.fallback_used
 
-    fn __moveinit__(out self, var take: Self):
+    def __moveinit__(out self, var take: Self):
         self.resolved_column_id = take.resolved_column_id
         self.score              = take.score
         self.confidence_gap     = take.confidence_gap
@@ -602,7 +602,7 @@ struct PlannerResolution(Copyable, Movable):
         self.fallback_used      = take.fallback_used
 
 
-fn to_planner_resolution(result: RankResult) -> PlannerResolution:
+def to_planner_resolution(result: RankResult) -> PlannerResolution:
     """
     Extract the planner decision from a RankResult.
 
@@ -626,10 +626,10 @@ fn to_planner_resolution(result: RankResult) -> PlannerResolution:
 struct _PostingSlice(Copyable, Movable):
     var start: UInt32
     var count: UInt16
-    fn __init__(out self): self.start = 0; self.count = 0
-    fn __copyinit__(out self, copy: Self): self.start = copy.start; self.count = copy.count
-    fn __moveinit__(out self, var take: Self): self.start = take.start; self.count = take.count
+    def __init__(out self): self.start = 0; self.count = 0
+    def __copyinit__(out self, copy: Self): self.start = copy.start; self.count = copy.count
+    def __moveinit__(out self, var take: Self): self.start = take.start; self.count = take.count
 
 
-fn main():
+def main():
     pass

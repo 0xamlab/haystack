@@ -21,7 +21,7 @@ Public API:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-fn _is_punct(c: Int) -> Bool:
+def _is_punct(c: Int) -> Bool:
     """True if byte is common ASCII punctuation (not alphanumeric/space)."""
     if c == ord(",") or c == ord(".") or c == ord("!") or c == ord("?"):
         return True
@@ -42,24 +42,24 @@ fn _is_punct(c: Int) -> Bool:
     return False
 
 
-fn _to_lower(c: Int) -> Int:
+def _to_lower(c: Int) -> Int:
     """Lowercase an ASCII byte."""
     if c >= ord("A") and c <= ord("Z"):
         return c + 32
     return c
 
 
-fn _is_whitespace(c: Int) -> Bool:
+def _is_whitespace(c: Int) -> Bool:
     """True if byte is whitespace."""
     return c == ord(" ") or c == ord("\t") or c == ord("\n") or c == ord("\r")
 
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     """Extract a substring from s using byte positions."""
     return String(s[byte=start:end])
 
 
-fn _all_unique(tokens: List[String]) -> Bool:
+def _all_unique(tokens: List[String]) -> Bool:
     var n = len(tokens)
     for i in range(n):
         for j in range(i):
@@ -68,7 +68,7 @@ fn _all_unique(tokens: List[String]) -> Bool:
     return True
 
 
-fn is_stopword(word: String) -> Bool:
+def is_stopword(word: String) -> Bool:
     """Check if word is a common English stopword (35 words)."""
     var b = word.as_bytes()
     var n = len(b)
@@ -118,7 +118,7 @@ fn is_stopword(word: String) -> Bool:
 # ── Word Tokenize ─────────────────────────────────────────────────────────────
 
 
-fn word_tokenize(text: String) -> List[String]:
+def word_tokenize(text: String) -> List[String]:
     """Split text on whitespace and punctuation, lowercase all tokens.
 
     Punctuation characters are removed. Empty tokens are discarded.
@@ -152,7 +152,7 @@ fn word_tokenize(text: String) -> List[String]:
 # ── Sentence Tokenize ─────────────────────────────────────────────────────────
 
 
-fn sentence_tokenize(text: String) -> List[String]:
+def sentence_tokenize(text: String) -> List[String]:
     """Split text into sentences on .!? followed by space or end.
 
     Trims whitespace from each sentence. Empty sentences are discarded.
@@ -197,7 +197,7 @@ fn sentence_tokenize(text: String) -> List[String]:
 # ── Character N-grams ─────────────────────────────────────────────────────────
 
 
-fn char_ngrams(text: String, n: Int) -> List[String]:
+def char_ngrams(text: String, n: Int) -> List[String]:
     """Generate character-level n-grams from text."""
     var length = len(text)
     if n <= 0 or length < n:
@@ -211,7 +211,7 @@ fn char_ngrams(text: String, n: Int) -> List[String]:
 # ── Word N-grams ──────────────────────────────────────────────────────────────
 
 
-fn word_ngrams(tokens: List[String], n: Int) -> List[String]:
+def word_ngrams(tokens: List[String], n: Int) -> List[String]:
     """Generate word-level n-grams joined with '_'."""
     var length = len(tokens)
     if n <= 0 or length < n:
@@ -260,7 +260,7 @@ fn word_ngrams(tokens: List[String], n: Int) -> List[String]:
 # ── Remove Stopwords ──────────────────────────────────────────────────────────
 
 
-fn remove_stopwords(tokens: List[String]) -> List[String]:
+def remove_stopwords(tokens: List[String]) -> List[String]:
     """Remove common English stopwords from token list."""
     var n = len(tokens)
     var result = List[String](capacity=n)
@@ -273,7 +273,7 @@ fn remove_stopwords(tokens: List[String]) -> List[String]:
 # ── Simple Stemmer ────────────────────────────────────────────────────────────
 
 
-fn stem_simple(word: String) -> String:
+def stem_simple(word: String) -> String:
     """Very simple suffix stemmer.
 
     Removes trailing 'ing', 'ed', 'ly', 's' if word length > 4.
@@ -316,7 +316,7 @@ fn stem_simple(word: String) -> String:
 # ── Vocabulary Size ───────────────────────────────────────────────────────────
 
 
-fn vocabulary_size(tokens: List[String]) -> Int:
+def vocabulary_size(tokens: List[String]) -> Int:
     """Count unique tokens in the list (O(n²) simple approach)."""
     var n = len(tokens)
     var count = 0
@@ -334,7 +334,7 @@ fn vocabulary_size(tokens: List[String]) -> Int:
 # ── Token Frequency ───────────────────────────────────────────────────────────
 
 
-fn token_frequency(tokens: List[String]) -> List[List[String]]:
+def token_frequency(tokens: List[String]) -> List[List[String]]:
     """Compute token frequencies as [[token, count_str], ...] sorted desc.
 
     O(n²) approach suitable for moderate-sized token lists.
@@ -390,7 +390,7 @@ fn token_frequency(tokens: List[String]) -> List[List[String]]:
 # ── Pad Sequence ──────────────────────────────────────────────────────────────
 
 
-fn pad_sequence(
+def pad_sequence(
     tokens: List[String], max_len: Int, pad_token: String
 ) -> List[String]:
     """Pad or truncate token list to fixed length.

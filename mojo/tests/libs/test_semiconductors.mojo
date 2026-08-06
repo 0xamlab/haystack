@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from semiconductors import intrinsic_carrier_concentration, drift_velocity, resistivity, conductivity, depletion_width, built_in_potential, thermal_voltage, diode_current, mosfet_saturation_current, junction_capacitance, diffusion_length, band_gap_temperature
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

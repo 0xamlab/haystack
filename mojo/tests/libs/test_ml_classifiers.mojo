@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from ml.classifiers import euclidean_distance, manhattan_distance, cosine_similarity, logistic_sigmoid, softmax
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

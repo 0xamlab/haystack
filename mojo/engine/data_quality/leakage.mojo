@@ -201,7 +201,7 @@ struct LeakageReport(Copyable, Movable):
     var suspicious_missingness: Bool
     var temporal_checked: Bool
 
-    fn __init__(out self, status: Int, n_rows: Int):
+    def __init__(out self, status: Int, n_rows: Int):
         self.status = status
         self.verdict = status
         self.n_rows = n_rows
@@ -258,7 +258,7 @@ struct LeakageTimingReport(Copyable, Movable):
     var has_max_future_lead: Bool
     var max_future_lead: Float64
 
-    fn __init__(out self, status: Int, n_rows: Int):
+    def __init__(out self, status: Int, n_rows: Int):
         self.status = status
         self.verdict = status
         self.n_rows = n_rows
@@ -272,7 +272,7 @@ struct LeakageTimingReport(Copyable, Movable):
         self.max_future_lead = 0.0
 
 
-fn leakage_status_name(code: Int) -> String:
+def leakage_status_name(code: Int) -> String:
     """Name for a status or verdict this module can return. One vocabulary, in `contract`.
 
     @capability leakage_status_name
@@ -283,12 +283,12 @@ fn leakage_status_name(code: Int) -> String:
     return dq_status_name(code)
 
 
-fn _live(values: List[Float64], mask: List[Bool], index: Int) -> Bool:
+def _live(values: List[Float64], mask: List[Bool], index: Int) -> Bool:
     """Present and finite at `index`. Both lists are known to be `n_rows` long by then."""
     return mask[index] and dq_is_finite(values[index])
 
 
-fn leakage_scan_flat(
+def leakage_scan_flat(
     feature: List[Float64], feature_mask: List[Bool],
     target: List[Float64], target_mask: List[Bool], n_rows: Int,
     corr_threshold: Float64, missingness_threshold: Float64,
@@ -461,7 +461,7 @@ fn leakage_scan_flat(
     return out^
 
 
-fn _all_equal(values: List[Float64]) -> Bool:
+def _all_equal(values: List[Float64]) -> Bool:
     """True when every value is the same under the package's identity. False when empty.
 
     Nothing is not one thing, so an empty list is NOT constant (rule 4).
@@ -474,7 +474,7 @@ fn _all_equal(values: List[Float64]) -> Bool:
     return True
 
 
-fn _missingness_agreement(
+def _missingness_agreement(
     feature_mask: List[Bool], target: List[Float64], target_mask: List[Bool], n_rows: Int
 ) -> Float64:
     """How well "the feature is missing" predicts a BINARY target's class, or -1.0.
@@ -536,7 +536,7 @@ fn _missingness_agreement(
     return rule_a if rule_a > rule_b else rule_b
 
 
-fn _verdict(report: LeakageReport) -> Int:
+def _verdict(report: LeakageReport) -> Int:
     """The one code a caller branches on: proof, then suspicion, then insufficiency.
 
     See `LeakageReport` for why INSUFFICIENT ranks below SUSPICIOUS rather than above it.
@@ -555,7 +555,7 @@ fn _verdict(report: LeakageReport) -> Int:
     return DQ_LEAK_NONE
 
 
-fn leakage_timing_flat(
+def leakage_timing_flat(
     feature_time: List[Float64], target_time: List[Float64],
     observed_mask: List[Bool], n_rows: Int,
 ) -> LeakageTimingReport:

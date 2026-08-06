@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from model_serialization import weight_quantization_bits, checkpoint_size_estimate, delta_compression_ratio, weight_sparsity_ratio, model_flops_estimate, onnx_op_count_estimate, lora_parameter_count, pruning_sparsity_speedup, weight_sharing_ratio, version_hash_component
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

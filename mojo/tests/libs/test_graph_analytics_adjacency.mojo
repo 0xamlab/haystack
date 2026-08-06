@@ -71,7 +71,7 @@ from matrix_decomp import is_symmetric
 comptime FROZEN_INF: Float64 = 1e18
 
 
-fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
+def _same_ints(a: List[Int], b: List[Int]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -80,7 +80,7 @@ fn _same_ints(a: List[Int], b: List[Int]) -> Bool:
     return True
 
 
-fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
+def _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     """Exact equality. Every weight here is a small integer or a half, so every distance
     is exactly representable; a tolerance would hide a genuine mis-relaxation and would
     hide a distance that came back from the wrong node's bucket."""
@@ -92,7 +92,7 @@ fn _same_floats(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _frozen_edges(
+def _frozen_edges(
     src: List[Int], dst: List[Int], weight: List[Float64]
 ) -> List[WeightedEdge]:
     """The same edge set as a frozen triplet list, so the oracles see identical input."""
@@ -102,7 +102,7 @@ fn _frozen_edges(
     return edges^
 
 
-fn _frozen_graph(
+def _frozen_graph(
     src: List[Int], dst: List[Int], weight: List[Float64], n: Int
 ) -> Graph:
     var g = graph_new(n)
@@ -111,7 +111,7 @@ fn _frozen_graph(
     return g^
 
 
-fn _nested(values: List[Float64], n: Int) -> List[List[Float64]]:
+def _nested(values: List[Float64], n: Int) -> List[List[Float64]]:
     """Flat row-major to the list-of-rows shape `matrix_decomp.is_symmetric` takes."""
     var rows = List[List[Float64]]()
     for i in range(n):
@@ -122,7 +122,7 @@ fn _nested(values: List[Float64], n: Int) -> List[List[Float64]]:
     return rows^
 
 
-fn _demo_src() -> List[Int]:
+def _demo_src() -> List[Int]:
     """Edges 0->1 (4), 0->2 (1), 2->1 (2), 1->3 (5), 2->3 (8), 3->4 (3); node 5 isolated.
     """
     var out = List[Int]()
@@ -135,7 +135,7 @@ fn _demo_src() -> List[Int]:
     return out^
 
 
-fn _demo_dst() -> List[Int]:
+def _demo_dst() -> List[Int]:
     var out = List[Int]()
     out.append(1)
     out.append(2)
@@ -146,7 +146,7 @@ fn _demo_dst() -> List[Int]:
     return out^
 
 
-fn _demo_weight() -> List[Float64]:
+def _demo_weight() -> List[Float64]:
     var out = List[Float64]()
     out.append(4.0)
     out.append(1.0)
@@ -157,7 +157,7 @@ fn _demo_weight() -> List[Float64]:
     return out^
 
 
-fn _ring_src() -> List[Int]:
+def _ring_src() -> List[Int]:
     """An 8-node ring plus four chords: every node reaches every other, so the frozen
     oracles are valid everywhere and every source can be compared."""
     var out = List[Int]()
@@ -170,7 +170,7 @@ fn _ring_src() -> List[Int]:
     return out^
 
 
-fn _ring_dst() -> List[Int]:
+def _ring_dst() -> List[Int]:
     var out = List[Int]()
     for u in range(8):
         out.append((u + 1) % 8)
@@ -181,7 +181,7 @@ fn _ring_dst() -> List[Int]:
     return out^
 
 
-fn _ring_weight() -> List[Float64]:
+def _ring_weight() -> List[Float64]:
     var out = List[Float64]()
     for _ in range(8):
         out.append(2.0)
@@ -192,7 +192,7 @@ fn _ring_weight() -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

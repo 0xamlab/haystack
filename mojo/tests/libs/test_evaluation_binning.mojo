@@ -79,12 +79,12 @@ from evaluation.contract import (
 )
 
 
-fn close(got: Float64, want: Float64) -> Bool:
+def close(got: Float64, want: Float64) -> Bool:
     """`got == want` within 8 ulps of `want` — scaled by the compared value's own magnitude."""
     return fabs(got - want) <= 8.0 * EVAL_DBL_EPSILON * fabs(want)
 
 
-fn dataset_a_probs() -> List[Float64]:
+def dataset_a_probs() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.1)
     out.append(0.3)
@@ -94,7 +94,7 @@ fn dataset_a_probs() -> List[Float64]:
     return out^
 
 
-fn dataset_a_labels() -> List[Float64]:
+def dataset_a_labels() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(0.0)
@@ -104,7 +104,7 @@ fn dataset_a_labels() -> List[Float64]:
     return out^
 
 
-fn dataset_b_probs() -> List[Float64]:
+def dataset_b_probs() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.05)
     out.append(0.10)
@@ -113,7 +113,7 @@ fn dataset_b_probs() -> List[Float64]:
     return out^
 
 
-fn dataset_b_labels() -> List[Float64]:
+def dataset_b_labels() -> List[Float64]:
     var out = List[Float64]()
     out.append(0.0)
     out.append(0.0)

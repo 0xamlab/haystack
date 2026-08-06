@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn rrf_score(
+def rrf_score(
     rank_dense: Float64, rank_sparse: Float64, k: Float64
 ) -> Float64:
     """Reciprocal Rank Fusion: 1/(k+rank_dense) + 1/(k+rank_sparse).
@@ -35,7 +35,7 @@ fn rrf_score(
     return dense_contrib + sparse_contrib
 
 
-fn hybrid_search_score(
+def hybrid_search_score(
     vector_score: Float64, bm25_score: Float64, alpha: Float64
 ) -> Float64:
     """Hybrid search: α × vector + (1-α) × BM25.
@@ -51,7 +51,7 @@ fn hybrid_search_score(
     return alpha * vector_score + (1.0 - alpha) * bm25_score
 
 
-fn bm25_term_score(
+def bm25_term_score(
     tf: Float64, df: Float64, n_docs: Float64,
     doc_len: Float64, avg_doc_len: Float64,
     k1: Float64, b: Float64
@@ -82,7 +82,7 @@ fn bm25_term_score(
     return idf * tf * (k1 + 1.0) / denom
 
 
-fn cross_encoder_logit(
+def cross_encoder_logit(
     query_repr: Float64, doc_repr: Float64, bias: Float64
 ) -> Float64:
     """Cross-encoder reranker logit: query × doc + bias.
@@ -98,7 +98,7 @@ fn cross_encoder_logit(
     return query_repr * doc_repr + bias
 
 
-fn chunk_overlap_ratio(
+def chunk_overlap_ratio(
     chunk_size: Float64, overlap_size: Float64
 ) -> Float64:
     """Sliding window chunk overlap ratio.
@@ -115,7 +115,7 @@ fn chunk_overlap_ratio(
     return overlap_size / chunk_size
 
 
-fn context_relevance_score(
+def context_relevance_score(
     query_terms_in_context: Float64, total_query_terms: Float64
 ) -> Float64:
     """Context relevance: fraction of query terms covered by retrieved context.
@@ -132,7 +132,7 @@ fn context_relevance_score(
     return query_terms_in_context / total_query_terms
 
 
-fn answer_faithfulness_score(
+def answer_faithfulness_score(
     answer_claims_supported: Float64, total_answer_claims: Float64
 ) -> Float64:
     """RAG faithfulness: fraction of answer claims grounded in context.
@@ -149,7 +149,7 @@ fn answer_faithfulness_score(
     return answer_claims_supported / total_answer_claims
 
 
-fn citation_coverage(
+def citation_coverage(
     cited_chunks: Float64, total_retrieved: Float64
 ) -> Float64:
     """Fraction of retrieved chunks cited in the answer.
@@ -166,7 +166,7 @@ fn citation_coverage(
     return cited_chunks / total_retrieved
 
 
-fn retrieval_precision(
+def retrieval_precision(
     relevant_retrieved: Float64, total_retrieved: Float64
 ) -> Float64:
     """Precision of retrieved chunks: relevant / retrieved.
@@ -183,7 +183,7 @@ fn retrieval_precision(
     return relevant_retrieved / total_retrieved
 
 
-fn mmr_diversity_score(
+def mmr_diversity_score(
     relevance: Float64, max_similarity_to_selected: Float64,
     lambda_mmr: Float64
 ) -> Float64:

@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn tool_call_cost_estimate(
+def tool_call_cost_estimate(
     tool_latency_ms: Float64, input_tokens: Float64,
     output_tokens: Float64, cost_per_1k_tokens: Float64
 ) -> Float64:
@@ -37,7 +37,7 @@ fn tool_call_cost_estimate(
     return token_cost + latency_cost * 0.001  # weight latency
 
 
-fn retry_should_attempt(
+def retry_should_attempt(
     attempt: Float64, max_attempts: Float64,
     last_error_type: Float64
 ) -> Float64:
@@ -62,7 +62,7 @@ fn retry_should_attempt(
     return 1.0
 
 
-fn plan_step_dependency_ready(
+def plan_step_dependency_ready(
     completed_steps_mask: Float64, required_steps_mask: Float64
 ) -> Float64:
     """Check if all required predecessor steps are completed.
@@ -83,7 +83,7 @@ fn plan_step_dependency_ready(
     return 0.0
 
 
-fn action_value_estimate(
+def action_value_estimate(
     immediate_reward: Float64, future_value: Float64,
     discount: Float64, steps_remaining: Float64
 ) -> Float64:
@@ -101,7 +101,7 @@ fn action_value_estimate(
     return immediate_reward + exp(steps_remaining * log(discount if discount > 0.0 else 1e-300)) * future_value
 
 
-fn tool_selection_score(
+def tool_selection_score(
     tool_relevance: Float64, tool_cost: Float64,
     tool_reliability: Float64
 ) -> Float64:
@@ -121,7 +121,7 @@ fn tool_selection_score(
     return tool_relevance * tool_reliability / denom
 
 
-fn memory_retrieval_relevance(
+def memory_retrieval_relevance(
     query_embed_dot: Float64, query_norm: Float64,
     memory_norm: Float64, recency_weight: Float64
 ) -> Float64:
@@ -144,7 +144,7 @@ fn memory_retrieval_relevance(
     return (query_embed_dot / denom) * recency_weight
 
 
-fn context_window_budget(
+def context_window_budget(
     max_tokens: Float64, used_tokens: Float64,
     reserved_output_tokens: Float64
 ) -> Float64:
@@ -164,7 +164,7 @@ fn context_window_budget(
     return remaining
 
 
-fn agent_step_reward(
+def agent_step_reward(
     goal_progress: Float64, step_cost: Float64,
     constraint_violation: Float64, penalty: Float64
 ) -> Float64:
@@ -184,7 +184,7 @@ fn agent_step_reward(
     return goal_progress - step_cost - constraint_violation * penalty
 
 
-fn structured_output_match(
+def structured_output_match(
     output_schema_hash: Float64, actual_output_hash: Float64
 ) -> Float64:
     """Validate structured output matches expected schema.
@@ -203,7 +203,7 @@ fn structured_output_match(
     return 0.0
 
 
-fn agent_cost_budget_remaining(
+def agent_cost_budget_remaining(
     total_budget: Float64, spent_tokens: Float64,
     spent_tool_calls: Float64, cost_per_token: Float64,
     cost_per_tool_call: Float64

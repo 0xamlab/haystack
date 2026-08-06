@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from wavelet import haar_forward, haar_inverse, haar_multilevel, haar_multilevel_inverse, threshold_hard, threshold_soft, denoise_haar, energy_ratio, detail_coefficients, approx_coefficients
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

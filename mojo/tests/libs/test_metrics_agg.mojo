@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from metrics_agg import counter_create, histogram_create, rate, compute_throughput, latency_stats
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

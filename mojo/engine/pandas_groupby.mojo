@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn group_mean_update(
+def group_mean_update(
     current_mean: Float64, new_value: Float64, count: Float64
 ) -> Float64:
     """Welford online mean update: μ_n = μ_{n-1} + (x_n - μ_{n-1}) / n.
@@ -35,7 +35,7 @@ fn group_mean_update(
     return current_mean + (new_value - current_mean) / count
 
 
-fn group_variance_update(
+def group_variance_update(
     current_m2: Float64, current_mean: Float64,
     new_value: Float64, new_mean: Float64
 ) -> Float64:
@@ -55,7 +55,7 @@ fn group_variance_update(
     return current_m2 + (new_value - current_mean) * (new_value - new_mean)
 
 
-fn group_min_update(current_min: Float64, new_value: Float64) -> Float64:
+def group_min_update(current_min: Float64, new_value: Float64) -> Float64:
     """Running minimum: min(current, new).
 
     Args:
@@ -70,7 +70,7 @@ fn group_min_update(current_min: Float64, new_value: Float64) -> Float64:
     return current_min
 
 
-fn group_max_update(current_max: Float64, new_value: Float64) -> Float64:
+def group_max_update(current_max: Float64, new_value: Float64) -> Float64:
     """Running maximum: max(current, new).
 
     Args:
@@ -85,7 +85,7 @@ fn group_max_update(current_max: Float64, new_value: Float64) -> Float64:
     return current_max
 
 
-fn group_sum_update(current_sum: Float64, new_value: Float64) -> Float64:
+def group_sum_update(current_sum: Float64, new_value: Float64) -> Float64:
     """Cumulative group sum.
 
     Args:
@@ -98,7 +98,7 @@ fn group_sum_update(current_sum: Float64, new_value: Float64) -> Float64:
     return current_sum + new_value
 
 
-fn group_count_update(current_count: Float64) -> Float64:
+def group_count_update(current_count: Float64) -> Float64:
     """Increment group element count.
 
     Args:
@@ -110,7 +110,7 @@ fn group_count_update(current_count: Float64) -> Float64:
     return current_count + 1.0
 
 
-fn group_std_from_variance(m2: Float64, count: Float64, ddof: Float64) -> Float64:
+def group_std_from_variance(m2: Float64, count: Float64, ddof: Float64) -> Float64:
     """Standard deviation from Welford M2 accumulator.
 
     std = sqrt(M2 / (n - ddof))
@@ -129,7 +129,7 @@ fn group_std_from_variance(m2: Float64, count: Float64, ddof: Float64) -> Float6
     return sqrt(m2 / denom)
 
 
-fn weighted_group_mean(
+def weighted_group_mean(
     weighted_sum: Float64, total_weight: Float64
 ) -> Float64:
     """Weighted mean from accumulated weighted sum.
@@ -146,7 +146,7 @@ fn weighted_group_mean(
     return weighted_sum / total_weight
 
 
-fn group_median_approx(
+def group_median_approx(
     q: Float64, n: Float64, new_value: Float64
 ) -> Float64:
     """P² algorithm median estimate update (simplified incremental).
@@ -171,7 +171,7 @@ fn group_median_approx(
     return q
 
 
-fn group_skewness_term(
+def group_skewness_term(
     x: Float64, mean: Float64, std: Float64
 ) -> Float64:
     """Per-observation contribution to skewness ((x-μ)/σ)³.

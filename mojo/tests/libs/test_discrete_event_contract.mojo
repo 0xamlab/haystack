@@ -89,14 +89,14 @@ from discrete_event.contract import (
 )
 
 
-fn _floats(a: Float64, b: Float64) -> List[Float64]:
+def _floats(a: Float64, b: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a)
     o.append(b)
     return o^
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[discrete_event.contract] known-value suite")

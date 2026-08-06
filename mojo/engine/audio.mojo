@@ -34,12 +34,12 @@ comptime LOG2_E: Float64 = 1.4426950408889634     # 1/ln(2)
 # ── _log10 / _log2 helpers ───────────────────────────────────────────────────
 
 
-fn _log10(x: Float64) -> Float64:
+def _log10(x: Float64) -> Float64:
     """Compute log base 10 via natural log."""
     return log(x) * LOG10_E
 
 
-fn _log2(x: Float64) -> Float64:
+def _log2(x: Float64) -> Float64:
     """Compute log base 2 via natural log."""
     return log(x) * LOG2_E
 
@@ -47,7 +47,7 @@ fn _log2(x: Float64) -> Float64:
 # ── amplitude_to_db ──────────────────────────────────────────────────────────
 
 
-fn amplitude_to_db(amplitude: Float64, reference: Float64 = 1.0) -> Float64:
+def amplitude_to_db(amplitude: Float64, reference: Float64 = 1.0) -> Float64:
     """Convert amplitude ratio to decibels: 20 * log10(amplitude / reference)."""
     if amplitude <= 0.0 or reference <= 0.0:
         return -200.0  # floor value for silence
@@ -57,7 +57,7 @@ fn amplitude_to_db(amplitude: Float64, reference: Float64 = 1.0) -> Float64:
 # ── db_to_amplitude ──────────────────────────────────────────────────────────
 
 
-fn db_to_amplitude(db: Float64, reference: Float64 = 1.0) -> Float64:
+def db_to_amplitude(db: Float64, reference: Float64 = 1.0) -> Float64:
     """Convert decibels to amplitude ratio: reference * 10^(db/20)."""
     return reference * pow(10.0, db / 20.0)
 
@@ -65,7 +65,7 @@ fn db_to_amplitude(db: Float64, reference: Float64 = 1.0) -> Float64:
 # ── frequency_to_midi ────────────────────────────────────────────────────────
 
 
-fn frequency_to_midi(freq: Float64) -> Float64:
+def frequency_to_midi(freq: Float64) -> Float64:
     """Convert frequency (Hz) to MIDI note number: 69 + 12*log2(freq/440)."""
     if freq <= 0.0:
         return 0.0
@@ -75,7 +75,7 @@ fn frequency_to_midi(freq: Float64) -> Float64:
 # ── midi_to_frequency ────────────────────────────────────────────────────────
 
 
-fn midi_to_frequency(midi: Float64) -> Float64:
+def midi_to_frequency(midi: Float64) -> Float64:
     """Convert MIDI note number to frequency (Hz): 440 * 2^((midi-69)/12)."""
     return 440.0 * pow(2.0, (midi - 69.0) / 12.0)
 
@@ -83,7 +83,7 @@ fn midi_to_frequency(midi: Float64) -> Float64:
 # ── generate_sine ────────────────────────────────────────────────────────────
 
 
-fn generate_sine(freq: Float64, sample_rate: Float64, n_samples: Int) -> List[Float64]:
+def generate_sine(freq: Float64, sample_rate: Float64, n_samples: Int) -> List[Float64]:
     """Generate n_samples of a sine wave at the given frequency and sample rate."""
     var result = List[Float64]()
     if n_samples <= 0 or sample_rate <= 0.0:
@@ -97,7 +97,7 @@ fn generate_sine(freq: Float64, sample_rate: Float64, n_samples: Int) -> List[Fl
 # ── rms_amplitude ────────────────────────────────────────────────────────────
 
 
-fn rms_amplitude(samples: List[Float64]) -> Float64:
+def rms_amplitude(samples: List[Float64]) -> Float64:
     """Root mean square amplitude: sqrt(mean(x²))."""
     var n = len(samples)
     if n == 0:
@@ -111,7 +111,7 @@ fn rms_amplitude(samples: List[Float64]) -> Float64:
 # ── zero_crossing_rate ───────────────────────────────────────────────────────
 
 
-fn zero_crossing_rate(samples: List[Float64]) -> Float64:
+def zero_crossing_rate(samples: List[Float64]) -> Float64:
     """Fraction of adjacent sample pairs that have a sign change."""
     var n = len(samples)
     if n < 2:
@@ -128,7 +128,7 @@ fn zero_crossing_rate(samples: List[Float64]) -> Float64:
 # ── envelope ─────────────────────────────────────────────────────────────────
 
 
-fn envelope(samples: List[Float64], window: Int) -> List[Float64]:
+def envelope(samples: List[Float64], window: Int) -> List[Float64]:
     """Amplitude envelope: running max absolute value over a window."""
     var n = len(samples)
     var result = List[Float64]()
@@ -154,7 +154,7 @@ fn envelope(samples: List[Float64], window: Int) -> List[Float64]:
 # ── normalize_audio ──────────────────────────────────────────────────────────
 
 
-fn normalize_audio(samples: List[Float64]) -> List[Float64]:
+def normalize_audio(samples: List[Float64]) -> List[Float64]:
     """Scale signal to [-1, 1] range based on peak absolute value."""
     var n = len(samples)
     var result = List[Float64]()
@@ -177,7 +177,7 @@ fn normalize_audio(samples: List[Float64]) -> List[Float64]:
 # ── mix_signals ──────────────────────────────────────────────────────────────
 
 
-fn mix_signals(a: List[Float64], b: List[Float64], weight_a: Float64 = 0.5) -> List[Float64]:
+def mix_signals(a: List[Float64], b: List[Float64], weight_a: Float64 = 0.5) -> List[Float64]:
     """Weighted mix of two signals: weight_a * a + (1 - weight_a) * b.
     Output length is the minimum of the two input lengths."""
     var na = len(a)

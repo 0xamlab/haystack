@@ -19,20 +19,20 @@ Public API:
 """
 
 
-fn _frame_stride(width: Int, height: Int, channels: Int) -> Int:
+def _frame_stride(width: Int, height: Int, channels: Int) -> Int:
     if width <= 0 or height <= 0 or channels <= 0:
         return 0
     return width * height * channels
 
 
-fn _frame_count_internal(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
+def _frame_count_internal(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
     var stride = _frame_stride(width, height, channels)
     if stride <= 0:
         return 0
     return len(flat_frames) // stride
 
 
-fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
+def _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     if channels <= 0:
         return 0.0
     var total: Float64 = 0.0
@@ -41,12 +41,12 @@ fn _pixel_mean(flat_frames: List[Float64], base: Int, channels: Int) -> Float64:
     return total / Float64(channels)
 
 
-fn frame_count_from_flat(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
+def frame_count_from_flat(flat_frames: List[Float64], width: Int, height: Int, channels: Int) -> Int:
     """Infer the number of complete frames. Partial trailing values are ignored."""
     return _frame_count_internal(flat_frames, width, height, channels)
 
 
-fn frame_mean_intensity(
+def frame_mean_intensity(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, frame_index: Int,
 ) -> Float64:
     """Average 0-255 pixel intensity for one frame; 0 if the frame is out of range."""
@@ -64,7 +64,7 @@ fn frame_mean_intensity(
     return total / Float64(pixels)
 
 
-fn frame_mean_intensities(
+def frame_mean_intensities(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int
 ) -> List[Float64]:
     """Average intensity for each complete frame."""
@@ -75,7 +75,7 @@ fn frame_mean_intensities(
     return out^
 
 
-fn frame_mean_abs_diff(
+def frame_mean_abs_diff(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int,
     frame_a_index: Int, frame_b_index: Int,
 ) -> Float64:
@@ -106,7 +106,7 @@ fn frame_mean_abs_diff(
     return total / Float64(pixels)
 
 
-fn temporal_mean_abs_diff(
+def temporal_mean_abs_diff(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Mean consecutive-frame absolute difference in 0-255 intensity units."""
@@ -126,7 +126,7 @@ fn temporal_mean_abs_diff(
     return total / Float64(frames - 1)
 
 
-fn temporal_max_abs_diff(
+def temporal_max_abs_diff(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int
 ) -> Float64:
     """Maximum consecutive-frame absolute difference in 0-255 intensity units."""
@@ -148,7 +148,7 @@ fn temporal_max_abs_diff(
     return best
 
 
-fn freeze_frame_ratio(
+def freeze_frame_ratio(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, diff_threshold: Float64
 ) -> Float64:
     """Fraction of consecutive transitions with mean absolute difference <= diff_threshold.
@@ -175,7 +175,7 @@ fn freeze_frame_ratio(
     return Float64(frozen) / Float64(frames - 1)
 
 
-fn sample_frame_indices(
+def sample_frame_indices(
     flat_frames: List[Float64], width: Int, height: Int, channels: Int, target_frames: Int
 ) -> List[Int]:
     """Evenly spaced frame indices covering the start and end of the clip."""

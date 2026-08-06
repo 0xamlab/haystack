@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from paleontology import radiocarbon_age, potassium_argon_age, uranium_lead_age, stratigraphic_completeness, sedimentation_rate, fossil_diversity_index, extinction_rate, origination_rate, turnover_rate, body_mass_estimate_mammal, phylogenetic_distance, completeness_metric
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

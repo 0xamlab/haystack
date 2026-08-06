@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from real_estate import cap_rate, gross_rent_multiplier, cash_on_cash_return, debt_service_coverage, loan_to_value, net_operating_income, mortgage_payment, price_per_sqft, break_even_ratio, internal_rate_of_return_approx, equity_buildup, appreciation_value
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

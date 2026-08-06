@@ -74,21 +74,21 @@ from forecasting.hierarchy import (
 )
 
 
-fn _floats(*vals: Float64) -> List[Float64]:
+def _floats(*vals: Float64) -> List[Float64]:
     var out = List[Float64]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _ints(*vals: Int) -> List[Int]:
+def _ints(*vals: Int) -> List[Int]:
     var out = List[Int]()
     for i in range(len(vals)):
         out.append(vals[i])
     return out^
 
 
-fn _same(a: List[Float64], b: List[Float64]) -> Bool:
+def _same(a: List[Float64], b: List[Float64]) -> Bool:
     if len(a) != len(b):
         return False
     for i in range(len(a)):
@@ -97,7 +97,7 @@ fn _same(a: List[Float64], b: List[Float64]) -> Bool:
     return True
 
 
-fn _refused(r: Reconciliation) -> Bool:
+def _refused(r: Reconciliation) -> Bool:
     """A refusal carries no reconciled hierarchy at all, and is never reported coherent."""
     return (
         r.status != FC_OK
@@ -109,7 +109,7 @@ fn _refused(r: Reconciliation) -> Bool:
     )
 
 
-fn main():
+def main():
     var passed = 0
     var failed = 0
     print("\n[forecasting.hierarchy] known-value suite")

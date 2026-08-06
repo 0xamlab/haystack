@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from tribochemistry import friction_coefficient, archard_wear_rate, hertz_contact_radius, hertz_max_pressure, flash_temperature, film_thickness_ehd, lambda_ratio, surface_energy_work, tribocorrosion_rate, wear_volume
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

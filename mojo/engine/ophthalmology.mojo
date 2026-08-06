@@ -16,7 +16,7 @@ Public API:
 from std.math import log, sqrt, exp
 
 
-fn visual_acuity_decimal(
+def visual_acuity_decimal(
     snellen_numerator: Float64, snellen_denominator: Float64
 ) -> Float64:
     """Visual acuity as decimal from Snellen notation.
@@ -35,7 +35,7 @@ fn visual_acuity_decimal(
     return snellen_numerator / snellen_denominator
 
 
-fn refractive_error_spherical(
+def refractive_error_spherical(
     far_point_m: Float64
 ) -> Float64:
     """Refractive error from far point distance.
@@ -53,7 +53,7 @@ fn refractive_error_spherical(
     return 1.0 / far_point_m
 
 
-fn lens_power(
+def lens_power(
     n_lens: Float64, n_medium: Float64,
     radius1_m: Float64, radius2_m: Float64
 ) -> Float64:
@@ -76,7 +76,7 @@ fn lens_power(
     return (n_lens - n_medium) * curvature_diff
 
 
-fn intraocular_pressure(
+def intraocular_pressure(
     applanation_force_g: Float64, corneal_thickness_um: Float64
 ) -> Float64:
     """Goldmann IOP with corneal thickness correction.
@@ -93,7 +93,7 @@ fn intraocular_pressure(
     return applanation_force_g + (550.0 - corneal_thickness_um) * 0.07
 
 
-fn corneal_radius_from_keratometry(
+def corneal_radius_from_keratometry(
     k_diopters: Float64
 ) -> Float64:
     """Corneal radius from K-reading.
@@ -111,7 +111,7 @@ fn corneal_radius_from_keratometry(
     return 337.5 / k_diopters
 
 
-fn retinal_image_size(
+def retinal_image_size(
     object_size_m: Float64, object_distance_m: Float64, focal_length_m: Float64
 ) -> Float64:
     """Retinal image size from thin lens approximation.
@@ -131,7 +131,7 @@ fn retinal_image_size(
     return object_size_m * focal_length_m / object_distance_m * 1000.0
 
 
-fn depth_of_focus(
+def depth_of_focus(
     pupil_diameter_mm: Float64, visual_acuity_arcmin: Float64
 ) -> Float64:
     """Depth of focus from pupil size and acuity.
@@ -150,7 +150,7 @@ fn depth_of_focus(
     return 2.0 * visual_acuity_arcmin / (3438.0 * pupil_diameter_mm / 1000.0)
 
 
-fn critical_flicker_frequency(
+def critical_flicker_frequency(
     luminance_cd_m2: Float64, k: Float64, a: Float64
 ) -> Float64:
     """Critical flicker fusion frequency (Ferry-Porter law).
@@ -170,7 +170,7 @@ fn critical_flicker_frequency(
     return a * log(luminance_cd_m2) / log(10.0) + k
 
 
-fn contrast_sensitivity(
+def contrast_sensitivity(
     grating_modulation: Float64, threshold_modulation: Float64
 ) -> Float64:
     """Contrast sensitivity from modulation threshold.
@@ -189,7 +189,7 @@ fn contrast_sensitivity(
     return 1.0 / threshold_modulation
 
 
-fn dark_adaptation_kinetics(
+def dark_adaptation_kinetics(
     time_min: Float64, final_threshold: Float64, rate: Float64
 ) -> Float64:
     """Rhodopsin-driven dark adaptation threshold over time.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from sheet.values import error_name, error_code_of, cv_empty, cv_num, cv_text, cv_bool, cv_err, cv_unsup, cv_pending, cv_cycle, cv_range, fold_ascii, text_equal_ci, text_cmp_ci, wildcard_match, has_wildcard, num_to_text
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

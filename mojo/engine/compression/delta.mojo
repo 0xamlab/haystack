@@ -18,7 +18,7 @@ Public API:
 # ── Basic delta encoding ─────────────────────────────────────────────────────
 
 
-fn delta_encode(data: List[Int]) -> List[Int]:
+def delta_encode(data: List[Int]) -> List[Int]:
     """Delta encoding: first value as-is, then differences."""
     var result = List[Int]()
     var n = len(data)
@@ -30,7 +30,7 @@ fn delta_encode(data: List[Int]) -> List[Int]:
     return result^
 
 
-fn delta_decode(deltas: List[Int]) -> List[Int]:
+def delta_decode(deltas: List[Int]) -> List[Int]:
     """Delta decoding: cumulative sum reconstruction."""
     var result = List[Int]()
     var n = len(deltas)
@@ -45,7 +45,7 @@ fn delta_decode(deltas: List[Int]) -> List[Int]:
 # ── Float delta encoding ─────────────────────────────────────────────────────
 
 
-fn delta_encode_float(
+def delta_encode_float(
     data: List[Float64], precision: Int = 1000
 ) -> List[Int]:
     """Quantize floats to int (multiply by precision) then delta encode."""
@@ -55,7 +55,7 @@ fn delta_encode_float(
     return delta_encode(quantized^)
 
 
-fn delta_decode_float(
+def delta_decode_float(
     deltas: List[Int], precision: Int = 1000
 ) -> List[Float64]:
     """Delta decode then dequantize (divide by precision)."""
@@ -69,7 +69,7 @@ fn delta_decode_float(
 # ── XOR delta encoding ──────────────────────────────────────────────────────
 
 
-fn xor_delta_encode(data: List[Int]) -> List[Int]:
+def xor_delta_encode(data: List[Int]) -> List[Int]:
     """XOR-based delta: first value, then XOR with previous."""
     var result = List[Int]()
     var n = len(data)
@@ -81,7 +81,7 @@ fn xor_delta_encode(data: List[Int]) -> List[Int]:
     return result^
 
 
-fn xor_delta_decode(encoded: List[Int]) -> List[Int]:
+def xor_delta_decode(encoded: List[Int]) -> List[Int]:
     """XOR delta decode: cumulative XOR reconstruction."""
     var result = List[Int]()
     var n = len(encoded)
@@ -96,21 +96,21 @@ fn xor_delta_decode(encoded: List[Int]) -> List[Int]:
 # ── Zigzag delta encoding ───────────────────────────────────────────────────
 
 
-fn _zigzag_encode_val(v: Int) -> Int:
+def _zigzag_encode_val(v: Int) -> Int:
     """Zigzag encode a signed int: maps negatives to odds, positives to evens."""
     if v >= 0:
         return v * 2
     return (-v) * 2 - 1
 
 
-fn _zigzag_decode_val(v: Int) -> Int:
+def _zigzag_decode_val(v: Int) -> Int:
     """Zigzag decode: inverse of zigzag encode."""
     if v % 2 == 0:
         return v // 2
     return -((v + 1) // 2)
 
 
-fn zigzag_delta_encode(data: List[Int]) -> List[Int]:
+def zigzag_delta_encode(data: List[Int]) -> List[Int]:
     """Delta + zigzag encoding for signed deltas.
 
     First delta-encodes, then zigzag-encodes each delta value.
@@ -123,7 +123,7 @@ fn zigzag_delta_encode(data: List[Int]) -> List[Int]:
     return result^
 
 
-fn zigzag_delta_decode(encoded: List[Int]) -> List[Int]:
+def zigzag_delta_decode(encoded: List[Int]) -> List[Int]:
     """Zigzag delta decode: undo zigzag then delta decode."""
     var deltas = List[Int]()
     for i in range(len(encoded)):
@@ -134,7 +134,7 @@ fn zigzag_delta_decode(encoded: List[Int]) -> List[Int]:
 # ── Double delta encoding ───────────────────────────────────────────────────
 
 
-fn double_delta_encode(data: List[Int]) -> List[Int]:
+def double_delta_encode(data: List[Int]) -> List[Int]:
     """Double delta: delta of deltas. Excellent for linear sequences.
 
     For a perfectly linear sequence, double deltas are all zero (after first two).
@@ -143,7 +143,7 @@ fn double_delta_encode(data: List[Int]) -> List[Int]:
     return delta_encode(first_deltas^)
 
 
-fn double_delta_decode(encoded: List[Int]) -> List[Int]:
+def double_delta_decode(encoded: List[Int]) -> List[Int]:
     """Double delta decode: decode twice."""
     var first_decoded = delta_decode(encoded)
     return delta_decode(first_decoded^)
@@ -152,7 +152,7 @@ fn double_delta_decode(encoded: List[Int]) -> List[Int]:
 # ── Compression savings ─────────────────────────────────────────────────────
 
 
-fn compression_savings(original_bits: Int, compressed_bits: Int) -> Float64:
+def compression_savings(original_bits: Int, compressed_bits: Int) -> Float64:
     """Compute compression savings: 1 - compressed/original.
 
     Returns value in [0, 1] where 1 = perfect compression, 0 = no savings.

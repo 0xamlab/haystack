@@ -20,7 +20,7 @@ from color import RGB, rgb_to_hsv, rgb_to_hex
 from color_science import contrast_ratio, rgb_to_luminance
 
 
-fn _clamp01(v: Float64) -> Float64:
+def _clamp01(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 1.0:
@@ -28,7 +28,7 @@ fn _clamp01(v: Float64) -> Float64:
     return v
 
 
-fn _clamp_rgb255(v: Float64) -> Float64:
+def _clamp_rgb255(v: Float64) -> Float64:
     if v < 0.0:
         return 0.0
     if v > 255.0:
@@ -36,7 +36,7 @@ fn _clamp_rgb255(v: Float64) -> Float64:
     return v
 
 
-fn _bin_index(r: Float64, g: Float64, b: Float64, bins: Int, bin_w: Float64) -> Int:
+def _bin_index(r: Float64, g: Float64, b: Float64, bins: Int, bin_w: Float64) -> Int:
     var rb = Int(_clamp_rgb255(r) / bin_w)
     var gb = Int(_clamp_rgb255(g) / bin_w)
     var bb = Int(_clamp_rgb255(b) / bin_w)
@@ -55,7 +55,7 @@ fn _bin_index(r: Float64, g: Float64, b: Float64, bins: Int, bin_w: Float64) -> 
     return (rb * bins + gb) * bins + bb
 
 
-fn _palette_stats(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> List[Float64]:
+def _palette_stats(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> List[Float64]:
     """Return packed [count,sum_r,sum_g,sum_b]×bins plus trailing valid-pixel count."""
     var bins = levels
     if bins <= 0:
@@ -88,13 +88,13 @@ fn _palette_stats(flat_rgb: List[Float64], width: Int, height: Int, levels: Int)
     return stats^
 
 
-fn _valid_pixels(stats: List[Float64]) -> Float64:
+def _valid_pixels(stats: List[Float64]) -> Float64:
     if len(stats) == 0:
         return 0.0
     return stats[len(stats) - 1]
 
 
-fn dominant_palette_rgb255(
+def dominant_palette_rgb255(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int, top_k: Int
 ) -> List[Float64]:
     """Top-k palette colours as [r,g,b,weight] repeated in descending weight order."""
@@ -131,7 +131,7 @@ fn dominant_palette_rgb255(
     return out^
 
 
-fn palette_size_estimate(
+def palette_size_estimate(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int, min_weight: Float64
 ) -> Int:
     """Count palette bins whose normalized weight is at least min_weight."""
@@ -148,7 +148,7 @@ fn palette_size_estimate(
     return count
 
 
-fn palette_entropy(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> Float64:
+def palette_entropy(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> Float64:
     """Shannon entropy in bits over the quantized RGB palette histogram."""
     var stats = _palette_stats(flat_rgb, width, height, levels)
     var valid = _valid_pixels(stats)
@@ -166,7 +166,7 @@ fn palette_entropy(flat_rgb: List[Float64], width: Int, height: Int, levels: Int
     return total
 
 
-fn mean_saturation_rgb255(flat_rgb: List[Float64], width: Int, height: Int) -> Float64:
+def mean_saturation_rgb255(flat_rgb: List[Float64], width: Int, height: Int) -> Float64:
     """Mean HSV saturation across valid RGB pixels in [0, 1]."""
     var target_pixels = width * height
     if target_pixels < 0:
@@ -191,7 +191,7 @@ fn mean_saturation_rgb255(flat_rgb: List[Float64], width: Int, height: Int) -> F
     return total / Float64(valid)
 
 
-fn warm_color_ratio_rgb255(
+def warm_color_ratio_rgb255(
     flat_rgb: List[Float64], width: Int, height: Int, min_saturation: Float64
 ) -> Float64:
     """Fraction of pixels whose HSV hue is warm and whose saturation >= min_saturation."""
@@ -219,7 +219,7 @@ fn warm_color_ratio_rgb255(
     return Float64(warm) / Float64(valid)
 
 
-fn palette_contrast_score(
+def palette_contrast_score(
     flat_rgb: List[Float64], width: Int, height: Int, levels: Int, top_k: Int
 ) -> Float64:
     """Weighted pairwise dominant-palette contrast score normalized to [0, 1]."""
@@ -248,7 +248,7 @@ fn palette_contrast_score(
     return _clamp01(total_score / total_weight)
 
 
-fn accent_color_hex(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> String:
+def accent_color_hex(flat_rgb: List[Float64], width: Int, height: Int, levels: Int) -> String:
     """Return the strongest saturated dominant accent as a hex colour."""
     var palette = dominant_palette_rgb255(flat_rgb, width, height, levels, 5)
     var colors = len(palette) // 4
@@ -276,7 +276,7 @@ fn accent_color_hex(flat_rgb: List[Float64], width: Int, height: Int, levels: In
     )
 
 
-fn is_monochrome_palette(
+def is_monochrome_palette(
     flat_rgb: List[Float64], width: Int, height: Int,
     levels: Int, min_weight: Float64, max_mean_saturation: Float64,
 ) -> Bool:

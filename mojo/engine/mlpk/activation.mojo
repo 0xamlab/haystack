@@ -127,7 +127,7 @@ struct GeluAgreement(Copyable, Movable):
     var status: Int
 
 
-fn mlp_gelu_erf(x: Float64) -> Float64:
+def mlp_gelu_erf(x: Float64) -> Float64:
     """GELU via the error function: `x * 0.5 * (1 + erf(x / sqrt(2)))`.
 
     The erf form, matching Hugging Face's `hidden_act: "gelu"`. A NEW contract, not a correction:
@@ -148,7 +148,7 @@ fn mlp_gelu_erf(x: Float64) -> Float64:
     return x * 0.5 * (1.0 + erf(x / sqrt(2.0)))
 
 
-fn mlp_gelu_erf_grad(x: Float64) -> Float64:
+def mlp_gelu_erf_grad(x: Float64) -> Float64:
     """`d/dx` of the erf GELU: `Phi(x) + x * phi(x)`.
 
     `phi` is the standard normal density `exp(-x^2/2) / sqrt(2*pi)`. Written in terms of erf rather
@@ -163,7 +163,7 @@ fn mlp_gelu_erf_grad(x: Float64) -> Float64:
     return cdf + x * pdf
 
 
-fn mlp_gelu_tanh_grad(x: Float64) -> Float64:
+def mlp_gelu_tanh_grad(x: Float64) -> Float64:
     """`d/dx` of the tanh GELU, matching `activations.gelu_new`'s forward exactly.
 
     With `u = C * x * (1 + 0.044715 x^2)`, `gelu_new(x) = 0.5 x (1 + tanh u)` and
@@ -182,7 +182,7 @@ fn mlp_gelu_tanh_grad(x: Float64) -> Float64:
     return 0.5 * (1.0 + t) + 0.5 * x * (1.0 - t * t) * d_inner
 
 
-fn mlp_gelu_agreement(lo: Float64, hi: Float64, samples: Int) -> GeluAgreement:
+def mlp_gelu_agreement(lo: Float64, hi: Float64, samples: Int) -> GeluAgreement:
     """Measure the frozen tanh GELU against the erf GELU across `[lo, hi]`.
 
     Reported rather than reconciled. The number a caller needs is not "are they close" but "how far
@@ -224,7 +224,7 @@ fn mlp_gelu_agreement(lo: Float64, hi: Float64, samples: Int) -> GeluAgreement:
     return GeluAgreement(worst, tol, worst <= tol, at, samples, MLP_OK)
 
 
-fn gated_ffn_fwd_flat(
+def gated_ffn_fwd_flat(
     value: List[Float64], gate: List[Float64], n_tok: Int, d_ff: Int, kind: Int
 ) -> ActOut:
     """Gated feed-forward activation over `[n_tok][d_ff]`: `y = act(gate) * value`.
@@ -262,7 +262,7 @@ fn gated_ffn_fwd_flat(
         workers = 1
 
     @parameter
-    fn _act_band(tid: Int) capturing:
+    def _act_band(tid: Int) capturing:
         var each = n // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else n
@@ -282,7 +282,7 @@ fn gated_ffn_fwd_flat(
     return ActOut(y^, n_tok, d_ff, kind, MLP_OK)
 
 
-fn gated_ffn_bwd_flat(
+def gated_ffn_bwd_flat(
     dy: List[Float64], value: List[Float64], gate: List[Float64],
     n_tok: Int, d_ff: Int, kind: Int
 ) -> ActGrad:
@@ -324,7 +324,7 @@ fn gated_ffn_bwd_flat(
         workers = 1
 
     @parameter
-    fn _grad_band(tid: Int) capturing:
+    def _grad_band(tid: Int) capturing:
         var each = n // workers
         var lo = tid * each
         var hi = lo + each if tid < workers - 1 else n
@@ -350,7 +350,7 @@ fn gated_ffn_bwd_flat(
     return ActGrad(d_value^, d_gate^, n_tok, d_ff, MLP_OK)
 
 
-fn swiglu_gradcheck_flat(
+def swiglu_gradcheck_flat(
     value: List[Float64], gate: List[Float64], n_tok: Int, d_ff: Int,
     kind: Int, step: Float64
 ) -> GeluAgreement:
@@ -421,7 +421,7 @@ fn swiglu_gradcheck_flat(
     return GeluAgreement(worst, tol_at_worst, worst <= tol_at_worst, at, total, MLP_OK)
 
 
-fn _sum_activated(
+def _sum_activated(
     value: List[Float64], gate: List[Float64], n_tok: Int, d_ff: Int, kind: Int
 ) -> Float64:
     """`SUM(y)` for one perturbed gate. Underscore-prefixed: a gradcheck helper, not a kernel."""

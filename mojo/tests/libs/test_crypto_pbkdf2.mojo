@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crypto.pbkdf2 import sha256_bytes, bytes_from_string, bytes_to_hex, xor_byte_lists, int_to_bytes_be, hmac_sha256_bytes, pbkdf2_hmac_sha256
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

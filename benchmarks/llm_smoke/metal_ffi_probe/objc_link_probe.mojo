@@ -16,7 +16,7 @@ from std.gpu.host import DeviceContext
 from std.sys import has_accelerator
 
 
-fn _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
+def _cstr(s: StaticString) -> UnsafePointer[UInt8, origin=StaticConstantOrigin]:
     return s.unsafe_ptr()
 
 

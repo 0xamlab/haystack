@@ -60,11 +60,11 @@ from query.aggregate import (
 )
 
 
-fn _lcg_next(state: UInt64) -> UInt64:
+def _lcg_next(state: UInt64) -> UInt64:
     return state * 6364136223846793005 + 1442695040888963407
 
 
-fn _batch_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBatch:
+def _batch_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBatch:
     """k in 0..n_groups-1; v1/v2/v3 integers with THREE DIFFERENT null patterns.
 
     Different patterns per value column because the fused counts are per
@@ -106,7 +106,7 @@ fn _batch_ints(n_rows: Int, n_groups: Int, with_nulls: Bool) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
+def _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
     """Continuous v1/v2 in [0, 1) — where association drift is visible, so
     where bit-equality claims actually bite."""
     var state: UInt64 = 0xDEADBEEFCAFEF00D
@@ -132,7 +132,7 @@ fn _batch_continuous(n_rows: Int, n_groups: Int) -> RecordBatch:
     return RecordBatch(schema_of(names^), cols^, n_rows)
 
 
-fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
+def _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResult) -> Bool:
     """Fused column `agg` against a single-column run: bit-exact, order included."""
     if many.n_groups() != single.n_groups() or many.key_width != 1:
         return False
@@ -150,7 +150,7 @@ fn _many_matches_grouped(many: ManyGroupedResult, agg: Int, single: GroupedResul
     return True
 
 
-fn _many_matches_grouped_close(
+def _many_matches_grouped_close(
     many: ManyGroupedResult, agg: Int, single: GroupedResult, rel_tol: Float64
 ) -> Bool:
     """Same groups/order/counts exactly; values within relative tolerance."""
@@ -176,7 +176,7 @@ fn _many_matches_grouped_close(
     return True
 
 
-fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
+def _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     """Bit-equality across the whole result: tuples, order, values, presence, counts."""
     if a.n_groups() != b.n_groups() or a.key_width != b.key_width:
         return False
@@ -195,7 +195,7 @@ fn _many_identical_exact(a: ManyGroupedResult, b: ManyGroupedResult) -> Bool:
     return True
 
 
-fn _many_matches_multi(many: ManyGroupedResult, agg: Int, multi: MultiGroupedResult) -> Bool:
+def _many_matches_multi(many: ManyGroupedResult, agg: Int, multi: MultiGroupedResult) -> Bool:
     """Fused composite column `agg` against a `group_by_multi` run: bit-exact."""
     if many.n_groups() != multi.n_groups() or many.key_width != multi.key_width:
         return False
@@ -214,7 +214,7 @@ fn _many_matches_multi(many: ManyGroupedResult, agg: Int, multi: MultiGroupedRes
     return True
 
 
-fn _is_empty_refusal(coded_status: Int, want_status: Int, result: ManyGroupedResult) -> Bool:
+def _is_empty_refusal(coded_status: Int, want_status: Int, result: ManyGroupedResult) -> Bool:
     return (
         coded_status == want_status
         and result.n_groups() == 0
@@ -223,7 +223,7 @@ fn _is_empty_refusal(coded_status: Int, want_status: Int, result: ManyGroupedRes
     )
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
 

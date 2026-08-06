@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn infonce_loss(positive_score: Float64, sum_exp_scores: Float64) -> Float64:
+def infonce_loss(positive_score: Float64, sum_exp_scores: Float64) -> Float64:
     """InfoNCE loss numerator contribution (negative log-softmax).
 
     L = -log(exp(pos) / Σ exp(scores))
@@ -34,7 +34,7 @@ fn infonce_loss(positive_score: Float64, sum_exp_scores: Float64) -> Float64:
     return -positive_score + log(sum_exp_scores)
 
 
-fn simclr_positive_score(
+def simclr_positive_score(
     dot: Float64, norm_a: Float64, norm_b: Float64, temperature: Float64
 ) -> Float64:
     """SimCLR positive pair cosine similarity scaled by temperature.
@@ -56,7 +56,7 @@ fn simclr_positive_score(
     return dot / denom / temperature
 
 
-fn simclr_temperature_scale(similarity: Float64, temperature: Float64) -> Float64:
+def simclr_temperature_scale(similarity: Float64, temperature: Float64) -> Float64:
     """Scale a pre-computed similarity by temperature.
 
     Args:
@@ -71,7 +71,7 @@ fn simclr_temperature_scale(similarity: Float64, temperature: Float64) -> Float6
     return similarity / temperature
 
 
-fn triplet_margin_loss(
+def triplet_margin_loss(
     anchor_pos_dist: Float64, anchor_neg_dist: Float64, margin: Float64
 ) -> Float64:
     """Triplet margin loss: max(0, d(a,p) - d(a,n) + margin).
@@ -90,7 +90,7 @@ fn triplet_margin_loss(
     return loss
 
 
-fn nt_xent_denominator_term(
+def nt_xent_denominator_term(
     similarity: Float64, temperature: Float64
 ) -> Float64:
     """One term in the NT-Xent denominator: exp(sim/τ).
@@ -107,7 +107,7 @@ fn nt_xent_denominator_term(
     return exp(similarity / temperature)
 
 
-fn moco_momentum_update(
+def moco_momentum_update(
     target_param: Float64, online_param: Float64, momentum: Float64
 ) -> Float64:
     """MoCo momentum encoder EMA update.
@@ -125,7 +125,7 @@ fn moco_momentum_update(
     return momentum * target_param + (1.0 - momentum) * online_param
 
 
-fn byol_ema_update(
+def byol_ema_update(
     target_param: Float64, online_param: Float64, tau: Float64
 ) -> Float64:
     """BYOL / DINO target network EMA update.
@@ -143,7 +143,7 @@ fn byol_ema_update(
     return tau * target_param + (1.0 - tau) * online_param
 
 
-fn vicreg_variance_loss(variance: Float64, gamma: Float64) -> Float64:
+def vicreg_variance_loss(variance: Float64, gamma: Float64) -> Float64:
     """VICReg variance regularisation: max(0, γ - std(z)).
 
     Args:
@@ -160,7 +160,7 @@ fn vicreg_variance_loss(variance: Float64, gamma: Float64) -> Float64:
     return loss
 
 
-fn vicreg_covariance_term(
+def vicreg_covariance_term(
     cov_ij: Float64, variance_i: Float64, variance_j: Float64
 ) -> Float64:
     """VICReg covariance regularisation: (cov[i,j]/(std_i×std_j))² for i≠j.
@@ -179,7 +179,7 @@ fn vicreg_covariance_term(
     return corr * corr
 
 
-fn barlow_twins_cross_corr(
+def barlow_twins_cross_corr(
     z_a_i: Float64, z_b_i: Float64, n: Float64,
     mean_a: Float64, mean_b: Float64, std_a: Float64, std_b: Float64
 ) -> Float64:

@@ -98,7 +98,7 @@ this length is bounded at k x 512 MiB, not 512 MiB, so a caller with several buf
 local ceiling down rather than reusing this one k times."""
 
 
-fn tx_status_name(code: Int) -> String:
+def tx_status_name(code: Int) -> String:
     """Name a status code. Unknown codes are named as unknown rather than guessed at."""
     if code == TX_OK:
         return String("ok")
@@ -135,7 +135,7 @@ fn tx_status_name(code: Int) -> String:
     return String("unknown_status")
 
 
-fn tx_finite(x: Float64) -> Bool:
+def tx_finite(x: Float64) -> Bool:
     """True when `x` is neither NaN nor infinite.
 
     The package's only finiteness test. Validate finiteness BEFORE computing any tolerance from an
@@ -145,7 +145,7 @@ fn tx_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 
-fn tx_count_ok(n: Int, length: Int) -> Int:
+def tx_count_ok(n: Int, length: Int) -> Int:
     """The count/length relation, as a status rather than a Bool.
 
     Separates "you asked for a negative count" from "you asked for more than you gave me", because
@@ -159,7 +159,7 @@ fn tx_count_ok(n: Int, length: Int) -> Int:
     return TX_OK
 
 
-fn tx_all_finite(v: List[Float64], n: Int) -> Bool:
+def tx_all_finite(v: List[Float64], n: Int) -> Bool:
     """Scan the first `n` entries of `v` for non-finite values.
 
     Returns False — not a crash — when `n` exceeds `len(v)`. The generated A-Z suite calls every
@@ -180,7 +180,7 @@ fn tx_all_finite(v: List[Float64], n: Int) -> Bool:
     return True
 
 
-fn tx_dims_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
+def tx_dims_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
     """True when `rows * cols` fits in `ceiling`, computed WITHOUT forming the product.
 
     Grows the bound by division instead of multiplying: a wrapping 64-bit multiply is how
@@ -202,7 +202,7 @@ fn tx_dims_fit(rows: Int, cols: Int, ceiling: Int) -> Bool:
     return cols <= ceiling // rows
 
 
-fn tx_shape_ok(rows: Int, cols: Int, data_len: Int) -> Int:
+def tx_shape_ok(rows: Int, cols: Int, data_len: Int) -> Int:
     """Validate a flat row-major shape against its buffer length. `rows * cols` must equal exactly.
 
     Exact equality, not `<=`: a buffer longer than the declared shape means the caller and the kernel
@@ -225,7 +225,7 @@ fn tx_shape_ok(rows: Int, cols: Int, data_len: Int) -> Int:
     return TX_OK
 
 
-fn tx_numel_checked(dims: List[Int], n: Int, ceiling: Int) -> Int:
+def tx_numel_checked(dims: List[Int], n: Int, ceiling: Int) -> Int:
     """Product of the first `n` entries of `dims`, or `-1` if any dimension is non-positive, `n` is
     out of range, or the running product would exceed `ceiling`.
 

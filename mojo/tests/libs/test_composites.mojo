@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from composites import rule_of_mixtures_modulus, inverse_rule_of_mixtures, composite_density, fiber_volume_fraction, laminate_thickness, specific_stiffness, specific_strength, halpin_tsai, critical_fiber_length, shear_lag_stress_transfer, impact_energy_charpy, void_content
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -20,7 +20,7 @@ Public API:
 # ── Byte-level RLE ───────────────────────────────────────────────────────────
 
 
-fn rle_encode(data: List[UInt8]) -> List[UInt8]:
+def rle_encode(data: List[UInt8]) -> List[UInt8]:
     """Compress bytes using Run-Length Encoding.
 
     Format: pairs of (count, value) bytes. Max run length per pair is 255.
@@ -43,7 +43,7 @@ fn rle_encode(data: List[UInt8]) -> List[UInt8]:
     return result^
 
 
-fn rle_decode(compressed: List[UInt8]) -> List[UInt8]:
+def rle_decode(compressed: List[UInt8]) -> List[UInt8]:
     """Decompress RLE-encoded bytes.
 
     Expects pairs of (count, value) bytes.
@@ -63,7 +63,7 @@ fn rle_decode(compressed: List[UInt8]) -> List[UInt8]:
 # ── String-level RLE ─────────────────────────────────────────────────────────
 
 
-fn _int_to_string(val: Int) -> String:
+def _int_to_string(val: Int) -> String:
     """Convert a non-negative integer to string."""
     if val == 0:
         return String("0")
@@ -76,7 +76,7 @@ fn _int_to_string(val: Int) -> String:
     return result
 
 
-fn rle_encode_string(data: String) -> String:
+def rle_encode_string(data: String) -> String:
     """Compress a string using RLE. E.g., "AAABBC" → "3A2B1C"."""
     var n = len(data)
     if n == 0:
@@ -98,7 +98,7 @@ fn rle_encode_string(data: String) -> String:
     return result
 
 
-fn rle_decode_string(compressed: String) -> String:
+def rle_decode_string(compressed: String) -> String:
     """Decompress an RLE-encoded string. E.g., "3A2B1C" → "AAABBC"."""
     var n = len(compressed)
     if n == 0:
@@ -127,7 +127,7 @@ fn rle_decode_string(compressed: String) -> String:
 # ── Utility ──────────────────────────────────────────────────────────────────
 
 
-fn compression_ratio(original_size: Int, compressed_size: Int) -> Float64:
+def compression_ratio(original_size: Int, compressed_size: Int) -> Float64:
     """Compute compression ratio = original_size / compressed_size.
 
     Returns 0.0 if compressed_size is 0.

@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from compiler_theory import is_terminal, is_nonterminal, first_follow_conflict, lr_shift_reduce_conflict, reduce_reduce_conflict, grammar_is_ambiguous, ast_depth, ast_node_count, register_pressure, instruction_latency_sum, basic_block_throughput, loop_unroll_benefit
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

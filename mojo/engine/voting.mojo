@@ -22,7 +22,7 @@ Public API:
 # ── plurality_winner ──────────────────────────────────────────────────────────
 
 
-fn plurality_winner(votes: List[Int], n_candidates: Int) -> Int:
+def plurality_winner(votes: List[Int], n_candidates: Int) -> Int:
     """Return index of candidate with the most first-place votes.
 
     `votes` contains first-choice candidate index per voter.
@@ -49,7 +49,7 @@ fn plurality_winner(votes: List[Int], n_candidates: Int) -> Int:
 # ── borda_score ───────────────────────────────────────────────────────────────
 
 
-fn borda_score(ranks: List[Int], n_candidates: Int, candidate_idx: Int) -> Int:
+def borda_score(ranks: List[Int], n_candidates: Int, candidate_idx: Int) -> Int:
     """Borda count for `candidate_idx`.
 
     `ranks` is a flat list of rankings: for each voter, n_candidates entries
@@ -70,7 +70,7 @@ fn borda_score(ranks: List[Int], n_candidates: Int, candidate_idx: Int) -> Int:
 # ── condorcet_pairwise ────────────────────────────────────────────────────────
 
 
-fn condorcet_pairwise(a_votes: Int, b_votes: Int) -> Int:
+def condorcet_pairwise(a_votes: Int, b_votes: Int) -> Int:
     """Return 1 if a wins, -1 if b wins, 0 if tie."""
     if a_votes > b_votes:
         return 1
@@ -82,7 +82,7 @@ fn condorcet_pairwise(a_votes: Int, b_votes: Int) -> Int:
 # ── approval_score ────────────────────────────────────────────────────────────
 
 
-fn approval_score(approvals: List[Int], n_voters: Int) -> Int:
+def approval_score(approvals: List[Int], n_voters: Int) -> Int:
     """Count of approvals for a candidate.
 
     `approvals` contains 1 or 0 per voter (whether they approve).
@@ -97,7 +97,7 @@ fn approval_score(approvals: List[Int], n_voters: Int) -> Int:
 # ── majority_threshold ────────────────────────────────────────────────────────
 
 
-fn majority_threshold(n_voters: Int) -> Int:
+def majority_threshold(n_voters: Int) -> Int:
     """Floor(n/2) + 1 — minimum votes for a strict majority."""
     return n_voters // 2 + 1
 
@@ -105,7 +105,7 @@ fn majority_threshold(n_voters: Int) -> Int:
 # ── quota_droop ───────────────────────────────────────────────────────────────
 
 
-fn quota_droop(n_votes: Int, n_seats: Int) -> Int:
+def quota_droop(n_votes: Int, n_seats: Int) -> Int:
     """Droop quota = floor(votes / (seats + 1)) + 1."""
     return n_votes // (n_seats + 1) + 1
 
@@ -113,7 +113,7 @@ fn quota_droop(n_votes: Int, n_seats: Int) -> Int:
 # ── quota_hare ────────────────────────────────────────────────────────────────
 
 
-fn quota_hare(n_votes: Int, n_seats: Int) -> Float64:
+def quota_hare(n_votes: Int, n_seats: Int) -> Float64:
     """Hare quota = votes / seats."""
     return Float64(n_votes) / Float64(n_seats)
 
@@ -121,7 +121,7 @@ fn quota_hare(n_votes: Int, n_seats: Int) -> Float64:
 # ── dhondt_divisor ────────────────────────────────────────────────────────────
 
 
-fn dhondt_divisor(seats_won: Int) -> Int:
+def dhondt_divisor(seats_won: Int) -> Int:
     """D'Hondt divisor = seats_won + 1."""
     return seats_won + 1
 
@@ -129,7 +129,7 @@ fn dhondt_divisor(seats_won: Int) -> Int:
 # ── sainte_lague_divisor ──────────────────────────────────────────────────────
 
 
-fn sainte_lague_divisor(seats_won: Int) -> Int:
+def sainte_lague_divisor(seats_won: Int) -> Int:
     """Sainte-Laguë divisor = 2 * seats_won + 1."""
     return 2 * seats_won + 1
 
@@ -137,7 +137,7 @@ fn sainte_lague_divisor(seats_won: Int) -> Int:
 # ── power_index_banzhaf ──────────────────────────────────────────────────────
 
 
-fn power_index_banzhaf(
+def power_index_banzhaf(
     wins_with: Int, wins_without: Int, total_coalitions: Int,
 ) -> Float64:
     """Banzhaf power = (wins_with - wins_without) / total_coalitions."""
@@ -147,6 +147,6 @@ fn power_index_banzhaf(
 # ── spoiler_effect ────────────────────────────────────────────────────────────
 
 
-fn spoiler_effect(winner_with: Int, winner_without: Int) -> Bool:
+def spoiler_effect(winner_with: Int, winner_without: Int) -> Bool:
     """Check if removing a candidate changes the winner (spoiler effect)."""
     return winner_with != winner_without

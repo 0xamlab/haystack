@@ -36,32 +36,32 @@ from ml.knn import (
 from std.math import abs as fabs, sin
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error(
             "FAIL: " + msg + " | got " + String(a) + " expected " + String(b)
         )
 
 
-fn _make_list1(a: Float64) -> List[Float64]:
+def _make_list1(a: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     return r^
 
 
-fn _make_list2(a: Float64, b: Float64) -> List[Float64]:
+def _make_list2(a: Float64, b: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
     return r^
 
 
-fn _make_list3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _make_list3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
     r.append(b)
@@ -69,7 +69,7 @@ fn _make_list3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return r^
 
 
-fn _make_list5(a: Float64, b: Float64, c: Float64, d: Float64,
+def _make_list5(a: Float64, b: Float64, c: Float64, d: Float64,
                e: Float64) -> List[Float64]:
     var r = List[Float64]()
     r.append(a)
@@ -80,7 +80,7 @@ fn _make_list5(a: Float64, b: Float64, c: Float64, d: Float64,
     return r^
 
 
-fn _make_int_list6(a: Int, b: Int, c: Int, d: Int,
+def _make_int_list6(a: Int, b: Int, c: Int, d: Int,
                    e: Int, f: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a)
@@ -92,7 +92,7 @@ fn _make_int_list6(a: Int, b: Int, c: Int, d: Int,
     return r^
 
 
-fn _make_int_list4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
+def _make_int_list4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
     var r = List[Int]()
     r.append(a)
     r.append(b)
@@ -104,7 +104,7 @@ fn _make_int_list4(a: Int, b: Int, c: Int, d: Int) -> List[Int]:
 # ── Time Series Decomposition tests ─────────────────────────────────────────
 
 
-fn test_moving_average_trend() raises:
+def test_moving_average_trend() raises:
     print("  test_moving_average_trend")
     # Constant data → trend is constant in the middle
     var data = _make_list5(1.0, 1.0, 1.0, 1.0, 1.0)
@@ -117,7 +117,7 @@ fn test_moving_average_trend() raises:
     _assert_close(t[4], 0.0, 0.01, "edge padded 0 right")                     # 6
 
 
-fn test_detrend() raises:
+def test_detrend() raises:
     print("  test_detrend")
     var data = _make_list3(10.0, 20.0, 30.0)
     var trend = _make_list3(5.0, 10.0, 15.0)
@@ -138,7 +138,7 @@ fn test_detrend() raises:
     _assert_close(dt2[3], 0.0, 0.01, "linear detrend const 3")                # 12
 
 
-fn test_seasonal_component() raises:
+def test_seasonal_component() raises:
     print("  test_seasonal_component")
     # Repeating pattern with period 3: [1, 2, 3, 1, 2, 3]
     var detrended = List[Float64]()
@@ -155,7 +155,7 @@ fn test_seasonal_component() raises:
     _assert_close(sc[3], 1.0, 0.01, "seasonal tiled")                         # 16
 
 
-fn test_residual() raises:
+def test_residual() raises:
     print("  test_residual")
     var data = _make_list3(10.0, 20.0, 30.0)
     var trend = _make_list3(5.0, 10.0, 15.0)
@@ -166,7 +166,7 @@ fn test_residual() raises:
     _assert_close(r[2], 11.0, 0.01, "residual[2]=30-15-4")                    # 19
 
 
-fn test_decompose_additive() raises:
+def test_decompose_additive() raises:
     print("  test_decompose_additive")
     # Build data: linear trend + seasonal period 4
     var data = List[Float64]()
@@ -187,7 +187,7 @@ fn test_decompose_additive() raises:
                       "reconstruction at " + String(i))                        # 24-35
 
 
-fn test_seasonal_strength_and_trend_strength() raises:
+def test_seasonal_strength_and_trend_strength() raises:
     print("  test_seasonal_strength_and_trend_strength")
     var resid = List[Float64]()
     resid.append(0.1)
@@ -213,7 +213,7 @@ fn test_seasonal_strength_and_trend_strength() raises:
     _assert(ts_val >= 0.0 and ts_val <= 1.0, "trend strength in [0,1]")       # 38
 
 
-fn test_detect_period() raises:
+def test_detect_period() raises:
     print("  test_detect_period")
     # Create clearly periodic data with period 5
     var data = List[Float64]()
@@ -223,7 +223,7 @@ fn test_detect_period() raises:
     _assert(period == 5, "detected period should be 5, got " + String(period)) # 39
 
 
-fn test_stl_like() raises:
+def test_stl_like() raises:
     print("  test_stl_like")
     var data = List[Float64]()
     for i in range(24):
@@ -244,7 +244,7 @@ fn test_stl_like() raises:
 # ── Robustness tests ────────────────────────────────────────────────────────
 
 
-fn test_eval_test_func() raises:
+def test_eval_test_func() raises:
     print("  test_eval_test_func")
     var x = _make_list3(1.0, 2.0, 3.0)
     _assert_close(eval_test_func(x, 0), 6.0, 0.01, "sum func")               # 56
@@ -253,7 +253,7 @@ fn test_eval_test_func() raises:
     _assert_close(eval_test_func(x, 2), 14.0, 0.01, "weighted sum func")      # 58
 
 
-fn test_perturbation_test() raises:
+def test_perturbation_test() raises:
     print("  test_perturbation_test")
     var vals = _make_list5(1.0, 2.0, 3.0, 4.0, 5.0)
     var pert = perturbation_test(vals, 0.5)
@@ -266,7 +266,7 @@ fn test_perturbation_test() raises:
     _assert(any_diff, "perturbation changed at least one value")               # 60
 
 
-fn test_sensitivity_oat() raises:
+def test_sensitivity_oat() raises:
     print("  test_sensitivity_oat")
     var base = _make_list3(1.0, 2.0, 3.0)
     var s = sensitivity_one_at_a_time(base, 0, 0.01, 0)
@@ -276,7 +276,7 @@ fn test_sensitivity_oat() raises:
     _assert(s > -1e10 and s < 1e10, "OAT finite")                             # 63
 
 
-fn test_morris_screening() raises:
+def test_morris_screening() raises:
     print("  test_morris_screening")
     var effects = morris_screening(3, 0, 20, 0.1)
     _assert(len(effects) == 3, "morris 3 inputs")                             # 64
@@ -285,7 +285,7 @@ fn test_morris_screening() raises:
                 "morris effect positive " + String(i))                         # 65-67
 
 
-fn test_tornado_data() raises:
+def test_tornado_data() raises:
     print("  test_tornado_data")
     var base = _make_list3(1.0, 2.0, 3.0)
     var deltas = _make_list3(0.5, 0.5, 0.5)
@@ -296,7 +296,7 @@ fn test_tornado_data() raises:
     _assert_close(td[0][1], 6.5, 0.01, "tornado high[0]")                     # 70
 
 
-fn test_robustness_score() raises:
+def test_robustness_score() raises:
     print("  test_robustness_score")
     var results = _make_list5(10.0, 10.5, 9.5, 10.2, 9.8)
     var rs = robustness_score(results)
@@ -308,7 +308,7 @@ fn test_robustness_score() raises:
     _assert_close(rs2, 0.0, 0.01, "constant robustness = 0")                  # 73
 
 
-fn test_input_range_sweep() raises:
+def test_input_range_sweep() raises:
     print("  test_input_range_sweep")
     var base = _make_list3(1.0, 2.0, 3.0)
     var sweep = input_range_sweep(base, 0, 0.0, 10.0, 11, 0)
@@ -319,7 +319,7 @@ fn test_input_range_sweep() raises:
     _assert_close(sweep[0][1], 5.0, 0.01, "sweep output at lo")               # 77
 
 
-fn test_sobol_first_order() raises:
+def test_sobol_first_order() raises:
     print("  test_sobol_first_order")
     var si = sobol_first_order_estimate(3, 0, 200)
     _assert(len(si) == 3, "sobol 3 indices")                                  # 78
@@ -331,7 +331,7 @@ fn test_sobol_first_order() raises:
 # ── KNN tests ───────────────────────────────────────────────────────────────
 
 
-fn test_euclidean_distance() raises:
+def test_euclidean_distance() raises:
     print("  test_euclidean_distance")
     var a = _make_list2(0.0, 0.0)
     var b = _make_list2(3.0, 4.0)
@@ -343,14 +343,14 @@ fn test_euclidean_distance() raises:
     _assert_close(euclidean_distance_knn(c, e), 0.0, 0.01, "same point = 0")  # 83
 
 
-fn test_manhattan_distance() raises:
+def test_manhattan_distance() raises:
     print("  test_manhattan_distance")
     var a = _make_list2(0.0, 0.0)
     var b = _make_list2(3.0, 4.0)
     _assert_close(manhattan_distance(a, b), 7.0, 0.01, "manhattan = 7")       # 84
 
 
-fn test_knn_distances() raises:
+def test_knn_distances() raises:
     print("  test_knn_distances")
     var X = List[List[Float64]]()
     X.append(_make_list2(0.0, 0.0))
@@ -363,7 +363,7 @@ fn test_knn_distances() raises:
     _assert_close(dists[1], 1.0, 0.01, "dist to (1,0)")                       # 87
 
 
-fn test_k_nearest_indices() raises:
+def test_k_nearest_indices() raises:
     print("  test_k_nearest_indices")
     var dists = _make_list5(5.0, 1.0, 3.0, 0.5, 2.0)
     var idx = k_nearest_indices(dists, 3)
@@ -372,7 +372,7 @@ fn test_k_nearest_indices() raises:
     _assert(idx[1] == 1, "2nd nearest is index 1")                            # 90
 
 
-fn test_knn_predict() raises:
+def test_knn_predict() raises:
     print("  test_knn_predict")
     var X_train = List[List[Float64]]()
     X_train.append(_make_list2(0.0, 0.0))
@@ -390,7 +390,7 @@ fn test_knn_predict() raises:
     _assert(pred1 == 1, "knn predicts class 1 far")                            # 92
 
 
-fn test_knn_predict_batch() raises:
+def test_knn_predict_batch() raises:
     print("  test_knn_predict_batch")
     var X_train = List[List[Float64]]()
     X_train.append(_make_list2(0.0, 0.0))
@@ -407,7 +407,7 @@ fn test_knn_predict_batch() raises:
     _assert(preds[1] == 1, "batch pred 1")                                    # 95
 
 
-fn test_weighted_knn_predict() raises:
+def test_weighted_knn_predict() raises:
     print("  test_weighted_knn_predict")
     var X_train = List[List[Float64]]()
     X_train.append(_make_list2(0.0, 0.0))
@@ -425,7 +425,7 @@ fn test_weighted_knn_predict() raises:
     _assert(pred == 0 or pred == 1, "weighted knn valid class")                # 97
 
 
-fn test_knn_regression() raises:
+def test_knn_regression() raises:
     print("  test_knn_regression")
     var X_train = List[List[Float64]]()
     X_train.append(_make_list1(0.0))
@@ -443,7 +443,7 @@ fn test_knn_regression() raises:
     _assert(pred >= 0.0 and pred <= 3.0, "knn regression reasonable")          # 99
 
 
-fn test_leave_one_out_cv() raises:
+def test_leave_one_out_cv() raises:
     print("  test_leave_one_out_cv")
     var X = List[List[Float64]]()
     X.append(_make_list2(0.0, 0.0))
@@ -458,7 +458,7 @@ fn test_leave_one_out_cv() raises:
     _assert(acc > 0.8, "LOO accuracy high for easy problem")                   # 101
 
 
-fn test_optimal_k() raises:
+def test_optimal_k() raises:
     print("  test_optimal_k")
     var X = List[List[Float64]]()
     X.append(_make_list2(0.0, 0.0))
@@ -475,7 +475,7 @@ fn test_optimal_k() raises:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 55 Tests ===")
 
     # Time Series Decomposition

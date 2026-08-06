@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pde import heat_equation_1d, wave_equation_1d, diffusion_cfl, wave_cfl, is_stable_heat, finite_difference_second, gaussian_initial, max_norm, energy
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

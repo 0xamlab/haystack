@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from logic_circuit import gate_and, gate_or, gate_not, gate_xor, gate_nand, gate_nor, half_adder, full_adder, ripple_carry_adder, multiplexer_2to1, decoder_2to4, bits_to_int, int_to_bits
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

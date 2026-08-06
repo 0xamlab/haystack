@@ -16,7 +16,7 @@ Public API:
 from std.math import exp, log, pow
 
 
-fn absorbed_dose(energy_j: Float64, mass_kg: Float64) -> Float64:
+def absorbed_dose(energy_j: Float64, mass_kg: Float64) -> Float64:
     """Absorbed dose: D = E/m (in Gray).
 
     Args:
@@ -31,7 +31,7 @@ fn absorbed_dose(energy_j: Float64, mass_kg: Float64) -> Float64:
     return energy_j / mass_kg
 
 
-fn equivalent_dose(absorbed_dose_gy: Float64, radiation_weighting: Float64) -> Float64:
+def equivalent_dose(absorbed_dose_gy: Float64, radiation_weighting: Float64) -> Float64:
     """Equivalent dose: H = D × w_R.
 
     Args:
@@ -44,7 +44,7 @@ fn equivalent_dose(absorbed_dose_gy: Float64, radiation_weighting: Float64) -> F
     return absorbed_dose_gy * radiation_weighting
 
 
-fn effective_dose(
+def effective_dose(
     equivalent_dose_sv: Float64, tissue_weighting: Float64
 ) -> Float64:
     """Effective dose contribution from one tissue: E_T = w_T × H_T.
@@ -59,7 +59,7 @@ fn effective_dose(
     return equivalent_dose_sv * tissue_weighting
 
 
-fn dose_rate(
+def dose_rate(
     activity_bq: Float64, gamma_constant: Float64, distance_m: Float64
 ) -> Float64:
     """Dose rate from a point source at distance r.
@@ -79,7 +79,7 @@ fn dose_rate(
     return gamma_constant * activity_bq / (distance_m * distance_m)
 
 
-fn activity_decay(
+def activity_decay(
     initial_activity: Float64, half_life: Float64, time: Float64
 ) -> Float64:
     """Radioactive decay: A(t) = A0·exp(-λt), λ = ln2/T½.
@@ -98,7 +98,7 @@ fn activity_decay(
     return initial_activity * exp(-lambda_decay * time)
 
 
-fn specific_activity(half_life_s: Float64, molar_mass: Float64) -> Float64:
+def specific_activity(half_life_s: Float64, molar_mass: Float64) -> Float64:
     """Specific activity of a radioisotope: A_sp = ln2·N_A / (T½·M).
 
     Args:
@@ -114,7 +114,7 @@ fn specific_activity(half_life_s: Float64, molar_mass: Float64) -> Float64:
     return log(2.0) * na / (half_life_s * molar_mass)
 
 
-fn tenth_value_layer(hvl: Float64) -> Float64:
+def tenth_value_layer(hvl: Float64) -> Float64:
     """Tenth value layer from half value layer: TVL = HVL/log10(2) × log10(10).
 
     TVL = HVL × log(10)/log(2) = HVL × 3.322
@@ -128,7 +128,7 @@ fn tenth_value_layer(hvl: Float64) -> Float64:
     return hvl * log(10.0) / log(2.0)
 
 
-fn buildup_factor(mu: Float64, distance: Float64, b_factor: Float64) -> Float64:
+def buildup_factor(mu: Float64, distance: Float64, b_factor: Float64) -> Float64:
     """Radiation intensity with buildup: I = B·I0·exp(-μx).
 
     Args:
@@ -142,7 +142,7 @@ fn buildup_factor(mu: Float64, distance: Float64, b_factor: Float64) -> Float64:
     return b_factor * exp(-mu * distance)
 
 
-fn kerma(
+def kerma(
     fluence: Float64, mass_energy_transfer_coeff: Float64
 ) -> Float64:
     """Kerma from photon fluence: K = Φ·(μtr/ρ).
@@ -157,7 +157,7 @@ fn kerma(
     return fluence * mass_energy_transfer_coeff
 
 
-fn radiation_weighting(particle_type_code: Float64) -> Float64:
+def radiation_weighting(particle_type_code: Float64) -> Float64:
     """ICRP radiation weighting factor by particle type.
 
     Codes: 1=photon/electron (w=1), 2=proton (w=2),

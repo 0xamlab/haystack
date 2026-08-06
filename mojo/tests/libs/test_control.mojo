@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from control import create_pid, pid_simulate, bang_bang, step_response, ramp_response, settling_time, overshoot, steady_state_error
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

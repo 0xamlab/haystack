@@ -162,7 +162,7 @@ from std.math import log
 # ── the exact analytic reference for the toy environment ──────────────────────
 
 
-fn _toy_step_moments(theta: Float64) -> List[Float64]:
+def _toy_step_moments(theta: Float64) -> List[Float64]:
     """[E[p], Var p] for one step of threshold `theta`, in closed form."""
     var e1 = 0.5 * theta - 0.5 * theta * theta
     var c = theta - 0.5
@@ -173,7 +173,7 @@ fn _toy_step_moments(theta: Float64) -> List[Float64]:
     return out^
 
 
-fn _toy_diff_moments(a: Float64, b: Float64) -> List[Float64]:
+def _toy_diff_moments(a: Float64, b: Float64) -> List[Float64]:
     """[E[d], Var d] for the paired per-step difference on the slice [a, b)."""
     var e1 = -((b * b - a * a) / 2.0 - 0.5 * (b - a))
     var ca = a - 0.5
@@ -185,7 +185,7 @@ fn _toy_diff_moments(a: Float64, b: Float64) -> List[Float64]:
     return out^
 
 
-fn _toy_analytic_ratio(gap: Float64) -> Float64:
+def _toy_analytic_ratio(gap: Float64) -> Float64:
     """The EXACT unpaired/paired variance ratio. The horizon cancels, so none is needed."""
     var a = 0.5 - gap
     var ma = _toy_step_moments(a)
@@ -196,7 +196,7 @@ fn _toy_analytic_ratio(gap: Float64) -> Float64:
     return (ma[1] + mb[1]) / md[1]
 
 
-fn _toy_analytic_effect_to_noise(gap: Float64, horizon: Int) -> Float64:
+def _toy_analytic_effect_to_noise(gap: Float64, horizon: Int) -> Float64:
     """|E[difference]| / sd(unpaired difference) — the scale-free "how similar" axis."""
     var a = 0.5 - gap
     var ma = _toy_step_moments(a)
@@ -212,7 +212,7 @@ fn _toy_analytic_effect_to_noise(gap: Float64, horizon: Int) -> Float64:
 # ── one driver call per function (see bench_strategy.mojo: nesting them stalls the compiler) ──
 
 
-fn _pair_block(theta_a: Float64, theta_b: Float64) -> List[Float64]:
+def _pair_block(theta_a: Float64, theta_b: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(1.0)
     out.append(theta_a)
@@ -221,7 +221,7 @@ fn _pair_block(theta_a: Float64, theta_b: Float64) -> List[Float64]:
     return out^
 
 
-fn _audit(seed: Int, n_scen: Int, horizon: Int, gap: Float64) -> List[Float64]:
+def _audit(seed: Int, n_scen: Int, horizon: Int, gap: Float64) -> List[Float64]:
     """ONE `crn_pairing_audit`. Returns
     [status, ratio, var_paired, var_unpaired, mean_paired, mean_unpaired, p_paired, p_unpaired,
      n_bit_identical, conclusions_differ, ms, paired_excludes_zero, unpaired_excludes_zero]."""
@@ -249,7 +249,7 @@ fn _audit(seed: Int, n_scen: Int, horizon: Int, gap: Float64) -> List[Float64]:
     return out^
 
 
-fn _queue(
+def _queue(
     lam: Float64, mu_a: Float64, mu_b: Float64, n_cust: Int, n_reps: Int, seed: Int,
     warmup: Int,
 ) -> List[Float64]:
@@ -345,7 +345,7 @@ fn _queue(
 # ── section 1: the toy curve against the exact analytic ratio ─────────────────
 
 
-fn _bench_toy_curve() -> Int:
+def _bench_toy_curve() -> Int:
     print("  [1] the published 174x is one point on a curve, and the curve is exactly known")
     print("      gap   measured      exact         rel_err   effect/noise  var_paired    var_unpaired")
     var gaps = List[Float64]()
@@ -393,7 +393,7 @@ fn _bench_toy_curve() -> Int:
     return 0
 
 
-fn _bench_toy_horizon_invariance() -> Int:
+def _bench_toy_horizon_invariance() -> Int:
     print("  [2] the exact ratio is horizon-free, so the measurement must be too")
     print("      horizon  measured      exact")
     var hs = List[Int]()
@@ -424,7 +424,7 @@ fn _bench_toy_horizon_invariance() -> Int:
 # ── section 2: how stable is a variance ratio at 32 scenarios? ────────────────
 
 
-fn _bench_seed_spread() -> Int:
+def _bench_seed_spread() -> Int:
     print("  [3] the published number came from 32 scenarios — here it is at 12 other seeds")
     print("      seed        ratio        var_paired   var_unpaired  unpaired_excludes_zero")
     var seeds = List[Int]()
@@ -483,7 +483,7 @@ fn _bench_seed_spread() -> Int:
 # ── section 3: the same claim on a queue a practitioner would actually study ──
 
 
-fn _print_queue(tag: String, label: Float64, m: List[Float64]):
+def _print_queue(tag: String, label: Float64, m: List[Float64]):
     if len(m) < 25:
         print("     ", tag, label, "REFUSED")
         return
@@ -498,7 +498,7 @@ fn _print_queue(tag: String, label: Float64, m: List[Float64]):
     )
 
 
-fn _bench_queue_curve() -> Int:
+def _bench_queue_curve() -> Int:
     print("  [4] M/M/1 capacity study, lambda 0.80, baseline mu 1.00, 2000 customers, 40 reps")
     var mus = List[Float64]()
     mus.append(1.005)
@@ -536,7 +536,7 @@ fn _bench_queue_curve() -> Int:
     return 0
 
 
-fn _bench_queue_headline() -> Int:
+def _bench_queue_headline() -> Int:
     print("  [5] the number to publish: a 2% faster server, 2000 replications")
     var m = _queue(0.80, 1.00, 1.02, 2000, 2000, 4242, 0)
     if len(m) < 25 or m[0] < 1.0:
@@ -585,7 +585,7 @@ fn _bench_queue_headline() -> Int:
     return 0
 
 
-fn _bias_row(m: List[Float64], n_cust: Int, warmup: Int) -> List[Float64]:
+def _bias_row(m: List[Float64], n_cust: Int, warmup: Int) -> List[Float64]:
     """[contains_exact, abs_rel_bias, ratio] for one bias-ladder rung, printed as it goes."""
     var out = List[Float64]()
     if len(m) < 25 or m[0] < 1.0:
@@ -603,7 +603,7 @@ fn _bias_row(m: List[Float64], n_cust: Int, warmup: Int) -> List[Float64]:
     return out^
 
 
-fn _bench_queue_bias() -> Int:
+def _bench_queue_bias() -> Int:
     """Where the 2000-replication CI of section 5 misses the exact delta, and why.
 
     Section 5 reports a paired CI of [-0.429096, -0.414964] against an exact steady-state delta of
@@ -685,7 +685,7 @@ fn _bench_queue_bias() -> Int:
 # ── section 4: the property that makes any of this valid, checked on bits ─────
 
 
-fn _c_tape(seed: Int, family: Int, n_scen: Int, horizon: Int, n_factors: Int) -> List[Int]:
+def _c_tape(seed: Int, family: Int, n_scen: Int, horizon: Int, n_factors: Int) -> List[Int]:
     """[cells, tape_bit_equal, celldraw_bit_equal, raw_bit_equal, in_unit_interval]."""
     var cells = 0
     var eq_tape = 0
@@ -730,7 +730,7 @@ fn _c_tape(seed: Int, family: Int, n_scen: Int, horizon: Int, n_factors: Int) ->
     return out^
 
 
-fn _c_streams(seed: Int, family: Int, n_scen: Int, horizon: Int, n_strategies: Int) -> List[Int]:
+def _c_streams(seed: Int, family: Int, n_scen: Int, horizon: Int, n_strategies: Int) -> List[Int]:
     """[words, cross_stream_collisions, env_words_moved, coin_pairs, coin_pairs_equal]."""
     var s_env = UInt64(strat_stream_scenario())
     var s_pol = UInt64(strat_stream_policy())
@@ -775,7 +775,7 @@ fn _c_streams(seed: Int, family: Int, n_scen: Int, horizon: Int, n_strategies: I
     return out^
 
 
-fn _c_queue_draws(
+def _c_queue_draws(
     lam: Float64, mu_a: Float64, mu_b: Float64, n: Int, seed: Int, n_reps: Int
 ) -> List[Float64]:
     """[draws, sA_matches_raw, sB_matches_raw, gaps, gaps_equal, max_rel_dev, cross_collisions]."""
@@ -825,7 +825,7 @@ fn _c_queue_draws(
     return out^
 
 
-fn _c_sequential(seed: Int, family: Int, horizon: Int) -> List[Int]:
+def _c_sequential(seed: Int, family: Int, horizon: Int) -> List[Int]:
     """The negative control: what a STATEFUL consumer does when one arm takes an extra draw.
 
     [steps, addressed_bit_equal, sequential_bit_equal, first_divergence_step].
@@ -857,7 +857,7 @@ fn _c_sequential(seed: Int, family: Int, horizon: Int) -> List[Int]:
     return out^
 
 
-fn _bench_raw_draws() -> Int:
+def _bench_raw_draws() -> Int:
     print("  [7] the CRN precondition, on RAW DRAWS compared as 64-bit patterns")
     var a = _c_tape(12345, 7, 32, 64, 2)
     if len(a) < 5:
@@ -921,7 +921,7 @@ fn _bench_raw_draws() -> Int:
     return 0
 
 
-fn _bench_t_table() -> Int:
+def _bench_t_table() -> Int:
     """scipy is not importable in this environment, so the t quantile is checked against tables."""
     print("  [8] inference_t_quantile(0.975, df) vs published Student-t table values")
     var dfs = List[Float64]()
@@ -962,7 +962,7 @@ fn _bench_t_table() -> Int:
     return 0
 
 
-fn main():
+def main():
     print("\n=== bench_crn_variance_reduction: what the 174x is, and what it is not ===")
     print("Gates are on closed forms, exact bit equality and arithmetic identities.")
     print("No wall-clock number here is gated or comparable across sizes; print the load average")

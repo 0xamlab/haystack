@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from rag_retrieval import rrf_score, hybrid_search_score, bm25_term_score, cross_encoder_logit, chunk_overlap_ratio, context_relevance_score, answer_faithfulness_score, citation_coverage, retrieval_precision, mmr_diversity_score
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

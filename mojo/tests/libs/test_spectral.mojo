@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from spectral import power_spectral_density, cross_spectral_density, coherence, spectral_centroid, spectral_bandwidth, spectral_rolloff, spectral_flatness, spectral_entropy, band_energy, peak_frequency
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

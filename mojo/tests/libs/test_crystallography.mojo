@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from crystallography import bragg_angle, d_spacing_cubic, lattice_parameter_from_d, unit_cell_volume_cubic, unit_cell_volume_tetragonal, unit_cell_volume_orthorhombic, atomic_packing_factor_fcc, atomic_packing_factor_bcc, scherrer_crystallite_size, interplanar_angle_cubic, density_from_crystal, structure_factor_magnitude
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -5,13 +5,13 @@ Replaces Python's urllib.parse with pure Mojo implementations.
 
 Public API:
   struct URL        — parsed URL components
-  fn url_parse()    — parse a URL string into components
-  fn url_to_string()— reconstruct URL from components
-  fn url_encode()   — percent-encode a string
-  fn url_decode()   — decode percent-encoded string
-  fn query_parse()  — parse query string into key/value pairs
-  fn query_get()    — get value from query string by key
-  fn query_build()  — build query string from key/value pairs
+  def url_parse()    — parse a URL string into components
+  def url_to_string()— reconstruct URL from components
+  def url_encode()   — percent-encode a string
+  def url_decode()   — decode percent-encoded string
+  def query_parse()  — parse query string into key/value pairs
+  def query_get()    — get value from query string by key
+  def query_build()  — build query string from key/value pairs
 """
 
 
@@ -19,34 +19,34 @@ Public API:
 
 
 @always_inline
-fn _is_alpha(c: UInt8) -> Bool:
+def _is_alpha(c: UInt8) -> Bool:
     return (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
 
 
 @always_inline
-fn _is_digit(c: UInt8) -> Bool:
+def _is_digit(c: UInt8) -> Bool:
     return c >= 48 and c <= 57
 
 
 @always_inline
-fn _is_alnum(c: UInt8) -> Bool:
+def _is_alnum(c: UInt8) -> Bool:
     return _is_alpha(c) or _is_digit(c)
 
 
 @always_inline
-fn _is_unreserved(c: UInt8) -> Bool:
+def _is_unreserved(c: UInt8) -> Bool:
     """RFC 3986 unreserved characters: A-Z a-z 0-9 - . _ ~"""
     return _is_alnum(c) or c == 45 or c == 46 or c == 95 or c == 126
 
 
-fn _hex_digit(val: Int) -> String:
+def _hex_digit(val: Int) -> String:
     """Convert 0-15 to hex character."""
     if val < 10:
         return chr(48 + val)
     return chr(65 + val - 10)
 
 
-fn _hex_val(c: UInt8) -> Int:
+def _hex_val(c: UInt8) -> Int:
     """Convert hex char to value. Returns -1 if invalid."""
     var ci = Int(c)
     if ci >= 48 and ci <= 57:
@@ -58,7 +58,7 @@ fn _hex_val(c: UInt8) -> Int:
     return -1
 
 
-fn _int_to_string(val: Int) -> String:
+def _int_to_string(val: Int) -> String:
     """Convert non-negative integer to string."""
     if val == 0:
         return String("0")
@@ -70,7 +70,7 @@ fn _int_to_string(val: Int) -> String:
     return result
 
 
-fn _string_to_int(s: String) -> Int:
+def _string_to_int(s: String) -> Int:
     """Parse non-negative integer from string. Returns 0 on failure."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -84,7 +84,7 @@ fn _string_to_int(s: String) -> Int:
     return result
 
 
-fn _substr(s: String, start: Int, end: Int) -> String:
+def _substr(s: String, start: Int, end: Int) -> String:
     """Extract substring from start (inclusive) to end (exclusive)."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -100,7 +100,7 @@ fn _substr(s: String, start: Int, end: Int) -> String:
     return result
 
 
-fn _find(s: String, needle: String, start: Int) -> Int:
+def _find(s: String, needle: String, start: Int) -> Int:
     """Find first occurrence of needle in s starting from start. Returns -1 if not found."""
     var s_len = len(s)
     var n_len = len(needle)
@@ -121,7 +121,7 @@ fn _find(s: String, needle: String, start: Int) -> Int:
     return -1
 
 
-fn _find_char(s: String, ch: UInt8, start: Int) -> Int:
+def _find_char(s: String, ch: UInt8, start: Int) -> Int:
     """Find first occurrence of a single byte in s. Returns -1 if not found."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -144,7 +144,7 @@ struct URL(Copyable, Movable):
     var query: String       # "mode=auto&runs=10000"
     var fragment: String    # ""
 
-    fn __init__(out self):
+    def __init__(out self):
         self.scheme = String("")
         self.host = String("")
         self.port = 0
@@ -156,7 +156,7 @@ struct URL(Copyable, Movable):
 # ── url_parse ────────────────────────────────────────────────────────────────
 
 
-fn url_parse(raw: String) -> URL:
+def url_parse(raw: String) -> URL:
     """Parse a URL string into components.
 
     Handles: scheme://host[:port][/path][?query][#fragment]
@@ -217,7 +217,7 @@ fn url_parse(raw: String) -> URL:
 # ── url_to_string ────────────────────────────────────────────────────────────
 
 
-fn url_to_string(u: URL) -> String:
+def url_to_string(u: URL) -> String:
     """Reconstruct URL from components."""
     var result = String("")
 
@@ -247,7 +247,7 @@ fn url_to_string(u: URL) -> String:
 # ── url_encode ───────────────────────────────────────────────────────────────
 
 
-fn url_encode(s: String) -> String:
+def url_encode(s: String) -> String:
     """Percent-encode a string for URL use.
     Encodes non-unreserved chars as %XX (uppercase hex).
     """
@@ -268,7 +268,7 @@ fn url_encode(s: String) -> String:
 # ── url_decode ───────────────────────────────────────────────────────────────
 
 
-fn url_decode(s: String) -> String:
+def url_decode(s: String) -> String:
     """Decode percent-encoded string. %XX → byte, + → space."""
     var bs = s.as_bytes()
     var n = len(s)
@@ -293,7 +293,7 @@ fn url_decode(s: String) -> String:
 # ── query_parse ──────────────────────────────────────────────────────────────
 
 
-fn query_parse(query: String) -> List[List[String]]:
+def query_parse(query: String) -> List[List[String]]:
     """Parse query string "key1=val1&key2=val2" into list of [key, value] pairs."""
     var result = List[List[String]]()
     var q_len = len(query)
@@ -331,7 +331,7 @@ fn query_parse(query: String) -> List[List[String]]:
 # ── query_get ────────────────────────────────────────────────────────────────
 
 
-fn query_get(query: String, key: String) -> String:
+def query_get(query: String, key: String) -> String:
     """Get a value from a query string by key. Returns "" if not found."""
     var pairs = query_parse(query)
     var n = len(pairs)
@@ -344,7 +344,7 @@ fn query_get(query: String, key: String) -> String:
 # ── query_build ──────────────────────────────────────────────────────────────
 
 
-fn query_build(params: List[List[String]]) -> String:
+def query_build(params: List[List[String]]) -> String:
     """Build query string from list of [key, value] pairs."""
     var n = len(params)
     var result = String("")

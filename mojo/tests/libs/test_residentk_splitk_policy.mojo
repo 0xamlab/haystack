@@ -43,7 +43,7 @@ from residentk.contract import (
 )
 
 
-fn _check(mut passed: Int, mut failed: Int, name: String, got: Int, want: Int) -> None:
+def _check(mut passed: Int, mut failed: Int, name: String, got: Int, want: Int) -> None:
     if got == want:
         passed += 1
         print("  ✅", name, "=", got)
@@ -52,7 +52,7 @@ fn _check(mut passed: Int, mut failed: Int, name: String, got: Int, want: Int) -
         print("  ❌", name, "=", got, "expected", want)
 
 
-fn _check_true(mut passed: Int, mut failed: Int, name: String, cond: Bool) -> None:
+def _check_true(mut passed: Int, mut failed: Int, name: String, cond: Bool) -> None:
     if cond:
         passed += 1
         print("  ✅", name)

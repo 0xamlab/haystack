@@ -25,7 +25,7 @@ from std.math import sqrt, exp, log, abs as fabs
 # ── catch_per_unit_effort ────────────────────────────────────────────────────
 
 
-fn catch_per_unit_effort(total_catch: Float64, total_effort: Float64) -> Float64:
+def catch_per_unit_effort(total_catch: Float64, total_effort: Float64) -> Float64:
     """CPUE = C / E."""
     if total_effort <= 0.0:
         return 0.0
@@ -35,7 +35,7 @@ fn catch_per_unit_effort(total_catch: Float64, total_effort: Float64) -> Float64
 # ── maximum_sustainable_yield ────────────────────────────────────────────────
 
 
-fn maximum_sustainable_yield(r: Float64, k: Float64) -> Float64:
+def maximum_sustainable_yield(r: Float64, k: Float64) -> Float64:
     """MSY = r * K / 4 (Schaefer model)."""
     return r * k / 4.0
 
@@ -43,7 +43,7 @@ fn maximum_sustainable_yield(r: Float64, k: Float64) -> Float64:
 # ── biomass_at_msy ───────────────────────────────────────────────────────────
 
 
-fn biomass_at_msy(k: Float64) -> Float64:
+def biomass_at_msy(k: Float64) -> Float64:
     """B_MSY = K / 2."""
     return k / 2.0
 
@@ -51,7 +51,7 @@ fn biomass_at_msy(k: Float64) -> Float64:
 # ── schaefer_surplus_production ──────────────────────────────────────────────
 
 
-fn schaefer_surplus_production(
+def schaefer_surplus_production(
     r: Float64, biomass: Float64, k: Float64
 ) -> Float64:
     """Surplus Production SP = r * B * (1 - B/K)."""
@@ -63,7 +63,7 @@ fn schaefer_surplus_production(
 # ── fishing_mortality ────────────────────────────────────────────────────────
 
 
-fn fishing_mortality(catch: Float64, biomass: Float64) -> Float64:
+def fishing_mortality(catch: Float64, biomass: Float64) -> Float64:
     """Fishing mortality F = C / B."""
     if biomass <= 0.0:
         return 0.0
@@ -73,7 +73,7 @@ fn fishing_mortality(catch: Float64, biomass: Float64) -> Float64:
 # ── total_mortality ──────────────────────────────────────────────────────────
 
 
-fn total_mortality(fishing_mort: Float64, natural_mort: Float64) -> Float64:
+def total_mortality(fishing_mort: Float64, natural_mort: Float64) -> Float64:
     """Total mortality Z = F + M."""
     return fishing_mort + natural_mort
 
@@ -81,7 +81,7 @@ fn total_mortality(fishing_mort: Float64, natural_mort: Float64) -> Float64:
 # ── exploitation_rate ────────────────────────────────────────────────────────
 
 
-fn exploitation_rate(fishing_mort: Float64, total_mort: Float64) -> Float64:
+def exploitation_rate(fishing_mort: Float64, total_mort: Float64) -> Float64:
     """Exploitation rate E = F / Z."""
     if total_mort <= 0.0:
         return 0.0
@@ -91,7 +91,7 @@ fn exploitation_rate(fishing_mort: Float64, total_mort: Float64) -> Float64:
 # ── survival_rate ────────────────────────────────────────────────────────────
 
 
-fn survival_rate(total_mort: Float64) -> Float64:
+def survival_rate(total_mort: Float64) -> Float64:
     """Annual survival rate S = exp(-Z)."""
     return exp(-total_mort)
 
@@ -99,7 +99,7 @@ fn survival_rate(total_mort: Float64) -> Float64:
 # ── von_bertalanffy_length ───────────────────────────────────────────────────
 
 
-fn von_bertalanffy_length(
+def von_bertalanffy_length(
     l_inf: Float64, k: Float64, t: Float64, t0: Float64
 ) -> Float64:
     """Von Bertalanffy growth: L(t) = Linf * (1 - exp(-k*(t-t0)))."""
@@ -109,7 +109,7 @@ fn von_bertalanffy_length(
 # ── condition_factor ─────────────────────────────────────────────────────────
 
 
-fn condition_factor(weight_g: Float64, length_cm: Float64) -> Float64:
+def condition_factor(weight_g: Float64, length_cm: Float64) -> Float64:
     """Fulton's condition factor K = 100 * W / L³."""
     if length_cm <= 0.0:
         return 0.0
@@ -119,7 +119,7 @@ fn condition_factor(weight_g: Float64, length_cm: Float64) -> Float64:
 # ── gonadosomatic_index ─────────────────────────────────────────────────────
 
 
-fn gonadosomatic_index(
+def gonadosomatic_index(
     gonad_weight: Float64, body_weight: Float64
 ) -> Float64:
     """GSI = gonad_weight / body_weight * 100 (%)."""
@@ -131,7 +131,7 @@ fn gonadosomatic_index(
 # ── stock_recruitment_bevholt ────────────────────────────────────────────────
 
 
-fn stock_recruitment_bevholt(
+def stock_recruitment_bevholt(
     alpha: Float64, beta: Float64, spawners: Float64
 ) -> Float64:
     """Beverton-Holt stock-recruitment: R = α*S / (β + S)."""

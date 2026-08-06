@@ -34,7 +34,7 @@ struct MarkovChain(Copyable, Movable):
     var matrix: List[List[Float64]]
     var current_state: Int
 
-    fn __init__(out self, n_states: Int):
+    def __init__(out self, n_states: Int):
         """Create a Markov chain with n_states. All transitions initialized to 0."""
         self.n_states = n_states
         self.current_state = 0
@@ -45,27 +45,27 @@ struct MarkovChain(Copyable, Movable):
                 row.append(0.0)
             self.matrix.append(row^)
 
-    fn set_transition(mut self, from_s: Int, to_s: Int, prob: Float64):
+    def set_transition(mut self, from_s: Int, to_s: Int, prob: Float64):
         """Set transition probability P(from_s → to_s)."""
         if from_s >= 0 and from_s < self.n_states and to_s >= 0 and to_s < self.n_states:
             self.matrix[from_s][to_s] = prob
 
-    fn get_transition(self, from_s: Int, to_s: Int) -> Float64:
+    def get_transition(self, from_s: Int, to_s: Int) -> Float64:
         """Get transition probability P(from_s → to_s)."""
         if from_s >= 0 and from_s < self.n_states and to_s >= 0 and to_s < self.n_states:
             return self.matrix[from_s][to_s]
         return 0.0
 
-    fn set_state(mut self, state: Int):
+    def set_state(mut self, state: Int):
         """Set the current state."""
         if state >= 0 and state < self.n_states:
             self.current_state = state
 
-    fn get_state(self) -> Int:
+    def get_state(self) -> Int:
         """Get the current state."""
         return self.current_state
 
-    fn step(mut self) -> Int:
+    def step(mut self) -> Int:
         """Take one stochastic step from current state.
 
         Uses random_float64() to sample from the transition probabilities
@@ -83,7 +83,7 @@ struct MarkovChain(Copyable, Movable):
         self.current_state = self.n_states - 1
         return self.n_states - 1
 
-    fn simulate(mut self, steps: Int) -> List[Int]:
+    def simulate(mut self, steps: Int) -> List[Int]:
         """Run n steps from current state, return state history.
 
         Returns a list of length steps+1 (initial state + n transitions).
@@ -95,7 +95,7 @@ struct MarkovChain(Copyable, Movable):
             history.append(next_state)
         return history^
 
-    fn steady_state(self) -> List[Float64]:
+    def steady_state(self) -> List[Float64]:
         """Compute stationary distribution using power iteration.
 
         Iterates π = π * P until convergence (or max 1000 iterations).
@@ -143,7 +143,7 @@ struct MarkovChain(Copyable, Movable):
 
         return pi^
 
-    fn expected_visits(self, steps: Int) -> List[Float64]:
+    def expected_visits(self, steps: Int) -> List[Float64]:
         """Compute expected number of visits to each state over n steps.
 
         Uses matrix multiplication of the transition matrix to accumulate
@@ -183,7 +183,7 @@ struct MarkovChain(Copyable, Movable):
 
         return visits^
 
-    fn absorption_probability(self, absorbing_state: Int, start_state: Int) -> Float64:
+    def absorption_probability(self, absorbing_state: Int, start_state: Int) -> Float64:
         """Compute probability of eventually reaching absorbing_state from start_state.
 
         Uses iterative value computation. An absorbing state has self-transition = 1.
@@ -238,7 +238,7 @@ struct MarkovChain(Copyable, Movable):
 
         return prob[start_state]
 
-    fn mean_first_passage(self, target: Int) -> List[Float64]:
+    def mean_first_passage(self, target: Int) -> List[Float64]:
         """Compute mean first passage time to target from each state.
 
         For each state i ≠ target, solves:
@@ -289,7 +289,7 @@ struct MarkovChain(Copyable, Movable):
 
         return m^
 
-    fn is_ergodic(self) -> Bool:
+    def is_ergodic(self) -> Bool:
         """Check if chain is ergodic (all states reachable from all states).
 
         Uses reachability check via BFS from each state.

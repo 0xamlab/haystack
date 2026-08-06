@@ -200,7 +200,7 @@ struct CoxFit(Copyable, Movable):
     var max_abs_score: Float64
     var last_step_max: Float64
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_events = 0
@@ -234,7 +234,7 @@ struct _Design(Copyable, Movable):
     var mean: List[Float64]
     var n_events: Int
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n = 0
         self.p = 0
@@ -245,7 +245,7 @@ struct _Design(Copyable, Movable):
         self.n_events = 0
 
 
-fn _build_design(
+def _build_design(
     x_flat: List[Float64], n_rows: Int, n_cols: Int, times: List[Float64], event: List[Int]
 ) -> _Design:
     """Validate shapes, reject constant columns, center, and gather into time order.
@@ -302,14 +302,14 @@ fn _build_design(
     return out^
 
 
-fn _eta(design: _Design, beta: List[Float64], row: Int) -> Float64:
+def _eta(design: _Design, beta: List[Float64], row: Int) -> Float64:
     var total: Float64 = 0.0
     for k in range(design.p):
         total += beta[k] * design.x[row * design.p + k]
     return total
 
 
-fn _cox_loglik(design: _Design, beta: List[Float64]) -> List[Float64]:
+def _cox_loglik(design: _Design, beta: List[Float64]) -> List[Float64]:
     """Efron partial log-likelihood at `beta`. Returns [value, ok] with ok in {0.0, 1.0}.
 
     O(n) exponentials and O(n * p) products: the cheap evaluation the line search needs.
@@ -379,14 +379,14 @@ struct _Newton(Copyable, Movable):
     var score: List[Float64]
     var info: List[Float64]
 
-    fn __init__(out self, ok: Bool):
+    def __init__(out self, ok: Bool):
         self.ok = ok
         self.loglik = 0.0
         self.score = List[Float64]()
         self.info = List[Float64]()
 
 
-fn _cox_newton(design: _Design, beta: List[Float64]) -> _Newton:
+def _cox_newton(design: _Design, beta: List[Float64]) -> _Newton:
     """Efron log-likelihood, score vector and observed information at `beta`.
 
     One descending pass. `S2` and `info` are filled on the upper triangle and mirrored, so
@@ -508,7 +508,7 @@ fn _cox_newton(design: _Design, beta: List[Float64]) -> _Newton:
     return out^
 
 
-fn cox_fit(
+def cox_fit(
     x_flat: List[Float64], n_rows: Int, n_cols: Int,
     times: List[Float64], event: List[Int],
     max_iter: Int, tol: Float64,
@@ -773,7 +773,7 @@ struct CoxRisk(Copyable, Movable):
     var relative_risk: List[Float64]
     var has_value: List[Bool]
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_rows = 0
         self.mean_linear_predictor = 0.0
@@ -783,7 +783,7 @@ struct CoxRisk(Copyable, Movable):
         self.has_value = List[Bool]()
 
 
-fn cox_linear_predictor(
+def cox_linear_predictor(
     x_flat: List[Float64], n_rows: Int, n_cols: Int, beta: List[Float64]
 ) -> CoxRisk:
     """`eta_i = sum_k beta_k * x_ik`, and `exp(eta_i - mean(eta))` as a relative risk.
@@ -872,7 +872,7 @@ struct CoxBaseline(Copyable, Movable):
     var has_value: List[Bool]
     var monotone: Bool
 
-    fn __init__(out self, status: Int):
+    def __init__(out self, status: Int):
         self.status = status
         self.n_obs = 0
         self.n_event_times = 0
@@ -883,7 +883,7 @@ struct CoxBaseline(Copyable, Movable):
         self.monotone = False
 
 
-fn cox_baseline_cumhaz(
+def cox_baseline_cumhaz(
     x_flat: List[Float64], n_rows: Int, n_cols: Int,
     times: List[Float64], event: List[Int], beta: List[Float64],
 ) -> CoxBaseline:

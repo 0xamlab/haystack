@@ -17,7 +17,7 @@ Public API:
 from std.math import sqrt, log, exp
 
 
-fn token_drop_fraction(
+def token_drop_fraction(
     tokens_to_expert: Float64, expert_capacity: Float64
 ) -> Float64:
     """Fraction of tokens dropped due to expert capacity overflow.
@@ -34,7 +34,7 @@ fn token_drop_fraction(
     return (tokens_to_expert - expert_capacity) / tokens_to_expert
 
 
-fn expert_load_imbalance(
+def expert_load_imbalance(
     max_load: Float64, mean_load: Float64
 ) -> Float64:
     """Load imbalance: max / mean (1.0 = perfectly balanced).
@@ -51,7 +51,7 @@ fn expert_load_imbalance(
     return max_load / mean_load
 
 
-fn communication_efficiency_moe(
+def communication_efficiency_moe(
     useful_bytes: Float64, total_bytes: Float64
 ) -> Float64:
     """MoE all-to-all communication efficiency.
@@ -73,7 +73,7 @@ fn communication_efficiency_moe(
     return eff
 
 
-fn expert_affinity_score(
+def expert_affinity_score(
     token_embedding: Float64, expert_centroid: Float64,
     history_weight: Float64
 ) -> Float64:
@@ -92,7 +92,7 @@ fn expert_affinity_score(
     return token_embedding * expert_centroid + history_weight
 
 
-fn capacity_overflow_penalty(
+def capacity_overflow_penalty(
     tokens_routed: Float64, capacity: Float64, penalty_factor: Float64
 ) -> Float64:
     """Auxiliary loss penalty for exceeding expert capacity.
@@ -113,7 +113,7 @@ fn capacity_overflow_penalty(
     return overflow * overflow * penalty_factor
 
 
-fn expert_shard_memory_bytes(
+def expert_shard_memory_bytes(
     expert_ffn_params: Float64, n_experts_per_device: Float64,
     dtype_bytes: Float64
 ) -> Float64:
@@ -130,7 +130,7 @@ fn expert_shard_memory_bytes(
     return expert_ffn_params * n_experts_per_device * dtype_bytes
 
 
-fn routing_entropy_balance(
+def routing_entropy_balance(
     router_probs_entropy: Float64, max_entropy: Float64
 ) -> Float64:
     """Routing entropy as fraction of maximum: 1.0 = perfectly uniform.
@@ -147,7 +147,7 @@ fn routing_entropy_balance(
     return router_probs_entropy / max_entropy
 
 
-fn gradient_through_router(
+def gradient_through_router(
     upstream_grad: Float64, gate_prob: Float64
 ) -> Float64:
     """Straight-through gradient for discrete routing decisions.
@@ -164,7 +164,7 @@ fn gradient_through_router(
     return upstream_grad * gate_prob
 
 
-fn expert_activation_sparsity(
+def expert_activation_sparsity(
     active_experts: Float64, total_experts: Float64
 ) -> Float64:
     """Fraction of experts active for a given token.
@@ -181,7 +181,7 @@ fn expert_activation_sparsity(
     return active_experts / total_experts
 
 
-fn dynamic_capacity_factor(
+def dynamic_capacity_factor(
     target_drop_rate: Float64, current_drop_rate: Float64,
     current_factor: Float64, adjust_rate: Float64
 ) -> Float64:

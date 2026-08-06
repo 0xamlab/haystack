@@ -87,7 +87,7 @@ from forecasting.interval import interval_empirical_flat
 from forecasting.pool import POOL_MODE_INV_MAE, pool_holdout_forecast
 
 
-fn _series(n: Int, period: Int) -> List[Float64]:
+def _series(n: Int, period: Int) -> List[Float64]:
     """A deterministic trend-plus-season-plus-wobble series. No randomness: a benchmark whose
     input changes between runs cannot be compared against its own previous numbers."""
     var out = List[Float64]()
@@ -98,7 +98,7 @@ fn _series(n: Int, period: Int) -> List[Float64]:
     return out^
 
 
-fn _ns(t0: UInt, t1: UInt) -> Float64:
+def _ns(t0: UInt, t1: UInt) -> Float64:
     return Float64(Int(t1 - t0))
 
 
@@ -116,7 +116,7 @@ fn _ns(t0: UInt, t1: UInt) -> Float64:
 comptime GATE_REPS: Int = 7
 
 
-fn _min_backtest_ns(
+def _min_backtest_ns(
     y: List[Float64], method_id: Int, horizon: Int, min_train: Int,
     step: Int, expanding: Bool, period: Int
 ) -> Float64:
@@ -147,7 +147,7 @@ fn _min_backtest_ns(
     return best
 
 
-fn main() raises:
+def main() raises:
     var failures = 0
     print("\n[bench_forecasting] scaling gate")
 

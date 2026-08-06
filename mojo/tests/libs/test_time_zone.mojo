@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from time_zone import utc_offset, is_valid_zone, is_dst, effective_offset, time_difference, format_offset, convert_time, local_to_utc, utc_to_local, overlap_hours
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

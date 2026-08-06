@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from numpy_ops import np_clip, np_log1p, np_expm1, np_sign, np_heaviside, np_sinc, np_logaddexp, np_hypot, np_lerp, np_digitize_bin
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

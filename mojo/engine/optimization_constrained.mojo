@@ -22,7 +22,7 @@ from std.math import sqrt, abs as fabs, log, exp
 # ── Objective Functions ──────────────────────────────────────────────────────
 
 
-fn eval_objective_c(x: List[Float64], func_id: Int) -> Float64:
+def eval_objective_c(x: List[Float64], func_id: Int) -> Float64:
     """Evaluate objective function by ID.
     0 = x0² + x1², 1 = -(x0*x1), 2 = x0 + x1."""
     if func_id == 0:
@@ -45,7 +45,7 @@ fn eval_objective_c(x: List[Float64], func_id: Int) -> Float64:
 # ── Constraint Functions ─────────────────────────────────────────────────────
 
 
-fn eval_constraint(x: List[Float64], constraint_id: Int) -> Float64:
+def eval_constraint(x: List[Float64], constraint_id: Int) -> Float64:
     """Evaluate constraint g(x) ≤ 0 by ID.
     0 = x0+x1-1, 1 = x0²+x1²-1, 2 = -x0, 3 = -x1."""
     if len(x) < 2:
@@ -64,7 +64,7 @@ fn eval_constraint(x: List[Float64], constraint_id: Int) -> Float64:
 # ── Feasibility and Penalty ──────────────────────────────────────────────────
 
 
-fn is_feasible_c(
+def is_feasible_c(
     x: List[Float64], constraints: List[Int], tol: Float64 = 1e-6
 ) -> Bool:
     """Check if all constraints g_i(x) ≤ 0 are satisfied within tolerance."""
@@ -75,7 +75,7 @@ fn is_feasible_c(
     return True
 
 
-fn penalty_value(x: List[Float64], constraints: List[Int]) -> Float64:
+def penalty_value(x: List[Float64], constraints: List[Int]) -> Float64:
     """Total constraint violation: Σ max(0, g_i(x))²."""
     var total: Float64 = 0.0
     for i in range(len(constraints)):
@@ -88,7 +88,7 @@ fn penalty_value(x: List[Float64], constraints: List[Int]) -> Float64:
 # ── Penalized Objective ─────────────────────────────────────────────────────
 
 
-fn _penalized_objective(
+def _penalized_objective(
     x: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -101,7 +101,7 @@ fn _penalized_objective(
 # ── Numerical Gradient ───────────────────────────────────────────────────────
 
 
-fn gradient_estimate(
+def gradient_estimate(
     x: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -128,7 +128,7 @@ fn gradient_estimate(
 # ── Penalty Method ───────────────────────────────────────────────────────────
 
 
-fn penalty_method(
+def penalty_method(
     x0: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -155,7 +155,7 @@ fn penalty_method(
 # ── Barrier Method ───────────────────────────────────────────────────────────
 
 
-fn _barrier_objective(
+def _barrier_objective(
     x: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -171,7 +171,7 @@ fn _barrier_objective(
     return obj
 
 
-fn _barrier_gradient(
+def _barrier_gradient(
     x: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -195,7 +195,7 @@ fn _barrier_gradient(
     return grad^
 
 
-fn barrier_method(
+def barrier_method(
     x0: List[Float64],
     func_id: Int,
     constraints: List[Int],
@@ -249,7 +249,7 @@ fn barrier_method(
 # ── Augmented Lagrangian Step ────────────────────────────────────────────────
 
 
-fn augmented_lagrangian_step(
+def augmented_lagrangian_step(
     x: List[Float64],
     lambdas: List[Float64],
     func_id: Int,

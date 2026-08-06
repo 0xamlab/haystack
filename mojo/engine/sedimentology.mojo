@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, log, exp, pow
 
 
-fn settling_velocity_stokes(
+def settling_velocity_stokes(
     grain_diameter_m: Float64, grain_density: Float64,
     fluid_density: Float64, kinematic_viscosity: Float64
 ) -> Float64:
@@ -40,7 +40,7 @@ fn settling_velocity_stokes(
     return (grain_density - fluid_density) * g * grain_diameter_m * grain_diameter_m / denom
 
 
-fn shields_parameter(
+def shields_parameter(
     bed_shear_stress: Float64, grain_diameter_m: Float64,
     grain_density: Float64, fluid_density: Float64
 ) -> Float64:
@@ -64,7 +64,7 @@ fn shields_parameter(
     return bed_shear_stress / denom
 
 
-fn critical_shear_stress(
+def critical_shear_stress(
     grain_diameter_m: Float64, grain_density: Float64, fluid_density: Float64
 ) -> Float64:
     """Critical bed shear stress for incipient motion (Shields θ_c ≈ 0.047).
@@ -83,7 +83,7 @@ fn critical_shear_stress(
     return 0.047 * (grain_density - fluid_density) * g * grain_diameter_m
 
 
-fn bedload_transport(
+def bedload_transport(
     shields: Float64, critical_shields: Float64,
     grain_diameter_m: Float64, fluid_density: Float64, grain_density: Float64
 ) -> Float64:
@@ -107,7 +107,7 @@ fn bedload_transport(
     return 8.0 * pow(excess, 1.5)
 
 
-fn suspended_load_rouse(
+def suspended_load_rouse(
     reference_conc: Float64, reference_height: Float64,
     height: Float64, rouse_number: Float64, depth: Float64
 ) -> Float64:
@@ -133,7 +133,7 @@ fn suspended_load_rouse(
     return reference_conc * pow(ratio, rouse_number)
 
 
-fn grain_size_phi(diameter_mm: Float64) -> Float64:
+def grain_size_phi(diameter_mm: Float64) -> Float64:
     """Convert grain diameter to phi scale.
 
     φ = -log2(d_mm)
@@ -149,7 +149,7 @@ fn grain_size_phi(diameter_mm: Float64) -> Float64:
     return -log(diameter_mm) / log(2.0)
 
 
-fn phi_to_mm(phi: Float64) -> Float64:
+def phi_to_mm(phi: Float64) -> Float64:
     """Convert phi scale to grain diameter.
 
     d_mm = 2^(-φ)
@@ -163,7 +163,7 @@ fn phi_to_mm(phi: Float64) -> Float64:
     return pow(2.0, -phi)
 
 
-fn sorting_coefficient(
+def sorting_coefficient(
     phi_84: Float64, phi_16: Float64, phi_95: Float64, phi_5: Float64
 ) -> Float64:
     """Folk and Ward inclusive graphic standard deviation (sorting).
@@ -182,7 +182,7 @@ fn sorting_coefficient(
     return (phi_84 - phi_16) / 4.0 + (phi_95 - phi_5) / 6.6
 
 
-fn skewness_folk_ward(
+def skewness_folk_ward(
     phi_84: Float64, phi_16: Float64, phi_50: Float64,
     phi_95: Float64, phi_5: Float64
 ) -> Float64:
@@ -207,7 +207,7 @@ fn skewness_folk_ward(
     return (phi_16 + phi_84 - 2.0 * phi_50) / (2.0 * d1) + (phi_5 + phi_95 - 2.0 * phi_50) / (2.0 * d2)
 
 
-fn sediment_budget(
+def sediment_budget(
     supply_rate: Float64, deposition_rate: Float64, erosion_rate: Float64
 ) -> Float64:
     """Sediment budget: net accumulation or loss.

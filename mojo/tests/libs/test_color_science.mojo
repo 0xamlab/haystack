@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from color_science import delta_e_76, lab_to_lch_l, lab_to_lch_c, lab_to_lch_h, rgb_to_luminance, contrast_ratio, wcag_aa_pass, color_temperature_approx, metamerism_index, chromatic_adaptation_von_kries, cri_from_delta_e, whiteness_index_cie
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

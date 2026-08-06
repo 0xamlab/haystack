@@ -68,7 +68,7 @@ comptime REF_WGS84_DEG_M: Float64 = 111319.49079327358
 comptime REF_LHR_JFK_M: Float64 = 5540011.317976542
 
 
-fn _pair(x0: Float64, y0: Float64, x1: Float64, y1: Float64) -> List[Float64]:
+def _pair(x0: Float64, y0: Float64, x1: Float64, y1: Float64) -> List[Float64]:
     var out = List[Float64]()
     out.append(x0)
     out.append(y0)
@@ -77,7 +77,7 @@ fn _pair(x0: Float64, y0: Float64, x1: Float64, y1: Float64) -> List[Float64]:
     return out^
 
 
-fn main() raises:
+def main() raises:
     var passed = 0
     var failed = 0
     print("[geospatial.frame]")

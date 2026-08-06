@@ -48,7 +48,7 @@ comptime PI: Float64 = 3.141592653589793
 comptime LN2: Float64 = 0.6931471805599453
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
@@ -56,7 +56,7 @@ fn _assert(cond: Bool, msg: String) raises:
 # ── Forensics tests ─────────────────────────────────────────────────────────
 
 
-fn test_time_of_death_newton() raises:
+def test_time_of_death_newton() raises:
     # Body at 30°C, ambient 20°C, normal 37°C, k=0.1
     # t = -ln((30-20)/(37-20))/0.1 = -ln(10/17)/0.1
     var v = time_of_death_newton(30.0, 20.0, 37.0, 0.1)
@@ -73,7 +73,7 @@ fn test_time_of_death_newton() raises:
     print("  ✓ time_of_death_newton")
 
 
-fn test_algor_mortis_rate() raises:
+def test_algor_mortis_rate() raises:
     # (35 - 20) / 10 = 1.5
     var v = algor_mortis_rate(35.0, 20.0)
     _assert(fabs(v - 1.5) < 0.001, "algor_mortis_rate basic")
@@ -83,7 +83,7 @@ fn test_algor_mortis_rate() raises:
     print("  ✓ algor_mortis_rate")
 
 
-fn test_blood_alcohol_widmark() raises:
+def test_blood_alcohol_widmark() raises:
     # BAC = 40 / (80 * 0.68) = 0.7353
     var v = blood_alcohol_widmark(40.0, 80.0, 0.68)
     _assert(fabs(v - 40.0 / (80.0 * 0.68)) < 0.001, "widmark basic")
@@ -94,7 +94,7 @@ fn test_blood_alcohol_widmark() raises:
     print("  ✓ blood_alcohol_widmark")
 
 
-fn test_alcohol_elimination_rate() raises:
+def test_alcohol_elimination_rate() raises:
     # 0.08 - 0.015*2 = 0.05
     var v = alcohol_elimination_rate(0.08, 2.0, 0.015)
     _assert(fabs(v - 0.05) < 0.001, "elimination basic")
@@ -105,7 +105,7 @@ fn test_alcohol_elimination_rate() raises:
     print("  ✓ alcohol_elimination_rate")
 
 
-fn test_rigor_mortis_stage() raises:
+def test_rigor_mortis_stage() raises:
     _assert(rigor_mortis_stage(0.5) == 0, "rigor stage 0")
     _assert(rigor_mortis_stage(1.9) == 0, "rigor stage 0 edge")
     _assert(rigor_mortis_stage(3.0) == 1, "rigor stage 1")
@@ -115,7 +115,7 @@ fn test_rigor_mortis_stage() raises:
     print("  ✓ rigor_mortis_stage")
 
 
-fn test_ballistic_drop() raises:
+def test_ballistic_drop() raises:
     # drop = 0.5 * 9.81 * (100/800)² = 0.5*9.81*0.015625 = 0.07664
     var v = ballistic_drop(800.0, 100.0, 9.81)
     var expected = 0.5 * 9.81 * (100.0 / 800.0) * (100.0 / 800.0)
@@ -127,7 +127,7 @@ fn test_ballistic_drop() raises:
     print("  ✓ ballistic_drop")
 
 
-fn test_bloodstain_impact_angle() raises:
+def test_bloodstain_impact_angle() raises:
     # sin(θ) = 0.5 → θ = π/6 ≈ 0.5236
     var v = bloodstain_impact_angle(5.0, 10.0)
     _assert(fabs(v - asin(0.5)) < 0.001, "bloodstain angle 30°")
@@ -142,7 +142,7 @@ fn test_bloodstain_impact_angle() raises:
     print("  ✓ bloodstain_impact_angle")
 
 
-fn test_dna_match_probability() raises:
+def test_dna_match_probability() raises:
     # P = 2 * 0.1 * 0.2 = 0.04
     var v = dna_match_probability(0.1, 0.2)
     _assert(fabs(v - 0.04) < 0.0001, "dna match basic")
@@ -152,7 +152,7 @@ fn test_dna_match_probability() raises:
     print("  ✓ dna_match_probability")
 
 
-fn test_fingerprint_minutiae_score() raises:
+def test_fingerprint_minutiae_score() raises:
     var v = fingerprint_minutiae_score(12.0, 16.0)
     _assert(fabs(v - 0.75) < 0.001, "minutiae score 75%")
 
@@ -161,13 +161,13 @@ fn test_fingerprint_minutiae_score() raises:
     print("  ✓ fingerprint_minutiae_score")
 
 
-fn test_glass_refractive_index_match() raises:
+def test_glass_refractive_index_match() raises:
     _assert(glass_refractive_index_match(1.518, 1.519, 0.005), "glass match close")
     _assert(not glass_refractive_index_match(1.518, 1.530, 0.005), "glass no match")
     print("  ✓ glass_refractive_index_match")
 
 
-fn test_decomposition_add() raises:
+def test_decomposition_add() raises:
     # ADD = 100 + max(0,25)*48/24 = 100 + 50 = 150
     var v = decomposition_add(100.0, 25.0, 48.0)
     _assert(fabs(v - 150.0) < 0.01, "decomposition add positive")
@@ -178,7 +178,7 @@ fn test_decomposition_add() raises:
     print("  ✓ decomposition_add")
 
 
-fn test_toxicology_lethal_dose() raises:
+def test_toxicology_lethal_dose() raises:
     # LD50=50 mg/kg, 70kg → 3500 mg
     var v = toxicology_lethal_dose(50.0, 70.0)
     _assert(fabs(v - 3500.0) < 0.01, "lethal dose basic")
@@ -188,7 +188,7 @@ fn test_toxicology_lethal_dose() raises:
 # ── Transportation tests ─────────────────────────────────────────────────────
 
 
-fn test_level_of_service_density() raises:
+def test_level_of_service_density() raises:
     # 1800 veh/hr / 100 km/hr = 18 veh/km
     var v = level_of_service_density(1800.0, 100.0)
     _assert(fabs(v - 18.0) < 0.01, "LOS density basic")
@@ -198,14 +198,14 @@ fn test_level_of_service_density() raises:
     print("  ✓ level_of_service_density")
 
 
-fn test_highway_capacity() raises:
+def test_highway_capacity() raises:
     # 4 lanes * 2000 = 8000
     var v = highway_capacity(4.0, 2000.0)
     _assert(fabs(v - 8000.0) < 0.01, "highway capacity basic")
     print("  ✓ highway_capacity")
 
 
-fn test_travel_time() raises:
+def test_travel_time() raises:
     # 120km / 60km/hr = 2hr
     var v = travel_time(120.0, 60.0)
     _assert(fabs(v - 2.0) < 0.001, "travel time basic")
@@ -215,7 +215,7 @@ fn test_travel_time() raises:
     print("  ✓ travel_time")
 
 
-fn test_delay_at_signal() raises:
+def test_delay_at_signal() raises:
     # C=90, g/C=0.4, λ=0.3, μ=0.5 → x=0.6
     # d = 0.5*90*(1-0.4)²/(1-0.6*0.4) = 0.5*90*0.36/(1-0.24) = 16.2/0.76 ≈ 21.316
     var v = delay_at_signal(90.0, 0.4, 0.3, 0.5)
@@ -224,7 +224,7 @@ fn test_delay_at_signal() raises:
     print("  ✓ delay_at_signal")
 
 
-fn test_headway() raises:
+def test_headway() raises:
     # h = 2.5 + 30/(2*3.0) = 2.5 + 5 = 7.5
     var v = headway(30.0, 2.5, 3.0)
     _assert(fabs(v - 7.5) < 0.01, "headway basic")
@@ -235,7 +235,7 @@ fn test_headway() raises:
     print("  ✓ headway")
 
 
-fn test_stopping_distance() raises:
+def test_stopping_distance() raises:
     # v=20 m/s, t=2.5s, f=0.35, G=0.0
     # d = 20*2.5 + 20²/(2*9.81*0.35) = 50 + 400/6.867 = 50 + 58.25 ≈ 108.25
     var v = stopping_distance(20.0, 2.5, 0.35, 0.0)
@@ -244,7 +244,7 @@ fn test_stopping_distance() raises:
     print("  ✓ stopping_distance")
 
 
-fn test_fuel_consumption_rate() raises:
+def test_fuel_consumption_rate() raises:
     # base=8, speed=100, optimal=80 → 8*(1+0.01*400) = 8*5 = 40
     var v = fuel_consumption_rate(8.0, 100.0, 80.0)
     _assert(fabs(v - 40.0) < 0.01, "fuel consumption basic")
@@ -255,7 +255,7 @@ fn test_fuel_consumption_rate() raises:
     print("  ✓ fuel_consumption_rate")
 
 
-fn test_passenger_car_equivalent() raises:
+def test_passenger_car_equivalent() raises:
     # 10% trucks, terrain=2.5 → 1 + 0.1*1.5 = 1.15
     var v = passenger_car_equivalent(0.10, 2.5)
     _assert(fabs(v - 1.15) < 0.001, "PCE basic")
@@ -266,14 +266,14 @@ fn test_passenger_car_equivalent() raises:
     print("  ✓ passenger_car_equivalent")
 
 
-fn test_intersection_capacity() raises:
+def test_intersection_capacity() raises:
     # s=1800, g/C=0.5 → 900
     var v = intersection_capacity(1800.0, 0.5)
     _assert(fabs(v - 900.0) < 0.01, "intersection cap basic")
     print("  ✓ intersection_capacity")
 
 
-fn test_queue_length_estimate() raises:
+def test_queue_length_estimate() raises:
     # λ=500, μ=400, T=0.5 → (500-400)*0.5 = 50
     var v = queue_length_estimate(500.0, 400.0, 0.5)
     _assert(fabs(v - 50.0) < 0.01, "queue length oversaturated")
@@ -284,7 +284,7 @@ fn test_queue_length_estimate() raises:
     print("  ✓ queue_length_estimate")
 
 
-fn test_vehicle_operating_cost() raises:
+def test_vehicle_operating_cost() raises:
     # $3.50/gal * 100mi / 25mpg = $14
     var v = vehicle_operating_cost(3.50, 100.0, 25.0)
     _assert(fabs(v - 14.0) < 0.01, "VOC basic")
@@ -294,7 +294,7 @@ fn test_vehicle_operating_cost() raises:
     print("  ✓ vehicle_operating_cost")
 
 
-fn test_crash_rate() raises:
+def test_crash_rate() raises:
     # 25 crashes / 10 MVMT = 2.5
     var v = crash_rate(25.0, 10.0)
     _assert(fabs(v - 2.5) < 0.01, "crash rate basic")
@@ -307,7 +307,7 @@ fn test_crash_rate() raises:
 # ── Nuclear tests ────────────────────────────────────────────────────────────
 
 
-fn test_radioactive_decay() raises:
+def test_radioactive_decay() raises:
     # N(t) = 1000 * exp(-0.1*5) = 1000 * exp(-0.5)
     var v = radioactive_decay(1000.0, 0.1, 5.0)
     var expected = 1000.0 * exp(-0.5)
@@ -319,7 +319,7 @@ fn test_radioactive_decay() raises:
     print("  ✓ radioactive_decay")
 
 
-fn test_half_life_from_lambda() raises:
+def test_half_life_from_lambda() raises:
     # t½ = ln(2)/0.1 ≈ 6.931
     var v = half_life_from_lambda(0.1)
     _assert(fabs(v - LN2 / 0.1) < 0.001, "half_life basic")
@@ -329,7 +329,7 @@ fn test_half_life_from_lambda() raises:
     print("  ✓ half_life_from_lambda")
 
 
-fn test_lambda_from_half_life() raises:
+def test_lambda_from_half_life() raises:
     # λ = ln(2)/10 ≈ 0.0693
     var v = lambda_from_half_life(10.0)
     _assert(fabs(v - LN2 / 10.0) < 0.0001, "lambda basic")
@@ -339,14 +339,14 @@ fn test_lambda_from_half_life() raises:
     print("  ✓ lambda_from_half_life")
 
 
-fn test_activity() raises:
+def test_activity() raises:
     # A = 0.05 * 1e6 = 50000
     var v = activity(0.05, 1e6)
     _assert(fabs(v - 50000.0) < 0.01, "activity basic")
     print("  ✓ activity")
 
 
-fn test_decay_constant_from_activity() raises:
+def test_decay_constant_from_activity() raises:
     # λ = 50000 / 1e6 = 0.05
     var v = decay_constant_from_activity(50000.0, 1e6)
     _assert(fabs(v - 0.05) < 0.0001, "decay const from activity")
@@ -356,7 +356,7 @@ fn test_decay_constant_from_activity() raises:
     print("  ✓ decay_constant_from_activity")
 
 
-fn test_binding_energy_per_nucleon() raises:
+def test_binding_energy_per_nucleon() raises:
     # Fe-56: total BE ≈ 492 MeV, A=56 → ~8.786 MeV/nucleon
     var v = binding_energy_per_nucleon(492.0, 56.0)
     _assert(fabs(v - 492.0 / 56.0) < 0.001, "BE per nucleon Fe56")
@@ -366,7 +366,7 @@ fn test_binding_energy_per_nucleon() raises:
     print("  ✓ binding_energy_per_nucleon")
 
 
-fn test_mass_defect() raises:
+def test_mass_defect() raises:
     # He-4: Z=2, N=2, mp=1.00728, mn=1.00866, M=4.00260
     # Δm = 2*1.00728 + 2*1.00866 - 4.00260 = 4.03188 - 4.00260 = 0.02928
     var v = mass_defect(2.0, 2.0, 4.00260, 1.00728, 1.00866)
@@ -374,7 +374,7 @@ fn test_mass_defect() raises:
     print("  ✓ mass_defect")
 
 
-fn test_q_value() raises:
+def test_q_value() raises:
     # Q = (m_r - m_p) * 931.5
     # If m_r=236.05, m_p=235.86 → Q = 0.19*931.5 = 176.985
     var v = q_value(236.05, 235.86, 931.5)
@@ -382,7 +382,7 @@ fn test_q_value() raises:
     print("  ✓ q_value")
 
 
-fn test_neutron_multiplication() raises:
+def test_neutron_multiplication() raises:
     # k=1.05, gen=10 → 1.05^10 ≈ 1.6289
     var v = neutron_multiplication(1.05, 10.0)
     var expected = pow(1.05, 10.0)
@@ -394,7 +394,7 @@ fn test_neutron_multiplication() raises:
     print("  ✓ neutron_multiplication")
 
 
-fn test_dose_rate_inverse_square() raises:
+def test_dose_rate_inverse_square() raises:
     # D = 100 * (2/4)² = 100 * 0.25 = 25
     var v = dose_rate_inverse_square(100.0, 2.0, 4.0)
     _assert(fabs(v - 25.0) < 0.01, "dose inv sq double dist")
@@ -408,7 +408,7 @@ fn test_dose_rate_inverse_square() raises:
     print("  ✓ dose_rate_inverse_square")
 
 
-fn test_shielding_attenuation() raises:
+def test_shielding_attenuation() raises:
     # I = 1000 * exp(-0.2*5) = 1000 * exp(-1) ≈ 367.88
     var v = shielding_attenuation(1000.0, 0.2, 5.0)
     var expected = 1000.0 * exp(-1.0)
@@ -420,7 +420,7 @@ fn test_shielding_attenuation() raises:
     print("  ✓ shielding_attenuation")
 
 
-fn test_critical_mass_estimate() raises:
+def test_critical_mass_estimate() raises:
     # Proportionality: 19000 * 1.235 * 2.5 = 58662.5
     var v = critical_mass_estimate(19000.0, 1.235, 2.5)
     _assert(fabs(v - 19000.0 * 1.235 * 2.5) < 0.1, "critical mass prop")
@@ -430,7 +430,7 @@ fn test_critical_mass_estimate() raises:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=== Wave 72 Tests: Forensics, Transportation, Nuclear ===")
 
     print("\n-- Forensics --")

@@ -1220,7 +1220,7 @@ def emit_lib_test(module_id: str, import_path: str, sigs: list[FnSig]) -> str:
         "from std.math import isnan, isinf",
         f"from {import_path} import {', '.join(s.name for s in sigs)}",
         "",
-        "fn is_finite(x: Float64) -> Bool:",
+        "def is_finite(x: Float64) -> Bool:",
         "    return not isnan(x) and not isinf(x)",
         "",
         "def main() raises:",

@@ -34,7 +34,7 @@ alias EXPECT_7: UInt64 = 8147541987183208929
 alias EXPECT_SELFTEST: UInt64 = 13066461341573311292
 
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 

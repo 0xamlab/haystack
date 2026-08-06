@@ -27,7 +27,7 @@ comptime PI: Float64 = 3.141592653589793
 # ── ideal_gas_volume ─────────────────────────────────────────────────────────
 
 
-fn ideal_gas_volume(
+def ideal_gas_volume(
     pressure1: Float64, volume1: Float64, pressure2: Float64
 ) -> Float64:
     """Boyle's law: V2 = P1 * V1 / P2.
@@ -48,7 +48,7 @@ fn ideal_gas_volume(
 # ── flow_rate_orifice ────────────────────────────────────────────────────────
 
 
-fn flow_rate_orifice(
+def flow_rate_orifice(
     cd: Float64,
     area: Float64,
     pressure_drop: Float64,
@@ -76,7 +76,7 @@ fn flow_rate_orifice(
 # ── compressor_power ─────────────────────────────────────────────────────────
 
 
-fn compressor_power(
+def compressor_power(
     flow_rate: Float64,
     p1: Float64,
     p2: Float64,
@@ -104,7 +104,7 @@ fn compressor_power(
 # ── pressure_drop_pipe ───────────────────────────────────────────────────────
 
 
-fn pressure_drop_pipe(
+def pressure_drop_pipe(
     f: Float64,
     length: Float64,
     diameter: Float64,
@@ -131,7 +131,7 @@ fn pressure_drop_pipe(
 # ── air_consumption ──────────────────────────────────────────────────────────
 
 
-fn air_consumption(
+def air_consumption(
     bore_diameter: Float64,
     stroke: Float64,
     pressure: Float64,
@@ -155,7 +155,7 @@ fn air_consumption(
 # ── cylinder_force ───────────────────────────────────────────────────────────
 
 
-fn cylinder_force(
+def cylinder_force(
     bore_area: Float64, pressure: Float64
 ) -> Float64:
     """Cylinder force: F = A * P (newtons).
@@ -173,7 +173,7 @@ fn cylinder_force(
 # ── bore_area ────────────────────────────────────────────────────────────────
 
 
-fn bore_area(diameter: Float64) -> Float64:
+def bore_area(diameter: Float64) -> Float64:
     """Bore area: A = π * d² / 4.
 
     Args:
@@ -188,7 +188,7 @@ fn bore_area(diameter: Float64) -> Float64:
 # ── piston_speed ─────────────────────────────────────────────────────────────
 
 
-fn piston_speed(
+def piston_speed(
     stroke: Float64, cycles_per_min: Float64
 ) -> Float64:
     """Average piston speed: v = 2 * stroke * cycles / 60 (m/s).
@@ -206,7 +206,7 @@ fn piston_speed(
 # ── receiver_volume ──────────────────────────────────────────────────────────
 
 
-fn receiver_volume(
+def receiver_volume(
     flow_rate: Float64,
     run_time: Float64,
     p_max: Float64,
@@ -232,7 +232,7 @@ fn receiver_volume(
 # ── free_air_delivery ────────────────────────────────────────────────────────
 
 
-fn free_air_delivery(
+def free_air_delivery(
     measured_flow: Float64,
     measured_pressure: Float64,
     atm_pressure: Float64,
@@ -255,7 +255,7 @@ fn free_air_delivery(
 # ── specific_power ───────────────────────────────────────────────────────────
 
 
-fn specific_power(
+def specific_power(
     power_kw: Float64, fad: Float64
 ) -> Float64:
     """Specific power: SP = power / FAD (kW per m³/min).
@@ -275,7 +275,7 @@ fn specific_power(
 # ── dew_point_pressure ───────────────────────────────────────────────────────
 
 
-fn dew_point_pressure(
+def dew_point_pressure(
     atm_dew_point: Float64, pressure_ratio: Float64
 ) -> Float64:
     """Pressure dew point (simplified): DP ≈ atm_dp + 10 * log(ratio).

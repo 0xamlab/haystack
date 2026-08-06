@@ -39,7 +39,7 @@ struct TokenBucket:
     var refill_rate: Float64
     var last_refill: Float64
 
-    fn __init__(out self, capacity: Float64, tokens: Float64,
+    def __init__(out self, capacity: Float64, tokens: Float64,
                 refill_rate: Float64, last_refill: Float64):
         self.capacity = capacity
         self.tokens = tokens
@@ -47,12 +47,12 @@ struct TokenBucket:
         self.last_refill = last_refill
 
 
-fn tb_create(capacity: Float64, refill_rate: Float64) -> TokenBucket:
+def tb_create(capacity: Float64, refill_rate: Float64) -> TokenBucket:
     """Create token bucket starting full at time 0."""
     return TokenBucket(capacity, capacity, refill_rate, 0.0)
 
 
-fn tb_refill(mut bucket: TokenBucket, current_time: Float64):
+def tb_refill(mut bucket: TokenBucket, current_time: Float64):
     """Refill tokens based on elapsed time since last refill."""
     var elapsed = current_time - bucket.last_refill
     if elapsed > 0.0:
@@ -62,7 +62,7 @@ fn tb_refill(mut bucket: TokenBucket, current_time: Float64):
         bucket.last_refill = current_time
 
 
-fn tb_consume(
+def tb_consume(
     mut bucket: TokenBucket, tokens: Float64, current_time: Float64
 ) -> Bool:
     """Try to consume tokens. Returns True if allowed."""
@@ -73,7 +73,7 @@ fn tb_consume(
     return False
 
 
-fn tb_available(bucket: TokenBucket) -> Float64:
+def tb_available(bucket: TokenBucket) -> Float64:
     """Current available tokens (without refill)."""
     return bucket.tokens
 
@@ -93,7 +93,7 @@ struct LeakyBucket:
     var leak_rate: Float64
     var last_leak: Float64
 
-    fn __init__(out self, capacity: Float64, current: Float64,
+    def __init__(out self, capacity: Float64, current: Float64,
                 leak_rate: Float64, last_leak: Float64):
         self.capacity = capacity
         self.current = current
@@ -101,12 +101,12 @@ struct LeakyBucket:
         self.last_leak = last_leak
 
 
-fn lb_create(capacity: Float64, leak_rate: Float64) -> LeakyBucket:
+def lb_create(capacity: Float64, leak_rate: Float64) -> LeakyBucket:
     """Create leaky bucket starting empty at time 0."""
     return LeakyBucket(capacity, 0.0, leak_rate, 0.0)
 
 
-fn lb_leak(mut bucket: LeakyBucket, current_time: Float64):
+def lb_leak(mut bucket: LeakyBucket, current_time: Float64):
     """Leak tokens based on elapsed time."""
     var elapsed = current_time - bucket.last_leak
     if elapsed > 0.0:
@@ -117,7 +117,7 @@ fn lb_leak(mut bucket: LeakyBucket, current_time: Float64):
         bucket.last_leak = current_time
 
 
-fn lb_add(
+def lb_add(
     mut bucket: LeakyBucket, amount: Float64, current_time: Float64
 ) -> Bool:
     """Add to bucket. Returns False if would overflow."""
@@ -128,7 +128,7 @@ fn lb_add(
     return True
 
 
-fn lb_level(bucket: LeakyBucket) -> Float64:
+def lb_level(bucket: LeakyBucket) -> Float64:
     """Current fill level (without leaking)."""
     return bucket.current
 
@@ -148,18 +148,18 @@ struct SlidingWindow:
     var window_size: Float64
     var max_requests: Int
 
-    fn __init__(out self, window_size: Float64, max_requests: Int):
+    def __init__(out self, window_size: Float64, max_requests: Int):
         self.timestamps = List[Float64]()
         self.window_size = window_size
         self.max_requests = max_requests
 
 
-fn sw_create(window_size: Float64, max_requests: Int) -> SlidingWindow:
+def sw_create(window_size: Float64, max_requests: Int) -> SlidingWindow:
     """Create sliding window limiter."""
     return SlidingWindow(window_size, max_requests)
 
 
-fn _sw_prune(mut window: SlidingWindow, current_time: Float64):
+def _sw_prune(mut window: SlidingWindow, current_time: Float64):
     """Remove timestamps outside the window."""
     var cutoff = current_time - window.window_size
     var new_ts = List[Float64]()
@@ -169,7 +169,7 @@ fn _sw_prune(mut window: SlidingWindow, current_time: Float64):
     window.timestamps = new_ts^
 
 
-fn sw_allow(mut window: SlidingWindow, current_time: Float64) -> Bool:
+def sw_allow(mut window: SlidingWindow, current_time: Float64) -> Bool:
     """Check if request is allowed; if so, record it."""
     _sw_prune(window, current_time)
     if len(window.timestamps) < window.max_requests:
@@ -178,7 +178,7 @@ fn sw_allow(mut window: SlidingWindow, current_time: Float64) -> Bool:
     return False
 
 
-fn sw_count(window: SlidingWindow, current_time: Float64) -> Int:
+def sw_count(window: SlidingWindow, current_time: Float64) -> Int:
     """Count requests in current window."""
     var cutoff = current_time - window.window_size
     var count = 0

@@ -40,12 +40,12 @@ from scheduling_algo import (
 from std.math import abs as fabs, log, log2
 
 
-fn _assert(cond: Bool, msg: String) raises:
+def _assert(cond: Bool, msg: String) raises:
     if not cond:
         raise Error("FAIL: " + msg)
 
 
-fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
+def _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
     if fabs(a - b) > tol:
         raise Error("FAIL: " + msg + " | got " + String(a) + " expected " + String(b))
 
@@ -53,7 +53,7 @@ fn _assert_close(a: Float64, b: Float64, tol: Float64, msg: String) raises:
 # ── Information Theory tests ──────────────────────────────────────────────────
 
 
-fn test_information_theory() raises:
+def test_information_theory() raises:
     print("── Information Theory tests ──")
     var passed = 0
 
@@ -178,7 +178,7 @@ fn test_information_theory() raises:
 # ── Numerical Stability tests ────────────────────────────────────────────────
 
 
-fn test_numerical_stability() raises:
+def test_numerical_stability() raises:
     print("── Numerical Stability tests ──")
     var passed = 0
 
@@ -351,7 +351,7 @@ fn test_numerical_stability() raises:
 # ── Scheduling tests ─────────────────────────────────────────────────────────
 
 
-fn test_scheduling() raises:
+def test_scheduling() raises:
     print("── Scheduling tests ──")
     var passed = 0
 
@@ -504,7 +504,7 @@ fn test_scheduling() raises:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-fn main() raises:
+def main() raises:
     print("=" * 60)
     print("Wave 39 Tests — Information Theory, Numerical Stability, Scheduling")
     print("=" * 60)

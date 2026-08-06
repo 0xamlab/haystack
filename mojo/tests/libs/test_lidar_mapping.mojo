@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from lidar_mapping import range_from_time_of_flight, point_density, canopy_height_model, leaf_area_index_from_lidar, ground_filter_threshold, beam_divergence_footprint, pulse_return_intensity, scan_line_spacing, vertical_accuracy, surface_roughness_lidar
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

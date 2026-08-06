@@ -16,7 +16,7 @@ Public API:
 from std.math import sqrt, exp, pow
 
 
-fn tooth_movement_rate(
+def tooth_movement_rate(
     applied_force_g: Float64, optimal_force_g: Float64
 ) -> Float64:
     """Expected tooth movement rate relative to optimal force.
@@ -38,7 +38,7 @@ fn tooth_movement_rate(
     return ratio
 
 
-fn moment_to_force_ratio(
+def moment_to_force_ratio(
     moment_g_mm: Float64, force_g: Float64
 ) -> Float64:
     """M/F ratio determining type of tooth movement.
@@ -55,7 +55,7 @@ fn moment_to_force_ratio(
     return moment_g_mm / force_g
 
 
-fn anchorage_loss_estimate(
+def anchorage_loss_estimate(
     reactive_force_g: Float64, anchor_teeth: Float64
 ) -> Float64:
     """Anchorage unit load per anchor tooth.
@@ -74,7 +74,7 @@ fn anchorage_loss_estimate(
     return reactive_force_g / anchor_teeth
 
 
-fn arch_wire_force(
+def arch_wire_force(
     deflection_mm: Float64, wire_diameter_mm: Float64,
     elastic_modulus_gpa: Float64, span_mm: Float64
 ) -> Float64:
@@ -102,7 +102,7 @@ fn arch_wire_force(
     return 48.0 * E * I * delta_m / pow(L_m, 3.0)
 
 
-fn levelling_torque(
+def levelling_torque(
     third_order_angle_deg: Float64, wire_dimension_mm: Float64,
     elastic_modulus_gpa: Float64, bracket_width_mm: Float64
 ) -> Float64:
@@ -130,7 +130,7 @@ fn levelling_torque(
     return E * J * theta_rad / L_m * 1000.0  # convert to N·mm
 
 
-fn bolton_ratio(
+def bolton_ratio(
     mandibular_sum_mm: Float64, maxillary_sum_mm: Float64
 ) -> Float64:
     """Bolton overall tooth-size ratio (6 anterior teeth).
@@ -149,7 +149,7 @@ fn bolton_ratio(
     return mandibular_sum_mm / maxillary_sum_mm * 100.0
 
 
-fn pont_index(
+def pont_index(
     upper_four_premolars_sum_mm: Float64, region: Float64
 ) -> Float64:
     """Pont's index: predicted arch width at premolars or molars.
@@ -169,7 +169,7 @@ fn pont_index(
     return upper_four_premolars_sum_mm * 100.0 / factor
 
 
-fn arch_perimeter_estimate(
+def arch_perimeter_estimate(
     irregularity_index_mm: Float64, available_space_mm: Float64
 ) -> Float64:
     """Required arch perimeter from Little's irregularity index.
@@ -186,7 +186,7 @@ fn arch_perimeter_estimate(
     return available_space_mm + irregularity_index_mm
 
 
-fn growth_prediction_cephalometric(
+def growth_prediction_cephalometric(
     sna_deg: Float64, snb_deg: Float64, ans_pns_mm: Float64
 ) -> Float64:
     """Skeletal growth pattern index from cephalometric landmarks.
@@ -204,7 +204,7 @@ fn growth_prediction_cephalometric(
     return sna_deg - snb_deg - ans_pns_mm / 10.0
 
 
-fn retainer_force_decay(
+def retainer_force_decay(
     initial_force_g: Float64, time_weeks: Float64, decay_constant: Float64
 ) -> Float64:
     """Viscoelastic force relaxation in orthodontic retainers/elastics.

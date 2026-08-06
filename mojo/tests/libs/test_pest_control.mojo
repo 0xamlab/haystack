@@ -2,7 +2,7 @@
 from std.math import isnan, isinf
 from pest_control import economic_threshold, economic_injury_level, pest_density, trap_catch_rate, spray_coverage, dilution_rate, residual_effectiveness, resistance_ratio, biocontrol_release_rate, fumigation_ct, bait_station_density, population_reduction
 
-fn is_finite(x: Float64) -> Bool:
+def is_finite(x: Float64) -> Bool:
     return not isnan(x) and not isinf(x)
 
 def main() raises:

@@ -45,17 +45,17 @@ from data_quality.profile import (
 )
 
 
-fn _nan() -> Float64:
+def _nan() -> Float64:
     var zero: Float64 = 0.0
     return zero / zero
 
 
-fn _pos_inf() -> Float64:
+def _pos_inf() -> Float64:
     var zero: Float64 = 0.0
     return 1.0 / zero
 
 
-fn _floats5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
+def _floats5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a)
     o.append(b)
@@ -65,7 +65,7 @@ fn _floats5(a: Float64, b: Float64, c: Float64, d: Float64, e: Float64) -> List[
     return o^
 
 
-fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
+def _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     var o = List[Float64]()
     o.append(a)
     o.append(b)
@@ -73,7 +73,7 @@ fn _floats3(a: Float64, b: Float64, c: Float64) -> List[Float64]:
     return o^
 
 
-fn _bools3(a: Bool, b: Bool, c: Bool) -> List[Bool]:
+def _bools3(a: Bool, b: Bool, c: Bool) -> List[Bool]:
     var o = List[Bool]()
     o.append(a)
     o.append(b)
@@ -81,7 +81,7 @@ fn _bools3(a: Bool, b: Bool, c: Bool) -> List[Bool]:
     return o^
 
 
-fn _bools5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
+def _bools5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
     var o = List[Bool]()
     o.append(a)
     o.append(b)
@@ -91,7 +91,7 @@ fn _bools5(a: Bool, b: Bool, c: Bool, d: Bool, e: Bool) -> List[Bool]:
     return o^
 
 
-fn _all_value_slots_finite(p: ColumnProfile) -> Bool:
+def _all_value_slots_finite(p: ColumnProfile) -> Bool:
     """No Float64 field may hold a raw non-finite: the dispatch refuses to serialize one,
     so a single NaN in a slot turns the whole response into a typed error."""
     return (
@@ -104,14 +104,14 @@ fn _all_value_slots_finite(p: ColumnProfile) -> Bool:
     )
 
 
-fn _census_sums(p: ColumnProfile) -> Bool:
+def _census_sums(p: ColumnProfile) -> Bool:
     """The five classifications partition the rows, and the finite ones partition presence."""
     if p.n_rows != p.n_null + p.n_present:
         return False
     return p.n_present == p.n_nan + p.n_pos_inf + p.n_neg_inf + p.n_finite
 
 
-fn check() raises:
+def check() raises:
     var passed = 0
     var failed = 0
 
@@ -541,5 +541,5 @@ fn check() raises:
     print("  [data_quality.profile] Passed:", passed, "Failed:", failed)
 
 
-fn main() raises:
+def main() raises:
     check()
