@@ -35,9 +35,10 @@ What is reused rather than rebuilt
   the suite asserts it at 1e-3 rather than pretending to more.
 * `math_ext.norm_cdf` / `norm_ppf` — the normal tail and quantile.
 * `inference.core.inference_t_cdf` / `inference_t_quantile` — the t lane. The t quantile does
-  not exist anywhere else in the tree; `inference.core` documents why its own t CDF had to be
-  written (the frozen `stat_tests._regularized_incomplete_beta` omits a continued-fraction
-  level and returns values outside `[0, 1]`).
+  not exist anywhere else in the tree, and `inference.core`'s own t CDF adds region-switching
+  the frozen `stat_tests._t_cdf` still lacks even after its incomplete-beta defect was fixed
+  (see that module's docstring for the history and the two implementations' measured
+  agreement).
 * `optimization.model._ceil_f` — the sample-size rounding, per rule 4c: never
   `Float64(Int(v))`, whose out-of-range `fptosi` is poison rather than truncation.
 

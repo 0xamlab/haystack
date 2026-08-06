@@ -11,12 +11,14 @@ number where no answer exists:
 
 * `stat_tests.t_test_1sample` / `t_test_2sample` / `chi_squared_test` clamp their p-value
   into `[0, 1]` and return `reject_h0` beside it. When the underlying tail is wrong the
-  clamp turns the error into a certainty: measured, `t_test_2sample([1,2,3], [4,5,6])`
-  returns `p_value = 0.0, reject_h0 = True` where the true two-sided p is `0.0213`. The
-  cause is a defect in `stat_tests._regularized_incomplete_beta` — one missing
-  continued-fraction level — and `inference.core` documents it with the reproduction, keeps
-  the frozen kernel untouched, and adds the correct primitive plus a `t_cdf_agreement`
-  driver so the disagreement is a measurable value rather than folklore.
+  clamp turns the error into a certainty: `t_test_2sample([1,2,3], [4,5,6])` USED TO return
+  `p_value = 0.0, reject_h0 = True` where the true two-sided p is `0.0213`, because of a
+  defect in `stat_tests._regularized_incomplete_beta`. That defect is fixed as of this
+  session — see `inference.core`'s module docstring for the full history and the measured
+  agreement between it and this package's own independent `inference_beta_inc`.
+  `t_cdf_agreement` and `assume.t_test_checked_flat`'s `frozen_p_value_usable` still export
+  the comparison, now as an ongoing cross-check between two independent implementations
+  rather than as a record of a known defect.
 * `stats_bootstrap`'s nine bootstrap entry points all draw from `std.random.random_float64`,
   so a confidence interval changes between runs of the same code on the same data. An
   interval that cannot be quoted twice cannot be quoted in a decision that has to be

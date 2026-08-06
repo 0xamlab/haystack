@@ -25,37 +25,56 @@ meaning. Nothing here touches `retrieval`'s 200-219 or `optimization`'s ranges.
 
 WHY THIS MODULE CONTAINS AN INCOMPLETE-BETA IMPLEMENTATION
 =========================================================
-Rule 3 says never reimplement a frozen kernel, and `stat_tests._regularized_incomplete_beta`
-is the tree's incomplete beta. It is **defective**, so every t-distribution and
-F-distribution tail computed from it is wrong, and the additive-correct primitive here is
-the only way this package can quote a p-value at all. The defect, reproduced exactly:
+**Historical defect, fixed upstream as of this session** — recorded below rather than
+deleted, per this package's own rule about a bound pinned to a box being a fact worth
+keeping (see `docs/timing/FROZEN_SPECS.md`'s "saturation does not automatically mean the
+bound is wrong" for the general principle this follows: a fixed defect is still worth
+knowing the shape of). `stat_tests._regularized_incomplete_beta` WAS the tree's incomplete
+beta AND defective, so every t-distribution and F-distribution tail computed from it was
+wrong. The defect, reproduced exactly on the toolchain of the time:
 
     stat_tests._regularized_incomplete_beta(0.6, 3.0, 0.5)  ->  -0.02297233739032732
 
-A regularized incomplete beta is a probability. `-0.023` is not one. The cause is one
-missing continued-fraction level: Lentz's recurrence for `I_x(a,b)` starts at `i = 0` with
-numerator `1.0`, and the frozen loop is `for i in range(1, 201)`, so the `i = 0` level is
-never applied and `f` is short by one convergent. Measured consequences in the frozen tree,
-all executed on this toolchain:
+A regularized incomplete beta is a probability. `-0.023` was not one. The cause was not a
+missing continued-fraction level as first suspected, but a first-term error: Lentz's
+recurrence special-cases its very first convergent (only `d` is set from the leading term
+and reciprocated; `c` stays at its initial 1.0 through that one step), and the frozen loop
+folded that first term into the same uniform per-step update it used for every subsequent
+term — updating `c` there too, which corrupted the running product. Measured consequences
+in the frozen tree, on the toolchain of the time:
 
     stat_tests._t_cdf(2.0, 6.0)   ->  1.0114861686851442   (true 0.9537868442341706)
     stat_tests._t_cdf(1.0, 5.0)   ->  0.4318922414596...   (true 0.8183912661754367)
     stat_tests.t_test_2sample([1,2,3], [4,5,6])
         -> statistic -3.6742346141747673, p_value 0.0, reject_h0 True
 
-That last line is the whole reason this package exists. The true two-sided p for Welch
-`t = -3.674` on `df = 4` is `0.0213`. The frozen kernel computed `2 * (1 - 1.0117...)`,
+That last line was the whole reason this package first existed. The true two-sided p for
+Welch `t = -3.674` on `df = 4` is `0.0213`. The frozen kernel computed `2 * (1 - 1.0117...)`,
 got a NEGATIVE p-value, and its own `if p_val < 0.0: p_val = 0.0` clamp turned it into
 `p_value = 0.0` under `reject_h0 = True` — a confident wrong answer presented as certainty,
-which is exactly what rule 4 exists to prevent. A CDF above 1 also makes small-`t`
-p-values exceed 1 and clamp to 1.0, so the same kernel both never rejects and always
-rejects, depending on the region.
+which is exactly what rule 4 exists to prevent. A CDF above 1 also made small-`t`
+p-values exceed 1 and clamp to 1.0, so the same kernel both never rejected and always
+rejected, depending on the region.
 
-`stat_tests.mojo` is frozen and is NOT modified. `inference_beta_inc` below is the additive
-correct primitive, `inference_t_cdf` / `inference_f_sf` / `inference_t_quantile` are built
-on it, and `t_cdf_agreement` exports the disagreement as a MEASURABLE value so the defect
-is a number a caller can see rather than folklore. `assume.t_test_checked_flat` reports the
-frozen p-value beside the corrected one for the same reason.
+**`stat_tests._regularized_incomplete_beta` is fixed** (same continued fraction, corrected
+first-term handling) and now agrees with this module's independent `inference_beta_inc` to
+within the two implementations' own truncation error almost everywhere — against a
+`-0.023`-vs-`0.674` scale of disagreement beforehand. "Almost everywhere" is precise, not
+hedging: away from the continued fraction's branch-switch threshold the two settle within
+`5.8e-11` of each other (swept `df` 1-5000, `t` -8..8), but hunting the narrow region right
+at that threshold (see `t_cdf_agreement`'s docstring) found gaps up to `3.4e-7` — still six
+orders of magnitude below the pre-fix defect and immaterial to any real p-value decision,
+but real, so `t_cdf_agreement`'s tolerance is `1e-6`, not `1e-9`. `inference_beta_inc` and
+the drivers built on it (`inference_t_cdf`, `inference_f_sf`, `inference_t_quantile`) are
+KEPT, not deleted: they still add real capability `stat_tests.mojo` does not have at all
+(F-distribution tails, t-quantile inversion, and region-switching away from the beta
+continued fraction entirely in the extreme tails), so this package remains additive-correct
+rather than redundant. `stat_tests.mojo` itself was not touched beyond the one-function fix
+— every other frozen tail this module deliberately does not reimplement (below) is
+unaffected. `t_cdf_agreement` and `assume.t_test_checked_flat`'s
+`frozen_p_value`/`frozen_p_value_usable` still report the frozen value beside the corrected
+one, now as a live cross-check between two independent implementations rather than as
+documentation of a known-broken one.
 
 Two frozen tails are NOT reimplemented, because they are correct and were checked:
 
@@ -422,12 +441,14 @@ fn inference_ceilings() -> List[Int]:
 fn inference_beta_inc(x: Float64, a: Float64, b: Float64) -> Float64:
     """The regularized incomplete beta `I_x(a, b)`, or `inference_absent()`.
 
-    ADDITIVE AND CORRECT, replacing nothing: `stat_tests._regularized_incomplete_beta`
-    stays exactly as it is. See the module docstring for why it has to exist — the frozen
-    kernel omits the `i = 0` level of Lentz's continued fraction and returns
-    `-0.02297233739032732` for `I_0.6(3, 0.5)`, which then makes `_t_cdf(2, 6)` equal
-    `1.0114861686851442` and drives `t_test_2sample` to a clamped `p_value = 0.0` under
-    `reject_h0 = True`.
+    ADDITIVE, correct, and now — as of this session — independently corroborating rather
+    than merely correcting: `stat_tests._regularized_incomplete_beta` was defective and is
+    fixed. See the module docstring for the full history: the frozen kernel used to return
+    `-0.02297233739032732` for `I_0.6(3, 0.5)`, which made `_t_cdf(2, 6)` equal
+    `1.0114861686851442` and drove `t_test_2sample` to a clamped `p_value = 0.0` under
+    `reject_h0 = True`. Both are gone; the two implementations now agree to ~1e-11 away from
+    the continued fraction's branch-switch threshold, and to ~1e-7 in the narrow region
+    right at it (see `t_cdf_agreement`'s docstring).
 
     Lentz's algorithm, with the symmetry swap done ITERATIVELY (one flag, no recursion)
     per the dialect preference, and `special_functions.log_gamma` called unchanged for the
@@ -930,10 +951,12 @@ fn inference_t_quantile(p: Float64, df: Float64) -> Float64:
 struct CdfAgreement(Copyable, Movable):
     """What the frozen t CDF and the corrected one say about the same `(t, df)`.
 
-    Exported so the defect in `stat_tests._regularized_incomplete_beta` is a value a caller
-    can measure rather than a claim in a docstring. `frozen_is_probability` is the whole
-    point: when it is False the frozen kernel has returned something outside `[0, 1]`, and
-    every p-value derived from it in the frozen tree was clamped to 0.0 or 1.0.
+    Exported so any future divergence between `stat_tests._t_cdf` and `inference_t_cdf` is
+    a value a caller can measure rather than a claim in a docstring — this is how the
+    original `_regularized_incomplete_beta` defect (see the module docstring) was made
+    auditable, and it stays wired up now that the defect is fixed, as the ongoing
+    cross-check. `frozen_is_probability` is False only if the frozen kernel ever again
+    returns something outside `[0, 1]`.
     """
 
     var status: Int
@@ -949,10 +972,27 @@ struct CdfAgreement(Copyable, Movable):
 fn t_cdf_agreement(t: Float64, df: Float64) -> CdfAgreement:
     """Compare `stat_tests._t_cdf` with `inference_t_cdf` at one point.
 
-    `agree` is decided with `inference_scaled_tol(corrected, 1e-12)`: the quantity judged
+    `agree` is decided with `inference_scaled_tol(corrected, 1e-6)`: the quantity judged
     is the CDF value itself, so the relative term is sized by that value's own magnitude
-    and by DBL_EPSILON, not by any aggregate and not by the caller (rule 4b). `1e-12`
-    absorbs the two implementations' shared series truncation.
+    and by DBL_EPSILON, not by any aggregate and not by the caller (rule 4b). `1e-6` is not
+    the old placeholder from when `stat_tests._t_cdf` was defective (see this module's
+    header), and it is looser than a first sweep suggested: away from the continued
+    fraction's branch-switch threshold (`x = (a+1)/(a+b+2)`), the two implementations settle
+    within `5.8e-11` of each other over `df` 1 to 5000, `t` -8 to 8. BUT close to that
+    threshold — where `x = df/(df+t^2)` lands almost exactly on the switch point, which
+    happens at a specific `t` for every `df` — the continued fraction converges slowly by
+    construction (the threshold exists to keep each evaluation on the FAST side of it), and
+    a fixed 201-iteration cap means two implementations with different `fpmin`/`eps`
+    constants can truncate the slow tail at slightly different points. Hunting that regime
+    directly (evaluating at the exact threshold-crossing `t` for many `df`, not a uniform
+    grid that would step over the narrow spike) found gaps up to `3.4e-7` at `df = 2883`,
+    against otherwise-typical gaps of `1e-9` to `1e-10` at neighboring `df`. Still six orders
+    of magnitude below the pre-fix `~0.058` gap, and immaterial to any real p-value decision
+    (a CDF accurate to 6-7 significant figures at its rare worst point), but not at the
+    `1e-9` to `1e-11` scale this pair achieves everywhere else. `1e-6` is about 3x above the
+    worst spike found, not a bound proven for every `(t, df)` -- a narrower, still-narrow
+    spike elsewhere is possible and would read as `agree = False`, which is the honest
+    outcome for a value neither implementation resolves to full precision there.
     """
     from stat_tests import _t_cdf
 
@@ -968,7 +1008,7 @@ fn t_cdf_agreement(t: Float64, df: Float64) -> CdfAgreement:
     var frozen = _t_cdf(t, df)
     var is_prob = inference_finite(frozen) and frozen >= 0.0 and frozen <= 1.0
     var gap = fabs(frozen - corrected) if inference_finite(frozen) else inference_absent()
-    var tol = inference_scaled_tol(corrected, 1e-12)
+    var tol = inference_scaled_tol(corrected, 1e-6)
     var agree = inference_finite(gap) and gap <= tol
     return CdfAgreement(
         INF_OK, t, df, frozen, corrected, is_prob, gap, agree

@@ -652,11 +652,15 @@ fn t_test_checked_flat(
     var p = inference_t_sf_two_sided(frozen.statistic, df)
     if not inference_finite(p):
         return _checked_failure(INF_ERR_PVALUE_RANGE, n1, n2, alpha)
-    # Judged quantity: the corrected p-value. Scale: its own magnitude, plus 1e-12 absolute
-    # to absorb the two tails' shared series truncation.
+    # Judged quantity: the corrected p-value. Scale: its own magnitude, plus 1e-6 absolute --
+    # the same tolerance `inference.core.t_cdf_agreement` uses, and for the same reason: the
+    # two continued-fraction implementations agree to 5.8e-11 away from the branch-switch
+    # threshold, but a narrow region right at that threshold can reach a gap of 3.4e-7 (see
+    # `t_cdf_agreement`'s docstring), now that `stat_tests._regularized_incomplete_beta` is
+    # fixed.
     var frozen_usable = (
         inference_finite(frozen.p_value)
-        and fabs(frozen.p_value - p) <= inference_scaled_tol(p, 1e-12)
+        and fabs(frozen.p_value - p) <= inference_scaled_tol(p, 1e-6)
     )
 
     var lengths = List[Int](capacity=2)

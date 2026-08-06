@@ -15,14 +15,18 @@ quantities faster, because it computes them without checking whether they exist.
 gated here is that the answers differ, that the refusals happen, and that the declared work
 charges are the work actually done.
 
-1. **The corrected t CDF differs measurably from the frozen one.** `stat_tests._t_cdf`
-   omits the `i = 0` level of Lentz's continued fraction, and `CdfAgreement` is exported so
-   that difference is a value rather than a footnote. Measured over a 280-point `(t, df)`
-   grid: where they diverge, by how much, and how often the frozen value is not a
-   probability at all. The gate insists the divergence is a MAGNITUDE (> 0.1, not a rounding
-   difference), that the corrected value is a probability at every one of the 280 points,
-   and — so the comparison is not a constant — that at `t = 0`, where both short-circuit
-   `I_1(a, b) = 1`, they agree EXACTLY.
+1. **The corrected t CDF now agrees with the frozen one — it did not always.**
+   `stat_tests._t_cdf` had a first-term bug in its Lentz continued fraction (fixed as of
+   this session; see `inference.core`'s module docstring for the history and the
+   measured pre-fix divergence, up to a `-0.023` value where a probability belongs).
+   `CdfAgreement` is exported so the relationship between the two implementations is a
+   value rather than a footnote either way. Measured over a 280-point `(t, df)` grid: how
+   often they still disagree beyond the two continued fractions' own truncation, and
+   whether the frozen value is ever not a probability at all (it no longer is). The gate
+   now insists on the OPPOSITE of what it used to: agreement is the rule (the largest gap
+   stays orders of magnitude below the old `~0.058` divergence), the corrected value is a
+   probability at every one of the 280 points, and — so the comparison is not a constant —
+   that at `t = 0`, where both short-circuit `I_1(a, b) = 1`, they agree EXACTLY.
 
 1b. **…and section 1 covers ONE of the three tail lanes, so 1b covers the other two.** All
    280 of section 1's points are `T_REGION_BETA` — that count is measured and printed, not
@@ -275,7 +279,7 @@ fn main() raises:
     var warm = inference_t_cdf(1.3, 7.0) + inference_t_quantile(0.9, 7.0)
     print("  (warm-up checksum", warm, ")")
 
-    # ══ 1. the corrected t CDF differs from the frozen one, measurably ══════════
+    # ══ 1. the corrected t CDF now agrees with the frozen one ══════════════════
     print("\n-- 1. frozen vs corrected t CDF (CdfAgreement over 280 points) --")
     var cdf_dfs = _f64s(1.0, 2.0, 5.0, 6.0, 10.0, 30.0, 100.0)
     var n_pairs = 0
@@ -324,8 +328,10 @@ fn main() raises:
     )
     print("   max gap", max_gap, "at t =", mg_t, "df =", mg_df)
     var canon = t_cdf_agreement(2.0, 6.0)
-    # This is the reproduction the package's own docstrings quote. The frozen two-sided tail
-    # derived from it is NEGATIVE, which is what the frozen tests clamp to a confident 0.0.
+    # This is the exact (t, df) the package's own docstrings quote as the historical
+    # reproduction. The frozen two-sided tail derived from it is now POSITIVE and close to
+    # the closed-form truth (~0.0924), not the negative value the old defect produced and
+    # the frozen tests clamped to a confident 0.0.
     var frozen_tail = 2.0 * (1.0 - canon.frozen_cdf)
     print(
         "   t = 2, df = 6: frozen", canon.frozen_cdf, "corrected", canon.corrected_cdf,
@@ -333,7 +339,7 @@ fn main() raises:
     )
     print(
         "   the frozen two-sided tail 2(1 - cdf) is", frozen_tail,
-        "— negative, and clamped to 0.0 by the frozen tests",
+        "— positive, matching the corrected tail (both implementations now agree)",
     )
     var at_zero = t_cdf_agreement(0.0, 5.0)
     print(
@@ -341,26 +347,29 @@ fn main() raises:
         "gap", at_zero.abs_gap, "agree", at_zero.agree,
     )
     if (
-        n_frozen_not_prob > 0
-        and max_gap > 0.1
+        n_frozen_not_prob == 0
+        and n_disagree == 0
+        and max_gap < 1.0e-8
         and n_corrected_not_prob == 0
         and n_refused == 0
         and canon.status == INF_OK
-        and not canon.frozen_is_probability
-        and frozen_tail < 0.0
+        and canon.frozen_is_probability
+        and canon.agree
+        and frozen_tail > 0.0
+        and frozen_tail < 1.0
         and at_zero.status == INF_OK
         and at_zero.abs_gap == 0.0
         and at_zero.agree
     ):
         print(
-            "   ✅ the divergence is a magnitude, not a rounding difference; the corrected",
-            "CDF is a probability at all", n_pairs, "points and the two agree exactly at t = 0",
+            "   ✅ the frozen and corrected CDFs agree everywhere on this grid, both are",
+            "probabilities at all", n_pairs, "points, and exactly so at t = 0",
         )
     else:
         failures += 1
         print(
-            "   ❌ CdfAgreement no longer measures a real divergence:", n_frozen_not_prob,
-            max_gap, n_corrected_not_prob, n_refused, at_zero.abs_gap,
+            "   ❌ CdfAgreement no longer measures real agreement:", n_frozen_not_prob,
+            n_disagree, max_gap, n_corrected_not_prob, n_refused, at_zero.abs_gap,
         )
 
     # Cost shape: the continued fraction is capped at 201 levels, so the cost of a corrected

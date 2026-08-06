@@ -44,8 +44,9 @@ Rule 4 in this module
 ---------------------
 * A value offered as a p-value that is not in `[0, 1]` is not a p-value:
   `INF_ERR_PVALUE_RANGE`, and nothing is adjusted. Silently clamping it would hide exactly
-  the frozen defect `inference.core` documents, where a broken tail produced a NEGATIVE
-  p-value that a clamp turned into `0.0` under `reject_h0 = True`.
+  the kind of defect `inference.core` documents (fixed as of this session, but keeps the
+  history): a broken tail once produced a NEGATIVE p-value that a clamp turned into `0.0`
+  under `reject_h0 = True`.
 * `max_rejected_p` is `-1.0` when nothing was rejected. A p-value cannot be negative, so
   the sentinel is outside the range and cannot be read as "the critical value was zero" —
   which is what returning `0.0` there would say.

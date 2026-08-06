@@ -262,6 +262,7 @@ HANDWRITTEN_TESTS = frozenset(
         # test_inference_security belong to the flat LLM-serving modules and are listed above.
         "test_inference_assume.mojo",
         "test_inference_core.mojo",
+        "test_stat_tests_pvalues.mojo",
         "test_inference_glm.mojo",
         "test_inference_multiplicity.mojo",
         "test_inference_power.mojo",

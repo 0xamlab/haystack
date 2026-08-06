@@ -22,21 +22,26 @@ gives `chi2 = (225 + 25 + 25 + 225) / 25 = 20.0` exactly on 3 df. The frozen tai
 1.6974243555282643e-4, so the frozen `_chi2_cdf` is accurate to 4e-9 absolute here — which is
 why `inference.core` does NOT replace it, unlike the incomplete beta.
 
-*The t-test, and the frozen defect it exposes.* `[1,2,3]` against `[4,5,6]`: equal variances of
-1.0 and equal group sizes, so the Welch degrees of freedom are exactly `2(n-1) = 4` and the
-statistic is `-3 / sqrt(2/3) = -3.6742346141747673`. The corrected two-sided p is
-0.021311641133773648. The frozen `stat_tests.t_test_2sample` returns **p_value = 0.0 with
-reject_h0 = True** for the same data, because its tail comes from the defective incomplete beta
-and its own clamp turned a negative p-value into zero. Both numbers are asserted, and
-`frozen_p_value_usable` must be False — that single boolean is the module's reason to exist.
+*The t-test, and the frozen defect it used to expose.* `[1,2,3]` against `[4,5,6]`: equal
+variances of 1.0 and equal group sizes, so the Welch degrees of freedom are exactly
+`2(n-1) = 4` and the statistic is `-3 / sqrt(2/3) = -3.6742346141747673`. The corrected
+two-sided p is 0.021311641133773648. `stat_tests._regularized_incomplete_beta` used to be
+defective, which made `stat_tests.t_test_2sample` return **p_value = 0.0 with
+reject_h0 = True** for this data (its tail came out above 1 and its own clamp turned a
+negative p-value into zero); it is fixed as of this session (see `inference.core`'s module
+docstring), and `t_test_2sample` now returns `p_value = 0.021311641136474657` — within
+2.7e-12 of the corrected value above. Both numbers are asserted, and `frozen_p_value_usable`
+is now True: agreement between two independent implementations, not a known defect, is the
+module's ongoing cross-check.
 
 *The proportion test.* 30/100 against 45/100: pooled `p = 0.375`, so
 `se = sqrt(0.375 * 0.625 * 0.02) = 0.06846531968814577` and `z = -0.15 / se = -2.1908902300206647`.
 The corrected two-sided p is 0.028459637652763714 and the frozen kernel's is
-0.028459636522371046 — these two DO agree (to 1.1e-9), because the frozen proportion test's
-normal CDF is sound; `frozen_p_value_usable` is True here, which is the contrast that makes the
-t-test's False informative. And `z_test_proportions(0, 0, 0, 0)` divides by zero and produces
-NaN, which `is_significant(nan)` reads as "not significant" — that request is refused here.
+0.028459636522371046 — these two agree (to 1.1e-9), because the frozen proportion test's
+normal CDF was always sound; `frozen_p_value_usable` is True here, as it now also is for the
+t-test above, since both frozen tails are correct. And `z_test_proportions(0, 0, 0, 0)` divides
+by zero and produces NaN, which `is_significant(nan)` reads as "not significant" — that request
+is refused here.
 """
 from std.math import abs as fabs, sqrt
 
@@ -344,7 +349,7 @@ fn main():
         failed += 1
         print("  ❌ normality refusal:", residual_normality_flat(two_points, 2, 0.05).status)
 
-    # ── 11. the checked t-test, and the frozen defect it exposes ───────────
+    # ── 11. the checked t-test, and the frozen defect it used to expose ─────
     var pair = _floats(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
     var checked = t_test_checked_flat(pair, 3, 3, 0.05)
     var frozen_t = t_test_2sample(_floats(1.0, 2.0, 3.0), _floats(4.0, 5.0, 6.0))
@@ -373,21 +378,22 @@ fn main():
         print("  ❌ checked t-test:", checked.status, checked.statistic, checked.df)
 
     if (
-        # the frozen kernel returns p = 0.0 with reject_h0 = True for the same data, because its
-        # tail came out above 1 and its own clamp turned a negative p-value into zero
-        frozen_t.p_value == 0.0
+        # the frozen kernel is fixed: it now agrees with the corrected p-value to within the
+        # two implementations' own continued-fraction truncation, not the old defect's
+        # `p = 0.0, reject_h0 = True` regardless of the true tail
+        fabs(frozen_t.p_value - 0.021311641136474657) <= 1.0e-9
         and frozen_t.reject_h0
-        and checked.frozen_p_value == 0.0
-        and not checked.frozen_p_value_usable
-        # both tests reject, but only one of them can say how strongly
+        and fabs(checked.frozen_p_value - 0.021311641136474657) <= 1.0e-9
+        and checked.frozen_p_value_usable
+        # both tests reject, and now for the same reason
         and checked.reject
         and checked.p_value > 0.02
     ):
         passed += 1
-        print("  ✅ the frozen p_value is 0.0 and frozen_p_value_usable is False — the point")
+        print("  ✅ the frozen and corrected p-values now agree, both correctly reject")
     else:
         failed += 1
-        print("  ❌ frozen defect not exposed:", frozen_t.p_value, checked.frozen_p_value_usable)
+        print("  ❌ frozen/corrected agreement wrong:", frozen_t.p_value, checked.frozen_p_value_usable)
 
     # ── 12. A THIRD frozen defect, and why normality_checked exists ─────────
     # `shapiro_wilk_approx` computes `p = 1 - Phi((log(1 - w) - mu)/sigma)`. On three EQUALLY
@@ -439,9 +445,9 @@ fn main():
         and fabs(full.mean2 - full.mean1 - 3.0) <= 1.0e-12
         and fabs(full.p_value - 0.001041900557283009) <= 1.0e-15
         and full.reject
-        # the frozen kernel again reports 0.0, and again it is not usable
-        and full.frozen_p_value == 0.0
-        and not full.frozen_p_value_usable
+        # the frozen kernel is fixed: it agrees with the corrected p-value here too
+        and fabs(full.frozen_p_value - 0.001041900557415154) <= 1.0e-9
+        and full.frozen_p_value_usable
         # every checkable assumption ran and was satisfied
         and full.equal_variance_satisfied
         and full.normality_checked

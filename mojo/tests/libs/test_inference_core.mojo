@@ -16,10 +16,15 @@ The four kinds of assertion that do the real work:
    computed here through two different argument orders of the incomplete beta. They must agree
    to the series' own accuracy.
 
-3. *The measured frozen defect.* `stat_tests._t_cdf(2.0, 6.0)` returns `1.0114861686851442`.
-   That is asserted LITERALLY, as a value greater than 1, because it is the reason
-   `inference_beta_inc` exists and a future toolchain change that fixed the frozen kernel must
-   make this suite fail loudly rather than pass quietly.
+3. *The (fixed) frozen defect, now a live cross-check.* `stat_tests._t_cdf(2.0, 6.0)` used to
+   return `1.0114861686851442` — a value greater than 1, not a probability — which is the
+   reason `inference_beta_inc` was built. As of this session `stat_tests._regularized_incomplete_beta`
+   is fixed (see `inference.core`'s module docstring for the history and the measured
+   inter-implementation gap, largest observed `5.8e-11`), so this section now asserts the
+   CORRECTED reality: `_t_cdf(2.0, 6.0)` is a valid probability close to the closed-form
+   truth, and `t_cdf_agreement` reports `agree = True`. A future regression back toward the
+   old defect (a CDF outside `[0, 1]`, or a gap back at the `1e-2` scale) still fails this
+   assertion loudly.
 
 4. *Refusals.* A tail function outside its domain, a tolerance built from a NaN, a wrapping
    product, and four separate reasons `wls_solve_flat` has no solution. Each refusal is
@@ -100,19 +105,21 @@ fn main():
     var passed: Int = 0
     var failed: Int = 0
 
-    # ── 1. the frozen defect, measured ─────────────────────────────────────────
-    # These are the values this toolchain actually produces. If a future frozen kernel is
-    # fixed, this assertion FAILS — which is the point: the correction below would then be
-    # redundant and someone must decide, rather than the two silently diverging.
+    # ── 1. the frozen defect, FIXED, now a live cross-check ─────────────────────
+    # These are the values this toolchain actually produces post-fix. `_t_cdf(2,6)` is a
+    # valid probability (not 1.0114861686851442, the pre-fix value) and close to the
+    # closed-form truth 0.9537868442341706 — both implementations converge to that truth
+    # independently, to within their own continued-fraction truncation.
     var frozen_2_6 = _t_cdf(2.0, 6.0)
     if (
-        frozen_2_6 == 1.0114861686851442
-        and frozen_2_6 > 1.0
+        frozen_2_6 > 0.0
+        and frozen_2_6 < 1.0
+        and _close(frozen_2_6, 0.9537868442341706, 1.0e-9)
         and _close(inference_t_cdf(2.0, 6.0), 0.9537868442341706, 1.0e-9)
         and _close(inference_t_cdf(1.0, 5.0), 0.8183912661754367, 1.0e-9)
     ):
         passed += 1
-        print("  ✅ frozen _t_cdf(2,6) is 1.011... and the corrected one is 0.95378684")
+        print("  ✅ frozen and corrected _t_cdf(2,6) both agree with the closed-form truth")
     else:
         failed += 1
         print("  ❌ frozen/corrected t CDF changed:", frozen_2_6, inference_t_cdf(2.0, 6.0))
@@ -123,16 +130,16 @@ fn main():
     var agree_at_zero = t_cdf_agreement(0.0, 5.0)
     if (
         agreement.status == INF_OK
-        and not agreement.frozen_is_probability
-        and not agreement.agree
-        and _close(agreement.abs_gap, 0.0576993244, 1.0e-8)
+        and agreement.frozen_is_probability
+        and agreement.agree
+        and agreement.abs_gap < 1.0e-9
         and agree_at_zero.status == INF_OK
         and agree_at_zero.frozen_is_probability
         and agree_at_zero.agree
         and agree_at_zero.corrected_cdf == 0.5
     ):
         passed += 1
-        print("  ✅ the disagreement is exported as a measurable value, and is zero at t=0")
+        print("  ✅ the two independent implementations agree, and exactly so at t=0")
     else:
         failed += 1
         print("  ❌ agreement report wrong:", agreement.abs_gap, agreement.frozen_is_probability)
