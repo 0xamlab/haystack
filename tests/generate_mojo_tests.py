@@ -187,6 +187,7 @@ HANDWRITTEN_TESTS = frozenset(
         # zero-noise linear signal, refusal on an empty/mismatched pool, the sign check).
         "test_esrnn_per_frequency.mojo",
         "test_retrieval_score.mojo",
+        "test_columnar_sort_radix.mojo",
         "test_pls.mojo",
         "test_seq_nn.mojo",
         "test_gemm_quantized.mojo",

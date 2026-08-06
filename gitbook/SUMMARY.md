@@ -222,6 +222,8 @@
 * [Feed-forward](benchmarks/feed-forward.md)
 * [Code retrieval quality](benchmarks/code-retrieval.md)
 * [Dataframe group-by](benchmarks/dataframe-groupby.md)
+* [Sort](benchmarks/sort.md)
+* [Top-k selection](benchmarks/top-k.md)
 * [Least-squares accuracy](benchmarks/least-squares-accuracy.md)
 * [Forecasting on the joint axis](benchmarks/forecasting-joint-axis.md)
 * [FinQA exact execution](benchmarks/finqa-exact-execution.md)

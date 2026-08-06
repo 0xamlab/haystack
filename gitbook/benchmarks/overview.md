@@ -19,6 +19,8 @@ This section is the index. Each benchmark family has its own page with its own c
 <tr><td><strong>Forecasting on the joint axis</strong></td><td>Accuracy and latency together on all 100,000 M4 series, against statsforecast 2.1.1 at matched parallelism.</td><td><a href="forecasting-joint-axis.md">forecasting-joint-axis.md</a></td></tr>
 <tr><td><strong>FinQA exact execution</strong></td><td>Execution accuracy on all 8,281 real FinQA gold programs, against three real naive-reimplementation arms on the same programs.</td><td><a href="finqa-exact-execution.md">finqa-exact-execution.md</a></td></tr>
 <tr><td><strong>LLM tool-calling uplift</strong></td><td>gpt-5-mini answering 16 real numeric questions with and without Algenta's tool-calling access to its own compiled engine.</td><td><a href="llm-tool-calling-uplift.md">llm-tool-calling-uplift.md</a></td></tr>
+<tr><td><strong>Sort</strong></td><td>LSD radix sort over Float64 keys, sequential and parallel, against numpy.sort's introsort across three input orders and six sizes.</td><td><a href="sort.md">sort.md</a></td></tr>
+<tr><td><strong>Top-k selection</strong></td><td>A SIMD-screened bounded heap against numpy.argpartition — one honest loss at the smallest size and largest k, wins everywhere else.</td><td><a href="top-k.md">top-k.md</a></td></tr>
 </tbody>
 </table>
 
