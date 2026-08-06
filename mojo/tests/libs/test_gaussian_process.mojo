@@ -17,10 +17,6 @@ fn _close(a: Float64, b: Float64, tol: Float64) -> Bool:
     return fabs(a - b) <= tol
 
 
-fn _is_nan(x: Float64) -> Bool:
-    return x != x
-
-
 fn check(cond: Bool, name: String, mut passed: Int, mut failed: Int):
     if cond:
         passed += 1
@@ -340,8 +336,8 @@ def main() raises:
         failed,
     )
     check(
-        _is_nan(gp_loglik(bad1, y3)) and _is_nan(gp_loglik(fit3, y2)),
-        "gp_loglik bad fit or wrong-length y -> NaN",
+        gp_loglik(bad1, y3) == 0.0 and gp_loglik(fit3, y2) == 0.0,
+        "gp_loglik bad fit or wrong-length y -> 0.0 (NaN cannot cross the JSON result wire)",
         passed,
         failed,
     )

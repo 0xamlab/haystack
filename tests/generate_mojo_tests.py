@@ -198,12 +198,14 @@ HANDWRITTEN_TESTS = frozenset(
         "test_attnk_rope.mojo",
         "test_attnk_contract.mojo",
         "test_attnk_backward.mojo",
+        "test_attnk_tiled.mojo",
         "test_normk_rmsnorm.mojo",
         "test_normk_layernorm.mojo",
         "test_normk_contract.mojo",
         "test_mlpk_activation.mojo",
         "test_mlpk_embedding.mojo",
         "test_mlpk_contract.mojo",
+        "test_mlpk_gated_ffn.mojo",
         "test_llmk_residual.mojo",
         "test_llmk_generate.mojo",
         "test_llmk_gemv_fast.mojo",
@@ -313,6 +315,14 @@ HANDWRITTEN_TESTS = frozenset(
         "test_survival_analysis_km.mojo",
         "test_survival_analysis_parametric.mojo",
         "test_quantfin_heston.mojo",
+        # Landed hand-written in earlier PRs (#522, #555, #560) but never registered here --
+        # protected_test_files()'s GENERATED_MARKER fallback already kept the generator from
+        # touching them, but the A-Z suite's own preflight deliberately checks against this
+        # explicit registry rather than that fallback, so an unregistered suite reads as drift.
+        "test_query_join_parallel.mojo",
+        "test_residentk_attn_splitk_batched_kernel.mojo",
+        "test_vector_kernels_batch_ranker.mojo",
+        "test_vector_kernels_dot.mojo",
 }
 )
 

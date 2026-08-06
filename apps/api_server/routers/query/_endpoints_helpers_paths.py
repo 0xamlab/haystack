@@ -28,7 +28,7 @@ from apps.api_server.routers.query._cache_classes import (
     _CachedSource, _get_registry_planner, _load_profiled_source, _planner_load_bearing_validation_notes, _planner_metric_candidate_payloads, _planner_query_confidence,
     _raise_empty_source, _source_cache_key, _source_cache_put,
 )
-from apps.api_server.routers.query._schema_graph import _arrow_physical_types, _build_schema_metadata, _graph_nodes_from_meta
+from apps.api_server.routers.query._schema_graph import _arrow_physical_types, _build_schema_metadata, _graph_nodes_from_meta, build_schema_graph
 from apps.api_server.routers.query._signatures import _detect_relations
 
 def _build_query_response(*args, **kwargs):

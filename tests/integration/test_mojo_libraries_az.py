@@ -55,7 +55,7 @@ FAIL = "❌"
 SKIP = "⏭️"
 
 _IMPORT_RE = re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_.]*)\s+import\s+", re.MULTILINE)
-_ALLOWED_IMPORT_ROOTS = {"std", "math", "memory", "mojo", "sys"}
+_ALLOWED_IMPORT_ROOTS = {"std", "math", "memory", "mojo", "sys", "time"}
 
 
 def _pixi_env_binary() -> str | None:

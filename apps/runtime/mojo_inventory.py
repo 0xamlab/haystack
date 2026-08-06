@@ -99,12 +99,13 @@ _SKIP_RUNTIME_IMPORT_PATHS = {
     # test_table is a compile-verification/benchmark scratch file, not a runtime library;
     # without this entry its harness functions ship in the commercial contract.
     "vector_kernels.test_table",
+    # Same reasoning as test_table above: a self-contained correctness-check script for
+    # repo_ranker, run directly via `mojo run`, not a callable library.
+    "vector_kernels.test_repo_ranker",
 }
 _SKIP_RUNTIME_RELATIVE_PREFIXES = {
     ("vector_kernels", "semantic_micro"),
 }
-# main's expanded skip list, kept in full: the universal-substrate work in #414 added runtime dirs that
-# are not part of the callable library surface.
 # "hostio" is infrastructure, not a kernel, and its exclusion is security-relevant rather than
 # cosmetic: sn_socket_unix() takes no arguments and returns an Int, which is a *valid* runtime
 # contract signature, so without this entry any SDK caller could open sockets inside the worker.

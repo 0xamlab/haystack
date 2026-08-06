@@ -71,6 +71,10 @@ Public API:
   mlp_work_fits(n_tok, d_model, d_ff, ceiling)       — no wrapping product
   mlp_vocab_check(n_tok, vocab, d_model)             — embedding shape agreement
   mlp_tol_for(magnitude, reduction_width)            — rule 4b tolerance
+  mlp_pair_ok(n, len_a, len_b)                       — a flat elementwise pair's length agreement
+  mlp_block_dims_ok(tokens, d_model, d_ff, ...)      — a full FFN block's shape agreement
+  mlp_workers_for(n, requested, physical_cores)      — clamp a worker request to a sane range
+  mlp_backend_name(code)                             — which kernel path produced a GateResult
 """
 
 from tensorx.contract import tx_finite
@@ -85,6 +89,23 @@ comptime MLP_ERR_WORK_TOO_LARGE: Int = 394
 comptime MLP_ERR_NON_FINITE_SCALAR: Int = 395
 comptime MLP_ERR_TOKEN_OUT_OF_RANGE: Int = 396
 comptime MLP_ERR_UNKNOWN_ACTIVATION: Int = 397
+comptime MLP_ERR_PROJECTION_FAILED: Int = 398
+"""One of the three GEMM projections inside `swiglu_ffn_block` reported a non-OK status after the
+block's own shape check already passed -- `gemm.blocked.sgemm_flat`'s own gate catching something
+this package's coarser, elementwise-count check does not (e.g. a GEMM-internal budget)."""
+
+# ── backend tags: which code path produced a GateResult ───────────────────────
+
+comptime MLP_BACKEND_CPU_SIMD: Int = 0
+"""Single-threaded SIMD band. Below `MLP_PARALLEL_MIN_ELEMS`, or `requested_workers == 1`."""
+
+comptime MLP_BACKEND_CPU_SIMD_PARALLEL: Int = 1
+"""SIMD bands split across `parallelize`. Above the threshold, with more than one worker."""
+
+comptime MLP_PARALLEL_MIN_ELEMS: Int = 1 << 15
+"""Below ~32k elements, run single-threaded -- fanning `parallelize` out and joining it costs more
+than a small gate costs to compute. Same threshold and reasoning as `normk.rmsnorm`'s
+`PARALLEL_MIN_CELLS` and `gemm.blocked`'s small-matrix floor."""
 
 # ── activation selectors ──────────────────────────────────────────────────────
 
@@ -127,7 +148,18 @@ fn mlp_status_name(code: Int) -> String:
         return String("token_id_out_of_range")
     if code == MLP_ERR_UNKNOWN_ACTIVATION:
         return String("unknown_activation")
+    if code == MLP_ERR_PROJECTION_FAILED:
+        return String("gemm_projection_failed")
     return String("unknown_status")
+
+
+fn mlp_backend_name(code: Int) -> String:
+    """Name a backend tag. Unknown codes say so rather than borrowing a neighbour's meaning."""
+    if code == MLP_BACKEND_CPU_SIMD:
+        return String("cpu_simd")
+    if code == MLP_BACKEND_CPU_SIMD_PARALLEL:
+        return String("cpu_simd_parallel")
+    return String("unknown_backend")
 
 
 fn mlp_work_fits(n_tok: Int, d_model: Int, d_ff: Int, ceiling: Int) -> Bool:
@@ -228,3 +260,84 @@ fn mlp_tol_for(magnitude: Float64, reduction_width: Int) -> Float64:
     var width = Float64(reduction_width) if reduction_width > 0 else 1.0
     var mag = magnitude if magnitude >= 0.0 else -magnitude
     return 1.0e-14 * (1.0 + mag) * (1.0 + width)
+
+
+fn mlp_pair_ok(n: Int, a: List[Float64], b: List[Float64]) -> Int:
+    """Validate a flat elementwise pair: `n` positive, in budget, and not past either buffer's end.
+
+    This is the count-relation guard a gated activation needs: `n` travels as a caller-supplied
+    Int SEPARATE from the two `List` lengths it is about to index, and a caller-supplied `n` greater
+    than either real length is exactly the shape of bug that fires an uncatchable bounds assertion
+    and aborts the whole worker, not a catchable exception (see `sparse_numerics`'s kernel-count
+    hazard, same failure mode). Takes the lists themselves, not their pre-computed lengths, so the
+    relation below names real caller arguments rather than a caller's arithmetic on them.
+
+    @capability mlp_pair_ok
+    complexity: O(1)
+    counts:
+    - dim n <= MLP_MAX_WORK_CELLS [kernel_validated]
+    - n <= len(a, b) [kernel_validated]
+    @endcapability
+    """
+    if n <= 0:
+        return MLP_ERR_EMPTY_DIM
+    if n > MLP_MAX_WORK_CELLS:
+        return MLP_ERR_DIM_TOO_LARGE
+    if n > len(a) or n > len(b):
+        return MLP_ERR_LENGTH_MISMATCH
+    return MLP_OK
+
+
+fn mlp_block_dims_ok(
+    tokens: Int, d_model: Int, d_ff: Int,
+    x: List[Float64], wg: List[Float64], wu: List[Float64], wd: List[Float64],
+) -> Int:
+    """Validate a full gated feed-forward block's shape: dimensions, then every buffer's length.
+
+    Delegates the dimension/budget check to the frozen `mlp_dims_check` so the two entry points
+    cannot disagree about what shape is too large; adds the four length checks a block additionally
+    needs, since `mlp_dims_check` alone does not see any of the four buffers. Takes the buffers
+    themselves for the same reason `mlp_pair_ok` does: a real argument, not a caller's arithmetic.
+
+    @capability mlp_block_dims_ok
+    complexity: O(1)
+    counts:
+    - tokens * d_model <= len(x) [kernel_validated]
+    - d_model * d_ff <= len(wg, wu) [kernel_validated]
+    - d_ff * d_model <= len(wd) [kernel_validated]
+    @endcapability
+    """
+    var shape = mlp_dims_check(tokens, d_model, d_ff)
+    if shape != MLP_OK:
+        return shape
+    if (
+        tokens * d_model > len(x)
+        or d_model * d_ff > len(wg)
+        or d_model * d_ff > len(wu)
+        or d_ff * d_model > len(wd)
+    ):
+        return MLP_ERR_LENGTH_MISMATCH
+    return MLP_OK
+
+
+fn mlp_workers_for(n: Int, requested: Int, physical_cores: Int) -> Int:
+    """Clamp a worker request to `[1, min(physical_cores, n)]`, with the measured small-size floor.
+
+    `requested <= 0` means "auto": one worker below `MLP_PARALLEL_MIN_ELEMS`, every physical core
+    above it -- the same shape `normk.rmsnorm`'s internal auto-worker decision uses, exposed here so
+    a caller-supplied override is clamped by the identical rule rather than a second one that could
+    drift from it. A positive `requested` past `n` would leave some worker's band empty, so it is
+    capped at `n` as well as at the core count.
+    """
+    var cores = physical_cores if physical_cores > 0 else 1
+    var cap = n if n > 0 else 1
+    if cap < cores:
+        cores = cap
+    if requested > 0:
+        var w = requested
+        if w > cap:
+            w = cap
+        return w if w > 0 else 1
+    if n < MLP_PARALLEL_MIN_ELEMS:
+        return 1
+    return cores
