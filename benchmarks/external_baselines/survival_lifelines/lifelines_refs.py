@@ -32,6 +32,8 @@ from lifelines import CoxPHFitter, KaplanMeierFitter
 
 ROSSI_COLUMNS = ["week", "arrest", "fin", "age", "race", "wexp", "mar", "paro", "prio"]
 COX_COVARIATES = ["fin", "age", "race", "wexp", "mar", "paro", "prio"]
+DRIVESTATS_COX_COVARIATES = ["smart_9_raw", "smart_5_raw", "smart_187_raw", "smart_197_raw"]
+MOTORSPORT_COX_COVARIATES = ["grid_position", "prior_races"]
 
 
 def load_dump(path):
@@ -41,6 +43,14 @@ def load_dump(path):
 
 def load_rossi_column(data_dir, col):
     return np.fromfile(f"{data_dir}/rossi_{col}.f64", dtype="<f8")
+
+
+def load_drivestats_column(data_dir, col):
+    return np.fromfile(f"{data_dir}/drivestats_{col}.f64", dtype="<f8")
+
+
+def load_motorsport_column(data_dir, col):
+    return np.fromfile(f"{data_dir}/motorsport_{col}.f64", dtype="<f8")
 
 
 # ── the SAME closed-form generators as survival_h2h.mojo, arithmetic-for-arithmetic ────
@@ -252,11 +262,21 @@ def compare_cox(x, times, event, covariate_names, dump_dir):
 def main():
     mode = sys.argv[1]
 
-    if mode in ("km_rossi", "km_synth"):
+    if mode in ("km_rossi", "km_synth", "km_drivestats", "km_motorsport"):
         if mode == "km_rossi":
             data_dir, dump_dir, reps = sys.argv[2], sys.argv[3], int(sys.argv[4])
             times = load_rossi_column(data_dir, "week")
             event = load_rossi_column(data_dir, "arrest").astype(np.int64)
+            n = len(times)
+        elif mode == "km_drivestats":
+            data_dir, dump_dir, reps = sys.argv[2], sys.argv[3], int(sys.argv[4])
+            times = load_drivestats_column(data_dir, "days")
+            event = load_drivestats_column(data_dir, "failure").astype(np.int64)
+            n = len(times)
+        elif mode == "km_motorsport":
+            data_dir, dump_dir, reps = sys.argv[2], sys.argv[3], int(sys.argv[4])
+            times = load_motorsport_column(data_dir, "laps")
+            event = load_motorsport_column(data_dir, "retired").astype(np.int64)
             n = len(times)
         else:
             n, dump_dir, reps = int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
@@ -273,7 +293,7 @@ def main():
             ns = time.perf_counter_ns() - t0
             print("T", mode, n, r, ns)
 
-    elif mode in ("cox_rossi", "cox_synth"):
+    elif mode in ("cox_rossi", "cox_synth", "cox_drivestats", "cox_motorsport"):
         if mode == "cox_rossi":
             data_dir, dump_dir, max_iter, reps = (
                 sys.argv[2], sys.argv[3], int(sys.argv[4]), int(sys.argv[5]),
@@ -283,6 +303,28 @@ def main():
             x = np.column_stack([load_rossi_column(data_dir, c) for c in COX_COVARIATES])
             n, p = x.shape
             names = COX_COVARIATES
+        elif mode == "cox_drivestats":
+            data_dir, dump_dir, max_iter, reps = (
+                sys.argv[2], sys.argv[3], int(sys.argv[4]), int(sys.argv[5]),
+            )
+            times = load_drivestats_column(data_dir, "cox_days")
+            event = load_drivestats_column(data_dir, "cox_failure").astype(np.int64)
+            x = np.column_stack(
+                [load_drivestats_column(data_dir, f"cox_{c}") for c in DRIVESTATS_COX_COVARIATES]
+            )
+            n, p = x.shape
+            names = DRIVESTATS_COX_COVARIATES
+        elif mode == "cox_motorsport":
+            data_dir, dump_dir, max_iter, reps = (
+                sys.argv[2], sys.argv[3], int(sys.argv[4]), int(sys.argv[5]),
+            )
+            times = load_motorsport_column(data_dir, "cox_laps")
+            event = load_motorsport_column(data_dir, "cox_retired").astype(np.int64)
+            x = np.column_stack(
+                [load_motorsport_column(data_dir, f"cox_{c}") for c in MOTORSPORT_COX_COVARIATES]
+            )
+            n, p = x.shape
+            names = MOTORSPORT_COX_COVARIATES
         else:
             n, p, max_iter, dump_dir, reps = (
                 int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]),

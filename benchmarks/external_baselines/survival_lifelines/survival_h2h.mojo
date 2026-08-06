@@ -1,10 +1,21 @@
 """Algenta arm of the survival-analysis head-to-head against `lifelines`.
 
 Usage: survival_h2h <mode> ...
-  km_rossi   <data_dir> <dump_dir> <reps>            n=432, conf=0.95, real dataset
-  km_synth   <n> <dump_dir> <reps>                   conf=0.95, synthetic, deterministic
-  cox_rossi  <data_dir> <dump_dir> <reps>            n=432, p=7, real dataset
-  cox_synth  <n> <p> <dump_dir> <reps>                synthetic, deterministic
+  km_drivestats  <data_dir> <dump_dir> <reps>        real dataset, Backblaze Q4 2025
+  km_motorsport  <data_dir> <dump_dir> <reps>        real dataset, car-racing corpus 2019-2026
+  km_rossi       <data_dir> <dump_dir> <reps>        n=432, conf=0.95, real dataset (1980)
+  km_synth       <n> <dump_dir> <reps>                conf=0.95, synthetic, deterministic
+  cox_drivestats <data_dir> <dump_dir> <reps>        real dataset, Backblaze Q4 2025, p=5
+  cox_motorsport <data_dir> <dump_dir> <reps>        real dataset, car-racing corpus, p=2
+  cox_rossi      <data_dir> <dump_dir> <reps>        n=432, p=7, real dataset (1980)
+  cox_synth      <n> <p> <dump_dir> <reps>            synthetic, deterministic
+
+`km_drivestats`/`cox_drivestats` are the primary real-data cells (Backblaze's Drive
+Stats: real production hard-drive fleet telemetry, Q4 2025 -- current as of this
+writing, not a decades-old dataset). `km_rossi`/`cox_rossi` are kept as a secondary,
+smaller real dataset for cross-checking at a very different scale and covariate set, not
+as the page's headline "real data" claim -- see `prep_drivestats.py`'s docstring for why
+Drive Stats replaced Rossi as the primary evidence.
 
 Why this is TWO PROCESSES rather than one, unlike `bench_vs_sort.mojo`
 -----------------------------------------------------------------------
@@ -185,7 +196,7 @@ fn main() raises:
     var a = argv()
     var mode = String(a[1])
 
-    if mode == "km_rossi" or mode == "km_synth":
+    if mode == "km_rossi" or mode == "km_synth" or mode == "km_drivestats" or mode == "km_motorsport":
         var times = List[Float64]()
         var event = List[Int]()
         var n = 0
@@ -201,6 +212,26 @@ fn main() raises:
             for i in range(n):
                 times.append(week[i])
                 event.append(Int(arrest[i] + 0.5))
+        elif mode == "km_drivestats":
+            var data_dir = String(a[2])
+            dump_dir = String(a[3])
+            reps = Int(String(a[4]))
+            var days = read_f64(data_dir + "/drivestats_days.f64")
+            var failure = read_f64(data_dir + "/drivestats_failure.f64")
+            n = len(days)
+            for i in range(n):
+                times.append(days[i])
+                event.append(Int(failure[i] + 0.5))
+        elif mode == "km_motorsport":
+            var data_dir = String(a[2])
+            dump_dir = String(a[3])
+            reps = Int(String(a[4]))
+            var laps = read_f64(data_dir + "/motorsport_laps.f64")
+            var retired = read_f64(data_dir + "/motorsport_retired.f64")
+            n = len(laps)
+            for i in range(n):
+                times.append(laps[i])
+                event.append(Int(retired[i] + 0.5))
         else:
             n = Int(String(a[2]))
             dump_dir = String(a[3])
@@ -260,7 +291,7 @@ fn main() raises:
                 print("STATUS_FAIL")
             print("T", mode, n, r, ns)
 
-    elif mode == "cox_rossi" or mode == "cox_synth":
+    elif mode == "cox_rossi" or mode == "cox_synth" or mode == "cox_drivestats" or mode == "cox_motorsport":
         var x = List[Float64]()
         var times = List[Float64]()
         var event = List[Int]()
@@ -295,6 +326,50 @@ fn main() raises:
                     x.append(colvals[c][i])
                 times.append(week[i])
                 event.append(Int(arrest[i] + 0.5))
+        elif mode == "cox_drivestats":
+            var data_dir = String(a[2])
+            dump_dir = String(a[3])
+            max_iter = Int(String(a[4]))
+            reps = Int(String(a[5]))
+            var days = read_f64(data_dir + "/drivestats_cox_days.f64")
+            var failure = read_f64(data_dir + "/drivestats_cox_failure.f64")
+            n = len(days)
+            p = 4
+            var cols = List[String]()
+            cols.append(String("smart_9_raw"))
+            cols.append(String("smart_5_raw"))
+            cols.append(String("smart_187_raw"))
+            cols.append(String("smart_197_raw"))
+            var colvals = List[List[Float64]]()
+            for c in range(p):
+                colvals.append(read_f64(data_dir + "/drivestats_cox_" + cols[c] + ".f64"))
+            x = List[Float64](capacity=n * p)
+            for i in range(n):
+                for c in range(p):
+                    x.append(colvals[c][i])
+                times.append(days[i])
+                event.append(Int(failure[i] + 0.5))
+        elif mode == "cox_motorsport":
+            var data_dir = String(a[2])
+            dump_dir = String(a[3])
+            max_iter = Int(String(a[4]))
+            reps = Int(String(a[5]))
+            var laps = read_f64(data_dir + "/motorsport_cox_laps.f64")
+            var retired = read_f64(data_dir + "/motorsport_cox_retired.f64")
+            n = len(laps)
+            p = 2
+            var cols = List[String]()
+            cols.append(String("grid_position"))
+            cols.append(String("prior_races"))
+            var colvals = List[List[Float64]]()
+            for c in range(p):
+                colvals.append(read_f64(data_dir + "/motorsport_cox_" + cols[c] + ".f64"))
+            x = List[Float64](capacity=n * p)
+            for i in range(n):
+                for c in range(p):
+                    x.append(colvals[c][i])
+                times.append(laps[i])
+                event.append(Int(retired[i] + 0.5))
         else:
             n = Int(String(a[2]))
             p = Int(String(a[3]))

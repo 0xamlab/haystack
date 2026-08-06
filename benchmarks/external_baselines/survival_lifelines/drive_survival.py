@@ -41,6 +41,14 @@ ENGINE = REPO / "mojo" / "engine"
 H2H = HERE / "survival_h2h.mojo"
 REFS = HERE / "lifelines_refs.py"
 PREP = HERE / "prep_rossi.py"
+DRIVESTATS_SUMMARY_CSV = os.environ.get(
+    "SURV_DRIVESTATS_SUMMARY", "/tmp/backblaze_q4_2025/drivestats_summary.csv"
+)
+MOTORSPORT_SUMMARY_CSV = os.environ.get(
+    "SURV_MOTORSPORT_SUMMARY", "/tmp/motorsport_survival.csv"
+)
+PREP_DRIVESTATS = HERE / "prep_drivestats.py"
+PREP_MOTORSPORT = HERE / "prep_motorsport.py"
 
 REF_PYTHON = os.environ.get("SURV_BENCH_PYTHON", "/usr/local/bin/python3")
 DATA_DIR = os.environ.get("SURV_DATA", "/tmp/survival_lifelines_data")
@@ -73,6 +81,50 @@ def ensure_rossi_data() -> None:
     if proc.returncode != 0:
         print(proc.stderr)
         raise SystemExit("prep_rossi.py failed")
+
+
+def ensure_drivestats_data() -> None:
+    if os.path.exists(os.path.join(DATA_DIR, "drivestats_days.f64")):
+        return
+    if not os.path.exists(DRIVESTATS_SUMMARY_CSV):
+        raise SystemExit(
+            f"missing {DRIVESTATS_SUMMARY_CSV}. Drive Stats is an external ~1.2GB "
+            "download, not fetched automatically -- see build_drivestats_summary.py's "
+            "docstring for the two-step fetch + transform."
+        )
+    print("prepping Drive Stats dataset ...", file=sys.stderr)
+    proc = subprocess.run(
+        [REF_PYTHON, str(PREP_DRIVESTATS), DRIVESTATS_SUMMARY_CSV, DATA_DIR],
+        capture_output=True, text=True,
+    )
+    print(proc.stdout)
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise SystemExit("prep_drivestats.py failed")
+
+
+def ensure_motorsport_data() -> None:
+    if os.path.exists(os.path.join(DATA_DIR, "motorsport_laps.f64")):
+        return
+    if not os.path.exists(MOTORSPORT_SUMMARY_CSV):
+        print("building motorsport survival summary from the local corpus ...", file=sys.stderr)
+        proc = subprocess.run(
+            [REF_PYTHON, str(HERE / "build_motorsport_survival.py"),
+             os.path.expanduser("~/.algenta/f1/raw"), MOTORSPORT_SUMMARY_CSV],
+            capture_output=True, text=True,
+        )
+        print(proc.stdout, proc.stderr)
+        if proc.returncode != 0:
+            raise SystemExit("build_motorsport_survival.py failed -- corpus not present locally?")
+    print("prepping motorsport dataset ...", file=sys.stderr)
+    proc = subprocess.run(
+        [REF_PYTHON, str(PREP_MOTORSPORT), MOTORSPORT_SUMMARY_CSV, DATA_DIR],
+        capture_output=True, text=True,
+    )
+    print(proc.stdout)
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise SystemExit("prep_motorsport.py failed")
 
 
 class Tier:
@@ -118,10 +170,13 @@ def run(cmd: list[str], cwd: str | None = None, timeout: float = 300.0) -> tuple
     return proc.returncode, proc.stdout + proc.stderr
 
 
+REAL_DATA_MODES = {"km_rossi", "km_drivestats", "km_motorsport", "cox_rossi", "cox_drivestats", "cox_motorsport"}
+
+
 def run_km_cell(mode: str, arg: str, reps: int) -> dict:
     dump_dir = os.path.join(DUMP_ROOT, f"{mode}_{arg}")
     os.makedirs(dump_dir, exist_ok=True)
-    if mode == "km_rossi":
+    if mode in REAL_DATA_MODES:
         mojo_cmd = [MOJO_BIN, mode, DATA_DIR, dump_dir, str(reps)]
         py_cmd = [REF_PYTHON, str(REFS), mode, DATA_DIR, dump_dir, str(reps)]
     else:
@@ -138,7 +193,7 @@ def run_km_cell(mode: str, arg: str, reps: int) -> dict:
 def run_cox_cell(mode: str, n: str, p: str, max_iter: int, reps: int) -> dict:
     dump_dir = os.path.join(DUMP_ROOT, f"{mode}_{n}_{p}")
     os.makedirs(dump_dir, exist_ok=True)
-    if mode == "cox_rossi":
+    if mode in REAL_DATA_MODES:
         mojo_cmd = [MOJO_BIN, mode, DATA_DIR, dump_dir, str(max_iter), str(reps)]
         py_cmd = [REF_PYTHON, str(REFS), mode, DATA_DIR, dump_dir, str(max_iter), str(reps)]
     else:
@@ -236,6 +291,8 @@ def main() -> int:
     if not args.skip_build:
         build_mojo()
     ensure_rossi_data()
+    ensure_drivestats_data()
+    ensure_motorsport_data()
 
     load_before = os.getloadavg()
     print("=" * 96)
@@ -251,8 +308,17 @@ def main() -> int:
     # ── KM ───────────────────────────────────────────────────────────────────
     print("### PRIMARY: Kaplan-Meier (km_fit vs KaplanMeierFitter) ###")
     print()
+    r = judge(run_km_cell("km_drivestats", "", args.reps_cheap))
+    print_cell("km_drivestats n=341664 (real hard-drive fleet, current quarter)", r)
+    results.append(r)
+
+    r = judge(run_km_cell("km_motorsport", "", args.reps_cheap))
+    print_cell("km_motorsport n=2596 (real car-racing retirement corpus, 2019-2026)", r)
+    results.append(r)
+
     r = judge(run_km_cell("km_rossi", "", args.reps_cheap))
-    print_cell("km_rossi n=432 (real Rossi recidivism dataset)", r)
+    print_cell("km_rossi n=432 (real Rossi recidivism dataset, 1980 -- secondary cross-check, "
+               "not featured: see the page for why)", r)
     results.append(r)
 
     for n in args.km_sizes.split(","):
@@ -264,8 +330,21 @@ def main() -> int:
     # ── Cox ──────────────────────────────────────────────────────────────────
     print("### SECONDARY: Cox proportional hazards (cox_fit vs CoxPHFitter) ###")
     print()
+    r = judge(run_cox_cell("cox_motorsport", "", "", 100, args.reps_cheap))
+    print_cell("cox_motorsport n=2596 p=2 (real car-racing corpus, 2019-2026)", r)
+    results.append(r)
+
+    print("--- cox_drivestats n=114453 p=4 (real hard-drive fleet, current quarter) ---")
+    print("  ATTEMPTED, NOT REPORTED: at this event rarity (408 failures among 114,453")
+    print("  drives) lifelines' unregularized Newton-Raphson does not converge reliably")
+    print("  on real covariates -- checked directly (ConvergenceError / overflow in exp),")
+    print("  not assumed. cox_fit itself converges, but a cell with no working reference")
+    print("  arm to check against is not a comparison. See the page's Method section.")
+    print()
+
     r = judge(run_cox_cell("cox_rossi", "", "", 100, args.reps_cheap))
-    print_cell("cox_rossi n=432 p=7 (real Rossi recidivism dataset)", r)
+    print_cell("cox_rossi n=432 p=7 (real Rossi recidivism dataset, 1980 -- secondary "
+               "cross-check, not featured: see the page for why)", r)
     results.append(r)
 
     sa_max_work = 1 << 30

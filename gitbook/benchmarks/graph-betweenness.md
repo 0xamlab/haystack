@@ -91,7 +91,8 @@ during a quiet moment.
 
 * [Sort](sort.md) — a columnar kernel measured the same way.
 * [Top-k selection](top-k.md) — a bounded-heap kernel with one honest loss disclosed up front.
-* [Survival analysis](survival-analysis.md) — another zero-loss win, same two-process disclosure.
+* [Survival analysis](survival-analysis.md) — measured against two current real-world
+  datasets, 10 of 11 cells ahead of lifelines, same two-process disclosure.
 * [Benchmarks](overview.md) — methodology and what is not published.
 
 ## Reproduce

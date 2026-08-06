@@ -137,7 +137,8 @@ one of the 18 cells above passed all three, on the full element count, with zero
   disclosed up front.
 * [Graph betweenness centrality](graph-betweenness.md) — a zero-loss win against networkx,
   measured with the same correctness-first discipline.
-* [Survival analysis](survival-analysis.md) — a zero-loss win against lifelines.
+* [Survival analysis](survival-analysis.md) — measured against two current real-world
+  datasets, 10 of 11 cells ahead of lifelines.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Dataframe group-by](dataframe-groupby.md) — another columnar kernel measured directly against
   real baselines.
