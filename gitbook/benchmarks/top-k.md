@@ -117,6 +117,8 @@ and that identity is what makes the parallel arm safe to call by default.
 
 * [Sort](sort.md) — a comparison-free algorithm measured the same way, with a genuinely stronger
   (in-process, interleaved) methodology.
+* [Graph betweenness centrality](graph-betweenness.md) — a zero-loss win against networkx.
+* [Survival analysis](survival-analysis.md) — a zero-loss win against lifelines.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Dataframe group-by](dataframe-groupby.md) — another columnar kernel measured directly against
   real baselines.

@@ -135,6 +135,9 @@ one of the 18 cells above passed all three, on the full element count, with zero
 
 * [Top-k selection](top-k.md) — a bounded-heap kernel measured the same way, with one honest loss
   disclosed up front.
+* [Graph betweenness centrality](graph-betweenness.md) — a zero-loss win against networkx,
+  measured with the same correctness-first discipline.
+* [Survival analysis](survival-analysis.md) — a zero-loss win against lifelines.
 * [Benchmarks](overview.md) — methodology and what is not published.
 * [Dataframe group-by](dataframe-groupby.md) — another columnar kernel measured directly against
   real baselines.

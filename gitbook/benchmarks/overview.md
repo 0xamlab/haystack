@@ -21,6 +21,8 @@ This section is the index. Each benchmark family has its own page with its own c
 <tr><td><strong>LLM tool-calling uplift</strong></td><td>gpt-5-mini answering 16 real numeric questions with and without Algenta's tool-calling access to its own compiled engine.</td><td><a href="llm-tool-calling-uplift.md">llm-tool-calling-uplift.md</a></td></tr>
 <tr><td><strong>Sort</strong></td><td>LSD radix sort over Float64 keys, sequential and parallel, against numpy.sort's introsort across three input orders and six sizes.</td><td><a href="sort.md">sort.md</a></td></tr>
 <tr><td><strong>Top-k selection</strong></td><td>A SIMD-screened bounded heap against numpy.argpartition — one honest loss at the smallest size and largest k, wins everywhere else.</td><td><a href="top-k.md">top-k.md</a></td></tr>
+<tr><td><strong>Graph betweenness centrality</strong></td><td>Brandes betweenness over a CSR adjacency, against networkx — ahead in every cell measured, widening with graph size.</td><td><a href="graph-betweenness.md">graph-betweenness.md</a></td></tr>
+<tr><td><strong>Survival analysis</strong></td><td>Kaplan-Meier and Cox proportional hazards, against lifelines — zero losses, from 3.0x to 142.9x.</td><td><a href="survival-analysis.md">survival-analysis.md</a></td></tr>
 </tbody>
 </table>
 
